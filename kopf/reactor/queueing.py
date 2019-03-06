@@ -140,10 +140,17 @@ async def worker(
 
             # Try ASAP, but give it few seconds for the new events to arrive, maybe.
             # If the queue is empty for some time, then indeed finish the object's worker.
+            # If the queue is filled, use the latest event only (within the short timeframe).
             try:
                 event = await asyncio.wait_for(queue.get(), timeout=5.0)
             except asyncio.TimeoutError:
                 break
+            else:
+                try:
+                    while True:
+                        event = await asyncio.wait_for(queue.get(), timeout=0.1)
+                except asyncio.TimeoutError:
+                    pass
 
             # Try the handler. In case of errors, show the error, but continue the queue processing.
             try:
