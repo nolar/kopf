@@ -81,6 +81,10 @@ async def watcher(
         stream = w.stream(api.list_cluster_custom_object, resource.group, resource.version, resource.plural)
         async for event in _async_wrapper(stream):
 
+            # Other watch errors should be fatal for the operator.
+            if event['type'] == 'ERROR':
+                raise Exception(f"Error in the watch-stream: {event['object']}")
+
             # Ensure that the event is something we understand and can handle.
             if event['type'] not in ['ADDED', 'MODIFIED', 'DELETED']:
                 logger.warn("Unsupported event type received, ignoring: %r", event)
