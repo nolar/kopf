@@ -80,7 +80,11 @@ async def watcher(
         api = kubernetes.client.CustomObjectsApi()
         stream = w.stream(api.list_cluster_custom_object, resource.group, resource.version, resource.plural)
         async for event in _async_wrapper(stream):
-            key = (resource, event['object']['metadata']['uid'])
+
+            # Ensure that the event is something we understand and can handle.
+            if event['type'] not in ['ADDED', 'MODIFIED', 'DELETED']:
+                logger.warn("Unsupported event type received, ignoring: %r", event)
+                continue
 
             # Filter out all unrelated events as soon as possible (before queues), and silently.
             # TODO: Reimplement via api.list_namespaced_custom_object, and API-level filtering.
@@ -90,6 +94,7 @@ async def watcher(
 
             # Either use the existing object's queue, or create a new one together with the per-object job.
             # "Fire-and-forget": we do not wait for the result; the job destroys itself when it is fully done.
+            key = (resource, event['object']['metadata']['uid'])
             try:
                 await queues[key].put(event)
             except KeyError:
