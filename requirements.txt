@@ -1,0 +1,5 @@
+# The runtime dependencies of the framework, as if via `pip install kopf`.
+-e .
+
+# Everything needed to develop (test, debug) the framework.
+pytest
