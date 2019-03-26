@@ -17,15 +17,11 @@ _What types of changes does your code introduce? Keep the ones that apply:_
 
 ## Tasks
 _List of tasks you will do to complete the PR_
-  - [ ] Created Task 1
-  - [ ] Created Task 2
-  - [ ] To-do Task 3
+  - [ ] Task 1
+  - [ ] Task 2
+  - [ ] Task 3
 
 ## Review
 _List of tasks the reviewer must do to review the PR_
 - [ ] Tests
 - [ ] Documentation
-- [ ] CHANGELOG
-
-## Deployment Notes
-These should highlight any db migrations, feature toggles, etc.
