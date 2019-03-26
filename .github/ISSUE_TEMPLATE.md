@@ -12,6 +12,10 @@
 
 ## Specifications
 
-  - Version:
   - Platform:
-  - Subsystem:
+  - Kubernetes version: *(use `kubectl version`)*
+  - Python version: *(use `python --version`)*
+  - Python packages installed: *(use `pip freeze --all`)*
+
+```
+```
