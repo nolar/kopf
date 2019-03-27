@@ -1,0 +1,35 @@
+# A demo CRD for the Kopf example operators.
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: kopfexamples.zalando.org
+spec:
+  scope: Namespaced
+  group: zalando.org
+  versions:
+    - name: v1
+      served: true
+      storage: true
+  names:
+    kind: KopfExample
+    plural: kopfexamples
+    singular: kopfexample
+    shortNames:
+      - kopfexes
+      - kopfex
+  additionalPrinterColumns:
+    - name: Duration
+      type: string
+      priority: 0
+      JSONPath: .spec.duration
+      description: For how long the pod should sleep.
+    - name: Children
+      type: string
+      priority: 0
+      JSONPath: .status.children
+      description: The children pods created.
+    - name: Message
+      type: string
+      priority: 0
+      JSONPath: .status.message
+      description: As returned from the handler (sometimes).

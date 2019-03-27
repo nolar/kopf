@@ -1,0 +1,13 @@
+# A demo custom resource for the Kopf example operators.
+apiVersion: zalando.org/v1
+kind: KopfExample
+metadata:
+  name: kopf-example-1
+  labels:
+    somelabel: somevalue
+spec:
+  duration: 1m
+  field: value
+  items:
+  - item1
+  - item2
