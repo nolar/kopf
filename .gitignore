@@ -21,3 +21,7 @@ coverage.xml
 junit.xml
 *.cover
 .hypothesis/
+
+# Documentation
+docs/_build
+docs/packages
