@@ -28,6 +28,7 @@ Kopf: Kubernetes Operators Framework
    peering
    scopes
    errors
+   events
 
 .. toctree::
    :maxdepth: 2
