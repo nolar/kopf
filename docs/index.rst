@@ -24,6 +24,7 @@ Kopf: Kubernetes Operators Framework
 
    handlers
    async
+   loading
    peering
    scopes
    errors
