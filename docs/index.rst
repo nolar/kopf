@@ -16,6 +16,7 @@ Kopf: Kubernetes Operators Framework
    walkthrough/prerequisites
    walkthrough/resources
    walkthrough/starting
+   deployment
    cleanup
 
 .. toctree::
