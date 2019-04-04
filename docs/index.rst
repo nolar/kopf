@@ -28,6 +28,7 @@ Kopf: Kubernetes Operators Framework
    :caption: Feature documentation:
 
    handlers
+   hierarchies
    async
    loading
    peering
