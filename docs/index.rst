@@ -16,6 +16,10 @@ Kopf: Kubernetes Operators Framework
    walkthrough/prerequisites
    walkthrough/resources
    walkthrough/starting
+   walkthrough/creation
+   walkthrough/updates
+   walkthrough/diffs
+   walkthrough/deletion
    deployment
    cleanup
 
