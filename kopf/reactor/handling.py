@@ -37,6 +37,7 @@ from kopf.reactor.registry import (
 from kopf.structs.diffs import (
     Diff,
     resolve,
+    reduce,
 )
 from kopf.structs.finalizers import (
     is_deleted,
@@ -461,7 +462,7 @@ async def _call_handler(
     # For the field-handlers, the old/new/diff values must match the field, not the whole object.
     old = cause.old if handler.field is None else resolve(cause.old, handler.field)
     new = cause.new if handler.field is None else resolve(cause.new, handler.field)
-    diff = cause.diff  # TODO: pass the relevant diff-records for the field, not global.
+    diff = cause.diff if handler.field is None else reduce(cause.diff, handler.field)
     cause = cause._replace(old=old, new=new, diff=diff)
 
     # Store the context of the current resource-object-event-handler, to be used in `@kopf.on.this`,
