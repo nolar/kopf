@@ -8,6 +8,11 @@ with Kubernetes being an orchestrator/database of the domain objects (custom res
 and the operators containing the domain logic (with no or minimal infrastructure logic).
 
 
+## Documentation:
+
+* https://kopf.readthedocs.io/
+
+
 ## Features:
 
 * A full-featured operator in just 2 files: `Dockerfile` + a Python module.
