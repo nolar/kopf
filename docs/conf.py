@@ -21,6 +21,7 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.extlinks',
     'sphinx.ext.linkcode',
+    'sphinx.ext.intersphinx',
 ]
 
 templates_path = ['_templates']
@@ -36,6 +37,11 @@ todo_emit_warnings = True
 extlinks = {
     'issue': ('https://github.com/zalando-incubator/kopf/issues/%s', 'issue '),
 }
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+}
+
 
 def linkcode_resolve(domain, info):
     if domain != 'py':
