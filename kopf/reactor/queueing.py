@@ -2,7 +2,7 @@
 Kubernetes watching/streaming and the per-object queueing system.
 
 The framework can handle multiple resources at once.
-Every custom resource type is "watched" (as in `kubectl get --watch`)
+Every custom resource type is "watched" (as in ``kubectl get --watch``)
 in a separate asyncio task in the never-ending loop.
 
 The events for this resource type (of all its objects) are then pushed

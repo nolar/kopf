@@ -28,6 +28,8 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 html_static_path = ['_static']
 html_theme = 'sphinx_rtd_theme'
 
+default_role = 'py:obj'
+
 todo_include_todos = False
 todo_emit_warnings = True
 

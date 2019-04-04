@@ -24,7 +24,7 @@ def create(
         id: Optional[str] = None,
         timeout: Optional[float] = None,
         registry: Optional[GlobalRegistry] = None):
-    """ `@kopf.on.create()` handler for the object creation. """
+    """ ``@kopf.on.create()`` handler for the object creation. """
     registry = registry if registry is not None else get_default_registry()
     def decorator(fn):
         registry.register(
@@ -41,7 +41,7 @@ def update(
         id: Optional[str] = None,
         timeout: Optional[float] = None,
         registry: Optional[GlobalRegistry] = None):
-    """ `@kopf.on.update()` handler for the object update or change. """
+    """ ``@kopf.on.update()`` handler for the object update or change. """
     registry = registry if registry is not None else get_default_registry()
     def decorator(fn):
         registry.register(
@@ -58,7 +58,7 @@ def delete(
         id: Optional[str] = None,
         timeout: Optional[float] = None,
         registry: Optional[GlobalRegistry] = None):
-    """ `@kopf.on.delete()` handler for the object deletion. """
+    """ ``@kopf.on.delete()`` handler for the object deletion. """
     registry = registry if registry is not None else get_default_registry()
     def decorator(fn):
         registry.register(
@@ -76,7 +76,7 @@ def field(
         id: Optional[str] = None,
         timeout: Optional[float] = None,
         registry: Optional[GlobalRegistry] = None):
-    """ `@kopf.on.field()` handler for the individual field changes. """
+    """ ``@kopf.on.field()`` handler for the individual field changes. """
     registry = registry if registry is not None else get_default_registry()
     def decorator(fn):
         registry.register(
@@ -95,10 +95,10 @@ def this(
         timeout: Optional[float] = None,
         registry: Optional[SimpleRegistry] = None):
     """
-    `@kopf.on.this()` decorator for the dynamically generated sub-handlers.
+    ``@kopf.on.this()`` decorator for the dynamically generated sub-handlers.
 
     Can be used only inside of the handler function.
-    It is efficiently a syntax sugar to look like all other handlers:
+    It is efficiently a syntax sugar to look like all other handlers::
 
         @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
         def create(*, spec, **kwargs):
@@ -110,8 +110,8 @@ def this(
 
                     pass
 
-    In this example, having spec.tasks set to `[abc, def]`, this will create
-    the following handlers: `create`, `create/task_abc`, `create/task_def`.
+    In this example, having spec.tasks set to ``[abc, def]``, this will create
+    the following handlers: ``create``, ``create/task_abc``, ``create/task_def``.
 
     The parent handler is not considered as finished if there are unfinished
     sub-handlers left. Since the sub-handlers will be executed in the regular
@@ -120,7 +120,7 @@ def this(
     to produce the same (or at least predictable) set of sub-handlers.
     In addition, keep its logic idempotent (not failing on the repeated calls).
 
-    Note: `task=task` is needed to freeze the closure variable, so that every
+    Note: ``task=task`` is needed to freeze the closure variable, so that every
     create function will have its own value, not the latest in the for-cycle.
     """
     registry = registry if registry is not None else subregistry_var.get()

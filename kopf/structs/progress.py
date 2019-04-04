@@ -8,7 +8,9 @@ There could be more than one low-level k8s watch-events per one actual
 high-level kopf-event (a cause). The handlers are called at different times,
 and the overall handling routine should persist the handler status somewhere.
 
-The structure is this::
+The structure is this:
+
+.. code-block: yaml
 
     metainfo: ...
     spec: ...
@@ -35,14 +37,14 @@ The structure is this::
                 handler3/sub2:
                     started: 2018-12-31T23:59:59,999999
 
-* `status.kopf.success` are the handlers that succeeded (no re-execution).
-* `status.kopf.failure` are the handlers that failed completely (no retries).
-* `status.kopf.delayed` are the timestamps, until which these handlers sleep.
-* `status.kopf.retries` are number of retries for succeeded, failed,
+* ``status.kopf.success`` are the handlers that succeeded (no re-execution).
+* ``status.kopf.failure`` are the handlers that failed completely (no retries).
+* ``status.kopf.delayed`` are the timestamps, until which these handlers sleep.
+* ``status.kopf.retries`` are number of retries for succeeded, failed,
   and for the progressing handlers.
 
 When the full event cycle is executed (possibly including multiple re-runs),
-the whole `status.kopf` section is purged. The life-long persistence of status
+the whole ``status.kopf`` section is purged. The life-long persistence of status
 is not intended: otherwise, multiple distinct causes will clutter the status
 and collide with the each other (especially critical for multiple updates).
 """

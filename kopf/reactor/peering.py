@@ -143,7 +143,7 @@ async def peers_handler(
     When an operator with a higher priority appears, switch to the freeze-mode.
     The these operators disappear or become presumably dead, resume the event handling.
 
-    The `freeze` object is passed both to the peers handler to set/clear it,
+    The freeze object is passed both to the peers handler to set/clear it,
     and to all the resource handlers to check its value when the events arrive
     (see `create_tasks` and `run` functions).
     """

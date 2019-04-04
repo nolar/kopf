@@ -1,7 +1,7 @@
 """
 Few simple lifecycles for the handlers.
 
-New lifecycles can be implemented the same way: accept `handlers`
+New lifecycles can be implemented the same way: accept ``handlers``
 in the order they are registered (except those already succeeded),
 and return the list of handlers in the order and amount to be executed.
 
