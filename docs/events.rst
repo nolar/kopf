@@ -6,18 +6,18 @@ Events
     Kubernetes itself contains a terminology conflict:
     There are *events* when watching over the objects/resources,
     such as in ``kubectl get pod --watch``.
-    And there are *events* as a built-on object kind,
+    And there are *events* as a built-in object kind,
     as shown in ``kubectl describe pod ...`` in the "Events" section.
-    In this documentation, they are distinguished as the watch-events
-    and the k8s-events. This section describes the k8s-events only.
+    In this documentation, they are distinguished as "watch-events"
+    and "k8s-events". This section describes k8s-events only.
 
 Handled objects
 ===============
 
-.. todo:: body arg must be optional, meaning the currently handled object.
+.. todo:: the ``body`` arg must be optional, meaning the currently handled object.
 
-Kopf provides few tools to report the arbitrary information
-for the handled objects as the Kubernetes events::
+Kopf provides some tools to report arbitrary information
+for the handled objects as Kubernetes events::
 
     import kopf
 
@@ -31,9 +31,10 @@ for the handled objects as the Kubernetes events::
 The type and reason are arbitrary, and can be anything.
 Some restrictions apply (e.g. no spaces).
 The message is also arbitrary free-text.
-However, newlines are not rendered nice and are not recommended.
+However, newlines are not rendered nicely
+(they break the whole output of ``kubectl``).
 
-For convenience, few shortcuts are provided to mimic the Python's ``logging``::
+For convenience, a few shortcuts are provided to mimic the Python's ``logging``::
 
     import kopf
 
@@ -71,7 +72,7 @@ Other objects
 
 .. todo:: kubernetes and pykube objects should be accepted natively, not only the dicts.
 
-The events can be also attached to other objects, not only those handled
+Events can be also attached to other objects, not only those handled
 at the moment (and not event the children)::
 
     import kopf
@@ -88,6 +89,6 @@ at the moment (and not event the children)::
         kopf.info(obj.to_dict(), reason='SomeReason', message=msg)
 
 .. note::
-    The events are not persistent.
+    Events are not persistent.
     They are usually garbage-collected after some time, e.g. one hour.
-    All the reported information must be only for the short-term use.
+    All the reported information must be only for a short-term use.

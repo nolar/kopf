@@ -3,7 +3,7 @@ Hierarchies
 ===========
 
 One of the most common patterns of the operators is to create
-the children objects in the same Kubernetes cluster.
+children objects in the same Kubernetes cluster.
 Kopf provides some tools to simplify connecting these objects together.
 
 .. note::
@@ -21,7 +21,7 @@ Kopf provides some tools to simplify connecting these objects together.
 Labelling
 =========
 
-To mark the created objects with the labels::
+To mark the created objects with labels::
 
     kopf.label(obj, {'label1': 'value1', 'label2': 'value2')
 
@@ -71,7 +71,7 @@ Same namespaces
 ===============
 
 Usually, it is expected that the children objects are created in the same
-namespace, as their parent (unless there are strong reasons to do differently).
+namespace as their parent (unless there are strong reasons to do differently).
 
 
 Adopting

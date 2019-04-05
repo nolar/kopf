@@ -3,7 +3,7 @@ Updating the objects
 ====================
 
 Previously (:doc:`creation`),
-we have implemented a handler for the creation of a ``EphemeralVolumeClaim`` (EVC),
+we have implemented a handler for the creation of an ``EphemeralVolumeClaim`` (EVC),
 and created the corresponding ``PersistantVolumeClaim`` (PVC).
 
 What will happen if we change the size of the EVC when it already exists?

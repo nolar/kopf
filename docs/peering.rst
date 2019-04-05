@@ -2,10 +2,10 @@
 Peering
 =======
 
-All running operators communicate with each other via the peering objects
-(also the custom resources), so they know about each other.
+All running operators communicate with each other via peering objects
+(also custom resources), so they know about each other.
 
-The operator can be instructed to use the alternative peering objects::
+The operator can be instructed to use alternative peering objects::
 
     kopf run --peering=another ...
 

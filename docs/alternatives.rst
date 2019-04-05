@@ -17,7 +17,7 @@ and by wrapping your core domain logic into the Function-as-a-Service
 or into the in-cluster HTTP API deployments,
 which in turn react to the changes of the custom resources.
 
-As an operator developer, you still have to implement the infrastructure
+An operator developer still has to implement the infrastructure
 of the API calls in these HTTP APIs and/or Lambdas.
 The APIs must be reachable from inside the cluster,
 which means that they must be deployed there.
@@ -40,12 +40,12 @@ running in a local IDE, not in the cloud), the logs readability,
 and other little pleasant things.
 
 And also Kopf allows to write *any* arbitrary domain logic of the resources,
-especially if it spans over the long time periods (hours, days if needed),
+especially if it spans over long time periods (hours, days if needed),
 and is not limited to the timeout restrictions of the HTTP APIs with their
 expectation of nearly-immediate outcome (i.e. in seconds or milliseconds).
 
 Metacontroller, however, is more mature, 1.5 years older than Kopf,
-and is backed by Google, which originally developed Kubernetes itself.
+and is backed by Google, who originally developed Kubernetes itself.
 
 Unlike Kopf, Metacontroller supports the domain logic in any languages
 due to its language-agnostic nature of HTTP APIs.
@@ -87,12 +87,12 @@ CoreOS Operator SDK & Framework
 `CoreOS Operator SDK`_ is not actually an operator framework.
 It is an SDK, i.e. a Software Development Kit,
 which generates the skeleton code for the operators-to-be,
-and then the developers should enrich it with the domain logic code as needed.
+and users should enrich it with the domain logic code as needed.
 
 `CoreOS Operator Framework`_, of which the abovementioned SDK is a part,
-is a bigger, more powerful, but very complicated tool for writing the operators.
+is a bigger, more powerful, but very complicated tool for writing operators.
 
-Both are developed purely for the Go-based operators.
+Both are developed purely for Go-based operators.
 No other languages are supported.
 
 .. _CoreOS Operator SDK: https://github.com/operator-framework/operator-sdk
@@ -102,7 +102,7 @@ From the CoreOS'es point of view, an operator is a method of packaging
 and managing a Kubernetes-native application (presumably of any purpose,
 such as MySQL, Postgres, Redis, ElasticSearch, etc) with Kubernetes APIs
 (e.g. the custom resources of ConfigMaps) and ``kubectl`` tooling.
-They refer to the operators as
+They refer to operators as
 "*the runtime that manages this type of application on Kubernetes*."
 
 Kopf uses a more generic approach,
@@ -122,10 +122,10 @@ Helm Operator Kit
 =================
 
 `Helm App Operator Kit`_ is by its name not an operator framework, but an operator
-for the specific domain: deploying the Helm charts (packages).
+for the specific domain: operating Helm charts (packages).
 
-The arbitrary domain logic cannot be added (or it is not obvious how).
-It is intended only for deplying the Helm-packaged application.
+An arbitrary domain logic cannot be added (or it is not obvious how).
+It is intended only for deploying Helm-packaged applications.
 
 It is deprecated and is merged to the CoreOS Operator SDK.
 

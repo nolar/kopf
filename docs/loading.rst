@@ -5,7 +5,7 @@ Kopf requires the source files with the handlers on the command line.
 It does not do any attempts to guess the user's intentions
 or to introduce any conventions (at least, now).
 
-There are two way to specify them (both mimicing the Python's own way):
+There are two way to specify them (both mimicking the Python's own way):
 
 * Direct script files::
 
@@ -22,6 +22,6 @@ There are two way to specify them (both mimicing the Python's own way):
 Which way to use depends on how the source code is structured,
 and is out of scope of Kopf.
 
-Each of the mentions files and modules will be imported.
+Each of the mentioned files and modules will be imported.
 The handlers should be registred during the import.
 This is usually done by using the function decorators --- see :doc:`/handlers`.

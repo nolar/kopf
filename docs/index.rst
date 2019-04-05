@@ -9,7 +9,7 @@ Kopf: Kubernetes Operators Framework
 
 .. toctree::
    :maxdepth: 2
-   :caption: User documentation:
+   :caption: Tutorial:
 
    concepts
    walkthrough/problem
@@ -25,7 +25,7 @@ Kopf: Kubernetes Operators Framework
 
 .. toctree::
    :maxdepth: 2
-   :caption: Feature documentation:
+   :caption: Features:
 
    handlers
    hierarchies
@@ -38,7 +38,7 @@ Kopf: Kubernetes Operators Framework
 
 .. toctree::
    :maxdepth: 2
-   :caption: Developer documentation:
+   :caption: Developer Manual:
 
    minikube
    packages/kopf

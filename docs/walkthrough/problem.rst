@@ -12,7 +12,7 @@ Problem Statement
 
 In Kubernetes, there are no ephemeral volumes of big sizes, e.g. 500 GB.
 By ephemeral, it means that the volume does not persist after it is used.
-Such volumes can be used as the workspace for the large data crunching jobs.
+Such volumes can be used as workspace for large data-crunching jobs.
 
 There is `Local Ephemeral Storage`__, which allocates some space on a node's
 root partition, shared with the docker images and other containers,
@@ -32,7 +32,7 @@ __ https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-co
             limits:
               ephemeral-storage: 10G
 
-There is `PersistentVolumeClaim`__, but they are persistent,
+There is a `PersistentVolumeClaim`__ resource kind, but it is persistent,
 i.e. not deleted after they are created (only manually deletable).
 
 __ https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims
@@ -54,7 +54,7 @@ which will be directly equivalent to ``PersistentVolumeClaim``
 It will be *designated* for a pod or pods with a specific selection criteria.
 
 Once used, and all those pods are gone and are not going to be restarted,
-the ephemeral volume claim will be deleted after the *grace period*.
+the ephemeral volume claim will be deleted after a *grace period*.
 
 For safety, there will be an *expiry period* for the cases when the claim
 was not used: e.g. if the pod could not start for some reasons,

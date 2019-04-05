@@ -46,7 +46,7 @@ The structure is this:
 When the full event cycle is executed (possibly including multiple re-runs),
 the whole ``status.kopf`` section is purged. The life-long persistence of status
 is not intended: otherwise, multiple distinct causes will clutter the status
-and collide with the each other (especially critical for multiple updates).
+and collide with each other (especially critical for multiple updates).
 """
 
 import datetime

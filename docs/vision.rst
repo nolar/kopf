@@ -2,16 +2,19 @@
 Vision
 ======
 
-Kubernetes is rising as a standard de facto for the infrastructure abstractions.
+Kubernetes `has become a standard de facto`__ for the enterprise infrastructure
+management, especially for microservice-based infrastructures.
 
-Kubernetes operators become a common way to extend Kubernetes
-with the domain logic.
+__ https://www.google.com/search?q=kubernetes+standard+de+facto&oq=kuerbenetes+standard+de+facto
 
-However, at the moment (2018-2019), the operators are mostly written in Go,
+Kubernetes operators have become a common way to extend Kubernetes
+with domain objects and domain logic.
+
+At the moment (2018-2019), operators are mostly written in Go,
 and require the advanced knowledge both of Go and of Kubernetes internals.
-This makes the Kubernetes operators a skill of few, a property of the "elites".
+This raises the entry barrier to the operator development field.
 
-In a perfect world of Kopf, the Kubernetes operators are a commodity,
+In a perfect world of Kopf, Kubernetes operators are a commodity,
 used to build the domain logic on top of Kubernetes fast and with ease,
 requiring little or no skills in the infrastructure management.
 

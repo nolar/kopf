@@ -23,7 +23,7 @@ First of all, the operator must be packaged as a docker image with Python 3.7:
 
 Build and push it to some repository of your choice.
 Here, we will use DockerHub_
-(with a personal account "nolar" -- replace it with you own name or namespace;
+(with a personal account "nolar" -- replace it with your own name or namespace;
 you may also want to add the versioning tags instead of the implied "latest"):
 
 .. code-block:: bash
@@ -94,7 +94,7 @@ Here is an example of what a RBAC config should look like:
     :name: rbac-yaml
     :language: yaml
 
-And the  the created service account is attached to the pods as follows:
+And the created service account is attached to the pods as follows:
 
 .. literalinclude:: deployment-depl.yaml
     :language: yaml

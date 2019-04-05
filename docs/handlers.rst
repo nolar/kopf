@@ -4,13 +4,13 @@ Handlers
 
 .. todo:: Multiple handlers per script.
 
-The handlers are the Python functions with the actual behaviour
+Handlers are Python functions with the actual behaviour
 of the custom resources.
 
 They are called when any custom resource (within the scope of the operator)
 is created, modified, or deleted.
 
-Any operator built with Kopf is based on the handlers.
+Any operator built with Kopf is based on handlers.
 
 
 Events & Causes
@@ -47,13 +47,13 @@ To register a handler for an event, use the `kopf.on` decorator::
     def my_handler(spec, **_):
         pass
 
-The variety of the available decorators is described below.
+All available decorators is described below.
 
 
 Arguments
 =========
 
-The following keyword arguments available to the handlers
+The following keyword arguments are available to the handlers
 (though some handlers may have some of them empty):
 
 * ``body`` for the whole body of the handled objects.
@@ -79,8 +79,10 @@ in the future, and the existing handlers should accept them and not break.
 Event handlers
 ==============
 
-In some cases, it may be desired to watch the low-level raw events rather
-than the high-level causes::
+.. todo:: add such a decorator first. it is now absent.
+
+In some cases, it may be desired to watch low-level raw events rather than
+high-level causes::
 
     import kopf
 
@@ -89,7 +91,7 @@ than the high-level causes::
         pass
 
 
-In that case, the handlers progress is not tracked, and is not stored
+In that case, the handler's progress is not tracked, and is not stored
 on the object -- the operator becomes (or remains) completely stateless.
 
 This is how most of the Kubernetes operators work: by providing the raw events
@@ -119,7 +121,7 @@ i.e. what actually happened to the object:
     Worth noting that Kopf stores the status of the handlers, such as their
     progress or errors or retries, in the object itself (in its ``status``),
     which triggers its own low-level events, but these events are not detected
-    as the separate causes, as there is nothing changed *essentially*.
+    as separate causes, as there is nothing changed *essentially*.
 
 The following 3 core cause-handlers are available::
 
@@ -141,8 +143,7 @@ The following 3 core cause-handlers are available::
 Field handlers
 ==============
 
-As a helper handler, the specific fields can be monitored
-instead of the whole objects::
+Specific fields can be handled instead of the whole object::
 
     import kopf
 
@@ -159,17 +160,15 @@ Sub-handlers
 ============
 
 .. warning::
-    Sub-handlers is an advanced topic. Please, make sure you understand
+    Sub-handlers are an advanced topic. Please, make sure you understand
     the regular handlers first, so as the handling cycle of the framework.
-
-As an extended concept, there are the sub-handlers.
 
 A common example for this feature are the lists defined in the spec,
 each of which should be handled with a handler-like approach
 rather than explicitly -- i.e. with the error tracking, retries, logging,
 progress and status reporting, etc.
 
-This can be used with the dynamically created functions, such as the lambdas,
+This can be used with dynamically created functions, such as lambdas,
 partials (`functools.partial`), or the inner functions in the closures:
 
 .. code-block:: yaml
@@ -179,7 +178,7 @@ partials (`functools.partial`), or the inner functions in the closures:
         - item1
         - item2
 
-The sub-handlers can be implemented either imperatively::
+Sub-handlers can be implemented either imperatively::
 
     import functools
     import kopf
@@ -210,7 +209,7 @@ Or decoratively::
 
                 pass
 
-Both of these ways are equivalent. Actually, one is implemented via another.
+Both of these ways are equivalent.
 It is a matter of taste and preference which one to use.
 
 The sub-handlers will be processed by all the standard rules and cycles

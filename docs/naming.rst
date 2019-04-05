@@ -10,7 +10,7 @@ Kopf is an abbreviation either for
 
 It is capitalised in all natural language texts:
 
-    *I like to use Kopf to manage my domain in Kubernetes.*
+    *I like using Kopf to manage my domain in Kubernetes.*
 
 It is lower-cased in all system and code references::
 

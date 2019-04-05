@@ -83,7 +83,7 @@ Get a list of the existing objects of this kind with one of the commands:
     kubectl get evcs
     kubectl get evc
 
-Please, note that we can use the short names as specified
+Please note that we can use the short names as specified
 on the custom resource definition.
 
 .. seealso::

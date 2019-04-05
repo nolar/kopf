@@ -30,7 +30,7 @@ which can be either immediately, or after some delay::
 
 In that case, there is no need to sleep in the handler explicitly, thus blocking
 any other events, causes, and generally any other handlers on the same object
-from being handled (such as the deletion or the parallel handlers/sub-handlers).
+from being handled (such as deletion or parallel handlers/sub-handlers).
 
 .. note::
     The multiple handlers and the sub-handlers are implemented via this
@@ -45,7 +45,7 @@ from being handled (such as the deletion or the parallel handlers/sub-handlers).
 Fatal errors
 ============
 
-If an exception raised inherits from `kopf.HandlerFatalError`, the handler
+If a raised exception inherits from `kopf.HandlerFatalError`, the handler
 is considered as non-retriable and non-recoverable and completely failed.
 
 Use this when the domain logic of the application means that there

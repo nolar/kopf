@@ -2,8 +2,8 @@
 Diffing the fields
 ==================
 
-Previously (:doc:`updates`), we have made the PVC size updated
-every time the EVC size is updated, i.e. the cascaded updates.
+Previously (:doc:`updates`), we have set the size of PVC to be updated
+every time the size of EVC is updated, i.e. the cascaded updates.
 
 What will happen if the user re-labels the EVC?
 

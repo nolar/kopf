@@ -4,7 +4,7 @@ Async/Await
 
 .. todo:: Fit this page into the walk-through sample story?
 
-Kopf supports the asynchronous handler functions::
+Kopf supports asynchronous handler functions::
 
     import asyncio
     import kopf
@@ -13,14 +13,14 @@ Kopf supports the asynchronous handler functions::
     async def create_fn(spec, **_):
         await asyncio.sleep(1.0)
 
-The async functions are a bit better than the regular functions,
-since they are executed directly inside of the Kopf's own event loop
-in the main thread, which makes the full stack trace available
-for the exception stack traces and IDE breakpoints.
+Async functions have the additional benefit over the non-async ones
+to make the full stack trace available when exceptions occur
+or IDE breakpoints are used, since the async functions are executed
+directly inside of Kopf's own event loop in the main thread.
 
-The regular synchronous handlers, despite supported for convenience,
-are executed in the parallel threads (via the default executor of the loop),
-and can only see the stack traces up to the thread entry functions.
+Regular synchronous handlers, despite supported for convenience,
+are executed in parallel threads (via the default executor of the loop),
+and can only see the stack traces up to the thread entry point.
 
 .. warning::
     As with any async coroutines, it is the developer's responsibility

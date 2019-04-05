@@ -62,7 +62,7 @@ Let's extend the creation handler:
 
         logger.info(f"PVC child is created: %s", obj)
 
-With this one line, `kopf.adopt` marks the PVC as the child of EVC.
+With this one line, `kopf.adopt` marks the PVC as child of EVC.
 This includes: the name auto-generation (if absent), the label propagation,
 the namespace assignment to the parent's object namespace,
 and, finally, the owner referencing.
