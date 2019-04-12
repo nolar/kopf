@@ -76,36 +76,6 @@ is required for the forward compatibility: the framework can add new keywords
 in the future, and the existing handlers should accept them and not break.
 
 
-Event handlers
-==============
-
-.. todo:: add such a decorator first. it is now absent.
-
-In some cases, it may be desired to watch low-level raw events rather than
-high-level causes::
-
-    import kopf
-
-    @kopf.on.event('zalando.org', 'v1', 'kopfexamples')
-    def something_happened(**kwargs):
-        pass
-
-
-In that case, the handler's progress is not tracked, and is not stored
-on the object -- the operator becomes (or remains) completely stateless.
-
-This is how most of the Kubernetes operators work: by providing the raw events
-to the operator, and allowing it to handle the events itself.
-
-For example, this can be used to watch over the builtin objects::
-
-    import kopf
-
-    @kopf.on.event('', 'v1', 'pods')
-    def pod_changed(**kwargs):
-        pass
-
-
 Cause handlers
 ==============
 
