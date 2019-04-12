@@ -19,6 +19,16 @@ def resolve(d: Mapping, path: DiffPath):
     return result
 
 
+def reduce_iter(d: Diff, path: DiffPath) -> Generator[DiffItem, None, None]:
+    for op, field, old, new in d:
+        if field[:len(path)] == path:
+            yield (op, field[len(path):], old, new)
+
+
+def reduce(d: Diff, path: DiffPath) -> Diff:
+    return type(d)(reduce_iter(d, path))
+
+
 def diff(a: Any, b: Any, path: DiffPath = ()) -> Generator[DiffItem, None, None]:
     """
     Calculate the diff between two dicts.
