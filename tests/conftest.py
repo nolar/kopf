@@ -5,6 +5,8 @@ import asynctest
 import pytest
 import pytest_mock
 
+from kopf.reactor.registry import Resource
+
 
 # Make all tests in this directory and below asyncio-compatible by default.
 def pytest_collection_modifyitems(items):
@@ -17,6 +19,12 @@ def pytest_collection_modifyitems(items):
 @pytest.fixture(scope='session', autouse=True)
 def enforce_asyncio_mocker():
     pytest_mock._get_mock_module = lambda config: asynctest
+
+
+@pytest.fixture()
+def resource():
+    """ The resource used in the tests. Usually mocked, so it does not matter. """
+    return Resource('zalando.org', 'v1', 'kopfexamples')
 
 
 @pytest.fixture()
