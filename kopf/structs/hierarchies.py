@@ -86,29 +86,53 @@ def label(objs, labels, force=False):
                 obj_labels.setdefault(key, val)
 
 
-def adopt(objs, owner):
+def harmonize_naming(objs, name=None, strict=False):
     """
-    The children should be in the same namespace, named after their parent, and owned by it.
+    Adjust the names or prefixes of the objects.
+
+    In strict mode, the provided name is used as is. It can be helpful
+    if the object is referred by that name in other objects.
+
+    In non-strict mode (the default), the object uses the provided name
+    as a prefix, while the suffix is added by Kubernetes remotely.
+    The actual name should be taken from Kubernetes response
+    (this is the recommended scenario).
+
+    If the objects already have their own names, auto-naming is not applied,
+    and the existing names are used as is.
     """
     if not isinstance(objs, (list, tuple)):
         objs = [objs]
 
-    # Mark the children as owned by the parent.
-    append_owner_reference(objs, owner=owner)
-
-    # The children objects are usually in the same namespace as the parent, unless explicitly overridden.
-    ns = owner.get('metadata', {}).get('namespace', None)
-    if ns is not None:
-        for obj in objs:
-            obj.setdefault('metadata', {}).setdefault('namespace', ns)
-
-    # Name the children prefixed with their parent's name, unless they already have a name or a prefix.
-    # "GenerateName" is the Kubernetes feature, we do not implement it ourselves.
-    name = owner.get('metadata', {}).get('name', None)
-    if name is not None:
-        for obj in objs:
-            if obj.get('metadata', {}).get('name', None) is None:
+    for obj in objs:
+        if obj.get('metadata', {}).get('name', None) is None:
+            if strict:
+                obj.setdefault('metadata', {}).setdefault('name', name)
+            else:
                 obj.setdefault('metadata', {}).setdefault('generateName', f'{name}-')
 
-    # The children also bear the labels of the parent object, for easier selection.
+
+def adjust_namespace(objs, namespace=None):
+    """
+    Adjust the namespace of the objects.
+
+    If the objects already have the namespace set, it will be preserved.
+
+    It is a common practice to keep the children objects in the same
+    namespace as their owner, unless explicitly overridden at time of creation.
+    """
+    if not isinstance(objs, (list, tuple)):
+        objs = [objs]
+
+    for obj in objs:
+        obj.setdefault('metadata', {}).setdefault('namespace', namespace)
+
+
+def adopt(objs, owner):
+    """
+    The children should be in the same namespace, named after their parent, and owned by it.
+    """
+    append_owner_reference(objs, owner=owner)
+    harmonize_naming(objs, name=owner.get('metadata', {}).get('name', None))
+    adjust_namespace(objs, namespace=owner.get('metadata', {}).get('namespace', None))
     label(objs, labels=owner.get('metadata', {}).get('labels', {}))

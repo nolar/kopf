@@ -38,6 +38,8 @@ from kopf.reactor.queueing import (
 from kopf.structs.hierarchies import (
     adopt,
     label,
+    harmonize_naming,
+    adjust_namespace,
     build_object_reference,
     build_owner_reference,
     append_owner_reference,
