@@ -1,19 +1,19 @@
 """
-Watching & streaming of the watch-events.
+Watching and streaming watch-events.
 
 Kubernetes client's watching streams are synchronous. To make them asynchronous,
 we put them into a `concurrent.futures.ThreadPoolExecutor`,
 and yield from there asynchronously.
 
 However, async/await coroutines misbehave with `StopIteration` exceptions
-as raise by the `next` method: see `PEP-479`_.
+raised by the `next` method: see `PEP-479`_.
 
 As a workaround, we replace `StopIteration` with our custom `StopStreaming`
 inherited from `RuntimeError` (as suggested by `PEP-479`_),
 and re-implement the generators to make them async.
 
 All of this is a workaround for the standard Kubernetes client's limitations.
-They are not needed if the client library is natively asynchronous.
+They would not be needed if the client library were natively asynchronous.
 
 .. _PEP-479: https://www.python.org/dev/peps/pep-0479/
 """
