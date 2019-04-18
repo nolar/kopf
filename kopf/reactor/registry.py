@@ -116,7 +116,7 @@ class GlobalRegistry(BaseRegistry):
         super().__init__()
         self._handlers = {}  # {Resource: SimpleRegistry[Handler, ...]}
 
-    def register(self, group, version, plural, event, fn, id=None, field=None, timeout=None):
+    def register(self, group, version, plural, fn, id=None, event=None, field=None, timeout=None):
         """
         Register an additional handler function for the specific resource and specific event.
         """

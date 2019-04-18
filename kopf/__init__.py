@@ -35,6 +35,13 @@ from kopf.reactor.queueing import (
     run,
     create_tasks,
 )
+from kopf.reactor.registry import (
+    BaseRegistry,
+    SimpleRegistry,
+    GlobalRegistry,
+    get_default_registry,
+    set_default_registry,
+)
 from kopf.structs.hierarchies import (
     adopt,
     label,
@@ -56,4 +63,9 @@ __all__ = [
     'HandlerRetryError',
     'HandlerFatalError',
     'HandlerTimeoutError',
+    'BaseRegistry',
+    'SimpleRegistry',
+    'GlobalRegistry',
+    'get_default_registry',
+    'set_default_registry',
 ]
