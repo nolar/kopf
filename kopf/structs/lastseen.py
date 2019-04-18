@@ -8,7 +8,7 @@ Used in the handling routines to check if there were significant changes at all
 (i.e. not the internal and system changes, like the uids, links, etc),
 and to get the exact per-field diffs for the specific handler functions.
 
-Conceptually similar to how `kubectl apply` stores the applied state
+Conceptually similar to how ``kubectl apply`` stores the applied state
 on any object, and then uses that for the patch calculation:
 https://kubernetes.io/docs/concepts/overview/object-management-kubectl/declarative-config/
 """

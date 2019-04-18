@@ -1,0 +1,18 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: kopfexample-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      application: kopfexample-operator
+  template:
+    metadata:
+      labels:
+        application: kopfexample-operator
+    spec:
+      serviceAccountName: kopfexample-account
+      containers:
+      - name: the-only-one
+        image: nolar/kopf-operator

@@ -1,0 +1,52 @@
+# The serviceaccount & permissions as needed for this specific operator.
+# They all are namespace-scoped, hence suitable for the end2end tests
+# with no cross-namespace conflicts (few operators handling the same objects).
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kopfexample-account
+
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: kopfexample-role
+rules:
+
+  # Framework: knowing which other operators are running (i.e. peering).
+  - apiGroups: [zalando.org]
+    resources: [kopfpeerings]
+    verbs: [list, watch, patch]
+
+  # Framework: posting the events about the handlers progress/errors.
+  - apiGroups: [events.k8s.io]
+    resources: [events]
+    verbs: [create]
+
+  # Application: watching & handling for the custom resource we declare.
+  - apiGroups: [zalando.org]
+    resources: [kopfexamples]
+    verbs: [list, watch, patch]
+
+  # Application: other resources it produces and manipulates.
+  # Here, we create Jobs+PVCs+Pods, but we do not patch/update/delete them ever.
+  - apiGroups: [batch, extensions]
+    resources: [jobs]
+    verbs: [create]
+  - apiGroups: [""]
+    resources: [pods, persistentvolumeclaims]
+    verbs: [create]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: kopfexample-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kopfexample-role
+subjects:
+  - kind: ServiceAccount
+    name: kopfexample-account

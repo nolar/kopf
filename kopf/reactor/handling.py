@@ -266,13 +266,13 @@ async def execute(
     """
     Execute the handlers in an isolated lifecycle.
 
-    This function is just a public wrapper for `_execute()` with multiple
+    This function is just a public wrapper for `execute` with multiple
     ways to specify the handlers: either as the raw functions, or as the
     pre-created handlers, or as a registry (as used in the object handling).
 
     If no explicit functions or handlers or registry are passed,
     the sub-handlers of the current handler are assumed, as accumulated
-    in the per-handler registry with `@kopf.on.this`.
+    in the per-handler registry with ``@kopf.on.this``.
 
     If the call to this method for the sub-handlers is not done explicitly
     in the handler, it is done implicitly after the handler is exited.
