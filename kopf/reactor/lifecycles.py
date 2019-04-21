@@ -27,12 +27,12 @@ def one_by_one(handlers, **kwargs):
 
 def randomized(handlers, **kwargs):
     """ Execute one handler at a time, in the random order. """
-    return random.choice(handlers)
+    return [random.choice(handlers)] if handlers else []
 
 
 def shuffled(handlers, **kwargs):
     """ Execute all handlers at once, but in the random order. """
-    return random.sample(handlers, k=len(handlers))
+    return random.sample(handlers, k=len(handlers)) if handlers else []
 
 
 def asap(handlers, *, body, **kwargs):
