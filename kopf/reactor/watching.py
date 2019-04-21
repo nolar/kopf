@@ -20,6 +20,11 @@ They would not be needed if the client library were natively asynchronous.
 
 import asyncio
 import logging
+from typing import Union
+
+import kubernetes
+
+from kopf.reactor.registry import Resource
 
 logger = logging.getLogger(__name__)
 
@@ -51,3 +56,63 @@ async def streaming_aiter(src, loop=None, executor=None):
             yield await loop.run_in_executor(executor, streaming_next, src)
         except StopStreaming:
             return
+
+
+async def streaming_watch(
+        resource: Resource,
+        namespace: Union[None, str],
+):
+    """
+    Stream the watch-events from one single API watch-call.
+    """
+    loop = asyncio.get_event_loop()
+    w = kubernetes.watch.Watch()
+    api = kubernetes.client.CustomObjectsApi()
+    api_fn = api.list_cluster_custom_object
+    stream = w.stream(api_fn, resource.group, resource.version, resource.plural)
+    async for event in streaming_aiter(stream, loop=loop):
+
+        # "410 Gone" is for the "resource version too old" error, we must restart watching.
+        # The resource versions are lost by k8s after few minutes (as per the official doc).
+        # The error occurs when there is nothing happening for few minutes. This is normal.
+        if event['type'] == 'ERROR' and event['object']['code'] == 410:
+            logger.debug("Restarting the watch-stream for %r", resource)
+            break  # out of for-cycle, to the while-true-cycle.
+
+        # Other watch errors should be fatal for the operator.
+        if event['type'] == 'ERROR':
+            raise Exception(f"Error in the watch-stream: {event['object']}")
+
+        # Ensure that the event is something we understand and can handle.
+        if event['type'] not in ['ADDED', 'MODIFIED', 'DELETED']:
+            logger.warning("Ignoring an unsupported event type: %r", event)
+            continue
+
+        # Filter out all unrelated events as soon as possible (before queues), and silently.
+        # TODO: Reimplement via api.list_namespaced_custom_object, and API-level filtering.
+        ns = event['object'].get('metadata', {}).get('namespace', None)
+        if namespace is not None and ns is not None and ns != namespace:
+            continue
+
+        # Yield normal events to the consumer.
+        yield event
+
+
+async def infinite_watch(
+        resource: Resource,
+        namespace: Union[None, str],
+):
+    """
+    Stream the watch-events infinitely.
+
+    This routine is extracted only due to difficulty of testing
+    of the infinite loops. It is made as simple as possible,
+    and is assumed to work without testing.
+
+    This routine never ends gracefully. If a watcher's stream fails,
+    a new one is recreated, and the stream continues.
+    It only exits with unrecoverable exceptions.
+    """
+    while True:
+        async for event in streaming_watch(resource=resource, namespace=namespace):
+            yield event
