@@ -17,8 +17,9 @@ and detection of other operators hard termination (by timeout rather than by cle
 The peers monitoring covers both the in-cluster operators running,
 and the dev-mode operators running in the dev workstations.
 
-For this, a special CRD ``kind: KopfPeering`` (cluster-scoped) should be registered
-in the cluster, and its status is used by all the operators to sync their keep-alive info.
+For this, special CRDs ``kind: ClusterKopfPeering`` & ``kind: NamespacedKopfPeering``
+should be registered in the cluster, and their ``status`` field is used
+by all the operators to sync their keep-alive info.
 
 The namespace-bound operators (e.g. `--namespace=`) report their individual
 namespaces are part of the payload, can see all other cluster and namespaced
@@ -35,7 +36,7 @@ import logging
 import os
 import random
 import socket
-from typing import Optional, Mapping, Iterable
+from typing import Optional, Mapping, Iterable, Union
 
 import iso8601
 import kubernetes
@@ -46,7 +47,8 @@ from kopf.reactor.registry import Resource
 logger = logging.getLogger(__name__)
 
 # The CRD info on the special sync-object.
-PEERING_CRD_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings')
+CLUSTER_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'clusterkopfpeerings')
+NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'namespacedkopfpeerings')
 PEERING_DEFAULT_NAME = 'default'
 
 
@@ -79,24 +81,30 @@ class Peer:
     def __repr__(self):
         return f"{self.__class__.__name__}({self.id}, namespace={self.namespace}, priority={self.priority}, lastseen={self.lastseen}, lifetime={self.lifetime})"
 
+    @property
+    def resource(self):
+        return CLUSTER_PEERING_RESOURCE if self.namespace is None else NAMESPACED_PEERING_RESOURCE
+
     @classmethod
     def detect(cls,
                standalone: bool,
+               namespace: Optional[str],
                peering: Optional[str],
                **kwargs) -> Optional:
+
         if standalone:
             return None
 
         if peering:
-            if Peer._is_peering_exist(peering):
-                return cls(peering=peering, **kwargs)
+            if Peer._is_peering_exist(peering, namespace=namespace):
+                return cls(peering=peering, namespace=namespace, **kwargs)
             else:
                 raise Exception(f"The peering {peering} was not found")
 
-        if Peer._is_default_peering_setup():
-            return cls(peering=PEERING_DEFAULT_NAME, **kwargs)
+        if Peer._is_peering_exist(peering=PEERING_DEFAULT_NAME, namespace=namespace):
+            return cls(peering=PEERING_DEFAULT_NAME, namespace=namespace, **kwargs)
 
-        logger.warning(f"Default peering object not found, falling back to the Standalone mode.")
+        logger.warning(f"Default peering object not found, falling back to the standalone mode.")
         return None
 
     def as_dict(self):
@@ -121,27 +129,31 @@ class Peer:
         Add a peer to the peers, and update its alive status.
         """
         self.touch()
-        apply_peers([self], peering=self.peering)
+        apply_peers([self], peering=self.peering, namespace=self.namespace)
 
     def disappear(self):
         """
         Remove a peer from the peers (gracefully).
         """
         self.touch(lifetime=0)
-        apply_peers([self], peering=self.peering)
+        apply_peers([self], peering=self.peering, namespace=self.namespace)
 
     @staticmethod
-    def _is_default_peering_setup():
-        return Peer._is_peering_exist(PEERING_DEFAULT_NAME)
-
-    @staticmethod
-    def _is_peering_exist(peering: str):
-        api = kubernetes.client.CustomObjectsApi()
+    def _is_peering_exist(peering: str, namespace: Optional[str]):
         try:
-            api.get_cluster_custom_object(group=PEERING_CRD_RESOURCE.group,
-                                          version=PEERING_CRD_RESOURCE.version,
-                                          plural=PEERING_CRD_RESOURCE.plural,
-                                          name=peering)
+            if namespace is None:
+                api = kubernetes.client.CustomObjectsApi()
+                api.get_cluster_custom_object(group=CLUSTER_PEERING_RESOURCE.group,
+                                              version=CLUSTER_PEERING_RESOURCE.version,
+                                              plural=CLUSTER_PEERING_RESOURCE.plural,
+                                              name=peering)
+            else:
+                api = kubernetes.client.CustomObjectsApi()
+                api.get_namespaced_custom_object(group=NAMESPACED_PEERING_RESOURCE.group,
+                                                 version=NAMESPACED_PEERING_RESOURCE.version,
+                                                 plural=NAMESPACED_PEERING_RESOURCE.plural,
+                                                 namespace=namespace,
+                                                 name=peering)
             return True
         except ApiException as e:
             if e.status == 404:
@@ -152,6 +164,7 @@ class Peer:
 def apply_peers(
         peers: Iterable[Peer],
         peering: str,
+        namespace: Union[None, str],
 ):
     """
     Apply the changes in the peers to the sync-object.
@@ -159,14 +172,25 @@ def apply_peers(
     The dead peers are removed, the new or alive peers are stored.
     Note: this does NOT change their `lastseen` field, so do it explicitly with ``touch()``.
     """
+    body = {'status': {peer.id: None if peer.is_dead else peer.as_dict() for peer in peers}}
     api = kubernetes.client.CustomObjectsApi()
-    api.patch_cluster_custom_object(
-        group=PEERING_CRD_RESOURCE.group,
-        version=PEERING_CRD_RESOURCE.version,
-        plural=PEERING_CRD_RESOURCE.plural,
-        name=peering,
-        body={'status': {peer.id: None if peer.is_dead else peer.as_dict() for peer in peers}},
-    )
+    if namespace is None:
+        api.patch_cluster_custom_object(
+            group=CLUSTER_PEERING_RESOURCE.group,
+            version=CLUSTER_PEERING_RESOURCE.version,
+            plural=CLUSTER_PEERING_RESOURCE.plural,
+            name=peering,
+            body=body,
+        )
+    else:
+        api.patch_namespaced_custom_object(
+            group=NAMESPACED_PEERING_RESOURCE.group,
+            version=NAMESPACED_PEERING_RESOURCE.version,
+            plural=NAMESPACED_PEERING_RESOURCE.plural,
+            namespace=namespace,
+            name=peering,
+            body=body,
+        )
 
 
 async def peers_handler(
@@ -190,7 +214,8 @@ async def peers_handler(
     # Silently ignore the peering objects which are not ours to worry.
     body = event['object']
     name = body.get('metadata', {}).get('name', None)
-    if name != ourselves.peering:
+    namespace = body.get('metadata', {}).get('namespace', None)
+    if namespace != ourselves.namespace or name != ourselves.peering:
         return
 
     # Find if we are still the highest priority operator.
@@ -201,7 +226,8 @@ async def peers_handler(
     same_peers = [peer for peer in peers if not peer.is_dead and peer.priority == ourselves.priority and peer.id != ourselves.id]
 
     if autoclean and dead_peers:
-        apply_peers(dead_peers, peering=ourselves.peering)  # NB: sync and blocking, but this is fine.
+        # NB: sync and blocking, but this is fine.
+        apply_peers(dead_peers, peering=ourselves.peering, namespace=ourselves.namespace)
 
     if prio_peers:
         if not freeze.is_set():
