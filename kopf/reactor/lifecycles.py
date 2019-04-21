@@ -12,6 +12,8 @@ execute in the order they are registered, one by one.
 import logging
 import random
 
+from kopf.structs.progress import get_retry_count
+
 logger = logging.getLogger(__name__)
 
 
@@ -37,8 +39,7 @@ def shuffled(handlers, **kwargs):
 
 def asap(handlers, *, body, **kwargs):
     """ Execute one handler at a time, skip on failure, try the next one, retry after the full cycle. """
-    retries = body.get('status', {}).get('kopf', {}).get('retries', {})
-    retryfn = lambda handler: retries.get(handler.id, 0)
+    retryfn = lambda handler: get_retry_count(body=body, handler=handler)
     return sorted(handlers, key=retryfn)[:1]
 
 
