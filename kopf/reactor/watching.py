@@ -71,11 +71,22 @@ async def streaming_watch(
     """
     Stream the watch-events from one single API watch-call.
     """
-    loop = asyncio.get_event_loop()
+
     w = kubernetes.watch.Watch()
     api = kubernetes.client.CustomObjectsApi()
-    api_fn = api.list_cluster_custom_object
-    stream = w.stream(api_fn, resource.group, resource.version, resource.plural)
+    if namespace is None:
+        stream = w.stream(api.list_cluster_custom_object,
+                          group=resource.group,
+                          version=resource.version,
+                          plural=resource.plural)
+    else:
+        stream = w.stream(api.list_namespaced_custom_object,
+                          group=resource.group,
+                          version=resource.version,
+                          plural=resource.plural,
+                          namespace=namespace)
+
+    loop = asyncio.get_event_loop()
     async for event in streaming_aiter(stream, loop=loop):
 
         # "410 Gone" is for the "resource version too old" error, we must restart watching.
@@ -92,12 +103,6 @@ async def streaming_watch(
         # Ensure that the event is something we understand and can handle.
         if event['type'] not in ['ADDED', 'MODIFIED', 'DELETED']:
             logger.warning("Ignoring an unsupported event type: %r", event)
-            continue
-
-        # Filter out all unrelated events as soon as possible (before queues), and silently.
-        # TODO: Reimplement via api.list_namespaced_custom_object, and API-level filtering.
-        ns = event['object'].get('metadata', {}).get('namespace', None)
-        if namespace is not None and ns is not None and ns != namespace:
             continue
 
         # Yield normal events to the consumer.
