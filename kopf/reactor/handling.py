@@ -16,10 +16,7 @@ and therefore do not trigger the user-defined handlers.
 
 import asyncio
 import collections
-import concurrent.futures
-import contextvars
 import datetime
-import functools
 import logging
 from contextvars import ContextVar
 from typing import NamedTuple, Optional, Any, MutableMapping, Text, Callable, Iterable
@@ -27,6 +24,9 @@ from typing import NamedTuple, Optional, Any, MutableMapping, Text, Callable, It
 import kubernetes
 
 from kopf import events
+from kopf.reactor.invocation import (
+    invoke,
+)
 from kopf.reactor.registry import (
     CREATE, UPDATE, DELETE,
     Handler,
@@ -65,7 +65,6 @@ from kopf.structs.progress import (
     store_success,
     purge_progress,
 )
-
 
 WAITING_KEEPALIVE_INTERVAL = 10 * 60
 """ How often to wake up from the long sleep, to show the liveliness. """
@@ -115,11 +114,6 @@ class HandlerTimeoutError(HandlerFatalError):
 class HandlerChildrenRetry(HandlerRetryError):
     """ An internal pseudo-error to retry for the next sub-handlers attempt. """
 
-
-# The executor for the sync-handlers (i.e. regular functions).
-# TODO: make the limits if sync-handlers configurable?
-executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
-# executor = concurrent.futures.ProcessPoolExecutor(max_workers=3)
 
 # The task-local context; propagated down the stack instead of multiple kwargs.
 # Used in `@kopf.on.this` and `kopf.execute()` to add/get the sub-handlers.
@@ -356,7 +350,7 @@ async def _execute(
     handlers_done = [handler for handler in handlers if is_finished(body=cause.body, handler=handler)]
     handlers_wait = [handler for handler in handlers if is_sleeping(body=cause.body, handler=handler)]
     handlers_todo = [handler for handler in handlers if is_awakened(body=cause.body, handler=handler)]
-    handlers_plan = [handler for handler in await _call_fn(lifecycle, handlers_todo, cause=cause)]
+    handlers_plan = [handler for handler in await invoke(lifecycle, handlers_todo, cause=cause)]
     handlers_left = [handler for handler in handlers_todo if handler.id not in {handler.id for handler in handlers_plan}]
 
     # Set the timestamps -- even if not executed on this event, but just got registered.
@@ -477,7 +471,7 @@ async def _call_handler(
     # And call it. If the sub-handlers are not called explicitly, run them implicitly
     # as if it was done inside of the handler (i.e. under try-finally block).
     try:
-        result = await _call_fn(
+        result = await invoke(
             handler.fn,
             *args,
             cause=cause,
@@ -496,68 +490,3 @@ async def _call_handler(
         subexecuted_var.reset(subexecuted_token)
         handler_var.reset(handler_token)
         cause_var.reset(cause_token)
-
-
-async def _call_fn(
-        fn: Callable,
-        *args,
-        cause: Cause,
-        **kwargs):
-    """
-    Invoke a single function, but safely for the main asyncio process.
-
-    Used both for the handler functions and for the lifecycle callbacks.
-
-    A full set of the arguments is provided, expanding the cause to some easily
-    usable aliases. The function is expected to accept ``**kwargs`` for the args
-    that it does not use -- for forward compatibility with the new features.
-
-    The synchronous methods are executed in the executor (threads or processes),
-    thus making it non-blocking for the main event loop of the operator.
-    See: https://pymotw.com/3/asyncio/executors.html
-    """
-
-    # Add aliases for the kwargs, directly linked to the body, or to the assumed defaults.
-    kwargs.update(
-        cause=cause,
-        event=cause.event,
-        body=cause.body,
-        diff=cause.diff,
-        old=cause.old,
-        new=cause.new,
-        patch=cause.patch,
-        logger=cause.logger,
-        spec=cause.body.setdefault('spec', {}),
-        meta=cause.body.setdefault('metadata', {}),
-        status=cause.body.setdefault('status', {}),
-    )
-
-    if _is_async_fn(fn):
-        result = await fn(*args, **kwargs)
-    else:
-
-        # Not that we want to use functools, but for executors kwargs, it is officially recommended:
-        # https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.run_in_executor
-        real_fn = functools.partial(fn, *args, **kwargs)
-
-        # Copy the asyncio context from current thread to the handlr's thread.
-        # It can be copied 2+ times if there are sub-sub-handlers (rare case).
-        context = contextvars.copy_context()
-        real_fn = functools.partial(context.run, real_fn)
-
-        loop = asyncio.get_event_loop()
-        task = loop.run_in_executor(executor, real_fn)
-        await asyncio.wait([task])
-        result = task.result()  # re-raises
-    return result
-
-
-def _is_async_fn(fn):
-    if fn is None:
-        return None
-    elif isinstance(fn, functools.partial):
-        return _is_async_fn(fn.func)
-    elif hasattr(fn, '__wrapped__'):  # @functools.wraps()
-        return _is_async_fn(fn.__wrapped__)
-    else:
-        return asyncio.iscoroutinefunction(fn)
