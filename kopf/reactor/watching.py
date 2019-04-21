@@ -29,6 +29,12 @@ from kopf.reactor.registry import Resource
 logger = logging.getLogger(__name__)
 
 
+class WatchingError(Exception):
+    """
+    Raised when an unexpected error happens in the watch-stream API.
+    """
+
+
 class StopStreaming(RuntimeError):
     """
     Raised when the watch-stream generator ends streaming.
@@ -81,7 +87,7 @@ async def streaming_watch(
 
         # Other watch errors should be fatal for the operator.
         if event['type'] == 'ERROR':
-            raise Exception(f"Error in the watch-stream: {event['object']}")
+            raise WatchingError(f"Error in the watch-stream: {event['object']}")
 
         # Ensure that the event is something we understand and can handle.
         if event['type'] not in ['ADDED', 'MODIFIED', 'DELETED']:
