@@ -87,6 +87,3 @@ def resume(id, namespace, peering):
         namespace=namespace,
     )
     ourselves.disappear()
-
-
-main()
