@@ -94,7 +94,7 @@ class Peer:
                 raise Exception(f"The peering {peering} was not found")
 
         if Peer._is_default_peering_setup():
-            return cls(peering=peering, **kwargs)
+            return cls(peering=PEERING_DEFAULT_NAME, **kwargs)
 
         logger.warning(f"The default peering object not found. Falling back to the Standalone mode...")
         return None
