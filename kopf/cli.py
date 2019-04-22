@@ -20,7 +20,7 @@ def logging_options(fn):
     return wrapper
 
 
-@click.group(context_settings=dict(
+@click.group(name='kopf', context_settings=dict(
     auto_envvar_prefix='KOPF',
 ))
 def main():
