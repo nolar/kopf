@@ -39,6 +39,7 @@ from typing import Optional, Mapping, Iterable
 
 import iso8601
 import kubernetes
+from kubernetes.client.rest import ApiException
 
 from kopf.reactor.registry import Resource
 
@@ -65,7 +66,7 @@ class Peer:
         self.id = id
         self.peering = peering
         self.namespace = namespace
-        self.priority = (priority)
+        self.priority = priority
         self.lifetime = (lifetime if isinstance(lifetime, datetime.timedelta) else
                          datetime.timedelta(seconds=int(lifetime)))
         self.lastseen = (lastseen if isinstance(lastseen, datetime.datetime) else
@@ -190,7 +191,7 @@ async def peers_keepalive(
 
             # How often do we update. Keep limited to avoid k8s api flooding.
             # Should be slightly less than the lifetime, enough for a patch request to finish.
-            await asyncio.sleep(max(1, ourselves.lifetime.total_seconds()-10))
+            await asyncio.sleep(max(1, int(ourselves.lifetime.total_seconds() - 10)))
     finally:
         try:
             ourselves.disappear()
@@ -227,3 +228,43 @@ def detect_own_id() -> str:
     now = datetime.datetime.utcnow().isoformat()
     rnd = ''.join(random.choices('abcdefhijklmnopqrstuvwxyz0123456789', k=6))
     return f'{user}@{host}/{now}/{rnd}'
+
+
+class PeerFactory:
+    @staticmethod
+    def create_peer(standalone: bool,
+                    peering: Optional[str],
+                    **kwargs) -> Optional[Peer]:
+        if standalone:
+            return None
+
+        if peering:
+            if PeerFactory._is_peering_exist(peering):
+                return Peer(peering=peering, **kwargs)
+            else:
+                raise Exception(f"The peering {peering} was not found")
+
+        if PeerFactory._is_default_peering_setup():
+            return Peer(peering=peering, **kwargs)
+
+        logger.warning(f"The default peering object not found. Falling back to the Standalone mode...")
+        return None
+
+    # TODO: extend later to accept the namespace and call the get_namespaced_custom_object API if Namespace is availabl
+    @staticmethod
+    def _is_default_peering_setup():
+        return PeerFactory._is_peering_exist(PEERING_DEFAULT_NAME)
+
+    @staticmethod
+    def _is_peering_exist(peering: str):
+        api = kubernetes.client.CustomObjectsApi()
+        try:
+            api.get_cluster_custom_object(group=PEERING_CRD_RESOURCE.group,
+                                          version=PEERING_CRD_RESOURCE.version,
+                                          plural=PEERING_CRD_RESOURCE.plural,
+                                          name=peering)
+            return True
+        except ApiException as e:
+            if e.status == 404:
+                return False
+            raise
