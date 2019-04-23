@@ -18,6 +18,7 @@ setup(
     project_urls=PROJECT_URLS,
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
+    long_description_content_type='text/markdown',
     author='Sergey Vasilyev',
     author_email='sergey.vasilyev@zalando.de',
     maintainer='Sergey Vasilyev, Chiara Mezzavilla',

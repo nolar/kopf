@@ -1,6 +1,6 @@
 # Kubernetes Operator Pythonic Framework (Kopf)
 
-**Kopf** -- "Kubernetes Operator Pythonic Framework" -- a framework and a library
+**Kopf** —Kubernetes Operator Pythonic Framework— is a framework and a library
 to make Kubernetes operators development easier, just in few lines of Python code. 
 
 The main goal is to bring the Domain-Driven Design to the infrastructure level,
@@ -8,12 +8,12 @@ with Kubernetes being an orchestrator/database of the domain objects (custom res
 and the operators containing the domain logic (with no or minimal infrastructure logic).
 
 
-## Documentation:
+## Documentation
 
 * https://kopf.readthedocs.io/
 
 
-## Features:
+## Features
 
 * A full-featured operator in just 2 files: `Dockerfile` + a Python module.
 * Implicit object's status updates, as returned from the Python functions.
@@ -27,15 +27,11 @@ and the operators containing the domain logic (with no or minimal infrastructure
 * Handling of multiple CRDs in one process.
 * The development instance temporarily suppresses the deployed ones.
 
-Not yet, todos:
-
-* ~~Multiple operators are automatically synced to avoid double-processing.~~
-* ~~CLI commands to investigate the status of the handled objects in the cluster.~~
-
 
 ## Examples
 
-See `./examples/` for the examples of the typical use-cases.
+See [examples](https://github.com/zalando-incubator/kopf/tree/master/examples)
+for the examples of the typical use-cases.
 
 The minimalistic operator can look like this:
 
@@ -56,7 +52,7 @@ The keyword arguments available to the handlers:
 * `patch` is a dict with the object changes to applied after the handler.
 * `retry` (`int`) is the sequential number of retry of this handler.
 * `started` (`datetime.datetime`) is the start time of the handler, in case of retries & errors.
-* `runtime` (`datetime.timedelat`) is the duration of the handler run, in case of retries & errors.
+* `runtime` (`datetime.timedelay`) is the duration of the handler run, in case of retries & errors.
 * `diff` is a list of changes of the object (only for the update events).
 * `old` is the old state of the object or a field (only for the update events).
 * `new` is the new state of the object or a field (only for the update events).
@@ -71,12 +67,10 @@ and the existing handlers should accept them.
 
 ## Usage
 
-### In-cluster
-
 We assume that when the operator is executed in the cluster, it must be packaged
 into a docker image with CI/CD tool of your preference.
 
-```bash
+```dockerfile
 FROM python:3.7
 ADD . /src
 RUN pip install kopf
@@ -91,23 +85,24 @@ See `kopf run --help` for others ways of attaching the handlers.
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details
-on our process for submitting pull requests to us, and please ensure
-you follow the [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+Please read [CONTRIBUTING.md](https://github.com/zalando-incubator/kopf/blob/master/CONTRIBUTING.md)
+for details on our process for submitting pull requests to us, and please ensure
+you follow the [CODE_OF_CONDUCT.md](https://github.com/zalando-incubator/kopf/blob/master/CODE_OF_CONDUCT.md).
 
 To install the environment for the local development,
-read [DEVELOPMENT.md](DEVELOPMENT.md).
+read [DEVELOPMENT.md](https://github.com/zalando-incubator/kopf/blob/master/DEVELOPMENT.md).
 
 
 ## Versioning
 
 We use [SemVer](http://semver.org/) for versioning. For the versions available,
-see the [tags on this repository](https://github.com/zalando-incubator/kopf/tags). 
+see the [releases on this repository](https://github.com/zalando-incubator/kopf/releases). 
 
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the MIT License —
+see the [LICENSE](https://github.com/zalando-incubator/kopf/blob/master/LICENSE) file for details.
 
 
 ## Acknowledgments
