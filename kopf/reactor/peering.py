@@ -39,6 +39,7 @@ from typing import Optional, Mapping, Iterable
 
 import iso8601
 import kubernetes
+from kubernetes.client.rest import ApiException
 
 from kopf.reactor.registry import Resource
 
@@ -65,7 +66,7 @@ class Peer:
         self.id = id
         self.peering = peering
         self.namespace = namespace
-        self.priority = (priority)
+        self.priority = priority
         self.lifetime = (lifetime if isinstance(lifetime, datetime.timedelta) else
                          datetime.timedelta(seconds=int(lifetime)))
         self.lastseen = (lastseen if isinstance(lastseen, datetime.datetime) else
@@ -77,6 +78,26 @@ class Peer:
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.id}, namespace={self.namespace}, priority={self.priority}, lastseen={self.lastseen}, lifetime={self.lifetime})"
+
+    @classmethod
+    def detect(cls,
+               standalone: bool,
+               peering: Optional[str],
+               **kwargs) -> Optional:
+        if standalone:
+            return None
+
+        if peering:
+            if Peer._is_peering_exist(peering):
+                return cls(peering=peering, **kwargs)
+            else:
+                raise Exception(f"The peering {peering} was not found")
+
+        if Peer._is_default_peering_setup():
+            return cls(peering=PEERING_DEFAULT_NAME, **kwargs)
+
+        logger.warning(f"Default peering object not found, falling back to the Standalone mode.")
+        return None
 
     def as_dict(self):
         # Only the non-calculated and non-identifying fields.
@@ -108,6 +129,24 @@ class Peer:
         """
         self.touch(lifetime=0)
         apply_peers([self], peering=self.peering)
+
+    @staticmethod
+    def _is_default_peering_setup():
+        return Peer._is_peering_exist(PEERING_DEFAULT_NAME)
+
+    @staticmethod
+    def _is_peering_exist(peering: str):
+        api = kubernetes.client.CustomObjectsApi()
+        try:
+            api.get_cluster_custom_object(group=PEERING_CRD_RESOURCE.group,
+                                          version=PEERING_CRD_RESOURCE.version,
+                                          plural=PEERING_CRD_RESOURCE.plural,
+                                          name=peering)
+            return True
+        except ApiException as e:
+            if e.status == 404:
+                return False
+            raise
 
 
 def apply_peers(
@@ -190,7 +229,7 @@ async def peers_keepalive(
 
             # How often do we update. Keep limited to avoid k8s api flooding.
             # Should be slightly less than the lifetime, enough for a patch request to finish.
-            await asyncio.sleep(max(1, ourselves.lifetime.total_seconds()-10))
+            await asyncio.sleep(max(1, int(ourselves.lifetime.total_seconds() - 10)))
     finally:
         try:
             ourselves.disappear()

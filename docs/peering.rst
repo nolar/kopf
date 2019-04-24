@@ -11,9 +11,10 @@ The operator can be instructed to use alternative peering objects::
 
 The operators from different peering objects do not see each other.
 
-The default peering name (i.e. if no peering or standalone options are provided)
-is ``default``.
+Default behavior
+----------------
 
+If there is a peering object with name `default` then it's been used by default as the peering object. Otherwise kopf will run the operator in mode `Standalone`.
 
 Standalone mode
 ---------------

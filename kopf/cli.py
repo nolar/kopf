@@ -32,7 +32,7 @@ def main():
 @click.option('-n', '--namespace', default=None)
 @click.option('--standalone', is_flag=True, default=False)
 @click.option('--dev', 'priority', flag_value=666)
-@click.option('-P', '--peering', type=str, default=PEERING_DEFAULT_NAME)
+@click.option('-P', '--peering', type=str, default=None)
 @click.option('-p', '--priority', type=int, default=0)
 @click.option('-m', '--module', 'modules', multiple=True)
 @click.argument('paths', nargs=-1)

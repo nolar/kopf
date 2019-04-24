@@ -33,8 +33,8 @@ import kubernetes.watch
 
 from kopf.reactor.handling import custom_object_handler
 from kopf.reactor.lifecycles import get_default_lifecycle
-from kopf.reactor.peering import peers_keepalive, peers_handler, Peer, detect_own_id
 from kopf.reactor.peering import PEERING_CRD_RESOURCE, PEERING_DEFAULT_NAME
+from kopf.reactor.peering import peers_keepalive, peers_handler, Peer, detect_own_id
 from kopf.reactor.registry import get_default_registry, BaseRegistry, Resource
 from kopf.reactor.watching import streaming_aiter
 
@@ -91,7 +91,7 @@ async def watcher(
 
                 # Ensure that the event is something we understand and can handle.
                 if event['type'] not in ['ADDED', 'MODIFIED', 'DELETED']:
-                    logger.warn("Ignoring an unsupported event type: %r", event)
+                    logger.warning("Ignoring an unsupported event type: %r", event)
                     continue
 
                 # Filter out all unrelated events as soon as possible (before queues), and silently.
@@ -183,13 +183,8 @@ def create_tasks(
     tasks = []
 
     # Monitor the peers, unless explicitly disabled.
-    if not standalone:
-        ourselves = Peer(
-            id=detect_own_id(),
-            priority=priority,
-            peering=peering,
-            namespace=namespace,
-        )
+    ourselves: Optional[Peer] = Peer.detect(standalone, peering, id=detect_own_id(), priority=priority, namespace=namespace)
+    if ourselves:
         tasks.extend([
             asyncio.Task(peers_keepalive(ourselves=ourselves)),
             asyncio.Task(watcher(namespace=None,  # peering is cluster-object
