@@ -96,7 +96,7 @@ class Peer:
         if Peer._is_default_peering_setup():
             return cls(peering=PEERING_DEFAULT_NAME, **kwargs)
 
-        logger.warning(f"The default peering object not found. Falling back to the Standalone mode...")
+        logger.warning(f"Default peering object not found, falling back to the Standalone mode.")
         return None
 
     def as_dict(self):
