@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 LONG_DESCRIPTION = open(os.path.join(os.path.dirname(__file__), 'README.md')).read()
 DESCRIPTION = LONG_DESCRIPTION.splitlines()[0].lstrip('#').strip()
 PROJECT_URLS = {
-    'Documentation': 'https://github.com/zalando-incubator/kopf/blob/master/README.md',
+    'Documentation': 'https://kopf.readthedocs.io',
     'Bug Tracker': 'https://github.com/zalando-incubator/kopf/issues',
     'Source Code': 'https://github.com/zalando-incubator/kopf',
 }
@@ -18,6 +18,7 @@ setup(
     project_urls=PROJECT_URLS,
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
+    long_description_content_type='text/markdown',
     author='Sergey Vasilyev',
     author_email='sergey.vasilyev@zalando.de',
     maintainer='Sergey Vasilyev, Chiara Mezzavilla',
