@@ -21,15 +21,15 @@ def resolve(d: Mapping, path: DiffPath):
 
 def reduce_iter(d: Diff, path: DiffPath) -> Generator[DiffItem, None, None]:
     for op, field, old, new in d:
-        if field[:len(path)] == path:
-            yield (op, field[len(path):], old, new)
+        if not path or tuple(field[:len(path)]) == tuple(path):
+            yield (op, tuple(field[len(path):]), old, new)
 
 
 def reduce(d: Diff, path: DiffPath) -> Diff:
-    return type(d)(reduce_iter(d, path))
+    return tuple(reduce_iter(d, path))
 
 
-def diff(a: Any, b: Any, path: DiffPath = ()) -> Generator[DiffItem, None, None]:
+def diff_iter(a: Any, b: Any, path: DiffPath = ()) -> Generator[DiffItem, None, None]:
     """
     Calculate the diff between two dicts.
 
@@ -60,6 +60,13 @@ def diff(a: Any, b: Any, path: DiffPath = ()) -> Generator[DiffItem, None, None]
         for key in a_keys - b_keys:
             yield ('remove', path+(key,), a[key], None)
         for key in a_keys & b_keys:
-            yield from diff(a[key], b[key], path=path+(key,))
+            yield from diff_iter(a[key], b[key], path=path+(key,))
     else:
         yield ('change', path, a, b)
+
+
+def diff(a: Any, b: Any, path: DiffPath = ()) -> Diff:
+    """
+    Same as `diff`, but returns the whole tuple instead of iterator.
+    """
+    return tuple(diff_iter(a, b, path=path))

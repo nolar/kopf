@@ -60,7 +60,7 @@ def is_state_changed(body):
 def get_state_diffs(body):
     old = retreive_state(body)
     new = get_state(body)
-    return old, new, list(diff(old, new))
+    return old, new, diff(old, new)
 
 
 def retreive_state(body):
