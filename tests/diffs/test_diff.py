@@ -76,3 +76,27 @@ def test_dicts_with_subkeys_changed():
     b = {'main': {'hello': 'world', 'key': 'new'}}
     d = diff(a, b)
     assert d == (('change', ('main', 'key'), 'old', 'new'),)
+
+
+def test_dicts_adding_label():
+    body_before_labelling = {'metadata': {}}
+    body_after_labelling  = {'metadata': {'labels': 'LABEL'}}
+
+    d = diff(body_before_labelling, body_after_labelling)
+    assert d == (('add', ('metadata', 'labels'), None, 'LABEL'),)
+
+
+def test_dicts_updating_storage_size():
+    body_before_storage_size_update = {'spec': {'size': '42G'}}
+    body_after_storage_size_update  = {'spec': {'size': '76G'}}
+
+    d = diff(body_before_storage_size_update, body_after_storage_size_update)
+    assert d == (('change', ('spec', 'size'), '42G', '76G'),)
+
+
+def test_dicts_different_items_handled():
+    body_before_storage_size_update = {'spec': {'items': ['task1', 'task2']}}
+    body_after_storage_size_update  = {'spec': {'items': ['task3', 'task4']}}
+
+    d = diff(body_before_storage_size_update, body_after_storage_size_update)
+    assert d == (('change', ('spec', 'items'), ['task1', 'task2'], ['task3', 'task4']),)
