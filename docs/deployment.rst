@@ -104,27 +104,6 @@ And the created service account is attached to the pods as follows:
     :name: deployment-service-account-yaml
 
 
-Cluster-wide
-============
-
-The above RBAC configuration is namespace-scoped
-(by default, applied to the ``default`` namespace,
-unless specified differently with ``kubectl --namespace``).
-
-To make it cluster-wide:
-
-* Replace ``Role`` --> ``ClusterRole``
-* Replace ``RoleBinding`` --> ``ClusterRoleBinding``
-* Add ``namespace: default`` to the subjects of the role-binding:
-
-.. code-block:: yaml
-
-    subjects:
-      - kind: ServiceAccount
-        name: kopfexample-account
-        namespace: default
-
-
 The service accounts are always namespace-scoped.
 There are no cluster-wide service accounts.
 They must be created in the same namespace as the operator is going to run in
