@@ -1,23 +1,30 @@
-# The serviceaccount & permissions as needed for this specific operator.
-# They all are namespace-scoped, hence suitable for the end2end tests
-# with no cross-namespace conflicts (few operators handling the same objects).
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: kopfexample-account
-
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: Role
+kind: ClusterRole
 metadata:
-  name: kopfexample-role
+  name: kopfexample-role-cluster
 rules:
 
   # Framework: knowing which other operators are running (i.e. peering).
   - apiGroups: [zalando.org]
     resources: [kopfpeerings]
-    verbs: [list, watch, patch]
+    verbs: [list, watch, patch, get]
+
+  # Application: watching & handling for the custom resource we declare.
+  - apiGroups: [zalando.org]
+    resources: [kopfexamples]
+    verbs: [list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: kopfexample-role-namespaced
+rules:
 
   # Framework: posting the events about the handlers progress/errors.
   - apiGroups: [events.k8s.io]
@@ -37,16 +44,28 @@ rules:
   - apiGroups: [""]
     resources: [pods, persistentvolumeclaims]
     verbs: [create]
-
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: kopfexample-rolebinding-cluster
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kopfexample-role-cluster
+subjects:
+  - kind: ServiceAccount
+    name: kopfexample-account
+    namespace: "{{NAMESPACE}}"
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: RoleBinding
 metadata:
-  name: kopfexample-rolebinding
+  name: kopfexample-rolebinding-namespaced
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: kopfexample-role
+  name: kopfexample-role-namespaced
 subjects:
   - kind: ServiceAccount
     name: kopfexample-account
