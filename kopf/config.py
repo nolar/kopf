@@ -24,9 +24,12 @@ def login():
     try:
         kubernetes.config.load_incluster_config()  # cluster env vars
         logger.debug("configured in cluster with service account")
-    except kubernetes.config.ConfigException:
-        kubernetes.config.load_kube_config()  # developer's config files
-        logger.debug("configured via kubeconfig file")
+    except kubernetes.config.ConfigException as e1:
+        try:
+            kubernetes.config.load_kube_config()  # developer's config files
+            logger.debug("configured via kubeconfig file")
+        except kubernetes.config.ConfigException as e2:
+            raise LoginError(f"Cannot authenticate neither in-cluster, nor via kubeconfig.")
 
     # Make a sample API call to ensure the login is successful,
     # and convert some of the known exceptions to the CLI hints.
@@ -68,9 +71,9 @@ def configure(debug=None, verbose=None, quiet=None):
         del logger.handlers[1:]  # everything except the default NullHandler
 
     # Prevent the low-level logging unless in the debug verbosity mode. Keep only the operator's messages.
-    if not debug:
-        logging.getLogger('asyncio').propagate = False
-        logging.getLogger('kubernetes').propagate = False
+    logging.getLogger('urllib3').propagate = debug
+    logging.getLogger('asyncio').propagate = debug
+    logging.getLogger('kubernetes').propagate = debug
 
     loop = asyncio.get_event_loop()
     loop.set_debug(debug)
