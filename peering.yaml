@@ -18,7 +18,7 @@ spec:
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: namespacedkopfpeerings.zalando.org
+  name: kopfpeerings.zalando.org
 spec:
   scope: Namespaced
   group: zalando.org
@@ -27,9 +27,9 @@ spec:
       served: true
       storage: true
   names:
-    kind: NamespacedKopfPeering
-    plural: namespacedkopfpeerings
-    singular: namespacedkopfpeering
+    kind: KopfPeering
+    plural: kopfpeerings
+    singular: kopfpeering
 ---
 apiVersion: zalando.org/v1
 kind: ClusterKopfPeering
@@ -37,7 +37,7 @@ metadata:
   name: default
 ---
 apiVersion: zalando.org/v1
-kind: NamespacedKopfPeering
+kind: KopfPeering
 metadata:
   namespace: default
   name: default

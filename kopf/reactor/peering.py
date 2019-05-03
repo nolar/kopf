@@ -17,7 +17,7 @@ and detection of other operators hard termination (by timeout rather than by cle
 The peers monitoring covers both the in-cluster operators running,
 and the dev-mode operators running in the dev workstations.
 
-For this, special CRDs ``kind: ClusterKopfPeering`` & ``kind: NamespacedKopfPeering``
+For this, special CRDs ``kind: ClusterKopfPeering`` & ``kind: KopfPeering``
 should be registered in the cluster, and their ``status`` field is used
 by all the operators to sync their keep-alive info.
 
@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 
 # The CRD info on the special sync-object.
 CLUSTER_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'clusterkopfpeerings')
-NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'namespacedkopfpeerings')
+NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings')
 PEERING_DEFAULT_NAME = 'default'
 
 

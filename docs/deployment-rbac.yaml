@@ -30,7 +30,7 @@ rules:
 
   # Framework: knowing which other operators are running (i.e. peering).
   - apiGroups: [zalando.org]
-    resources: [namespacedkopfpeerings]
+    resources: [kopfpeerings]
     verbs: [list, watch, patch, get]
 
   # Framework: posting the events about the handlers progress/errors.

@@ -78,7 +78,7 @@ and to manipulate the objects, both domain-specific and the built-in ones.
 For the example operator, those are:
 
 * ``kind: ClusterKopfPeering`` for the cross-operator awareness (cluster-wide).
-* ``kind: NamespacedKopfPeering`` for the cross-operator awareness (namespace-wide).
+* ``kind: KopfPeering`` for the cross-operator awareness (namespace-wide).
 * ``kind: KopfExample`` for the example operator objects.
 * ``kind: Pod/CluJob/PersistentVolumeClaim`` as the children objects.
 * And others as needed.

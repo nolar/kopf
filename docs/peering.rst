@@ -32,7 +32,7 @@ Scopes
 There are two types of custom resources used for peering:
 
 * ``ClusterKopfPeering`` for the cluster-scoped operators.
-* ``NamespacedKopfPeering`` for the namespace-scoped operators.
+* ``KopfPeering`` for the namespace-scoped operators.
 
 Kopf automatically chooses which one to use, depending on whether
 the operator is restricted to a namespace with :option:`--namespace`,
@@ -45,20 +45,38 @@ Create the peering objects as needed with one of:
     apiVersion: zalando.org/v1
     kind: ClusterKopfPeering
     metadata:
-      name: default
+      name: example
 
 .. code-block:: yaml
 
     apiVersion: zalando.org/v1
-    kind: NamespacedKopfPeering
+    kind: KopfPeering
     metadata:
       namespace: default
-      name: default
+      name: example
 
 
-.. deprecated:: 0.11
-    Previously, ``KopfPeering`` was the only kind, and it was cluster-scoped.
-    It is now abandoned and not supported.
+.. note::
+
+    Previously, ``KopfPeering`` was the only CRD, and it was cluster-scoped.
+    Now, it is namespaced. For the new users, it all will be fine and working.
+
+    If the old ``KopfPeering`` CRD is already deployed to your cluster,
+    it will also continue to work as before without re-configuration:
+    though there will be no namespace isolation as documented here ---
+    it will be cluster peering regardless of :option:`--namespace`
+    (as it was before the changes).
+
+    When possible (but strictly after the Kopf's version upgrade),
+    please delete the old CRD, and re-create from scratch:
+
+    .. code-block:: bash
+
+        kubectl delete crd kopfpeerings.zalando.org
+        # give it 1-2 minutes to cleanup, or repeat until succeeded:
+        kubectl create -f peering.yaml
+
+    Then re-deploy your custom peering objects of your apps.
 
 
 Custom peering
@@ -66,11 +84,11 @@ Custom peering
 
 The operator can be instructed to use alternative peering objects::
 
-    kopf run --peering=another ...
-    kopf run --peering=another --namespace=some-ns ...
+    kopf run --peering=example ...
+    kopf run --peering=example --namespace=some-ns ...
 
 Depending on :option:`--namespace`, either ``ClusterKopfPeering``
-or ``NamespacedKopfPeering`` will be used (in the operator's namespace).
+or ``KopfPeering`` will be used (in the operator's namespace).
 
 If the peering object does not exist, the operator will fail to start.
 Using :option:`--peering` assumes that the peering is required.
