@@ -1,8 +1,28 @@
+# See https://github.com/LiliC/travis-minikube for Travis+Minikube.
+# This affects the env & before_script sections, and some functional tests.
 language: python
 sudo: required
 dist: xenial
+services:
+  - docker
+
+env:
+  global:
+    - CHANGE_MINIKUBE_NONE_USER=true
+    - KUBECONFIG=$HOME/.kube/config
+    - MINIKUBE_WANTUPDATENOTIFICATION=false
+    - MINIKUBE_WANTREPORTERRORPROMPT=false
+    - MINIKUBE_IN_STYLE=true
+    - MINIKUBE_HOME=$HOME
+    - MINIKUBE_VERSION=1.0.1
+  matrix:
+    - KUBERNETES_VERSION=1.14.0
+
 python:
   - "3.7"
+
+before_script:
+  - scripts/minikube-for-travis.sh
 
 script:
   - pytest
