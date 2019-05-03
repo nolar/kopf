@@ -25,6 +25,11 @@ env:
 
 python:
   - "3.7"
+matrix:
+  include:
+    - python: "3.8-dev"
+  allow_failures:
+    - python: "3.8-dev"
 
 before_script:
   - scripts/minikube-for-travis.sh
