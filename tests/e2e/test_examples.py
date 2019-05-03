@@ -21,6 +21,9 @@ def test_all_examples_are_runnable(mocker, with_crd, with_peering, exampledir):
     # To prevent lengthy sleeps on the simulated retries.
     mocker.patch('kopf.reactor.handling.DEFAULT_RETRY_DELAY', 1)
 
+    # To prevent lengthy threads in the loop executor when the process exits.
+    mocker.patch('kopf.reactor.watching.DEFAULT_STREAM_TIMEOUT', 10)
+
     # Run an operator and simulate some activity with the operated resource.
     with KopfRunner(['run', '--verbose', str(example_py)]) as runner:
         subprocess.run("kubectl apply -f examples/obj.yaml", shell=True, check=True)
