@@ -25,7 +25,8 @@ before_script:
   - scripts/minikube-for-travis.sh
 
 script:
-  - pytest
+  - pytest -v -k "not e2e"
+  - pytest -v -k "e2e"
 
 deploy:
   provider: pypi
