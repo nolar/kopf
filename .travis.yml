@@ -20,7 +20,7 @@ env:
     - KUBERNETES_VERSION=1.14.0
     - KUBERNETES_VERSION=1.13.0
     - KUBERNETES_VERSION=1.12.0
-    - KUBERNETES_VERSION=1.11.10
+#    - KUBERNETES_VERSION=1.11.10  # Minikube fails on CRI preflight checks
     - KUBERNETES_VERSION=1.10.13
 
 python:
