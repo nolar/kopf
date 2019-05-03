@@ -6,6 +6,7 @@ metadata:
 spec:
   scope: Namespaced
   group: zalando.org
+  version: v1
   versions:
     - name: v1
       served: true
