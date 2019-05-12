@@ -66,14 +66,14 @@ def is_sleeping(*, body, handler):
 def is_awakened(*, body, handler):
     finished = is_finished(body=body, handler=handler)
     sleeping = is_sleeping(body=body, handler=handler)
-    return not finished and not sleeping
+    return bool(not finished and not sleeping)
 
 
 def is_finished(*, body, handler):
     progress = body.get('status', {}).get('kopf', {}).get('progress', {})
     success = progress.get(handler.id, {}).get('success', None)
     failure = progress.get(handler.id, {}).get('failure', None)
-    return success or failure
+    return bool(success or failure)
 
 
 def get_start_time(*, body, patch, handler):
@@ -93,7 +93,7 @@ def get_awake_time(*, body, handler):
 
 def get_retry_count(*, body, handler):
     progress = body.get('status', {}).get('kopf', {}).get('progress', {})
-    return progress.get(handler.id, {}).get('retries', 0)
+    return progress.get(handler.id, {}).get('retries', None) or 0
 
 
 def set_start_time(*, body, patch, handler):
