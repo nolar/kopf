@@ -47,6 +47,15 @@ Queues = MutableMapping[ObjectRef, asyncio.Queue]
 EOS = object()
 """ An end-of-stream marker sent from the watcher to the workers. """
 
+WORKER_IDLE_TIMEOUT = 5.0
+""" How long does a worker can idle before exiting and garbage-collecting."""
+
+WORKER_BATCH_WINDOW = 0.1
+""" How fast/slow does a worker deplete the queue when an event is received."""
+
+WORKER_EXIT_TIMEOUT = 2.0
+""" How long does a worker can work on watcher exit before being cancelled. """
+
 
 # TODO: add the label_selector support for the dev-mode?
 async def watcher(
@@ -84,11 +93,7 @@ async def watcher(
                 await scheduler.spawn(worker(handler=handler, queues=queues, key=key))
 
         # Allow the existing workers to finish gracefully before killing them.
-        try:
-            await asyncio.wait_for(_wait_for_depletion(scheduler=scheduler, queues=queues), timeout=3.0)
-        except asyncio.TimeoutError:
-            # TODO: should we warn()?
-            pass
+        await _wait_for_depletion(scheduler=scheduler, queues=queues)
 
     finally:
         # Forcedly terminate all the fire-and-forget per-object jobs, of they are still running.
@@ -124,14 +129,14 @@ async def worker(
             # If the queue is filled, use the latest event only (within the short timeframe).
             # If an EOS marker is received, handle the last real event, then finish the worker ASAP.
             try:
-                event = await asyncio.wait_for(queue.get(), timeout=5.0)
+                event = await asyncio.wait_for(queue.get(), timeout=WORKER_IDLE_TIMEOUT)
             except asyncio.TimeoutError:
                 break
             else:
                 try:
                     while True:
                         prev_event = event
-                        next_event = await asyncio.wait_for(queue.get(), timeout=0.1)
+                        next_event = await asyncio.wait_for(queue.get(), timeout=WORKER_BATCH_WINDOW)
                         shouldstop = shouldstop or next_event is EOS
                         event = prev_event if next_event is EOS else next_event
                 except asyncio.TimeoutError:
@@ -265,8 +270,8 @@ async def _wait_for_depletion(*, scheduler, queues):
     # Wait for the queues to be depleted, but only if there are some workers running.
     # Continue with the tasks termination if the timeout is reached, no matter the queues.
     started = time.perf_counter()
-    while queues and scheduler.active_count and time.perf_counter() - started < 2.0:
-        await asyncio.sleep(0.1)
+    while queues and scheduler.active_count and time.perf_counter() - started < WORKER_EXIT_TIMEOUT:
+        await asyncio.sleep(WORKER_EXIT_TIMEOUT / 100.)
 
     # The last check if the termination is going to be graceful or not.
     if queues:
