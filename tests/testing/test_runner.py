@@ -25,7 +25,7 @@ def test_command_invocation_works():
 
 
 def test_exception_from_runner_suppressed_with_no_reraise():
-    with KopfRunner(['run', 'non-existant.py', '--standalone'], reraise=False) as runner:
+    with KopfRunner(['run', 'non-existent.py', '--standalone'], reraise=False) as runner:
         pass
     assert runner.exception is not None
     assert isinstance(runner.exception, FileNotFoundError)
@@ -33,13 +33,13 @@ def test_exception_from_runner_suppressed_with_no_reraise():
 
 def test_exception_from_runner_escalates_with_reraise():
     with pytest.raises(FileNotFoundError):
-        with KopfRunner(['run', 'non-existant.py', '--standalone'], reraise=True):
+        with KopfRunner(['run', 'non-existent.py', '--standalone'], reraise=True):
             pass
 
 
 def test_exception_from_runner_escalates_by_default():
     with pytest.raises(FileNotFoundError):
-        with KopfRunner(['run', 'non-existant.py', '--standalone']):
+        with KopfRunner(['run', 'non-existent.py', '--standalone']):
             pass
 
 
@@ -53,7 +53,7 @@ def test_exception_from_invoke_escalates(mocker, kwargs):
     mocker.patch('click.testing.CliRunner.invoke', side_effect=SampleError)
 
     with pytest.raises(SampleError):
-        with KopfRunner(['run', 'non-existant.py', '--standalone'], **kwargs):
+        with KopfRunner(['run', 'non-existent.py', '--standalone'], **kwargs):
             pass
 
 

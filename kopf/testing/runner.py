@@ -8,7 +8,7 @@ from kopf.cli import main
 
 class KopfRunner:
     """
-    A context manager to run Kopf-based operator in parallel with the tests.
+    A context manager to run a Kopf-based operator in parallel with the tests.
 
     Usage::
 
@@ -22,19 +22,19 @@ class KopfRunner:
         assert runner.exception is None
         assert 'And here we are!' in runner.stdout
 
-    All the args & kwargs are passed directly to the Click's invocation method.
+    All the args & kwargs are passed directly to Click's invocation method.
     See: `click.testing.CliRunner`.
-    All properties proxy directly to the Click's `click.testing.Result` object
+    All properties proxy directly to Click's `click.testing.Result` object
     when it is available (i.e. after the context manager exits).
 
     CLI commands have to be invoked in parallel threads, never in processes:
 
     First, with multiprocessing, they are unable to pickle and pass
-    the exceptions (specifically, their traceback objects)
+    exceptions (specifically, their traceback objects)
     from a child thread (Kopf's CLI) to the parent thread (pytest).
 
     Second, mocking works within one process (all threads),
-    but not across the processes --- the mock's calls (counts, arrgs) are lost.
+    but not across processes --- the mock's calls (counts, arrgs) are lost.
     """
 
     def __init__(self, *args, reraise=True, **kwargs):
