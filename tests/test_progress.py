@@ -281,7 +281,7 @@ def test_store_failure(handler, expected, body):
 
 @pytest.mark.parametrize('result, body, expected', [
 
-    # With no result, it updates only tghe progress.
+    # With no result, it updates only the progress.
     (None,
      {},
      {'status': {'kopf': {'progress': {'some-id': {'stopped': TS0_ISO,
