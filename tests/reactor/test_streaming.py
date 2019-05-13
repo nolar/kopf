@@ -1,3 +1,13 @@
+"""
+Only the tests for async-streaming events from the sync-API calls.
+
+Excluded: the watching routines and edge case handling, such as ERROR events
+(see ``test_watching.py``).
+
+Excluded: the queueing routines, including multiplexing and workers/handlers
+(see ``test_queueing.py``).
+"""
+
 import collections.abc
 
 import pytest
