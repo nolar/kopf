@@ -12,6 +12,8 @@ execute in the order they are registered, one by one.
 import logging
 import random
 
+from kopf.structs.progress import get_retry_count
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,18 +29,17 @@ def one_by_one(handlers, **kwargs):
 
 def randomized(handlers, **kwargs):
     """ Execute one handler at a time, in the random order. """
-    return random.choice(handlers)
+    return [random.choice(handlers)] if handlers else []
 
 
 def shuffled(handlers, **kwargs):
     """ Execute all handlers at once, but in the random order. """
-    return random.sample(handlers, k=len(handlers))
+    return random.sample(handlers, k=len(handlers)) if handlers else []
 
 
 def asap(handlers, *, body, **kwargs):
     """ Execute one handler at a time, skip on failure, try the next one, retry after the full cycle. """
-    retries = body.get('status', {}).get('kopf', {}).get('retries', {})
-    retryfn = lambda handler: retries.get(handler.id, 0)
+    retryfn = lambda handler: get_retry_count(body=body, handler=handler)
     return sorted(handlers, key=retryfn)[:1]
 
 
@@ -52,5 +53,5 @@ def get_default_lifecycle():
 def set_default_lifecycle(lifecycle):
     global _default_lifecycle
     if _default_lifecycle is not None:
-        logger.warn(f"The default lifecycle is already set to {_default_lifecycle}, overriding it to {lifecycle}.")
+        logger.warning(f"The default lifecycle is already set to {_default_lifecycle}, overriding it to {lifecycle}.")
     _default_lifecycle = lifecycle

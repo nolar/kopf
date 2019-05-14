@@ -20,7 +20,7 @@ def logging_options(fn):
     return wrapper
 
 
-@click.group(context_settings=dict(
+@click.group(name='kopf', context_settings=dict(
     auto_envvar_prefix='KOPF',
 ))
 def main():
@@ -31,7 +31,7 @@ def main():
 @logging_options
 @click.option('-n', '--namespace', default=None)
 @click.option('--standalone', is_flag=True, default=False)
-@click.option('--dev', 'priority', flag_value=666)
+@click.option('--dev', 'priority', type=int, is_flag=True, flag_value=666)
 @click.option('-P', '--peering', type=str, default=None)
 @click.option('-p', '--priority', type=int, default=0)
 @click.option('-m', '--module', 'modules', multiple=True)

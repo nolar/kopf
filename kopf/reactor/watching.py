@@ -71,7 +71,7 @@ async def streaming_watch(
     """
     Stream the watch-events from one single API watch-call.
     """
-
+    loop = asyncio.get_event_loop()
     w = kubernetes.watch.Watch()
     api = kubernetes.client.CustomObjectsApi()
     if namespace is None:
@@ -86,7 +86,6 @@ async def streaming_watch(
                           plural=resource.plural,
                           namespace=namespace)
 
-    loop = asyncio.get_event_loop()
     async for event in streaming_aiter(stream, loop=loop):
 
         # "410 Gone" is for the "resource version too old" error, we must restart watching.
