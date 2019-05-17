@@ -144,7 +144,8 @@ operator in the deployment or replicaset:
 
     kopf run --priority=$RANDOM ...
 
-``$RANDOM`` is a feature of bash (if you use another shell, find your own way).
+``$RANDOM`` is a feature of bash
+(if you use another shell, see its man page for an equivalent).
 It returns a random integer in the range 0..32767.
 With high probability, 2-3 pods will get their unique priorities.
 

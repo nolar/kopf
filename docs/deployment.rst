@@ -80,7 +80,7 @@ For the example operator, those are:
 * ``kind: ClusterKopfPeering`` for the cross-operator awareness (cluster-wide).
 * ``kind: KopfPeering`` for the cross-operator awareness (namespace-wide).
 * ``kind: KopfExample`` for the example operator objects.
-* ``kind: Pod/CluJob/PersistentVolumeClaim`` as the children objects.
+* ``kind: Pod/Job/PersistentVolumeClaim`` as the children objects.
 * And others as needed.
 
 For that, the RBAC_ (Role-Based Access Control) could be used
