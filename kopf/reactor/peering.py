@@ -178,11 +178,16 @@ class Peer:
             Deploy ``ClusterKopfPeering`` as per documentation, and use it normally.
         """
 
-        name = f'{LEGACY_PEERING_RESOURCE.plural}.{LEGACY_PEERING_RESOURCE.group}'
-        api = kubernetes.client.ApiextensionsV1beta1Api()
-        rsp = api.read_custom_resource_definition(name=name)
-        if str(rsp.spec.scope).lower() != 'cluster':
-            return False  # no legacy mode detected
+        try:
+            name = f'{LEGACY_PEERING_RESOURCE.plural}.{LEGACY_PEERING_RESOURCE.group}'
+            api = kubernetes.client.ApiextensionsV1beta1Api()
+            rsp = api.read_custom_resource_definition(name=name)
+            if str(rsp.spec.scope).lower() != 'cluster':
+                return False  # no legacy mode detected
+        except ApiException as e:
+            if e.status == 404:
+                return False
+            raise
 
         try:
             api = kubernetes.client.CustomObjectsApi()
