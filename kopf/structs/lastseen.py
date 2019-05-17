@@ -41,6 +41,8 @@ def get_state(body):
         del body['metadata']['uid']
     if 'resourceVersion' in body.get('metadata', {}):
         del body['metadata']['resourceVersion']
+    if 'generation' in body.get('metadata', {}):
+        del body['metadata']['generation']
     if 'status' in body:
         del body['status']
     return body
