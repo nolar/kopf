@@ -77,7 +77,8 @@ The pod where the operator runs must have the permissions to access
 and to manipulate the objects, both domain-specific and the built-in ones.
 For the example operator, those are:
 
-* ``kind: KopfPeering`` for the cross-operator awareness.
+* ``kind: ClusterKopfPeering`` for the cross-operator awareness (cluster-wide).
+* ``kind: KopfPeering`` for the cross-operator awareness (namespace-wide).
 * ``kind: KopfExample`` for the example operator objects.
 * ``kind: Pod/Job/PersistentVolumeClaim`` as the children objects.
 * And others as needed.
@@ -87,7 +88,9 @@ and attached to the operator's pod via a service account.
 
 .. _RBAC: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
 
-Here is an example of what a RBAC config should look like:
+Here is an example of what a RBAC config should look like
+(remove the parts which are not needed: e.g. the cluster roles/bindings
+for the strictly namespace-bound operator):
 
 .. literalinclude:: deployment-rbac.yaml
     :caption: rbac.yaml
@@ -104,7 +107,7 @@ And the created service account is attached to the pods as follows:
     :name: deployment-service-account-yaml
 
 
-The service accounts are always namespace-scoped.
+Please note that the service accounts are always namespace-scoped.
 There are no cluster-wide service accounts.
 They must be created in the same namespace as the operator is going to run in
-(even if it is going to server the whole cluster).
+(even if it is going to serve the whole cluster).
