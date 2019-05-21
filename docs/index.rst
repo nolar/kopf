@@ -41,6 +41,7 @@ Kopf: Kubernetes Operators Framework
    :caption: Developer Manual:
 
    minikube
+   contributing
    packages/kopf
 
 .. toctree::
