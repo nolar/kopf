@@ -454,8 +454,8 @@ async def _call_handler(
     """
 
     # For the field-handlers, the old/new/diff values must match the field, not the whole object.
-    old = cause.old if handler.field is None else resolve(cause.old, handler.field)
-    new = cause.new if handler.field is None else resolve(cause.new, handler.field)
+    old = cause.old if handler.field is None else resolve(cause.old, handler.field, None)
+    new = cause.new if handler.field is None else resolve(cause.new, handler.field, None)
     diff = cause.diff if handler.field is None else reduce(cause.diff, handler.field)
     cause = cause._replace(old=old, new=new, diff=diff)
 
