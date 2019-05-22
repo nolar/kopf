@@ -214,7 +214,10 @@ def run(
     )
 
     # Run the presumably infinite tasks until one of them fails (they never exit normally).
-    done, pending = loop.run_until_complete(asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED))
+    try:
+        done, pending = loop.run_until_complete(asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED))
+    except asyncio.CancelledError:
+        done, pending = [], tasks
 
     # Allow the remaining tasks to handle the cancellation before re-raising (e.g. via try-finally).
     # The errors in the cancellation stage will be ignored anyway (never re-raised below).
@@ -226,10 +229,8 @@ def run(
     # Check the results of the non-cancelled tasks, and re-raise of there were any exceptions.
     # The cancelled tasks are not re-raised, as it is a normal flow for the "first-completed" run.
     # TODO: raise all of the cancelled+done, if there were 2+ failed ones.
-    for task in cancelled:
+    for task in list(cancelled) + list(done):
         try:
             task.result()  # can raise the regular (non-cancellation) exceptions.
         except asyncio.CancelledError:
             pass
-    for task in done:
-        task.result()

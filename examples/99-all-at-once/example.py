@@ -7,6 +7,11 @@ import time
 
 import kopf
 
+# Marks for the e2e tests (see tests/e2e/test_examples.py):
+E2E_CREATE_TIME = 5
+E2E_DELETE_TIME = 1
+E2E_TRACEBACKS = True
+
 
 @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
 def create_1(body, meta, spec, status, **kwargs):

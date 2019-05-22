@@ -1,3 +1,6 @@
+# Temporary - only to address https://github.com/kennethreitz/requests/issues/5067
+urllib3<1.25
+
 # The runtime dependencies of the framework, as if via `pip install kopf`.
 -e .
 
