@@ -19,10 +19,11 @@ import collections
 import datetime
 import logging
 from contextvars import ContextVar
-from typing import NamedTuple, Optional, Any, MutableMapping, Text, Callable, Iterable
+from typing import Optional, Callable, Iterable
 
 from kopf import events
 from kopf.k8s import patching
+from kopf.reactor import causation
 from kopf.reactor import invocation
 from kopf.reactor import registries
 from kopf.structs import diffs
@@ -41,23 +42,6 @@ class ObjectLogger(logging.LoggerAdapter):
     """ An utility to prefix the per-object log messages. """
     def process(self, msg, kwargs):
         return f"[{self.extra['namespace']}/{self.extra['name']}] {msg}", kwargs
-
-
-class Cause(NamedTuple):
-    """
-    The cause is what has caused the whole reaction as a chain of handlers.
-
-    Unlike the low-level Kubernetes watch-events, the cause is aware
-    of the actual field changes, including the multi-handlers changes.
-    """
-    logger: ObjectLogger
-    resource: registries.Resource
-    event: Text
-    body: MutableMapping
-    patch: MutableMapping
-    diff: Optional[diffs.Diff] = None
-    old: Optional[Any] = None
-    new: Optional[Any] = None
 
 
 class HandlerFatalError(Exception):
@@ -85,7 +69,7 @@ sublifecycle_var: ContextVar[Callable] = ContextVar('sublifecycle_var')
 subregistry_var: ContextVar[registries.SimpleRegistry] = ContextVar('subregistry_var')
 subexecuted_var: ContextVar[bool] = ContextVar('subexecuted_var')
 handler_var: ContextVar[registries.Handler] = ContextVar('handler_var')
-cause_var: ContextVar[Cause] = ContextVar('cause_var')
+cause_var: ContextVar[causation.Cause] = ContextVar('cause_var')
 
 
 async def custom_object_handler(
@@ -131,7 +115,7 @@ async def custom_object_handler(
 
     elif finalizers.is_deleted(body):
         logger.debug("Deletion event: %r", body)
-        cause = Cause(resource=resource, event=registries.DELETE, body=body, patch=patch, logger=logger)
+        cause = causation.Cause(resource=resource, event=causation.DELETE, body=body, patch=patch, logger=logger)
         try:
             await execute(lifecycle=lifecycle, registry=registry, cause=cause)
         except HandlerChildrenRetry as e:
@@ -154,7 +138,7 @@ async def custom_object_handler(
     # then mark the state as if it was seen when the creation has finished.
     elif not lastseen.has_state(body):
         logger.debug("Creation event: %r", body)
-        cause = Cause(resource=resource, event=registries.CREATE, body=body, patch=patch, logger=logger)
+        cause = causation.Cause(resource=resource, event=causation.CREATE, body=body, patch=patch, logger=logger)
         try:
             await execute(lifecycle=lifecycle, registry=registry, cause=cause)
         except HandlerChildrenRetry as e:
@@ -175,8 +159,9 @@ async def custom_object_handler(
     else:
         old, new, diff = lastseen.get_state_diffs(body)
         logger.debug("Update event: %r", diff)
-        cause = Cause(resource=resource, event=registries.UPDATE, body=body, patch=patch, logger=logger,
-                      old=old, new=new, diff=diff)
+        cause = causation.Cause(
+            resource=resource, event=causation.UPDATE, body=body, patch=patch, logger=logger,
+            old=old, new=new, diff=diff)
         try:
             await execute(lifecycle=lifecycle, registry=registry, cause=cause)
         except HandlerChildrenRetry as e:
@@ -211,7 +196,7 @@ async def execute(
         handlers: Optional[Iterable[registries.Handler]] = None,
         registry: Optional[registries.BaseRegistry] = None,
         lifecycle: Callable = None,
-        cause: Cause = None,
+        cause: causation.Cause = None,
 ) -> None:
     """
     Execute the handlers in an isolated lifecycle.
@@ -281,7 +266,7 @@ async def execute(
 async def _execute(
         lifecycle: Callable,
         registry: registries.BaseRegistry,
-        cause: Cause,
+        cause: causation.Cause,
         retry_on_errors: bool = True,
 ) -> None:
     """
@@ -396,7 +381,7 @@ async def _execute(
 async def _call_handler(
         handler: registries.Handler,
         *args,
-        cause: Cause,
+        cause: causation.Cause,
         lifecycle: Callable,
         **kwargs):
     """

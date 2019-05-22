@@ -13,6 +13,7 @@ The decorators for the event handlers. Usually used as::
 
 from typing import Optional, Union, Tuple, List
 
+from kopf.reactor import causation
 from kopf.reactor import handling
 from kopf.reactor import registries
 
@@ -28,7 +29,7 @@ def create(
     def decorator(fn):
         registry.register(
             group=group, version=version, plural=plural,
-            event=registries.CREATE, id=id, timeout=timeout,
+            event=causation.CREATE, id=id, timeout=timeout,
             fn=fn)
         return fn
     return decorator
@@ -45,7 +46,7 @@ def update(
     def decorator(fn):
         registry.register(
             group=group, version=version, plural=plural,
-            event=registries.UPDATE, id=id, timeout=timeout,
+            event=causation.UPDATE, id=id, timeout=timeout,
             fn=fn)
         return fn
     return decorator
@@ -62,7 +63,7 @@ def delete(
     def decorator(fn):
         registry.register(
             group=group, version=version, plural=plural,
-            event=registries.DELETE, id=id, timeout=timeout,
+            event=causation.DELETE, id=id, timeout=timeout,
             fn=fn)
         return fn
     return decorator

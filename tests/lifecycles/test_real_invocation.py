@@ -1,7 +1,7 @@
 import pytest
 
 import kopf
-from kopf.reactor.handling import Cause
+from kopf.reactor.causation import Cause
 from kopf.reactor.invocation import invoke
 
 

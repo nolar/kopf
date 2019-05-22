@@ -16,12 +16,6 @@ import collections
 import functools
 from types import FunctionType, MethodType
 
-# The constants for the event types, to prevent the direct string usage and typos.
-# They are not exposed by the framework, but are used internally. See also: `kopf.on`.
-CREATE = 'create'
-UPDATE = 'update'
-DELETE = 'delete'
-
 
 # An immutable reference to a custom resource definition.
 Resource = collections.namedtuple('Resource', 'group version plural')
