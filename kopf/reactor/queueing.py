@@ -26,6 +26,7 @@ is done in the `kopf.reactor.handling` routines.
 import asyncio
 import functools
 import logging
+import time
 from typing import Optional, Callable, Tuple, Union, MutableMapping, NewType
 
 import aiojobs
@@ -42,6 +43,18 @@ logger = logging.getLogger(__name__)
 ObjectUid = NewType('ObjectUid', str)
 ObjectRef = Tuple[Resource, ObjectUid]
 Queues = MutableMapping[ObjectRef, asyncio.Queue]
+
+EOS = object()
+""" An end-of-stream marker sent from the watcher to the workers. """
+
+WORKER_IDLE_TIMEOUT = 5.0
+""" How long does a worker can idle before exiting and garbage-collecting."""
+
+WORKER_BATCH_WINDOW = 0.1
+""" How fast/slow does a worker deplete the queue when an event is received."""
+
+WORKER_EXIT_TIMEOUT = 2.0
+""" How long does a worker can work on watcher exit before being cancelled. """
 
 
 # TODO: add the label_selector support for the dev-mode?
@@ -79,6 +92,9 @@ async def watcher(
                 await queues[key].put(event)
                 await scheduler.spawn(worker(handler=handler, queues=queues, key=key))
 
+        # Allow the existing workers to finish gracefully before killing them.
+        await _wait_for_depletion(scheduler=scheduler, queues=queues)
+
     finally:
         # Forcedly terminate all the fire-and-forget per-object jobs, of they are still running.
         await scheduler.close()
@@ -104,22 +120,31 @@ async def worker(
     in case the new events are there, but the API or the watcher task lags a bit.
     """
     queue = queues[key]
+    shouldstop = False
     try:
-        while True:
+        while not shouldstop:
 
             # Try ASAP, but give it few seconds for the new events to arrive, maybe.
             # If the queue is empty for some time, then indeed finish the object's worker.
             # If the queue is filled, use the latest event only (within the short timeframe).
+            # If an EOS marker is received, handle the last real event, then finish the worker ASAP.
             try:
-                event = await asyncio.wait_for(queue.get(), timeout=5.0)
+                event = await asyncio.wait_for(queue.get(), timeout=WORKER_IDLE_TIMEOUT)
             except asyncio.TimeoutError:
                 break
             else:
                 try:
                     while True:
-                        event = await asyncio.wait_for(queue.get(), timeout=0.1)
+                        prev_event = event
+                        next_event = await asyncio.wait_for(queue.get(), timeout=WORKER_BATCH_WINDOW)
+                        shouldstop = shouldstop or next_event is EOS
+                        event = prev_event if next_event is EOS else next_event
                 except asyncio.TimeoutError:
                     pass
+
+            # Exit gracefully and immediately on the end-of-stream marker sent by the watcher.
+            if event is EOS:
+                break
 
             # Try the handler. In case of errors, show the error, but continue the queue processing.
             try:
@@ -234,3 +259,20 @@ def run(
             task.result()  # can raise the regular (non-cancellation) exceptions.
         except asyncio.CancelledError:
             pass
+
+
+async def _wait_for_depletion(*, scheduler, queues):
+
+    # Notify all the workers to finish now. Wake them up if they are waiting in the queue-getting.
+    for queue in queues.values():
+        await queue.put(EOS)
+
+    # Wait for the queues to be depleted, but only if there are some workers running.
+    # Continue with the tasks termination if the timeout is reached, no matter the queues.
+    started = time.perf_counter()
+    while queues and scheduler.active_count and time.perf_counter() - started < WORKER_EXIT_TIMEOUT:
+        await asyncio.sleep(WORKER_EXIT_TIMEOUT / 100.)
+
+    # The last check if the termination is going to be graceful or not.
+    if queues:
+        logger.warning("Unprocessed queues left for %r.", list(queues.keys()))
