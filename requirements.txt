@@ -9,3 +9,4 @@ pytest-asyncio
 pytest-mock
 pytest
 asynctest
+freezegun
