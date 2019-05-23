@@ -31,11 +31,11 @@ from typing import Optional, Callable, Tuple, Union, MutableMapping, NewType
 
 import aiojobs
 
+from kopf.k8s import watching
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
 from kopf.reactor import peering
 from kopf.reactor import registries
-from kopf.reactor import watching
 
 logger = logging.getLogger(__name__)
 

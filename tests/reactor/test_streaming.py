@@ -12,7 +12,7 @@ import collections.abc
 
 import pytest
 
-from kopf.reactor.watching import StopStreaming, streaming_next, streaming_aiter
+from kopf.k8s.watching import StopStreaming, streaming_next, streaming_aiter
 
 
 async def test_streaming_next_never_ends_with_stopiteration():

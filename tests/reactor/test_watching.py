@@ -12,7 +12,7 @@ import logging
 
 import pytest
 
-from kopf.reactor.watching import streaming_watch, infinite_watch, WatchingError
+from kopf.k8s.watching import streaming_watch, infinite_watch, WatchingError
 
 STREAM_WITH_NORMAL_EVENTS = [
     {'type': 'ADDED', 'object': {'spec': 'a'}},
