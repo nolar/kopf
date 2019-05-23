@@ -24,6 +24,7 @@ from typing import Union
 
 import kubernetes
 
+from kopf.k8s import fetching
 from kopf.reactor import registries
 
 logger = logging.getLogger(__name__)
@@ -76,22 +77,9 @@ async def streaming_watch(
     """
     kwargs = dict(timeout_seconds=DEFAULT_STREAM_TIMEOUT) if DEFAULT_STREAM_TIMEOUT else {}
     loop = asyncio.get_event_loop()
-    w = kubernetes.watch.Watch()
-    api = kubernetes.client.CustomObjectsApi()
-    if namespace is None:
-        stream = w.stream(api.list_cluster_custom_object,
-                          group=resource.group,
-                          version=resource.version,
-                          plural=resource.plural,
-                          **kwargs)
-    else:
-        stream = w.stream(api.list_namespaced_custom_object,
-                          group=resource.group,
-                          version=resource.version,
-                          plural=resource.plural,
-                          namespace=namespace,
-                          **kwargs)
-
+    fn = fetching.make_list_fn(resource=resource, namespace=namespace)
+    watch = kubernetes.watch.Watch()
+    stream = watch.stream(fn, **kwargs)
     async for event in streaming_aiter(stream, loop=loop):
 
         # "410 Gone" is for the "resource version too old" error, we must restart watching.
