@@ -2,6 +2,46 @@ import functools
 
 import kubernetes
 
+_UNSET_ = object()
+
+
+def read_crd(*, resource, default=_UNSET_):
+    try:
+        name = f'{resource.plural}.{resource.group}'
+        api = kubernetes.client.ApiextensionsV1beta1Api()
+        rsp = api.read_custom_resource_definition(name=name)
+        return rsp
+    except kubernetes.client.rest.ApiException as e:
+        if e.status == 404 and default is not _UNSET_:
+            return default
+        raise
+
+
+def read_obj(*, resource, namespace=None, name=None, default=_UNSET_):
+    try:
+        if namespace is None:
+            api = kubernetes.client.CustomObjectsApi()
+            rsp = api.get_cluster_custom_object(
+                group=resource.group,
+                version=resource.version,
+                plural=resource.plural,
+                name=name,
+            )
+        else:
+            api = kubernetes.client.CustomObjectsApi()
+            rsp = api.get_namespaced_custom_object(
+                group=resource.group,
+                version=resource.version,
+                plural=resource.plural,
+                namespace=namespace,
+                name=name,
+            )
+        return rsp
+    except kubernetes.client.rest.ApiException as e:
+        if e.status == 404 and default is not _UNSET_:
+            return default
+        raise
+
 
 def list_objs(*, resource, namespace=None):
     """
