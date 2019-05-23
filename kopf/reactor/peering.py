@@ -42,6 +42,7 @@ import iso8601
 import kubernetes
 from kubernetes.client.rest import ApiException
 
+from kopf.k8s import patching
 from kopf.reactor import registries
 
 logger = logging.getLogger(__name__)
@@ -214,33 +215,11 @@ def apply_peers(
     The dead peers are removed, the new or alive peers are stored.
     Note: this does NOT change their `lastseen` field, so do it explicitly with ``touch()``.
     """
-    body = {'status': {peer.id: None if peer.is_dead else peer.as_dict() for peer in peers}}
-    api = kubernetes.client.CustomObjectsApi()
-    if legacy:
-        api.patch_cluster_custom_object(
-            group=LEGACY_PEERING_RESOURCE.group,
-            version=LEGACY_PEERING_RESOURCE.version,
-            plural=LEGACY_PEERING_RESOURCE.plural,
-            name=name,
-            body=body,
-        )
-    elif namespace is None:
-        api.patch_cluster_custom_object(
-            group=CLUSTER_PEERING_RESOURCE.group,
-            version=CLUSTER_PEERING_RESOURCE.version,
-            plural=CLUSTER_PEERING_RESOURCE.plural,
-            name=name,
-            body=body,
-        )
-    else:
-        api.patch_namespaced_custom_object(
-            group=NAMESPACED_PEERING_RESOURCE.group,
-            version=NAMESPACED_PEERING_RESOURCE.version,
-            plural=NAMESPACED_PEERING_RESOURCE.plural,
-            namespace=namespace,
-            name=name,
-            body=body,
-        )
+    patch = {'status': {peer.id: None if peer.is_dead else peer.as_dict() for peer in peers}}
+    resource = (LEGACY_PEERING_RESOURCE if legacy else
+                CLUSTER_PEERING_RESOURCE if namespace is None else
+                NAMESPACED_PEERING_RESOURCE)
+    patching.patch_obj(resource=resource, namespace=namespace, name=name, patch=patch)
 
 
 async def peers_handler(
