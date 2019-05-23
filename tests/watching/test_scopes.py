@@ -1,15 +1,19 @@
 import collections.abc
 
-from asynctest import call
+import pytest
 
 from kopf.reactor.watching import streaming_watch
 
-EMPTY_EVENT_STREAM = []
+
+class PreventedActualCallError(Exception):
+    pass
 
 
-async def test_watching_over_cluster(resource, stream_fn, apicls_fn):
-    apicls_fn.return_value.list_cluster_custom_object = object()
-    stream_fn.return_value = iter(EMPTY_EVENT_STREAM)
+async def test_watching_over_cluster(resource, apicls_fn):
+    cl_list_fn = apicls_fn.return_value.list_cluster_custom_object
+    ns_list_fn = apicls_fn.return_value.list_namespaced_custom_object
+    cl_list_fn.side_effect = PreventedActualCallError()
+    ns_list_fn.side_effect = PreventedActualCallError()
 
     itr = streaming_watch(
         resource=resource,
@@ -18,19 +22,28 @@ async def test_watching_over_cluster(resource, stream_fn, apicls_fn):
 
     assert isinstance(itr, collections.abc.AsyncIterator)
     assert isinstance(itr, collections.abc.AsyncGenerator)
-    async for _ in itr: pass  # fully deplete it
 
-    assert stream_fn.called
-    assert stream_fn.call_count == 1
-    assert stream_fn.call_args_list == [
-        call(apicls_fn.return_value.list_cluster_custom_object,
-             group=resource.group, version=resource.version, plural=resource.plural),
-    ]
+    with pytest.raises(PreventedActualCallError):
+        async for _ in itr: pass  # fully deplete it
+
+    assert apicls_fn.called
+    assert apicls_fn.call_count == 1
+
+    # Cluster-scoped listing function is used irrelevant of the resource.
+    assert not ns_list_fn.called
+    assert cl_list_fn.called
+    assert cl_list_fn.call_count == 1
+    assert cl_list_fn.call_args[1]['group'] == resource.group
+    assert cl_list_fn.call_args[1]['version'] == resource.version
+    assert cl_list_fn.call_args[1]['plural'] == resource.plural
+    assert 'namespace' not in cl_list_fn.call_args[1]
 
 
-async def test_watching_over_namespace(resource, stream_fn, apicls_fn):
-    apicls_fn.return_value.list_namespaced_custom_object = object()
-    stream_fn.return_value = iter(EMPTY_EVENT_STREAM)
+async def test_watching_over_namespace(resource, apicls_fn):
+    cl_list_fn = apicls_fn.return_value.list_cluster_custom_object
+    ns_list_fn = apicls_fn.return_value.list_namespaced_custom_object
+    cl_list_fn.side_effect = PreventedActualCallError()
+    ns_list_fn.side_effect = PreventedActualCallError()
 
     itr = streaming_watch(
         resource=resource,
@@ -39,12 +52,18 @@ async def test_watching_over_namespace(resource, stream_fn, apicls_fn):
 
     assert isinstance(itr, collections.abc.AsyncIterator)
     assert isinstance(itr, collections.abc.AsyncGenerator)
-    async for _ in itr: pass  # fully deplete it
 
-    assert stream_fn.called
-    assert stream_fn.call_count == 1
-    assert stream_fn.call_args_list == [
-        call(apicls_fn.return_value.list_namespaced_custom_object,
-             group=resource.group, version=resource.version, plural=resource.plural,
-             namespace='something'),
-    ]
+    with pytest.raises(PreventedActualCallError):
+        async for _ in itr: pass  # fully deplete it
+
+    assert apicls_fn.called
+    assert apicls_fn.call_count == 1
+
+    # The scope-relevant listing function is used, depending on the resource.
+    assert not cl_list_fn.called
+    assert ns_list_fn.called
+    assert ns_list_fn.call_count == 1
+    assert ns_list_fn.call_args[1]['group'] == resource.group
+    assert ns_list_fn.call_args[1]['version'] == resource.version
+    assert ns_list_fn.call_args[1]['plural'] == resource.plural
+    assert ns_list_fn.call_args[1]['namespace'] == 'something'
