@@ -39,6 +39,13 @@ class SampleException(Exception):
     pass
 
 
+@pytest.fixture()
+def stream(mocker):
+    """ A mock for the stream of events as if returned by K8s client. """
+    stream = mocker.patch('kubernetes.watch.Watch.stream')
+    return stream
+
+
 async def test_empty_stream_yields_nothing(resource, stream):
     stream.return_value = iter([])
 
