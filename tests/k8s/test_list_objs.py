@@ -46,7 +46,7 @@ def test_when_successful_namespaced(client_mock, resource):
     )]
 
 
-@pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['clustered', 'namespaced'])
+@pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['without-namespace', 'with-namespace'])
 def test_raises_api_error(client_mock, resource, namespace):
     error = kubernetes.client.rest.ApiException(status=666)
     apicls_mock = client_mock.CustomObjectsApi

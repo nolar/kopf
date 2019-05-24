@@ -62,7 +62,7 @@ def test_when_present_namespaced(client_mock, resource):
     )]
 
 
-@pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['clustered', 'namespaced'])
+@pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['without-namespace', 'with-namespace'])
 def test_raises_api_error(client_mock, resource, namespace):
     error = kubernetes.client.rest.ApiException(status=666)
     apicls_mock = client_mock.CustomObjectsApi
@@ -75,7 +75,7 @@ def test_raises_api_error(client_mock, resource, namespace):
     assert e.value.status == 666
 
 
-@pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['clustered', 'namespaced'])
+@pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['without-namespace', 'with-namespace'])
 def test_docstrings_are_preserved(client_mock, resource, namespace):
     # Docstrings are important! Kubernetes client uses them to guess
     # the returned object types and the parameters type.

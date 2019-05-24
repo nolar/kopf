@@ -48,7 +48,7 @@ def test_when_present_namespaced(client_mock, resource):
     )]
 
 
-@pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['clustered', 'namespaced'])
+@pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['without-namespace', 'with-namespace'])
 def test_when_absent_with_no_default(client_mock, resource, namespace):
     error = kubernetes.client.rest.ApiException(status=404)
     apicls_mock = client_mock.CustomObjectsApi
@@ -61,7 +61,7 @@ def test_when_absent_with_no_default(client_mock, resource, namespace):
 
 
 @pytest.mark.parametrize('default', [None, object()], ids=['none', 'object'])
-@pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['clustered', 'namespaced'])
+@pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['without-namespace', 'with-namespace'])
 def test_when_absent_with_default(client_mock, resource, namespace, default):
     error = kubernetes.client.rest.ApiException(status=404)
     apicls_mock = client_mock.CustomObjectsApi
@@ -72,7 +72,7 @@ def test_when_absent_with_default(client_mock, resource, namespace, default):
     assert crd is default
 
 
-@pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['clustered', 'namespaced'])
+@pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['without-namespace', 'with-namespace'])
 def test_raises_api_error_despite_default(client_mock, resource, namespace):
     error = kubernetes.client.rest.ApiException(status=666)
     apicls_mock = client_mock.CustomObjectsApi
