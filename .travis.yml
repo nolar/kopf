@@ -15,7 +15,6 @@ env:
     - MINIKUBE_IN_STYLE=true
     - MINIKUBE_HOME=$HOME
     - MINIKUBE_VERSION=1.0.1
-    - E2E=true  # to not skip the e2e tests in pytest
   matrix:
     - KUBERNETES_VERSION=1.14.0
     - KUBERNETES_VERSION=1.13.0
@@ -36,6 +35,9 @@ before_script:
 
 script:
   - pytest -v
+  - coveralls
+  - codecov --flags unit
+  - E2E=true pytest -v -k e2e  # NB: after the coverage uploads!
 
 deploy:
   provider: pypi
