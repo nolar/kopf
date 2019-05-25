@@ -155,12 +155,11 @@ async def handle_cause(
 
     # Regular causes also do some implicit post-handling when all handlers are done.
     if done:
+        status.purge_progress(body=body, patch=patch)
+        lastseen.refresh_state(body=body, patch=patch)
         if cause.event == causation.DELETE:
             logger.debug("Removing the finalizer, thus allowing the actual deletion.")
             finalizers.remove_finalizers(body=body, patch=patch)
-        else:
-            status.purge_progress(body=body, patch=patch)
-            lastseen.refresh_state(body=body, patch=patch)
 
     # Informational causes just print the log lines.
     if cause.event == causation.NEW:
