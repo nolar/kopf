@@ -191,7 +191,7 @@ async def custom_object_handler(
     # Provoke a dummy change to trigger the reactor after sleep.
     # TODO: reimplement via the handler delayed statuses properly.
     if delay and not patch:
-        patch.setdefault('kopf', {})['dummy'] = datetime.datetime.utcnow().isoformat()
+        patch.setdefault('status', {}).setdefault('kopf', {})['dummy'] = datetime.datetime.utcnow().isoformat()
 
     # Whatever was done, apply the accumulated changes to the object.
     # But only once, to reduce the number of API calls and the generated irrelevant events.
