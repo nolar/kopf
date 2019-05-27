@@ -163,7 +163,7 @@ async def test_explicit_args_passed_properly(fn):
 @fns
 async def test_special_kwargs_added(fn):
     fn = MagicMock(fn)
-    cause = MagicMock(body={})
+    cause = MagicMock(body={'metadata': {'uid': 'uid', 'name': 'name', 'namespace': 'ns'}})
     await invoke(fn, cause=cause)
 
     assert fn.called
@@ -181,3 +181,6 @@ async def test_special_kwargs_added(fn):
     assert fn.call_args[1]['new'] is cause.new
     assert fn.call_args[1]['patch'] is cause.patch
     assert fn.call_args[1]['logger'] is cause.logger
+    assert fn.call_args[1]['uid'] is cause.body['metadata']['uid']
+    assert fn.call_args[1]['name'] is cause.body['metadata']['name']
+    assert fn.call_args[1]['namespace'] is cause.body['metadata']['namespace']

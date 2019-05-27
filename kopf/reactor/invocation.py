@@ -49,6 +49,9 @@ async def invoke(
         spec=cause.body.setdefault('spec', {}),
         meta=cause.body.setdefault('metadata', {}),
         status=cause.body.setdefault('status', {}),
+        uid=cause.body.get('metadata', {}).get('uid'),
+        name=cause.body.get('metadata', {}).get('name'),
+        namespace=cause.body.get('metadata', {}).get('namespace'),
     )
 
     if is_async_fn(fn):
