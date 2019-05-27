@@ -140,7 +140,8 @@ async def handle_cause(
 
     # Regular causes invoke the handlers.
     if cause.event in [causation.CREATE, causation.UPDATE, causation.DELETE]:
-        logger.debug(f"{cause.event!r} detected: %r", body)
+        title = causation.TITLES.get(cause.event, repr(cause.event))
+        logger.debug(f"{title.capitalize()} event: %r", body)
         try:
             await execute(lifecycle=lifecycle, registry=registry, cause=cause)
         except HandlerChildrenRetry as e:
@@ -148,8 +149,8 @@ async def handle_cause(
             delay = e.delay
             done = False
         else:
-            logger.info(f"All handlers succeeded for {cause.event!r}.")
-            events.info(cause.body, reason='Success', message=f"All handlers succeeded for {cause.event!r}.")
+            logger.info(f"All handlers succeeded for {title}.")
+            events.info(cause.body, reason='Success', message=f"All handlers succeeded for {title}.")
             done = True
 
     # Regular causes also do some implicit post-handling when all handlers are done.

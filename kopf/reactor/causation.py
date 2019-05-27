@@ -37,6 +37,13 @@ NOOP = 'noop'
 FREE = 'free'
 GONE = 'gone'
 
+# The human-readable names of these causes. Will be capitalised when needed.
+TITLES = {
+    CREATE: 'creation',
+    UPDATE: 'update',
+    DELETE: 'deletion',
+}
+
 
 class Cause(NamedTuple):
     """
