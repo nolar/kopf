@@ -82,14 +82,14 @@ def invoke(runner):
 
 @pytest.fixture()
 def login(mocker):
-    return mocker.patch('kopf.cli.login')
+    return mocker.patch('kopf.config.login')
 
 
 @pytest.fixture()
 def preload(mocker):
-    return mocker.patch('kopf.cli.preload')
+    return mocker.patch('kopf.reactor.loading.preload')
 
 
 @pytest.fixture()
 def real_run(mocker):
-    return mocker.patch('kopf.cli.real_run')
+    return mocker.patch('kopf.reactor.queueing.run')

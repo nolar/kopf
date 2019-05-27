@@ -37,7 +37,7 @@ def worker_mock(mocker):
 @pytest.fixture()
 def watcher_limited(mocker):
     """ Make event streaming finite, watcher exits after depletion. """
-    mocker.patch('kopf.reactor.queueing.infinite_watch', new=streaming_watch)
+    mocker.patch('kopf.reactor.watching.infinite_watch', new=streaming_watch)
 
 
 @pytest.fixture()

@@ -2,10 +2,10 @@ import functools
 
 import click
 
-from kopf.config import login, configure
-from kopf.reactor.loading import preload
-from kopf.reactor.peering import Peer, PEERING_DEFAULT_NAME, detect_own_id
-from kopf.reactor.queueing import run as real_run
+from kopf import config
+from kopf.reactor import loading
+from kopf.reactor import peering
+from kopf.reactor import queueing
 
 
 def logging_options(fn):
@@ -15,7 +15,7 @@ def logging_options(fn):
     @click.option('-q', '--quiet', is_flag=True)
     @functools.wraps(fn)  # to preserve other opts/args
     def wrapper(verbose, quiet, debug, *args, **kwargs):
-        configure(debug=debug, verbose=verbose, quiet=quiet)
+        config.configure(debug=debug, verbose=verbose, quiet=quiet)
         return fn(*args, **kwargs)
     return wrapper
 
@@ -32,22 +32,22 @@ def main():
 @click.option('-n', '--namespace', default=None)
 @click.option('--standalone', is_flag=True, default=False)
 @click.option('--dev', 'priority', type=int, is_flag=True, flag_value=666)
-@click.option('-P', '--peering', type=str, default=None)
+@click.option('-P', '--peering', 'peering_name', type=str, default=None, envvar='KOPF_RUN_PEERING')
 @click.option('-p', '--priority', type=int, default=0)
 @click.option('-m', '--module', 'modules', multiple=True)
 @click.argument('paths', nargs=-1)
-def run(paths, modules, peering, priority, standalone, namespace):
+def run(paths, modules, peering_name, priority, standalone, namespace):
     """ Start an operator process and handle all the requests. """
-    login()
-    preload(
+    config.login()
+    loading.preload(
         paths=paths,
         modules=modules,
     )
-    return real_run(
+    return queueing.run(
         standalone=standalone,
         namespace=namespace,
         priority=priority,
-        peering=peering,
+        peering_name=peering_name,
     )
 
 
@@ -56,16 +56,16 @@ def run(paths, modules, peering, priority, standalone, namespace):
 @click.option('-n', '--namespace', default=None)
 @click.option('-i', '--id', type=str, default=None)
 @click.option('--dev', 'priority', flag_value=666)
-@click.option('-P', '--peering', type=str, default=PEERING_DEFAULT_NAME)
+@click.option('-P', '--peering', 'peering_name', type=str, default=None, envvar='KOPF_FREEZE_PEERING')
 @click.option('-p', '--priority', type=int, default=100)
 @click.option('-t', '--lifetime', type=int, required=True)
 @click.option('-m', '--message', type=str)
-def freeze(id, message, lifetime, namespace, peering, priority):
+def freeze(id, message, lifetime, namespace, peering_name, priority):
     """ Freeze the resource handling in the cluster. """
-    login()
-    ourserlves = Peer(
-        id=id or detect_own_id(),
-        peering=peering,
+    config.login()
+    ourserlves = peering.Peer(
+        id=id or peering.detect_own_id(),
+        name=peering_name,
         namespace=namespace,
         priority=priority,
         lifetime=lifetime,
@@ -77,13 +77,13 @@ def freeze(id, message, lifetime, namespace, peering, priority):
 @logging_options
 @click.option('-n', '--namespace', default=None)
 @click.option('-i', '--id', type=str, default=None)
-@click.option('-P', '--peering', type=str, default=PEERING_DEFAULT_NAME)
-def resume(id, namespace, peering):
+@click.option('-P', '--peering', 'peering_name', type=str, default=None, envvar='KOPF_RESUME_PEERING')
+def resume(id, namespace, peering_name):
     """ Resume the resource handling in the cluster. """
-    login()
-    ourselves = Peer(
-        id=id or detect_own_id(),
-        peering=peering,
+    config.login()
+    ourselves = peering.Peer(
+        id=id or peering.detect_own_id(),
+        name=peering_name,
         namespace=namespace,
     )
     ourselves.disappear()

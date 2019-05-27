@@ -3,7 +3,7 @@ import threading
 
 import click.testing
 
-from kopf.cli import main
+from kopf import cli
 
 
 class KopfRunner:
@@ -99,7 +99,7 @@ class KopfRunner:
         # Remember the result & exception for re-raising in the parent thread.
         try:
             runner = click.testing.CliRunner()
-            result = runner.invoke(main, *self.args, **self.kwargs)
+            result = runner.invoke(cli.main, *self.args, **self.kwargs)
         except BaseException as e:
             self._result = None
             self._invoke_exception = e

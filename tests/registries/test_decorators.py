@@ -2,8 +2,8 @@ import pytest
 
 import kopf
 from kopf.reactor.handling import subregistry_var
-from kopf.reactor.registry import CREATE, UPDATE, DELETE, FIELD
-from kopf.reactor.registry import Resource, SimpleRegistry, GlobalRegistry
+from kopf.reactor.registries import CREATE, UPDATE, DELETE, FIELD
+from kopf.reactor.registries import Resource, SimpleRegistry, GlobalRegistry
 
 
 def test_on_create_minimal(mocker):
