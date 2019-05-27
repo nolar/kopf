@@ -20,12 +20,14 @@ def has_finalizers(body):
 
 
 def append_finalizers(*, body, patch):
-    finalizers = body.get('metadata', {}).get('finalizers', [])
-    patch.setdefault('metadata', {}).setdefault('finalizers', list(finalizers))
-    patch['metadata']['finalizers'].append(FINALIZER)
+    if not has_finalizers(body=body):
+        finalizers = body.get('metadata', {}).get('finalizers', [])
+        patch.setdefault('metadata', {}).setdefault('finalizers', list(finalizers))
+        patch['metadata']['finalizers'].append(FINALIZER)
 
 
 def remove_finalizers(*, body, patch):
-    finalizers = body.get('metadata', {}).get('finalizers', [])
-    patch.setdefault('metadata', {}).setdefault('finalizers', list(finalizers))
-    patch['metadata']['finalizers'].remove(FINALIZER)
+    if has_finalizers(body=body):
+        finalizers = body.get('metadata', {}).get('finalizers', [])
+        patch.setdefault('metadata', {}).setdefault('finalizers', list(finalizers))
+        patch['metadata']['finalizers'].remove(FINALIZER)
