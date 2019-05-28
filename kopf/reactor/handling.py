@@ -21,9 +21,8 @@ import logging
 from contextvars import ContextVar
 from typing import NamedTuple, Optional, Any, MutableMapping, Text, Callable, Iterable
 
-import kubernetes
-
 from kopf import events
+from kopf.k8s import patching
 from kopf.reactor import invocation
 from kopf.reactor import registries
 from kopf.structs import diffs
@@ -198,15 +197,7 @@ async def custom_object_handler(
     # But only once, to reduce the number of API calls and the generated irrelevant events.
     if patch:
         logger.debug("Patching with: %r", patch)
-        api = kubernetes.client.CustomObjectsApi()
-        api.patch_namespaced_custom_object(
-            group=resource.group,
-            version=resource.version,
-            plural=resource.plural,
-            namespace=body['metadata']['namespace'],
-            name=body['metadata']['name'],
-            body=patch,
-        )
+        patching.patch_obj(resource=resource, patch=patch, body=body)
 
     # Sleep strictly after patching, never before -- to keep the status proper.
     if delay:

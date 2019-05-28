@@ -11,13 +11,9 @@ The events look like this:
     TODO
 
 """
-
-import datetime
 import sys
 
-import kubernetes
-
-from kopf.structs import hierarchies
+from kopf.k8s import events
 
 
 # TODO: rename it it kopf.log()? kopf.events.log()? kopf.events.warn()?
@@ -27,41 +23,9 @@ def event(obj, *, type, reason, message=''):
     """
     if isinstance(obj, (list, tuple)):
         for item in obj:
-            event(obj, type=type, reason=reason, message=message)
-        return
-
-    now = datetime.datetime.utcnow()
-    namespace = obj['metadata']['namespace']
-
-    meta = kubernetes.client.V1ObjectMeta(
-        namespace=namespace,
-        generate_name='kopf-event-',
-    )
-    body = kubernetes.client.V1beta1Event(
-        metadata=meta,
-
-        action='Action?',
-        type=type,
-        reason=reason,
-        note=message,
-        # message=message,
-
-        reporting_controller='kopf',
-        reporting_instance='dev',
-        deprecated_source=kubernetes.client.V1EventSource(component='kopf'),  # used in the "From" column in `kubectl describe`.
-
-        regarding=hierarchies.build_object_reference(obj),
-        # related=hierarchies.build_object_reference(obj),
-
-        event_time=now.isoformat() + 'Z',  # '2019-01-28T18:25:03.000000Z'
-        deprecated_first_timestamp=now.isoformat() + 'Z',  # used in the "Age" column in `kubectl describe`.
-    )
-
-    api = kubernetes.client.EventsV1beta1Api()
-    api.create_namespaced_event(
-        namespace=namespace,
-        body=body,
-    )
+            events.post_event(obj=item, type=type, reason=reason, message=message)
+    else:
+        events.post_event(obj=obj, type=type, reason=reason, message=message)
 
 
 # Shortcuts for the only two officially documented event types as of now.

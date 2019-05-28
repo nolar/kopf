@@ -39,9 +39,9 @@ import socket
 from typing import Optional, Mapping, Iterable, Union
 
 import iso8601
-import kubernetes
-from kubernetes.client.rest import ApiException
 
+from kopf.k8s import fetching
+from kopf.k8s import patching
 from kopf.reactor import registries
 
 logger = logging.getLogger(__name__)
@@ -147,25 +147,9 @@ class Peer:
 
     @staticmethod
     def _is_peering_exist(name: str, namespace: Optional[str]):
-        try:
-            if namespace is None:
-                api = kubernetes.client.CustomObjectsApi()
-                api.get_cluster_custom_object(group=CLUSTER_PEERING_RESOURCE.group,
-                                              version=CLUSTER_PEERING_RESOURCE.version,
-                                              plural=CLUSTER_PEERING_RESOURCE.plural,
-                                              name=name)
-            else:
-                api = kubernetes.client.CustomObjectsApi()
-                api.get_namespaced_custom_object(group=NAMESPACED_PEERING_RESOURCE.group,
-                                                 version=NAMESPACED_PEERING_RESOURCE.version,
-                                                 plural=NAMESPACED_PEERING_RESOURCE.plural,
-                                                 namespace=namespace,
-                                                 name=name)
-            return True
-        except ApiException as e:
-            if e.status == 404:
-                return False
-            raise
+        resource = CLUSTER_PEERING_RESOURCE if namespace is None else NAMESPACED_PEERING_RESOURCE
+        obj = fetching.read_obj(resource=resource, namespace=namespace, name=name, default=None)
+        return obj is not None
 
     @staticmethod
     def _is_peering_legacy(name: str, namespace: Optional[str]):
@@ -177,29 +161,15 @@ class Peer:
             This logic will be removed since 1.0.
             Deploy ``ClusterKopfPeering`` as per documentation, and use it normally.
         """
+        crd = fetching.read_crd(resource=LEGACY_PEERING_RESOURCE, default=None)
+        if crd is None:
+            return False
 
-        try:
-            crd_name = f'{LEGACY_PEERING_RESOURCE.plural}.{LEGACY_PEERING_RESOURCE.group}'
-            api = kubernetes.client.ApiextensionsV1beta1Api()
-            rsp = api.read_custom_resource_definition(name=crd_name)
-            if str(rsp.spec.scope).lower() != 'cluster':
-                return False  # no legacy mode detected
-        except ApiException as e:
-            if e.status == 404:
-                return False
-            raise
+        if str(crd.spec.scope).lower() != 'cluster':
+            return False  # no legacy mode detected
 
-        try:
-            api = kubernetes.client.CustomObjectsApi()
-            api.get_cluster_custom_object(group=LEGACY_PEERING_RESOURCE.group,
-                                          version=LEGACY_PEERING_RESOURCE.version,
-                                          plural=LEGACY_PEERING_RESOURCE.plural,
-                                          name=name)
-            return True
-        except ApiException as e:
-            if e.status == 404:
-                return False
-            raise
+        obj = fetching.read_obj(resource=LEGACY_PEERING_RESOURCE, name=name, default=None)
+        return obj is not None
 
 
 def apply_peers(
@@ -214,33 +184,11 @@ def apply_peers(
     The dead peers are removed, the new or alive peers are stored.
     Note: this does NOT change their `lastseen` field, so do it explicitly with ``touch()``.
     """
-    body = {'status': {peer.id: None if peer.is_dead else peer.as_dict() for peer in peers}}
-    api = kubernetes.client.CustomObjectsApi()
-    if legacy:
-        api.patch_cluster_custom_object(
-            group=LEGACY_PEERING_RESOURCE.group,
-            version=LEGACY_PEERING_RESOURCE.version,
-            plural=LEGACY_PEERING_RESOURCE.plural,
-            name=name,
-            body=body,
-        )
-    elif namespace is None:
-        api.patch_cluster_custom_object(
-            group=CLUSTER_PEERING_RESOURCE.group,
-            version=CLUSTER_PEERING_RESOURCE.version,
-            plural=CLUSTER_PEERING_RESOURCE.plural,
-            name=name,
-            body=body,
-        )
-    else:
-        api.patch_namespaced_custom_object(
-            group=NAMESPACED_PEERING_RESOURCE.group,
-            version=NAMESPACED_PEERING_RESOURCE.version,
-            plural=NAMESPACED_PEERING_RESOURCE.plural,
-            namespace=namespace,
-            name=name,
-            body=body,
-        )
+    patch = {'status': {peer.id: None if peer.is_dead else peer.as_dict() for peer in peers}}
+    resource = (LEGACY_PEERING_RESOURCE if legacy else
+                CLUSTER_PEERING_RESOURCE if namespace is None else
+                NAMESPACED_PEERING_RESOURCE)
+    patching.patch_obj(resource=resource, namespace=namespace, name=name, patch=patch)
 
 
 async def peers_handler(
