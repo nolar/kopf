@@ -39,6 +39,14 @@ Kopf: Kubernetes Operators Framework
 
 .. toctree::
    :maxdepth: 2
+   :caption: Maintenance:
+
+   continuity
+   idempotence
+   troubleshooting
+
+.. toctree::
+   :maxdepth: 2
    :caption: Developer Manual:
 
    minikube
