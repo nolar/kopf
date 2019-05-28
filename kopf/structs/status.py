@@ -49,6 +49,8 @@ is not intended: otherwise, multiple distinct causes will clutter the status
 and collide with each other (especially critical for multiple updates).
 """
 
+import collections.abc
+import copy
 import datetime
 
 
@@ -144,9 +146,18 @@ def store_success(*, body, patch, handler, result=None):
         'retries': retry + 1,
         'message': None,
     })
-    if result is not None:
+    store_result(patch=patch, handler=handler, result=result)
+
+
+def store_result(*, patch, handler, result=None):
+    if result is None:
+        pass
+    elif isinstance(result, collections.abc.Mapping):
         # TODO: merge recursively (patch-merge), do not overwrite the keys if they are present.
         patch.setdefault('status', {}).setdefault(handler.id, {}).update(result)
+    else:
+        # TODO? Fail if already present?
+        patch.setdefault('status', {})[handler.id] = copy.deepcopy(result)
 
 
 def purge_progress(*, body, patch):
