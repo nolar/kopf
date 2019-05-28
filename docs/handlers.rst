@@ -47,7 +47,7 @@ To register a handler for an event, use the `kopf.on` decorator::
     def my_handler(spec, **_):
         pass
 
-All available decorators is described below.
+All available decorators are described below.
 
 
 Arguments
@@ -60,20 +60,58 @@ The following keyword arguments are available to the handlers
 * ``spec`` as an alias for ``body['spec']``.
 * ``meta`` as an alias for ``body['metadata']``.
 * ``status`` as an alias for ``body['status']``.
+* ``namespace``, ``name``, ``uid`` to identify the object being handled,
+  and are aliases for the respective fields in ``body['metadata']``.
+* ``logger`` is a per-object logger, with the messages prefixed with the object's namespace/name.
+* ``patch`` is a dict with the object changes to be applied after the handler.
+
+The high-level cause-handlers have additional keyword arguments reflecting their status:
+
+* ``cause`` is the processed cause of the handler as detected by the framework (create/update/delete).
 * ``retry`` (``int``) is the sequential number of retry of this handler.
 * ``started`` (`datetime.datetime`) is the start time of the handler, in case of retries & errors.
 * ``runtime`` (`datetime.timedelta`) is the duration of the handler run, in case of retries & errors.
 * ``diff`` is a list of changes of the object (only for the update events).
 * ``old`` is the old state of the object or a field (only for the update events).
 * ``new`` is the new state of the object or a field (only for the update events).
-* ``logger`` is a per-object logger, with the messages prefixed with the object's namespace/name.
-* ``event`` is the raw event as received from the Kubernetes API.
-* ``cause`` is the processed cause of the handler as detected by the framework (create/update/delete).
-* ``patch`` is a dict with the object changes to applied after the handler.
+
+The low-level event-handlers have a slightly different set of keyword arguments:
+
+** ``event`` for the raw event received; it is a dict with ``['type']`` & ``['object']`` keys.
 
 ``**kwargs`` (or ``**_`` to stop the linting warnings on the unused variables)
 is required for the forward compatibility: the framework can add new keywords
 in the future, and the existing handlers should accept them and not break.
+
+
+Event handlers
+==============
+
+The low-level events can be intercepted and handled silently, without
+storing the handlers' status (errors, retries, successes) on the object.
+
+This can be useful if the operator needs to watch over the objects
+of another operator or controller, without adding its own data.
+
+The following event-handler is available::
+
+    import kopf
+
+    @kopf.on.event('zalando.org', 'v1', 'kopfexamples')
+    def my_handler(event, **_):
+        pass
+
+If the event handler fails, the error is logged to the operator's log,
+and then ignored.
+
+
+.. note::
+    Please note that the event handlers are invoked for *every* event received
+    from the watching stream. This also includes the first-time listing when
+    the operator starts or restarts.
+
+    It is the developer's responsibility to make the handlers idempotent
+    (re-executable with do duplicating side-effects).
 
 
 Cause handlers
