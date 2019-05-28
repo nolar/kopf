@@ -55,7 +55,7 @@ async def test_new(registry, handlers, resource, cause_mock,
         "First appearance",
         "Adding the finalizer",
         "Patching with",
-    ], strict=True)
+    ])
 
 
 async def test_create(registry, handlers, resource, cause_mock,
@@ -94,7 +94,7 @@ async def test_create(registry, handlers, resource, cause_mock,
         "Handler 'create_fn' succeeded",
         "All handlers succeeded",
         "Patching with",
-    ], strict=True)
+    ])
 
 
 async def test_update(registry, handlers, resource, cause_mock,
@@ -133,7 +133,7 @@ async def test_update(registry, handlers, resource, cause_mock,
         "Handler 'update_fn' succeeded",
         "All handlers succeeded",
         "Patching with",
-    ], strict=True)
+    ])
 
 
 async def test_delete(registry, handlers, resource, cause_mock,
@@ -170,7 +170,7 @@ async def test_delete(registry, handlers, resource, cause_mock,
         "All handlers succeeded",
         "Removing the finalizer",
         "Patching with",
-    ], strict=True)
+    ])
 
 
 #
@@ -200,7 +200,7 @@ async def test_gone(registry, handlers, resource, cause_mock,
 
     assert_logs([
         "Deleted, really deleted",
-    ], strict=True)
+    ])
 
 
 async def test_free(registry, handlers, resource, cause_mock,
@@ -226,7 +226,7 @@ async def test_free(registry, handlers, resource, cause_mock,
 
     assert_logs([
         "Deletion event, but we are done with it",
-    ], strict=True)
+    ])
 
 
 async def test_noop(registry, handlers, resource, cause_mock,
@@ -252,4 +252,4 @@ async def test_noop(registry, handlers, resource, cause_mock,
 
     assert_logs([
         "Something has changed, but we are not interested",
-    ], strict=True)
+    ])
