@@ -1,7 +1,7 @@
 import pytest
 
 import kopf
-from kopf.structs.progress import set_retry_time, get_retry_count
+from kopf.structs.status import set_retry_time, get_retry_count
 
 
 @pytest.mark.parametrize('lifecycle', [

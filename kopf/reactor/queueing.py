@@ -31,17 +31,16 @@ from typing import Optional, Callable, Tuple, Union, MutableMapping, NewType
 
 import aiojobs
 
-from kopf.reactor.handling import custom_object_handler
-from kopf.reactor.lifecycles import get_default_lifecycle
-from kopf.reactor.peering import peers_keepalive, peers_handler, Peer, detect_own_id
-from kopf.reactor.peering import PEERING_DEFAULT_NAME
-from kopf.reactor.registry import get_default_registry, BaseRegistry, Resource
-from kopf.reactor.watching import infinite_watch
+from kopf.reactor import handling
+from kopf.reactor import lifecycles
+from kopf.reactor import peering
+from kopf.reactor import registries
+from kopf.reactor import watching
 
 logger = logging.getLogger(__name__)
 
 ObjectUid = NewType('ObjectUid', str)
-ObjectRef = Tuple[Resource, ObjectUid]
+ObjectRef = Tuple[registries.Resource, ObjectUid]
 Queues = MutableMapping[ObjectRef, asyncio.Queue]
 
 EOS = object()
@@ -60,7 +59,7 @@ WORKER_EXIT_TIMEOUT = 2.0
 # TODO: add the label_selector support for the dev-mode?
 async def watcher(
         namespace: Union[None, str],
-        resource: Resource,
+        resource: registries.Resource,
         handler: Callable,
 ):
     """
@@ -83,7 +82,7 @@ async def watcher(
     try:
         # Either use the existing object's queue, or create a new one together with the per-object job.
         # "Fire-and-forget": we do not wait for the result; the job destroys itself when it is fully done.
-        async for event in infinite_watch(resource=resource, namespace=namespace):
+        async for event in watching.infinite_watch(resource=resource, namespace=namespace):
             key = (resource, event['object']['metadata']['uid'])
             try:
                 await queues[key].put(event)
@@ -165,10 +164,10 @@ async def worker(
 
 def create_tasks(
         lifecycle: Optional[Callable] = None,
-        registry: Optional[BaseRegistry] = None,
+        registry: Optional[registries.BaseRegistry] = None,
         standalone: bool = False,
         priority: int = 0,
-        peering: str = PEERING_DEFAULT_NAME,
+        peering_name: str = peering.PEERING_DEFAULT_NAME,
         namespace: Optional[str] = None,
 ):
     """
@@ -178,22 +177,22 @@ def create_tasks(
     """
 
     # The freezer and the registry are scoped to this whole task-set, to sync them all.
-    lifecycle = lifecycle if lifecycle is not None else get_default_lifecycle()
-    registry = registry if registry is not None else get_default_registry()
+    lifecycle = lifecycle if lifecycle is not None else lifecycles.get_default_lifecycle()
+    registry = registry if registry is not None else registries.get_default_registry()
     freeze = asyncio.Event()
     tasks = []
 
     # Monitor the peers, unless explicitly disabled.
-    ourselves: Optional[Peer] = Peer.detect(
-        id=detect_own_id(), priority=priority,
-        standalone=standalone, namespace=namespace, peering=peering,
+    ourselves: Optional[peering.Peer] = peering.Peer.detect(
+        id=peering.detect_own_id(), priority=priority,
+        standalone=standalone, namespace=namespace, name=peering_name,
     )
     if ourselves:
         tasks.extend([
-            asyncio.Task(peers_keepalive(ourselves=ourselves)),
+            asyncio.Task(peering.peers_keepalive(ourselves=ourselves)),
             asyncio.Task(watcher(namespace=namespace,
                                  resource=ourselves.resource,
-                                 handler=functools.partial(peers_handler,
+                                 handler=functools.partial(peering.peers_handler,
                                                            ourselves=ourselves,
                                                            freeze=freeze))),  # freeze is set/cleared
         ])
@@ -203,7 +202,7 @@ def create_tasks(
         tasks.extend([
             asyncio.Task(watcher(namespace=namespace,
                                  resource=resource,
-                                 handler=functools.partial(custom_object_handler,
+                                 handler=functools.partial(handling.custom_object_handler,
                                                            lifecycle=lifecycle,
                                                            registry=registry,
                                                            resource=resource,
@@ -215,11 +214,11 @@ def create_tasks(
 
 def run(
         lifecycle: Optional[Callable] = None,
-        registry: Optional[BaseRegistry] = None,
+        registry: Optional[registries.BaseRegistry] = None,
         standalone: bool = False,
         priority: int = 0,
         loop: Optional[asyncio.BaseEventLoop] = None,
-        peering: str = PEERING_DEFAULT_NAME,
+        peering_name: str = peering.PEERING_DEFAULT_NAME,
         namespace: Optional[str] = None,
 ):
     """
@@ -235,7 +234,7 @@ def run(
         standalone=standalone,
         namespace=namespace,
         priority=priority,
-        peering=peering,
+        peering_name=peering_name,
     )
 
     # Run the presumably infinite tasks until one of them fails (they never exit normally).

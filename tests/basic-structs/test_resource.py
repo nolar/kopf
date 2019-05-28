@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.reactor.registry import Resource
+from kopf.reactor.registries import Resource
 
 
 def test_no_args():

@@ -24,7 +24,7 @@ from typing import Union
 
 import kubernetes
 
-from kopf.reactor.registry import Resource
+from kopf.reactor import registries
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ async def streaming_aiter(src, loop=None, executor=None):
 
 
 async def streaming_watch(
-        resource: Resource,
+        resource: registries.Resource,
         namespace: Union[None, str],
 ):
     """
@@ -115,7 +115,7 @@ async def streaming_watch(
 
 
 async def infinite_watch(
-        resource: Resource,
+        resource: registries.Resource,
         namespace: Union[None, str],
 ):
     """

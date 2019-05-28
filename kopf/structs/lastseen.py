@@ -16,7 +16,7 @@ https://kubernetes.io/docs/concepts/overview/object-management-kubectl/declarati
 import copy
 import json
 
-from kopf.structs.diffs import diff
+from kopf.structs import diffs
 
 LAST_SEEN_ANNOTATION = 'kopf.zalando.org/last-handled-configuration'
 """ The annotation name for the last stored state of the resource. """
@@ -62,7 +62,7 @@ def is_state_changed(body):
 def get_state_diffs(body):
     old = retreive_state(body)
     new = get_state(body)
-    return old, new, diff(old, new)
+    return old, new, diffs.diff(old, new)
 
 
 def retreive_state(body):
@@ -71,6 +71,6 @@ def retreive_state(body):
     return state_obj
 
 
-def refresh_last_seen_state(*, body, patch):
+def refresh_state(*, body, patch):
     state = get_state(body)
     patch.setdefault('metadata', {}).setdefault('annotations', {})[LAST_SEEN_ANNOTATION] = json.dumps(state)

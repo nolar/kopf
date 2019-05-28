@@ -4,7 +4,7 @@ from unittest.mock import Mock
 import pytest
 
 from kopf import SimpleRegistry, GlobalRegistry
-from kopf.reactor.registry import FIELD
+from kopf.reactor.registries import FIELD
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.

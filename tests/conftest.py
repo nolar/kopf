@@ -5,7 +5,7 @@ import asynctest
 import pytest
 import pytest_mock
 
-from kopf.reactor.registry import Resource
+from kopf.reactor.registries import Resource
 
 
 # Make all tests in this directory and below asyncio-compatible by default.

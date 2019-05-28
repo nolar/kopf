@@ -12,12 +12,12 @@ The events look like this:
 
 """
 
+import datetime
 import sys
 
-import datetime
 import kubernetes
 
-from kopf.structs.hierarchies import build_object_reference
+from kopf.structs import hierarchies
 
 
 # TODO: rename it it kopf.log()? kopf.events.log()? kopf.events.warn()?
@@ -50,8 +50,8 @@ def event(obj, *, type, reason, message=''):
         reporting_instance='dev',
         deprecated_source=kubernetes.client.V1EventSource(component='kopf'),  # used in the "From" column in `kubectl describe`.
 
-        regarding=build_object_reference(obj),
-        # related=build_object_reference(obj),
+        regarding=hierarchies.build_object_reference(obj),
+        # related=hierarchies.build_object_reference(obj),
 
         event_time=now.isoformat() + 'Z',  # '2019-01-28T18:25:03.000000Z'
         deprecated_first_timestamp=now.isoformat() + 'Z',  # used in the "Age" column in `kubectl describe`.

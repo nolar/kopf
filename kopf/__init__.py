@@ -2,6 +2,10 @@
 The main Kopf module for all the exported functions & classes.
 """
 
+# Unlike all other places, where we import other modules and refer
+# the functions via the modules, this is the framework's top-level interface,
+# as it is seen by the users. So, we export the individual functions.
+
 from kopf import (
     on,  # as a separate name on the public namespace
 )
@@ -35,7 +39,7 @@ from kopf.reactor.queueing import (
     run,
     create_tasks,
 )
-from kopf.reactor.registry import (
+from kopf.reactor.registries import (
     BaseRegistry,
     SimpleRegistry,
     GlobalRegistry,

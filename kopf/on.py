@@ -13,9 +13,8 @@ The decorators for the event handlers. Usually used as::
 
 from typing import Optional, Union, Tuple, List
 
-from kopf.reactor.handling import subregistry_var
-from kopf.reactor.registry import CREATE, UPDATE, DELETE, FIELD
-from kopf.reactor.registry import GlobalRegistry, SimpleRegistry, get_default_registry
+from kopf.reactor import handling
+from kopf.reactor import registries
 
 
 def create(
@@ -23,13 +22,13 @@ def create(
         *,
         id: Optional[str] = None,
         timeout: Optional[float] = None,
-        registry: Optional[GlobalRegistry] = None):
+        registry: Optional[registries.GlobalRegistry] = None):
     """ ``@kopf.on.create()`` handler for the object creation. """
-    registry = registry if registry is not None else get_default_registry()
+    registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn):
         registry.register(
             group=group, version=version, plural=plural,
-            event=CREATE, id=id, timeout=timeout,
+            event=registries.CREATE, id=id, timeout=timeout,
             fn=fn)
         return fn
     return decorator
@@ -40,13 +39,13 @@ def update(
         *,
         id: Optional[str] = None,
         timeout: Optional[float] = None,
-        registry: Optional[GlobalRegistry] = None):
+        registry: Optional[registries.GlobalRegistry] = None):
     """ ``@kopf.on.update()`` handler for the object update or change. """
-    registry = registry if registry is not None else get_default_registry()
+    registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn):
         registry.register(
             group=group, version=version, plural=plural,
-            event=UPDATE, id=id, timeout=timeout,
+            event=registries.UPDATE, id=id, timeout=timeout,
             fn=fn)
         return fn
     return decorator
@@ -57,13 +56,13 @@ def delete(
         *,
         id: Optional[str] = None,
         timeout: Optional[float] = None,
-        registry: Optional[GlobalRegistry] = None):
+        registry: Optional[registries.GlobalRegistry] = None):
     """ ``@kopf.on.delete()`` handler for the object deletion. """
-    registry = registry if registry is not None else get_default_registry()
+    registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn):
         registry.register(
             group=group, version=version, plural=plural,
-            event=DELETE, id=id, timeout=timeout,
+            event=registries.DELETE, id=id, timeout=timeout,
             fn=fn)
         return fn
     return decorator
@@ -75,13 +74,13 @@ def field(
         *,
         id: Optional[str] = None,
         timeout: Optional[float] = None,
-        registry: Optional[GlobalRegistry] = None):
+        registry: Optional[registries.GlobalRegistry] = None):
     """ ``@kopf.on.field()`` handler for the individual field changes. """
-    registry = registry if registry is not None else get_default_registry()
+    registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn):
         registry.register(
             group=group, version=version, plural=plural,
-            event=FIELD, field=field, id=id, timeout=timeout,
+            event=registries.FIELD, field=field, id=id, timeout=timeout,
             fn=fn)
         return fn
     return decorator
@@ -93,7 +92,7 @@ def this(
         *,
         id: Optional[str] = None,
         timeout: Optional[float] = None,
-        registry: Optional[SimpleRegistry] = None):
+        registry: Optional[registries.SimpleRegistry] = None):
     """
     ``@kopf.on.this()`` decorator for the dynamically generated sub-handlers.
 
@@ -123,7 +122,7 @@ def this(
     Note: ``task=task`` is needed to freeze the closure variable, so that every
     create function will have its own value, not the latest in the for-cycle.
     """
-    registry = registry if registry is not None else subregistry_var.get()
+    registry = registry if registry is not None else handling.subregistry_var.get()
     def decorator(fn):
         registry.register(id=id, fn=fn, timeout=timeout)
         return fn
@@ -135,7 +134,7 @@ def register(
         *,
         id: Optional[str] = None,
         timeout: Optional[float] = None,
-        registry: Optional[SimpleRegistry] = None,
+        registry: Optional[registries.SimpleRegistry] = None,
 ):
     """
     Register a function as a sub-handler of the currently executed handler.

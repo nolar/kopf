@@ -31,10 +31,10 @@ def test_options_passed_to_preload(invoke, options, envvars, kwarg, value, login
     ('namespace', 'ns', ['--namespace=ns'], {}),
     ('namespace', 'ns', [], {'KOPF_RUN_NAMESPACE': 'ns'}),
 
-    ('peering', None, [], {}),
-    ('peering', 'peer', ['-P', 'peer'], {}),
-    ('peering', 'peer', ['--peering=peer'], {}),
-    ('peering', 'peer', [], {'KOPF_RUN_PEERING': 'peer'}),
+    ('peering_name', None, [], {}),
+    ('peering_name', 'peer', ['-P', 'peer'], {}),
+    ('peering_name', 'peer', ['--peering=peer'], {}),
+    ('peering_name', 'peer', [], {'KOPF_RUN_PEERING': 'peer'}),
 
     ('priority', 0, [], {}),
     ('priority', 123, ['-p', '123'], {}),
