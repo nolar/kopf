@@ -12,7 +12,7 @@ def test_simple_registry_via_iter(mocker):
     cause = mocker.Mock(event=None, diff=None)
 
     registry = SimpleRegistry()
-    iterator = registry.iter_handlers(cause)
+    iterator = registry.iter_cause_handlers(cause)
 
     assert isinstance(iterator, collections.abc.Iterator)
     assert not isinstance(iterator, collections.abc.Collection)
@@ -27,7 +27,7 @@ def test_simple_registry_via_list(mocker):
     cause = mocker.Mock(event=None, diff=None)
 
     registry = SimpleRegistry()
-    handlers = registry.get_handlers(cause)
+    handlers = registry.get_cause_handlers(cause)
 
     assert isinstance(handlers, collections.abc.Iterable)
     assert isinstance(handlers, collections.abc.Container)
@@ -40,7 +40,7 @@ def test_simple_registry_with_minimal_signature(mocker):
 
     registry = SimpleRegistry()
     registry.register(some_fn)
-    handlers = registry.get_handlers(cause)
+    handlers = registry.get_cause_handlers(cause)
 
     assert len(handlers) == 1
     assert handlers[0].fn is some_fn
@@ -50,7 +50,7 @@ def test_global_registry_via_iter(mocker, resource):
     cause = mocker.Mock(resource=resource, event=None, diff=None)
 
     registry = GlobalRegistry()
-    iterator = registry.iter_handlers(cause)
+    iterator = registry.iter_cause_handlers(cause)
 
     assert isinstance(iterator, collections.abc.Iterator)
     assert not isinstance(iterator, collections.abc.Collection)
@@ -65,7 +65,7 @@ def test_global_registry_via_list(mocker, resource):
     cause = mocker.Mock(resource=resource, event=None, diff=None)
 
     registry = GlobalRegistry()
-    handlers = registry.get_handlers(cause)
+    handlers = registry.get_cause_handlers(cause)
 
     assert isinstance(handlers, collections.abc.Iterable)
     assert isinstance(handlers, collections.abc.Container)
@@ -77,8 +77,8 @@ def test_global_registry_with_minimal_signature(mocker, resource):
     cause = mocker.Mock(resource=resource, event=None, diff=None)
 
     registry = GlobalRegistry()
-    registry.register(resource.group, resource.version, resource.plural, some_fn)
-    handlers = registry.get_handlers(cause)
+    registry.register_cause_handler(resource.group, resource.version, resource.plural, some_fn)
+    handlers = registry.get_cause_handlers(cause)
 
     assert len(handlers) == 1
     assert handlers[0].fn is some_fn

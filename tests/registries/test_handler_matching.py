@@ -24,7 +24,7 @@ def register_fn(registry, resource):
     if isinstance(registry, SimpleRegistry):
         return registry.register
     if isinstance(registry, GlobalRegistry):
-        return functools.partial(registry.register, resource.group, resource.version, resource.plural)
+        return functools.partial(registry.register_cause_handler, resource.group, resource.version, resource.plural)
     raise Exception(f"Unsupported registry type: {registry}")
 
 
@@ -58,19 +58,19 @@ def cause_any_diff(resource, request):
 
 def test_catchall_handlers_without_field_found(cause_any_diff, registry, register_fn):
     register_fn(some_fn, event=None, field=None)
-    handlers = registry.get_handlers(cause_any_diff)
+    handlers = registry.get_cause_handlers(cause_any_diff)
     assert handlers
 
 
 def test_catchall_handlers_with_field_found(cause_with_diff, registry, register_fn):
     register_fn(some_fn, event=None, field='some-field')
-    handlers = registry.get_handlers(cause_with_diff)
+    handlers = registry.get_cause_handlers(cause_with_diff)
     assert handlers
 
 
 def test_catchall_handlers_with_field_ignored(cause_no_diff, registry, register_fn):
     register_fn(some_fn, event=None, field='some-field')
-    handlers = registry.get_handlers(cause_no_diff)
+    handlers = registry.get_cause_handlers(cause_no_diff)
     assert not handlers
 
 #
@@ -80,31 +80,31 @@ def test_catchall_handlers_with_field_ignored(cause_no_diff, registry, register_
 
 def test_relevant_handlers_without_field_found(cause_any_diff, registry, register_fn):
     register_fn(some_fn, event='some-event')
-    handlers = registry.get_handlers(cause_any_diff)
+    handlers = registry.get_cause_handlers(cause_any_diff)
     assert handlers
 
 
 def test_relevant_handlers_with_field_found(cause_with_diff, registry, register_fn):
     register_fn(some_fn, event='some-event', field='some-field')
-    handlers = registry.get_handlers(cause_with_diff)
+    handlers = registry.get_cause_handlers(cause_with_diff)
     assert handlers
 
 
 def test_relevant_handlers_with_field_ignored(cause_no_diff, registry, register_fn):
     register_fn(some_fn, event='some-event', field='some-field')
-    handlers = registry.get_handlers(cause_no_diff)
+    handlers = registry.get_cause_handlers(cause_no_diff)
     assert not handlers
 
 
 def test_irrelevant_handlers_without_field_ignored(cause_any_diff, registry, register_fn):
     register_fn(some_fn, event='another-event')
-    handlers = registry.get_handlers(cause_any_diff)
+    handlers = registry.get_cause_handlers(cause_any_diff)
     assert not handlers
 
 
 def test_irrelevant_handlers_with_field_ignored(cause_any_diff, registry, register_fn):
     register_fn(some_fn, event='another-event', field='another-field')
-    handlers = registry.get_handlers(cause_any_diff)
+    handlers = registry.get_cause_handlers(cause_any_diff)
     assert not handlers
 
 #
@@ -119,7 +119,7 @@ def test_order_persisted_a(cause_with_diff, registry, register_fn):
     register_fn(some_fn, event=None, field='filtered-out-field')
     register_fn(some_fn, event=None, field='some-field')
 
-    handlers = registry.get_handlers(cause_with_diff)
+    handlers = registry.get_cause_handlers(cause_with_diff)
 
     # Order must be preserved -- same as registered.
     assert len(handlers) == 3
@@ -138,7 +138,7 @@ def test_order_persisted_b(cause_with_diff, registry, register_fn):
     register_fn(some_fn, event='some-event')
     register_fn(some_fn, event=None)
 
-    handlers = registry.get_handlers(cause_with_diff)
+    handlers = registry.get_cause_handlers(cause_with_diff)
 
     # Order must be preserved -- same as registered.
     assert len(handlers) == 3

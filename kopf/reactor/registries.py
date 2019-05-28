@@ -15,6 +15,7 @@ import abc
 import collections
 import functools
 from types import FunctionType, MethodType
+from typing import MutableMapping
 
 
 # An immutable reference to a custom resource definition.
@@ -29,11 +30,18 @@ class BaseRegistry(metaclass=abc.ABCMeta):
     A registry stores the handlers and provides them to the reactor.
     """
 
-    def get_handlers(self, cause):
-        return list(self.iter_handlers(cause=cause))
+    def get_cause_handlers(self, cause):
+        return list(self.iter_cause_handlers(cause=cause))
 
     @abc.abstractmethod
-    def iter_handlers(self, cause):
+    def iter_cause_handlers(self, cause):
+        pass
+
+    def get_event_handlers(self, resource, event):
+        return list(self.iter_event_handlers(resource=resource, event=event))
+
+    @abc.abstractmethod
+    def iter_event_handlers(self, resource, event):
         pass
 
 
@@ -46,6 +54,9 @@ class SimpleRegistry(BaseRegistry):
         super().__init__()
         self.prefix = prefix
         self._handlers = []  # [Handler, ...]
+
+    def __bool__(self):
+        return bool(self._handlers)
 
     def append(self, handler):
         self._handlers.append(handler)
@@ -69,7 +80,7 @@ class SimpleRegistry(BaseRegistry):
         self.append(handler)
         return fn  # to be usable as a decorator too.
 
-    def iter_handlers(self, cause):
+    def iter_cause_handlers(self, cause):
         fields = {field for _, field, _, _ in cause.diff or []}
         for handler in self._handlers:
             if handler.event is None or handler.event == cause.event:
@@ -78,6 +89,10 @@ class SimpleRegistry(BaseRegistry):
                         yield handler
                 else:
                     yield handler
+
+    def iter_event_handlers(self, resource, event):
+        for handler in self._handlers:
+            yield handler
 
 
 def get_callable_id(c):
@@ -108,29 +123,56 @@ class GlobalRegistry(BaseRegistry):
 
     def __init__(self):
         super().__init__()
-        self._handlers = {}  # {Resource: SimpleRegistry[Handler, ...]}
+        self._cause_handlers: MutableMapping[Resource, SimpleRegistry] = {}
+        self._event_handlers: MutableMapping[Resource, SimpleRegistry] = {}
 
-    def register(self, group, version, plural, fn, id=None, event=None, field=None, timeout=None):
+    def register_cause_handler(self, group, version, plural, fn,
+                               id=None, event=None, field=None, timeout=None):
         """
         Register an additional handler function for the specific resource and specific event.
         """
         resource = Resource(group, version, plural)
-        registry = self._handlers.setdefault(resource, SimpleRegistry())
+        registry = self._cause_handlers.setdefault(resource, SimpleRegistry())
         registry.register(event=event, field=field, fn=fn, id=id, timeout=timeout)
+        return fn  # to be usable as a decorator too.
+
+    def register_event_handler(self, group, version, plural, fn, id=None):
+        """
+        Register an additional handler function for the low-level events.
+        """
+        resource = Resource(group, version, plural)
+        registry = self._event_handlers.setdefault(resource, SimpleRegistry())
+        registry.register(fn=fn, id=id)
         return fn  # to be usable as a decorator too.
 
     @property
     def resources(self):
         """ All known resources in the registry. """
-        return frozenset(self._handlers)
+        return frozenset(self._cause_handlers) | frozenset(self._event_handlers)
 
-    def iter_handlers(self, cause):
+    def has_cause_handlers(self, resource):
+        resource_registry = self._cause_handlers.get(resource, None)
+        return bool(resource_registry)
+
+    def has_event_handlers(self, resource):
+        resource_registry = self._event_handlers.get(resource, None)
+        return bool(resource_registry)
+
+    def iter_cause_handlers(self, cause):
         """
         Iterate all handlers that match this cause/event, in the order they were registered (even if mixed).
         """
-        resource_registry = self._handlers.get(cause.resource, None)
+        resource_registry = self._cause_handlers.get(cause.resource, None)
         if resource_registry is not None:
-            yield from resource_registry.iter_handlers(cause=cause)
+            yield from resource_registry.iter_cause_handlers(cause=cause)
+
+    def iter_event_handlers(self, resource, event):
+        """
+        Iterate all handlers for the low-level events.
+        """
+        resource_registry = self._event_handlers.get(resource, None)
+        if resource_registry is not None:
+            yield from resource_registry.iter_event_handlers(resource=resource, event=event)
 
 
 _default_registry = GlobalRegistry()

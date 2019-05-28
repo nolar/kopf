@@ -19,7 +19,7 @@ import collections
 import datetime
 import logging
 from contextvars import ContextVar
-from typing import Optional, Callable, Iterable
+from typing import Optional, Callable, Iterable, Union
 
 from kopf import events
 from kopf.k8s import patching
@@ -74,7 +74,7 @@ cause_var: ContextVar[causation.Cause] = ContextVar('cause_var')
 
 async def custom_object_handler(
         lifecycle: Callable,
-        registry: registries.BaseRegistry,
+        registry: registries.GlobalRegistry,
         resource: registries.Resource,
         event: dict,
         freeze: asyncio.Event,
@@ -89,6 +89,8 @@ async def custom_object_handler(
     and therefore do not call the handling logic.
     """
     body = event['object']
+    delay = None
+    patch = {}
 
     # Each object has its own prefixed logger, to distinguish parallel handling.
     logger = ObjectLogger(logging.getLogger(__name__), extra=dict(
@@ -101,11 +103,15 @@ async def custom_object_handler(
         logger.debug("Ignoring the events due to freeze.")
         return
 
+    # Invoke all silent spies. No causation, no progress storage is performed.
+    if registry.has_event_handlers(resource=resource):
+        await handle_event(registry=registry, resource=resource, event=event, logger=logger, patch=patch)
+
     # Object patch accumulator. Populated by the methods. Applied in the end of the handler.
     # Detect the cause and handle it (or at least log this happened).
-    patch = {}
-    cause = causation.detect_cause(event=event, resource=resource, logger=logger, patch=patch)
-    delay = await handle_cause(lifecycle=lifecycle, registry=registry, cause=cause)
+    if registry.has_cause_handlers(resource=resource):
+        cause = causation.detect_cause(event=event, resource=resource, logger=logger, patch=patch)
+        delay = await handle_cause(lifecycle=lifecycle, registry=registry, cause=cause)
 
     # Provoke a dummy change to trigger the reactor after sleep.
     # TODO: reimplement via the handler delayed statuses properly.
@@ -122,6 +128,43 @@ async def custom_object_handler(
     if delay:
         logger.info(f"Sleeping for {delay} seconds for the delayed handlers.")
         await asyncio.sleep(delay)
+
+
+async def handle_event(
+        registry: registries.BaseRegistry,
+        resource: registries.Resource,
+        logger: Union[logging.LoggerAdapter, logging.Logger],
+        patch: dict,
+        event: dict,
+):
+    """
+    Handle a received event, log but ignore all errors.
+
+    This is a lightweight version of the cause handling, but for the raw events,
+    without any progress persistence. Multi-step calls are also not supported.
+    If the handler fails, it fails and is never retried.
+    """
+    handlers = registry.get_event_handlers(resource=resource, event=event)
+    for handler in handlers:
+
+        # The exceptions are handled locally and are not re-raised, to keep the operator running.
+        try:
+            logger.debug(f"Invoking handler {handler.id!r}.")
+
+            # TODO: also set the context-vars, despite most of the make no sense here.
+            result = await invocation.invoke(
+                handler.fn,
+                event=event,
+                patch=patch,
+                logger=logger,
+            )
+
+        except Exception:
+            logger.exception(f"Handler {handler.id!r} failed with an exception. Will ignore.")
+
+        else:
+            logger.info(f"Handler {handler.id!r} succeeded.")
+            status.store_result(patch=patch, handler=handler, result=result)
 
 
 async def handle_cause(
@@ -281,7 +324,7 @@ async def _execute(
     logger = cause.logger
 
     # Filter and select the handlers to be executed right now, on this event reaction cycle.
-    handlers = registry.get_handlers(cause=cause)
+    handlers = registry.get_cause_handlers(cause=cause)
     handlers_done = [h for h in handlers if status.is_finished(body=cause.body, handler=h)]
     handlers_wait = [h for h in handlers if status.is_sleeping(body=cause.body, handler=h)]
     handlers_todo = [h for h in handlers if status.is_awakened(body=cause.body, handler=h)]
