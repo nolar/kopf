@@ -80,7 +80,7 @@ def field(
     def decorator(fn):
         registry.register(
             group=group, version=version, plural=plural,
-            event=registries.FIELD, field=field, id=id, timeout=timeout,
+            event=None, field=field, id=id, timeout=timeout,
             fn=fn)
         return fn
     return decorator

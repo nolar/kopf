@@ -2,7 +2,7 @@ import pytest
 
 import kopf
 from kopf.reactor.handling import subregistry_var
-from kopf.reactor.registries import CREATE, UPDATE, DELETE, FIELD
+from kopf.reactor.registries import CREATE, UPDATE, DELETE
 from kopf.reactor.registries import Resource, SimpleRegistry, GlobalRegistry
 
 
@@ -70,7 +70,7 @@ def test_on_field_minimal(mocker):
     handlers = registry.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
-    assert handlers[0].event == FIELD
+    assert handlers[0].event is None
     assert handlers[0].field == ('field', 'subfield')
     assert handlers[0].timeout is None
 
@@ -153,7 +153,7 @@ def test_on_field_with_all_kwargs(mocker):
     handlers = registry.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
-    assert handlers[0].event == FIELD
+    assert handlers[0].event is None
     assert handlers[0].field ==('field', 'subfield')
     assert handlers[0].id == 'id/field.subfield'
     assert handlers[0].timeout == 123

@@ -21,7 +21,6 @@ from types import FunctionType, MethodType
 CREATE = 'create'
 UPDATE = 'update'
 DELETE = 'delete'
-FIELD = 'field'
 
 
 # An immutable reference to a custom resource definition.
@@ -79,11 +78,12 @@ class SimpleRegistry(BaseRegistry):
     def iter_handlers(self, cause):
         fields = {field for _, field, _, _ in cause.diff or []}
         for handler in self._handlers:
-            if handler.event == FIELD:
-                if any(field[:len(handler.field)] == handler.field for field in fields):
+            if handler.event is None or handler.event == cause.event:
+                if handler.field:
+                    if any(field[:len(handler.field)] == handler.field for field in fields):
+                        yield handler
+                else:
                     yield handler
-            elif handler.event is None or handler.event == cause.event:
-                yield handler
 
 
 def get_callable_id(c):
@@ -132,8 +132,7 @@ class GlobalRegistry(BaseRegistry):
 
     def iter_handlers(self, cause):
         """
-        Iterate all handlers for this and special FIELD event, in the order they were registered (even if mixed).
-        For the FIELD event, also filter only the handlers where the field matches one of the actually changed fields.
+        Iterate all handlers that match this cause/event, in the order they were registered (even if mixed).
         """
         resource_registry = self._handlers.get(cause.resource, None)
         if resource_registry is not None:
