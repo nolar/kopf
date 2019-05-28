@@ -100,15 +100,15 @@ def handlers(clear_default_registry):
     update_mock = Mock(return_value=None)
     delete_mock = Mock(return_value=None)
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', id='create_fn')
+    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', id='create_fn', timeout=600)
     async def create_fn(**kwargs):
         return create_mock(**kwargs)
 
-    @kopf.on.update('zalando.org', 'v1', 'kopfexamples', id='update_fn')
+    @kopf.on.update('zalando.org', 'v1', 'kopfexamples', id='update_fn', timeout=600)
     async def update_fn(**kwargs):
         return update_mock(**kwargs)
 
-    @kopf.on.delete('zalando.org', 'v1', 'kopfexamples', id='delete_fn')
+    @kopf.on.delete('zalando.org', 'v1', 'kopfexamples', id='delete_fn', timeout=600)
     async def delete_fn(**kwargs):
         return delete_mock(**kwargs)
 
