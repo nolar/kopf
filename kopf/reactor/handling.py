@@ -19,10 +19,11 @@ import collections
 import datetime
 import logging
 from contextvars import ContextVar
-from typing import NamedTuple, Optional, Any, MutableMapping, Text, Callable, Iterable
+from typing import Optional, Callable, Iterable
 
 from kopf import events
 from kopf.k8s import patching
+from kopf.reactor import causation
 from kopf.reactor import invocation
 from kopf.reactor import registries
 from kopf.structs import diffs
@@ -41,23 +42,6 @@ class ObjectLogger(logging.LoggerAdapter):
     """ An utility to prefix the per-object log messages. """
     def process(self, msg, kwargs):
         return f"[{self.extra['namespace']}/{self.extra['name']}] {msg}", kwargs
-
-
-class Cause(NamedTuple):
-    """
-    The cause is what has caused the whole reaction as a chain of handlers.
-
-    Unlike the low-level Kubernetes watch-events, the cause is aware
-    of the actual field changes, including the multi-handlers changes.
-    """
-    logger: ObjectLogger
-    resource: registries.Resource
-    event: Text
-    body: MutableMapping
-    patch: MutableMapping
-    diff: Optional[diffs.Diff] = None
-    old: Optional[Any] = None
-    new: Optional[Any] = None
 
 
 class HandlerFatalError(Exception):
@@ -85,7 +69,7 @@ sublifecycle_var: ContextVar[Callable] = ContextVar('sublifecycle_var')
 subregistry_var: ContextVar[registries.SimpleRegistry] = ContextVar('subregistry_var')
 subexecuted_var: ContextVar[bool] = ContextVar('subexecuted_var')
 handler_var: ContextVar[registries.Handler] = ContextVar('handler_var')
-cause_var: ContextVar[Cause] = ContextVar('cause_var')
+cause_var: ContextVar[causation.Cause] = ContextVar('cause_var')
 
 
 async def custom_object_handler(
@@ -104,7 +88,6 @@ async def custom_object_handler(
     All the internally provoked changes are intercepted, do not create causes,
     and therefore do not call the handling logic.
     """
-    etyp = event['type']  # e.g. ADDED, MODIFIED, DELETED.
     body = event['object']
 
     # Each object has its own prefixed logger, to distinguish parallel handling.
@@ -113,85 +96,21 @@ async def custom_object_handler(
         name=body.get('metadata', {}).get('name', body.get('metadata', {}).get('uid', None)),
     ))
 
-    # Object patch accumulator. Populated by the methods. Applied in the end of the handler.
-    patch = {}
-    delay = None
-
     # If the global freeze is set for the processing (i.e. other operator overrides), do nothing.
     if freeze.is_set():
         logger.debug("Ignoring the events due to freeze.")
+        return
 
-    # The object was really deleted from the cluster. But we do not care anymore.
-    elif etyp == 'DELETED':
-        logger.debug("Deleted, really deleted, and we are notified.")
-
-    # The finalizer has been just removed. We are fully done.
-    elif finalizers.is_deleted(body) and not finalizers.has_finalizers(body):
-        logger.debug("Deletion event, but we are done with it, but we do not care.")
-
-    elif finalizers.is_deleted(body):
-        logger.debug("Deletion event: %r", body)
-        cause = Cause(resource=resource, event=registries.DELETE, body=body, patch=patch, logger=logger)
-        try:
-            await execute(lifecycle=lifecycle, registry=registry, cause=cause)
-        except HandlerChildrenRetry as e:
-            # on the top-level, no patches -- it is pre-patched.
-            delay = e.delay
-        else:
-            logger.info(f"All handlers succeeded for deletion.")
-            events.info(cause.body, reason='Success', message=f"All handlers succeeded for deletion.")
-            logger.debug("Removing the finalizer, thus allowing the actual deletion.")
-            finalizers.remove_finalizers(body=body, patch=patch)
-
-    # For a fresh new object, first block it from accidental deletions without our permission.
-    # The actual handler will be called on the next call.
-    elif not finalizers.has_finalizers(body):
-        logger.debug("First appearance: %r", body)
-        logger.debug("Adding the finalizer, thus preventing the actual deletion.")
-        finalizers.append_finalizers(body=body, patch=patch)
-
-    # For the object seen for the first time (i.e. just-created), call the creation handlers,
-    # then mark the state as if it was seen when the creation has finished.
-    elif not lastseen.has_state(body):
-        logger.debug("Creation event: %r", body)
-        cause = Cause(resource=resource, event=registries.CREATE, body=body, patch=patch, logger=logger)
-        try:
-            await execute(lifecycle=lifecycle, registry=registry, cause=cause)
-        except HandlerChildrenRetry as e:
-            # on the top-level, no patches -- it is pre-patched.
-            delay = e.delay
-        else:
-            logger.info(f"All handlers succeeded for creation.")
-            events.info(cause.body, reason='Success', message=f"All handlers succeeded for creation.")
-            status.purge_progress(body=body, patch=patch)
-            lastseen.refresh_state(body=body, patch=patch)
-
-    # The previous step triggers one more patch operation without actual change. Ignore it.
-    # Either the last-seen state or the status field has changed.
-    elif not lastseen.is_state_changed(body):
-        pass
-
-    # And what is left, is the update operation on one of the useful fields of the existing object.
-    else:
-        old, new, diff = lastseen.get_state_diffs(body)
-        logger.debug("Update event: %r", diff)
-        cause = Cause(resource=resource, event=registries.UPDATE, body=body, patch=patch, logger=logger,
-                      old=old, new=new, diff=diff)
-        try:
-            await execute(lifecycle=lifecycle, registry=registry, cause=cause)
-        except HandlerChildrenRetry as e:
-            # on the top-level, no patches -- it is pre-patched.
-            delay = e.delay
-        else:
-            logger.info(f"All handlers succeeded for update.")
-            events.info(cause.body, reason='Success', message=f"All handlers succeeded for update.")
-            status.purge_progress(body=body, patch=patch)
-            lastseen.refresh_state(body=body, patch=patch)
+    # Object patch accumulator. Populated by the methods. Applied in the end of the handler.
+    # Detect the cause and handle it (or at least log this happened).
+    patch = {}
+    cause = causation.detect_cause(event=event, resource=resource, logger=logger, patch=patch)
+    delay = await handle_cause(lifecycle=lifecycle, registry=registry, cause=cause)
 
     # Provoke a dummy change to trigger the reactor after sleep.
     # TODO: reimplement via the handler delayed statuses properly.
     if delay and not patch:
-        patch.setdefault('kopf', {})['dummy'] = datetime.datetime.utcnow().isoformat()
+        patch.setdefault('status', {}).setdefault('kopf', {})['dummy'] = datetime.datetime.utcnow().isoformat()
 
     # Whatever was done, apply the accumulated changes to the object.
     # But only once, to reduce the number of API calls and the generated irrelevant events.
@@ -205,13 +124,73 @@ async def custom_object_handler(
         await asyncio.sleep(delay)
 
 
+async def handle_cause(
+        lifecycle: Callable,
+        registry: registries.BaseRegistry,
+        cause: causation.Cause,
+):
+    """
+    Handle a detected cause, as part of the bigger handler routine.
+    """
+    logger = cause.logger
+    patch = cause.patch  # TODO get rid of this alias
+    body = cause.body  # TODO get rid of this alias
+    delay = None
+    done = None
+
+    # Regular causes invoke the handlers.
+    if cause.event in [causation.CREATE, causation.UPDATE, causation.DELETE]:
+        title = causation.TITLES.get(cause.event, repr(cause.event))
+        logger.debug(f"{title.capitalize()} event: %r", body)
+        try:
+            await execute(lifecycle=lifecycle, registry=registry, cause=cause)
+        except HandlerChildrenRetry as e:
+            # on the top-level, no patches -- it is pre-patched.
+            delay = e.delay
+            done = False
+        else:
+            logger.info(f"All handlers succeeded for {title}.")
+            events.info(cause.body, reason='Success', message=f"All handlers succeeded for {title}.")
+            done = True
+
+    # Regular causes also do some implicit post-handling when all handlers are done.
+    if done:
+        status.purge_progress(body=body, patch=patch)
+        lastseen.refresh_state(body=body, patch=patch)
+        if cause.event == causation.DELETE:
+            logger.debug("Removing the finalizer, thus allowing the actual deletion.")
+            finalizers.remove_finalizers(body=body, patch=patch)
+
+    # Informational causes just print the log lines.
+    if cause.event == causation.NEW:
+        logger.debug("First appearance: %r", body)
+
+    if cause.event == causation.GONE:
+        logger.debug("Deleted, really deleted, and we are notified.")
+
+    if cause.event == causation.FREE:
+        logger.debug("Deletion event, but we are done with it, and we do not care.")
+
+    if cause.event == causation.NOOP:
+        logger.debug("Something has changed, but we are not interested (state is the same).")
+
+    # For the case of a newly created object, lock it to this operator.
+    # TODO: make it conditional.
+    if cause.event == causation.NEW:
+        logger.debug("Adding the finalizer, thus preventing the actual deletion.")
+        finalizers.append_finalizers(body=body, patch=patch)
+
+    # The delay is then consumed by the main handling routine (in different ways).
+    return delay
+
+
 async def execute(
         *,
         fns: Optional[Iterable[Callable]] = None,
         handlers: Optional[Iterable[registries.Handler]] = None,
         registry: Optional[registries.BaseRegistry] = None,
         lifecycle: Callable = None,
-        cause: Cause = None,
+        cause: causation.Cause = None,
 ) -> None:
     """
     Execute the handlers in an isolated lifecycle.
@@ -281,7 +260,7 @@ async def execute(
 async def _execute(
         lifecycle: Callable,
         registry: registries.BaseRegistry,
-        cause: Cause,
+        cause: causation.Cause,
         retry_on_errors: bool = True,
 ) -> None:
     """
@@ -346,14 +325,14 @@ async def _execute(
 
         # Definitely retriable error, no matter what is the error-reaction mode.
         except HandlerRetryError as e:
-            logger.exception(f"Handler {handler.id!r} failed with an retry exception. Will retry.")
+            logger.exception(f"Handler {handler.id!r} failed with a retry exception. Will retry.")
             events.exception(cause.body, message=f"Handler {handler.id!r} failed. Will retry.")
             status.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
             handlers_left.append(handler)
 
         # Definitely fatal error, no matter what is the error-reaction mode.
         except HandlerFatalError as e:
-            logger.exception(f"Handler {handler.id!r} failed with an fatal exception. Will stop.")
+            logger.exception(f"Handler {handler.id!r} failed with a fatal exception. Will stop.")
             events.exception(cause.body, message=f"Handler {handler.id!r} failed. Will stop.")
             status.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?
@@ -396,7 +375,7 @@ async def _execute(
 async def _call_handler(
         handler: registries.Handler,
         *args,
-        cause: Cause,
+        cause: causation.Cause,
         lifecycle: Callable,
         **kwargs):
     """

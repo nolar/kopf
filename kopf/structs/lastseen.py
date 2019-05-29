@@ -31,8 +31,12 @@ def get_state(body):
         del body['metadata']['annotations'][LAST_SEEN_ANNOTATION]
     if 'kubectl.kubernetes.io/last-applied-configuration' in body.get('metadata', {}).get('annotations', {}):
         del body['metadata']['annotations']['kubectl.kubernetes.io/last-applied-configuration']
+    if 'annotations' in body.get('metadata', {}) and not body['metadata']['annotations']:
+        del body['metadata']['annotations']
     if 'finalizers' in body.get('metadata', {}):
         del body['metadata']['finalizers']
+    if 'deletionTimestamp' in body.get('metadata', {}):
+        del body['metadata']['deletionTimestamp']
     if 'creationTimestamp' in body.get('metadata', {}):
         del body['metadata']['creationTimestamp']
     if 'selfLink' in body.get('metadata', {}):
@@ -43,6 +47,8 @@ def get_state(body):
         del body['metadata']['resourceVersion']
     if 'generation' in body.get('metadata', {}):
         del body['metadata']['generation']
+    if 'metadata' in body and not body['metadata']:
+        del body['metadata']
     if 'status' in body:
         del body['status']
     return body

@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.reactor.handling import Cause
+from kopf.reactor.causation import Cause
 
 
 def test_no_args():

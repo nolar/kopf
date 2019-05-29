@@ -1,8 +1,8 @@
 import pytest
 
 import kopf
+from kopf.reactor.causation import CREATE, UPDATE, DELETE
 from kopf.reactor.handling import subregistry_var
-from kopf.reactor.registries import CREATE, UPDATE, DELETE
 from kopf.reactor.registries import Resource, SimpleRegistry, GlobalRegistry
 
 

@@ -1,4 +1,5 @@
 import asyncio
+import re
 import time
 
 import asynctest
@@ -26,6 +27,9 @@ def resource():
     """ The resource used in the tests. Usually mocked, so it does not matter. """
     return Resource('zalando.org', 'v1', 'kopfexamples')
 
+#
+# Helpers for the timing checks.
+#
 
 @pytest.fixture()
 def timer():
@@ -79,3 +83,47 @@ class Timer(object):
 
     def __float__(self):
         return float(self.seconds)
+
+#
+# Helpers for the logging checks.
+#
+
+@pytest.fixture()
+def assert_logs(caplog):
+    """
+    A function to assert the logs are present (by pattern).
+
+    The listed message patterns MUST be present, in the order specified.
+    Some other log messages can also be present, but they are ignored.
+    """
+    def assert_logs_fn(patterns, prohibited=[], strict=False):
+        __traceback_hide__ = True
+        remaining_patterns = list(patterns)
+        for message in caplog.messages:
+            # The expected pattern is at position 0.
+            # Looking-ahead: if one of the following patterns matches, while the
+            # 0th does not, then the log message is missing, and we fail the test.
+            for idx, pattern in enumerate(remaining_patterns):
+                m = re.search(pattern, message)
+                if m:
+                    if idx == 0:
+                        remaining_patterns[:1] = []
+                        break  # out of `remaining_patterns` cycle
+                    else:
+                        skipped_patterns = remaining_patterns[:idx]
+                        raise AssertionError(f"Few patterns were skipped: {skipped_patterns!r}")
+                elif strict:
+                    raise AssertionError(f"Unexpected log message: {message!r}")
+
+            # Check that the prohibited patterns do not appear in any message.
+            for pattern in prohibited:
+                m = re.search(pattern, message)
+                if m:
+                    raise AssertionError(f"Prohibited log pattern found: {message!r} ~ {pattern!r}")
+
+        # If all patterns have been matched in order, we are done.
+        # if some are left, but the messages are over, then we fail.
+        if remaining_patterns:
+            raise AssertionError(f"Few patterns were missed: {remaining_patterns!r}")
+
+    return assert_logs_fn
