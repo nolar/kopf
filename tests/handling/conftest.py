@@ -1,14 +1,14 @@
 """
 Testing the handling of events on the top level.
 
-As the input:
+As input:
 
 * Mocked cause detection, with the cause artificially simulated for each test.
   The proper cause detection is tested elsewhere (see ``test_detection.py``).
 * Registered handlers in a global registry. Each handler is a normal function,
   which calls a mock -- to ease the assertions.
 
-As the output, we check the mocked calls on the following:
+As output, we check mocked calls on the following:
 
 * ``asyncio.sleep()`` -- for delays.
 * ``kopf.k8s.patching.patch_obj()`` -- for patch content.

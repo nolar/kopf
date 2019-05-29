@@ -8,12 +8,12 @@ caused them, and they only notify that the object was changed somehow:
 * ``MODIFIED`` for the changes of any field, be that metainfo, spec, or status.
 * ``DELETED`` for the actual deletion of the object post-factum.
 
-The conversion of the low-level *events* to the high-level *causes* is done by
+The conversion of low-level *events* to high level *causes* is done by
 checking the object's state and comparing it to the saved last-seen state.
 
-This allows to track which specific fields were changed, and are those changes
-important enough to call the handlers: e.g. the ``status`` changes are ignored,
-so as some selected system fields of the ``metainfo``.
+This allows to track which specific fields were changed, and if are those
+changes are important enough to call the handlers: e.g. the ``status`` changes
+are ignored, so as some selected system fields of the ``metainfo``.
 
 For deletion, the cause is detected when the object is just marked for deletion,
 not when it is actually deleted (as the events notify): so that the handlers
@@ -27,7 +27,7 @@ from kopf.structs import diffs
 from kopf.structs import finalizers
 from kopf.structs import lastseen
 
-# The constants for the event types, to prevent the direct string usage and typos.
+# Constants for event types, to prevent a direct usage of strings, and typos.
 # They are not exposed by the framework, but are used internally. See also: `kopf.on`.
 NEW = 'new'
 CREATE = 'create'
@@ -50,7 +50,7 @@ class Cause(NamedTuple):
     The cause is what has caused the whole reaction as a chain of handlers.
 
     Unlike the low-level Kubernetes watch-events, the cause is aware
-    of the actual field changes, including the multi-handlers changes.
+    of actual field changes, including multi-handler changes.
     """
     logger: Union[logging.Logger, logging.LoggerAdapter]
     resource: registries.Resource
@@ -105,7 +105,7 @@ def detect_cause(
             body=body,
             **kwargs)
 
-    # For the object seen for the first time (i.e. just-created), call the creation handlers,
+    # For an object seen for the first time (i.e. just-created), call the creation handlers,
     # then mark the state as if it was seen when the creation has finished.
     if not lastseen.has_state(body):
         return Cause(
@@ -113,7 +113,7 @@ def detect_cause(
             body=body,
             **kwargs)
 
-    # The previous step triggers one more patch operation without actual change. Ignore it.
+    # The previous step triggers one more patch operation without actual changes. Ignore it.
     # Either the last-seen state or the status field has changed.
     if not lastseen.is_state_changed(body):
         return Cause(

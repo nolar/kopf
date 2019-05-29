@@ -169,12 +169,12 @@ async def handle_cause(
         logger.debug("Deleted, really deleted, and we are notified.")
 
     if cause.event == causation.FREE:
-        logger.debug("Deletion event, but we are done with it, but we do not care.")
+        logger.debug("Deletion event, but we are done with it, and we do not care.")
 
     if cause.event == causation.NOOP:
         logger.debug("Something has changed, but we are not interested (state is the same).")
 
-    # For the case of a fresh new created object, lock it to this operator.
+    # For the case of a newly created object, lock it to this operator.
     # TODO: make it conditional.
     if cause.event == causation.NEW:
         logger.debug("Adding the finalizer, thus preventing the actual deletion.")
