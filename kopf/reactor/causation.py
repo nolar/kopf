@@ -74,11 +74,10 @@ def detect_cause(
     which performs the actual handler invocation, logging, patching,
     and other side-effects.
     """
-    etyp = event['type']  # e.g. ADDED, MODIFIED, DELETED.
     body = event['object']
 
     # The object was really deleted from the cluster. But we do not care anymore.
-    if etyp == 'DELETED':
+    if event['type'] == 'DELETED':
         return Cause(
             event=GONE,
             body=body,
