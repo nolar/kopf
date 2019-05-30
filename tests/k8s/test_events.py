@@ -1,3 +1,4 @@
+import pytest
 from asynctest import call, ANY
 
 from kopf.k8s.events import post_event
@@ -49,3 +50,39 @@ def test_type_is_v1_not_v1beta1(client_mock):
     event = postfn_mock.call_args_list[0][1]['body']
     assert isinstance(event, client_mock.V1Event)
     assert not isinstance(event, client_mock.V1beta1Event)
+
+
+def test_api_errors_logged_but_suppressed(client_mock, assert_logs):
+    error = client_mock.rest.ApiException('boo!')
+    apicls_mock = client_mock.CoreV1Api
+    apicls_mock.return_value.create_namespaced_event.side_effect = error
+    postfn_mock = apicls_mock.return_value.create_namespaced_event
+
+    obj = {'apiVersion': 'group/version',
+           'kind': 'kind',
+           'metadata': {'namespace': 'ns',
+                        'name': 'name',
+                        'uid': 'uid'}}
+    post_event(obj=obj, type='type', reason='reason', message='message')
+
+    assert postfn_mock.called
+    assert_logs([
+        "Failed to post an event.*boo!",
+    ])
+
+
+def test_regular_errors_escalate(client_mock):
+    error = Exception('boo!')
+    apicls_mock = client_mock.CoreV1Api
+    apicls_mock.return_value.create_namespaced_event.side_effect = error
+
+    obj = {'apiVersion': 'group/version',
+           'kind': 'kind',
+           'metadata': {'namespace': 'ns',
+                        'name': 'name',
+                        'uid': 'uid'}}
+
+    with pytest.raises(Exception) as excinfo:
+        post_event(obj=obj, type='type', reason='reason', message='message')
+
+    assert excinfo.value is error

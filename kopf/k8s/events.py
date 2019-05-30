@@ -1,6 +1,9 @@
 import datetime
+import logging
 
 import kubernetes
+
+logger = logging.getLogger(__name__)
 
 
 def post_event(*, obj, type, reason, message=''):
@@ -43,8 +46,15 @@ def post_event(*, obj, type, reason, message=''):
         event_time=now.isoformat() + 'Z',  # '2019-01-28T18:25:03.000000Z'
     )
 
-    api = kubernetes.client.CoreV1Api()
-    api.create_namespaced_event(
-        namespace=namespace,
-        body=body,
-    )
+    try:
+        api = kubernetes.client.CoreV1Api()
+        api.create_namespaced_event(
+            namespace=namespace,
+            body=body,
+        )
+    except kubernetes.client.rest.ApiException as e:
+        # Events are helpful but auxiliary, they should not fail the handling cycle.
+        # Yet we want to notice that something went wrong (in logs).
+        logger.warning("Failed to post an event. Ignoring and continuing. "
+                       f"Error: {e!r}. "
+                       f"Event: type={type!r}, reason={reason!r}, message={message!r}.")
