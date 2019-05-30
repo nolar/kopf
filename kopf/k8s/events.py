@@ -1,9 +1,12 @@
 import datetime
 import logging
 
-import kubernetes
+import kubernetes.client.rest
 
 logger = logging.getLogger(__name__)
+
+MAX_MESSAGE_LENGTH = 1024
+CUT_MESSAGE_INFIX = '...'
 
 
 def post_event(*, obj, type, reason, message=''):
@@ -13,6 +16,13 @@ def post_event(*, obj, type, reason, message=''):
 
     now = datetime.datetime.utcnow()
     namespace = obj['metadata']['namespace']
+
+    # Prevent a common case of event posting errors but shortening the message.
+    if len(message) > MAX_MESSAGE_LENGTH:
+        infix = CUT_MESSAGE_INFIX
+        prefix = message[:MAX_MESSAGE_LENGTH // 2 - (len(infix) // 2)]
+        suffix = message[-MAX_MESSAGE_LENGTH // 2 + (len(infix) - len(infix) // 2):]
+        message = f'{prefix}{infix}{suffix}'
 
     # Object reference - similar to the owner reference, but different.
     ref = dict(

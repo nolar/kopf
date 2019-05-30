@@ -86,3 +86,24 @@ def test_regular_errors_escalate(client_mock):
         post_event(obj=obj, type='type', reason='reason', message='message')
 
     assert excinfo.value is error
+
+
+def test_message_is_cut_to_max_length(client_mock):
+    result = object()
+    apicls_mock = client_mock.CoreV1Api
+    apicls_mock.return_value.create_namespaced_event.return_value = result
+    postfn_mock = apicls_mock.return_value.create_namespaced_event
+
+    obj = {'apiVersion': 'group/version',
+           'kind': 'kind',
+           'metadata': {'namespace': 'ns',
+                        'name': 'name',
+                        'uid': 'uid'}}
+    message = 'start' + ('x' * 2048) + 'end'
+    post_event(obj=obj, type='type', reason='reason', message=message)
+
+    event = postfn_mock.call_args_list[0][1]['body']
+    assert len(event.message) <= 1024  # max supported API message length
+    assert '...' in event.message
+    assert event.message.startswith('start')
+    assert event.message.endswith('end')
