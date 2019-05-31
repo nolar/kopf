@@ -32,9 +32,9 @@ but we will use another feature of Kopf to track one specific field only:
     :emphasize-lines: 1, 5
 
     @kopf.on.field('zalando.org', 'v1', 'ephemeralvolumeclaims', field='metadata.labels')
-    def relabel(old, new, **kwargs):
+    def relabel(old, new, status, namespace, **kwargs):
 
-        pvc_name = status['pvc-name']
+        pvc_name = status['create_fn']['pvc-name']
         pvc_patch = {'metadata': {'labels': new}}
 
         api = kubernetes.client.CoreV1Api()
@@ -95,10 +95,10 @@ exactly as needed for the patch object (i.e. the field is present there):
     :emphasize-lines: 4
 
     @kopf.on.field('zalando.org', 'v1', 'ephemeralvolumeclaims', field='metadata.labels')
-    def relabel(diff, **kwargs):
+    def relabel(diff, status, namespace, **kwargs):
 
         labels_patch = {field[0]: new for op, field, old, new in diff}
-        pvc_name = status['pvc-name']
+        pvc_name = status['create_fn']['pvc-name']
         pvc_patch = {'metadata': {'labels': labels_patch}}
 
         api = kubernetes.client.CoreV1Api()
@@ -112,3 +112,16 @@ Note that the unrelated labels that were put on the PVC ---e.g., manually,
 from the template, by other controllers/operators, beside the labels
 coming from the parent EVC--- are persisted and never touched
 (unless the same-named label is applied to EVC and propagated to the PVC).
+
+.. code-block:: bash
+
+    kubectl describe pvc my-claim
+
+.. code-block:: none
+
+    Name:          my-claim
+    Namespace:     default
+    StorageClass:  standard
+    Status:        Bound
+    Labels:        application=some-app
+                   owner=me

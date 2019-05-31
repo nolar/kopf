@@ -28,17 +28,17 @@ with one additional line:
 .. code-block:: python
     :linenos:
     :caption: ephemeral.py
-    :emphasize-lines: 23
+    :emphasize-lines: 24
 
     @kopf.on.create('zalando.org', 'v1', 'ephemeralvolumeclaims')
-    def create_fn(spec, meta, namespace, logger, **kwargs):
+    def create_fn(body, spec, meta, namespace, logger, **kwargs):
 
         name = meta.get('name')
         size = spec.get('size')
         if not size:
             raise kopf.PermanentError(f"Size must be set. Got {size!r}.")
 
-        path = os.path.join(os.path.dirname(__file__), 'pvc-tpl.yaml')
+        path = os.path.join(os.path.dirname(__file__), 'pvc.yaml')
         tmpl = open(path, 'rt').read()
         text = tmpl.format(size=size, name=name)
         data = yaml.safe_load(text)
@@ -74,11 +74,11 @@ and patches the PVC with the new size from the EVC::
     @kopf.on.update('zalando.org', 'v1', 'ephemeralvolumeclaims')
     def update_fn(spec, status, namespace, logger, **kwargs):
 
-        size = spec.get('create_fn', {}).get('size', None)
+        size = spec.get('size', None)
         if not size:
             raise kopf.PermanentError(f"Size must be set. Got {size!r}.")
 
-        pvc_name = status['pvc-name']
+        pvc_name = status['create_fn']['pvc-name']
         pvc_patch = {'spec': {'resources': {'requests': {'storage': size}}}}
 
         api = kubernetes.client.CoreV1Api()

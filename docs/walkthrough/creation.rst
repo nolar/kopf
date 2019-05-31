@@ -53,6 +53,7 @@ We will use the official Kubernetes client library:
     :linenos:
     :caption: ephemeral.py
 
+    import os
     import kopf
     import kubernetes
     import yaml
