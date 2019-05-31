@@ -11,9 +11,9 @@ Let's start with the an operator skeleton that does nothing useful --
 just to see how it can be started.
 
 .. code-block:: python
-   :name: skeleton
-   :linenos:
-   :caption: ephemeral.py
+    :name: skeleton
+    :linenos:
+    :caption: ephemeral.py
 
     import kopf
 

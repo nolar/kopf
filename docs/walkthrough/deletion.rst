@@ -30,10 +30,10 @@ __ https://kubernetes.io/docs/concepts/workloads/controllers/garbage-collection/
 Let's extend the creation handler:
 
 .. code-block:: python
-   :name: adopting
-   :linenos:
-   :caption: ephemeral.py
-   :emphasize-lines: 18
+    :name: adopting
+    :linenos:
+    :caption: ephemeral.py
+    :emphasize-lines: 18
 
     import kopf
     import kubernetes

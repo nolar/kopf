@@ -10,8 +10,8 @@ We want to create a real ``PersistentVolumeClaim`` object
 immediately when an ``EphemeralVolumeClaim`` is created this way:
 
 .. code-block:: yaml
-   :name: evc
-   :caption: evc.yaml
+    :name: evc
+    :caption: evc.yaml
 
     apiVersion: zalando.org/v1
     kind: EphemeralVolumeClaim
@@ -28,8 +28,8 @@ First, let's define a template of the persistent volume claim
 (with the Python template string, so that no extra template engines are needed):
 
 .. code-block:: yaml
-   :name: pvc
-   :caption: pvc.yaml
+    :name: pvc
+    :caption: pvc.yaml
 
     apiVersion: v1
     kind: PersistentVolumeClaim
