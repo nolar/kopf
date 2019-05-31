@@ -93,5 +93,14 @@ Wait 1-2 seconds, and take a look:
 
 Now, the PVC can be attached to the pods by the same name, as EVC is named.
 
+.. note::
+    If you have to re-run the operator, and hit a HTTP 409 error saying
+    "persistentvolumeclaims "my-claim" already exists",
+    then remove it manually:
+
+    .. code-block:: bash
+
+        kubectl delete pvc my-claim
+
 .. seealso::
     See also :doc:`/handlers`, :doc:`/errors`, :doc:`/hierarchies`.

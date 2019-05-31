@@ -7,18 +7,6 @@ we have implemented a handler for the creation of an ``EphemeralVolumeClaim`` (E
 and created the corresponding ``PersistantVolumeClaim`` (PVC).
 
 What will happen if we change the size of the EVC when it already exists?
-E.g., with:
-
-.. code-block:: bash
-
-    kubectl edit evc my-claim
-
-Or by patching it:
-
-.. code-block:: bash
-
-    kubectl patch evc my-claim -p '{"spec": {"resources": {"requests": {"storage": "100G"}}}}'
-
 The PVC must be updated accordingly to match its parent EVC.
 
 First, we have to remember the name of the created PVC:
@@ -61,11 +49,16 @@ We can see that with kubectl:
 
 .. code-block:: bash
 
-    kubectl describe evc my-claim
+    kubectl get -o yaml evc my-claim
 
-.. code-block:: none
+.. code-block:: yaml
 
-    TODO
+    spec:
+      size: 1G
+    status:
+      create_fn:
+        pvc-name: my-claim
+      kopf: {}
 
 Let's add a yet another handler, but for the "update" cause.
 This handler gets this stored PVC name from the creation handler,
@@ -89,3 +82,30 @@ and patches the PVC with the new size from the EVC::
         )
 
         logger.info(f"PVC child is updated: %s", obj)
+
+Now, let's change the EVC's size:
+
+.. code-block:: bash
+
+    kubectl edit evc my-claim
+
+Or by patching it:
+
+.. code-block:: bash
+
+    kubectl patch evc my-claim --type merge -p '{"spec": {"size": "2G"}}'
+
+Keep in mind the PVC size can only be increased, never decreased.
+
+Give the operator few seconds to handle the change.
+
+Check the size of the actual PV behind the PVC, which is now increased:
+
+.. code-block:: bash
+
+    kubectl get pv
+
+.. code-block:: none
+
+    NAME                                       CAPACITY   ACCESS MODES   ...
+    pvc-a37b65bd-8384-11e9-b857-42010a800265   2Gi        RWO            ...
