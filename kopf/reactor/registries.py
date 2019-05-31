@@ -138,7 +138,7 @@ class GlobalRegistry(BaseRegistry):
 
     def register_event_handler(self, group, version, plural, fn, id=None):
         """
-        Register an additional handler function for the low-level events.
+        Register an additional handler function for low-level events.
         """
         resource = Resource(group, version, plural)
         registry = self._event_handlers.setdefault(resource, SimpleRegistry())

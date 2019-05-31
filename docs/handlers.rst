@@ -65,7 +65,7 @@ The following keyword arguments are available to the handlers
 * ``logger`` is a per-object logger, with the messages prefixed with the object's namespace/name.
 * ``patch`` is a dict with the object changes to be applied after the handler.
 
-The high-level cause-handlers have additional keyword arguments reflecting their status:
+High-level cause-handlers have additional keyword arguments reflecting their status:
 
 * ``cause`` is the processed cause of the handler as detected by the framework (create/update/delete).
 * ``retry`` (``int``) is the sequential number of retry of this handler.
@@ -75,7 +75,7 @@ The high-level cause-handlers have additional keyword arguments reflecting their
 * ``old`` is the old state of the object or a field (only for the update events).
 * ``new`` is the new state of the object or a field (only for the update events).
 
-The low-level event-handlers have a slightly different set of keyword arguments:
+Low-level event-handlers have a slightly different set of keyword arguments:
 
 ** ``event`` for the raw event received; it is a dict with ``['type']`` & ``['object']`` keys.
 
@@ -87,7 +87,7 @@ in the future, and the existing handlers should accept them and not break.
 Event handlers
 ==============
 
-The low-level events can be intercepted and handled silently, without
+Low-level events can be intercepted and handled silently, without
 storing the handlers' status (errors, retries, successes) on the object.
 
 This can be useful if the operator needs to watch over the objects

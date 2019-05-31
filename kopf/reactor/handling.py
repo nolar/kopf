@@ -1,5 +1,5 @@
 """
-Conversion of the low-level events to the high-level causes, and handling them.
+Conversion of low-level events to high-level causes, and handling them.
 
 These functions are invoked from the queueing module `kopf.reactor.queueing`,
 which are the actual event loop of the operator process.
