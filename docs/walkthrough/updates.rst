@@ -2,6 +2,13 @@
 Updating the objects
 ====================
 
+.. warning::
+    Unfortunately, Minikube cannot handle the PVC/PV resizing,
+    as it uses the HostPath provider internally.
+    You can either skip this step of the tutorial,
+    or you can use an external Kubernetes cluster
+    with real dynamically sized volumes.
+
 Previously (:doc:`creation`),
 we have implemented a handler for the creation of an ``EphemeralVolumeClaim`` (EVC),
 and created the corresponding ``PersistantVolumeClaim`` (PVC).
@@ -109,3 +116,9 @@ Check the size of the actual PV behind the PVC, which is now increased:
 
     NAME                                       CAPACITY   ACCESS MODES   ...
     pvc-a37b65bd-8384-11e9-b857-42010a800265   2Gi        RWO            ...
+
+.. warning::
+    Kubernetes & ``kubectl`` improperly show the capacity of PVCs:
+    it remains the same (1G) event after the change.
+    The size of actual PV (Persistent Volume) of each PVC is important!
+    This issue is not related to Kopf, so we go around it.
