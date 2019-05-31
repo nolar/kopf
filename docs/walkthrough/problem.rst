@@ -28,9 +28,9 @@ __ https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-co
         - name: main
           resources:
             requests:
-              ephemeral-storage: 10G
+              ephemeral-storage: 1G
             limits:
-              ephemeral-storage: 10G
+              ephemeral-storage: 1G
 
 There is a `PersistentVolumeClaim`__ resource kind, but it is persistent,
 i.e. not deleted after they are created (only manually deletable).

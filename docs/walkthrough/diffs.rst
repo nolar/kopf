@@ -73,7 +73,7 @@ A diff-object has this structure (as an example)::
     [('add', ('metadata', 'labels', 'label1'), None, 'new-value'),
      ('change', ('metadata', 'labels', 'label2'), 'old-value', 'new-value'),
      ('remove', ('metadata', 'labels', 'label3'), 'old-value', None),
-     ('change', ('spec', 'size'), '10G', '100G')]
+     ('change', ('spec', 'size'), '1G', '2G')]
 
 For the field-handlers, it will be the same,
 just the field path will be relative to the handled field,

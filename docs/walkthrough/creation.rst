@@ -18,7 +18,7 @@ immediately when an ``EphemeralVolumeClaim`` is created this way:
     metadata:
       name: my-claim
     spec:
-      size: 10G
+      size: 1G
 
 .. code-block:: bash
 
