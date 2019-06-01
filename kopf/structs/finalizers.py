@@ -8,7 +8,8 @@ to "release" the object (e.g. cleanups; delete-handlers in our case).
 
 # A string marker to be put on the list of the finalizers to block
 # the object from being deleted without the permission of the framework.
-FINALIZER = 'KopfFinalizerMarker'
+FINALIZER = 'kopf.zalando.org/KopfFinalizerMarker'
+LEGACY_FINALIZER = 'KopfFinalizerMarker'
 
 
 def is_deleted(body):
@@ -16,7 +17,8 @@ def is_deleted(body):
 
 
 def has_finalizers(body):
-    return FINALIZER in body.get('metadata', {}).get('finalizers', [])
+    finalizers = body.get('metadata', {}).get('finalizers', [])
+    return FINALIZER in finalizers or LEGACY_FINALIZER in finalizers
 
 
 def append_finalizers(*, body, patch):
@@ -30,4 +32,7 @@ def remove_finalizers(*, body, patch):
     if has_finalizers(body=body):
         finalizers = body.get('metadata', {}).get('finalizers', [])
         patch.setdefault('metadata', {}).setdefault('finalizers', list(finalizers))
-        patch['metadata']['finalizers'].remove(FINALIZER)
+        if LEGACY_FINALIZER in patch['metadata']['finalizers']:
+            patch['metadata']['finalizers'].remove(LEGACY_FINALIZER)
+        if FINALIZER in patch['metadata']['finalizers']:
+            patch['metadata']['finalizers'].remove(FINALIZER)
