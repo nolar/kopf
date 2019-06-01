@@ -27,8 +27,7 @@ def preload(paths, modules):
     """
 
     for path in paths:
-        print(path  )
-        sys.path.append(os.path.abspath(os.path.join(path, os.pardir)))
+        sys.path.append(os.path.abspath(os.path.curdir))
         name, _ = os.path.splitext(os.path.basename(path))
         spec = importlib.util.spec_from_file_location(name, path)
         module = importlib.util.module_from_spec(spec)
