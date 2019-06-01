@@ -16,7 +16,7 @@ def is_deleted(body):
 
 
 def has_finalizers(body):
-    return 'finalizers' in body['metadata'] and FINALIZER in body['metadata']['finalizers']
+    return FINALIZER in body.get('metadata', {}).get('finalizers', [])
 
 
 def append_finalizers(*, body, patch):
