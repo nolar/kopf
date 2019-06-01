@@ -26,13 +26,15 @@ def get_state(body):
     """
     Extract only the relevant fields for the state comparisons.
     """
+
+    # Always use a copy, so that future changes do not affect the extracted state.
     body = copy.deepcopy(body)
+
+    # Remove the system fields, keeping the potentially useful, user-oriented fields/data.
     if LAST_SEEN_ANNOTATION in body.get('metadata', {}).get('annotations', {}):
         del body['metadata']['annotations'][LAST_SEEN_ANNOTATION]
     if 'kubectl.kubernetes.io/last-applied-configuration' in body.get('metadata', {}).get('annotations', {}):
         del body['metadata']['annotations']['kubectl.kubernetes.io/last-applied-configuration']
-    if 'annotations' in body.get('metadata', {}) and not body['metadata']['annotations']:
-        del body['metadata']['annotations']
     if 'finalizers' in body.get('metadata', {}):
         del body['metadata']['finalizers']
     if 'deletionTimestamp' in body.get('metadata', {}):
@@ -47,15 +49,22 @@ def get_state(body):
         del body['metadata']['resourceVersion']
     if 'generation' in body.get('metadata', {}):
         del body['metadata']['generation']
+    if 'kopf' in body.get('status', {}):
+        del body['status']['kopf']
+
+    # Cleanup the parent structs if they have become empty, for consistent state comparison.
+    if 'annotations' in body.get('metadata', {}) and not body['metadata']['annotations']:
+        del body['metadata']['annotations']
     if 'metadata' in body and not body['metadata']:
         del body['metadata']
-    if 'status' in body:
+    if 'status' in body and not body['status']:
         del body['status']
     return body
 
 
 def has_state(body):
-    return LAST_SEEN_ANNOTATION in body['metadata'].get('annotations', {})
+    annotations = body.get('metadata', {}).get('annotations', {})
+    return LAST_SEEN_ANNOTATION in annotations
 
 
 def is_state_changed(body):
@@ -72,7 +81,7 @@ def get_state_diffs(body):
 
 
 def retreive_state(body):
-    state_str = body['metadata'].get('annotations', {}).get(LAST_SEEN_ANNOTATION, None)
+    state_str = body.get('metadata', {}).get('annotations', {}).get(LAST_SEEN_ANNOTATION, None)
     state_obj = json.loads(state_str) if state_str is not None else None
     return state_obj
 
