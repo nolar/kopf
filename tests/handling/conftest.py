@@ -86,9 +86,11 @@ def registry(clear_default_registry):
 
 @dataclasses.dataclass(frozen=True, eq=False, order=False)
 class HandlersContainer:
+    event_mock: Mock
     create_mock: Mock
     update_mock: Mock
     delete_mock: Mock
+    event_fn: Callable
     create_fn: Callable
     update_fn: Callable
     delete_fn: Callable
@@ -96,9 +98,14 @@ class HandlersContainer:
 
 @pytest.fixture()
 def handlers(clear_default_registry):
+    event_mock = Mock(return_value=None)
     create_mock = Mock(return_value=None)
     update_mock = Mock(return_value=None)
     delete_mock = Mock(return_value=None)
+
+    @kopf.on.event('zalando.org', 'v1', 'kopfexamples', id='event_fn')
+    async def event_fn(**kwargs):
+        return event_mock(**kwargs)
 
     @kopf.on.create('zalando.org', 'v1', 'kopfexamples', id='create_fn', timeout=600)
     async def create_fn(**kwargs):
@@ -113,9 +120,11 @@ def handlers(clear_default_registry):
         return delete_mock(**kwargs)
 
     return HandlersContainer(
+        event_mock=event_mock,
         create_mock=create_mock,
         update_mock=update_mock,
         delete_mock=delete_mock,
+        event_fn=event_fn,
         create_fn=create_fn,
         update_fn=update_fn,
         delete_fn=delete_fn,
@@ -124,9 +133,14 @@ def handlers(clear_default_registry):
 
 @pytest.fixture()
 def extrahandlers(clear_default_registry, handlers):
+    event_mock = Mock(return_value=None)
     create_mock = Mock(return_value=None)
     update_mock = Mock(return_value=None)
     delete_mock = Mock(return_value=None)
+
+    @kopf.on.event('zalando.org', 'v1', 'kopfexamples', id='event_fn2')
+    async def event_fn2(**kwargs):
+        return event_mock(**kwargs)
 
     @kopf.on.create('zalando.org', 'v1', 'kopfexamples', id='create_fn2')
     async def create_fn2(**kwargs):
@@ -141,9 +155,11 @@ def extrahandlers(clear_default_registry, handlers):
         return delete_mock(**kwargs)
 
     return HandlersContainer(
+        event_mock=event_mock,
         create_mock=create_mock,
         update_mock=update_mock,
         delete_mock=delete_mock,
+        event_fn=event_fn2,
         create_fn=create_fn2,
         update_fn=update_fn2,
         delete_fn=delete_fn2,

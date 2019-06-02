@@ -27,7 +27,7 @@ def create(
     """ ``@kopf.on.create()`` handler for the object creation. """
     registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn):
-        registry.register(
+        registry.register_cause_handler(
             group=group, version=version, plural=plural,
             event=causation.CREATE, id=id, timeout=timeout,
             fn=fn)
@@ -44,7 +44,7 @@ def update(
     """ ``@kopf.on.update()`` handler for the object update or change. """
     registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn):
-        registry.register(
+        registry.register_cause_handler(
             group=group, version=version, plural=plural,
             event=causation.UPDATE, id=id, timeout=timeout,
             fn=fn)
@@ -61,7 +61,7 @@ def delete(
     """ ``@kopf.on.delete()`` handler for the object deletion. """
     registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn):
-        registry.register(
+        registry.register_cause_handler(
             group=group, version=version, plural=plural,
             event=causation.DELETE, id=id, timeout=timeout,
             fn=fn)
@@ -79,10 +79,25 @@ def field(
     """ ``@kopf.on.field()`` handler for the individual field changes. """
     registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn):
-        registry.register(
+        registry.register_cause_handler(
             group=group, version=version, plural=plural,
             event=None, field=field, id=id, timeout=timeout,
             fn=fn)
+        return fn
+    return decorator
+
+
+def event(
+        group: str, version: str, plural: str,
+        *,
+        id: Optional[str] = None,
+        registry: Optional[registries.GlobalRegistry] = None):
+    """ ``@kopf.on.event()`` handler for the silent spies on the events. """
+    registry = registry if registry is not None else registries.get_default_registry()
+    def decorator(fn):
+        registry.register_event_handler(
+            group=group, version=version, plural=plural,
+            id=id, fn=fn)
         return fn
     return decorator
 

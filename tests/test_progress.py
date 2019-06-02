@@ -18,6 +18,7 @@ from kopf.structs.status import (
     set_retry_time,
     store_failure,
     store_success,
+    store_result,
     purge_progress,
 )
 
@@ -318,6 +319,21 @@ def test_store_success(handler, expected, body, result):
     store_success(body=body, patch=patch, handler=handler, result=result)
     assert patch == expected
     assert body == origbody  # not modified
+
+
+
+@pytest.mark.parametrize('result, expected', [
+    (None,
+     {}),
+    ({'field': 'value'},
+     {'status': {'some-id': {'field': 'value'}}}),
+    ('string',
+     {'status': {'some-id': 'string'}}),
+])
+def test_store_result(handler, expected, result):
+    patch = {}
+    store_result(patch=patch, handler=handler, result=result)
+    assert patch == expected
 
 
 @pytest.mark.parametrize('body', [

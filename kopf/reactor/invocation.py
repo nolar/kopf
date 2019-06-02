@@ -20,7 +20,6 @@ executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
 async def invoke(
         fn: Callable,
         *args,
-        cause,
         **kwargs):
     """
     Invoke a single function, but safely for the main asyncio process.
@@ -37,22 +36,35 @@ async def invoke(
     """
 
     # Add aliases for the kwargs, directly linked to the body, or to the assumed defaults.
-    kwargs.update(
-        cause=cause,
-        event=cause.event,
-        body=cause.body,
-        diff=cause.diff,
-        old=cause.old,
-        new=cause.new,
-        patch=cause.patch,
-        logger=cause.logger,
-        spec=cause.body.setdefault('spec', {}),
-        meta=cause.body.setdefault('metadata', {}),
-        status=cause.body.setdefault('status', {}),
-        uid=cause.body.get('metadata', {}).get('uid'),
-        name=cause.body.get('metadata', {}).get('name'),
-        namespace=cause.body.get('metadata', {}).get('namespace'),
-    )
+    if 'event' in kwargs:
+        event = kwargs.get('event')
+        kwargs.update(
+            type=event['type'],
+            body=event['object'],
+            spec=event['object'].setdefault('spec', {}),
+            meta=event['object'].setdefault('metadata', {}),
+            status=event['object'].setdefault('status', {}),
+            uid=event['object'].get('metadata', {}).get('uid'),
+            name=event['object'].get('metadata', {}).get('name'),
+            namespace=event['object'].get('metadata', {}).get('namespace'),
+        )
+    if 'cause' in kwargs:
+        cause = kwargs.get('cause')
+        kwargs.update(
+            event=cause.event,
+            body=cause.body,
+            diff=cause.diff,
+            old=cause.old,
+            new=cause.new,
+            patch=cause.patch,
+            logger=cause.logger,
+            spec=cause.body.setdefault('spec', {}),
+            meta=cause.body.setdefault('metadata', {}),
+            status=cause.body.setdefault('status', {}),
+            uid=cause.body.get('metadata', {}).get('uid'),
+            name=cause.body.get('metadata', {}).get('name'),
+            namespace=cause.body.get('metadata', {}).get('namespace'),
+        )
 
     if is_async_fn(fn):
         result = await fn(*args, **kwargs)
