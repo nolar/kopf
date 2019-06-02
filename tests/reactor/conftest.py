@@ -7,9 +7,21 @@ from kopf.k8s.watching import streaming_watch
 from kopf.reactor.queueing import watcher
 from kopf.reactor.queueing import worker as original_worker
 
+# We do not test the Kubernetes client, so everything there should be mocked.
+# Also, no external calls must be made under any circumstances. Hence, auto-use.
+@pytest.fixture(autouse=True)
+def client_mock(mocker):
+    client_mock = mocker.patch('kubernetes.client')
+
+    fake_list = {'items': [], 'metadata': {'resourceVersion': None}}
+    client_mock.CustomObjectsApi.list_cluster_custom_object.return_value = fake_list
+    client_mock.CustomObjectsApi.list_namespaced_custom_object.return_value = fake_list
+
+    return client_mock
+
 
 @pytest.fixture()
-def stream(mocker):
+def stream(mocker, client_mock):
     """ A mock for the stream of events as if returned by K8s client. """
     stream = mocker.patch('kubernetes.watch.Watch.stream')
     return stream
