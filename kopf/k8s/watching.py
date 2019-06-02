@@ -75,7 +75,18 @@ async def streaming_watch(
     """
     Stream the watch-events from one single API watch-call.
     """
-    kwargs = dict(timeout_seconds=DEFAULT_STREAM_TIMEOUT) if DEFAULT_STREAM_TIMEOUT else {}
+
+    # First, list the resources regularly, and get the list's resource version.
+    # Simulate the events with type "None" event - used in detection of causes.
+    rsp = fetching.list_objs(resource=resource, namespace=namespace)
+    resource_version = rsp['metadata']['resourceVersion']
+    for item in rsp['items']:
+        yield {'type': None, 'object': item}
+
+    # Then, watch the resources starting from the list's resource version.
+    kwargs = {}
+    kwargs.update(dict(resource_version=resource_version) if resource_version else {})
+    kwargs.update(dict(timeout_seconds=DEFAULT_STREAM_TIMEOUT) if DEFAULT_STREAM_TIMEOUT else {})
     loop = asyncio.get_event_loop()
     fn = fetching.make_list_fn(resource=resource, namespace=namespace)
     watch = kubernetes.watch.Watch()
