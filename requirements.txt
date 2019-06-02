@@ -4,6 +4,9 @@ urllib3<1.25
 # The runtime dependencies of the framework, as if via `pip install kopf`.
 -e .
 
+# Optional packages are present for testing (presence is auto-detected).
+kubernetes
+
 # Everything needed to develop (test, debug) the framework.
 pytest-asyncio
 pytest-mock

@@ -1,9 +1,8 @@
 import asyncio
-import functools
-
-import kubernetes
 
 from kopf import config
+from kopf.clients import auth
+from kopf.clients import classes
 
 
 async def patch_obj(*, resource, patch, namespace=None, name=None, body=None):
@@ -23,19 +22,14 @@ async def patch_obj(*, resource, patch, namespace=None, name=None, body=None):
 
     namespace = body.get('metadata', {}).get('namespace') if body is not None else namespace
     name = body.get('metadata', {}).get('name') if body is not None else name
+    if body is None:
+        nskw = {} if namespace is None else dict(namespace=namespace)
+        body = {'metadata': {'name': name}}
+        body['metadata'].update(nskw)
 
-    api = kubernetes.client.CustomObjectsApi()
-    request_kwargs = {
-        'group': resource.group,
-        'version': resource.version,
-        'plural': resource.plural,
-        'name': name,
-        'body': patch
-    }
-    patch_func = api.patch_cluster_custom_object
-    if namespace is not None:
-        request_kwargs['namespace'] = namespace
-        patch_func = api.patch_namespaced_custom_object
+    api = auth.get_pykube_api()
+    cls = classes._make_cls(resource=resource)
+    obj = cls(api, body)
+
     loop = asyncio.get_running_loop()
-
-    await loop.run_in_executor(config.WorkersConfig.get_syn_executor(), functools.partial(patch_func, **request_kwargs))
+    await loop.run_in_executor(config.WorkersConfig.get_syn_executor(), obj.patch, patch)

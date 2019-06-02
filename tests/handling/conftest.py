@@ -39,7 +39,6 @@ from typing import Callable
 from unittest.mock import Mock
 
 import pytest
-from kubernetes.client.rest import ApiException  # to avoid mocking it
 
 import kopf
 from kopf.reactor.causation import Cause, RESUME
@@ -53,13 +52,7 @@ class K8sMocks:
 
 
 @pytest.fixture(autouse=True)
-def k8s_mocked(mocker):
-    """ Prevent any actual K8s calls."""
-
-    # TODO: consolidate with tests/k8s/conftest.py:client_mock()
-    client_mock = mocker.patch('kubernetes.client')
-    client_mock.rest.ApiException = ApiException  # to be raises and caught
-
+def k8s_mocked(mocker, req_mock):
     # We mock on the level of our own K8s API wrappers, not the K8s client.
     return K8sMocks(
         patch_obj=mocker.patch('kopf.clients.patching.patch_obj'),

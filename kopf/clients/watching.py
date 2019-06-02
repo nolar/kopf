@@ -22,15 +22,11 @@ import asyncio
 import logging
 from typing import Union
 
-import kubernetes
-
+from kopf import config
 from kopf.clients import fetching
 from kopf.reactor import registries
 
 logger = logging.getLogger(__name__)
-
-DEFAULT_STREAM_TIMEOUT = None
-""" The maximum duration of one streaming request. Patched in some tests. """
 
 
 class WatchingError(Exception):
@@ -86,11 +82,11 @@ async def streaming_watch(
     # Then, watch the resources starting from the list's resource version.
     kwargs = {}
     kwargs.update(dict(resource_version=resource_version) if resource_version else {})
-    kwargs.update(dict(timeout_seconds=DEFAULT_STREAM_TIMEOUT) if DEFAULT_STREAM_TIMEOUT else {})
+    kwargs.update(dict(timeout_seconds=config.WatchersConfig.default_stream_timeout) if config.WatchersConfig.default_stream_timeout else {})
+    # TODO: pass kwargs, specifically: timeout + resource_version
     loop = asyncio.get_event_loop()
-    fn = fetching.make_list_fn(resource=resource, namespace=namespace)
-    watch = kubernetes.watch.Watch()
-    stream = watch.stream(fn, **kwargs)
+    stream = fetching.watch_objs(resource=resource, namespace=namespace,
+                                 timeout=config.WatchersConfig.default_stream_timeout)
     async for event in streaming_aiter(stream, loop=loop):
 
         # "410 Gone" is for the "resource version too old" error, we must restart watching.
@@ -131,3 +127,4 @@ async def infinite_watch(
     while True:
         async for event in streaming_watch(resource=resource, namespace=namespace):
             yield event
+        await asyncio.sleep(config.WatchersConfig.watcher_retry_delay)

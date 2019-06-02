@@ -1,11 +1,16 @@
 import asyncio
+import dataclasses
 import io
+import json
 import logging
 import os
 import re
 import time
+from unittest.mock import Mock
 
 import asynctest
+import kubernetes.client.rest
+import pykube
 import pytest
 import pytest_mock
 
@@ -16,6 +21,7 @@ from kopf.reactor.registries import Resource
 
 def pytest_configure(config):
     config.addinivalue_line('markers', "e2e: end-to-end tests with real operators.")
+    config.addinivalue_line('markers', "resource_clustered: (internal parameterizatiom mark).")
 
 
 # This logic is not applied if pytest is started explicitly on ./examples/.
@@ -59,6 +65,82 @@ def enforce_asyncio_mocker():
 def resource():
     """ The resource used in the tests. Usually mocked, so it does not matter. """
     return Resource('zalando.org', 'v1', 'kopfexamples')
+
+#
+# Mocks for Kubernetes API clients (any of them). Reasons:
+# 1. We do not test the clients, we test the layers on top of them,
+#    so everything low-level should be mocked and assumed to be functional.
+# 2. No external calls must be made under any circumstances.
+#    The unit-tests must be fully isolated from the environment.
+#
+
+@pytest.fixture()
+def req_mock(mocker, resource, request):
+
+    # Pykube config is needed to create a pykube's API instance.
+    # But we do not want and do not need to actually authenticate, so we mock.
+    # Some fields are used by pykube's objects: we have to know them ("leaky abstractions").
+    cfg_mock = mocker.patch('kopf.clients.auth.get_pykube_cfg').return_value
+    cfg_mock.cluster = {'server': 'localhost'}
+    cfg_mock.namespace = 'default'
+
+    # Simulated list of cluster-defined CRDs: all of them at once. See: `resource` fixture(s).
+    # Simulate the resource as cluster-scoped is there is a marker on the test.
+    namespaced = not any(marker.name == 'resource_clustered' for marker in request.node.own_markers)
+    res_mock = mocker.patch('pykube.http.HTTPClient.resource_list')
+    res_mock.return_value = {'resources': [
+        {'name': 'kopfexamples', 'kind': 'KopfExample', 'namespaced': namespaced},
+    ]}
+
+    # Prevent ANY outer requests, no matter what. These ones are usually asserted.
+    req_mock = mocker.patch('requests.Session').return_value
+    return req_mock
+
+
+@pytest.fixture()
+def stream(req_mock):
+    """ A mock for the stream of events as if returned by K8s client. """
+    def feed(*args):
+        side_effect = []
+        for arg in args:
+            if isinstance(arg, (list, tuple)):
+                arg = iter(json.dumps(event).encode('utf-8') for event in arg)
+            side_effect.append(arg)
+        req_mock.get.return_value.iter_lines.side_effect = side_effect
+    return Mock(spec_set=['feed'], feed=feed)
+
+#
+# Mocks for login & checks. Used in specifialised login tests,
+# and in all CLI tests (since login is implicit with CLI commands).
+#
+
+@dataclasses.dataclass(frozen=True, eq=False, order=False)
+class LoginMocks:
+    pykube_in_cluster: Mock
+    pykube_from_file: Mock
+    pykube_checker: Mock
+    client_in_cluster: Mock
+    client_from_file: Mock
+    client_checker: Mock
+
+
+@pytest.fixture()
+def login_mocks(mocker):
+    # Pykube config is needed to create a pykube's API instance.
+    # But we do not want and do not need to actually authenticate, so we mock.
+    # Some fields are used by pykube's objects: we have to know them ("leaky abstractions").
+    cfg_mock = mocker.patch('kopf.clients.auth.get_pykube_cfg').return_value
+    cfg_mock.cluster = {'server': 'localhost'}
+    cfg_mock.namespace = 'default'
+
+    return LoginMocks(
+        pykube_in_cluster=mocker.patch.object(pykube.KubeConfig, 'from_service_account'),
+        pykube_from_file=mocker.patch.object(pykube.KubeConfig, 'from_file'),
+        pykube_checker=mocker.patch.object(pykube.http.HTTPClient, 'get'),
+        client_in_cluster=mocker.patch.object(kubernetes.config, 'load_incluster_config'),
+        client_from_file=mocker.patch.object(kubernetes.config, 'load_kube_config'),
+        client_checker=mocker.patch.object(kubernetes.client, 'CoreApi'),
+    )
 
 #
 # Helpers for the timing checks.

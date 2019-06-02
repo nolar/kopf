@@ -43,6 +43,6 @@ setup(
         'click',
         'iso8601',
         'aiojobs',
-        'kubernetes<10.0.0',  # see: https://github.com/kubernetes-client/python/issues/866
+        'pykube-ng',
     ],
 )

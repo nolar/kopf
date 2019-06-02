@@ -29,7 +29,7 @@ def test_all_examples_are_runnable(mocker, with_crd, with_peering, exampledir):
     mocker.patch('kopf.reactor.handling.DEFAULT_RETRY_DELAY', 1)
 
     # To prevent lengthy threads in the loop executor when the process exits.
-    mocker.patch('kopf.clients.watching.DEFAULT_STREAM_TIMEOUT', 10)
+    mocker.patch('kopf.config.WatchersConfig.default_stream_timeout', 10)
 
     # Run an operator and simulate some activity with the operated resource.
     with KopfRunner(['run', '--verbose', str(example_py)]) as runner:

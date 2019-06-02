@@ -1,44 +1,42 @@
-import functools
+import pykube
+import requests
 
-import kubernetes
+from kopf.clients import auth
+from kopf.clients import classes
 
 _UNSET_ = object()
 
 
 def read_crd(*, resource, default=_UNSET_):
     try:
-        name = f'{resource.plural}.{resource.group}'
-        api = kubernetes.client.ApiextensionsV1beta1Api()
-        rsp = api.read_custom_resource_definition(name=name)
-        return rsp
-    except kubernetes.client.rest.ApiException as e:
-        if e.status in [404, 403] and default is not _UNSET_:
+        api = auth.get_pykube_api()
+        cls = classes.CustomResourceDefinition
+        obj = cls.objects(api, namespace=None).get_by_name(name=resource.name)
+        return obj.obj
+
+    except pykube.ObjectDoesNotExist:
+        if default is not _UNSET_:
+            return default
+        raise
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code in [403, 404] and default is not _UNSET_:
             return default
         raise
 
 
 def read_obj(*, resource, namespace=None, name=None, default=_UNSET_):
     try:
-        if namespace is None:
-            api = kubernetes.client.CustomObjectsApi()
-            rsp = api.get_cluster_custom_object(
-                group=resource.group,
-                version=resource.version,
-                plural=resource.plural,
-                name=name,
-            )
-        else:
-            api = kubernetes.client.CustomObjectsApi()
-            rsp = api.get_namespaced_custom_object(
-                group=resource.group,
-                version=resource.version,
-                plural=resource.plural,
-                namespace=namespace,
-                name=name,
-            )
-        return rsp
-    except kubernetes.client.rest.ApiException as e:
-        if e.status == 404 and default is not _UNSET_:
+        api = auth.get_pykube_api()
+        cls = classes._make_cls(resource=resource)
+        namespace = namespace if issubclass(cls, pykube.objects.NamespacedAPIObject) else None
+        obj = cls.objects(api, namespace=namespace).get_by_name(name=name)
+        return obj.obj
+    except pykube.ObjectDoesNotExist:
+        if default is not _UNSET_:
+            return default
+        raise
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code in [403, 404] and default is not _UNSET_:
             return default
         raise
 
@@ -56,51 +54,29 @@ def list_objs(*, resource, namespace=None):
 
     * The resource is namespace-scoped AND operator is namespaced-restricted.
     """
-    api = kubernetes.client.CustomObjectsApi()
-    if namespace is None:
-        rsp = api.list_cluster_custom_object(
-            group=resource.group,
-            version=resource.version,
-            plural=resource.plural,
-        )
-    else:
-        rsp = api.list_namespaced_custom_object(
-            group=resource.group,
-            version=resource.version,
-            plural=resource.plural,
-            namespace=namespace,
-        )
-    return rsp
+    api = auth.get_pykube_api()
+    cls = classes._make_cls(resource=resource)
+    namespace = namespace if issubclass(cls, pykube.objects.NamespacedAPIObject) else None
+    lst = cls.objects(api, namespace=pykube.all if namespace is None else namespace)
+    return lst.response
 
 
-def make_list_fn(*, resource, namespace=None):
+def watch_objs(*, resource, namespace=None, timeout=None):
     """
-    Return a function to be called to receive the list of objects.
-    Needed in that form for the API streaming calls (see watching.py).
+    Watch the objects of specific resource type.
 
-    However, the returned function is already bound to the specified
-    resource type, and requires no resource-identifying parameters.
+    The cluster-scoped call is used in two cases:
 
-    Docstrings are important! Kubernetes client uses them to guess
-    the returned object types and the parameters type.
-    Function wrapping does that: preserves the docstrings.
+    * The resource itself is cluster-scoped, and namespacing makes not sense.
+    * The operator serves all namespaces for the namespaced custom resource.
+
+    Otherwise, the namespace-scoped call is used:
+
+    * The resource is namespace-scoped AND operator is namespaced-restricted.
     """
-    api = kubernetes.client.CustomObjectsApi()
-    if namespace is None:
-        @functools.wraps(api.list_cluster_custom_object)
-        def list_fn(**kwargs):
-            return api.list_cluster_custom_object(
-                group=resource.group,
-                version=resource.version,
-                plural=resource.plural,
-                **kwargs)
-    else:
-        @functools.wraps(api.list_cluster_custom_object)
-        def list_fn(**kwargs):
-            return api.list_namespaced_custom_object(
-                group=resource.group,
-                version=resource.version,
-                plural=resource.plural,
-                namespace=namespace,
-                **kwargs)
-    return list_fn
+    api = auth.get_pykube_api(timeout=timeout)
+    cls = classes._make_cls(resource=resource)
+    namespace = namespace if issubclass(cls, pykube.objects.NamespacedAPIObject) else None
+    lst = cls.objects(api, namespace=pykube.all if namespace is None else namespace)
+    src = lst.watch()
+    return iter({'type': event.type, 'object': event.object.obj} for event in src)

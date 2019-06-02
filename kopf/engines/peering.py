@@ -164,7 +164,7 @@ class Peer:
         if crd is None:
             return False
 
-        if str(crd.spec.scope).lower() != 'cluster':
+        if str(crd.get('spec', {}).get('scope', '')).lower() != 'cluster':
             return False  # no legacy mode detected
 
         obj = fetching.read_obj(resource=LEGACY_PEERING_RESOURCE, name=name, default=None)

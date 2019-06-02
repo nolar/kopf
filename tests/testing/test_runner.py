@@ -4,10 +4,8 @@ from kopf.testing import KopfRunner
 
 
 @pytest.fixture(autouse=True)
-def no_config_needed(mocker):
-    mocker.patch('kubernetes.config.load_incluster_config')
-    mocker.patch('kubernetes.config.load_kube_config')
-    mocker.patch('kubernetes.client.CoreApi')  # for login self-check
+def no_config_needed(login_mocks):
+    pass
 
 
 def test_command_invocation_works():

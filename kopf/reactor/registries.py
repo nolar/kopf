@@ -23,6 +23,16 @@ class Resource(NamedTuple):
     version: Text
     plural: Text
 
+    @property
+    def name(self):
+        return f'{self.plural}.{self.group}'
+
+    @property
+    def api_version(self):
+        # Strip heading/trailing slashes if group is absent (e.g. for pods).
+        return f'{self.group}/{self.version}'.strip('/')
+
+
 # A registered handler (function + event meta info).
 class Handler(NamedTuple):
     fn: Callable
