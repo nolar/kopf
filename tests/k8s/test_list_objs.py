@@ -47,12 +47,13 @@ def test_when_successful_namespaced(client_mock, resource):
 
 
 @pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['without-namespace', 'with-namespace'])
-def test_raises_api_error(client_mock, resource, namespace):
-    error = kubernetes.client.rest.ApiException(status=666)
+@pytest.mark.parametrize('status', [400, 401, 403, 500, 666])
+def test_raises_api_error(client_mock, resource, namespace, status):
+    error = kubernetes.client.rest.ApiException(status=status)
     apicls_mock = client_mock.CustomObjectsApi
     apicls_mock.return_value.list_cluster_custom_object.side_effect = error
     apicls_mock.return_value.list_namespaced_custom_object.side_effect = error
 
     with pytest.raises(kubernetes.client.rest.ApiException) as e:
         list_objs(resource=resource, namespace=namespace)
-    assert e.value.status == 666
+    assert e.value.status == status

@@ -49,21 +49,23 @@ def test_when_present_namespaced(client_mock, resource):
 
 
 @pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['without-namespace', 'with-namespace'])
-def test_when_absent_with_no_default(client_mock, resource, namespace):
-    error = kubernetes.client.rest.ApiException(status=404)
+@pytest.mark.parametrize('status', [404])
+def test_when_absent_with_no_default(client_mock, resource, namespace, status):
+    error = kubernetes.client.rest.ApiException(status=status)
     apicls_mock = client_mock.CustomObjectsApi
     apicls_mock.return_value.get_cluster_custom_object.side_effect = error
     apicls_mock.return_value.get_namespaced_custom_object.side_effect = error
 
     with pytest.raises(kubernetes.client.rest.ApiException) as e:
         read_obj(resource=resource, namespace=namespace, name='name1')
-    assert e.value.status == 404
+    assert e.value.status == status
 
 
 @pytest.mark.parametrize('default', [None, object()], ids=['none', 'object'])
 @pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['without-namespace', 'with-namespace'])
-def test_when_absent_with_default(client_mock, resource, namespace, default):
-    error = kubernetes.client.rest.ApiException(status=404)
+@pytest.mark.parametrize('status', [404])
+def test_when_absent_with_default(client_mock, resource, namespace, default, status):
+    error = kubernetes.client.rest.ApiException(status=status)
     apicls_mock = client_mock.CustomObjectsApi
     apicls_mock.return_value.get_cluster_custom_object.side_effect = error
     apicls_mock.return_value.get_namespaced_custom_object.side_effect = error
@@ -73,12 +75,13 @@ def test_when_absent_with_default(client_mock, resource, namespace, default):
 
 
 @pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['without-namespace', 'with-namespace'])
-def test_raises_api_error_despite_default(client_mock, resource, namespace):
-    error = kubernetes.client.rest.ApiException(status=666)
+@pytest.mark.parametrize('status', [400, 401, 403, 500, 666])
+def test_raises_api_error_despite_default(client_mock, resource, namespace, status):
+    error = kubernetes.client.rest.ApiException(status=status)
     apicls_mock = client_mock.CustomObjectsApi
     apicls_mock.return_value.get_cluster_custom_object.side_effect = error
     apicls_mock.return_value.get_namespaced_custom_object.side_effect = error
 
     with pytest.raises(kubernetes.client.rest.ApiException) as e:
         read_obj(resource=resource, namespace=namespace, name='name1', default=object())
-    assert e.value.status == 666
+    assert e.value.status == status

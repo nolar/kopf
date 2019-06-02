@@ -22,19 +22,21 @@ def test_when_present(client_mock, resource):
     ]
 
 
-def test_when_absent_with_no_default(client_mock, resource):
-    error = kubernetes.client.rest.ApiException(status=404)
+@pytest.mark.parametrize('status', [404])
+def test_when_absent_with_no_default(client_mock, resource, status):
+    error = kubernetes.client.rest.ApiException(status=status)
     apicls_mock = client_mock.ApiextensionsV1beta1Api
     apicls_mock.return_value.read_custom_resource_definition.side_effect = error
 
     with pytest.raises(kubernetes.client.rest.ApiException) as e:
         read_crd(resource=resource)
-    assert e.value.status == 404
+    assert e.value.status == status
 
 
 @pytest.mark.parametrize('default', [None, object()], ids=['none', 'object'])
-def test_when_absent_with_default(client_mock, resource, default):
-    error = kubernetes.client.rest.ApiException(status=404)
+@pytest.mark.parametrize('status', [404])
+def test_when_absent_with_default(client_mock, resource, default, status):
+    error = kubernetes.client.rest.ApiException(status=status)
     apicls_mock = client_mock.ApiextensionsV1beta1Api
     apicls_mock.return_value.read_custom_resource_definition.side_effect = error
 
@@ -42,11 +44,12 @@ def test_when_absent_with_default(client_mock, resource, default):
     assert crd is default
 
 
-def test_raises_api_error_despite_default(client_mock, resource):
-    error = kubernetes.client.rest.ApiException(status=666)
+@pytest.mark.parametrize('status', [400, 401, 403, 500, 666])
+def test_raises_api_error_despite_default(client_mock, resource, status):
+    error = kubernetes.client.rest.ApiException(status=status)
     apicls_mock = client_mock.ApiextensionsV1beta1Api
     apicls_mock.return_value.read_custom_resource_definition.side_effect = error
 
     with pytest.raises(kubernetes.client.rest.ApiException) as e:
         read_crd(resource=resource, default=object())
-    assert e.value.status == 666
+    assert e.value.status == status
