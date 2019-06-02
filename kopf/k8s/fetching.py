@@ -12,7 +12,7 @@ def read_crd(*, resource, default=_UNSET_):
         rsp = api.read_custom_resource_definition(name=name)
         return rsp
     except kubernetes.client.rest.ApiException as e:
-        if e.status == 404 and default is not _UNSET_:
+        if e.status in [404, 403] and default is not _UNSET_:
             return default
         raise
 

@@ -22,7 +22,7 @@ def test_when_present(client_mock, resource):
     ]
 
 
-@pytest.mark.parametrize('status', [404])
+@pytest.mark.parametrize('status', [403, 404])
 def test_when_absent_with_no_default(client_mock, resource, status):
     error = kubernetes.client.rest.ApiException(status=status)
     apicls_mock = client_mock.ApiextensionsV1beta1Api
@@ -34,7 +34,7 @@ def test_when_absent_with_no_default(client_mock, resource, status):
 
 
 @pytest.mark.parametrize('default', [None, object()], ids=['none', 'object'])
-@pytest.mark.parametrize('status', [404])
+@pytest.mark.parametrize('status', [403, 404])
 def test_when_absent_with_default(client_mock, resource, default, status):
     error = kubernetes.client.rest.ApiException(status=status)
     apicls_mock = client_mock.ApiextensionsV1beta1Api
@@ -44,7 +44,7 @@ def test_when_absent_with_default(client_mock, resource, default, status):
     assert crd is default
 
 
-@pytest.mark.parametrize('status', [400, 401, 403, 500, 666])
+@pytest.mark.parametrize('status', [400, 401, 500, 666])
 def test_raises_api_error_despite_default(client_mock, resource, status):
     error = kubernetes.client.rest.ApiException(status=status)
     apicls_mock = client_mock.ApiextensionsV1beta1Api
