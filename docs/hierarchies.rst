@@ -9,7 +9,7 @@ Kopf provides some tools to simplify connecting these objects together.
 .. note::
 
     Kopf is not a Kubernetes client library.
-    It does not provide any means to manipulate the Kubernets objects
+    It does not provide any means to manipulate the Kubernetes objects
     or to talk to the Kubernetes API.
     Use any of the existing libraries for that purpose,
     such as the official `kubernetes client`_ or pykube-ng_.
