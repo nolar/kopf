@@ -23,5 +23,5 @@ Which way to use depends on how the source code is structured,
 and is out of scope of Kopf.
 
 Each of the mentioned files and modules will be imported.
-The handlers should be registred during the import.
+The handlers should be registered during the import.
 This is usually done by using the function decorators --- see :doc:`/handlers`.
