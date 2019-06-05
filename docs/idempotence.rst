@@ -2,7 +2,7 @@
 Idempotence
 ===========
 
-Kopf provides the tools to make the handlers idempotent.
+Kopf provides tools to make the handlers idempotent.
 
 `kopf.register` function and `kopf.on.this` decorator allow to schedule
 arbitrary sub-handlers for the execution in the current cycle.
