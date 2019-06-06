@@ -183,6 +183,7 @@ def cause_mock(mocker, resource):
         # I.e. everything except what we mock: event & body.
         cause = Cause(
             event=event,
+            initial=None,
             body=body,
             **kwargs)
 

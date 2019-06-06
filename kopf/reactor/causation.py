@@ -61,6 +61,7 @@ class Cause(NamedTuple):
     logger: Union[logging.Logger, logging.LoggerAdapter]
     resource: registries.Resource
     event: Text
+    initial: bool
     body: MutableMapping
     patch: MutableMapping
     diff: Optional[diffs.Diff] = None
@@ -81,12 +82,14 @@ def detect_cause(
     and other side-effects.
     """
     body = event['object']
+    initial = event['type'] is None  # special value simulated by us in kopf.reactor.watching.
 
     # The object was really deleted from the cluster. But we do not care anymore.
     if event['type'] == 'DELETED':
         return Cause(
             event=GONE,
             body=body,
+            initial=initial,
             **kwargs)
 
     # The finalizer has been just removed. We are fully done.
@@ -94,12 +97,14 @@ def detect_cause(
         return Cause(
             event=FREE,
             body=body,
+            initial=initial,
             **kwargs)
 
     if finalizers.is_deleted(body):
         return Cause(
             event=DELETE,
             body=body,
+            initial=initial,
             **kwargs)
 
     # For a fresh new object, first block it from accidental deletions without our permission.
@@ -108,6 +113,7 @@ def detect_cause(
         return Cause(
             event=NEW,
             body=body,
+            initial=initial,
             **kwargs)
 
     # For an object seen for the first time (i.e. just-created), call the creation handlers,
@@ -116,6 +122,7 @@ def detect_cause(
         return Cause(
             event=CREATE,
             body=body,
+            initial=initial,
             **kwargs)
 
     # The previous step triggers one more patch operation without actual changes. Ignore it.
@@ -124,6 +131,7 @@ def detect_cause(
         return Cause(
             event=NOOP,
             body=body,
+            initial=initial,
             **kwargs)
 
     # And what is left, is the update operation on one of the useful fields of the existing object.
@@ -131,6 +139,7 @@ def detect_cause(
     return Cause(
         event=UPDATE,
         body=body,
+        initial=initial,
         diff=diff,
         old=old,
         new=new,
