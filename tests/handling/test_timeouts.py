@@ -5,13 +5,13 @@ import freezegun
 import pytest
 
 import kopf
-from kopf.reactor.causation import CREATE, UPDATE, DELETE
+from kopf.reactor.causation import HANDLER_CAUSES
 from kopf.reactor.handling import custom_object_handler
 
 
 # The timeout is hard-coded in conftest.py:handlers().
 # The extrahandlers are needed to prevent the cycle ending and status purging.
-@pytest.mark.parametrize('cause_type', [CREATE, UPDATE, DELETE])
+@pytest.mark.parametrize('cause_type', HANDLER_CAUSES)
 @pytest.mark.parametrize('now, ts', [
     ['2099-12-31T23:59:59', '2020-01-01T00:00:00'],
 ], ids=['slow'])

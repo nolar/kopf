@@ -5,13 +5,13 @@ import freezegun
 import pytest
 
 import kopf
-from kopf.reactor.causation import CREATE, UPDATE, DELETE
+from kopf.reactor.causation import HANDLER_CAUSES, CREATE, UPDATE, DELETE
 from kopf.reactor.handling import HandlerRetryError
 from kopf.reactor.handling import WAITING_KEEPALIVE_INTERVAL
 from kopf.reactor.handling import custom_object_handler
 
 
-@pytest.mark.parametrize('cause_type', [CREATE, UPDATE, DELETE])
+@pytest.mark.parametrize('cause_type', HANDLER_CAUSES)
 @pytest.mark.parametrize('now, ts, delay', [
     ['2020-01-01T00:00:00', '2020-01-01T00:04:56.789000', 4 * 60 + 56.789],
 ], ids=['fast'])
@@ -52,7 +52,7 @@ async def test_delayed_handlers_progress(
     ])
 
 
-@pytest.mark.parametrize('cause_type', [CREATE, UPDATE, DELETE])
+@pytest.mark.parametrize('cause_type', HANDLER_CAUSES)
 @pytest.mark.parametrize('now, ts, delay', [
     ['2020-01-01T00:00:00', '2020-01-01T00:04:56.789000', 4 * 60 + 56.789],
     ['2020-01-01T00:00:00', '2099-12-31T23:59:59.000000', WAITING_KEEPALIVE_INTERVAL],

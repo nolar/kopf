@@ -4,13 +4,13 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.causation import CREATE, UPDATE, DELETE
+from kopf.reactor.causation import HANDLER_CAUSES, CREATE, UPDATE, DELETE
 from kopf.reactor.handling import HandlerFatalError, HandlerRetryError
 from kopf.reactor.handling import custom_object_handler
 
 
 # The extrahandlers are needed to prevent the cycle ending and status purging.
-@pytest.mark.parametrize('cause_type', [CREATE, UPDATE, DELETE])
+@pytest.mark.parametrize('cause_type', HANDLER_CAUSES)
 async def test_fatal_error_stops_handler(
         registry, handlers, extrahandlers, resource, cause_mock, cause_type,
         caplog, assert_logs, k8s_mocked):
@@ -48,7 +48,7 @@ async def test_fatal_error_stops_handler(
 
 
 # The extrahandlers are needed to prevent the cycle ending and status purging.
-@pytest.mark.parametrize('cause_type', [CREATE, UPDATE, DELETE])
+@pytest.mark.parametrize('cause_type', HANDLER_CAUSES)
 async def test_retry_error_delays_handler(
         registry, handlers, extrahandlers, resource, cause_mock, cause_type,
         caplog, assert_logs, k8s_mocked):
@@ -87,7 +87,7 @@ async def test_retry_error_delays_handler(
 
 
 # The extrahandlers are needed to prevent the cycle ending and status purging.
-@pytest.mark.parametrize('cause_type', [CREATE, UPDATE, DELETE])
+@pytest.mark.parametrize('cause_type', HANDLER_CAUSES)
 async def test_arbitrary_error_delays_handler(
         registry, handlers, extrahandlers, resource, cause_mock, cause_type,
         caplog, assert_logs, k8s_mocked):

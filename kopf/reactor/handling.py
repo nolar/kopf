@@ -182,7 +182,7 @@ async def handle_cause(
     done = None
 
     # Regular causes invoke the handlers.
-    if cause.event in [causation.CREATE, causation.UPDATE, causation.DELETE]:
+    if cause.event in causation.HANDLER_CAUSES:
         title = causation.TITLES.get(cause.event, repr(cause.event))
         logger.debug(f"{title.capitalize()} event: %r", body)
         try:
