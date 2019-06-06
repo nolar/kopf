@@ -22,7 +22,7 @@ from typing import MutableMapping
 Resource = collections.namedtuple('Resource', 'group version plural')
 
 # A registered handler (function + event meta info).
-Handler = collections.namedtuple('Handler', 'fn id event field timeout')
+Handler = collections.namedtuple('Handler', 'fn id event field timeout initial')
 
 
 class BaseRegistry(metaclass=abc.ABCMeta):
@@ -91,7 +91,7 @@ class SimpleRegistry(BaseRegistry):
     def append(self, handler):
         self._handlers.append(handler)
 
-    def register(self, fn, id=None, event=None, field=None, timeout=None):
+    def register(self, fn, id=None, event=None, field=None, timeout=None, initial=None):
 
         if field is None:
             field = None  # for the non-field events
@@ -105,7 +105,7 @@ class SimpleRegistry(BaseRegistry):
         id = id if id is not None else get_callable_id(fn)
         id = id if field is None else f'{id}/{".".join(field)}'
         id = id if self.prefix is None else f'{self.prefix}/{id}'
-        handler = Handler(id=id, fn=fn, event=event, field=field, timeout=timeout)
+        handler = Handler(id=id, fn=fn, event=event, field=field, timeout=timeout, initial=initial)
 
         self.append(handler)
         return fn  # to be usable as a decorator too.
@@ -157,13 +157,13 @@ class GlobalRegistry(BaseRegistry):
         self._event_handlers: MutableMapping[Resource, SimpleRegistry] = {}
 
     def register_cause_handler(self, group, version, plural, fn,
-                               id=None, event=None, field=None, timeout=None):
+                               id=None, event=None, field=None, timeout=None, initial=None):
         """
         Register an additional handler function for the specific resource and specific event.
         """
         resource = Resource(group, version, plural)
         registry = self._cause_handlers.setdefault(resource, SimpleRegistry())
-        registry.register(event=event, field=field, fn=fn, id=id, timeout=timeout)
+        registry.register(event=event, field=field, fn=fn, id=id, timeout=timeout, initial=initial)
         return fn  # to be usable as a decorator too.
 
     def register_event_handler(self, group, version, plural, fn, id=None):
