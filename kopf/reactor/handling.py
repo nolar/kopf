@@ -180,31 +180,36 @@ async def handle_cause(
     body = cause.body  # TODO get rid of this alias
     delay = None
     done = None
+    skip = None
 
     # Regular causes invoke the handlers.
     if cause.event in causation.HANDLER_CAUSES:
         title = causation.TITLES.get(cause.event, repr(cause.event))
         logger.debug(f"{title.capitalize()} event: %r", body)
         handlers = registry.get_cause_handlers(cause=cause)
-        try:
-            await _execute(
-                lifecycle=lifecycle,
-                handlers=handlers,
-                cause=cause,
-            )
-        except HandlerChildrenRetry as e:
-            # on the top-level, no patches -- it is pre-patched.
-            delay = e.delay
-            done = False
+        if handlers:
+            try:
+                await _execute(
+                    lifecycle=lifecycle,
+                    handlers=handlers,
+                    cause=cause,
+                )
+            except HandlerChildrenRetry as e:
+                # on the top-level, no patches -- it is pre-patched.
+                delay = e.delay
+                done = False
+            else:
+                logger.info(f"All handlers succeeded for {title}.")
+                events.info(cause.body, reason='Success', message=f"All handlers succeeded for {title}.")
+                done = True
         else:
-            logger.info(f"All handlers succeeded for {title}.")
-            events.info(cause.body, reason='Success', message=f"All handlers succeeded for {title}.")
-            done = True
+            skip = True
 
     # Regular causes also do some implicit post-handling when all handlers are done.
-    if done:
-        status.purge_progress(body=body, patch=patch)
+    if done or skip:
         lastseen.refresh_state(body=body, patch=patch)
+        if done:
+            status.purge_progress(body=body, patch=patch)
         if cause.event == causation.DELETE:
             logger.debug("Removing the finalizer, thus allowing the actual deletion.")
             finalizers.remove_finalizers(body=body, patch=patch)
