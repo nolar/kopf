@@ -7,7 +7,7 @@ from kopf import SimpleRegistry, GlobalRegistry
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.
-def some_fn():
+def some_fn(x=None):
     pass
 
 
@@ -113,11 +113,11 @@ def test_irrelevant_handlers_with_field_ignored(cause_any_diff, registry, regist
 #
 
 def test_order_persisted_a(cause_with_diff, registry, register_fn):
-    register_fn(some_fn, event=None)
-    register_fn(some_fn, event='some-event')
-    register_fn(some_fn, event='filtered-out-event')
-    register_fn(some_fn, event=None, field='filtered-out-field')
-    register_fn(some_fn, event=None, field='some-field')
+    register_fn(functools.partial(some_fn, 1), event=None)
+    register_fn(functools.partial(some_fn, 2), event='some-event')
+    register_fn(functools.partial(some_fn, 3), event='filtered-out-event')
+    register_fn(functools.partial(some_fn, 4), event=None, field='filtered-out-field')
+    register_fn(functools.partial(some_fn, 5), event=None, field='some-field')
 
     handlers = registry.get_cause_handlers(cause_with_diff)
 
@@ -132,11 +132,11 @@ def test_order_persisted_a(cause_with_diff, registry, register_fn):
 
 
 def test_order_persisted_b(cause_with_diff, registry, register_fn):
-    register_fn(some_fn, event=None, field='some-field')
-    register_fn(some_fn, event=None, field='filtered-out-field')
-    register_fn(some_fn, event='filtered-out-event')
-    register_fn(some_fn, event='some-event')
-    register_fn(some_fn, event=None)
+    register_fn(functools.partial(some_fn, 1), event=None, field='some-field')
+    register_fn(functools.partial(some_fn, 2), event=None, field='filtered-out-field')
+    register_fn(functools.partial(some_fn, 3), event='filtered-out-event')
+    register_fn(functools.partial(some_fn, 4), event='some-event')
+    register_fn(functools.partial(some_fn, 5), event=None)
 
     handlers = registry.get_cause_handlers(cause_with_diff)
 
@@ -148,3 +148,17 @@ def test_order_persisted_b(cause_with_diff, registry, register_fn):
     assert handlers[1].field is None
     assert handlers[2].event is None
     assert handlers[2].field is None
+
+#
+# Same function should not be returned twice for the same event/cause.
+# Only actual for the cases when the event/cause can match multiple handlers.
+#
+
+def test_deduplicated(cause_with_diff, registry, register_fn):
+    register_fn(some_fn, event=None, id='a')
+    register_fn(some_fn, event=None, id='b')
+
+    handlers = registry.get_cause_handlers(cause_with_diff)
+
+    assert len(handlers) == 1
+    assert handlers[0].id == 'a'  # the first found one is returned

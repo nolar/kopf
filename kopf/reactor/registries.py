@@ -31,18 +31,48 @@ class BaseRegistry(metaclass=abc.ABCMeta):
     """
 
     def get_cause_handlers(self, cause):
-        return list(self.iter_cause_handlers(cause=cause))
+        return list(self._deduplicated(self.iter_cause_handlers(cause=cause)))
 
     @abc.abstractmethod
     def iter_cause_handlers(self, cause):
         pass
 
     def get_event_handlers(self, resource, event):
-        return list(self.iter_event_handlers(resource=resource, event=event))
+        return list(self._deduplicated(self.iter_event_handlers(resource=resource, event=event)))
 
     @abc.abstractmethod
     def iter_event_handlers(self, resource, event):
         pass
+
+    @staticmethod
+    def _deduplicated(handlers):
+        """
+        Yield the handlers deduplicated.
+
+        The same handler function should not be invoked more than once for one
+        single event/cause, even if it is registered with multiple decorators
+        (e.g. different filtering criteria or different but same-effect causes).
+
+        One of the ways how this could happen::
+
+            @kopf.on.create(...)
+            @kopf.on.resume(...)
+            def fn(**kwargs): pass
+
+        In normal case, the function will be called either on resource creation,
+        or on operator restart for the pre-existing (already handled) resources.
+        When a resource is created during the operator downtime, it is
+        both creation and resuming at the same time: the object is new (not yet
+        handled) **AND** it is detected as per-existing before operator start.
+        But `fn()` should be called only once for this cause.
+        """
+        seen_ids = set()
+        for handler in handlers:
+            if id(handler.fn) in seen_ids:
+                pass
+            else:
+                seen_ids.add(id(handler.fn))
+                yield handler
 
 
 class SimpleRegistry(BaseRegistry):
