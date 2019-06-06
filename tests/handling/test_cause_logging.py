@@ -9,7 +9,8 @@ from kopf.reactor.handling import custom_object_handler
 
 
 @pytest.mark.parametrize('cause_type', ALL_CAUSES)
-async def test_all_logs_are_prefixed(registry, resource, caplog, cause_type, cause_mock):
+async def test_all_logs_are_prefixed(registry, resource, handlers,
+                                     caplog, cause_type, cause_mock):
     caplog.set_level(logging.DEBUG)
     cause_mock.event = cause_type
 
@@ -20,4 +21,5 @@ async def test_all_logs_are_prefixed(registry, resource, caplog, cause_type, cau
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
     )
+    assert caplog.messages  # no messages means that we cannot test it
     assert all(message.startswith('[ns1/name1] ') for message in caplog.messages)
