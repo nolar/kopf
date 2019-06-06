@@ -176,14 +176,17 @@ def cause_mock(mocker, resource):
         # Avoid collision of our mocked values with the passed kwargs.
         original_event = kwargs.pop('event', None)
         original_body = kwargs.pop('body', None)
+        original_diff = kwargs.pop('diff', None)
         event = mock.event if mock.event is not None else original_event
         body = copy.deepcopy(mock.body) if mock.body is not None else original_body
+        diff = copy.deepcopy(mock.diff) if mock.diff is not None else original_diff
 
         # Pass through kwargs: resource, logger, patch, diff, old, new.
         # I.e. everything except what we mock: event & body.
         cause = Cause(
             event=event,
             body=body,
+            diff=diff,
             **kwargs)
 
         # Needed for the k8s-event creation, as they are attached to objects.
@@ -199,7 +202,8 @@ def cause_mock(mocker, resource):
     mocker.patch('kopf.reactor.causation.detect_cause', new=new_detect_fn)
 
     # The mock object stores some values later used by the factory substitute.
-    mock = mocker.Mock(spec_set=['event', 'body'])
+    mock = mocker.Mock(spec_set=['event', 'body', 'diff'])
     mock.event = None
     mock.body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    mock.diff = None
     return mock
