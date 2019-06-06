@@ -5,7 +5,7 @@ import freezegun
 import pytest
 
 import kopf
-from kopf.reactor.causation import HANDLER_CAUSES, CREATE, UPDATE, DELETE
+from kopf.reactor.causation import HANDLER_CAUSES, CREATE, UPDATE, DELETE, RESUME
 from kopf.reactor.handling import HandlerRetryError
 from kopf.reactor.handling import WAITING_KEEPALIVE_INTERVAL
 from kopf.reactor.handling import custom_object_handler
@@ -23,6 +23,7 @@ async def test_delayed_handlers_progress(
     handlers.create_mock.side_effect = HandlerRetryError("oops", delay=delay)
     handlers.update_mock.side_effect = HandlerRetryError("oops", delay=delay)
     handlers.delete_mock.side_effect = HandlerRetryError("oops", delay=delay)
+    handlers.resume_mock.side_effect = HandlerRetryError("oops", delay=delay)
 
     cause_mock.event = cause_type
 
@@ -38,6 +39,7 @@ async def test_delayed_handlers_progress(
     assert handlers.create_mock.call_count == (1 if cause_type == CREATE else 0)
     assert handlers.update_mock.call_count == (1 if cause_type == UPDATE else 0)
     assert handlers.delete_mock.call_count == (1 if cause_type == DELETE else 0)
+    assert handlers.resume_mock.call_count == (1 if cause_type == RESUME else 0)
 
     assert not k8s_mocked.asyncio_sleep.called
     assert k8s_mocked.patch_obj.called
@@ -68,6 +70,7 @@ async def test_delayed_handlers_sleep(
             'create_fn': {'delayed': ts},
             'update_fn': {'delayed': ts},
             'delete_fn': {'delayed': ts},
+            'resume_fn': {'delayed': ts},
         }}}
     })
 
@@ -83,6 +86,7 @@ async def test_delayed_handlers_sleep(
     assert not handlers.create_mock.called
     assert not handlers.update_mock.called
     assert not handlers.delete_mock.called
+    assert not handlers.resume_mock.called
 
     # The dummy patch is needed to trigger the further changes. The value is irrelevant.
     assert k8s_mocked.patch_obj.called

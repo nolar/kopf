@@ -27,6 +27,7 @@ async def test_timed_out_handler_fails(
             'create_fn': {'started': ts},
             'update_fn': {'started': ts},
             'delete_fn': {'started': ts},
+            'resume_fn': {'started': ts},
         }}}
     })
 
@@ -42,6 +43,7 @@ async def test_timed_out_handler_fails(
     assert not handlers.create_mock.called
     assert not handlers.update_mock.called
     assert not handlers.delete_mock.called
+    assert not handlers.resume_mock.called
 
     # Progress is reset, as the handler is not going to retry.
     assert not k8s_mocked.asyncio_sleep.called

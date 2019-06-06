@@ -3,7 +3,7 @@ import asyncio
 import pytest
 
 import kopf
-from kopf.reactor.causation import HANDLER_CAUSES, CREATE, UPDATE, DELETE
+from kopf.reactor.causation import HANDLER_CAUSES, CREATE, UPDATE, DELETE, RESUME
 from kopf.reactor.handling import custom_object_handler
 
 
@@ -27,6 +27,7 @@ async def test_1st_step_stores_progress_by_patching(
     assert handlers.create_mock.call_count == (1 if cause_type == CREATE else 0)
     assert handlers.update_mock.call_count == (1 if cause_type == UPDATE else 0)
     assert handlers.delete_mock.call_count == (1 if cause_type == DELETE else 0)
+    assert handlers.resume_mock.call_count == (1 if cause_type == RESUME else 0)
 
     assert not k8s_mocked.asyncio_sleep.called
     assert k8s_mocked.patch_obj.called
@@ -70,6 +71,7 @@ async def test_2nd_step_finishes_the_handlers(
     assert extrahandlers.create_mock.call_count == (1 if cause_type == CREATE else 0)
     assert extrahandlers.update_mock.call_count == (1 if cause_type == UPDATE else 0)
     assert extrahandlers.delete_mock.call_count == (1 if cause_type == DELETE else 0)
+    assert extrahandlers.resume_mock.call_count == (1 if cause_type == RESUME else 0)
 
     assert not k8s_mocked.asyncio_sleep.called
     assert k8s_mocked.patch_obj.called

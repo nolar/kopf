@@ -42,7 +42,7 @@ import pytest
 from kubernetes.client.rest import ApiException  # to avoid mocking it
 
 import kopf
-from kopf.reactor.causation import Cause
+from kopf.reactor.causation import Cause, RESUME
 
 
 @dataclasses.dataclass(frozen=True, eq=False)
@@ -90,10 +90,12 @@ class HandlersContainer:
     create_mock: Mock
     update_mock: Mock
     delete_mock: Mock
+    resume_mock: Mock
     event_fn: Callable
     create_fn: Callable
     update_fn: Callable
     delete_fn: Callable
+    resume_fn: Callable
 
 
 @pytest.fixture()
@@ -102,6 +104,7 @@ def handlers(clear_default_registry):
     create_mock = Mock(return_value=None)
     update_mock = Mock(return_value=None)
     delete_mock = Mock(return_value=None)
+    resume_mock = Mock(return_value=None)
 
     @kopf.on.event('zalando.org', 'v1', 'kopfexamples', id='event_fn')
     async def event_fn(**kwargs):
@@ -119,15 +122,21 @@ def handlers(clear_default_registry):
     async def delete_fn(**kwargs):
         return delete_mock(**kwargs)
 
+    @kopf.on.resume('zalando.org', 'v1', 'kopfexamples', id='resume_fn', timeout=600)
+    async def resume_fn(**kwargs):
+        return resume_mock(**kwargs)
+
     return HandlersContainer(
         event_mock=event_mock,
         create_mock=create_mock,
         update_mock=update_mock,
         delete_mock=delete_mock,
+        resume_mock=resume_mock,
         event_fn=event_fn,
         create_fn=create_fn,
         update_fn=update_fn,
         delete_fn=delete_fn,
+        resume_fn=resume_fn,
     )
 
 
@@ -137,6 +146,7 @@ def extrahandlers(clear_default_registry, handlers):
     create_mock = Mock(return_value=None)
     update_mock = Mock(return_value=None)
     delete_mock = Mock(return_value=None)
+    resume_mock = Mock(return_value=None)
 
     @kopf.on.event('zalando.org', 'v1', 'kopfexamples', id='event_fn2')
     async def event_fn2(**kwargs):
@@ -154,15 +164,21 @@ def extrahandlers(clear_default_registry, handlers):
     async def delete_fn2(**kwargs):
         return delete_mock(**kwargs)
 
+    @kopf.on.resume('zalando.org', 'v1', 'kopfexamples', id='resume_fn2')
+    async def resume_fn2(**kwargs):
+        return resume_mock(**kwargs)
+
     return HandlersContainer(
         event_mock=event_mock,
         create_mock=create_mock,
         update_mock=update_mock,
         delete_mock=delete_mock,
+        resume_mock=resume_mock,
         event_fn=event_fn2,
         create_fn=create_fn2,
         update_fn=update_fn2,
         delete_fn=delete_fn2,
+        resume_fn=resume_fn2,
     )
 
 
@@ -177,13 +193,14 @@ def cause_mock(mocker, resource):
         original_event = kwargs.pop('event', None)
         original_body = kwargs.pop('body', None)
         event = mock.event if mock.event is not None else original_event
+        initial = bool(event == RESUME)
         body = copy.deepcopy(mock.body) if mock.body is not None else original_body
 
         # Pass through kwargs: resource, logger, patch, diff, old, new.
         # I.e. everything except what we mock: event & body.
         cause = Cause(
             event=event,
-            initial=None,
+            initial=initial,
             body=body,
             **kwargs)
 

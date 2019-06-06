@@ -114,7 +114,9 @@ class SimpleRegistry(BaseRegistry):
         fields = {field for _, field, _, _ in cause.diff or []}
         for handler in self._handlers:
             if handler.event is None or handler.event == cause.event:
-                if handler.field:
+                if handler.initial and not cause.initial:
+                    pass  # ignore initial handlers in the non-initial causes.
+                elif handler.field:
                     if any(field[:len(handler.field)] == handler.field for field in fields):
                         yield handler
                 else:

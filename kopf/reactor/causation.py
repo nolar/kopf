@@ -33,13 +33,14 @@ NEW = 'new'
 CREATE = 'create'
 UPDATE = 'update'
 DELETE = 'delete'
+RESUME = 'resume'
 NOOP = 'noop'
 FREE = 'free'
 GONE = 'gone'
 
 # These sets are checked in few places, so we keep them centralised:
 # the user-facing causes (for handlers), and internally facing (so as handled).
-HANDLER_CAUSES = (CREATE, UPDATE, DELETE)
+HANDLER_CAUSES = (CREATE, UPDATE, DELETE, RESUME)
 REACTOR_CAUSES = (NEW, NOOP, FREE, GONE)
 ALL_CAUSES = HANDLER_CAUSES + REACTOR_CAUSES
 
@@ -48,6 +49,7 @@ TITLES = {
     CREATE: 'creation',
     UPDATE: 'update',
     DELETE: 'deletion',
+    RESUME: 'resuming',
 }
 
 
@@ -121,6 +123,15 @@ def detect_cause(
     if not lastseen.has_state(body):
         return Cause(
             event=CREATE,
+            body=body,
+            initial=initial,
+            **kwargs)
+
+    # Cases with no state changes are usually ignored (NOOP). But for the "None" events,
+    # as simulated for the initial listing, we call the resuming handlers (e.g. threads/tasks).
+    if not lastseen.is_state_changed(body) and initial:
+        return Cause(
+            event=RESUME,
             body=body,
             initial=initial,
             **kwargs)
