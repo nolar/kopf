@@ -14,6 +14,26 @@ def _auto_clean_kubernetes_client(clean_kubernetes_client):
     pass
 
 
+@pytest.mark.usefixtures('kubernetes_uninstalled')
+def test_kubernetes_uninstalled_has_effect():
+    with pytest.raises(ImportError):
+        import kubernetes
+
+#
+# Tests via the direct function invocation.
+#
+
+@pytest.mark.usefixtures('kubernetes_uninstalled')
+def test_direct_auth_works_without_client(login_mocks):
+    login()
+    verify()
+
+    assert login_mocks.pykube_in_cluster.called
+    assert not login_mocks.pykube_from_file.called
+    assert not login_mocks.client_in_cluster.called
+    assert not login_mocks.client_from_file.called
+
+
 def test_direct_auth_works_incluster(login_mocks):
 
     login()
@@ -92,6 +112,20 @@ def test_direct_check_fails_on_errors_in_client(login_mocks):
     assert not login_mocks.client_from_file.called
     assert login_mocks.pykube_checker.called
     assert login_mocks.client_checker.called
+
+#
+# The same tests, but via the CLI command run.
+#
+
+@pytest.mark.usefixtures('kubernetes_uninstalled')
+def test_clirun_auth_works_without_client(invoke, login_mocks, preload, real_run):
+    result = invoke(['run'])
+    assert result.exit_code == 0
+
+    assert login_mocks.pykube_in_cluster.called
+    assert not login_mocks.pykube_from_file.called
+    assert not login_mocks.client_in_cluster.called
+    assert not login_mocks.client_from_file.called
 
 
 def test_clirun_auth_works_incluster(invoke, login_mocks, preload, real_run):

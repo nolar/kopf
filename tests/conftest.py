@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import re
+import sys
 import time
 from unittest.mock import Mock
 
@@ -141,6 +142,35 @@ def login_mocks(mocker):
         client_from_file=mocker.patch.object(kubernetes.config, 'load_kube_config'),
         client_checker=mocker.patch.object(kubernetes.client, 'CoreApi'),
     )
+
+#
+# Simulating that Kubernetes client library is not installed.
+#
+
+class ProhibitedImportFinder:
+    def find_spec(self, fullname, path, target=None):
+        if fullname == 'kubernetes' or fullname.startswith('kubernetes'):
+            raise ImportError("Import is prohibited for tests.")
+
+
+@pytest.fixture()
+def kubernetes_uninstalled():
+
+    # Remove any cached modules.
+    preserved = {}
+    for name, mod in list(sys.modules.items()):
+        if name == 'kubernetes' or name.startswith('kubernetes.'):
+            preserved[name] = mod
+            del sys.modules[name]
+
+    # Inject the prohibition for loading this module. And restore when done.
+    finder = ProhibitedImportFinder()
+    sys.meta_path.insert(0, finder)
+    try:
+        yield
+    finally:
+        sys.meta_path.remove(finder)
+        sys.modules.update(preserved)
 
 #
 # Helpers for the timing checks.
