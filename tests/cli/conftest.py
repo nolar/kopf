@@ -2,7 +2,6 @@ import functools
 import sys
 
 import click.testing
-import kubernetes
 import pytest
 
 import kopf
@@ -65,6 +64,7 @@ def clean_modules_cache():
 
 @pytest.fixture(autouse=True)
 def clean_kubernetes_client():
+    kubernetes = pytest.importorskip('kubernetes')
     kubernetes.client.configuration.Configuration.set_default(None)
 
 

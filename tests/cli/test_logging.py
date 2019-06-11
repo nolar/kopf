@@ -1,7 +1,6 @@
 import asyncio
 import logging
 
-import kubernetes
 import pytest
 
 
@@ -52,6 +51,8 @@ def test_verbosity(invoke, caplog, options, envvars, expect_debug, expect_info, 
     (['--verbose']),
 ], ids=['default', 'q', 'quiet', 'v', 'verbose'])
 def test_no_lowlevel_dumps_in_nondebug(invoke, caplog, options, login, preload, real_run):
+    kubernetes = pytest.importorskip('kubernetes')
+
     result = invoke(['run'] + options)
     assert result.exit_code == 0
 
@@ -70,6 +71,8 @@ def test_no_lowlevel_dumps_in_nondebug(invoke, caplog, options, login, preload, 
     (['--debug']),
 ], ids=['d', 'debug'])
 def test_lowlevel_dumps_in_debug_mode(invoke, caplog, options, login, preload, real_run):
+    kubernetes = pytest.importorskip('kubernetes')
+
     result = invoke(['run'] + options)
     assert result.exit_code == 0
 

@@ -10,7 +10,6 @@ import time
 from unittest.mock import Mock
 
 import asynctest
-import kubernetes.client.rest
 import pykube
 import pytest
 import pytest_mock
@@ -127,6 +126,8 @@ class LoginMocks:
 
 @pytest.fixture()
 def login_mocks(mocker):
+    kubernetes = pytest.importorskip('kubernetes')
+
     # Pykube config is needed to create a pykube's API instance.
     # But we do not want and do not need to actually authenticate, so we mock.
     # Some fields are used by pykube's objects: we have to know them ("leaky abstractions").

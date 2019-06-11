@@ -2,7 +2,6 @@
 Remember: We do not test the clients, we assume they work when used properly.
 We test our own functions here, and check if the clients were called.
 """
-import kubernetes.client.rest
 import pytest
 import requests
 
@@ -45,6 +44,7 @@ def test_direct_auth_works_incluster(login_mocks):
 
 
 def test_direct_auth_works_kubeconfig(login_mocks):
+    kubernetes = pytest.importorskip('kubernetes')
     login_mocks.pykube_in_cluster.side_effect = FileNotFoundError
     login_mocks.client_in_cluster.side_effect = kubernetes.config.ConfigException
 
@@ -70,6 +70,7 @@ def test_direct_auth_fails_on_errors_in_pykube(login_mocks):
 
 
 def test_direct_auth_fails_on_errors_in_client(login_mocks):
+    kubernetes = pytest.importorskip('kubernetes')
     login_mocks.client_in_cluster.side_effect = kubernetes.config.ConfigException
     login_mocks.client_from_file.side_effect = kubernetes.config.ConfigException
 
@@ -100,6 +101,7 @@ def test_direct_check_fails_on_errors_in_pykube(login_mocks):
 
 
 def test_direct_check_fails_on_errors_in_client(login_mocks):
+    kubernetes = pytest.importorskip('kubernetes')
     login_mocks.client_checker.side_effect = kubernetes.client.rest.ApiException(status=401)
 
     login()
@@ -142,6 +144,7 @@ def test_clirun_auth_works_incluster(invoke, login_mocks, preload, real_run):
 
 
 def test_clirun_auth_works_kubeconfig(invoke, login_mocks, preload, real_run):
+    kubernetes = pytest.importorskip('kubernetes')
     login_mocks.pykube_in_cluster.side_effect = FileNotFoundError
     login_mocks.client_in_cluster.side_effect = kubernetes.config.ConfigException
 
@@ -173,6 +176,7 @@ def test_clirun_auth_fails_on_errors_in_pykube(invoke, login_mocks, preload, rea
 
 
 def test_clirun_auth_fails_on_errors_in_client(invoke, login_mocks, preload, real_run):
+    kubernetes = pytest.importorskip('kubernetes')
     login_mocks.client_in_cluster.side_effect = kubernetes.config.ConfigException
     login_mocks.client_from_file.side_effect = kubernetes.config.ConfigException
 
@@ -206,6 +210,7 @@ def test_clirun_check_fails_on_errors_in_pykube(invoke, login_mocks, preload, re
 
 
 def test_clirun_check_fails_on_errors_in_client(invoke, login_mocks, preload, real_run):
+    kubernetes = pytest.importorskip('kubernetes')
     login_mocks.client_checker.side_effect = kubernetes.client.rest.ApiException(status=401)
 
     result = invoke(['run'])
