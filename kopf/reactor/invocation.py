@@ -13,7 +13,9 @@ from typing import Callable
 
 # The executor for the sync-handlers (i.e. regular functions).
 # TODO: make the limits if sync-handlers configurable?
-executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
+from kopf.config import WorkersConfig
+
+executor = concurrent.futures.ThreadPoolExecutor(max_workers=WorkersConfig.synchronous_handlers_threadpool_limit)
 # executor = concurrent.futures.ProcessPoolExecutor(max_workers=3)
 
 

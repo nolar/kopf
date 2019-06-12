@@ -131,19 +131,19 @@ class Peer:
         self.deadline = self.lastseen + self.lifetime
         self.is_dead = self.deadline <= datetime.datetime.utcnow()
 
-    def keepalive(self):
+    async def keepalive(self):
         """
         Add a peer to the peers, and update its alive status.
         """
         self.touch()
-        apply_peers([self], name=self.name, namespace=self.namespace, legacy=self.legacy)
+        await apply_peers([self], name=self.name, namespace=self.namespace, legacy=self.legacy)
 
-    def disappear(self):
+    async def disappear(self):
         """
         Remove a peer from the peers (gracefully).
         """
         self.touch(lifetime=0)
-        apply_peers([self], name=self.name, namespace=self.namespace, legacy=self.legacy)
+        await apply_peers([self], name=self.name, namespace=self.namespace, legacy=self.legacy)
 
     @staticmethod
     def _is_peering_exist(name: str, namespace: Optional[str]):
@@ -172,7 +172,7 @@ class Peer:
         return obj is not None
 
 
-def apply_peers(
+async def apply_peers(
         peers: Iterable[Peer],
         name: str,
         namespace: Union[None, str],
@@ -188,7 +188,7 @@ def apply_peers(
     resource = (LEGACY_PEERING_RESOURCE if legacy else
                 CLUSTER_PEERING_RESOURCE if namespace is None else
                 NAMESPACED_PEERING_RESOURCE)
-    patching.patch_obj(resource=resource, namespace=namespace, name=name, patch=patch)
+    await patching.patch_obj(resource=resource, namespace=namespace, name=name, patch=patch)
 
 
 async def peers_handler(
@@ -225,7 +225,7 @@ async def peers_handler(
 
     if autoclean and dead_peers:
         # NB: sync and blocking, but this is fine.
-        apply_peers(dead_peers, name=ourselves.name, namespace=ourselves.namespace, legacy=ourselves.legacy)
+        await apply_peers(dead_peers, name=ourselves.name, namespace=ourselves.namespace, legacy=ourselves.legacy)
 
     if prio_peers:
         if not freeze.is_set():
@@ -249,14 +249,14 @@ async def peers_keepalive(
     try:
         while True:
             logger.debug(f"Peering keep-alive update for {ourselves.id} (priority {ourselves.priority})")
-            ourselves.keepalive()
+            await ourselves.keepalive()
 
             # How often do we update. Keep limited to avoid k8s api flooding.
             # Should be slightly less than the lifetime, enough for a patch request to finish.
             await asyncio.sleep(max(1, int(ourselves.lifetime.total_seconds() - 10)))
     finally:
         try:
-            ourselves.disappear()
+            await ourselves.disappear()
         except:
             pass
 

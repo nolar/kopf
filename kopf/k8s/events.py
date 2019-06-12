@@ -1,7 +1,12 @@
+import asyncio
+import concurrent.futures
 import datetime
+import functools
 import logging
 
 import kubernetes.client.rest
+
+from kopf.config import WorkersConfig
 
 logger = logging.getLogger(__name__)
 
@@ -9,7 +14,10 @@ MAX_MESSAGE_LENGTH = 1024
 CUT_MESSAGE_INFIX = '...'
 
 
-def post_event(*, obj, type, reason, message=''):
+event_executor = concurrent.futures.ThreadPoolExecutor(max_workers=WorkersConfig.synchronous_event_post_workers_limit)
+
+
+async def post_event(*, obj, type, reason, message=''):
     """
     Issue an event for the object.
     """
@@ -56,11 +64,15 @@ def post_event(*, obj, type, reason, message=''):
         event_time=now.isoformat() + 'Z',  # '2019-01-28T18:25:03.000000Z'
     )
 
+    api = kubernetes.client.CoreV1Api()
+    loop = asyncio.get_event_loop()
+    if not loop:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
     try:
-        api = kubernetes.client.CoreV1Api()
-        api.create_namespaced_event(
-            namespace=namespace,
-            body=body,
+        await loop.run_in_executor(
+            event_executor, functools.partial(api.create_namespaced_event, **{'namespace': namespace, 'body': body})
         )
     except kubernetes.client.rest.ApiException as e:
         # Events are helpful but auxiliary, they should not fail the handling cycle.

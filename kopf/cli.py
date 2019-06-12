@@ -1,3 +1,4 @@
+import asyncio
 import functools
 
 import click
@@ -70,7 +71,8 @@ def freeze(id, message, lifetime, namespace, peering_name, priority):
         priority=priority,
         lifetime=lifetime,
     )
-    ourserlves.keepalive()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(ourserlves.keepalive())
 
 
 @main.command()
@@ -86,4 +88,5 @@ def resume(id, namespace, peering_name):
         name=peering_name,
         namespace=namespace,
     )
-    ourselves.disappear()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(ourselves.disappear())

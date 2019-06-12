@@ -77,3 +77,28 @@ def configure(debug=None, verbose=None, quiet=None):
 
     loop = asyncio.get_event_loop()
     loop.set_debug(debug)
+
+
+class WorkersConfig:
+    """Used as single point of configuration for kopf.reactor"""
+
+    """How many workers can be running simultaneously on event creation operations"""
+    synchronous_event_post_workers_limit = None
+
+    """How many workers can be running simultaneously on patch operations"""
+    synchronous_patch_workers_limit = None
+
+    """How many workers can be running simultaneously on per-object event queue"""
+    queue_workers_limit = None  # if None, there is no limits to workers number
+
+    """How many threads in total can be running simultaneously to handle non-async handler functions"""
+    synchronous_handlers_threadpool_limit = None  # if None, calculated by ThreadPoolExecutor based on cpu count
+
+    """How long does a worker can idle before exiting and garbage-collecting."""
+    worker_idle_timeout = 5.0
+
+    """How fast/slow does a worker deplete the queue when an event is received."""
+    worker_batch_window = 0.1
+
+    """How long does a worker can work on watcher exit before being cancelled. """
+    worker_exit_timeout = 2.0
