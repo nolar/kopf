@@ -26,6 +26,7 @@ from kopf.k8s import patching
 from kopf.reactor import causation
 from kopf.reactor import invocation
 from kopf.reactor import registries
+from kopf.structs import dicts
 from kopf.structs import diffs
 from kopf.structs import finalizers
 from kopf.structs import lastseen
@@ -432,8 +433,8 @@ async def _call_handler(
     """
 
     # For the field-handlers, the old/new/diff values must match the field, not the whole object.
-    old = cause.old if handler.field is None else diffs.resolve(cause.old, handler.field, None)
-    new = cause.new if handler.field is None else diffs.resolve(cause.new, handler.field, None)
+    old = cause.old if handler.field is None else dicts.resolve(cause.old, handler.field, None)
+    new = cause.new if handler.field is None else dicts.resolve(cause.new, handler.field, None)
     diff = cause.diff if handler.field is None else diffs.reduce(cause.diff, handler.field)
     cause = cause._replace(old=old, new=new, diff=diff)
 

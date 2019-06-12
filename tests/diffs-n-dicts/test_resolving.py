@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.structs.diffs import resolve
+from kopf.structs.dicts import resolve
 
 
 def test_existing_key():
