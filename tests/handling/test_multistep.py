@@ -3,11 +3,11 @@ import asyncio
 import pytest
 
 import kopf
-from kopf.reactor.causation import CREATE, UPDATE, DELETE
+from kopf.reactor.causation import HANDLER_CAUSES, CREATE, UPDATE, DELETE
 from kopf.reactor.handling import custom_object_handler
 
 
-@pytest.mark.parametrize('cause_type', [CREATE, UPDATE, DELETE])
+@pytest.mark.parametrize('cause_type', HANDLER_CAUSES)
 async def test_1st_step_stores_progress_by_patching(
         registry, handlers, extrahandlers,
         resource, cause_mock, cause_type, k8s_mocked):
@@ -44,7 +44,7 @@ async def test_1st_step_stores_progress_by_patching(
     assert 'started' in patch['status']['kopf']['progress'][name2]
 
 
-@pytest.mark.parametrize('cause_type', [CREATE, UPDATE, DELETE])
+@pytest.mark.parametrize('cause_type', HANDLER_CAUSES)
 async def test_2nd_step_finishes_the_handlers(
         registry, handlers, extrahandlers,
         resource, cause_mock, cause_type, k8s_mocked):

@@ -19,7 +19,7 @@ import collections
 import datetime
 import logging
 from contextvars import ContextVar
-from typing import Optional, Callable, Iterable, Union
+from typing import Optional, Callable, Iterable, Union, Collection
 
 from kopf import events
 from kopf.k8s import patching
@@ -180,26 +180,36 @@ async def handle_cause(
     body = cause.body  # TODO get rid of this alias
     delay = None
     done = None
+    skip = None
 
     # Regular causes invoke the handlers.
-    if cause.event in [causation.CREATE, causation.UPDATE, causation.DELETE]:
+    if cause.event in causation.HANDLER_CAUSES:
         title = causation.TITLES.get(cause.event, repr(cause.event))
         logger.debug(f"{title.capitalize()} event: %r", body)
-        try:
-            await execute(lifecycle=lifecycle, registry=registry, cause=cause)
-        except HandlerChildrenRetry as e:
-            # on the top-level, no patches -- it is pre-patched.
-            delay = e.delay
-            done = False
+        handlers = registry.get_cause_handlers(cause=cause)
+        if handlers:
+            try:
+                await _execute(
+                    lifecycle=lifecycle,
+                    handlers=handlers,
+                    cause=cause,
+                )
+            except HandlerChildrenRetry as e:
+                # on the top-level, no patches -- it is pre-patched.
+                delay = e.delay
+                done = False
+            else:
+                logger.info(f"All handlers succeeded for {title}.")
+                events.info(cause.body, reason='Success', message=f"All handlers succeeded for {title}.")
+                done = True
         else:
-            logger.info(f"All handlers succeeded for {title}.")
-            await events.info(cause.body, reason='Success', message=f"All handlers succeeded for {title}.")
-            done = True
+            skip = True
 
     # Regular causes also do some implicit post-handling when all handlers are done.
-    if done:
-        status.purge_progress(body=body, patch=patch)
+    if done or skip:
         lastseen.refresh_state(body=body, patch=patch)
+        if done:
+            status.purge_progress(body=body, patch=patch)
         if cause.event == causation.DELETE:
             logger.debug("Removing the finalizer, thus allowing the actual deletion.")
             finalizers.remove_finalizers(body=body, patch=patch)
@@ -295,14 +305,14 @@ async def execute(
     # Raises `HandlerChildrenRetry` if the execute should be continued on the next iteration.
     await _execute(
         lifecycle=lifecycle,
-        registry=registry,
+        handlers=registry.get_cause_handlers(cause=cause),
         cause=cause,
     )
 
 
 async def _execute(
         lifecycle: Callable,
-        registry: registries.BaseRegistry,
+        handlers: Collection[registries.Handler],
         cause: causation.Cause,
         retry_on_errors: bool = True,
 ) -> None:
@@ -324,7 +334,6 @@ async def _execute(
     logger = cause.logger
 
     # Filter and select the handlers to be executed right now, on this event reaction cycle.
-    handlers = registry.get_cause_handlers(cause=cause)
     handlers_done = [h for h in handlers if status.is_finished(body=cause.body, handler=h)]
     handlers_wait = [h for h in handlers if status.is_sleeping(body=cause.body, handler=h)]
     handlers_todo = [h for h in handlers if status.is_awakened(body=cause.body, handler=h)]
