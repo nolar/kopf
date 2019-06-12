@@ -4,11 +4,11 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.causation import CREATE, UPDATE, DELETE, NEW, GONE, FREE, NOOP
+from kopf.reactor.causation import ALL_CAUSES
 from kopf.reactor.handling import custom_object_handler
 
 
-@pytest.mark.parametrize('cause_type', [NEW, CREATE, UPDATE, DELETE, NOOP, FREE, GONE])
+@pytest.mark.parametrize('cause_type', ALL_CAUSES)
 async def test_handlers_called_always(
         registry, handlers, extrahandlers, resource, cause_mock, cause_type,
         caplog, assert_logs, k8s_mocked):
@@ -40,7 +40,7 @@ async def test_handlers_called_always(
     ])
 
 
-@pytest.mark.parametrize('cause_type', [NEW, CREATE, UPDATE, DELETE, NOOP, FREE, GONE])
+@pytest.mark.parametrize('cause_type', ALL_CAUSES)
 async def test_errors_are_ignored(
         registry, handlers, extrahandlers, resource, cause_mock, cause_type,
         caplog, assert_logs, k8s_mocked):

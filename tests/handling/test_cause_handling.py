@@ -4,13 +4,13 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.causation import CREATE, UPDATE, DELETE, NEW, GONE, FREE, NOOP
+from kopf.reactor.causation import ALL_CAUSES, CREATE, UPDATE, DELETE, NEW, GONE, FREE, NOOP
 from kopf.reactor.handling import custom_object_handler
 from kopf.structs.finalizers import FINALIZER
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
 
 
-@pytest.mark.parametrize('cause_type', [NEW, CREATE, UPDATE, DELETE, NOOP, FREE, GONE])
+@pytest.mark.parametrize('cause_type', ALL_CAUSES)
 async def test_all_logs_are_prefixed(registry, resource, caplog, cause_type, cause_mock):
     caplog.set_level(logging.DEBUG)
     cause_mock.event = cause_type

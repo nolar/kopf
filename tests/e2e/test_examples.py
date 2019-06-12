@@ -39,9 +39,7 @@ def test_all_examples_are_runnable(mocker, with_crd, with_peering, exampledir):
     # This just shows us that the operator is doing something, it is alive.
     assert '[default/kopf-example-1] First appearance:' in runner.stdout
     assert '[default/kopf-example-1] Creation event:' in runner.stdout
-    assert '[default/kopf-example-1] All handlers succeeded for creation' in runner.stdout
     assert '[default/kopf-example-1] Deletion event:' in runner.stdout
-    assert '[default/kopf-example-1] All handlers succeeded for deletion' in runner.stdout
     assert '[default/kopf-example-1] Deleted, really deleted' in runner.stdout
     if not e2e_tracebacks:
         assert 'Traceback (most recent call last):' not in runner.stdout

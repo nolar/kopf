@@ -37,6 +37,12 @@ NOOP = 'noop'
 FREE = 'free'
 GONE = 'gone'
 
+# These sets are checked in few places, so we keep them centralised:
+# the user-facing causes (for handlers), and internally facing (so as handled).
+HANDLER_CAUSES = (CREATE, UPDATE, DELETE)
+REACTOR_CAUSES = (NEW, NOOP, FREE, GONE)
+ALL_CAUSES = HANDLER_CAUSES + REACTOR_CAUSES
+
 # The human-readable names of these causes. Will be capitalised when needed.
 TITLES = {
     CREATE: 'creation',
