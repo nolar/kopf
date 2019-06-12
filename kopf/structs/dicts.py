@@ -2,7 +2,7 @@
 Some basic dicts and field-in-a-dict manipulation helpers.
 """
 import collections.abc
-from typing import Any, Union, Mapping, Tuple, List, Text, Iterable
+from typing import Any, Union, Mapping, Tuple, List, Text, Iterable, Optional
 
 FieldPath = Tuple[str, ...]
 FieldSpec = Union[None, Text, FieldPath, List[str]]
@@ -49,6 +49,7 @@ def resolve(
 
 def walk(
         objs,
+        nested: Optional[Iterable[FieldSpec]] = None,
 ):
     """
     Iterate over one or many dicts (and sub-dicts recursively).
@@ -57,7 +58,13 @@ def walk(
         return
     elif isinstance(objs, collections.abc.Mapping):
         yield objs
+        for subfield in (nested if nested is not None else []):
+            try:
+                yield resolve(objs, parse_field(subfield))
+            except KeyError:
+                pass
     elif isinstance(objs, collections.abc.Iterable):
-        yield from objs
+        for obj in objs:
+            yield from walk(obj, nested=nested)
     else:
         yield objs  # NB: not a mapping, no nested sub-fields.

@@ -64,12 +64,11 @@ def remove_owner_reference(objs, owner):
             refs.remove(ref)
 
 
-# TODO: make it also recursively if there are any .metadata.labels inside (e.g. job/pod templates).
-def label(objs, labels, force=False):
+def label(objs, labels, *, force=False, nested=None):
     """
     Apply the labels to the object(s).
     """
-    for obj in dicts.walk(objs):
+    for obj in dicts.walk(objs, nested=nested):
         obj_labels = obj.setdefault('metadata', {}).setdefault('labels', {})
         for key, val in labels.items():
             if force:
@@ -114,11 +113,11 @@ def adjust_namespace(objs, namespace=None):
         obj.setdefault('metadata', {}).setdefault('namespace', namespace)
 
 
-def adopt(objs, owner):
+def adopt(objs, owner, *, nested=None):
     """
     The children should be in the same namespace, named after their parent, and owned by it.
     """
     append_owner_reference(objs, owner=owner)
     harmonize_naming(objs, name=owner.get('metadata', {}).get('name', None))
     adjust_namespace(objs, namespace=owner.get('metadata', {}).get('namespace', None))
-    label(objs, labels=owner.get('metadata', {}).get('labels', {}))
+    label(objs, labels=owner.get('metadata', {}).get('labels', {}), nested=nested)

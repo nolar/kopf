@@ -193,7 +193,7 @@ def test_adopting(mocker):
     label = mocker.patch('kopf.structs.hierarchies.label')
 
     obj = Mock()
-    kopf.adopt(obj, owner=OWNER)
+    kopf.adopt(obj, owner=OWNER, nested=['template'])
 
     assert append_owner_ref.called
     assert harmonize_naming.called
@@ -203,4 +203,4 @@ def test_adopting(mocker):
     assert append_owner_ref.call_args_list == [call(obj, owner=OWNER)]
     assert harmonize_naming.call_args_list == [call(obj, name=OWNER_NAME)]
     assert adjust_namespace.call_args_list == [call(obj, namespace=OWNER_NAMESPACE)]
-    assert label.call_args_list == [call(obj, labels=OWNER_LABELS)]
+    assert label.call_args_list == [call(obj, labels=OWNER_LABELS, nested=['template'])]
