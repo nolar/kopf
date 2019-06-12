@@ -1,7 +1,8 @@
 """
 Some basic dicts and field-in-a-dict manipulation helpers.
 """
-from typing import Any, Union, Mapping, Tuple, List, Text
+import collections.abc
+from typing import Any, Union, Mapping, Tuple, List, Text, Iterable
 
 FieldPath = Tuple[str, ...]
 FieldSpec = Union[None, Text, FieldPath, List[str]]
@@ -44,3 +45,19 @@ def resolve(
             raise
         else:
             return default
+
+
+def walk(
+        objs,
+):
+    """
+    Iterate over one or many dicts (and sub-dicts recursively).
+    """
+    if objs is None:
+        return
+    elif isinstance(objs, collections.abc.Mapping):
+        yield objs
+    elif isinstance(objs, collections.abc.Iterable):
+        yield from objs
+    else:
+        yield objs  # NB: not a mapping, no nested sub-fields.

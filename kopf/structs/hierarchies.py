@@ -1,7 +1,7 @@
 """
 All the functions to properly build the object hierarchies.
 """
-import collections.abc
+from kopf.structs import dicts
 
 
 def build_object_reference(body):
@@ -42,7 +42,7 @@ def append_owner_reference(objs, owner):
     so the whole body can be modified, no patches are needed.
     """
     owner = build_owner_reference(owner)
-    for obj in _iter_objects(objs):
+    for obj in dicts.walk(objs):
         refs = obj.setdefault('metadata', {}).setdefault('ownerReferences', [])
         matching = [ref for ref in refs if ref['uid'] == owner['uid']]
         if not matching:
@@ -57,7 +57,7 @@ def remove_owner_reference(objs, owner):
     so the whole body can be modified, no patches are needed.
     """
     owner = build_owner_reference(owner)
-    for obj in _iter_objects(objs):
+    for obj in dicts.walk(objs):
         refs = obj.setdefault('metadata', {}).setdefault('ownerReferences', [])
         matching = [ref for ref in refs if ref['uid'] == owner['uid']]
         for ref in matching:
@@ -69,7 +69,7 @@ def label(objs, labels, force=False):
     """
     Apply the labels to the object(s).
     """
-    for obj in _iter_objects(objs):
+    for obj in dicts.walk(objs):
         obj_labels = obj.setdefault('metadata', {}).setdefault('labels', {})
         for key, val in labels.items():
             if force:
@@ -93,7 +93,7 @@ def harmonize_naming(objs, name=None, strict=False):
     If the objects already have their own names, auto-naming is not applied,
     and the existing names are used as is.
     """
-    for obj in _iter_objects(objs):
+    for obj in dicts.walk(objs):
         if obj.get('metadata', {}).get('name', None) is None:
             if strict:
                 obj.setdefault('metadata', {}).setdefault('name', name)
@@ -110,7 +110,7 @@ def adjust_namespace(objs, namespace=None):
     It is a common practice to keep the children objects in the same
     namespace as their owner, unless explicitly overridden at time of creation.
     """
-    for obj in _iter_objects(objs):
+    for obj in dicts.walk(objs):
         obj.setdefault('metadata', {}).setdefault('namespace', namespace)
 
 
@@ -122,17 +122,3 @@ def adopt(objs, owner):
     harmonize_naming(objs, name=owner.get('metadata', {}).get('name', None))
     adjust_namespace(objs, namespace=owner.get('metadata', {}).get('namespace', None))
     label(objs, labels=owner.get('metadata', {}).get('labels', {}))
-
-
-def _iter_objects(objs):
-    """
-    A helper to iterate over one or many objects, as used in these functions.
-    """
-    if objs is None:
-        return
-    elif isinstance(objs, collections.abc.Mapping):  # also iterable, intercept it.
-        yield objs
-    elif isinstance(objs, collections.abc.Iterable):
-        yield from objs
-    else:
-        yield objs
