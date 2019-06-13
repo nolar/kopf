@@ -71,7 +71,7 @@ Create GPG key:
 
 Add the GPG key to your GitHub settings.
 
-The straighforward way to sign git commits::
+The straightforward way to sign git commits::
 
     git commit -s -m "adding X to change Y"
 
