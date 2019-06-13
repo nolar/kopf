@@ -54,3 +54,19 @@ def test_forcing_default():
     obj = {'metadata': {'labels': {'label': 'old-value'}}}
     kopf.label(obj, {'label': 'new-value'})
     assert obj['metadata']['labels']['label'] == 'old-value'
+
+
+def test_nested_with_forced_true():
+    obj = {'metadata': {'labels': {'label': 'old-value'}},
+           'spec': {'template': {}}}
+    kopf.label(obj, {'label': 'new-value'}, nested=['spec.template'], force=True)
+    assert obj['metadata']['labels']['label'] == 'new-value'
+    assert obj['spec']['template']['metadata']['labels']['label'] == 'new-value'
+
+
+def test_nested_with_forced_false():
+    obj = {'metadata': {'labels': {'label': 'old-value'}},
+           'spec': {'template': {}}}
+    kopf.label(obj, {'label': 'new-value'}, nested=['spec.template'], force=False)
+    assert obj['metadata']['labels']['label'] == 'old-value'
+    assert obj['spec']['template']['metadata']['labels']['label'] == 'new-value'

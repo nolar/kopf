@@ -1,30 +1,14 @@
 """
 All the functions to calculate the diffs of the dicts.
 """
-
 import collections
 
-from typing import Any, Tuple, NewType, Generator, Sequence, Mapping
+from typing import Any, Tuple, NewType, Generator, Sequence
 
 DiffOp = NewType('DiffOp', str)
 DiffPath = Tuple[str, ...]
 DiffItem = Tuple[DiffOp, DiffPath, Any, Any]
 Diff = Sequence[DiffItem]
-
-_UNSET = object()
-
-
-def resolve(d: Mapping, path: DiffPath, default=_UNSET):
-    try:
-        result = d
-        for key in path:
-            result = result[key]
-        return result
-    except KeyError:
-        if default is _UNSET:
-            raise
-        else:
-            return default
 
 
 def reduce_iter(d: Diff, path: DiffPath) -> Generator[DiffItem, None, None]:
