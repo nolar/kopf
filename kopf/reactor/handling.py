@@ -184,8 +184,12 @@ async def handle_cause(
 
     # Regular causes invoke the handlers.
     if cause.event in causation.HANDLER_CAUSES:
+
         title = causation.TITLES.get(cause.event, repr(cause.event))
         logger.debug(f"{title.capitalize()} event: %r", body)
+        if cause.diff is not None:
+            logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
+
         handlers = registry.get_cause_handlers(cause=cause)
         if handlers:
             try:
