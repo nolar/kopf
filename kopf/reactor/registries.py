@@ -59,7 +59,7 @@ class BaseRegistry(metaclass=abc.ABCMeta):
             @kopf.on.resume(...)
             def fn(**kwargs): pass
 
-        In normal case, the function will be called either on resource creation,
+        In normal cases, the function will be called either on resource creation
         or on operator restart for the pre-existing (already handled) resources.
         When a resource is created during the operator downtime, it is
         both creation and resuming at the same time: the object is new (not yet
@@ -115,7 +115,7 @@ class SimpleRegistry(BaseRegistry):
         for handler in self._handlers:
             if handler.event is None or handler.event == cause.event:
                 if handler.initial and not cause.initial:
-                    pass  # ignore initial handlers in the non-initial causes.
+                    pass  # ignore initial handlers in non-initial causes.
                 elif handler.field:
                     if any(field[:len(handler.field)] == handler.field for field in fields):
                         yield handler
