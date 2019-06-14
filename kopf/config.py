@@ -11,6 +11,12 @@ logger = logging.getLogger(__name__)
 format = '[%(asctime)s] %(name)-20.20s [%(levelname)-8.8s] %(message)s'
 
 
+LOGLEVEL_INFO = logging.INFO
+LOGLEVEL_WARNING = logging.WARNING
+LOGLEVEL_ERROR = logging.ERROR
+LOGLEVEL_CRITICAL = logging.CRITICAL
+
+
 class LoginError(click.ClickException):
     """ Raised when the operator cannot login to the API. """
 
@@ -77,6 +83,13 @@ def configure(debug=None, verbose=None, quiet=None):
 
     loop = asyncio.get_event_loop()
     loop.set_debug(debug)
+
+
+class EventsConfig:
+    """Used to configure events sending behaviour"""
+
+    """What events should be logged"""
+    events_loglevel = LOGLEVEL_INFO
 
 
 class WorkersConfig:

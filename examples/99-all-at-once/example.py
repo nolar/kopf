@@ -17,11 +17,9 @@ E2E_TRACEBACKS = True
 def create_1(body, meta, spec, status, **kwargs):
     children = _create_children(owner=body)
 
-    asyncio.wait([
-        kopf.info(body, reason='AnyReason'),
-        kopf.event(body, type='Warning', reason='SomeReason', message="Cannot do something"),
-        kopf.event(children, type='Normal', reason='SomeReason', message="Created as part of the job1step"),
-    ])
+    kopf.info(body, reason='AnyReason')
+    kopf.event(body, type='Warning', reason='SomeReason', message="Cannot do something")
+    kopf.event(children, type='Normal', reason='SomeReason', message="Created as part of the job1step")
 
     return {'job1-status': 100}
 
