@@ -4,7 +4,7 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.causation import HANDLER_CAUSES, CREATE, UPDATE, DELETE
+from kopf.reactor.causation import HANDLER_CAUSES, CREATE, UPDATE, DELETE, RESUME
 from kopf.reactor.handling import HandlerFatalError, HandlerRetryError
 from kopf.reactor.handling import custom_object_handler
 
@@ -21,6 +21,7 @@ async def test_fatal_error_stops_handler(
     handlers.create_mock.side_effect = HandlerFatalError("oops")
     handlers.update_mock.side_effect = HandlerFatalError("oops")
     handlers.delete_mock.side_effect = HandlerFatalError("oops")
+    handlers.resume_mock.side_effect = HandlerFatalError("oops")
 
     await custom_object_handler(
         lifecycle=kopf.lifecycles.one_by_one,
@@ -33,6 +34,7 @@ async def test_fatal_error_stops_handler(
     assert handlers.create_mock.call_count == (1 if cause_type == CREATE else 0)
     assert handlers.update_mock.call_count == (1 if cause_type == UPDATE else 0)
     assert handlers.delete_mock.call_count == (1 if cause_type == DELETE else 0)
+    assert handlers.resume_mock.call_count == (1 if cause_type == RESUME else 0)
 
     assert not k8s_mocked.asyncio_sleep.called
     assert k8s_mocked.patch_obj.called
@@ -59,6 +61,7 @@ async def test_retry_error_delays_handler(
     handlers.create_mock.side_effect = HandlerRetryError("oops")
     handlers.update_mock.side_effect = HandlerRetryError("oops")
     handlers.delete_mock.side_effect = HandlerRetryError("oops")
+    handlers.resume_mock.side_effect = HandlerRetryError("oops")
 
     await custom_object_handler(
         lifecycle=kopf.lifecycles.one_by_one,
@@ -71,6 +74,7 @@ async def test_retry_error_delays_handler(
     assert handlers.create_mock.call_count == (1 if cause_type == CREATE else 0)
     assert handlers.update_mock.call_count == (1 if cause_type == UPDATE else 0)
     assert handlers.delete_mock.call_count == (1 if cause_type == DELETE else 0)
+    assert handlers.resume_mock.call_count == (1 if cause_type == RESUME else 0)
 
     assert not k8s_mocked.asyncio_sleep.called
     assert k8s_mocked.patch_obj.called
@@ -98,6 +102,7 @@ async def test_arbitrary_error_delays_handler(
     handlers.create_mock.side_effect = Exception("oops")
     handlers.update_mock.side_effect = Exception("oops")
     handlers.delete_mock.side_effect = Exception("oops")
+    handlers.resume_mock.side_effect = Exception("oops")
 
     await custom_object_handler(
         lifecycle=kopf.lifecycles.one_by_one,
@@ -110,6 +115,7 @@ async def test_arbitrary_error_delays_handler(
     assert handlers.create_mock.call_count == (1 if cause_type == CREATE else 0)
     assert handlers.update_mock.call_count == (1 if cause_type == UPDATE else 0)
     assert handlers.delete_mock.call_count == (1 if cause_type == DELETE else 0)
+    assert handlers.resume_mock.call_count == (1 if cause_type == RESUME else 0)
 
     assert not k8s_mocked.asyncio_sleep.called
     assert k8s_mocked.patch_obj.called

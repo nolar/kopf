@@ -18,6 +18,23 @@ from kopf.reactor import handling
 from kopf.reactor import registries
 
 
+def resume(
+        group: str, version: str, plural: str,
+        *,
+        id: Optional[str] = None,
+        timeout: Optional[float] = None,
+        registry: Optional[registries.GlobalRegistry] = None):
+    """ ``@kopf.on.resume()`` handler for the object resuming on operator (re)start. """
+    registry = registry if registry is not None else registries.get_default_registry()
+    def decorator(fn):
+        registry.register_cause_handler(
+            group=group, version=version, plural=plural,
+            event=None, initial=True, id=id, timeout=timeout,
+            fn=fn)
+        return fn
+    return decorator
+
+
 def create(
         group: str, version: str, plural: str,
         *,

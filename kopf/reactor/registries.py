@@ -22,7 +22,7 @@ from typing import MutableMapping
 Resource = collections.namedtuple('Resource', 'group version plural')
 
 # A registered handler (function + event meta info).
-Handler = collections.namedtuple('Handler', 'fn id event field timeout')
+Handler = collections.namedtuple('Handler', 'fn id event field timeout initial')
 
 
 class BaseRegistry(metaclass=abc.ABCMeta):
@@ -31,18 +31,48 @@ class BaseRegistry(metaclass=abc.ABCMeta):
     """
 
     def get_cause_handlers(self, cause):
-        return list(self.iter_cause_handlers(cause=cause))
+        return list(self._deduplicated(self.iter_cause_handlers(cause=cause)))
 
     @abc.abstractmethod
     def iter_cause_handlers(self, cause):
         pass
 
     def get_event_handlers(self, resource, event):
-        return list(self.iter_event_handlers(resource=resource, event=event))
+        return list(self._deduplicated(self.iter_event_handlers(resource=resource, event=event)))
 
     @abc.abstractmethod
     def iter_event_handlers(self, resource, event):
         pass
+
+    @staticmethod
+    def _deduplicated(handlers):
+        """
+        Yield the handlers deduplicated.
+
+        The same handler function should not be invoked more than once for one
+        single event/cause, even if it is registered with multiple decorators
+        (e.g. different filtering criteria or different but same-effect causes).
+
+        One of the ways how this could happen::
+
+            @kopf.on.create(...)
+            @kopf.on.resume(...)
+            def fn(**kwargs): pass
+
+        In normal cases, the function will be called either on resource creation
+        or on operator restart for the pre-existing (already handled) resources.
+        When a resource is created during the operator downtime, it is
+        both creation and resuming at the same time: the object is new (not yet
+        handled) **AND** it is detected as per-existing before operator start.
+        But `fn()` should be called only once for this cause.
+        """
+        seen_ids = set()
+        for handler in handlers:
+            if id(handler.fn) in seen_ids:
+                pass
+            else:
+                seen_ids.add(id(handler.fn))
+                yield handler
 
 
 class SimpleRegistry(BaseRegistry):
@@ -61,7 +91,7 @@ class SimpleRegistry(BaseRegistry):
     def append(self, handler):
         self._handlers.append(handler)
 
-    def register(self, fn, id=None, event=None, field=None, timeout=None):
+    def register(self, fn, id=None, event=None, field=None, timeout=None, initial=None):
 
         if field is None:
             field = None  # for the non-field events
@@ -75,7 +105,7 @@ class SimpleRegistry(BaseRegistry):
         id = id if id is not None else get_callable_id(fn)
         id = id if field is None else f'{id}/{".".join(field)}'
         id = id if self.prefix is None else f'{self.prefix}/{id}'
-        handler = Handler(id=id, fn=fn, event=event, field=field, timeout=timeout)
+        handler = Handler(id=id, fn=fn, event=event, field=field, timeout=timeout, initial=initial)
 
         self.append(handler)
         return fn  # to be usable as a decorator too.
@@ -84,7 +114,9 @@ class SimpleRegistry(BaseRegistry):
         fields = {field for _, field, _, _ in cause.diff or []}
         for handler in self._handlers:
             if handler.event is None or handler.event == cause.event:
-                if handler.field:
+                if handler.initial and not cause.initial:
+                    pass  # ignore initial handlers in non-initial causes.
+                elif handler.field:
                     if any(field[:len(handler.field)] == handler.field for field in fields):
                         yield handler
                 else:
@@ -127,13 +159,13 @@ class GlobalRegistry(BaseRegistry):
         self._event_handlers: MutableMapping[Resource, SimpleRegistry] = {}
 
     def register_cause_handler(self, group, version, plural, fn,
-                               id=None, event=None, field=None, timeout=None):
+                               id=None, event=None, field=None, timeout=None, initial=None):
         """
         Register an additional handler function for the specific resource and specific event.
         """
         resource = Resource(group, version, plural)
         registry = self._cause_handlers.setdefault(resource, SimpleRegistry())
-        registry.register(event=event, field=field, fn=fn, id=id, timeout=timeout)
+        registry.register(event=event, field=field, fn=fn, id=id, timeout=timeout, initial=initial)
         return fn  # to be usable as a decorator too.
 
     def register_event_handler(self, group, version, plural, fn, id=None):

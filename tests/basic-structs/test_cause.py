@@ -12,6 +12,7 @@ def test_all_args(mocker):
     logger = mocker.Mock()
     resource = mocker.Mock()
     event = mocker.Mock()
+    initial = mocker.Mock()
     body = mocker.Mock()
     patch = mocker.Mock()
     diff = mocker.Mock()
@@ -21,6 +22,7 @@ def test_all_args(mocker):
         resource=resource,
         logger=logger,
         event=event,
+        initial=initial,
         body=body,
         patch=patch,
         diff=diff,
@@ -30,6 +32,7 @@ def test_all_args(mocker):
     assert cause.resource is resource
     assert cause.logger is logger
     assert cause.event is event
+    assert cause.initial is initial
     assert cause.body is body
     assert cause.patch is patch
     assert cause.diff is diff
@@ -41,18 +44,21 @@ def test_required_args(mocker):
     logger = mocker.Mock()
     resource = mocker.Mock()
     event = mocker.Mock()
+    initial = mocker.Mock()
     body = mocker.Mock()
     patch = mocker.Mock()
     cause = Cause(
         resource=resource,
         logger=logger,
         event=event,
+        initial=initial,
         body=body,
         patch=patch,
     )
     assert cause.resource is resource
     assert cause.logger is logger
     assert cause.event is event
+    assert cause.initial is initial
     assert cause.body is body
     assert cause.patch is patch
     assert cause.diff is None

@@ -147,6 +147,31 @@ The following 3 core cause-handlers are available::
     def my_handler(spec, **_):
         pass
 
+An additional handler can be used for cases when the operator restarts
+and detects an object that existed before, but was not changed/deleted
+during downtime (which would trigger the update-/delete-handlers)::
+
+    @kopf.on.resume('zalando.org', 'v1', 'kopfexamples')
+    def my_handler(spec, **_):
+        pass
+
+This handler can be used to start threads or asyncio tasks or to update
+a global state to keep it consistent with the actual state of the cluster.
+With the resuming handler in addition to creation/update/deletion handlers,
+no object will be left unattended even if it does not change over time.
+
+.. note::
+    Kopf does its best to call the resuming handler only once per object
+    for every running process of Kopf.
+
+    But due to the nature of Kubernetes watching, which needs the full reset
+    from time to time, there is no guarantee that the handler will not be called
+    few times over lifetime of a single operator process.
+
+    It is the developer's responsibility to ensure that the threads/tasks
+    or other state are maintained properly for multiple resuming calls.
+
+
 
 Field handlers
 ==============
