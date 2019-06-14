@@ -36,14 +36,17 @@ import logging
 import os
 import random
 import socket
-from typing import Optional, Mapping, Iterable, Union
+from typing import Iterable, Mapping, Optional, Union
 
 import iso8601
 
+<<<<<<< HEAD:kopf/engines/peering.py
 from kopf.clients import fetching
 from kopf.clients import patching
+=======
+from kopf.k8s import fetching, patching
+>>>>>>> All operators with the same priority issue a warning and freeze, so that the cluster becomes not served anymore:kopf/reactor/peering.py
 from kopf.reactor import registries
-
 logger = logging.getLogger(__name__)
 
 # The CRD info on the special sync-object.
@@ -231,12 +234,16 @@ async def peers_handler(
         if not freeze.is_set():
             logger.info(f"Freezing operations in favour of {prio_peers}.")
             freeze.set()
+    
     else:
         if same_peers:
             logger.warning(f"Possibly conflicting operators with the same priority: {same_peers}.")
-        if freeze.is_set():
-            logger.info(f"Resuming operations after the freeze.")
-            freeze.clear()
+            logger.warning(f"Freezed all Operators: {peers}")
+            freeze.set()
+        else:
+            if freeze.is_set():
+                logger.info(f"Resuming operations after the freeze. Conflicting operators with the same priority are gone")
+                freeze.clear()
 
 
 async def peers_keepalive(
