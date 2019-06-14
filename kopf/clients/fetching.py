@@ -61,7 +61,7 @@ def list_objs(*, resource, namespace=None):
     return lst.response
 
 
-def watch_objs(*, resource, namespace=None, timeout=None):
+def watch_objs(*, resource, namespace=None, timeout=None, since=None):
     """
     Watch the objects of specific resource type.
 
@@ -78,5 +78,5 @@ def watch_objs(*, resource, namespace=None, timeout=None):
     cls = classes._make_cls(resource=resource)
     namespace = namespace if issubclass(cls, pykube.objects.NamespacedAPIObject) else None
     lst = cls.objects(api, namespace=pykube.all if namespace is None else namespace)
-    src = lst.watch()
+    src = lst.watch(since=since)
     return iter({'type': event.type, 'object': event.object.obj} for event in src)

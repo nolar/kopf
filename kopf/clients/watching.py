@@ -83,10 +83,10 @@ async def streaming_watch(
     kwargs = {}
     kwargs.update(dict(resource_version=resource_version) if resource_version else {})
     kwargs.update(dict(timeout_seconds=config.WatchersConfig.default_stream_timeout) if config.WatchersConfig.default_stream_timeout else {})
-    # TODO: pass kwargs, specifically: timeout + resource_version
     loop = asyncio.get_event_loop()
     stream = fetching.watch_objs(resource=resource, namespace=namespace,
-                                 timeout=config.WatchersConfig.default_stream_timeout)
+                                 timeout=config.WatchersConfig.default_stream_timeout,
+                                 since=resource_version)
     async for event in streaming_aiter(stream, loop=loop):
 
         # "410 Gone" is for the "resource version too old" error, we must restart watching.
