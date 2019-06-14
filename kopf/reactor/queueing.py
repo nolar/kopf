@@ -239,8 +239,11 @@ def run(
     # The errors in the cancellation stage will be ignored anyway (never re-raised below).
     for task in pending:
         task.cancel()
-    cancelled, pending = loop.run_until_complete(asyncio.wait(pending, return_when=asyncio.ALL_COMPLETED))
-    assert not pending  # must be empty by now, the tasks are either done or cancelled.
+    if pending:
+        cancelled, pending = loop.run_until_complete(asyncio.wait(pending, return_when=asyncio.ALL_COMPLETED))
+        assert not pending  # must be empty by now, the tasks are either done or cancelled.
+    else:
+        cancelled = []
 
     # Check the results of the non-cancelled tasks, and re-raise of there were any exceptions.
     # The cancelled tasks are not re-raised, as it is a normal flow for the "first-completed" run.
