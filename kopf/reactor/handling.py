@@ -111,7 +111,13 @@ async def custom_object_handler(
     # Object patch accumulator. Populated by the methods. Applied in the end of the handler.
     # Detect the cause and handle it (or at least log this happened).
     if registry.has_cause_handlers(resource=resource):
-        cause = causation.detect_cause(event=event, resource=resource, logger=logger, patch=patch)
+        cause = causation.detect_cause(
+            event=event,
+            resource=resource,
+            logger=logger,
+            patch=patch,
+            requires_finalizer=registry.requires_finalizer(resource=resource),
+        )
         delay = await handle_cause(lifecycle=lifecycle, registry=registry, cause=cause)
 
     # Provoke a dummy change to trigger the reactor after sleep.
@@ -185,7 +191,6 @@ async def handle_cause(
 
     # Regular causes invoke the handlers.
     if cause.event in causation.HANDLER_CAUSES:
-
         title = causation.TITLES.get(cause.event, repr(cause.event))
         logger.debug(f"{title.capitalize()} event: %r", body)
         if cause.diff is not None:
@@ -233,7 +238,9 @@ async def handle_cause(
         logger.debug("Something has changed, but we are not interested (state is the same).")
 
     # For the case of a newly created object, lock it to this operator.
-    # TODO: make it conditional.
+    # Not all newly created object will produce a 'NEW' causation event. This only
+    # happens when there are mandatory deletion handlers registered for the given
+    # object, i.e. if finalizers are required.
     if cause.event == causation.NEW:
         logger.debug("Adding the finalizer, thus preventing the actual deletion.")
         finalizers.append_finalizers(body=body, patch=patch)

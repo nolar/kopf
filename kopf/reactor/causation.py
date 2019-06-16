@@ -73,6 +73,7 @@ class Cause(NamedTuple):
 
 def detect_cause(
         event: Mapping,
+        requires_finalizer=True,
         **kwargs
 ) -> Cause:
     """
@@ -111,7 +112,8 @@ def detect_cause(
 
     # For a fresh new object, first block it from accidental deletions without our permission.
     # The actual handler will be called on the next call.
-    if not finalizers.has_finalizers(body):
+    # Only return this cause if the resource requires finalizers to be added.
+    if not initial and requires_finalizer and not finalizers.has_finalizers(body):
         return Cause(
             event=NEW,
             body=body,
