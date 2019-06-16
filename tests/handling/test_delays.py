@@ -9,6 +9,7 @@ from kopf.reactor.causation import HANDLER_CAUSES, CREATE, UPDATE, DELETE, RESUM
 from kopf.reactor.handling import HandlerRetryError
 from kopf.reactor.handling import WAITING_KEEPALIVE_INTERVAL
 from kopf.reactor.handling import custom_object_handler
+from kopf.structs.finalizers import FINALIZER
 
 
 @pytest.mark.parametrize('cause_type', HANDLER_CAUSES)
@@ -73,6 +74,8 @@ async def test_delayed_handlers_sleep(
             'resume_fn': {'delayed': ts},
         }}}
     })
+    # make sure the finalizer is added since there are mandatory deletion handlers
+    cause_mock.body.setdefault('metadata', {})['finalizers'] = [FINALIZER]
 
     with freezegun.freeze_time(now):
         await custom_object_handler(

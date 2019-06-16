@@ -1,8 +1,10 @@
 import asyncio
 import logging
 
+import pytest
+
 import kopf
-from kopf.reactor.causation import CREATE, UPDATE, DELETE, NEW, GONE, FREE, NOOP
+from kopf.reactor.causation import CREATE, UPDATE, DELETE, NEW, GONE, FREE, NOOP, RESUME
 from kopf.reactor.handling import custom_object_handler
 from kopf.structs.finalizers import FINALIZER
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
@@ -154,6 +156,68 @@ async def test_delete(registry, handlers, resource, cause_mock,
         "Removing the finalizer",
         "Patching with",
     ])
+
+
+@pytest.mark.parametrize('register_deletion_handler', [
+    pytest.param(True, id='deletion-handler'),
+    pytest.param(False, id='no-deletion-handler'),
+])
+@pytest.mark.parametrize('finalizers_exist', [
+    pytest.param(True, id='finalizers'),
+    pytest.param(False, id='no-finalizers'),
+])
+async def test_resume_updates_finalizers(registry, resource, cause_mock, caplog, k8s_mocked,
+                      register_deletion_handler, finalizers_exist):
+
+    caplog.set_level(logging.DEBUG)
+    cause_mock.event = RESUME
+    cause_mock.body.setdefault('metadata', {})['finalizers'] = [FINALIZER] if finalizers_exist else []
+
+    # register handlers
+    registry.register_cause_handler(
+        group=resource.group,
+        version=resource.version,
+        plural=resource.plural,
+        event=RESUME,
+        fn=lambda **_: None,
+        requires_finalizer=False,
+    )
+
+    if register_deletion_handler:
+        registry.register_cause_handler(
+            group=resource.group,
+            version=resource.version,
+            plural=resource.plural,
+            event=DELETE,
+            fn=lambda **_: None,
+            requires_finalizer=True,
+        )
+
+    await custom_object_handler(
+        lifecycle=kopf.lifecycles.all_at_once,
+        registry=registry,
+        resource=resource,
+        event={'type': 'irrelevant', 'object': cause_mock.body},
+        freeze=asyncio.Event(),
+    )
+
+    assert k8s_mocked.patch_obj.call_count == 1
+
+    patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
+    assert 'metadata' in patch
+
+    if register_deletion_handler:
+        if finalizers_exist:
+            assert 'finalizers' not in patch['metadata']  # deletion handlers and finalizers, so nothing to do
+        else:
+            assert 'finalizers' in patch['metadata']  # deletion handlers, no finalizers, so add finalizers
+            assert [FINALIZER] == patch['metadata']['finalizers']
+    else:
+        if finalizers_exist:
+            assert 'finalizers' in patch['metadata']  # no deletion handlers, but finalizers, so remove finalizers
+            assert [] == patch['metadata']['finalizers']
+        else:
+            assert 'finalizers' not in patch['metadata'] # no deletion handlers and no finalizers, so nothing to do
 
 
 #
