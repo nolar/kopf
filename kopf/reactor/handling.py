@@ -245,6 +245,19 @@ async def handle_cause(
         logger.debug("Adding the finalizer, thus preventing the actual deletion.")
         finalizers.append_finalizers(body=body, patch=patch)
 
+    # When the operator is resumed, check whether or not the existing resource has the
+    # correct finalizers, i.e. if the resources requires finalizers, and doesn't have them,
+    # add them, and if the resource doesn't require finalizers, and does have them, remove them.
+    # This is done since whether or not the resource requires finalizers can change when the
+    # operator is resumed.
+    if cause.event == causation.RESUME:
+        if registry.requires_finalizer(resource=cause.resource) and not finalizers.has_finalizers(body=body):
+            logger.debug("Adding the finalizer, thus preventing the actual deletion.")
+            finalizers.append_finalizers(body=body, patch=patch)
+        elif not registry.requires_finalizer(resource=cause.resource) and finalizers.has_finalizers(body=body):
+            logger.debug("Removing the finalizer, as there are no handlers requiring it.")
+            finalizers.remove_finalizers(body=body, patch=patch)
+
     # The delay is then consumed by the main handling routine (in different ways).
     return delay
 
