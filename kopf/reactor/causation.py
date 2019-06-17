@@ -73,7 +73,7 @@ class Cause(NamedTuple):
 
 def detect_cause(
         event: Mapping,
-        requires_finalizer=True,
+        requires_finalizer: bool = True,
         **kwargs
 ) -> Cause:
     """

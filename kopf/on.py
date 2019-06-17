@@ -75,7 +75,7 @@ def delete(
         id: Optional[str] = None,
         timeout: Optional[float] = None,
         registry: Optional[registries.GlobalRegistry] = None,
-        mandatory=True):
+        mandatory: bool = True):
     """ ``@kopf.on.delete()`` handler for the object deletion. """
     registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn):
