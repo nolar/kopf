@@ -57,16 +57,16 @@ async def exception_async(obj, *, reason='', message='', exc=None):
 
 # Next 4 funcs are just synchronous interface for async event functions.
 def event(obj, *, type, reason, message=''):
-    asyncio.wait_for(event_async(obj, type=type, reason=reason, message=message), timeout=2)
+    asyncio.wait_for(event_async(obj, type=type, reason=reason, message=message), timeout=None)
 
 
 def info(obj, *, reason, message=''):
-    asyncio.wait_for(info_async(obj, reason=reason, message=message), timeout=2)
+    asyncio.wait_for(info_async(obj, reason=reason, message=message), timeout=None)
 
 
 def warn(obj, *, reason, message=''):
-    asyncio.wait_for(warn_async(obj, reason=reason, message=message), timeout=2)
+    asyncio.wait_for(warn_async(obj, reason=reason, message=message), timeout=None)
 
 
 def exception(obj, *, reason='', message='', exc=None):
-    asyncio.wait_for(exception_async(obj, reason=reason, message=message, exc=exc), timeout=2)
+    asyncio.wait_for(exception_async(obj, reason=reason, message=message, exc=exc), timeout=None)
