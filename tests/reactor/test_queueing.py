@@ -132,8 +132,8 @@ async def test_event_batching(mocker, resource, handler, timer, stream, events, 
 
     # Significantly less than the queue getting timeout, but sufficient to run.
     # 2 <= 1 pull for the event chain + 1 pull for EOS. TODO: 1x must be enough.
-    from kopf.config import WorkersConfig
-    assert timer.seconds < WorkersConfig.worker_batch_window + CODE_OVERHEAD
+    from kopf import config
+    assert timer.seconds < config.WorkersConfig.worker_batch_window + CODE_OVERHEAD
 
     # Was the handler called at all? Awaited as needed for async fns?
     assert handler.awaited
@@ -187,9 +187,9 @@ async def test_garbage_collection_of_queues(mocker, stream, events, unique, work
 
     # Give the workers some time to finish waiting for the events.
     # Once the idle timeout, they will exit and gc their individual queues.
-    from kopf.config import WorkersConfig
-    await asyncio.sleep(WorkersConfig.worker_batch_window)  # depleting the queues.
-    await asyncio.sleep(WorkersConfig.worker_idle_timeout)  # idling on empty queues.
+    from kopf import config
+    await asyncio.sleep(config.WorkersConfig.worker_batch_window)  # depleting the queues.
+    await asyncio.sleep(config.WorkersConfig.worker_idle_timeout)  # idling on empty queues.
     await asyncio.sleep(CODE_OVERHEAD)
 
     # The mutable(!) queues dict is now empty, i.e. garbage-collected.

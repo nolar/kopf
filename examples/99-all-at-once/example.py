@@ -1,7 +1,6 @@
 """
 Kubernetes operator example: all the features at once (for debugging & testing).
 """
-import asyncio
 import pprint
 import time
 

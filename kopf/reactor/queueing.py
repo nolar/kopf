@@ -31,7 +31,7 @@ from typing import Optional, Callable, Tuple, Union, MutableMapping, NewType
 
 import aiojobs
 
-from kopf.config import WorkersConfig
+from kopf import config
 from kopf.k8s import watching
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
@@ -69,7 +69,7 @@ async def watcher(
 
     # All per-object workers are handled as fire-and-forget jobs via the scheduler,
     # and communicated via the per-object event queues.
-    scheduler = await aiojobs.create_scheduler(limit=WorkersConfig.queue_workers_limit)
+    scheduler = await aiojobs.create_scheduler(limit=config.WorkersConfig.queue_workers_limit)
     queues = {}
     try:
         # Either use the existing object's queue, or create a new one together with the per-object job.
@@ -120,14 +120,16 @@ async def worker(
             # If the queue is filled, use the latest event only (within the short timeframe).
             # If an EOS marker is received, handle the last real event, then finish the worker ASAP.
             try:
-                event = await asyncio.wait_for(queue.get(), timeout=WorkersConfig.worker_idle_timeout)
+                event = await asyncio.wait_for(queue.get(), timeout=config.WorkersConfig.worker_idle_timeout)
             except asyncio.TimeoutError:
                 break
             else:
                 try:
                     while True:
                         prev_event = event
-                        next_event = await asyncio.wait_for(queue.get(), timeout=WorkersConfig.worker_batch_window)
+                        next_event = await asyncio.wait_for(
+                            queue.get(), timeout=config.WorkersConfig.worker_batch_window
+                        )
                         shouldstop = shouldstop or next_event is EOS
                         event = prev_event if next_event is EOS else next_event
                 except asyncio.TimeoutError:
@@ -264,8 +266,10 @@ async def _wait_for_depletion(*, scheduler, queues):
     # Wait for the queues to be depleted, but only if there are some workers running.
     # Continue with the tasks termination if the timeout is reached, no matter the queues.
     started = time.perf_counter()
-    while queues and scheduler.active_count and time.perf_counter() - started < WorkersConfig.worker_exit_timeout:
-        await asyncio.sleep(WorkersConfig.worker_exit_timeout / 100.)
+    while queues and \
+            scheduler.active_count and \
+            time.perf_counter() - started < config.WorkersConfig.worker_exit_timeout:
+        await asyncio.sleep(config.WorkersConfig.worker_exit_timeout / 100.)
 
     # The last check if the termination is going to be graceful or not.
     if queues:

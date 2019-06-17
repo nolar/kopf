@@ -4,9 +4,9 @@ import functools
 
 import kubernetes
 
-from kopf.config import WorkersConfig
+from kopf import config
 
-patch_executor = concurrent.futures.ThreadPoolExecutor(max_workers=WorkersConfig.synchronous_patch_workers_limit)
+patch_executor = concurrent.futures.ThreadPoolExecutor(max_workers=config.WorkersConfig.synchronous_patch_workers_limit)
 
 
 async def patch_obj(*, resource, patch, namespace=None, name=None, body=None):

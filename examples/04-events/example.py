@@ -1,8 +1,6 @@
 """
 Send the custom events for the handled or other objects.
 """
-import asyncio
-
 import kopf
 
 

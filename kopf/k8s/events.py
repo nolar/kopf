@@ -6,7 +6,7 @@ import logging
 
 import kubernetes.client.rest
 
-from kopf.config import WorkersConfig
+from kopf import config
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ MAX_MESSAGE_LENGTH = 1024
 CUT_MESSAGE_INFIX = '...'
 
 
-event_executor = concurrent.futures.ThreadPoolExecutor(max_workers=WorkersConfig.synchronous_event_post_workers_limit)
+event_executor = concurrent.futures.ThreadPoolExecutor(max_workers=config.WorkersConfig.synchronous_event_post_workers_limit)
 
 
 async def post_event(*, obj, type, reason, message=''):
