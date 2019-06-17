@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 format = '[%(asctime)s] %(name)-20.20s [%(levelname)-8.8s] %(message)s'
 
 
-LOGLEVEL_INFO = logging.INFO
-LOGLEVEL_WARNING = logging.WARNING
-LOGLEVEL_ERROR = logging.ERROR
-LOGLEVEL_CRITICAL = logging.CRITICAL
+LOGLEVEL_INFO = 20
+LOGLEVEL_WARNING = 30
+LOGLEVEL_ERROR = 40
+LOGLEVEL_CRITICAL = 50
 
 
 class LoginError(click.ClickException):
