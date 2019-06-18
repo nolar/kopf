@@ -45,7 +45,7 @@ def test_all_examples_are_runnable(mocker, with_crd, with_peering, exampledir):
     # There are usually more than these messages, but we only check for the certain ones.
     # This just shows us that the operator is doing something, it is alive.
     if requires_finalizer:
-        assert '[default/kopf-example-1] First appearance:' in runner.stdout
+        assert '[default/kopf-example-1] Adding the finalizer' in runner.stdout
     assert '[default/kopf-example-1] Creation event:' in runner.stdout
     if requires_finalizer:
         assert '[default/kopf-example-1] Deletion event:' in runner.stdout

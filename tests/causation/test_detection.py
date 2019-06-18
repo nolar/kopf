@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from kopf.reactor.causation import CREATE, UPDATE, DELETE, NEW, NOOP, FREE, GONE
+from kopf.reactor.causation import CREATE, UPDATE, DELETE, NOOP, FREE, GONE, ACQUIRE, RELEASE
 from kopf.reactor.causation import detect_cause
 from kopf.structs.finalizers import FINALIZER
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
@@ -173,12 +173,25 @@ def test_for_delete(kwargs, event, finalizers, deletion_ts, requires_finalizer):
 @no_finalizers
 @no_deletions
 @regular_events
-def test_for_new(kwargs, event, finalizers, deletion_ts, requires_finalizer):
+def test_for_acquire(kwargs, event, finalizers, deletion_ts, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
     cause = detect_cause(event=event, requires_finalizer=requires_finalizer, **kwargs)
-    assert cause.event == NEW
+    assert cause.event == ACQUIRE
+    check_kwargs(cause, kwargs)
+
+
+@doesnt_require_finalizer
+@our_finalizers
+@no_deletions
+@regular_events
+def test_for_release(kwargs, event, finalizers, deletion_ts, requires_finalizer):
+    event = {'type': event, 'object': {'metadata': {}}}
+    event['object']['metadata'].update(finalizers)
+    event['object']['metadata'].update(deletion_ts)
+    cause = detect_cause(event=event, requires_finalizer=requires_finalizer, **kwargs)
+    assert cause.event == RELEASE
     check_kwargs(cause, kwargs)
 
 
@@ -202,7 +215,7 @@ def test_for_create(kwargs, event, finalizers, deletion_ts, annotations, content
 @no_finalizers
 @no_deletions
 @regular_events
-def test_for_create_skip_new(kwargs, event, finalizers, deletion_ts, requires_finalizer):
+def test_for_create_skip_acquire(kwargs, event, finalizers, deletion_ts, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
