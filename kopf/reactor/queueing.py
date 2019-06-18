@@ -245,6 +245,7 @@ def run(
         cancelled, pending = loop.run_until_complete(asyncio.wait(pending, return_when=asyncio.ALL_COMPLETED))
         assert not pending  # must be empty by now, the tasks are either done or cancelled.
     else:
+        # when pending list is empty, let's say cancelled is empty too
         cancelled = []
 
     # Check the results of the non-cancelled tasks, and re-raise of there were any exceptions.
