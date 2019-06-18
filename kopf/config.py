@@ -12,9 +12,13 @@ format = '[%(asctime)s] %(name)-20.20s [%(levelname)-8.8s] %(message)s'
 
 
 LOGLEVEL_INFO = 20
+""" Event loglevel to log all events. """
 LOGLEVEL_WARNING = 30
+""" Event loglevel to log all events except informational. """
 LOGLEVEL_ERROR = 40
+""" Event loglevel to log only errors and critical events. """
 LOGLEVEL_CRITICAL = 50
+""" Event loglevel to log only critical events(basically - no events). """
 
 
 class LoginError(click.ClickException):
@@ -86,32 +90,36 @@ def configure(debug=None, verbose=None, quiet=None):
 
 
 class EventsConfig:
-    """Used to configure events sending behaviour"""
+    """
+    Used to configure events sending behaviour.
+    """
 
-    """What events should be logged"""
     events_loglevel = LOGLEVEL_INFO
+    """ What events should be logged. """
 
 
 class WorkersConfig:
-    """Used as single point of configuration for kopf.reactor"""
+    """
+    Used as single point of configuration for kopf.reactor.
+    """
 
-    """How many workers can be running simultaneously on event creation operations"""
     synchronous_event_post_workers_limit = None
+    """ How many workers can be running simultaneously on event creation operations. """
 
-    """How many workers can be running simultaneously on patch operations"""
     synchronous_patch_workers_limit = None
+    """ How many workers can be running simultaneously on patch operations. """
 
-    """How many workers can be running simultaneously on per-object event queue"""
     queue_workers_limit = None  # if None, there is no limits to workers number
+    """ How many workers can be running simultaneously on per-object event queue. """
 
-    """How many threads in total can be running simultaneously to handle non-async handler functions"""
     synchronous_handlers_threadpool_limit = None  # if None, calculated by ThreadPoolExecutor based on cpu count
+    """ How many threads in total can be running simultaneously to handle non-async handler functions. """
 
-    """How long does a worker can idle before exiting and garbage-collecting."""
     worker_idle_timeout = 5.0
+    """ How long does a worker can idle before exiting and garbage-collecting."""
 
-    """How fast/slow does a worker deplete the queue when an event is received."""
     worker_batch_window = 0.1
+    """ How fast/slow does a worker deplete the queue when an event is received."""
 
-    """How long does a worker can work on watcher exit before being cancelled. """
     worker_exit_timeout = 2.0
+    """ How long does a worker can work on watcher exit before being cancelled. """
