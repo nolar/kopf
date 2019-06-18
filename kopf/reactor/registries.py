@@ -83,7 +83,7 @@ class SimpleRegistry(BaseRegistry):
     def __init__(self, prefix=None):
         super().__init__()
         self.prefix = prefix
-        self.requires_finalizer = False
+        self._requires_finalizer = False
         self._handlers = []  # [Handler, ...]
 
     def __bool__(self):
@@ -110,7 +110,7 @@ class SimpleRegistry(BaseRegistry):
         self.append(handler)
 
         if requires_finalizer:
-            self.requires_finalizer = True
+            self._requires_finalizer = True
 
         return fn  # to be usable as a decorator too.
 
@@ -129,6 +129,9 @@ class SimpleRegistry(BaseRegistry):
     def iter_event_handlers(self, resource, event):
         for handler in self._handlers:
             yield handler
+
+    def requires_finalizer(self, resource):
+        return self._requires_finalizer
 
 
 def get_callable_id(c):
@@ -218,7 +221,7 @@ class GlobalRegistry(BaseRegistry):
         resource_registry = self._cause_handlers.get(resource, None)
         if resource_registry is None:
             return False
-        return resource_registry.requires_finalizer
+        return resource_registry.requires_finalizer(resource)
 
 
 _default_registry = GlobalRegistry()
