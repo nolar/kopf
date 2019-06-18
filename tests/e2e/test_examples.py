@@ -18,12 +18,12 @@ def test_all_examples_are_runnable(mocker, with_crd, with_peering, exampledir):
     m = re.search(r'^E2E_TRACEBACKS\s*=\s*(\w+)$', example_py.read_text(), re.M)
     e2e_tracebacks = eval(m.group(1)) if m else None
     # check whether there are mandatory deletion handlers or not
-    m = re.search(r'@kopf\.on\.delete\((\s|.*)?(mandatory=(\w+))?\)', example_py.read_text(), re.M)
+    m = re.search(r'@kopf\.on\.delete\((\s|.*)?(optional=(\w+))?\)', example_py.read_text(), re.M)
     requires_finalizer = False
     if m:
         requires_finalizer = True
         if m.group(2):
-            requires_finalizer = eval(m.group(3))
+            requires_finalizer = not eval(m.group(3))
 
     # To prevent lengthy sleeps on the simulated retries.
     mocker.patch('kopf.reactor.handling.DEFAULT_RETRY_DELAY', 1)

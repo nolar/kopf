@@ -126,17 +126,17 @@ def test_on_update_with_all_kwargs(mocker):
     assert registry.requires_finalizer(resource=resource) is False
 
 
-@pytest.mark.parametrize('mandatory', [
-    pytest.param(True, id='mandatory'),
-    pytest.param(False, id='not-mandatory'),
+@pytest.mark.parametrize('optional', [
+    pytest.param(True, id='optional'),
+    pytest.param(False, id='mandatory'),
 ])
-def test_on_delete_with_all_kwargs(mocker, mandatory):
+def test_on_delete_with_all_kwargs(mocker, optional):
     registry = GlobalRegistry()
     resource = Resource('group', 'version', 'plural')
     cause = mocker.MagicMock(resource=resource, event=DELETE)
 
     @kopf.on.delete('group', 'version', 'plural',
-                    id='id', timeout=123, registry=registry, mandatory=mandatory)
+                    id='id', timeout=123, registry=registry, optional=optional)
     def fn(**_):
         pass
 
@@ -147,7 +147,7 @@ def test_on_delete_with_all_kwargs(mocker, mandatory):
     assert handlers[0].field is None
     assert handlers[0].id == 'id'
     assert handlers[0].timeout == 123
-    assert registry.requires_finalizer(resource=resource) is mandatory
+    assert registry.requires_finalizer(resource=resource) is not optional
 
 
 def test_on_field_with_all_kwargs(mocker):

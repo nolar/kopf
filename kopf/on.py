@@ -75,14 +75,14 @@ def delete(
         id: Optional[str] = None,
         timeout: Optional[float] = None,
         registry: Optional[registries.GlobalRegistry] = None,
-        mandatory: bool = True):
+        optional: Optional[bool] = None):
     """ ``@kopf.on.delete()`` handler for the object deletion. """
     registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn):
         registry.register_cause_handler(
             group=group, version=version, plural=plural,
             event=causation.DELETE, id=id, timeout=timeout,
-            fn=fn, requires_finalizer=mandatory)
+            fn=fn, requires_finalizer=bool(not optional))
         return fn
     return decorator
 
