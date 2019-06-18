@@ -39,9 +39,6 @@ async def patch_obj(*, resource, patch, namespace=None, name=None, body=None):
     if namespace is not None:
         request_kwargs['namespace'] = namespace
         patch_func = api.patch_namespaced_custom_object
-    loop = asyncio.get_event_loop()
-    if not loop:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+    loop = asyncio.get_running_loop()
 
     await loop.run_in_executor(patch_executor, functools.partial(patch_func, **request_kwargs))

@@ -65,10 +65,7 @@ async def post_event(*, obj, type, reason, message=''):
     )
 
     api = kubernetes.client.CoreV1Api()
-    loop = asyncio.get_event_loop()
-    if not loop:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+    loop = asyncio.get_running_loop()
 
     try:
         await loop.run_in_executor(
