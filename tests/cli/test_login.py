@@ -5,7 +5,7 @@ We test our own functions here, and check if the clients were called.
 import pytest
 import requests
 
-from kopf.clients.auth import login, verify, LoginError, AccessError
+from kopf.clients.auth import login, LoginError, AccessError
 
 
 @pytest.fixture(autouse=True)
@@ -24,11 +24,11 @@ def test_kubernetes_uninstalled_has_effect():
 
 @pytest.mark.usefixtures('kubernetes_uninstalled')
 def test_direct_auth_works_without_client(login_mocks):
-    login()
-    verify()
+    login(verify=True)
 
     assert login_mocks.pykube_in_cluster.called
     assert not login_mocks.pykube_from_file.called
+
     assert not login_mocks.client_in_cluster.called
     assert not login_mocks.client_from_file.called
 
@@ -39,6 +39,7 @@ def test_direct_auth_works_incluster(login_mocks):
 
     assert login_mocks.pykube_in_cluster.called
     assert not login_mocks.pykube_from_file.called
+
     assert login_mocks.client_in_cluster.called
     assert not login_mocks.client_from_file.called
 
@@ -52,6 +53,7 @@ def test_direct_auth_works_kubeconfig(login_mocks):
 
     assert login_mocks.pykube_in_cluster.called
     assert login_mocks.pykube_from_file.called
+
     assert login_mocks.client_in_cluster.called
     assert login_mocks.client_from_file.called
 
@@ -65,8 +67,10 @@ def test_direct_auth_fails_on_errors_in_pykube(login_mocks):
 
     assert login_mocks.pykube_in_cluster.called
     assert login_mocks.pykube_from_file.called
-    assert not login_mocks.client_in_cluster.called     # because pykube failed
-    assert not login_mocks.client_from_file.called      # because pykube failed
+
+    # Because pykube failed, the client is not even tried:
+    assert not login_mocks.client_in_cluster.called
+    assert not login_mocks.client_from_file.called
 
 
 def test_direct_auth_fails_on_errors_in_client(login_mocks):
@@ -79,6 +83,7 @@ def test_direct_auth_fails_on_errors_in_client(login_mocks):
 
     assert login_mocks.pykube_in_cluster.called
     assert not login_mocks.pykube_from_file.called
+
     assert login_mocks.client_in_cluster.called
     assert login_mocks.client_from_file.called
 
@@ -88,31 +93,32 @@ def test_direct_check_fails_on_errors_in_pykube(login_mocks):
     response.status_code = 401
     login_mocks.pykube_checker.side_effect = requests.exceptions.HTTPError(response=response)
 
-    login()
     with pytest.raises(AccessError):
-        verify()
+        login(verify=True)
 
     assert login_mocks.pykube_in_cluster.called
     assert not login_mocks.pykube_from_file.called
-    assert login_mocks.client_in_cluster.called
-    assert not login_mocks.client_from_file.called
     assert login_mocks.pykube_checker.called
-    assert not login_mocks.client_checker.called  # because pykube failed
+
+    # Because pykube failed, the client is not even tried:
+    assert not login_mocks.client_in_cluster.called
+    assert not login_mocks.client_from_file.called
+    assert not login_mocks.client_checker.called
 
 
 def test_direct_check_fails_on_errors_in_client(login_mocks):
     kubernetes = pytest.importorskip('kubernetes')
     login_mocks.client_checker.side_effect = kubernetes.client.rest.ApiException(status=401)
 
-    login()
     with pytest.raises(AccessError):
-        verify()
+        login(verify=True)
 
     assert login_mocks.pykube_in_cluster.called
     assert not login_mocks.pykube_from_file.called
+    assert login_mocks.pykube_checker.called
+
     assert login_mocks.client_in_cluster.called
     assert not login_mocks.client_from_file.called
-    assert login_mocks.pykube_checker.called
     assert login_mocks.client_checker.called
 
 #
@@ -126,6 +132,7 @@ def test_clirun_auth_works_without_client(invoke, login_mocks, preload, real_run
 
     assert login_mocks.pykube_in_cluster.called
     assert not login_mocks.pykube_from_file.called
+
     assert not login_mocks.client_in_cluster.called
     assert not login_mocks.client_from_file.called
 
@@ -137,9 +144,10 @@ def test_clirun_auth_works_incluster(invoke, login_mocks, preload, real_run):
 
     assert login_mocks.pykube_in_cluster.called
     assert not login_mocks.pykube_from_file.called
+    assert login_mocks.pykube_checker.called
+
     assert login_mocks.client_in_cluster.called
     assert not login_mocks.client_from_file.called
-    assert login_mocks.pykube_checker.called
     assert login_mocks.client_checker.called
 
 
@@ -153,9 +161,10 @@ def test_clirun_auth_works_kubeconfig(invoke, login_mocks, preload, real_run):
 
     assert login_mocks.pykube_in_cluster.called
     assert login_mocks.pykube_from_file.called
+    assert login_mocks.pykube_checker.called
+
     assert login_mocks.client_in_cluster.called
     assert login_mocks.client_from_file.called
-    assert login_mocks.pykube_checker.called
     assert login_mocks.client_checker.called
 
 
@@ -169,9 +178,11 @@ def test_clirun_auth_fails_on_errors_in_pykube(invoke, login_mocks, preload, rea
 
     assert login_mocks.pykube_in_cluster.called
     assert login_mocks.pykube_from_file.called
-    assert not login_mocks.client_in_cluster.called   # because pykube failed
-    assert not login_mocks.client_from_file.called    # because pykube failed
     assert not login_mocks.pykube_checker.called
+
+    # Because pykube failed, the client is not even tried:
+    assert not login_mocks.client_in_cluster.called
+    assert not login_mocks.client_from_file.called
     assert not login_mocks.client_checker.called
 
 
@@ -186,9 +197,10 @@ def test_clirun_auth_fails_on_errors_in_client(invoke, login_mocks, preload, rea
 
     assert login_mocks.pykube_in_cluster.called
     assert not login_mocks.pykube_from_file.called
+    assert login_mocks.pykube_checker.called
+
     assert login_mocks.client_in_cluster.called
     assert login_mocks.client_from_file.called
-    assert not login_mocks.pykube_checker.called
     assert not login_mocks.client_checker.called
 
 
@@ -203,10 +215,12 @@ def test_clirun_check_fails_on_errors_in_pykube(invoke, login_mocks, preload, re
 
     assert login_mocks.pykube_in_cluster.called
     assert not login_mocks.pykube_from_file.called
-    assert login_mocks.client_in_cluster.called
-    assert not login_mocks.client_from_file.called
     assert login_mocks.pykube_checker.called
-    assert not login_mocks.client_checker.called  # because pykube failed
+
+    # Because pykube failed, the client is not even tried:
+    assert not login_mocks.client_in_cluster.called
+    assert not login_mocks.client_from_file.called
+    assert not login_mocks.client_checker.called
 
 
 def test_clirun_check_fails_on_errors_in_client(invoke, login_mocks, preload, real_run):
@@ -219,7 +233,8 @@ def test_clirun_check_fails_on_errors_in_client(invoke, login_mocks, preload, re
 
     assert login_mocks.pykube_in_cluster.called
     assert not login_mocks.pykube_from_file.called
+    assert login_mocks.pykube_checker.called
+
     assert login_mocks.client_in_cluster.called
     assert not login_mocks.client_from_file.called
-    assert login_mocks.pykube_checker.called
     assert login_mocks.client_checker.called

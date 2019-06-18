@@ -1,14 +1,18 @@
 
 
 def test_help_in_root(invoke, mocker):
-    login = mocker.patch('kopf.clients.auth.login')
-    verify = mocker.patch('kopf.clients.auth.verify')
+    login_pykube = mocker.patch('kopf.clients.auth.login_pykube')
+    login_client = mocker.patch('kopf.clients.auth.login_client')
+    verify_pykube = mocker.patch('kopf.clients.auth.verify_pykube')
+    verify_client = mocker.patch('kopf.clients.auth.verify_client')
 
     result = invoke(['--help'])
 
     assert result.exit_code == 0
-    assert not login.called
-    assert not verify.called
+    assert not login_pykube.called
+    assert not login_client.called
+    assert not verify_pykube.called
+    assert not verify_client.called
 
     assert 'Usage: kopf [OPTIONS]' in result.output
     assert '  run ' in result.output
@@ -17,16 +21,20 @@ def test_help_in_root(invoke, mocker):
 
 
 def test_help_in_subcommand(invoke, mocker):
-    login = mocker.patch('kopf.clients.auth.login')
-    verify = mocker.patch('kopf.clients.auth.verify')
+    login_pykube = mocker.patch('kopf.clients.auth.login_pykube')
+    login_client = mocker.patch('kopf.clients.auth.login_client')
+    verify_pykube = mocker.patch('kopf.clients.auth.verify_pykube')
+    verify_client = mocker.patch('kopf.clients.auth.verify_client')
     preload = mocker.patch('kopf.utilities.loaders.preload')
     real_run = mocker.patch('kopf.reactor.queueing.run')
 
     result = invoke(['run', '--help'])
 
     assert result.exit_code == 0
-    assert not login.called
-    assert not verify.called
+    assert not login_pykube.called
+    assert not login_client.called
+    assert not verify_pykube.called
+    assert not verify_client.called
     assert not preload.called
     assert not real_run.called
 

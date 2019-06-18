@@ -19,7 +19,7 @@ class AccessError(Exception):
     """ Raised when the operator cannot access the cluster API. """
 
 
-def login():
+def login(verify=False):
     """
     Login to Kubernetes cluster, locally or remotely.
 
@@ -30,19 +30,24 @@ def login():
     """
 
     # Pykube login is mandatory. If it fails, the framework will not run at all.
-    login_pykube()
+    try:
+        import pykube
+    except ImportError:
+        raise  # mandatory
+    else:
+        login_pykube(verify=verify)
 
     # We keep the official client library auto-login only because it was
     # an implied behavior before switching to pykube -- to keep it so (implied).
     try:
         import kubernetes
     except ImportError:
-        pass
+        pass  # optional
     else:
-        login_client()
+        login_client(verify=verify)
 
 
-def login_pykube():
+def login_pykube(verify=False):
     global _pykube_cfg
     try:
         _pykube_cfg = pykube.KubeConfig.from_service_account()
@@ -54,8 +59,11 @@ def login_pykube():
         except (pykube.PyKubeError, FileNotFoundError):
             raise LoginError(f"Cannot authenticate pykube neither in-cluster, nor via kubeconfig.")
 
+    if verify:
+        verify_pykube()
 
-def login_client():
+
+def login_client(verify=False):
     import kubernetes.client
     try:
         kubernetes.config.load_incluster_config()  # cluster env vars
@@ -67,34 +75,14 @@ def login_client():
         except kubernetes.config.ConfigException as e2:
             raise LoginError(f"Cannot authenticate client neither in-cluster, nor via kubeconfig.")
 
-
-def verify():
-    """
-    Verify if login has succeeded, and the access configuration is still valid.
-
-    If not, raise `.AccessError`.
-
-    It can also perform the permission checks before the operator
-    actually starts, i.e. before any fetching or watching API calls.
-
-    If the operator is not logged in, then the check fails,
-    and the operator stops (as any other API call).
-    """
-
-    # Pykube login is mandatory. If it fails, the framework will not run at all.
-    verify_pykube()
-
-    # We keep the official client library auto-login only because it was
-    # an implied behavior before switching to pykube -- to keep it so (implied).
-    try:
-        import kubernetes
-    except ImportError:
-        pass
-    else:
+    if verify:
         verify_client()
 
 
 def verify_pykube():
+    """
+    Verify if login has succeeded, and the access configuration is still valid.
+    """
     try:
         api = get_pykube_api()
         rsp = api.get(version="", base="/")
@@ -108,6 +96,9 @@ def verify_pykube():
 
 
 def verify_client():
+    """
+    Verify if login has succeeded, and the access configuration is still valid.
+    """
     import kubernetes.client.rest
     try:
         api = kubernetes.client.CoreApi()

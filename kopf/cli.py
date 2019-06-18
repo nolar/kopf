@@ -12,8 +12,7 @@ from kopf.utilities import loaders
 
 def cli_login():
     try:
-        auth.login()
-        auth.verify()
+        auth.login(verify=True)
     except auth.LoginError as e:
         raise click.ClickException(str(e))
     except auth.AccessError as e:
