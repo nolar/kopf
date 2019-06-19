@@ -155,7 +155,7 @@ The following 3 core cause-handlers are available::
     remove them (check: :ref:`finalizers-blocking-deletion` for a work-around).
     If a delete handler is added but finalizers are not required to block the
     actual deletion, i.e. the handler is optional, the optional argument
-    `optional=True` can be passed to the delete cause decorator.
+    ``optional=True`` can be passed to the delete cause decorator.
 
 An additional handler can be used for cases when the operator restarts
 and detects an object that existed before, but was not changed/deleted
