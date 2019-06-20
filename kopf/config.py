@@ -103,10 +103,10 @@ class WorkersConfig:
     Used as single point of configuration for kopf.reactor.
     """
 
-    synchronous_event_post_workers_limit = None
+    synchronous_event_post_threadpool_limit = None
     """ How many workers can be running simultaneously on event creation operations. """
 
-    synchronous_patch_workers_limit = None
+    synchronous_patch_threadpool_limit = None
     """ How many workers can be running simultaneously on patch operations. """
 
     queue_workers_limit = None  # if None, there is no limits to workers number

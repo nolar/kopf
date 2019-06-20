@@ -14,7 +14,7 @@ MAX_MESSAGE_LENGTH = 1024
 CUT_MESSAGE_INFIX = '...'
 
 
-event_executor = concurrent.futures.ThreadPoolExecutor(max_workers=config.WorkersConfig.synchronous_event_post_workers_limit)
+event_executor = concurrent.futures.ThreadPoolExecutor(max_workers=config.WorkersConfig.synchronous_event_post_threadpool_limit)
 
 
 async def post_event(*, obj, type, reason, message=''):
