@@ -1,5 +1,4 @@
 import asyncio
-import concurrent.futures
 import datetime
 import functools
 import logging
@@ -12,9 +11,6 @@ logger = logging.getLogger(__name__)
 
 MAX_MESSAGE_LENGTH = 1024
 CUT_MESSAGE_INFIX = '...'
-
-
-event_executor = concurrent.futures.ThreadPoolExecutor(max_workers=config.WorkersConfig.synchronous_event_post_threadpool_limit)
 
 
 async def post_event(*, obj, type, reason, message=''):
@@ -69,7 +65,8 @@ async def post_event(*, obj, type, reason, message=''):
 
     try:
         await loop.run_in_executor(
-            event_executor, functools.partial(api.create_namespaced_event, **{'namespace': namespace, 'body': body})
+            config.WorkersConfig.get_syn_executor(),
+            functools.partial(api.create_namespaced_event, **{'namespace': namespace, 'body': body})
         )
     except kubernetes.client.rest.ApiException as e:
         # Events are helpful but auxiliary, they should not fail the handling cycle.

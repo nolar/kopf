@@ -12,6 +12,12 @@ from kopf import (
 from kopf.config import (
     login,
     configure,
+    LOGLEVEL_INFO,
+    LOGLEVEL_WARNING,
+    LOGLEVEL_ERROR,
+    LOGLEVEL_CRITICAL,
+    EventsConfig,
+    WorkersConfig
 )
 from kopf.events import (
     event,

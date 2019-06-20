@@ -1,6 +1,8 @@
 
 import asyncio
+import concurrent.futures
 import logging
+from typing import Optional
 
 import click
 import kubernetes
@@ -103,23 +105,37 @@ class WorkersConfig:
     Used as single point of configuration for kopf.reactor.
     """
 
-    synchronous_event_post_threadpool_limit = None
-    """ How many workers can be running simultaneously on event creation operations. """
+    threadpool_executor: Optional[concurrent.futures.ThreadPoolExecutor] = None
 
-    synchronous_patch_threadpool_limit = None
-    """ How many workers can be running simultaneously on patch operations. """
-
-    queue_workers_limit = None  # if None, there is no limits to workers number
+    queue_workers_limit: Optional[int] = None  # if None, there is no limits to workers number
     """ How many workers can be running simultaneously on per-object event queue. """
 
-    synchronous_handlers_threadpool_limit = None  # if None, calculated by ThreadPoolExecutor based on cpu count
-    """ How many threads in total can be running simultaneously to handle non-async handler functions. """
+    synchronous_tasks_threadpool_limit: Optional[int] = None  # if None, calculated by ThreadPoolExecutor based on cpu count
+    """ How many threads in total can be running simultaneously to handle any non-async tasks. """
 
-    worker_idle_timeout = 5.0
+    worker_idle_timeout: float = 5.0
     """ How long does a worker can idle before exiting and garbage-collecting."""
 
-    worker_batch_window = 0.1
+    worker_batch_window: float = 0.1
     """ How fast/slow does a worker deplete the queue when an event is received."""
 
-    worker_exit_timeout = 2.0
+    worker_exit_timeout: float = 2.0
     """ How long does a worker can work on watcher exit before being cancelled. """
+
+    @staticmethod
+    def get_syn_executor() -> concurrent.futures.ThreadPoolExecutor:
+        if not WorkersConfig.threadpool_executor:
+            logging.debug('Setting up syn executor')
+            WorkersConfig.threadpool_executor = concurrent.futures.ThreadPoolExecutor(
+                max_workers=WorkersConfig.synchronous_tasks_threadpool_limit
+            )
+        return WorkersConfig.threadpool_executor
+
+    @staticmethod
+    def set_synchronous_tasks_threadpool_limit(new_limit: int):
+        if new_limit < 1:
+            return
+
+        WorkersConfig.synchronous_tasks_threadpool_limit = new_limit
+        if WorkersConfig.threadpool_executor:
+            WorkersConfig.threadpool_executor._max_workers = new_limit

@@ -1,12 +1,9 @@
 import asyncio
-import concurrent.futures
 import functools
 
 import kubernetes
 
 from kopf import config
-
-patch_executor = concurrent.futures.ThreadPoolExecutor(max_workers=config.WorkersConfig.synchronous_patch_threadpool_limit)
 
 
 async def patch_obj(*, resource, patch, namespace=None, name=None, body=None):
@@ -41,4 +38,4 @@ async def patch_obj(*, resource, patch, namespace=None, name=None, body=None):
         patch_func = api.patch_namespaced_custom_object
     loop = asyncio.get_running_loop()
 
-    await loop.run_in_executor(patch_executor, functools.partial(patch_func, **request_kwargs))
+    await loop.run_in_executor(config.WorkersConfig.get_syn_executor(), functools.partial(patch_func, **request_kwargs))
