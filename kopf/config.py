@@ -134,7 +134,7 @@ class WorkersConfig:
     @staticmethod
     def set_synchronous_tasks_threadpool_limit(new_limit: int):
         if new_limit < 1:
-            return
+            raise ValueError('Can`t set threadpool limit lower than 1')
 
         WorkersConfig.synchronous_tasks_threadpool_limit = new_limit
         if WorkersConfig.threadpool_executor:
