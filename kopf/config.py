@@ -111,7 +111,7 @@ class WorkersConfig:
     """ How many workers can be running simultaneously on per-object event queue. """
 
     synchronous_tasks_threadpool_limit: Optional[int] = None  # if None, calculated by ThreadPoolExecutor based on cpu count
-    """ How many threads in total can be running simultaneously to handle any non-async tasks. """
+    """ How many threads in total can be running simultaneously to handle any non-async tasks."""
 
     worker_idle_timeout: float = 5.0
     """ How long does a worker can idle before exiting and garbage-collecting."""
@@ -133,6 +133,9 @@ class WorkersConfig:
 
     @staticmethod
     def set_synchronous_tasks_threadpool_limit(new_limit: int):
+        """
+        Call this static method at any time to change synchronous_tasks_threadpool_limit in runtime.
+        """
         if new_limit < 1:
             raise ValueError('Can`t set threadpool limit lower than 1')
 
