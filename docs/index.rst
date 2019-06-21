@@ -36,6 +36,7 @@ Kopf: Kubernetes Operators Framework
    errors
    events
    testing
+   configuring
 
 .. toctree::
    :maxdepth: 2

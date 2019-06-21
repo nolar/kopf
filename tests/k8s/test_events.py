@@ -4,7 +4,7 @@ from asynctest import call, ANY
 from kopf.k8s.events import post_event
 
 
-def test_posting(client_mock):
+async def test_posting(client_mock):
     result = object()
     apicls_mock = client_mock.CoreV1Api
     apicls_mock.return_value.create_namespaced_event.return_value = result
@@ -15,7 +15,7 @@ def test_posting(client_mock):
            'metadata': {'namespace': 'ns',
                         'name': 'name',
                         'uid': 'uid'}}
-    post_event(obj=obj, type='type', reason='reason', message='message')
+    await post_event(obj=obj, type='type', reason='reason', message='message')
 
     assert postfn_mock.called
     assert postfn_mock.call_count == 1
@@ -36,7 +36,7 @@ def test_posting(client_mock):
     assert event.involved_object['uid'] == 'uid'
 
 
-def test_type_is_v1_not_v1beta1(client_mock):
+async def test_type_is_v1_not_v1beta1(client_mock):
     apicls_mock = client_mock.CoreV1Api
     postfn_mock = apicls_mock.return_value.create_namespaced_event
 
@@ -45,14 +45,14 @@ def test_type_is_v1_not_v1beta1(client_mock):
            'metadata': {'namespace': 'ns',
                         'name': 'name',
                         'uid': 'uid'}}
-    post_event(obj=obj, type='type', reason='reason', message='message')
+    await post_event(obj=obj, type='type', reason='reason', message='message')
 
     event = postfn_mock.call_args_list[0][1]['body']
     assert isinstance(event, client_mock.V1Event)
     assert not isinstance(event, client_mock.V1beta1Event)
 
 
-def test_api_errors_logged_but_suppressed(client_mock, assert_logs):
+async def test_api_errors_logged_but_suppressed(client_mock, assert_logs):
     error = client_mock.rest.ApiException('boo!')
     apicls_mock = client_mock.CoreV1Api
     apicls_mock.return_value.create_namespaced_event.side_effect = error
@@ -63,7 +63,7 @@ def test_api_errors_logged_but_suppressed(client_mock, assert_logs):
            'metadata': {'namespace': 'ns',
                         'name': 'name',
                         'uid': 'uid'}}
-    post_event(obj=obj, type='type', reason='reason', message='message')
+    await post_event(obj=obj, type='type', reason='reason', message='message')
 
     assert postfn_mock.called
     assert_logs([
@@ -71,7 +71,7 @@ def test_api_errors_logged_but_suppressed(client_mock, assert_logs):
     ])
 
 
-def test_regular_errors_escalate(client_mock):
+async def test_regular_errors_escalate(client_mock):
     error = Exception('boo!')
     apicls_mock = client_mock.CoreV1Api
     apicls_mock.return_value.create_namespaced_event.side_effect = error
@@ -83,12 +83,12 @@ def test_regular_errors_escalate(client_mock):
                         'uid': 'uid'}}
 
     with pytest.raises(Exception) as excinfo:
-        post_event(obj=obj, type='type', reason='reason', message='message')
+        await post_event(obj=obj, type='type', reason='reason', message='message')
 
     assert excinfo.value is error
 
 
-def test_message_is_cut_to_max_length(client_mock):
+async def test_message_is_cut_to_max_length(client_mock):
     result = object()
     apicls_mock = client_mock.CoreV1Api
     apicls_mock.return_value.create_namespaced_event.return_value = result
@@ -100,7 +100,7 @@ def test_message_is_cut_to_max_length(client_mock):
                         'name': 'name',
                         'uid': 'uid'}}
     message = 'start' + ('x' * 2048) + 'end'
-    post_event(obj=obj, type='type', reason='reason', message=message)
+    await post_event(obj=obj, type='type', reason='reason', message=message)
 
     event = postfn_mock.call_args_list[0][1]['body']
     assert len(event.message) <= 1024  # max supported API message length

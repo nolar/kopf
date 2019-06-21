@@ -123,7 +123,7 @@ async def custom_object_handler(
     # But only once, to reduce the number of API calls and the generated irrelevant events.
     if patch:
         logger.debug("Patching with: %r", patch)
-        patching.patch_obj(resource=resource, patch=patch, body=body)
+        await patching.patch_obj(resource=resource, patch=patch, body=body)
 
     # Sleep strictly after patching, never before -- to keep the status proper.
     if delay:
@@ -205,7 +205,7 @@ async def handle_cause(
                 done = False
             else:
                 logger.info(f"All handlers succeeded for {title}.")
-                events.info(cause.body, reason='Success', message=f"All handlers succeeded for {title}.")
+                await events.info_async(cause.body, reason='Success', message=f"All handlers succeeded for {title}.")
                 done = True
         else:
             skip = True
@@ -383,14 +383,14 @@ async def _execute(
         # Definitely retriable error, no matter what is the error-reaction mode.
         except HandlerRetryError as e:
             logger.exception(f"Handler {handler.id!r} failed with a retry exception. Will retry.")
-            events.exception(cause.body, message=f"Handler {handler.id!r} failed. Will retry.")
+            await events.exception_async(cause.body, message=f"Handler {handler.id!r} failed. Will retry.")
             status.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
             handlers_left.append(handler)
 
         # Definitely fatal error, no matter what is the error-reaction mode.
         except HandlerFatalError as e:
             logger.exception(f"Handler {handler.id!r} failed with a fatal exception. Will stop.")
-            events.exception(cause.body, message=f"Handler {handler.id!r} failed. Will stop.")
+            await events.exception_async(cause.body, message=f"Handler {handler.id!r} failed. Will stop.")
             status.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
@@ -398,19 +398,19 @@ async def _execute(
         except Exception as e:
             if retry_on_errors:
                 logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")
-                events.exception(cause.body, message=f"Handler {handler.id!r} failed. Will retry.")
+                await events.exception_async(cause.body, message=f"Handler {handler.id!r} failed. Will retry.")
                 status.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=DEFAULT_RETRY_DELAY)
                 handlers_left.append(handler)
             else:
                 logger.exception(f"Handler {handler.id!r} failed with an exception. Will stop.")
-                events.exception(cause.body, message=f"Handler {handler.id!r} failed. Will stop.")
+                await events.exception_async(cause.body, message=f"Handler {handler.id!r} failed. Will stop.")
                 status.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
                 # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
         # No errors means the handler should be excluded from future runs in this reaction cycle.
         else:
             logger.info(f"Handler {handler.id!r} succeeded.")
-            events.info(cause.body, reason='Success', message=f"Handler {handler.id!r} succeeded.")
+            await events.info_async(cause.body, reason='Success', message=f"Handler {handler.id!r} succeeded.")
             status.store_success(body=cause.body, patch=cause.patch, handler=handler, result=result)
 
     # Provoke the retry of the handling cycle if there were any unfinished handlers,

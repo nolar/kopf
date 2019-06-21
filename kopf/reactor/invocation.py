@@ -6,15 +6,11 @@ Also, decorated wrappers and lambdas are recognized.
 All of this goes via the same invocation logic and protocol.
 """
 import asyncio
-import concurrent.futures
 import contextvars
 import functools
 from typing import Callable
 
-# The executor for the sync-handlers (i.e. regular functions).
-# TODO: make the limits if sync-handlers configurable?
-executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
-# executor = concurrent.futures.ProcessPoolExecutor(max_workers=3)
+from kopf import config
 
 
 async def invoke(
@@ -80,9 +76,7 @@ async def invoke(
         real_fn = functools.partial(context.run, real_fn)
 
         loop = asyncio.get_event_loop()
-        task = loop.run_in_executor(executor, real_fn)
-        await asyncio.wait([task])
-        result = task.result()  # re-raises
+        result = await loop.run_in_executor(config.WorkersConfig.get_syn_executor(), real_fn)
     return result
 
 

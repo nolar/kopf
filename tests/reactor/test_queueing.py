@@ -115,9 +115,9 @@ async def test_event_batching(mocker, resource, handler, timer, stream, events, 
     """ Verify that only the last event per uid is actually handled. """
 
     # Override the default timeouts to make the tests faster.
-    mocker.patch('kopf.reactor.queueing.WORKER_IDLE_TIMEOUT', 0.5)
-    mocker.patch('kopf.reactor.queueing.WORKER_BATCH_WINDOW', 0.1)
-    mocker.patch('kopf.reactor.queueing.WORKER_EXIT_TIMEOUT', 0.5)
+    mocker.patch('kopf.config.WorkersConfig.worker_idle_timeout', 0.5)
+    mocker.patch('kopf.config.WorkersConfig.worker_batch_window', 0.1)
+    mocker.patch('kopf.config.WorkersConfig.worker_exit_timeout', 0.5)
 
     # Inject the events of unique objects - to produce few queues/workers.
     stream.return_value = iter(events)
@@ -132,8 +132,8 @@ async def test_event_batching(mocker, resource, handler, timer, stream, events, 
 
     # Significantly less than the queue getting timeout, but sufficient to run.
     # 2 <= 1 pull for the event chain + 1 pull for EOS. TODO: 1x must be enough.
-    from kopf.reactor.queueing import WORKER_BATCH_WINDOW
-    assert timer.seconds < WORKER_BATCH_WINDOW + CODE_OVERHEAD
+    from kopf import config
+    assert timer.seconds < config.WorkersConfig.worker_batch_window + CODE_OVERHEAD
 
     # Was the handler called at all? Awaited as needed for async fns?
     assert handler.awaited
@@ -165,9 +165,9 @@ async def test_event_batching(mocker, resource, handler, timer, stream, events, 
 async def test_garbage_collection_of_queues(mocker, stream, events, unique, worker_spy):
 
     # Override the default timeouts to make the tests faster.
-    mocker.patch('kopf.reactor.queueing.WORKER_IDLE_TIMEOUT', 0.5)
-    mocker.patch('kopf.reactor.queueing.WORKER_BATCH_WINDOW', 0.1)
-    mocker.patch('kopf.reactor.queueing.WORKER_EXIT_TIMEOUT', 0.5)
+    mocker.patch('kopf.config.WorkersConfig.worker_idle_timeout', 0.5)
+    mocker.patch('kopf.config.WorkersConfig.worker_batch_window', 0.1)
+    mocker.patch('kopf.config.WorkersConfig.worker_exit_timeout', 0.5)
 
     # Inject the events of unique objects - to produce few queues/workers.
     stream.return_value = iter(events)
@@ -187,9 +187,9 @@ async def test_garbage_collection_of_queues(mocker, stream, events, unique, work
 
     # Give the workers some time to finish waiting for the events.
     # Once the idle timeout, they will exit and gc their individual queues.
-    from kopf.reactor.queueing import WORKER_IDLE_TIMEOUT, WORKER_BATCH_WINDOW
-    await asyncio.sleep(WORKER_BATCH_WINDOW)  # depleting the queues.
-    await asyncio.sleep(WORKER_IDLE_TIMEOUT)  # idling on empty queues.
+    from kopf import config
+    await asyncio.sleep(config.WorkersConfig.worker_batch_window)  # depleting the queues.
+    await asyncio.sleep(config.WorkersConfig.worker_idle_timeout)  # idling on empty queues.
     await asyncio.sleep(CODE_OVERHEAD)
 
     # The mutable(!) queues dict is now empty, i.e. garbage-collected.

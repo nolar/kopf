@@ -13,6 +13,7 @@ def create_fn(body, **kwargs):
     # The shortcuts for the conventional events and common cases.
     kopf.info(body, reason="SomeReason", message="Some message")
     kopf.warn(body, reason="SomeReason", message="Some message")
+
     try:
         raise RuntimeError("Exception text.")
     except:
