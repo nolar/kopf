@@ -235,15 +235,13 @@ async def peers_handler(
             logger.info(f"Freezing operations in favour of {prio_peers}.")
             freeze.set()
     
-    else:
-        if same_peers:
-            logger.warning(f"Possibly conflicting operators with the same priority: {same_peers}.")
-            logger.warning(f"Freezed all Operators: {peers}")
-            freeze.set()
-        else:
-            if freeze.is_set():
-                logger.info(f"Resuming operations after the freeze. Conflicting operators with the same priority are gone")
-                freeze.clear()
+    elif same_peers:
+        logger.warning(f"Possibly conflicting operators with the same priority: {same_peers}.")
+        logger.warning(f"Freezed all Operators: {peers}")
+        freeze.set()
+    elif freeze.is_set():
+        logger.info(f"Resuming operations after the freeze. Conflicting operators with the same priority are gone")
+        freeze.clear()
 
 
 async def peers_keepalive(
