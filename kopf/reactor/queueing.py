@@ -157,6 +157,7 @@ async def worker(
 
 
 def create_tasks(
+        loop: asyncio.AbstractEventLoop,
         lifecycle: Optional[Callable] = None,
         registry: Optional[registries.BaseRegistry] = None,
         standalone: bool = False,
@@ -183,35 +184,38 @@ def create_tasks(
     )
     if ourselves:
         tasks.extend([
-            asyncio.Task(peering.peers_keepalive(ourselves=ourselves)),
-            asyncio.Task(watcher(namespace=namespace,
-                                 resource=ourselves.resource,
-                                 handler=functools.partial(peering.peers_handler,
-                                                           ourselves=ourselves,
-                                                           freeze=freeze))),  # freeze is set/cleared
+            loop.create_task(peering.peers_keepalive(
+                ourselves=ourselves)),
+            loop.create_task(watcher(
+                namespace=namespace,
+                resource=ourselves.resource,
+                handler=functools.partial(peering.peers_handler,
+                                          ourselves=ourselves,
+                                          freeze=freeze))),  # freeze is set/cleared
         ])
 
     # Resource event handling, only once for every known resource (de-duplicated).
     for resource in registry.resources:
         tasks.extend([
-            asyncio.Task(watcher(namespace=namespace,
-                                 resource=resource,
-                                 handler=functools.partial(handling.custom_object_handler,
-                                                           lifecycle=lifecycle,
-                                                           registry=registry,
-                                                           resource=resource,
-                                                           freeze=freeze))),  # freeze is only checked
+            loop.create_task(watcher(
+                namespace=namespace,
+                resource=resource,
+                handler=functools.partial(handling.custom_object_handler,
+                                          lifecycle=lifecycle,
+                                          registry=registry,
+                                          resource=resource,
+                                          freeze=freeze))),  # freeze is only checked
         ])
 
     return tasks
 
 
 def run(
+        loop: Optional[asyncio.AbstractEventLoop] = None,
         lifecycle: Optional[Callable] = None,
         registry: Optional[registries.BaseRegistry] = None,
         standalone: bool = False,
         priority: int = 0,
-        loop: Optional[asyncio.BaseEventLoop] = None,
         peering_name: str = peering.PEERING_DEFAULT_NAME,
         namespace: Optional[str] = None,
 ):
@@ -223,6 +227,7 @@ def run(
     """
     loop = loop if loop is not None else asyncio.get_event_loop()
     tasks = create_tasks(
+        loop=loop,
         lifecycle=lifecycle,
         registry=registry,
         standalone=standalone,
