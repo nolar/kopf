@@ -19,7 +19,8 @@ def exampledir(request):
 
 @pytest.fixture(scope='session', autouse=True)
 def autologin():
-    login()  # or anything like that; it is not a unit-under-test
+    if os.environ.get('E2E'):
+        login()  # or anything like that; it is not a unit-under-test
 
 
 @pytest.fixture()
