@@ -20,6 +20,7 @@ async def test_all_logs_are_prefixed(registry, resource, handlers,
         resource=resource,
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        event_queue=asyncio.Queue(),
     )
     assert caplog.messages  # no messages means that we cannot test it
     assert all(message.startswith('[ns1/name1] ') for message in caplog.messages)
@@ -43,6 +44,7 @@ async def test_diffs_logged_if_present(registry, resource, handlers, cause_type,
         resource=resource,
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        event_queue=asyncio.Queue(),
     )
     assert_logs([
         " event: ",
@@ -63,6 +65,7 @@ async def test_diffs_not_logged_if_absent(registry, resource, handlers, cause_ty
         resource=resource,
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        event_queue=asyncio.Queue(),
     )
     assert_logs([
         " event: ",

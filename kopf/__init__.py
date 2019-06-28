@@ -22,7 +22,7 @@ from kopf.config import (
     EventsConfig,
     WorkersConfig
 )
-from kopf.events import (
+from kopf.engines.posting import (
     event,
     info,
     warn,

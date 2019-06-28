@@ -21,8 +21,8 @@ import logging
 from contextvars import ContextVar
 from typing import Optional, Callable, Iterable, Union, Collection
 
-from kopf import events
 from kopf.clients import patching
+from kopf.engines import posting
 from kopf.reactor import causation
 from kopf.reactor import invocation
 from kopf.reactor import registries
@@ -79,6 +79,7 @@ async def custom_object_handler(
         resource: registries.Resource,
         event: dict,
         freeze: asyncio.Event,
+        event_queue: asyncio.Queue,
 ) -> None:
     """
     Handle a single custom object low-level watch-event.
@@ -98,6 +99,7 @@ async def custom_object_handler(
         namespace=body.get('metadata', {}).get('namespace', 'default'),
         name=body.get('metadata', {}).get('name', body.get('metadata', {}).get('uid', None)),
     ))
+    posting.event_queue_var.set(event_queue)  # till the end of this object's task.
 
     # If the global freeze is set for the processing (i.e. other operator overrides), do nothing.
     if freeze.is_set():
@@ -205,7 +207,7 @@ async def handle_cause(
                 done = False
             else:
                 logger.info(f"All handlers succeeded for {title}.")
-                await events.info_async(cause.body, reason='Success', message=f"All handlers succeeded for {title}.")
+                posting.info(cause.body, reason='Success', message=f"All handlers succeeded for {title}.")
                 done = True
         else:
             skip = True
@@ -383,14 +385,14 @@ async def _execute(
         # Definitely retriable error, no matter what is the error-reaction mode.
         except HandlerRetryError as e:
             logger.exception(f"Handler {handler.id!r} failed with a retry exception. Will retry.")
-            await events.exception_async(cause.body, message=f"Handler {handler.id!r} failed. Will retry.")
+            posting.exception(cause.body, message=f"Handler {handler.id!r} failed. Will retry.")
             status.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
             handlers_left.append(handler)
 
         # Definitely fatal error, no matter what is the error-reaction mode.
         except HandlerFatalError as e:
             logger.exception(f"Handler {handler.id!r} failed with a fatal exception. Will stop.")
-            await events.exception_async(cause.body, message=f"Handler {handler.id!r} failed. Will stop.")
+            posting.exception(cause.body, message=f"Handler {handler.id!r} failed. Will stop.")
             status.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
@@ -398,19 +400,19 @@ async def _execute(
         except Exception as e:
             if retry_on_errors:
                 logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")
-                await events.exception_async(cause.body, message=f"Handler {handler.id!r} failed. Will retry.")
+                posting.exception(cause.body, message=f"Handler {handler.id!r} failed. Will retry.")
                 status.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=DEFAULT_RETRY_DELAY)
                 handlers_left.append(handler)
             else:
                 logger.exception(f"Handler {handler.id!r} failed with an exception. Will stop.")
-                await events.exception_async(cause.body, message=f"Handler {handler.id!r} failed. Will stop.")
+                posting.exception(cause.body, message=f"Handler {handler.id!r} failed. Will stop.")
                 status.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
                 # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
         # No errors means the handler should be excluded from future runs in this reaction cycle.
         else:
             logger.info(f"Handler {handler.id!r} succeeded.")
-            await events.info_async(cause.body, reason='Success', message=f"Handler {handler.id!r} succeeded.")
+            posting.info(cause.body, reason='Success', message=f"Handler {handler.id!r} succeeded.")
             status.store_success(body=cause.body, patch=cause.patch, handler=handler, result=result)
 
     # Provoke the retry of the handling cycle if there were any unfinished handlers,

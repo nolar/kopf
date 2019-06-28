@@ -34,6 +34,7 @@ async def test_delayed_handlers_progress(
             resource=resource,
             event={'type': 'irrelevant', 'object': cause_mock.body},
             freeze=asyncio.Event(),
+            event_queue=asyncio.Queue(),
         )
 
     assert handlers.create_mock.call_count == (1 if cause_type == CREATE else 0)
@@ -81,6 +82,7 @@ async def test_delayed_handlers_sleep(
             resource=resource,
             event={'type': 'irrelevant', 'object': cause_mock.body},
             freeze=asyncio.Event(),
+            event_queue=asyncio.Queue(),
         )
 
     assert not handlers.create_mock.called
