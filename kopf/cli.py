@@ -4,9 +4,17 @@ import functools
 import click
 
 from kopf import config
+from kopf.clients import auth
 from kopf.engines import peering
 from kopf.reactor import queueing
 from kopf.utilities import loaders
+
+
+def cli_login():
+    try:
+        auth.login()
+    except auth.LoginError as e:
+        raise click.ClickException(str(e))
 
 
 def logging_options(fn):
@@ -39,7 +47,7 @@ def main():
 @click.argument('paths', nargs=-1)
 def run(paths, modules, peering_name, priority, standalone, namespace):
     """ Start an operator process and handle all the requests. """
-    config.login()
+    cli_login()
     loaders.preload(
         paths=paths,
         modules=modules,
@@ -63,7 +71,7 @@ def run(paths, modules, peering_name, priority, standalone, namespace):
 @click.option('-m', '--message', type=str)
 def freeze(id, message, lifetime, namespace, peering_name, priority):
     """ Freeze the resource handling in the cluster. """
-    config.login()
+    cli_login()
     ourserlves = peering.Peer(
         id=id or peering.detect_own_id(),
         name=peering_name,
@@ -82,7 +90,7 @@ def freeze(id, message, lifetime, namespace, peering_name, priority):
 @click.option('-P', '--peering', 'peering_name', type=str, default=None, envvar='KOPF_RESUME_PEERING')
 def resume(id, namespace, peering_name):
     """ Resume the resource handling in the cluster. """
-    config.login()
+    cli_login()
     ourselves = peering.Peer(
         id=id or peering.detect_own_id(),
         name=peering_name,

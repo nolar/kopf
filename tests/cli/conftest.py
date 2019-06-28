@@ -82,7 +82,7 @@ def invoke(runner):
 
 @pytest.fixture()
 def login(mocker):
-    return mocker.patch('kopf.config.login')
+    return mocker.patch('kopf.clients.auth.login')
 
 
 @pytest.fixture()
