@@ -87,7 +87,7 @@ def login(mocker):
 
 @pytest.fixture()
 def preload(mocker):
-    return mocker.patch('kopf.reactor.loading.preload')
+    return mocker.patch('kopf.utilities.loaders.preload')
 
 
 @pytest.fixture()

@@ -5,8 +5,8 @@ import click
 
 from kopf import config
 from kopf.engines import peering
-from kopf.reactor import loading
 from kopf.reactor import queueing
+from kopf.utilities import loaders
 
 
 def logging_options(fn):
@@ -40,7 +40,7 @@ def main():
 def run(paths, modules, peering_name, priority, standalone, namespace):
     """ Start an operator process and handle all the requests. """
     config.login()
-    loading.preload(
+    loaders.preload(
         paths=paths,
         modules=modules,
     )
