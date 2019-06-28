@@ -4,8 +4,8 @@ import functools
 import click
 
 from kopf import config
+from kopf.engines import peering
 from kopf.reactor import loading
-from kopf.reactor import peering
 from kopf.reactor import queueing
 
 

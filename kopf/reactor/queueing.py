@@ -33,9 +33,9 @@ import aiojobs
 
 from kopf import config
 from kopf.clients import watching
+from kopf.engines import peering
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
-from kopf.reactor import peering
 from kopf.reactor import registries
 
 logger = logging.getLogger(__name__)
