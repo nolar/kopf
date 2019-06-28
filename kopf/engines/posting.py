@@ -6,6 +6,13 @@ and can be used directly from the handlers to add arbitrary custom events.
 
 The actual k8s-event posting runs in the background,
 and posts the k8s-events as soon as they are queued.
+
+The k8s-events are queued in two ways:
+
+* Explicit calls to `kopf.event`, `kopf.info`, `kopf.warn`, `kopf.exception`.
+* Logging messages made on the object logger (above INFO level by default).
+
+This also includes all logging messages posted by the framework itself.
 """
 import asyncio
 import sys
