@@ -4,7 +4,7 @@ import kubernetes.client.rest
 import pytest
 from asynctest import call
 
-from kopf.k8s.fetching import make_list_fn
+from kopf.clients.fetching import make_list_fn
 
 
 def test_when_present_clustered(client_mock, resource):

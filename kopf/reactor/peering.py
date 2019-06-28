@@ -40,8 +40,8 @@ from typing import Optional, Mapping, Iterable, Union
 
 import iso8601
 
-from kopf.k8s import fetching
-from kopf.k8s import patching
+from kopf.clients import fetching
+from kopf.clients import patching
 from kopf.reactor import registries
 
 logger = logging.getLogger(__name__)

@@ -2,7 +2,7 @@ import kubernetes.client.rest
 import pytest
 from asynctest import call
 
-from kopf.k8s.fetching import read_obj
+from kopf.clients.fetching import read_obj
 
 
 def test_when_present_clustered(client_mock, resource):

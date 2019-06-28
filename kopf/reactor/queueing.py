@@ -32,7 +32,7 @@ from typing import Optional, Callable, Tuple, Union, MutableMapping, NewType
 import aiojobs
 
 from kopf import config
-from kopf.k8s import watching
+from kopf.clients import watching
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
 from kopf.reactor import peering

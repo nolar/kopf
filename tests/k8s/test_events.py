@@ -1,7 +1,7 @@
 import pytest
 from asynctest import call, ANY
 
-from kopf.k8s.events import post_event
+from kopf.clients.events import post_event
 
 
 async def test_posting(client_mock):

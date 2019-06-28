@@ -2,7 +2,7 @@ import collections.abc
 
 import pytest
 
-from kopf.k8s.watching import streaming_watch
+from kopf.clients.watching import streaming_watch
 
 
 class PreventedActualCallError(Exception):
