@@ -14,7 +14,9 @@ of the handlers to be executed on each reaction cycle.
 import abc
 import functools
 from types import FunctionType, MethodType
-from typing import MutableMapping, NamedTuple, Text, Optional, Tuple, Callable
+from typing import MutableMapping, NamedTuple, Text, Optional, Tuple, Callable, Mapping
+
+from kopf.reactor import matching
 
 
 # An immutable reference to a custom resource definition.
@@ -31,6 +33,8 @@ class Handler(NamedTuple):
     field: Optional[Tuple[str, ...]]
     timeout: Optional[float] = None
     initial: Optional[bool] = None
+    labels: Optional[Mapping] = None
+    annotations: Optional[Mapping] = None
 
 
 class BaseRegistry(metaclass=abc.ABCMeta):
@@ -107,7 +111,8 @@ class SimpleRegistry(BaseRegistry):
     def append(self, handler):
         self._handlers.append(handler)
 
-    def register(self, fn, id=None, event=None, field=None, timeout=None, initial=None, requires_finalizer=False):
+    def register(self, fn, id=None, event=None, field=None, timeout=None, initial=None, requires_finalizer=False,
+                 labels=None, annotations=None):
         if field is None:
             field = None  # for the non-field events
         elif isinstance(field, str):
@@ -120,7 +125,8 @@ class SimpleRegistry(BaseRegistry):
         id = id if id is not None else get_callable_id(fn)
         id = id if field is None else f'{id}/{".".join(field)}'
         id = id if self.prefix is None else f'{self.prefix}/{id}'
-        handler = Handler(id=id, fn=fn, event=event, field=field, timeout=timeout, initial=initial)
+        handler = Handler(id=id, fn=fn, event=event, field=field, timeout=timeout, initial=initial,
+                          labels=labels, annotations=annotations)
 
         self.append(handler)
 
@@ -130,20 +136,24 @@ class SimpleRegistry(BaseRegistry):
         return fn  # to be usable as a decorator too.
 
     def iter_cause_handlers(self, cause):
-        fields = {field for _, field, _, _ in cause.diff or []}
+        changed_fields = {field for _, field, _, _ in cause.diff or []}
         for handler in self._handlers:
             if handler.event is None or handler.event == cause.event:
                 if handler.initial and not cause.initial:
                     pass  # ignore initial handlers in non-initial causes.
-                elif handler.field:
-                    if any(field[:len(handler.field)] == handler.field for field in fields):
+                elif matching.has_filter(handler=handler):
+                    if matching.matches_filter(handler=handler, body=cause.body, changed_fields=changed_fields):
                         yield handler
                 else:
                     yield handler
 
     def iter_event_handlers(self, resource, event):
         for handler in self._handlers:
-            yield handler
+            if matching.has_filter(handler):
+                if matching.matches_filter(handler=handler, body=event['body']):
+                    yield handler
+            else:
+                yield handler
 
     def iter_extra_fields(self, resource):
         for handler in self._handlers:
@@ -186,22 +196,25 @@ class GlobalRegistry(BaseRegistry):
         self._event_handlers: MutableMapping[Resource, SimpleRegistry] = {}
 
     def register_cause_handler(self, group, version, plural, fn,
-                               id=None, event=None, field=None, timeout=None, initial=None, requires_finalizer=False):
+                               id=None, event=None, field=None, timeout=None, initial=None, requires_finalizer=False,
+                               labels=None, annotations=None):
         """
         Register an additional handler function for the specific resource and specific event.
         """
         resource = Resource(group, version, plural)
         registry = self._cause_handlers.setdefault(resource, SimpleRegistry())
-        registry.register(event=event, field=field, fn=fn, id=id, timeout=timeout, initial=initial, requires_finalizer=requires_finalizer)
+        registry.register(event=event, field=field, fn=fn, id=id, timeout=timeout, initial=initial, requires_finalizer=requires_finalizer,
+                          labels=labels, annotations=annotations)
         return fn  # to be usable as a decorator too.
 
-    def register_event_handler(self, group, version, plural, fn, id=None):
+    def register_event_handler(self, group, version, plural, fn, id=None, labels=None,
+                               annotations=None):
         """
         Register an additional handler function for low-level events.
         """
         resource = Resource(group, version, plural)
         registry = self._event_handlers.setdefault(resource, SimpleRegistry())
-        registry.register(fn=fn, id=id)
+        registry.register(fn=fn, id=id, labels=labels, annotations=annotations)
         return fn  # to be usable as a decorator too.
 
     @property
