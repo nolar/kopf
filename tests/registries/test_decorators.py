@@ -21,6 +21,8 @@ def test_on_create_minimal(mocker):
     assert handlers[0].event == CREATE
     assert handlers[0].field is None
     assert handlers[0].timeout is None
+    assert handlers[0].labels is None
+    assert handlers[0].annotations is None
     assert registry.requires_finalizer(resource=resource) is False
 
 
@@ -39,6 +41,8 @@ def test_on_update_minimal(mocker):
     assert handlers[0].event == UPDATE
     assert handlers[0].field is None
     assert handlers[0].timeout is None
+    assert handlers[0].labels is None
+    assert handlers[0].annotations is None
     assert registry.requires_finalizer(resource=resource) is False
 
 
@@ -57,6 +61,8 @@ def test_on_delete_minimal(mocker):
     assert handlers[0].event == DELETE
     assert handlers[0].field is None
     assert handlers[0].timeout is None
+    assert handlers[0].labels is None
+    assert handlers[0].annotations is None
     assert registry.requires_finalizer(resource=resource) is True
 
 
@@ -76,6 +82,8 @@ def test_on_field_minimal(mocker):
     assert handlers[0].event is None
     assert handlers[0].field == ('field', 'subfield')
     assert handlers[0].timeout is None
+    assert handlers[0].labels is None
+    assert handlers[0].annotations is None
     assert registry.requires_finalizer(resource=resource) is False
 
 
@@ -92,17 +100,24 @@ def test_on_create_with_all_kwargs(mocker):
     cause = mocker.MagicMock(resource=resource, event=CREATE)
 
     @kopf.on.create('group', 'version', 'plural',
-                    id='id', timeout=123, registry=registry)
+                    id='id', timeout=123, registry=registry,
+                    labels={'somelabel': 'somevalue'},
+                    annotations={'someanno': 'somevalue'})
     def fn(**_):
         pass
 
-    handlers = registry.get_cause_handlers(cause)
+
+    with mocker.patch('kopf.reactor.matching.matches_filter') as matches_filter:
+        matches_filter.return_value = True
+        handlers = registry.get_cause_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].event == CREATE
     assert handlers[0].field is None
     assert handlers[0].id == 'id'
     assert handlers[0].timeout == 123
+    assert handlers[0].labels == {'somelabel': 'somevalue'}
+    assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert registry.requires_finalizer(resource=resource) is False
 
 
@@ -112,17 +127,23 @@ def test_on_update_with_all_kwargs(mocker):
     cause = mocker.MagicMock(resource=resource, event=UPDATE)
 
     @kopf.on.update('group', 'version', 'plural',
-                    id='id', timeout=123, registry=registry)
+                    id='id', timeout=123, registry=registry,
+                    labels={'somelabel': 'somevalue'},
+                    annotations={'someanno': 'somevalue'})
     def fn(**_):
         pass
 
-    handlers = registry.get_cause_handlers(cause)
+    with mocker.patch('kopf.reactor.matching.matches_filter') as matches_filter:
+        matches_filter.return_value = True
+        handlers = registry.get_cause_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].event == UPDATE
     assert handlers[0].field is None
     assert handlers[0].id == 'id'
     assert handlers[0].timeout == 123
+    assert handlers[0].labels == {'somelabel': 'somevalue'}
+    assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert registry.requires_finalizer(resource=resource) is False
 
 
@@ -136,17 +157,23 @@ def test_on_delete_with_all_kwargs(mocker, optional):
     cause = mocker.MagicMock(resource=resource, event=DELETE)
 
     @kopf.on.delete('group', 'version', 'plural',
-                    id='id', timeout=123, registry=registry, optional=optional)
+                    id='id', timeout=123, registry=registry, optional=optional,
+                    labels={'somelabel': 'somevalue'},
+                    annotations={'someanno': 'somevalue'})
     def fn(**_):
         pass
 
-    handlers = registry.get_cause_handlers(cause)
+    with mocker.patch('kopf.reactor.matching.matches_filter') as matches_filter:
+        matches_filter.return_value = True
+        handlers = registry.get_cause_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].event == DELETE
     assert handlers[0].field is None
     assert handlers[0].id == 'id'
     assert handlers[0].timeout == 123
+    assert handlers[0].labels == {'somelabel': 'somevalue'}
+    assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert registry.requires_finalizer(resource=resource) is not optional
 
 
@@ -157,17 +184,24 @@ def test_on_field_with_all_kwargs(mocker):
     cause = mocker.MagicMock(resource=resource, event=UPDATE, diff=diff)
 
     @kopf.on.field('group', 'version', 'plural', 'field.subfield',
-                   id='id', timeout=123, registry=registry)
+                   id='id', timeout=123, registry=registry,
+                   labels={'somelabel': 'somevalue'},
+                   annotations={'someanno': 'somevalue'})
     def fn(**_):
         pass
 
-    handlers = registry.get_cause_handlers(cause)
+
+    with mocker.patch('kopf.reactor.matching.matches_filter') as matches_filter:
+        matches_filter.return_value = True
+        handlers = registry.get_cause_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].event is None
     assert handlers[0].field ==('field', 'subfield')
     assert handlers[0].id == 'id/field.subfield'
     assert handlers[0].timeout == 123
+    assert handlers[0].labels == {'somelabel': 'somevalue'}
+    assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert registry.requires_finalizer(resource=resource) is False
 
 
