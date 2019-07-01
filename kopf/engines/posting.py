@@ -57,7 +57,7 @@ def exception(obj, *, reason='', message='', exc=None):
     if exc is None:
         _, exc, _ = sys.exc_info()
     reason = reason if reason else type(exc).__name__
-    message = f'{message} {exc}' if message else f'{exc}'
+    message = f'{message} {exc}' if message and exc else f'{exc}' if exc else f'{message}'
     event(obj, type='Error', reason=reason, message=message)
 
 
