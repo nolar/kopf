@@ -48,20 +48,24 @@ class K8sPoster(logging.Handler):
         return has_ref and not skipped and super().filter(record)
 
     def emit(self, record):
-        type = (
-            "Debug" if record.levelno <= logging.DEBUG else
-            "Normal" if record.levelno <= logging.INFO else
-            "Warning" if record.levelno <= logging.WARNING else
-            "Error" if record.levelno <= logging.ERROR else
-            "Fatal" if record.levelno <= logging.FATAL else
-            logging.getLevelName(record.levelno).capitalize())
-        reason = 'Logging'
-        message = self.format(record)
-        self.queue.put_nowait(posting.K8sEvent(
-            ref=record.k8s_ref,
-            type=type,
-            reason=reason,
-            message=message))
+        # Same try-except as in e.g. `logging.StreamHandler`.
+        try:
+            type = (
+                "Debug" if record.levelno <= logging.DEBUG else
+                "Normal" if record.levelno <= logging.INFO else
+                "Warning" if record.levelno <= logging.WARNING else
+                "Error" if record.levelno <= logging.ERROR else
+                "Fatal" if record.levelno <= logging.FATAL else
+                logging.getLevelName(record.levelno).capitalize())
+            reason = 'Logging'
+            message = self.format(record)
+            self.queue.put_nowait(posting.K8sEvent(
+                ref=record.k8s_ref,
+                type=type,
+                reason=reason,
+                message=message))
+        except Exception:
+            self.handleError(record)
 
 
 class ObjectLogger(logging.LoggerAdapter):
