@@ -24,7 +24,7 @@ from typing import Union
 
 import kubernetes
 
-from kopf.k8s import fetching
+from kopf.clients import fetching
 from kopf.reactor import registries
 
 logger = logging.getLogger(__name__)

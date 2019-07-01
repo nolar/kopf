@@ -9,8 +9,11 @@ The main Kopf module for all the exported functions & classes.
 from kopf import (
     on,  # as a separate name on the public namespace
 )
-from kopf.config import (
+from kopf.clients.auth import (
     login,
+    LoginError,
+)
+from kopf.config import (
     configure,
     LOGLEVEL_INFO,
     LOGLEVEL_WARNING,
@@ -65,7 +68,8 @@ from kopf.structs.hierarchies import (
 
 __all__ = [
     'on', 'lifecycles', 'register', 'execute',
-    'login', 'configure',
+    'configure',
+    'login', 'LoginError',
     'event', 'info', 'warn', 'exception',
     'run', 'create_tasks',
     'adopt', 'label',

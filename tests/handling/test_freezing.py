@@ -9,7 +9,7 @@ from kopf.reactor.registries import GlobalRegistry
 async def test_nothing_is_called_when_freeze_is_set(mocker, resource, caplog, assert_logs):
     detect_cause = mocker.patch('kopf.reactor.causation.detect_cause')
     handle_cause = mocker.patch('kopf.reactor.handling.handle_cause')
-    patch_obj = mocker.patch('kopf.k8s.patching.patch_obj')
+    patch_obj = mocker.patch('kopf.clients.patching.patch_obj')
     asyncio_sleep = mocker.patch('asyncio.sleep')
 
     # Nothing of these is actually used, but we need to feed something.

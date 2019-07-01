@@ -15,7 +15,7 @@ import asyncio
 import sys
 
 from kopf import config
-from kopf.k8s import events
+from kopf.clients import events
 
 
 # TODO: rename it it kopf.log()? kopf.events.log()? kopf.events.warn()?

@@ -1,10 +1,10 @@
 """
-All the routines to talk to Kubernetes API.
+All the routines to talk to Kubernetes API and other APIs.
 
 This library is supposed to be mocked when the mocked K8s client is needed,
 and only the high-level logic has to be tested, not the API calls themselves.
 
-Beware: this is NOT a Kubernetes client. It is set of dedicated helpers
+Beware: this is NOT a Kubernetes client. It is set of dedicated adapters
 specially tailored to do the framework-specific tasks, not the generic
 Kubernetes object manipulation.
 

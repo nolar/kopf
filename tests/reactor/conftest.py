@@ -3,7 +3,7 @@ import asyncio
 import pytest
 from asynctest import CoroutineMock
 
-from kopf.k8s.watching import streaming_watch
+from kopf.clients.watching import streaming_watch
 from kopf.reactor.queueing import watcher
 from kopf.reactor.queueing import worker as original_worker
 
@@ -49,7 +49,7 @@ def worker_mock(mocker):
 @pytest.fixture()
 def watcher_limited(mocker):
     """ Make event streaming finite, watcher exits after depletion. """
-    mocker.patch('kopf.k8s.watching.infinite_watch', new=streaming_watch)
+    mocker.patch('kopf.clients.watching.infinite_watch', new=streaming_watch)
 
 
 @pytest.fixture()

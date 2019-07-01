@@ -12,17 +12,25 @@ Both are used in the `kopf.reactor.handling` to retrieve the list
 of the handlers to be executed on each reaction cycle.
 """
 import abc
-import collections
 import functools
 from types import FunctionType, MethodType
-from typing import MutableMapping
+from typing import MutableMapping, NamedTuple, Text, Optional, Tuple, Callable
 
 
 # An immutable reference to a custom resource definition.
-Resource = collections.namedtuple('Resource', 'group version plural')
+class Resource(NamedTuple):
+    group: Text
+    version: Text
+    plural: Text
 
 # A registered handler (function + event meta info).
-Handler = collections.namedtuple('Handler', 'fn id event field timeout initial')
+class Handler(NamedTuple):
+    fn: Callable
+    id: Text
+    event: Text
+    field: Optional[Tuple[str, ...]]
+    timeout: Optional[float] = None
+    initial: Optional[bool] = None
 
 
 class BaseRegistry(metaclass=abc.ABCMeta):

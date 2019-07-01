@@ -1,7 +1,7 @@
 
 
 def test_help_in_root(invoke, mocker):
-    login = mocker.patch('kopf.config.login')
+    login = mocker.patch('kopf.clients.auth.login')
 
     result = invoke(['--help'])
 
@@ -15,8 +15,8 @@ def test_help_in_root(invoke, mocker):
 
 
 def test_help_in_subcommand(invoke, mocker):
-    login = mocker.patch('kopf.config.login')
-    preload = mocker.patch('kopf.reactor.loading.preload')
+    login = mocker.patch('kopf.clients.auth.login')
+    preload = mocker.patch('kopf.utilities.loaders.preload')
     real_run = mocker.patch('kopf.reactor.queueing.run')
 
     result = invoke(['run', '--help'])

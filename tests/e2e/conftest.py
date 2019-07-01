@@ -5,7 +5,7 @@ import subprocess
 
 import pytest
 
-import kopf
+from kopf.clients.auth import login
 
 root_dir = os.path.relpath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 examples = sorted(glob.glob(os.path.join(root_dir, 'examples/*/')))
@@ -19,7 +19,8 @@ def exampledir(request):
 
 @pytest.fixture(scope='session', autouse=True)
 def autologin():
-    kopf.config.login()  # or anything like that; it is not a unit-under-test
+    if os.environ.get('E2E'):
+        login()  # or anything like that; it is not a unit-under-test
 
 
 @pytest.fixture()

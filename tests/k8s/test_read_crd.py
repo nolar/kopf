@@ -2,7 +2,7 @@ import kubernetes
 import pytest
 from asynctest import call
 
-from kopf.k8s.fetching import read_crd
+from kopf.clients.fetching import read_crd
 
 
 def test_when_present(client_mock, resource):

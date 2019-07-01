@@ -11,8 +11,8 @@ As input:
 As output, we check mocked calls on the following:
 
 * ``asyncio.sleep()`` -- for delays.
-* ``kopf.k8s.patching.patch_obj()`` -- for patch content.
-* ``kopf.k8s.events.post_event()`` -- for events posted.
+* ``kopf.clients.patching.patch_obj()`` -- for patch content.
+* ``kopf.clients.events.post_event()`` -- for events posted.
 * Handler mocks -- whether they were or were not called with specific arguments.
 * Captured logs.
 
@@ -62,8 +62,8 @@ def k8s_mocked(mocker):
 
     # We mock on the level of our own K8s API wrappers, not the K8s client.
     return K8sMocks(
-        patch_obj=mocker.patch('kopf.k8s.patching.patch_obj'),
-        post_event=mocker.patch('kopf.k8s.events.post_event'),
+        patch_obj=mocker.patch('kopf.clients.patching.patch_obj'),
+        post_event=mocker.patch('kopf.clients.events.post_event'),
         asyncio_sleep=mocker.patch('asyncio.sleep'),
     )
 

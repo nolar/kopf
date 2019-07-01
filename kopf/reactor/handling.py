@@ -22,7 +22,7 @@ from contextvars import ContextVar
 from typing import Optional, Callable, Iterable, Union, Collection
 
 from kopf import events
-from kopf.k8s import patching
+from kopf.clients import patching
 from kopf.reactor import causation
 from kopf.reactor import invocation
 from kopf.reactor import registries

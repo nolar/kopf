@@ -3,7 +3,7 @@ import asyncio
 import pytest
 from asynctest import call
 
-from kopf.k8s.patching import patch_obj
+from kopf.clients.patching import patch_obj
 
 
 async def test_by_name_clustered(client_mock, resource):
