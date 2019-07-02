@@ -116,17 +116,16 @@ def stream(req_mock):
 
 @dataclasses.dataclass(frozen=True, eq=False, order=False)
 class LoginMocks:
-    pykube_in_cluster: Mock
-    pykube_from_file: Mock
-    pykube_checker: Mock
-    client_in_cluster: Mock
-    client_from_file: Mock
-    client_checker: Mock
+    pykube_in_cluster: Mock = None
+    pykube_from_file: Mock = None
+    pykube_checker: Mock = None
+    client_in_cluster: Mock = None
+    client_from_file: Mock = None
+    client_checker: Mock = None
 
 
 @pytest.fixture()
 def login_mocks(mocker):
-    kubernetes = pytest.importorskip('kubernetes')
 
     # Pykube config is needed to create a pykube's API instance.
     # But we do not want and do not need to actually authenticate, so we mock.
@@ -135,14 +134,30 @@ def login_mocks(mocker):
     cfg_mock.cluster = {'server': 'localhost'}
     cfg_mock.namespace = 'default'
 
-    return LoginMocks(
-        pykube_in_cluster=mocker.patch.object(pykube.KubeConfig, 'from_service_account'),
-        pykube_from_file=mocker.patch.object(pykube.KubeConfig, 'from_file'),
-        pykube_checker=mocker.patch.object(pykube.http.HTTPClient, 'get'),
-        client_in_cluster=mocker.patch.object(kubernetes.config, 'load_incluster_config'),
-        client_from_file=mocker.patch.object(kubernetes.config, 'load_kube_config'),
-        client_checker=mocker.patch.object(kubernetes.client, 'CoreApi'),
-    )
+    # Make all client libraries potentially optional, but do not skip the tests:
+    # skipping the tests is the tests' decision, not this mocking fixture's one.
+    kwargs = {}
+    try:
+        import pykube
+    except ImportError:
+        pass
+    else:
+        kwargs.update(
+            pykube_in_cluster=mocker.patch.object(pykube.KubeConfig, 'from_service_account'),
+            pykube_from_file=mocker.patch.object(pykube.KubeConfig, 'from_file'),
+            pykube_checker=mocker.patch.object(pykube.http.HTTPClient, 'get'),
+        )
+    try:
+        import kubernetes
+    except ImportError:
+        pass
+    else:
+        kwargs.update(
+            client_in_cluster=mocker.patch.object(kubernetes.config, 'load_incluster_config'),
+            client_from_file=mocker.patch.object(kubernetes.config, 'load_kube_config'),
+            client_checker=mocker.patch.object(kubernetes.client, 'CoreApi'),
+        )
+    return LoginMocks(**kwargs)
 
 #
 # Simulating that Kubernetes client library is not installed.
@@ -155,8 +170,19 @@ class ProhibitedImportFinder:
 
 
 @pytest.fixture()
-def kubernetes_uninstalled():
-    import kubernetes as kubernetes_before
+def _kubernetes():
+    # If kubernetes client is required, it should either be installed,
+    # or skip the test: we cannot simulate its presence (unlike its absence).
+    return pytest.importorskip('kubernetes')
+
+
+@pytest.fixture()
+def _no_kubernetes():
+    try:
+        import kubernetes as kubernetes_before
+    except ImportError:
+        yield
+        return  # nothing to patch & restore.
 
     # Remove any cached modules.
     preserved = {}
@@ -177,6 +203,24 @@ def kubernetes_uninstalled():
         # Verify if it works and that we didn't break the importing machinery.
         import kubernetes as kubernetes_after
         assert kubernetes_after is kubernetes_before
+
+
+@pytest.fixture(params=[True], ids=['with-client'])  # for hinting suffixes
+def kubernetes(request):
+    return request.getfixturevalue('_kubernetes')
+
+
+@pytest.fixture(params=[False], ids=['no-client'])  # for hinting suffixes
+def no_kubernetes(request):
+    return request.getfixturevalue('_no_kubernetes')
+
+
+@pytest.fixture(params=[False, True], ids=['no-client', 'with-client'])
+def any_kubernetes(request):
+    if request.param:
+        return request.getfixturevalue('_kubernetes')
+    else:
+        return request.getfixturevalue('_no_kubernetes')
 
 #
 # Helpers for the timing checks.

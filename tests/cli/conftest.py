@@ -64,9 +64,12 @@ def clean_modules_cache():
 
 @pytest.fixture(autouse=True)
 def clean_kubernetes_client():
-    kubernetes = pytest.importorskip('kubernetes')
-    kubernetes.client.configuration.Configuration.set_default(None)
-
+    try:
+        import kubernetes
+    except ImportError:
+        pass  # absent client is already "clean" (or not "dirty" at least).
+    else:
+        kubernetes.client.configuration.Configuration.set_default(None)
 
 
 @pytest.fixture()

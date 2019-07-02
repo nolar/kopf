@@ -13,8 +13,7 @@ def _auto_clean_kubernetes_client(clean_kubernetes_client):
     pass
 
 
-@pytest.mark.usefixtures('kubernetes_uninstalled')
-def test_kubernetes_uninstalled_has_effect():
+def test_kubernetes_uninstalled_has_effect(no_kubernetes):
     with pytest.raises(ImportError):
         import kubernetes
 
@@ -22,19 +21,23 @@ def test_kubernetes_uninstalled_has_effect():
 # Tests via the direct function invocation.
 #
 
-@pytest.mark.usefixtures('kubernetes_uninstalled')
-def test_direct_auth_works_without_client(login_mocks):
-    login(verify=True)
+def test_direct_auth_works_incluster_without_client(login_mocks, no_kubernetes):
+    login()
 
     assert login_mocks.pykube_in_cluster.called
     assert not login_mocks.pykube_from_file.called
 
-    assert not login_mocks.client_in_cluster.called
-    assert not login_mocks.client_from_file.called
+
+def test_direct_auth_works_viaconfig_without_client(login_mocks, no_kubernetes):
+    login_mocks.pykube_in_cluster.side_effect = FileNotFoundError
+
+    login()
+
+    assert login_mocks.pykube_in_cluster.called
+    assert login_mocks.pykube_from_file.called
 
 
-def test_direct_auth_works_incluster(login_mocks):
-
+def test_direct_auth_works_incluster_with_client(login_mocks, kubernetes):
     login()
 
     assert login_mocks.pykube_in_cluster.called
@@ -44,8 +47,7 @@ def test_direct_auth_works_incluster(login_mocks):
     assert not login_mocks.client_from_file.called
 
 
-def test_direct_auth_works_kubeconfig(login_mocks):
-    kubernetes = pytest.importorskip('kubernetes')
+def test_direct_auth_works_viaconfig_with_client(login_mocks, kubernetes):
     login_mocks.pykube_in_cluster.side_effect = FileNotFoundError
     login_mocks.client_in_cluster.side_effect = kubernetes.config.ConfigException
 
@@ -58,7 +60,7 @@ def test_direct_auth_works_kubeconfig(login_mocks):
     assert login_mocks.client_from_file.called
 
 
-def test_direct_auth_fails_on_errors_in_pykube(login_mocks):
+def test_direct_auth_fails_on_errors_in_pykube(login_mocks, any_kubernetes):
     login_mocks.pykube_in_cluster.side_effect = FileNotFoundError
     login_mocks.pykube_from_file.side_effect = FileNotFoundError
 
@@ -68,13 +70,8 @@ def test_direct_auth_fails_on_errors_in_pykube(login_mocks):
     assert login_mocks.pykube_in_cluster.called
     assert login_mocks.pykube_from_file.called
 
-    # Because pykube failed, the client is not even tried:
-    assert not login_mocks.client_in_cluster.called
-    assert not login_mocks.client_from_file.called
 
-
-def test_direct_auth_fails_on_errors_in_client(login_mocks):
-    kubernetes = pytest.importorskip('kubernetes')
+def test_direct_auth_fails_on_errors_in_client(login_mocks, kubernetes):
     login_mocks.client_in_cluster.side_effect = kubernetes.config.ConfigException
     login_mocks.client_from_file.side_effect = kubernetes.config.ConfigException
 
@@ -88,7 +85,7 @@ def test_direct_auth_fails_on_errors_in_client(login_mocks):
     assert login_mocks.client_from_file.called
 
 
-def test_direct_check_fails_on_errors_in_pykube(login_mocks):
+def test_direct_check_fails_on_errors_in_pykube(login_mocks, any_kubernetes):
     response = requests.Response()
     response.status_code = 401
     login_mocks.pykube_checker.side_effect = requests.exceptions.HTTPError(response=response)
@@ -100,14 +97,8 @@ def test_direct_check_fails_on_errors_in_pykube(login_mocks):
     assert not login_mocks.pykube_from_file.called
     assert login_mocks.pykube_checker.called
 
-    # Because pykube failed, the client is not even tried:
-    assert not login_mocks.client_in_cluster.called
-    assert not login_mocks.client_from_file.called
-    assert not login_mocks.client_checker.called
 
-
-def test_direct_check_fails_on_errors_in_client(login_mocks):
-    kubernetes = pytest.importorskip('kubernetes')
+def test_direct_check_fails_on_errors_in_client(login_mocks, kubernetes):
     login_mocks.client_checker.side_effect = kubernetes.client.rest.ApiException(status=401)
 
     with pytest.raises(AccessError):
@@ -125,19 +116,28 @@ def test_direct_check_fails_on_errors_in_client(login_mocks):
 # The same tests, but via the CLI command run.
 #
 
-@pytest.mark.usefixtures('kubernetes_uninstalled')
-def test_clirun_auth_works_without_client(invoke, login_mocks, preload, real_run):
+def test_clirun_auth_works_incluster_without_client(login_mocks, no_kubernetes,
+                                                    invoke, preload, real_run):
     result = invoke(['run'])
     assert result.exit_code == 0
 
     assert login_mocks.pykube_in_cluster.called
     assert not login_mocks.pykube_from_file.called
 
-    assert not login_mocks.client_in_cluster.called
-    assert not login_mocks.client_from_file.called
+
+def test_clirun_auth_works_viaconfig_without_client(login_mocks, no_kubernetes,
+                                                    invoke, preload, real_run):
+    login_mocks.pykube_in_cluster.side_effect = FileNotFoundError
+
+    result = invoke(['run'])
+    assert result.exit_code == 0
+
+    assert login_mocks.pykube_in_cluster.called
+    assert login_mocks.pykube_from_file.called
 
 
-def test_clirun_auth_works_incluster(invoke, login_mocks, preload, real_run):
+def test_clirun_auth_works_incluster_with_client(login_mocks, kubernetes,
+                                                 invoke, preload, real_run):
 
     result = invoke(['run'])
     assert result.exit_code == 0
@@ -151,8 +151,8 @@ def test_clirun_auth_works_incluster(invoke, login_mocks, preload, real_run):
     assert login_mocks.client_checker.called
 
 
-def test_clirun_auth_works_kubeconfig(invoke, login_mocks, preload, real_run):
-    kubernetes = pytest.importorskip('kubernetes')
+def test_clirun_auth_works_viaconfig_with_client(login_mocks, kubernetes,
+                                                 invoke, preload, real_run):
     login_mocks.pykube_in_cluster.side_effect = FileNotFoundError
     login_mocks.client_in_cluster.side_effect = kubernetes.config.ConfigException
 
@@ -168,7 +168,8 @@ def test_clirun_auth_works_kubeconfig(invoke, login_mocks, preload, real_run):
     assert login_mocks.client_checker.called
 
 
-def test_clirun_auth_fails_on_errors_in_pykube(invoke, login_mocks, preload, real_run):
+def test_clirun_auth_fails_on_errors_in_pykube(login_mocks, any_kubernetes,
+                                               invoke, preload, real_run):
     login_mocks.pykube_in_cluster.side_effect = FileNotFoundError
     login_mocks.pykube_from_file.side_effect = FileNotFoundError
 
@@ -180,14 +181,9 @@ def test_clirun_auth_fails_on_errors_in_pykube(invoke, login_mocks, preload, rea
     assert login_mocks.pykube_from_file.called
     assert not login_mocks.pykube_checker.called
 
-    # Because pykube failed, the client is not even tried:
-    assert not login_mocks.client_in_cluster.called
-    assert not login_mocks.client_from_file.called
-    assert not login_mocks.client_checker.called
 
-
-def test_clirun_auth_fails_on_errors_in_client(invoke, login_mocks, preload, real_run):
-    kubernetes = pytest.importorskip('kubernetes')
+def test_clirun_auth_fails_on_errors_in_client(login_mocks, kubernetes,
+                                               invoke, preload, real_run):
     login_mocks.client_in_cluster.side_effect = kubernetes.config.ConfigException
     login_mocks.client_from_file.side_effect = kubernetes.config.ConfigException
 
@@ -204,7 +200,8 @@ def test_clirun_auth_fails_on_errors_in_client(invoke, login_mocks, preload, rea
     assert not login_mocks.client_checker.called
 
 
-def test_clirun_check_fails_on_errors_in_pykube(invoke, login_mocks, preload, real_run):
+def test_clirun_check_fails_on_errors_in_pykube(login_mocks, any_kubernetes,
+                                                invoke, preload, real_run):
     response = requests.Response()
     response.status_code = 401
     login_mocks.pykube_checker.side_effect = requests.exceptions.HTTPError(response=response)
@@ -217,14 +214,9 @@ def test_clirun_check_fails_on_errors_in_pykube(invoke, login_mocks, preload, re
     assert not login_mocks.pykube_from_file.called
     assert login_mocks.pykube_checker.called
 
-    # Because pykube failed, the client is not even tried:
-    assert not login_mocks.client_in_cluster.called
-    assert not login_mocks.client_from_file.called
-    assert not login_mocks.client_checker.called
 
-
-def test_clirun_check_fails_on_errors_in_client(invoke, login_mocks, preload, real_run):
-    kubernetes = pytest.importorskip('kubernetes')
+def test_clirun_check_fails_on_errors_in_client(login_mocks, kubernetes,
+                                                invoke, preload, real_run):
     login_mocks.client_checker.side_effect = kubernetes.client.rest.ApiException(status=401)
 
     result = invoke(['run'])
