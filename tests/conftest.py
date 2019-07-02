@@ -9,6 +9,10 @@ import pytest_mock
 from kopf.reactor.registries import Resource
 
 
+def pytest_configure(config):
+    config.addinivalue_line('markers', "e2e: end-to-end tests with real operators.")
+
+
 # This logic is not applied if pytest is started explicitly on ./examples/.
 # In that case, regular pytest behaviour applies -- this is intended.
 def pytest_collection_modifyitems(items):
@@ -24,6 +28,11 @@ def pytest_collection_modifyitems(items):
     etc = [item for item in items if not _is_e2e(item)]
     e2e = [item for item in items if _is_e2e(item)]
     items[:] = etc + e2e
+
+    # Mark all e2e tests, no matter how they were detected. Just for filtering.
+    mark_e2e = pytest.mark.e2e
+    for item in e2e:
+        item.add_marker(mark_e2e)
 
 # Substitute the regular mock with the async-aware mock in the `mocker` fixture.
 @pytest.fixture(scope='session', autouse=True)
