@@ -41,7 +41,7 @@ with one additional line:
         path = os.path.join(os.path.dirname(__file__), 'pvc-tpl.yaml')
         tmpl = open(path, 'rt').read()
         text = tmpl.format(size=size, name=name)
-        data = yaml.load(text)
+        data = yaml.safe_load(text)
 
         kopf.adopt(data, owner=body)
 

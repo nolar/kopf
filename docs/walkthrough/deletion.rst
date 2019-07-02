@@ -50,7 +50,7 @@ Let's extend the creation handler:
         path = os.path.join(os.path.dirname(__file__), 'pvc-tpl.yaml')
         tmpl = open(path, 'rt').read()
         text = tmpl.format(name=name, size=size)
-        data = yaml.load(text)
+        data = yaml.safe_load(text)
 
         kopf.adopt(data, owner=body)
 

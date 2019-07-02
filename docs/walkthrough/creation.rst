@@ -68,7 +68,7 @@ We will use the official Kubernetes client library:
         path = os.path.join(os.path.dirname(__file__), 'pvc.yaml')
         tmpl = open(path, 'rt').read()
         text = tmpl.format(name=name, size=size)
-        data = yaml.load(text)
+        data = yaml.safe_load(text)
 
         api = kubernetes.client.CoreV1Api()
         obj = api.create_namespaced_persistent_volume_claim(
