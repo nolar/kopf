@@ -150,12 +150,13 @@ def login_mocks(mocker):
 
 class ProhibitedImportFinder:
     def find_spec(self, fullname, path, target=None):
-        if fullname == 'kubernetes' or fullname.startswith('kubernetes'):
+        if fullname == 'kubernetes' or fullname.startswith('kubernetes.'):
             raise ImportError("Import is prohibited for tests.")
 
 
 @pytest.fixture()
 def kubernetes_uninstalled():
+    import kubernetes as kubernetes_before
 
     # Remove any cached modules.
     preserved = {}
@@ -172,6 +173,10 @@ def kubernetes_uninstalled():
     finally:
         sys.meta_path.remove(finder)
         sys.modules.update(preserved)
+
+        # Verify if it works and that we didn't break the importing machinery.
+        import kubernetes as kubernetes_after
+        assert kubernetes_after is kubernetes_before
 
 #
 # Helpers for the timing checks.
