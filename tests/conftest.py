@@ -1,4 +1,5 @@
 import asyncio
+import os
 import re
 import time
 
@@ -33,6 +34,15 @@ def pytest_collection_modifyitems(items):
     mark_e2e = pytest.mark.e2e
     for item in e2e:
         item.add_marker(mark_e2e)
+
+    # Minikube tests are heavy and require a cluster. Skip them by default,
+    # so that the contributors can run pytest without initial tweaks.
+    mark_skip = pytest.mark.skip(reason="E2E tests are not enabled. "
+                                        "Set E2E env var to enable.")
+    if not os.environ.get('E2E'):
+        for item in e2e:
+            item.add_marker(mark_skip)
+
 
 # Substitute the regular mock with the async-aware mock in the `mocker` fixture.
 @pytest.fixture(scope='session', autouse=True)
