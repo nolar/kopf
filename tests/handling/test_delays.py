@@ -97,5 +97,5 @@ async def test_delayed_handlers_sleep(
     assert k8s_mocked.asyncio_sleep.call_args_list[0][0][0] == delay
 
     assert_logs([
-        "Sleeping for [\d\.]+ seconds",
+        r"Sleeping for [\d\.]+ seconds",
     ])
