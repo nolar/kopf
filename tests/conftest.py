@@ -9,12 +9,21 @@ import pytest_mock
 from kopf.reactor.registries import Resource
 
 
-# Make all tests in this directory and below asyncio-compatible by default.
+# This logic is not applied if pytest is started explicitly on ./examples/.
+# In that case, regular pytest behaviour applies -- this is intended.
 def pytest_collection_modifyitems(items):
+
+    # Make all tests in this directory and below asyncio-compatible by default.
     for item in items:
         if asyncio.iscoroutinefunction(item.function):
             item.add_marker('asyncio')
 
+    # Put all e2e tests to the end, as they are assumed to be slow.
+    def _is_e2e(item):
+        return '/e2e/' in item.nodeid
+    etc = [item for item in items if not _is_e2e(item)]
+    e2e = [item for item in items if _is_e2e(item)]
+    items[:] = etc + e2e
 
 # Substitute the regular mock with the async-aware mock in the `mocker` fixture.
 @pytest.fixture(scope='session', autouse=True)

@@ -49,10 +49,3 @@ def _skip_if_not_explicitly_enabled():
     # so that the contributors can run pytest without initial tweaks.
     if not os.environ.get('E2E'):
         pytest.skip('e2e tests are not explicitly enabled; set E2E env var to enable.')
-
-
-def pytest_collection_modifyitems(config, items):
-    # Put the e2e tests to the end always, since they are a bit lengthy.
-    etc = [item for item in items if '/e2e/' not in item.nodeid]
-    e2e = [item for item in items if '/e2e/' in item.nodeid]
-    items[:] = etc + e2e
