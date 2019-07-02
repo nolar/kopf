@@ -10,6 +10,7 @@ from kopf.clients.auth import login
 root_dir = os.path.relpath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 examples = sorted(glob.glob(os.path.join(root_dir, 'examples/*/')))
 assert examples  # if empty, it is just the detection failed
+examples = [path for path in examples if not glob.glob((os.path.join(path, 'test*.py')))]
 
 
 @pytest.fixture(params=examples)

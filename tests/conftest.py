@@ -25,7 +25,8 @@ def pytest_collection_modifyitems(items):
 
     # Put all e2e tests to the end, as they are assumed to be slow.
     def _is_e2e(item):
-        return '/e2e/' in item.nodeid
+        path = item.location[0]
+        return path.startswith('tests/e2e/') or path.startswith('examples/')
     etc = [item for item in items if not _is_e2e(item)]
     e2e = [item for item in items if _is_e2e(item)]
     items[:] = etc + e2e
