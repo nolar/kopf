@@ -3,6 +3,8 @@ import shlex
 import subprocess
 import time
 
+import pytest
+
 from kopf.testing import KopfRunner
 
 
@@ -24,6 +26,11 @@ def test_all_examples_are_runnable(mocker, with_crd, with_peering, exampledir):
         requires_finalizer = True
         if m.group(2):
             requires_finalizer = not eval(m.group(3))
+
+    # Skip the e2e test if the framework-optional but test-required library is missing.
+    m = re.search(r'import kubernetes', example_py.read_text(), re.M)
+    if m:
+        pytest.importorskip('kubernetes')
 
     # To prevent lengthy sleeps on the simulated retries.
     mocker.patch('kopf.reactor.handling.DEFAULT_RETRY_DELAY', 1)
