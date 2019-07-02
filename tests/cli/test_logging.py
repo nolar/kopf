@@ -69,7 +69,7 @@ def test_no_lowlevel_dumps_in_nondebug(invoke, caplog, options, login, preload, 
     (['-d']),
     (['--debug']),
 ], ids=['d', 'debug'])
-async def test_lowlevel_dumps_in_debug_mode(invoke, caplog, options, login, preload, real_run):
+def test_lowlevel_dumps_in_debug_mode(invoke, caplog, options, login, preload, real_run):
     result = invoke(['run'] + options)
     assert result.exit_code == 0
 
