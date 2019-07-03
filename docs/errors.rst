@@ -82,7 +82,7 @@ The overall runtime of the handler can be limited::
     def create_fn(spec, **_):
         raise kopf.HandlerRetryError(delay=60)
 
-If the handler is not succeeded withing this time, it is considered
+If the handler is not succeeded within this time, it is considered
 as fatally failed.
 
 If the handler is an async coroutine and it is still running at the moment,

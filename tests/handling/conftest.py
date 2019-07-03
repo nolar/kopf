@@ -202,6 +202,9 @@ def cause_mock(mocker, resource):
         new = copy.deepcopy(mock.new) if mock.new is not None else original_new
         old = copy.deepcopy(mock.old) if mock.old is not None else original_old
 
+        # Remove requires_finalizer from kwargs as it shouldn't be passed to the Cause object
+        kwargs.pop('requires_finalizer', None)
+
         # Pass through kwargs: resource, logger, patch, diff, old, new.
         # I.e. everything except what we mock: event & body.
         cause = Cause(

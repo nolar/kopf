@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from kopf.reactor.causation import CREATE, UPDATE, DELETE, NEW, NOOP, FREE, GONE
+from kopf.reactor.causation import CREATE, UPDATE, DELETE, NOOP, FREE, GONE, ACQUIRE, RELEASE
 from kopf.reactor.causation import detect_cause
 from kopf.structs.finalizers import FINALIZER
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
@@ -88,6 +88,19 @@ mismatching_lastseen = pytest.mark.parametrize('annotations', [
     pytest.param({'annotations': {LAST_SEEN_ANNOTATION: ALT_JSON}}, id='mismatching-last-seen'),
 ])
 
+all_requires_finalizer = pytest.mark.parametrize('requires_finalizer', [
+    pytest.param(True, id='requires-finalizer'),
+    pytest.param(False, id='doesnt-require-finalizer'),
+])
+
+requires_finalizer = pytest.mark.parametrize('requires_finalizer', [
+    pytest.param(True, id='requires-finalizer'),
+])
+
+doesnt_require_finalizer = pytest.mark.parametrize('requires_finalizer', [
+    pytest.param(False, id='doesnt-require-finalizer'),
+])
+
 
 @pytest.fixture
 def content():
@@ -117,94 +130,127 @@ def check_kwargs(cause, kwargs):
 # The tests.
 #
 
+@all_requires_finalizer
 @all_finalizers
 @all_deletions
 @deleted_events
-def test_for_gone(kwargs, event, finalizers, deletion_ts):
+def test_for_gone(kwargs, event, finalizers, deletion_ts, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
-    cause = detect_cause(event=event, **kwargs)
+    cause = detect_cause(event=event, requires_finalizer=requires_finalizer, **kwargs)
     assert cause.event == GONE
     check_kwargs(cause, kwargs)
 
 
+@all_requires_finalizer
 @no_finalizers
 @real_deletions
 @regular_events
-def test_for_free(kwargs, event, finalizers, deletion_ts):
+def test_for_free(kwargs, event, finalizers, deletion_ts, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
-    cause = detect_cause(event=event, **kwargs)
+    cause = detect_cause(event=event, requires_finalizer=requires_finalizer, **kwargs)
     assert cause.event == FREE
     check_kwargs(cause, kwargs)
 
 
+@all_requires_finalizer
 @our_finalizers
 @real_deletions
 @regular_events
-def test_for_delete(kwargs, event, finalizers, deletion_ts):
+def test_for_delete(kwargs, event, finalizers, deletion_ts, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
-    cause = detect_cause(event=event, **kwargs)
+    cause = detect_cause(event=event, requires_finalizer=requires_finalizer, **kwargs)
     assert cause.event == DELETE
     check_kwargs(cause, kwargs)
 
 
+@requires_finalizer
 @no_finalizers
 @no_deletions
 @regular_events
-def test_for_new(kwargs, event, finalizers, deletion_ts):
+def test_for_acquire(kwargs, event, finalizers, deletion_ts, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
-    cause = detect_cause(event=event, **kwargs)
-    assert cause.event == NEW
+    cause = detect_cause(event=event, requires_finalizer=requires_finalizer, **kwargs)
+    assert cause.event == ACQUIRE
     check_kwargs(cause, kwargs)
 
 
+@doesnt_require_finalizer
+@our_finalizers
+@no_deletions
+@regular_events
+def test_for_release(kwargs, event, finalizers, deletion_ts, requires_finalizer):
+    event = {'type': event, 'object': {'metadata': {}}}
+    event['object']['metadata'].update(finalizers)
+    event['object']['metadata'].update(deletion_ts)
+    cause = detect_cause(event=event, requires_finalizer=requires_finalizer, **kwargs)
+    assert cause.event == RELEASE
+    check_kwargs(cause, kwargs)
+
+
+@requires_finalizer
 @absent_lastseen
 @our_finalizers
 @no_deletions
 @regular_events
-def test_for_create(kwargs, event, finalizers, deletion_ts, annotations, content):
+def test_for_create(kwargs, event, finalizers, deletion_ts, annotations, content, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
     event['object'].update(content)
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
     event['object']['metadata'].update(annotations)
-    cause = detect_cause(event=event, **kwargs)
+    cause = detect_cause(event=event, requires_finalizer=requires_finalizer, **kwargs)
     assert cause.event == CREATE
     check_kwargs(cause, kwargs)
 
 
+@doesnt_require_finalizer
+@no_finalizers
+@no_deletions
+@regular_events
+def test_for_create_skip_acquire(kwargs, event, finalizers, deletion_ts, requires_finalizer):
+    event = {'type': event, 'object': {'metadata': {}}}
+    event['object']['metadata'].update(finalizers)
+    event['object']['metadata'].update(deletion_ts)
+    cause = detect_cause(event=event, requires_finalizer=requires_finalizer, **kwargs)
+    assert cause.event == CREATE
+    check_kwargs(cause, kwargs)
+
+
+@requires_finalizer
 @matching_lastseen
 @our_finalizers
 @no_deletions
 @regular_events
-def test_for_no_op(kwargs, event, finalizers, deletion_ts, annotations, content):
+def test_for_no_op(kwargs, event, finalizers, deletion_ts, annotations, content, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
     event['object'].update(content)
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
     event['object']['metadata'].update(annotations)
-    cause = detect_cause(event=event, **kwargs)
+    cause = detect_cause(event=event, requires_finalizer=requires_finalizer, **kwargs)
     assert cause.event == NOOP
     check_kwargs(cause, kwargs)
 
 
+@requires_finalizer
 @mismatching_lastseen
 @our_finalizers
 @no_deletions
 @regular_events
-def test_for_update(kwargs, event, finalizers, deletion_ts, annotations, content):
+def test_for_update(kwargs, event, finalizers, deletion_ts, annotations, content, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
     event['object'].update(content)
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
     event['object']['metadata'].update(annotations)
-    cause = detect_cause(event=event, diff=True, **kwargs)
+    cause = detect_cause(event=event, requires_finalizer=requires_finalizer, diff=True, **kwargs)
     assert cause.event == UPDATE
     check_kwargs(cause, kwargs)
