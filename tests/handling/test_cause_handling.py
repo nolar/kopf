@@ -180,12 +180,14 @@ async def test_release(registry, resource, handlers, cause_mock, caplog, k8s_moc
         requires_finalizer=False,
     )
 
+    event_queue = asyncio.Queue()
     await custom_object_handler(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        event_queue=event_queue,
     )
 
     assert not handlers.create_mock.called
@@ -193,8 +195,8 @@ async def test_release(registry, resource, handlers, cause_mock, caplog, k8s_moc
     assert not handlers.delete_mock.called
 
     assert k8s_mocked.asyncio_sleep.call_count == 0
-    assert k8s_mocked.post_event.call_count == 0
     assert k8s_mocked.patch_obj.call_count == 1
+    assert event_queue.empty()
 
     patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
     assert 'metadata' in patch

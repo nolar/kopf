@@ -40,4 +40,3 @@ def test_resource_lifecycle(mocker):
     # There are usually more than these messages, but we only check for the certain ones.
     assert '[default/kopf-example-1] Creation event:' in runner.stdout
     assert '[default/kopf-example-1] Something was logged here.' in runner.stdout
-    assert '[default/kopf-example-1] Deletion event:' in runner.stdout
