@@ -16,7 +16,7 @@ import functools
 from types import FunctionType, MethodType
 from typing import MutableMapping, NamedTuple, Text, Optional, Tuple, Callable, Mapping
 
-from kopf.reactor import matching
+from kopf.structs import filters
 
 
 # An immutable reference to a custom resource definition.
@@ -151,18 +151,12 @@ class SimpleRegistry(BaseRegistry):
             if handler.event is None or handler.event == cause.event:
                 if handler.initial and not cause.initial:
                     pass  # ignore initial handlers in non-initial causes.
-                elif matching.has_filter(handler=handler):
-                    if matching.matches_filter(handler=handler, body=cause.body, changed_fields=changed_fields):
-                        yield handler
-                else:
+                elif filters.match(handler=handler, body=cause.body, changed_fields=changed_fields):
                     yield handler
 
     def iter_event_handlers(self, resource, event):
         for handler in self._handlers:
-            if matching.has_filter(handler):
-                if matching.matches_filter(handler=handler, body=event['body']):
-                    yield handler
-            else:
+            if filters.match(handler=handler, body=event['object']):
                 yield handler
 
     def iter_extra_fields(self, resource):

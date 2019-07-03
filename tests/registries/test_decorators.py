@@ -98,6 +98,7 @@ def test_on_create_with_all_kwargs(mocker):
     registry = GlobalRegistry()
     resource = Resource('group', 'version', 'plural')
     cause = mocker.MagicMock(resource=resource, event=CREATE)
+    mocker.patch('kopf.structs.filters.match', return_value=True)
 
     @kopf.on.create('group', 'version', 'plural',
                     id='id', timeout=123, registry=registry,
@@ -106,10 +107,7 @@ def test_on_create_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-
-    with mocker.patch('kopf.reactor.matching.matches_filter') as matches_filter:
-        matches_filter.return_value = True
-        handlers = registry.get_cause_handlers(cause)
+    handlers = registry.get_cause_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].event == CREATE
@@ -125,6 +123,7 @@ def test_on_update_with_all_kwargs(mocker):
     registry = GlobalRegistry()
     resource = Resource('group', 'version', 'plural')
     cause = mocker.MagicMock(resource=resource, event=UPDATE)
+    mocker.patch('kopf.structs.filters.match', return_value=True)
 
     @kopf.on.update('group', 'version', 'plural',
                     id='id', timeout=123, registry=registry,
@@ -133,9 +132,7 @@ def test_on_update_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-    with mocker.patch('kopf.reactor.matching.matches_filter') as matches_filter:
-        matches_filter.return_value = True
-        handlers = registry.get_cause_handlers(cause)
+    handlers = registry.get_cause_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].event == UPDATE
@@ -155,6 +152,7 @@ def test_on_delete_with_all_kwargs(mocker, optional):
     registry = GlobalRegistry()
     resource = Resource('group', 'version', 'plural')
     cause = mocker.MagicMock(resource=resource, event=DELETE)
+    mocker.patch('kopf.structs.filters.match', return_value=True)
 
     @kopf.on.delete('group', 'version', 'plural',
                     id='id', timeout=123, registry=registry, optional=optional,
@@ -163,9 +161,7 @@ def test_on_delete_with_all_kwargs(mocker, optional):
     def fn(**_):
         pass
 
-    with mocker.patch('kopf.reactor.matching.matches_filter') as matches_filter:
-        matches_filter.return_value = True
-        handlers = registry.get_cause_handlers(cause)
+    handlers = registry.get_cause_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].event == DELETE
@@ -182,6 +178,7 @@ def test_on_field_with_all_kwargs(mocker):
     resource = Resource('group', 'version', 'plural')
     diff = [('op', ('field', 'subfield'), 'old', 'new')]
     cause = mocker.MagicMock(resource=resource, event=UPDATE, diff=diff)
+    mocker.patch('kopf.structs.filters.match', return_value=True)
 
     @kopf.on.field('group', 'version', 'plural', 'field.subfield',
                    id='id', timeout=123, registry=registry,
@@ -190,10 +187,7 @@ def test_on_field_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-
-    with mocker.patch('kopf.reactor.matching.matches_filter') as matches_filter:
-        matches_filter.return_value = True
-        handlers = registry.get_cause_handlers(cause)
+    handlers = registry.get_cause_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].event is None
