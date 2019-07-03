@@ -153,7 +153,7 @@ def test_state_is_not_changed_with_system_noise():
     assert result == False
 
 
-# This is to ensure it is callable with proper signsture.
+# This is to ensure it is callable with proper signature.
 # For actual tests of diffing, see `/tests/diffs/`.
 def test_state_diff():
     data = {'spec': {'depth': {'field': 'x'}}}

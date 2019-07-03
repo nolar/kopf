@@ -15,6 +15,13 @@ def parse_field(
 ) -> FieldPath:
     """
     Convert any field into a tuple of nested sub-fields.
+
+    Supported notations:
+
+    * ``None`` (for root of a dict).
+    * ``"field.subfield"``
+    * ``("field", "subfield")``
+    * ``["field", "subfield"]``
     """
     if field is None:
         return tuple()
