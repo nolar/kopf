@@ -7,7 +7,7 @@ import yaml
 def create_fn(body, spec, **kwargs):
 
     # Render the pod yaml with some spec fields used in the template.
-    doc = yaml.load(f"""
+    doc = yaml.safe_load(f"""
         apiVersion: v1
         kind: Pod
         spec:

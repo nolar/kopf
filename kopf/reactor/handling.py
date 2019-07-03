@@ -15,7 +15,7 @@ and therefore do not trigger the user-defined handlers.
 """
 
 import asyncio
-import collections
+import collections.abc
 import datetime
 import logging
 from contextvars import ContextVar
@@ -288,12 +288,12 @@ async def execute(
     if len([v for v in [fns, handlers, registry] if v is not None]) > 1:
         raise TypeError("Only one of the fns, handlers, registry can be passed. Got more.")
 
-    elif fns is not None and isinstance(fns, collections.Mapping):
+    elif fns is not None and isinstance(fns, collections.abc.Mapping):
         registry = registries.SimpleRegistry(prefix=handler.id if handler else None)
         for id, fn in fns.items():
             registry.register(fn=fn, id=id)
 
-    elif fns is not None and isinstance(fns, collections.Iterable):
+    elif fns is not None and isinstance(fns, collections.abc.Iterable):
         registry = registries.SimpleRegistry(prefix=handler.id if handler else None)
         for fn in fns:
             registry.register(fn=fn)
