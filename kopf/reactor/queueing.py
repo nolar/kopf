@@ -34,6 +34,7 @@ import aiojobs
 from kopf import config
 from kopf.clients import watching
 from kopf.engines import peering
+from kopf.engines import posting
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
@@ -174,8 +175,16 @@ def create_tasks(
     # The freezer and the registry are scoped to this whole task-set, to sync them all.
     lifecycle = lifecycle if lifecycle is not None else lifecycles.get_default_lifecycle()
     registry = registry if registry is not None else registries.get_default_registry()
+    event_queue = asyncio.Queue()
     freeze = asyncio.Event()
     tasks = []
+
+    # K8s-event posting. Events are queued in-memory and posted in the background.
+    # NB: currently, it is a global task, but can be made per-resource or per-object.
+    tasks.extend([
+        loop.create_task(posting.poster(
+            event_queue=event_queue)),
+    ])
 
     # Monitor the peers, unless explicitly disabled.
     ourselves: Optional[peering.Peer] = peering.Peer.detect(
@@ -204,6 +213,7 @@ def create_tasks(
                                           lifecycle=lifecycle,
                                           registry=registry,
                                           resource=resource,
+                                          event_queue=event_queue,
                                           freeze=freeze))),  # freeze is only checked
         ])
 

@@ -29,6 +29,7 @@ async def test_nothing_is_called_when_freeze_is_set(mocker, resource, caplog, as
         resource=resource,
         event=event,
         freeze=freeze,
+        event_queue=asyncio.Queue(),
     )
 
     assert not detect_cause.called

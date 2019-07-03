@@ -6,6 +6,7 @@ import logging
 import kubernetes.client.rest
 
 from kopf import config
+from kopf.structs import hierarchies
 
 logger = logging.getLogger(__name__)
 
@@ -13,13 +14,25 @@ MAX_MESSAGE_LENGTH = 1024
 CUT_MESSAGE_INFIX = '...'
 
 
-async def post_event(*, obj, type, reason, message=''):
+async def post_event(*, obj=None, ref=None, type, reason, message=''):
     """
     Issue an event for the object.
+
+    This is where they can also be accumulated, aggregated, grouped,
+    and where the rate-limits should be maintained. It can (and should)
+    be done by the client library, as it is done in the Go client.
     """
 
+    # Object reference - similar to the owner reference, but different.
+    if obj is not None and ref is not None:
+        raise TypeError("Only one of obj= and ref= is allowed for a posted event. Got both.")
+    if obj is None and ref is None:
+        raise TypeError("One of obj= and ref= is required for a posted event. Got none.")
+    if ref is None:
+        ref = hierarchies.build_object_reference(obj)
+
     now = datetime.datetime.utcnow()
-    namespace = obj['metadata']['namespace']
+    namespace = ref['namespace'] or 'default'
 
     # Prevent a common case of event posting errors but shortening the message.
     if len(message) > MAX_MESSAGE_LENGTH:
@@ -27,15 +40,6 @@ async def post_event(*, obj, type, reason, message=''):
         prefix = message[:MAX_MESSAGE_LENGTH // 2 - (len(infix) // 2)]
         suffix = message[-MAX_MESSAGE_LENGTH // 2 + (len(infix) - len(infix) // 2):]
         message = f'{prefix}{infix}{suffix}'
-
-    # Object reference - similar to the owner reference, but different.
-    ref = dict(
-        apiVersion=obj['apiVersion'],
-        kind=obj['kind'],
-        name=obj['metadata']['name'],
-        uid=obj['metadata']['uid'],
-        namespace=obj['metadata']['namespace'],
-    )
 
     meta = kubernetes.client.V1ObjectMeta(
         namespace=namespace,
