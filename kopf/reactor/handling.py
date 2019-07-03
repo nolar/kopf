@@ -190,7 +190,7 @@ async def handle_cause(
 
         title = causation.TITLES.get(cause.event, repr(cause.event))
         logger.debug(f"{title.capitalize()} event: %r", body)
-        if cause.diff is not None:
+        if cause.diff is not None and cause.old is not None and cause.new is not None:
             logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
 
         handlers = registry.get_cause_handlers(cause=cause)
