@@ -37,6 +37,8 @@ async def test_diffs_logged_if_present(registry, resource, handlers, cause_type,
     caplog.set_level(logging.DEBUG)
     cause_mock.event = cause_type
     cause_mock.diff = diff
+    cause_mock.new = object()  # checked for `not None`
+    cause_mock.old = object()  # checked for `not None`
 
     await custom_object_handler(
         lifecycle=kopf.lifecycles.all_at_once,

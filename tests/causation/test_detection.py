@@ -251,14 +251,6 @@ def test_for_update(kwargs, event, finalizers, deletion_ts, annotations, content
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
     event['object']['metadata'].update(annotations)
-    cause = detect_cause(event=event, requires_finalizer=requires_finalizer, **kwargs)
+    cause = detect_cause(event=event, requires_finalizer=requires_finalizer, diff=True, **kwargs)
     assert cause.event == UPDATE
     check_kwargs(cause, kwargs)
-
-    # Diffs are tested elsewhere, but quickly check the absence of meta-fields.
-    assert cause.diff
-    assert len(cause.diff) == 1
-    assert cause.diff[0][0] == 'change'
-    assert cause.diff[0][1] == ('spec', 'field')
-    assert cause.diff[0][2] == 'other'
-    assert cause.diff[0][3] == 'value'

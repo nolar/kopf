@@ -52,6 +52,13 @@ class BaseRegistry(metaclass=abc.ABCMeta):
     def iter_event_handlers(self, resource, event):
         pass
 
+    def get_extra_fields(self, resource):
+        return set(self.iter_extra_fields(resource=resource))
+
+    @abc.abstractmethod
+    def iter_extra_fields(self, resource):
+        pass
+
     @staticmethod
     def _deduplicated(handlers):
         """
@@ -138,6 +145,11 @@ class SimpleRegistry(BaseRegistry):
         for handler in self._handlers:
             yield handler
 
+    def iter_extra_fields(self, resource):
+        for handler in self._handlers:
+            if handler.field:
+                yield handler.field
+
     def requires_finalizer(self, resource):
         return self._requires_finalizer
 
@@ -220,6 +232,11 @@ class GlobalRegistry(BaseRegistry):
         resource_registry = self._event_handlers.get(resource, None)
         if resource_registry is not None:
             yield from resource_registry.iter_event_handlers(resource=resource, event=event)
+
+    def iter_extra_fields(self, resource):
+        resource_registry = self._cause_handlers.get(resource, None)
+        if resource_registry is not None:
+            yield from resource_registry.iter_extra_fields(resource=resource)
 
     def requires_finalizer(self, resource):
         """

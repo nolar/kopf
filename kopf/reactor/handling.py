@@ -113,11 +113,16 @@ async def custom_object_handler(
     # Object patch accumulator. Populated by the methods. Applied in the end of the handler.
     # Detect the cause and handle it (or at least log this happened).
     if registry.has_cause_handlers(resource=resource):
+        extra_fields = registry.get_extra_fields(resource=resource)
+        old, new, diff = lastseen.get_state_diffs(body=body, extra_fields=extra_fields)
         cause = causation.detect_cause(
             event=event,
             resource=resource,
             logger=logger,
             patch=patch,
+            old=old,
+            new=new,
+            diff=diff,
             requires_finalizer=registry.requires_finalizer(resource=resource),
         )
         delay = await handle_cause(lifecycle=lifecycle, registry=registry, cause=cause)
@@ -195,7 +200,7 @@ async def handle_cause(
     if cause.event in causation.HANDLER_CAUSES:
         title = causation.TITLES.get(cause.event, repr(cause.event))
         logger.debug(f"{title.capitalize()} event: %r", body)
-        if cause.diff is not None:
+        if cause.diff is not None and cause.old is not None and cause.new is not None:
             logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
 
         handlers = registry.get_cause_handlers(cause=cause)
@@ -219,7 +224,8 @@ async def handle_cause(
 
     # Regular causes also do some implicit post-handling when all handlers are done.
     if done or skip:
-        lastseen.refresh_state(body=body, patch=patch)
+        extra_fields = registry.get_extra_fields(resource=cause.resource)
+        lastseen.refresh_state(body=body, patch=patch, extra_fields=extra_fields)
         if done:
             status.purge_progress(body=body, patch=patch)
         if cause.event == causation.DELETE:
@@ -462,7 +468,7 @@ async def _call_handler(
     old = cause.old if handler.field is None else dicts.resolve(cause.old, handler.field, None)
     new = cause.new if handler.field is None else dicts.resolve(cause.new, handler.field, None)
     diff = cause.diff if handler.field is None else diffs.reduce(cause.diff, handler.field)
-    cause = cause._replace(old=old, new=new, diff=diff)
+    cause = causation.enrich_cause(cause=cause, old=old, new=new, diff=diff)
 
     # Store the context of the current resource-object-event-handler, to be used in `@kopf.on.this`,
     # and maybe other places, and consumed in the recursive `execute()` calls for the children.
