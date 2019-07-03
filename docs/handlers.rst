@@ -147,6 +147,16 @@ The following 3 core cause-handlers are available::
     def my_handler(spec, **_):
         pass
 
+.. note::
+    Kopf's finalizers will be added to the object when there are delete
+    handlers specified. Finalizers block Kubernetes from fully deleting
+    objects, and Kubernetes will only actually delete objects when all
+    finalizers are removed, i.e. only if the Kopf operator is running to
+    remove them (check: :ref:`finalizers-blocking-deletion` for a work-around).
+    If a delete handler is added but finalizers are not required to block the
+    actual deletion, i.e. the handler is optional, the optional argument
+    ``optional=True`` can be passed to the delete cause decorator.
+
 An additional handler can be used for cases when the operator restarts
 and detects an object that existed before, but was not changed/deleted
 during downtime (which would trigger the update-/delete-handlers)::

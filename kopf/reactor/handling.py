@@ -113,7 +113,13 @@ async def custom_object_handler(
     # Object patch accumulator. Populated by the methods. Applied in the end of the handler.
     # Detect the cause and handle it (or at least log this happened).
     if registry.has_cause_handlers(resource=resource):
-        cause = causation.detect_cause(event=event, resource=resource, logger=logger, patch=patch)
+        cause = causation.detect_cause(
+            event=event,
+            resource=resource,
+            logger=logger,
+            patch=patch,
+            requires_finalizer=registry.requires_finalizer(resource=resource),
+        )
         delay = await handle_cause(lifecycle=lifecycle, registry=registry, cause=cause)
 
     # Provoke a dummy change to trigger the reactor after sleep.
@@ -187,7 +193,6 @@ async def handle_cause(
 
     # Regular causes invoke the handlers.
     if cause.event in causation.HANDLER_CAUSES:
-
         title = causation.TITLES.get(cause.event, repr(cause.event))
         logger.debug(f"{title.capitalize()} event: %r", body)
         if cause.diff is not None:
@@ -222,9 +227,6 @@ async def handle_cause(
             finalizers.remove_finalizers(body=body, patch=patch)
 
     # Informational causes just print the log lines.
-    if cause.event == causation.NEW:
-        logger.debug("First appearance: %r", body)
-
     if cause.event == causation.GONE:
         logger.debug("Deleted, really deleted, and we are notified.")
 
@@ -234,11 +236,20 @@ async def handle_cause(
     if cause.event == causation.NOOP:
         logger.debug("Something has changed, but we are not interested (state is the same).")
 
-    # For the case of a newly created object, lock it to this operator.
-    # TODO: make it conditional.
-    if cause.event == causation.NEW:
+    # For the case of a newly created object, or one that doesn't have the correct
+    # finalizers, lock it to this operator. Not all newly created objects will
+    # produce an 'ACQUIRE' causation event. This only happens when there are
+    # mandatory deletion handlers registered for the given object, i.e. if finalizers
+    # are required.
+    if cause.event == causation.ACQUIRE:
         logger.debug("Adding the finalizer, thus preventing the actual deletion.")
         finalizers.append_finalizers(body=body, patch=patch)
+
+    # Remove finalizers from an object, since the object currently has finalizers, but
+    # shouldn't, thus releasing the locking of the object to this operator.
+    if cause.event == causation.RELEASE:
+        logger.debug("Removing the finalizer, as there are no handlers requiring it.")
+        finalizers.remove_finalizers(body=body, patch=patch)
 
     # The delay is then consumed by the main handling routine (in different ways).
     return delay

@@ -29,7 +29,6 @@ from kopf.structs import lastseen
 
 # Constants for event types, to prevent a direct usage of strings, and typos.
 # They are not exposed by the framework, but are used internally. See also: `kopf.on`.
-NEW = 'new'
 CREATE = 'create'
 UPDATE = 'update'
 DELETE = 'delete'
@@ -37,11 +36,13 @@ RESUME = 'resume'
 NOOP = 'noop'
 FREE = 'free'
 GONE = 'gone'
+ACQUIRE = 'acquire'
+RELEASE = 'release'
 
 # These sets are checked in few places, so we keep them centralised:
 # the user-facing causes (for handlers), and internally facing (so as handled).
 HANDLER_CAUSES = (CREATE, UPDATE, DELETE, RESUME)
-REACTOR_CAUSES = (NEW, NOOP, FREE, GONE)
+REACTOR_CAUSES = (NOOP, FREE, GONE, ACQUIRE, RELEASE)
 ALL_CAUSES = HANDLER_CAUSES + REACTOR_CAUSES
 
 # The human-readable names of these causes. Will be capitalised when needed.
@@ -73,6 +74,7 @@ class Cause(NamedTuple):
 
 def detect_cause(
         event: Mapping,
+        requires_finalizer: bool = True,
         **kwargs
 ) -> Cause:
     """
@@ -111,9 +113,21 @@ def detect_cause(
 
     # For a fresh new object, first block it from accidental deletions without our permission.
     # The actual handler will be called on the next call.
-    if not finalizers.has_finalizers(body):
+    # Only return this cause if the resource requires finalizers to be added.
+    if requires_finalizer and not finalizers.has_finalizers(body):
         return Cause(
-            event=NEW,
+            event=ACQUIRE,
+            body=body,
+            initial=initial,
+            **kwargs)
+
+    # Check whether or not the resource has finalizers, but doesn't require them. If this is
+    # the case, then a resource may not be able to be deleted completely as finalizers may
+    # not be removed by the operator under normal operation. We remove the finalizers first,
+    # and any handler that should be called will be done on the next call.
+    if not requires_finalizer and finalizers.has_finalizers(body):
+        return Cause(
+            event=RELEASE,
             body=body,
             initial=initial,
             **kwargs)
