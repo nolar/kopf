@@ -41,6 +41,12 @@ def get_state(body, extra_fields=None):
     orig = copy.deepcopy(body)
     body = copy.deepcopy(body)
 
+    # The top-level identifying fields never change, so there is not need to track them.
+    if 'apiVersion' in body:
+        del body['apiVersion']
+    if 'kind' in body:
+        del body['kind']
+
     # Purge the whole stenzas with system info (extra-fields are restored below).
     if 'metadata' in body:
         del body['metadata']

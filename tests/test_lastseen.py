@@ -23,6 +23,12 @@ def test_has_state(expected, body):
     assert result == expected
 
 
+def test_get_state_removes_resource_references():
+    body = {'apiVersion': 'group/version', 'kind': 'Kind'}
+    state = get_state(body=body)
+    assert state == {}
+
+
 @pytest.mark.parametrize('field', [
     'uid',
     'name',
