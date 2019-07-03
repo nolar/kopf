@@ -16,18 +16,25 @@ https://kubernetes.io/docs/concepts/overview/object-management-kubectl/declarati
 import copy
 import json
 
+from kopf.structs import dicts
 from kopf.structs import diffs
 
 LAST_SEEN_ANNOTATION = 'kopf.zalando.org/last-handled-configuration'
 """ The annotation name for the last stored state of the resource. """
 
 
-def get_state(body):
+def get_state(body, extra_fields=None):
     """
     Extract only the relevant fields for the state comparisons.
+
+    A special set of fields can be provided even if they are supposed
+    to be removed. This is used, for example, for handlers which react
+    to changes in the specific fields in the status stenza,
+    while the rest of the status stenza is removed.
     """
 
     # Always use a copy, so that future changes do not affect the extracted state.
+    orig = copy.deepcopy(body)
     body = copy.deepcopy(body)
 
     # Remove the system fields, keeping the potentially useful, user-oriented fields/data.
@@ -52,6 +59,9 @@ def get_state(body):
     if 'kopf' in body.get('status', {}):
         del body['status']['kopf']
 
+    # Restore all explicitly whitelisted extra-fields from the original body.
+    dicts.cherrypick(src=orig, dst=body, fields=extra_fields)
+
     # Cleanup the parent structs if they have become empty, for consistent state comparison.
     if 'annotations' in body.get('metadata', {}) and not body['metadata']['annotations']:
         del body['metadata']['annotations']
@@ -67,9 +77,9 @@ def has_state(body):
     return LAST_SEEN_ANNOTATION in annotations
 
 
-def get_state_diffs(body):
+def get_state_diffs(body, extra_fields=None):
     old = retreive_state(body)
-    new = get_state(body)
+    new = get_state(body, extra_fields=extra_fields)
     return old, new, diffs.diff(old, new)
 
 
@@ -79,6 +89,6 @@ def retreive_state(body):
     return state_obj
 
 
-def refresh_state(*, body, patch):
-    state = get_state(body)
+def refresh_state(*, body, patch, extra_fields=None):
+    state = get_state(body, extra_fields=extra_fields)
     patch.setdefault('metadata', {}).setdefault('annotations', {})[LAST_SEEN_ANNOTATION] = json.dumps(state)

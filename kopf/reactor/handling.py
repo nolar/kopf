@@ -113,7 +113,8 @@ async def custom_object_handler(
     # Object patch accumulator. Populated by the methods. Applied in the end of the handler.
     # Detect the cause and handle it (or at least log this happened).
     if registry.has_cause_handlers(resource=resource):
-        old, new, diff = lastseen.get_state_diffs(body=body)
+        extra_fields = registry.get_extra_fields(resource=resource)
+        old, new, diff = lastseen.get_state_diffs(body=body, extra_fields=extra_fields)
         cause = causation.detect_cause(event=event, resource=resource,
                                        logger=logger, patch=patch,
                                        old=old, new=new, diff=diff)
@@ -217,7 +218,8 @@ async def handle_cause(
 
     # Regular causes also do some implicit post-handling when all handlers are done.
     if done or skip:
-        lastseen.refresh_state(body=body, patch=patch)
+        extra_fields = registry.get_extra_fields(resource=cause.resource)
+        lastseen.refresh_state(body=body, patch=patch, extra_fields=extra_fields)
         if done:
             status.purge_progress(body=body, patch=patch)
         if cause.event == causation.DELETE:
