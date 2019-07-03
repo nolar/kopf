@@ -4,7 +4,7 @@ import pytest
 
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
 from kopf.structs.lastseen import has_state, get_state
-from kopf.structs.lastseen import is_state_changed, get_state_diffs
+from kopf.structs.lastseen import get_state_diffs
 from kopf.structs.lastseen import retreive_state, refresh_state
 
 
@@ -116,26 +116,24 @@ def test_retreive_state_when_absent():
     assert state is None
 
 
-def test_state_is_changed():
+def test_state_changed_detected():
     data = {'spec': {'depth': {'field': 'x'}}}
     encoded = json.dumps(data)  # json formatting can vary across interpreters
     body = {'metadata': {'annotations': {LAST_SEEN_ANNOTATION: encoded}}}
-    result = is_state_changed(body=body)
-    assert isinstance(result, bool)
-    assert result == True
+    old, new, diff = get_state_diffs(body=body)
+    assert diff
 
 
-def test_state_is_not_changed_clean():
+def test_state_change_ignored_with_garbage_annotations():
     data = {'spec': {'depth': {'field': 'x'}}}
     encoded = json.dumps(data)  # json formatting can vary across interpreters
     body = {'metadata': {'annotations': {LAST_SEEN_ANNOTATION: encoded}},
             'spec': {'depth': {'field': 'x'}}}
-    result = is_state_changed(body=body)
-    assert isinstance(result, bool)
-    assert result == False
+    old, new, diff = get_state_diffs(body=body)
+    assert not diff
 
 
-def test_state_is_not_changed_with_system_noise():
+def test_state_changed_ignored_with_system_fields():
     data = {'spec': {'depth': {'field': 'x'}}}
     encoded = json.dumps(data)  # json formatting can vary across interpreters
     body = {'metadata': {'annotations': {LAST_SEEN_ANNOTATION: encoded},
@@ -148,9 +146,8 @@ def test_state_is_not_changed_with_system_noise():
                          },
             'status': {'kopf': {'progress': 'x', 'anything': 'y'}},
             'spec': {'depth': {'field': 'x'}}}
-    result = is_state_changed(body=body)
-    assert isinstance(result, bool)
-    assert result == False
+    old, new, diff = get_state_diffs(body=body)
+    assert not diff
 
 
 # This is to ensure it is callable with proper signature.

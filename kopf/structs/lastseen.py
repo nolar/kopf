@@ -67,13 +67,6 @@ def has_state(body):
     return LAST_SEEN_ANNOTATION in annotations
 
 
-def is_state_changed(body):
-    # TODO: make it more efficient, so that the dicts are not rebuilt locally every time.
-    old = retreive_state(body)
-    new = get_state(body)
-    return old != new
-
-
 def get_state_diffs(body):
     old = retreive_state(body)
     new = get_state(body)

@@ -83,6 +83,7 @@ def detect_cause(
     which performs the actual handler invocation, logging, patching,
     and other side-effects.
     """
+    diff = kwargs.get('diff')
     body = event['object']
     initial = event['type'] is None  # special value simulated by us in kopf.reactor.watching.
 
@@ -129,7 +130,7 @@ def detect_cause(
 
     # Cases with no state changes are usually ignored (NOOP). But for the "None" events,
     # as simulated for the initial listing, we call the resuming handlers (e.g. threads/tasks).
-    if not lastseen.is_state_changed(body) and initial:
+    if not diff and initial:
         return Cause(
             event=RESUME,
             body=body,
@@ -138,7 +139,7 @@ def detect_cause(
 
     # The previous step triggers one more patch operation without actual changes. Ignore it.
     # Either the last-seen state or the status field has changed.
-    if not lastseen.is_state_changed(body):
+    if not diff:
         return Cause(
             event=NOOP,
             body=body,
@@ -146,12 +147,8 @@ def detect_cause(
             **kwargs)
 
     # And what is left, is the update operation on one of the useful fields of the existing object.
-    old, new, diff = lastseen.get_state_diffs(body)
     return Cause(
         event=UPDATE,
         body=body,
         initial=initial,
-        diff=diff,
-        old=old,
-        new=new,
         **kwargs)

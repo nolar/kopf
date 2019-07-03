@@ -113,7 +113,10 @@ async def custom_object_handler(
     # Object patch accumulator. Populated by the methods. Applied in the end of the handler.
     # Detect the cause and handle it (or at least log this happened).
     if registry.has_cause_handlers(resource=resource):
-        cause = causation.detect_cause(event=event, resource=resource, logger=logger, patch=patch)
+        old, new, diff = lastseen.get_state_diffs(body=body)
+        cause = causation.detect_cause(event=event, resource=resource,
+                                       logger=logger, patch=patch,
+                                       old=old, new=new, diff=diff)
         delay = await handle_cause(lifecycle=lifecycle, registry=registry, cause=cause)
 
     # Provoke a dummy change to trigger the reactor after sleep.
