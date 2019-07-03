@@ -27,6 +27,10 @@ def get_state(body, extra_fields=None):
     """
     Extract only the relevant fields for the state comparisons.
 
+    The framework ignores all the system fields (mostly from metadata)
+    and the status senza completely. Except for some well-known and useful
+    metadata, such as labels and annotations (except for sure garbage).
+
     A special set of fields can be provided even if they are supposed
     to be removed. This is used, for example, for handlers which react
     to changes in the specific fields in the status stenza,
@@ -38,28 +42,24 @@ def get_state(body, extra_fields=None):
     body = copy.deepcopy(body)
 
     # Purge the whole stenzas with system info (extra-fields are restored below).
+    if 'metadata' in body:
+        del body['metadata']
     if 'status' in body:
         del body['status']
 
-    # Remove the system fields, keeping the potentially useful, user-oriented fields/data.
-    if LAST_SEEN_ANNOTATION in body.get('metadata', {}).get('annotations', {}):
-        del body['metadata']['annotations'][LAST_SEEN_ANNOTATION]
-    if 'kubectl.kubernetes.io/last-applied-configuration' in body.get('metadata', {}).get('annotations', {}):
-        del body['metadata']['annotations']['kubectl.kubernetes.io/last-applied-configuration']
-    if 'finalizers' in body.get('metadata', {}):
-        del body['metadata']['finalizers']
-    if 'deletionTimestamp' in body.get('metadata', {}):
-        del body['metadata']['deletionTimestamp']
-    if 'creationTimestamp' in body.get('metadata', {}):
-        del body['metadata']['creationTimestamp']
-    if 'selfLink' in body.get('metadata', {}):
-        del body['metadata']['selfLink']
-    if 'uid' in body.get('metadata', {}):
-        del body['metadata']['uid']
-    if 'resourceVersion' in body.get('metadata', {}):
-        del body['metadata']['resourceVersion']
-    if 'generation' in body.get('metadata', {}):
-        del body['metadata']['generation']
+    # We want some selected metadata to be tracked implicitly.
+    dicts.cherrypick(src=orig, dst=body, fields=[
+        'metadata.labels',
+        'metadata.annotations',  # but not all of them! deleted below.
+    ])
+
+    # But we do not want not all of the annotations, only potentially useful.
+    annotations = body.get('metadata', {}).get('annotations', {})
+    for annotation in list(annotations):
+        if annotation == LAST_SEEN_ANNOTATION:
+            del annotations[annotation]
+        if annotation == 'kubectl.kubernetes.io/last-applied-configuration':
+            del annotations[annotation]
 
     # Restore all explicitly whitelisted extra-fields from the original body.
     dicts.cherrypick(src=orig, dst=body, fields=extra_fields)

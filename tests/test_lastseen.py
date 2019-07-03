@@ -25,11 +25,15 @@ def test_has_state(expected, body):
 
 @pytest.mark.parametrize('field', [
     'uid',
+    'name',
+    'namespace',
     'selfLink',
     'generation',
+    'finalizers',
     'resourceVersion',
     'creationTimestamp',
     'deletionTimestamp',
+    'any-unexpected-field',
 ])
 def test_get_state_removes_system_fields_and_cleans_parents(field):
     body = {'metadata': {field: 'x'}}
@@ -39,16 +43,19 @@ def test_get_state_removes_system_fields_and_cleans_parents(field):
 
 @pytest.mark.parametrize('field', [
     'uid',
+    'name',
+    'namespace',
     'selfLink',
     'generation',
     'finalizers',
     'resourceVersion',
     'creationTimestamp',
     'deletionTimestamp',
+    'any-unexpected-field',
 ])
-def test_get_state_removes_system_fields_and_keeps_others(field):
+def test_get_state_removes_system_fields_but_keeps_extra_fields(field):
     body = {'metadata': {field: 'x', 'other': 'y'}}
-    state = get_state(body=body)
+    state = get_state(body=body, extra_fields=['metadata.other'])
     assert state == {'metadata': {'other': 'y'}}
 
 
@@ -56,7 +63,7 @@ def test_get_state_removes_system_fields_and_keeps_others(field):
     pytest.param(LAST_SEEN_ANNOTATION, id='kopf'),
     pytest.param('kubectl.kubernetes.io/last-applied-configuration', id='kubectl'),
 ])
-def test_get_state_removes_annotations_and_cleans_parents(annotation):
+def test_get_state_removes_garbage_annotations_and_cleans_parents(annotation):
     body = {'metadata': {'annotations': {annotation: 'x'}}}
     state = get_state(body=body)
     assert state == {}
@@ -66,7 +73,7 @@ def test_get_state_removes_annotations_and_cleans_parents(annotation):
     pytest.param(LAST_SEEN_ANNOTATION, id='kopf'),
     pytest.param('kubectl.kubernetes.io/last-applied-configuration', id='kubectl'),
 ])
-def test_get_state_removes_annotations_and_keeps_others(annotation):
+def test_get_state_removes_garbage_annotations_but_keeps_others(annotation):
     body = {'metadata': {'annotations': {annotation: 'x', 'other': 'y'}}}
     state = get_state(body=body)
     assert state == {'metadata': {'annotations': {'other': 'y'}}}
@@ -142,6 +149,7 @@ def test_state_changed_ignored_with_system_fields():
                          'resourceVersion': 'x',
                          'creationTimestamp': 'x',
                          'deletionTimestamp': 'x',
+                         'any-unexpected-field': 'x',
                          'uid': 'uid',
                          },
             'status': {'kopf': {'progress': 'x', 'anything': 'y'},
