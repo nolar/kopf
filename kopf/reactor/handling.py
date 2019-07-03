@@ -454,7 +454,7 @@ async def _call_handler(
     old = cause.old if handler.field is None else dicts.resolve(cause.old, handler.field, None)
     new = cause.new if handler.field is None else dicts.resolve(cause.new, handler.field, None)
     diff = cause.diff if handler.field is None else diffs.reduce(cause.diff, handler.field)
-    cause = cause._replace(old=old, new=new, diff=diff)
+    cause = causation.enrich_cause(cause=cause, old=old, new=new, diff=diff)
 
     # Store the context of the current resource-object-event-handler, to be used in `@kopf.on.this`,
     # and maybe other places, and consumed in the recursive `execute()` calls for the children.

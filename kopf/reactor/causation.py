@@ -152,3 +152,16 @@ def detect_cause(
         body=body,
         initial=initial,
         **kwargs)
+
+
+def enrich_cause(
+        cause: Cause,
+        **kwargs
+) -> Cause:
+    """
+    Produce a new derived cause with some fields modified ().
+
+    Usually, those are the old/new/diff fields, and used when a field-handler
+    is invoked (the old/new/diff refer to the field's values only).
+    """
+    return cause._replace(**kwargs)
