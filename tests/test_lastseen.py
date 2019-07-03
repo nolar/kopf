@@ -72,15 +72,15 @@ def test_get_state_removes_annotations_and_keeps_others(annotation):
     assert state == {'metadata': {'annotations': {'other': 'y'}}}
 
 
-def test_get_state_removes_kopf_status_and_cleans_parents():
-    body = {'status': {'kopf': {'progress': 'x', 'anything': 'y'}}}
+def test_get_state_removes_status_and_cleans_parents():
+    body = {'status': {'kopf': {'progress': 'x', 'anything': 'y'}, 'other': 'z'}}
     state = get_state(body=body)
     assert state == {}
 
 
-def test_get_state_removes_kopf_status_and_keeps_others():
+def test_get_state_removes_status_but_keeps_extra_fields():
     body = {'status': {'kopf': {'progress': 'x', 'anything': 'y'}, 'other': 'z'}}
-    state = get_state(body=body)
+    state = get_state(body=body, extra_fields=['status.other'])
     assert state == {'status': {'other': 'z'}}
 
 
@@ -144,7 +144,9 @@ def test_state_changed_ignored_with_system_fields():
                          'deletionTimestamp': 'x',
                          'uid': 'uid',
                          },
-            'status': {'kopf': {'progress': 'x', 'anything': 'y'}},
+            'status': {'kopf': {'progress': 'x', 'anything': 'y'},
+                       'other': 'x'
+                       },
             'spec': {'depth': {'field': 'x'}}}
     old, new, diff = get_state_diffs(body=body)
     assert not diff
@@ -158,7 +160,7 @@ def test_state_diff():
     body = {'metadata': {'annotations': {LAST_SEEN_ANNOTATION: encoded}},
             'status': {'x': 'y'},
             'spec': {'depth': {'field': 'y'}}}
-    old, new, diff = get_state_diffs(body=body)
+    old, new, diff = get_state_diffs(body=body, extra_fields=['status.x'])
     assert old == {'spec': {'depth': {'field': 'x'}}}
     assert new == {'spec': {'depth': {'field': 'y'}}, 'status': {'x': 'y'}}
     assert len(diff) == 2  # spec.depth.field & status.x, but the order is not known.

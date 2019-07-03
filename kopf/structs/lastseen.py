@@ -37,6 +37,10 @@ def get_state(body, extra_fields=None):
     orig = copy.deepcopy(body)
     body = copy.deepcopy(body)
 
+    # Purge the whole stenzas with system info (extra-fields are restored below).
+    if 'status' in body:
+        del body['status']
+
     # Remove the system fields, keeping the potentially useful, user-oriented fields/data.
     if LAST_SEEN_ANNOTATION in body.get('metadata', {}).get('annotations', {}):
         del body['metadata']['annotations'][LAST_SEEN_ANNOTATION]
@@ -56,8 +60,6 @@ def get_state(body, extra_fields=None):
         del body['metadata']['resourceVersion']
     if 'generation' in body.get('metadata', {}):
         del body['metadata']['generation']
-    if 'kopf' in body.get('status', {}):
-        del body['status']['kopf']
 
     # Restore all explicitly whitelisted extra-fields from the original body.
     dicts.cherrypick(src=orig, dst=body, fields=extra_fields)
