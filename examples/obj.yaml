@@ -5,6 +5,8 @@ metadata:
   name: kopf-example-1
   labels:
     somelabel: somevalue
+  annotations:
+    someannotation: somevalue
 spec:
   duration: 1m
   field: value
