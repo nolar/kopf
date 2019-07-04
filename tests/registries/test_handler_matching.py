@@ -33,7 +33,7 @@ def register_fn(registry, resource):
     pytest.param([], id='with-empty-diff'),
 ])
 def cause_no_diff(request, resource):
-    body = {'metadata': {'labels': {'somelabel': 'somevalue'}}}
+    body = {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}}
     return Mock(resource=resource, event='some-event', diff=request.param, body=body)
 
 
@@ -41,7 +41,7 @@ def cause_no_diff(request, resource):
     pytest.param([('op', ('some-field',), 'old', 'new')], id='with-field-diff'),
 ])
 def cause_with_diff(resource):
-    body = {'metadata': {'labels': {'somelabel': 'somevalue'}}}
+    body = {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}}
     diff = [('op', ('some-field',), 'old', 'new')]
     return Mock(resource=resource, event='some-event', diff=diff, body=body)
 
@@ -54,115 +54,6 @@ def cause_with_diff(resource):
 def cause_any_diff(resource, request):
     body = {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}}
     return Mock(resource=resource, event='some-event', diff=request.param, body=body)
-
-
-@pytest.fixture(params=[
-    pytest.param({'somelabel': 'somevalue'}, id='with-label'),
-    pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, id='with-extra-label'),
-])
-def cause_with_label_value(resource, request):
-    body = {'metadata': {'labels': request.param}}
-    return Mock(resource=resource, event='some-event', diff=None, body=body)
-
-
-@pytest.fixture(params=[
-    pytest.param({}, id='without-label'),
-    pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
-    pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
-])
-def cause_without_label_value(resource, request):
-    body = {'metadata': {'labels': request.param}}
-    return Mock(resource=resource, event='some-event', diff=None, body=body)
-
-
-@pytest.fixture(params=[
-    pytest.param({'somelabel': 'somevalue'}, id='with-label'),
-    pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
-])
-def cause_with_label_exists(resource, request):
-    body = {'metadata': {'labels': request.param}}
-    return Mock(resource=resource, event='some-event', diff=None, body=body)
-
-
-@pytest.fixture(params=[
-    pytest.param({}, id='without-label'),
-    pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
-])
-def cause_without_label_exists(resource, request):
-    body = {'metadata': {'labels': request.param}}
-    return Mock(resource=resource, event='some-event', diff=None, body=body)
-
-
-@pytest.fixture(params=[
-    pytest.param({}, id='without-label'),
-    pytest.param({'somelabel': 'somevalue'}, id='with-label'),
-    pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
-    pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
-    pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, id='with-extra-label'),
-])
-def cause_any_labels(resource, request):
-    body = {'metadata': {'labels': request.param}}
-    return Mock(resource=resource, event='some-event', diff=None, body=body)
-
-
-@pytest.fixture(params=[
-    pytest.param({'someannotation': 'somevalue'}, id='with-annotation'),
-    pytest.param({'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-extra-annotation'),
-])
-def cause_with_annotation_value(resource, request):
-    body = {'metadata': {'annotations': request.param}}
-    return Mock(resource=resource, event='some-event', diff=None, body=body)
-
-
-@pytest.fixture(params=[
-    pytest.param({}, id='without-annotation'),
-    pytest.param({'someannotation': 'othervalue'}, id='with-other-value'),
-    pytest.param({'otherannotation': 'othervalue'}, id='with-other-annotation'),
-])
-def cause_without_annotation_value(resource, request):
-    body = {'metadata': {'annotations': request.param}}
-    return Mock(resource=resource, event='some-event', diff=None, body=body)
-
-
-@pytest.fixture(params=[
-    pytest.param({'someannotation': 'somevalue'}, id='with-annotation'),
-    pytest.param({'someannotation': 'othervalue'}, id='with-other-value'),
-])
-def cause_with_annotation_exists(resource, request):
-    body = {'metadata': {'annotations': request.param}}
-    return Mock(resource=resource, event='some-event', diff=None, body=body)
-
-
-@pytest.fixture(params=[
-    pytest.param({}, id='without-annotation'),
-    pytest.param({'otherannotation': 'othervalue'}, id='with-other-annotation'),
-])
-def cause_without_annotation_exists(resource, request):
-    body = {'metadata': {'annotations': request.param}}
-    return Mock(resource=resource, event='some-event', diff=None, body=body)
-
-
-@pytest.fixture(params=[
-    pytest.param({}, id='without-annotation'),
-    pytest.param({'someannotation': 'somevalue'}, id='with-annotation'),
-    pytest.param({'someannotation': 'othervalue'}, id='with-other-value'),
-    pytest.param({'otherannotation': 'othervalue'}, id='with-other-annotation'),
-    pytest.param({'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-extra-annotation'),
-])
-def cause_any_annotations(resource, request):
-    body = {'metadata': {'annotations': request.param}}
-    return Mock(resource=resource, event='some-event', diff=None, body=body)
-
-
-@pytest.fixture(params=[
-    pytest.param({'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}, id='with-label-annotation'),
-    pytest.param({'labels': {'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, 'annotations': {'someannotation': 'somevalue'}}, id='with-extra-label-annotation'),
-    pytest.param({'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue', 'otherannotation': 'othervalue'}}, id='with-label-extra-annotation'),
-    pytest.param({'labels': {'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, 'annotations': {'someannotation': 'somevalue', 'otherannotation': 'othervalue'}}, id='with-extra-label-extra-annotation'),
-])
-def cause_labels_and_annotations(resource, request):
-    body = {'metadata': request.param}
-    return Mock(resource=resource, event='some-event', diff=None, body=body)
 
 
 #
@@ -187,75 +78,148 @@ def test_catchall_handlers_with_field_ignored(cause_no_diff, registry, register_
     assert not handlers
 
 
-def test_catchall_handlers_with_labels_satisfied(cause_with_label_value, registry, register_fn):
+@pytest.mark.parametrize('labels', [
+    pytest.param({'somelabel': 'somevalue'}, id='with-label'),
+    pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, id='with-extra-label'),
+])
+def test_catchall_handlers_with_labels_satisfied(registry, register_fn, resource, labels):
+    cause = Mock(resource=resource, event='some-event', diff=None, body={'metadata': {'labels': labels}})
     register_fn(some_fn, event=None, field=None, labels={'somelabel': 'somevalue'})
-    handlers = registry.get_cause_handlers(cause_with_label_value)
+    handlers = registry.get_cause_handlers(cause)
     assert handlers
 
 
-def test_catchall_handlers_with_labels_not_satisfied(cause_without_label_value, registry, register_fn):
+@pytest.mark.parametrize('labels', [
+    pytest.param({}, id='without-label'),
+    pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
+    pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
+])
+def test_catchall_handlers_with_labels_not_satisfied(registry, register_fn, resource, labels):
+    cause = Mock(resource=resource, event='some-event', diff=None, body={'metadata': {'labels': labels}})
     register_fn(some_fn, event=None, field=None, labels={'somelabel': 'somevalue'})
-    handlers = registry.get_cause_handlers(cause_without_label_value)
+    handlers = registry.get_cause_handlers(cause)
     assert not handlers
 
 
-def test_catchall_handlers_with_labels_exist(cause_with_label_exists, registry, register_fn):
+@pytest.mark.parametrize('labels', [
+    pytest.param({'somelabel': 'somevalue'}, id='with-label'),
+    pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
+])
+def test_catchall_handlers_with_labels_exist(registry, register_fn, resource, labels):
+    cause = Mock(resource=resource, event='some-event', diff=None, body={'metadata': {'labels': labels}})
     register_fn(some_fn, event=None, field=None, labels={'somelabel': None})
-    handlers = registry.get_cause_handlers(cause_with_label_exists)
+    handlers = registry.get_cause_handlers(cause)
     assert handlers
 
 
-def test_catchall_handlers_with_labels_not_exist(cause_without_label_exists, registry, register_fn):
+@pytest.mark.parametrize('labels', [
+    pytest.param({}, id='without-label'),
+    pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
+])
+def test_catchall_handlers_with_labels_not_exist(registry, register_fn, resource, labels):
+    cause = Mock(resource=resource, event='some-event', diff=None, body={'metadata': {'labels': labels}})
     register_fn(some_fn, event=None, field=None, labels={'somelabel': None})
-    handlers = registry.get_cause_handlers(cause_without_label_exists)
+    handlers = registry.get_cause_handlers(cause)
     assert not handlers
 
 
-def test_catchall_handlers_without_labels(cause_any_labels, registry, register_fn):
+@pytest.mark.parametrize('labels', [
+    pytest.param({}, id='without-label'),
+    pytest.param({'somelabel': 'somevalue'}, id='with-label'),
+    pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
+    pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
+    pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, id='with-extra-label'),
+])
+def test_catchall_handlers_without_labels(registry, register_fn, resource, labels):
+    cause = Mock(resource=resource, event='some-event', diff=None, body={'metadata': {'labels': labels}})
     register_fn(some_fn, event=None, field=None, labels=None)
-    handlers = registry.get_cause_handlers(cause_any_labels)
+    handlers = registry.get_cause_handlers(cause)
     assert handlers
 
 
-def test_catchall_handlers_with_annotations_satisfied(cause_with_annotation_value, registry, register_fn):
+@pytest.mark.parametrize('annotations', [
+    pytest.param({'someannotation': 'somevalue'}, id='with-annotation'),
+    pytest.param({'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-extra-annotation'),
+])
+def test_catchall_handlers_with_annotations_satisfied(registry, register_fn, resource, annotations):
+    cause = Mock(resource=resource, event='some-event', diff=None, body={'metadata': {'annotations': annotations}})
     register_fn(some_fn, event=None, field=None, annotations={'someannotation': 'somevalue'})
-    handlers = registry.get_cause_handlers(cause_with_annotation_value)
+    handlers = registry.get_cause_handlers(cause)
     assert handlers
 
 
-def test_catchall_handlers_with_annotations_not_satisfied(cause_without_annotation_value, registry, register_fn):
+@pytest.mark.parametrize('annotations', [
+    pytest.param({}, id='without-annotation'),
+    pytest.param({'someannotation': 'othervalue'}, id='with-other-value'),
+    pytest.param({'otherannotation': 'othervalue'}, id='with-other-annotation'),
+])
+def test_catchall_handlers_with_annotations_not_satisfied(registry, register_fn, resource, annotations):
+    cause = Mock(resource=resource, event='some-event', diff=None, body={'metadata': {'annotations': annotations}})
     register_fn(some_fn, event=None, field=None, annotations={'someannotation': 'somevalue'})
-    handlers = registry.get_cause_handlers(cause_without_annotation_value)
+    handlers = registry.get_cause_handlers(cause)
     assert not handlers
 
 
-def test_catchall_handlers_with_annotations_exist(cause_with_annotation_exists, registry, register_fn):
+@pytest.mark.parametrize('annotations', [
+    pytest.param({'someannotation': 'somevalue'}, id='with-annotation'),
+    pytest.param({'someannotation': 'othervalue'}, id='with-other-value'),
+])
+def test_catchall_handlers_with_annotations_exist(registry, register_fn, resource, annotations):
+    cause = Mock(resource=resource, event='some-event', diff=None, body={'metadata': {'annotations': annotations}})
     register_fn(some_fn, event=None, field=None, annotations={'someannotation': None})
-    handlers = registry.get_cause_handlers(cause_with_annotation_exists)
+    handlers = registry.get_cause_handlers(cause)
     assert handlers
 
 
-def test_catchall_handlers_with_annotations_not_exist(cause_without_annotation_exists, registry, register_fn):
+@pytest.mark.parametrize('annotations', [
+    pytest.param({}, id='without-annotation'),
+    pytest.param({'otherannotation': 'othervalue'}, id='with-other-annotation'),
+])
+def test_catchall_handlers_with_annotations_not_exist(registry, register_fn, resource, annotations):
+    cause = Mock(resource=resource, event='some-event', diff=None, body={'metadata': {'annotations': annotations}})
     register_fn(some_fn, event=None, field=None, annotations={'someannotation': None})
-    handlers = registry.get_cause_handlers(cause_without_annotation_exists)
+    handlers = registry.get_cause_handlers(cause)
     assert not handlers
 
 
-def test_catchall_handlers_without_annotations(cause_any_annotations, registry, register_fn):
+@pytest.mark.parametrize('annotations', [
+    pytest.param({}, id='without-annotation'),
+    pytest.param({'someannotation': 'somevalue'}, id='with-annotation'),
+    pytest.param({'someannotation': 'othervalue'}, id='with-other-value'),
+    pytest.param({'otherannotation': 'othervalue'}, id='with-other-annotation'),
+    pytest.param({'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-extra-annotation'),
+])
+def test_catchall_handlers_without_annotations(registry, register_fn, resource, annotations):
+    cause = Mock(resource=resource, event='some-event', diff=None, body={'metadata': {'annotations': annotations}})
     register_fn(some_fn, event=None, field=None, annotations=None)
-    handlers = registry.get_cause_handlers(cause_any_annotations)
+    handlers = registry.get_cause_handlers(cause)
     assert handlers
 
 
-def test_catchall_handlers_with_labels_and_annotations_satisfied(cause_labels_and_annotations, registry, register_fn):
+@pytest.mark.parametrize('labels, annotations', [
+    pytest.param({'somelabel': 'somevalue'}, {'someannotation': 'somevalue'}, id='with-label-annotation'),
+    pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, {'someannotation': 'somevalue'}, id='with-extra-label-annotation'),
+    pytest.param({'somelabel': 'somevalue'}, {'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-label-extra-annotation'),
+    pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, {'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-extra-label-extra-annotation'),
+])
+def test_catchall_handlers_with_labels_and_annotations_satisfied(registry, register_fn, resource, labels, annotations):
+    cause = Mock(resource=resource, event='some-event', diff=None, body={'metadata': {'labels': labels, 'annotations': annotations}})
     register_fn(some_fn, event=None, field=None, labels={'somelabel': 'somevalue'}, annotations={'someannotation': 'somevalue'})
-    handlers = registry.get_cause_handlers(cause_labels_and_annotations)
+    handlers = registry.get_cause_handlers(cause)
     assert handlers
 
 
-def test_catchall_handlers_with_labels_and_annotations_not_satisfied(cause_any_labels, registry, register_fn):
+@pytest.mark.parametrize('labels', [
+    pytest.param({}, id='without-label'),
+    pytest.param({'somelabel': 'somevalue'}, id='with-label'),
+    pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
+    pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
+    pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, id='with-extra-label'),
+])
+def test_catchall_handlers_with_labels_and_annotations_not_satisfied(registry, register_fn, resource, labels):
+    cause = Mock(resource=resource, event='some-event', diff=None, body={'metadata': {'labels': labels}})
     register_fn(some_fn, event=None, field=None, labels={'somelabel': 'somevalue'}, annotations={'someannotation': 'somevalue'})
-    handlers = registry.get_cause_handlers(cause_any_labels)
+    handlers = registry.get_cause_handlers(cause)
     assert not handlers
 
 
