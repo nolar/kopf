@@ -40,12 +40,8 @@ from typing import Iterable, Mapping, Optional, Union
 
 import iso8601
 
-<<<<<<< HEAD:kopf/engines/peering.py
 from kopf.clients import fetching
 from kopf.clients import patching
-=======
-from kopf.k8s import fetching, patching
->>>>>>> All operators with the same priority issue a warning and freeze, so that the cluster becomes not served anymore:kopf/reactor/peering.py
 from kopf.reactor import registries
 logger = logging.getLogger(__name__)
 
