@@ -29,7 +29,6 @@ from kopf.structs import lastseen
 
 # Constants for event types, to prevent a direct usage of strings, and typos.
 # They are not exposed by the framework, but are used internally. See also: `kopf.on`.
-NEW = 'new'
 CREATE = 'create'
 UPDATE = 'update'
 DELETE = 'delete'
@@ -37,11 +36,13 @@ RESUME = 'resume'
 NOOP = 'noop'
 FREE = 'free'
 GONE = 'gone'
+ACQUIRE = 'acquire'
+RELEASE = 'release'
 
 # These sets are checked in few places, so we keep them centralised:
 # the user-facing causes (for handlers), and internally facing (so as handled).
 HANDLER_CAUSES = (CREATE, UPDATE, DELETE, RESUME)
-REACTOR_CAUSES = (NEW, NOOP, FREE, GONE)
+REACTOR_CAUSES = (NOOP, FREE, GONE, ACQUIRE, RELEASE)
 ALL_CAUSES = HANDLER_CAUSES + REACTOR_CAUSES
 
 # The human-readable names of these causes. Will be capitalised when needed.
@@ -73,6 +74,7 @@ class Cause(NamedTuple):
 
 def detect_cause(
         event: Mapping,
+        requires_finalizer: bool = True,
         **kwargs
 ) -> Cause:
     """
@@ -83,6 +85,7 @@ def detect_cause(
     which performs the actual handler invocation, logging, patching,
     and other side-effects.
     """
+    diff = kwargs.get('diff')
     body = event['object']
     initial = event['type'] is None  # special value simulated by us in kopf.reactor.watching.
 
@@ -111,9 +114,21 @@ def detect_cause(
 
     # For a fresh new object, first block it from accidental deletions without our permission.
     # The actual handler will be called on the next call.
-    if not finalizers.has_finalizers(body):
+    # Only return this cause if the resource requires finalizers to be added.
+    if requires_finalizer and not finalizers.has_finalizers(body):
         return Cause(
-            event=NEW,
+            event=ACQUIRE,
+            body=body,
+            initial=initial,
+            **kwargs)
+
+    # Check whether or not the resource has finalizers, but doesn't require them. If this is
+    # the case, then a resource may not be able to be deleted completely as finalizers may
+    # not be removed by the operator under normal operation. We remove the finalizers first,
+    # and any handler that should be called will be done on the next call.
+    if not requires_finalizer and finalizers.has_finalizers(body):
+        return Cause(
+            event=RELEASE,
             body=body,
             initial=initial,
             **kwargs)
@@ -129,7 +144,7 @@ def detect_cause(
 
     # Cases with no state changes are usually ignored (NOOP). But for the "None" events,
     # as simulated for the initial listing, we call the resuming handlers (e.g. threads/tasks).
-    if not lastseen.is_state_changed(body) and initial:
+    if not diff and initial:
         return Cause(
             event=RESUME,
             body=body,
@@ -138,7 +153,7 @@ def detect_cause(
 
     # The previous step triggers one more patch operation without actual changes. Ignore it.
     # Either the last-seen state or the status field has changed.
-    if not lastseen.is_state_changed(body):
+    if not diff:
         return Cause(
             event=NOOP,
             body=body,
@@ -146,12 +161,21 @@ def detect_cause(
             **kwargs)
 
     # And what is left, is the update operation on one of the useful fields of the existing object.
-    old, new, diff = lastseen.get_state_diffs(body)
     return Cause(
         event=UPDATE,
         body=body,
         initial=initial,
-        diff=diff,
-        old=old,
-        new=new,
         **kwargs)
+
+
+def enrich_cause(
+        cause: Cause,
+        **kwargs
+) -> Cause:
+    """
+    Produce a new derived cause with some fields modified ().
+
+    Usually, those are the old/new/diff fields, and used when a field-handler
+    is invoked (the old/new/diff refer to the field's values only).
+    """
+    return cause._replace(**kwargs)

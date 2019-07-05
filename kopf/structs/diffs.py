@@ -1,7 +1,7 @@
 """
 All the functions to calculate the diffs of the dicts.
 """
-import collections
+import collections.abc
 
 from typing import Any, Tuple, NewType, Generator, Sequence
 
@@ -44,7 +44,7 @@ def diff_iter(a: Any, b: Any, path: DiffPath = ()) -> Generator[DiffItem, None, 
         yield ('change', path, a, b)
     elif a == b:
         pass  # to exclude the case as soon as possible
-    elif isinstance(a, collections.Mapping):
+    elif isinstance(a, collections.abc.Mapping):
         a_keys = frozenset(a.keys())
         b_keys = frozenset(b.keys())
         for key in b_keys - a_keys:

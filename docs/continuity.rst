@@ -51,8 +51,8 @@ This corresponds to the Kubernetes's concept of eventual consistency
 and level triggering (as opposed to edge triggering).
 
 .. warning::
-    If the operator is down, the objects cannot be deleted,
-    as they contain the Kopf's finalizers in ``metadata.finalizers``,
+    If the operator is down, the objects may not be deleted,
+    as they may contain the Kopf's finalizers in ``metadata.finalizers``,
     and Kubernetes blocks the deletion until all finalizers are removed.
     If the operator is not running, the finalizers will never be removed.
-    See: :ref:`finalizers-blocking-deletion` for a work-around.
+    See: :ref:`finalizers-blocking-deletion` for a work-around. 

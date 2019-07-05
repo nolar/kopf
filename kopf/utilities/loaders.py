@@ -17,6 +17,7 @@ Multiple files/modules can be specified. They will be loaded in the order.
 import importlib
 import importlib.util
 import os.path
+import sys
 
 
 def preload(paths, modules):
@@ -25,6 +26,7 @@ def preload(paths, modules):
     """
 
     for path in paths:
+        sys.path.insert(0, os.path.abspath(os.path.dirname(path)))
         name, _ = os.path.splitext(os.path.basename(path))
         spec = importlib.util.spec_from_file_location(name, path)
         module = importlib.util.module_from_spec(spec)

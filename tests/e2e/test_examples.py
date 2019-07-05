@@ -17,6 +17,13 @@ def test_all_examples_are_runnable(mocker, with_crd, with_peering, exampledir):
     e2e_delete_time = eval(m.group(1)) if m else None
     m = re.search(r'^E2E_TRACEBACKS\s*=\s*(\w+)$', example_py.read_text(), re.M)
     e2e_tracebacks = eval(m.group(1)) if m else None
+    # check whether there are mandatory deletion handlers or not
+    m = re.search(r'@kopf\.on\.delete\((\s|.*)?(optional=(\w+))?\)', example_py.read_text(), re.M)
+    requires_finalizer = False
+    if m:
+        requires_finalizer = True
+        if m.group(2):
+            requires_finalizer = not eval(m.group(3))
 
     # To prevent lengthy sleeps on the simulated retries.
     mocker.patch('kopf.reactor.handling.DEFAULT_RETRY_DELAY', 1)
@@ -37,9 +44,11 @@ def test_all_examples_are_runnable(mocker, with_crd, with_peering, exampledir):
 
     # There are usually more than these messages, but we only check for the certain ones.
     # This just shows us that the operator is doing something, it is alive.
-    assert '[default/kopf-example-1] First appearance:' in runner.stdout
+    if requires_finalizer:
+        assert '[default/kopf-example-1] Adding the finalizer' in runner.stdout
     assert '[default/kopf-example-1] Creation event:' in runner.stdout
-    assert '[default/kopf-example-1] Deletion event:' in runner.stdout
+    if requires_finalizer:
+        assert '[default/kopf-example-1] Deletion event:' in runner.stdout
     assert '[default/kopf-example-1] Deleted, really deleted' in runner.stdout
     if not e2e_tracebacks:
         assert 'Traceback (most recent call last):' not in runner.stdout

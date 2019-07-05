@@ -2,7 +2,7 @@
 Some basic dicts and field-in-a-dict manipulation helpers.
 """
 import collections.abc
-from typing import Any, Union, Mapping, Tuple, List, Text, Iterable, Optional
+from typing import Any, Union, MutableMapping, Mapping, Tuple, List, Text, Iterable, Optional
 
 FieldPath = Tuple[str, ...]
 FieldSpec = Union[None, Text, FieldPath, List[str]]
@@ -15,6 +15,13 @@ def parse_field(
 ) -> FieldPath:
     """
     Convert any field into a tuple of nested sub-fields.
+
+    Supported notations:
+
+    * ``None`` (for root of a dict).
+    * ``"field.subfield"``
+    * ``("field", "subfield")``
+    * ``["field", "subfield"]``
     """
     if field is None:
         return tuple()
@@ -45,6 +52,42 @@ def resolve(
             raise
         else:
             return default
+
+
+def ensure(
+        d: MutableMapping,
+        field: FieldSpec,
+        value: Any,
+):
+    """
+    Force-set a nested sub-field in a dict.
+    """
+    result = d
+    path = parse_field(field)
+    if not path:
+        raise ValueError("Setting a root of a dict is impossible. Provide the specific fields.")
+    for key in path[:-1]:
+        try:
+            result = result[key]
+        except KeyError:
+            result = result.setdefault(key, {})
+    result[path[-1]] = value
+
+
+def cherrypick(
+        src: Mapping,
+        dst: MutableMapping,
+        fields: Optional[Iterable[FieldSpec]],
+):
+    """
+    Copy all specified fields between dicts (from src to dst).
+    """
+    fields = fields if fields is not None else []
+    for field in fields:
+        try:
+            ensure(dst, field, resolve(src, field))
+        except KeyError:
+            pass  # absent in the source, nothing to merge
 
 
 def walk(

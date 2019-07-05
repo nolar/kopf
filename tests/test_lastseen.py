@@ -4,7 +4,7 @@ import pytest
 
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
 from kopf.structs.lastseen import has_state, get_state
-from kopf.structs.lastseen import is_state_changed, get_state_diffs
+from kopf.structs.lastseen import get_state_diffs
 from kopf.structs.lastseen import retreive_state, refresh_state
 
 
@@ -23,13 +23,23 @@ def test_has_state(expected, body):
     assert result == expected
 
 
+def test_get_state_removes_resource_references():
+    body = {'apiVersion': 'group/version', 'kind': 'Kind'}
+    state = get_state(body=body)
+    assert state == {}
+
+
 @pytest.mark.parametrize('field', [
     'uid',
+    'name',
+    'namespace',
     'selfLink',
     'generation',
+    'finalizers',
     'resourceVersion',
     'creationTimestamp',
     'deletionTimestamp',
+    'any-unexpected-field',
 ])
 def test_get_state_removes_system_fields_and_cleans_parents(field):
     body = {'metadata': {field: 'x'}}
@@ -39,16 +49,19 @@ def test_get_state_removes_system_fields_and_cleans_parents(field):
 
 @pytest.mark.parametrize('field', [
     'uid',
+    'name',
+    'namespace',
     'selfLink',
     'generation',
     'finalizers',
     'resourceVersion',
     'creationTimestamp',
     'deletionTimestamp',
+    'any-unexpected-field',
 ])
-def test_get_state_removes_system_fields_and_keeps_others(field):
+def test_get_state_removes_system_fields_but_keeps_extra_fields(field):
     body = {'metadata': {field: 'x', 'other': 'y'}}
-    state = get_state(body=body)
+    state = get_state(body=body, extra_fields=['metadata.other'])
     assert state == {'metadata': {'other': 'y'}}
 
 
@@ -56,7 +69,7 @@ def test_get_state_removes_system_fields_and_keeps_others(field):
     pytest.param(LAST_SEEN_ANNOTATION, id='kopf'),
     pytest.param('kubectl.kubernetes.io/last-applied-configuration', id='kubectl'),
 ])
-def test_get_state_removes_annotations_and_cleans_parents(annotation):
+def test_get_state_removes_garbage_annotations_and_cleans_parents(annotation):
     body = {'metadata': {'annotations': {annotation: 'x'}}}
     state = get_state(body=body)
     assert state == {}
@@ -66,21 +79,21 @@ def test_get_state_removes_annotations_and_cleans_parents(annotation):
     pytest.param(LAST_SEEN_ANNOTATION, id='kopf'),
     pytest.param('kubectl.kubernetes.io/last-applied-configuration', id='kubectl'),
 ])
-def test_get_state_removes_annotations_and_keeps_others(annotation):
+def test_get_state_removes_garbage_annotations_but_keeps_others(annotation):
     body = {'metadata': {'annotations': {annotation: 'x', 'other': 'y'}}}
     state = get_state(body=body)
     assert state == {'metadata': {'annotations': {'other': 'y'}}}
 
 
-def test_get_state_removes_kopf_status_and_cleans_parents():
-    body = {'status': {'kopf': {'progress': 'x', 'anything': 'y'}}}
+def test_get_state_removes_status_and_cleans_parents():
+    body = {'status': {'kopf': {'progress': 'x', 'anything': 'y'}, 'other': 'z'}}
     state = get_state(body=body)
     assert state == {}
 
 
-def test_get_state_removes_kopf_status_and_keeps_others():
+def test_get_state_removes_status_but_keeps_extra_fields():
     body = {'status': {'kopf': {'progress': 'x', 'anything': 'y'}, 'other': 'z'}}
-    state = get_state(body=body)
+    state = get_state(body=body, extra_fields=['status.other'])
     assert state == {'status': {'other': 'z'}}
 
 
@@ -116,26 +129,24 @@ def test_retreive_state_when_absent():
     assert state is None
 
 
-def test_state_is_changed():
+def test_state_changed_detected():
     data = {'spec': {'depth': {'field': 'x'}}}
     encoded = json.dumps(data)  # json formatting can vary across interpreters
     body = {'metadata': {'annotations': {LAST_SEEN_ANNOTATION: encoded}}}
-    result = is_state_changed(body=body)
-    assert isinstance(result, bool)
-    assert result == True
+    old, new, diff = get_state_diffs(body=body)
+    assert diff
 
 
-def test_state_is_not_changed_clean():
+def test_state_change_ignored_with_garbage_annotations():
     data = {'spec': {'depth': {'field': 'x'}}}
     encoded = json.dumps(data)  # json formatting can vary across interpreters
     body = {'metadata': {'annotations': {LAST_SEEN_ANNOTATION: encoded}},
             'spec': {'depth': {'field': 'x'}}}
-    result = is_state_changed(body=body)
-    assert isinstance(result, bool)
-    assert result == False
+    old, new, diff = get_state_diffs(body=body)
+    assert not diff
 
 
-def test_state_is_not_changed_with_system_noise():
+def test_state_changed_ignored_with_system_fields():
     data = {'spec': {'depth': {'field': 'x'}}}
     encoded = json.dumps(data)  # json formatting can vary across interpreters
     body = {'metadata': {'annotations': {LAST_SEEN_ANNOTATION: encoded},
@@ -144,16 +155,18 @@ def test_state_is_not_changed_with_system_noise():
                          'resourceVersion': 'x',
                          'creationTimestamp': 'x',
                          'deletionTimestamp': 'x',
+                         'any-unexpected-field': 'x',
                          'uid': 'uid',
                          },
-            'status': {'kopf': {'progress': 'x', 'anything': 'y'}},
+            'status': {'kopf': {'progress': 'x', 'anything': 'y'},
+                       'other': 'x'
+                       },
             'spec': {'depth': {'field': 'x'}}}
-    result = is_state_changed(body=body)
-    assert isinstance(result, bool)
-    assert result == False
+    old, new, diff = get_state_diffs(body=body)
+    assert not diff
 
 
-# This is to ensure it is callable with proper signsture.
+# This is to ensure it is callable with proper signature.
 # For actual tests of diffing, see `/tests/diffs/`.
 def test_state_diff():
     data = {'spec': {'depth': {'field': 'x'}}}
@@ -161,7 +174,7 @@ def test_state_diff():
     body = {'metadata': {'annotations': {LAST_SEEN_ANNOTATION: encoded}},
             'status': {'x': 'y'},
             'spec': {'depth': {'field': 'y'}}}
-    old, new, diff = get_state_diffs(body=body)
+    old, new, diff = get_state_diffs(body=body, extra_fields=['status.x'])
     assert old == {'spec': {'depth': {'field': 'x'}}}
     assert new == {'spec': {'depth': {'field': 'y'}}, 'status': {'x': 'y'}}
     assert len(diff) == 2  # spec.depth.field & status.x, but the order is not known.

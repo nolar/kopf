@@ -40,7 +40,7 @@ Let's extend the creation handler:
     import yaml
 
     @kopf.on.create('zalando.org', 'v1', 'ephemeralvolumeclaims')
-    def create_fn(meta, spec, namespace, logger, **kwargs):
+    def create_fn(meta, body, spec, namespace, logger, **kwargs):
 
         name = meta.get('name')
         size = spec.get('size')
@@ -50,7 +50,7 @@ Let's extend the creation handler:
         path = os.path.join(os.path.dirname(__file__), 'pvc-tpl.yaml')
         tmpl = open(path, 'rt').read()
         text = tmpl.format(name=name, size=size)
-        data = yaml.load(text)
+        data = yaml.safe_load(text)
 
         kopf.adopt(data, owner=body)
 
