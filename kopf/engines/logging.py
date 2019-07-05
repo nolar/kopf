@@ -79,7 +79,7 @@ class ObjectLogger(logging.LoggerAdapter):
 
     The internal structure is made the same as an object reference in K8s API,
     but can change over time to anything needed for our internal purposes.
-    However, the as little information should be carried as possible,
+    However, as little information should be carried as possible,
     and the information should be protected against the object modification
     (e.g. in case of background posting via the queue; see `K8sPoster`).
     """
