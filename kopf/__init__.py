@@ -22,9 +22,6 @@ from kopf.config import (
     EventsConfig,
     WorkersConfig,
 )
-from kopf.engines.logging import (
-    ObjectLogger,
-)
 from kopf.engines.posting import (
     event,
     info,
