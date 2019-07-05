@@ -1,34 +1,11 @@
 import asyncio
-import io
 import logging
 
 import pytest
 
 import kopf
-from kopf.engines.logging import ObjectPrefixingFormatter
 from kopf.reactor.causation import ALL_CAUSES, HANDLER_CAUSES
 from kopf.reactor.handling import custom_object_handler
-
-
-@pytest.fixture()
-def logstream(caplog):
-    """ Prefixing is done at the final output. We have to intercept it. """
-
-    kopf.configure(verbose=True)
-
-    stream = io.StringIO()
-    handler = logging.StreamHandler(stream)
-    formatter = ObjectPrefixingFormatter('prefix %(message)s')
-    handler.setFormatter(formatter)
-
-    logger = logging.getLogger()
-    logger.addHandler(handler)
-    try:
-        with caplog.at_level(logging.DEBUG):
-            yield stream
-    finally:
-        logger.removeHandler(handler)
-        logger.handlers[:] = []  # undo `kopf.configure()`
 
 
 @pytest.mark.parametrize('cause_type', ALL_CAUSES)

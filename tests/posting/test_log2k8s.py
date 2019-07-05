@@ -1,40 +1,13 @@
 import asyncio
-import io
-import logging
 
 import pytest
 
-import kopf
 from kopf.engines.logging import ObjectLogger
-from kopf.engines.logging import ObjectPrefixingFormatter
 
 OBJ1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
         'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1'}}
 REF1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
         'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1'}
-
-
-@pytest.fixture()
-def logstream(caplog):
-    """ Prefixing is done at the final output. We have to intercept it. """
-
-    logger = logging.getLogger()
-    handlers = list(logger.handlers)
-
-    kopf.configure(verbose=True)
-
-    stream = io.StringIO()
-    handler = logging.StreamHandler(stream)
-    formatter = ObjectPrefixingFormatter('prefix %(message)s')
-    handler.setFormatter(formatter)
-
-    logger.addHandler(handler)
-    try:
-        with caplog.at_level(logging.DEBUG):
-            yield stream
-    finally:
-        logger.removeHandler(handler)
-        logger.handlers[:] = handlers  # undo `kopf.configure()`
 
 
 @pytest.mark.parametrize('logfn, event_type', [
