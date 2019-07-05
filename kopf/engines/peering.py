@@ -257,9 +257,12 @@ async def peers_keepalive(
             await asyncio.sleep(max(1, int(ourselves.lifetime.total_seconds() - 10)))
     finally:
         try:
-            await ourselves.disappear()
-        except:
+            await asyncio.shield(ourselves.disappear())
+        except asyncio.CancelledError:
+            # It is the cancellation of `keepalive()`, not of the shielded `disappear()`.
             pass
+        except Exception:
+            logger.exception(f"Couldn't remove self from the peering. Ignoring.")
 
 
 def detect_own_id() -> str:
