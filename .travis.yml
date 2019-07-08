@@ -37,7 +37,7 @@ script:
   - pytest -v
   - coveralls
   - codecov --flags unit
-  - E2E=true pytest -v -k e2e  # NB: after the coverage uploads!
+  - pytest -v --only-e2e  # NB: after the coverage uploads!
 
 deploy:
   provider: pypi
