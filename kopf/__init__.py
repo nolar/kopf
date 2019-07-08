@@ -20,7 +20,7 @@ from kopf.config import (
     LOGLEVEL_ERROR,
     LOGLEVEL_CRITICAL,
     EventsConfig,
-    WorkersConfig
+    WorkersConfig,
 )
 from kopf.engines.posting import (
     event,

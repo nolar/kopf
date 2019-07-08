@@ -38,5 +38,5 @@ async def test_nothing_is_called_when_freeze_is_set(mocker, resource, caplog, as
     assert not asyncio_sleep.called
 
     assert_logs([
-        r"\[ns1/name1\] Ignoring the events due to freeze.",
+        r"Ignoring the events due to freeze.",
     ])

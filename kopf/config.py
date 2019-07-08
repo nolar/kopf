@@ -1,4 +1,3 @@
-
 import asyncio
 import concurrent.futures
 import logging
@@ -6,6 +5,8 @@ from typing import Optional
 
 import kubernetes
 import kubernetes.client.rest
+
+from kopf.engines import logging as logging_engine
 
 format = '[%(asctime)s] %(name)-20.20s [%(levelname)-8.8s] %(message)s'
 
@@ -25,7 +26,7 @@ def configure(debug=None, verbose=None, quiet=None):
 
     logger = logging.getLogger()
     handler = logging.StreamHandler()
-    formatter = logging.Formatter(format)
+    formatter = logging_engine.ObjectPrefixingFormatter(format)
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     logger.setLevel(log_level)
@@ -86,7 +87,6 @@ class WorkersConfig:
     @staticmethod
     def get_syn_executor() -> concurrent.futures.ThreadPoolExecutor:
         if not WorkersConfig.threadpool_executor:
-            logging.debug('Setting up syn executor')
             WorkersConfig.threadpool_executor = concurrent.futures.ThreadPoolExecutor(
                 max_workers=WorkersConfig.synchronous_tasks_threadpool_limit
             )

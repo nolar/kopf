@@ -17,11 +17,11 @@ and therefore do not trigger the user-defined handlers.
 import asyncio
 import collections.abc
 import datetime
-import logging
 from contextvars import ContextVar
-from typing import Optional, Callable, Iterable, Union, Collection
+from typing import Optional, Callable, Iterable, Collection
 
 from kopf.clients import patching
+from kopf.engines import logging as logging_engine
 from kopf.engines import posting
 from kopf.reactor import causation
 from kopf.reactor import invocation
@@ -37,12 +37,6 @@ WAITING_KEEPALIVE_INTERVAL = 10 * 60
 
 DEFAULT_RETRY_DELAY = 1 * 60
 """ The default delay duration for the regular exception in retry-mode. """
-
-
-class ObjectLogger(logging.LoggerAdapter):
-    """ An utility to prefix the per-object log messages. """
-    def process(self, msg, kwargs):
-        return f"[{self.extra['namespace']}/{self.extra['name']}] {msg}", kwargs
 
 
 class HandlerFatalError(Exception):
@@ -95,10 +89,7 @@ async def custom_object_handler(
     patch = {}
 
     # Each object has its own prefixed logger, to distinguish parallel handling.
-    logger = ObjectLogger(logging.getLogger(__name__), extra=dict(
-        namespace=body.get('metadata', {}).get('namespace', 'default'),
-        name=body.get('metadata', {}).get('name', body.get('metadata', {}).get('uid', None)),
-    ))
+    logger = logging_engine.ObjectLogger(body=body, event_queue=event_queue)
     posting.event_queue_var.set(event_queue)  # till the end of this object's task.
 
     # If the global freeze is set for the processing (i.e. other operator overrides), do nothing.
@@ -140,14 +131,14 @@ async def custom_object_handler(
 
     # Sleep strictly after patching, never before -- to keep the status proper.
     if delay:
-        logger.info(f"Sleeping for {delay} seconds for the delayed handlers.")
+        logger.debug(f"Sleeping for {delay} seconds for the delayed handlers.")
         await asyncio.sleep(delay)
 
 
 async def handle_event(
         registry: registries.BaseRegistry,
         resource: registries.Resource,
-        logger: Union[logging.LoggerAdapter, logging.Logger],
+        logger: logging_engine.ObjectLogger,
         patch: dict,
         event: dict,
 ):
@@ -157,6 +148,9 @@ async def handle_event(
     This is a lightweight version of the cause handling, but for the raw events,
     without any progress persistence. Multi-step calls are also not supported.
     If the handler fails, it fails and is never retried.
+
+    Note: K8s-event posting is skipped for `kopf.on.event` handlers,
+    as they should be silent. Still, the messages are logged normally.
     """
     handlers = registry.get_event_handlers(resource=resource, event=event)
     for handler in handlers:
@@ -174,10 +168,10 @@ async def handle_event(
             )
 
         except Exception:
-            logger.exception(f"Handler {handler.id!r} failed with an exception. Will ignore.")
+            logger.exception(f"Handler {handler.id!r} failed with an exception. Will ignore.", local=True)
 
         else:
-            logger.info(f"Handler {handler.id!r} succeeded.")
+            logger.info(f"Handler {handler.id!r} succeeded.", local=True)
             status.store_result(patch=patch, handler=handler, result=result)
 
 
@@ -217,7 +211,6 @@ async def handle_cause(
                 done = False
             else:
                 logger.info(f"All handlers succeeded for {title}.")
-                posting.info(cause.body, reason='Success', message=f"All handlers succeeded for {title}.")
                 done = True
         else:
             skip = True
@@ -395,21 +388,19 @@ async def _execute(
 
         # Unfinished children cause the regular retry, but with less logging and event reporting.
         except HandlerChildrenRetry as e:
-            logger.info(f"Handler {handler.id!r} has unfinished sub-handlers. Will retry soon.")
+            logger.debug(f"Handler {handler.id!r} has unfinished sub-handlers. Will retry soon.")
             status.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
             handlers_left.append(handler)
 
         # Definitely retriable error, no matter what is the error-reaction mode.
         except HandlerRetryError as e:
             logger.exception(f"Handler {handler.id!r} failed with a retry exception. Will retry.")
-            posting.exception(cause.body, message=f"Handler {handler.id!r} failed. Will retry.")
             status.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
             handlers_left.append(handler)
 
         # Definitely fatal error, no matter what is the error-reaction mode.
         except HandlerFatalError as e:
             logger.exception(f"Handler {handler.id!r} failed with a fatal exception. Will stop.")
-            posting.exception(cause.body, message=f"Handler {handler.id!r} failed. Will stop.")
             status.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
@@ -417,19 +408,16 @@ async def _execute(
         except Exception as e:
             if retry_on_errors:
                 logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")
-                posting.exception(cause.body, message=f"Handler {handler.id!r} failed. Will retry.")
                 status.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=DEFAULT_RETRY_DELAY)
                 handlers_left.append(handler)
             else:
                 logger.exception(f"Handler {handler.id!r} failed with an exception. Will stop.")
-                posting.exception(cause.body, message=f"Handler {handler.id!r} failed. Will stop.")
                 status.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
                 # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
         # No errors means the handler should be excluded from future runs in this reaction cycle.
         else:
             logger.info(f"Handler {handler.id!r} succeeded.")
-            posting.info(cause.body, reason='Success', message=f"Handler {handler.id!r} succeeded.")
             status.store_success(body=cause.body, patch=cause.patch, handler=handler, result=result)
 
     # Provoke the retry of the handling cycle if there were any unfinished handlers,

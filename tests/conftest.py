@@ -1,4 +1,6 @@
 import asyncio
+import io
+import logging
 import os
 import re
 import time
@@ -7,6 +9,8 @@ import asynctest
 import pytest
 import pytest_mock
 
+from kopf.config import configure
+from kopf.engines.logging import ObjectPrefixingFormatter
 from kopf.reactor.registries import Resource
 
 
@@ -116,6 +120,30 @@ class Timer(object):
 #
 # Helpers for the logging checks.
 #
+
+
+@pytest.fixture()
+def logstream(caplog):
+    """ Prefixing is done at the final output. We have to intercept it. """
+
+    logger = logging.getLogger()
+    handlers = list(logger.handlers)
+
+    configure(verbose=True)
+
+    stream = io.StringIO()
+    handler = logging.StreamHandler(stream)
+    formatter = ObjectPrefixingFormatter('prefix %(message)s')
+    handler.setFormatter(formatter)
+
+    logger.addHandler(handler)
+    try:
+        with caplog.at_level(logging.DEBUG):
+            yield stream
+    finally:
+        logger.removeHandler(handler)
+        logger.handlers[:] = handlers  # undo `configure()`
+
 
 @pytest.fixture()
 def assert_logs(caplog):
