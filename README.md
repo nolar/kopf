@@ -1,5 +1,9 @@
 # Kubernetes Operator Pythonic Framework (Kopf)
 
+[![Build Status](https://travis-ci.org/zalando-incubator/kopf.svg?branch=master)](https://travis-ci.org/zalando-incubator/kopf)
+[![codecov](https://codecov.io/gh/zalando-incubator/kopf/branch/master/graph/badge.svg)](https://codecov.io/gh/zalando-incubator/kopf)
+[![Coverage Status](https://coveralls.io/repos/github/zalando-incubator/kopf/badge.svg?branch=master)](https://coveralls.io/github/zalando-incubator/kopf?branch=master)
+
 **Kopf** —Kubernetes Operator Pythonic Framework— is a framework and a library
 to make Kubernetes operators development easier, just in few lines of Python code. 
 

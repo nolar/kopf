@@ -19,8 +19,8 @@ def exampledir(request):
 
 
 @pytest.fixture(scope='session', autouse=True)
-def autologin():
-    if os.environ.get('E2E'):
+def autologin(request):
+    if request.config.getoption('--with-e2e') or request.config.getoption('--only-e2e'):
         login()  # or anything like that; it is not a unit-under-test
 
 

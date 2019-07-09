@@ -7,6 +7,9 @@ urllib3<1.25
 # Everything needed to develop (test, debug) the framework.
 pytest-asyncio
 pytest-mock
+pytest-cov
 pytest
 asynctest
 freezegun
+codecov
+coveralls

@@ -18,9 +18,14 @@ def pytest_configure(config):
     config.addinivalue_line('markers', "e2e: end-to-end tests with real operators.")
 
 
+def pytest_addoption(parser):
+    parser.addoption("--only-e2e", action="store_true", help="Execute end-to-end tests only.")
+    parser.addoption("--with-e2e", action="store_true", help="Include end-to-end tests.")
+
+
 # This logic is not applied if pytest is started explicitly on ./examples/.
 # In that case, regular pytest behaviour applies -- this is intended.
-def pytest_collection_modifyitems(items):
+def pytest_collection_modifyitems(config, items):
 
     # Make all tests in this directory and below asyncio-compatible by default.
     for item in items:
@@ -33,7 +38,6 @@ def pytest_collection_modifyitems(items):
         return path.startswith('tests/e2e/') or path.startswith('examples/')
     etc = [item for item in items if not _is_e2e(item)]
     e2e = [item for item in items if _is_e2e(item)]
-    items[:] = etc + e2e
 
     # Mark all e2e tests, no matter how they were detected. Just for filtering.
     mark_e2e = pytest.mark.e2e
@@ -43,10 +47,16 @@ def pytest_collection_modifyitems(items):
     # Minikube tests are heavy and require a cluster. Skip them by default,
     # so that the contributors can run pytest without initial tweaks.
     mark_skip = pytest.mark.skip(reason="E2E tests are not enabled. "
-                                        "Set E2E env var to enable.")
-    if not os.environ.get('E2E'):
+                                        "Use --with-e2e/--only-e2e to enable.")
+    if not config.getoption('--with-e2e') and not config.getoption('--only-e2e'):
         for item in e2e:
             item.add_marker(mark_skip)
+
+    # Minify the test-plan if only e2e are requested (all other should be skipped).
+    if config.getoption('--only-e2e'):
+        items[:] = e2e
+    else:
+        items[:] = etc + e2e
 
 
 # Substitute the regular mock with the async-aware mock in the `mocker` fixture.
