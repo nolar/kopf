@@ -32,10 +32,6 @@ a new pod will be created every 30 seconds. Observe with:
 kubectl get pods --watch
 ```
 
-*Please note that Kopf puts a finalizer on the managed resources,
-so the pod deletion will be blocked unless the operator is running
-(to remove the finalizer). This will be made optional in #24.* 
-
 Cleanup in the end:
 
 ```bash
