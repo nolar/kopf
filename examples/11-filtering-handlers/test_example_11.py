@@ -24,7 +24,7 @@ def obj_absent():
 def test_handler_filtering(mocker):
 
     # To prevent lengthy threads in the loop executor when the process exits.
-    mocker.patch('kopf.clients.watching.DEFAULT_STREAM_TIMEOUT', 10)
+    mocker.patch('kopf.config.WatchersConfig.default_stream_timeout', 10)
 
     # Run an operator and simulate some activity with the operated resource.
     with kopf.testing.KopfRunner(['run', '--verbose', '--standalone', example_py]) as runner:
