@@ -82,22 +82,36 @@ def login_client(verify=False):
 def verify_pykube():
     """
     Verify if login has succeeded, and the access configuration is still valid.
+
+    All other errors (e.g. 403, 404) are ignored: it means, the host and port
+    are configured and are reachable, the authentication token is accepted,
+    and the rest are authorization or configuration errors (not a showstopper).
     """
     try:
         api = get_pykube_api()
         rsp = api.get(version="", base="/")
         rsp.raise_for_status()
+        api.raise_for_status(rsp)  # replaces requests's HTTPError with its own.
+    except requests.exceptions.ConnectionError as e:
+        raise AccessError("Cannot connect to the Kubernetes API. "
+                          "Please configure the cluster access.")
+    except pykube.exceptions.HTTPError as e:
+        if e.code == 401:
+            raise AccessError("Cannot authenticate to the Kubernetes API. "
+                              "Please login or configure the tokens.")
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 401:
             raise AccessError("Cannot authenticate to the Kubernetes API. "
                               "Please login or configure the tokens.")
-        else:
-            raise
 
 
 def verify_client():
     """
     Verify if login has succeeded, and the access configuration is still valid.
+
+    All other errors (e.g. 403, 404) are ignored: it means, the host and port
+    are configured and are reachable, the authentication token is accepted,
+    and the rest are authorization or configuration errors (not a showstopper).
     """
     import kubernetes.client.rest
     try:
@@ -110,8 +124,6 @@ def verify_client():
         if e.status == 401:
             raise AccessError("Cannot authenticate to the Kubernetes API. "
                               "Please login or configure the tokens.")
-        else:
-            raise
 
 
 def get_pykube_cfg() -> pykube.KubeConfig:
