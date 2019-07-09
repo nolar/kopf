@@ -10,7 +10,7 @@ _UNSET_ = object()
 def read_crd(*, resource, default=_UNSET_):
     try:
         api = auth.get_pykube_api()
-        cls = classes.CustomResourceDefinition
+        cls = pykube.CustomResourceDefinition
         obj = cls.objects(api, namespace=None).get_by_name(name=resource.name)
         return obj.obj
 
