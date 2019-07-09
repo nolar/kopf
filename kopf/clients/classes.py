@@ -36,7 +36,7 @@ def _make_cls(resource) -> Type[APIObject]:
     resource_kind = next((r['kind'] for r in api_resources if r['name'] == resource.plural), None)
     is_namespaced = next((r['namespaced'] for r in api_resources if r['name'] == resource.plural), None)
     if not resource_kind:
-        raise pykube.ObjectDoesNotExist("No such CRD at all.")
+        raise pykube.ObjectDoesNotExist(f"No such CRD: {resource.name}")
 
     cls_name = resource.plural
     cls_base = NamespacedAPIObject if is_namespaced else APIObject
