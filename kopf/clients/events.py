@@ -1,11 +1,12 @@
 import asyncio
 import datetime
-import functools
 import logging
 
-import kubernetes.client.rest
+import pykube
+import requests
 
 from kopf import config
+from kopf.clients import auth
 from kopf.structs import hierarchies
 
 logger = logging.getLogger(__name__)
@@ -41,38 +42,36 @@ async def post_event(*, obj=None, ref=None, type, reason, message=''):
         suffix = message[-MAX_MESSAGE_LENGTH // 2 + (len(infix) - len(infix) // 2):]
         message = f'{prefix}{infix}{suffix}'
 
-    meta = kubernetes.client.V1ObjectMeta(
-        namespace=namespace,
-        generate_name='kopf-event-',
-    )
-    body = kubernetes.client.V1Event(
-        metadata=meta,
+    body = {
+        'metadata': {
+            'namespace': namespace,
+            'generateName': 'kopf-event-',
+        },
 
-        action='Action?',
-        type=type,
-        reason=reason,
-        message=message,
+        'action': 'Action?',
+        'type': type,
+        'reason': reason,
+        'message': message,
 
-        reporting_component='kopf',
-        reporting_instance='dev',
-        source=kubernetes.client.V1EventSource(component='kopf'),  # used in the "From" column in `kubectl describe`.
+        'reportingComponent': 'kopf',
+        'reportingInstance': 'dev',
+        'source' : {'component': 'kopf'},  # used in the "From" column in `kubectl describe`.
 
-        involved_object=ref,
+        'involvedObject': ref,
 
-        first_timestamp=now.isoformat() + 'Z',  # '2019-01-28T18:25:03.000000Z' -- seen in `kubectl describe ...`
-        last_timestamp=now.isoformat() + 'Z',  # '2019-01-28T18:25:03.000000Z' - seen in `kubectl get events`
-        event_time=now.isoformat() + 'Z',  # '2019-01-28T18:25:03.000000Z'
-    )
-
-    api = kubernetes.client.CoreV1Api()
-    loop = asyncio.get_running_loop()
+        'firstTimestamp': now.isoformat() + 'Z',  # '2019-01-28T18:25:03.000000Z' -- seen in `kubectl describe ...`
+        'lastTimestamp': now.isoformat() + 'Z',  # '2019-01-28T18:25:03.000000Z' - seen in `kubectl get events`
+        'eventTime': now.isoformat() + 'Z',  # '2019-01-28T18:25:03.000000Z'
+    }
 
     try:
-        await loop.run_in_executor(
-            config.WorkersConfig.get_syn_executor(),
-            functools.partial(api.create_namespaced_event, **{'namespace': namespace, 'body': body})
-        )
-    except kubernetes.client.rest.ApiException as e:
+        api = auth.get_pykube_api()
+        obj = pykube.Event(api, body)
+
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(config.WorkersConfig.get_syn_executor(), obj.create)
+
+    except (requests.exceptions.HTTPError, pykube.exceptions.HTTPError) as e:
         # Events are helpful but auxiliary, they should not fail the handling cycle.
         # Yet we want to notice that something went wrong (in logs).
         logger.warning("Failed to post an event. Ignoring and continuing. "

@@ -3,9 +3,6 @@ import concurrent.futures
 import logging
 from typing import Optional
 
-import kubernetes
-import kubernetes.client.rest
-
 from kopf.engines import logging as logging_engine
 
 format = '[%(asctime)s] %(name)-20.20s [%(levelname)-8.8s] %(message)s'
@@ -32,11 +29,16 @@ def configure(debug=None, verbose=None, quiet=None):
     logger.setLevel(log_level)
 
     # Configure the Kubernetes client defaults according to our settings.
-    config = kubernetes.client.configuration.Configuration()
-    config.logger_format = format
-    config.logger_file = None  # once again after the constructor to re-apply the formatter
-    config.debug = debug
-    kubernetes.client.configuration.Configuration.set_default(config)
+    try:
+        import kubernetes
+    except ImportError:
+        pass
+    else:
+        config = kubernetes.client.configuration.Configuration()
+        config.logger_format = format
+        config.logger_file = None  # once again after the constructor to re-apply the formatter
+        config.debug = debug
+        kubernetes.client.configuration.Configuration.set_default(config)
 
     # Kubernetes client is as buggy as hell: it adds its own stream handlers even in non-debug mode,
     # does not respect the formatting, and dumps too much of the low-level info.
@@ -103,3 +105,15 @@ class WorkersConfig:
         WorkersConfig.synchronous_tasks_threadpool_limit = new_limit
         if WorkersConfig.threadpool_executor:
             WorkersConfig.threadpool_executor._max_workers = new_limit
+
+
+class WatchersConfig:
+    """
+    Used to configure the K8s API watchers and streams.
+    """
+
+    default_stream_timeout = None
+    """ The maximum duration of one streaming request. Patched in some tests. """
+
+    watcher_retry_delay = 0.1
+    """ How long should a pause be between watch requests (to prevent flooding). """

@@ -1,59 +1,46 @@
-import kubernetes.client.rest
 import pytest
-from asynctest import call
+import requests
 
 from kopf.clients.fetching import list_objs
 
 
-def test_when_successful_clustered(client_mock, resource):
-    result = object()
-    apicls_mock = client_mock.CustomObjectsApi
-    apicls_mock.return_value.list_cluster_custom_object.return_value = result
-    apicls_mock.return_value.list_namespaced_custom_object.return_value = result
-    sidefn_mock = apicls_mock.return_value.list_namespaced_custom_object
-    mainfn_mock = apicls_mock.return_value.list_cluster_custom_object
+def test_when_successful_clustered(req_mock, resource):
+    result = {'items': []}
+    req_mock.get.return_value.json.return_value = result
 
     lst = list_objs(resource=resource, namespace=None)
     assert lst is result
 
-    assert not sidefn_mock.called
-    assert mainfn_mock.call_count == 1
-    assert mainfn_mock.call_args_list == [call(
-        group=resource.group,
-        version=resource.version,
-        plural=resource.plural,
-    )]
+    assert req_mock.get.called
+    assert req_mock.get.call_count == 1
+
+    url = req_mock.get.call_args_list[0][1]['url']
+    assert 'apis/zalando.org/v1/kopfexamples' in url
+    assert 'namespaces/' not in url
 
 
-def test_when_successful_namespaced(client_mock, resource):
-    result = object()
-    apicls_mock = client_mock.CustomObjectsApi
-    apicls_mock.return_value.list_cluster_custom_object.return_value = result
-    apicls_mock.return_value.list_namespaced_custom_object.return_value = result
-    sidefn_mock = apicls_mock.return_value.list_cluster_custom_object
-    mainfn_mock = apicls_mock.return_value.list_namespaced_custom_object
+def test_when_successful_namespaced(req_mock, resource):
+    result = {'items': []}
+    req_mock.get.return_value.json.return_value = result
 
     lst = list_objs(resource=resource, namespace='ns1')
     assert lst is result
 
-    assert not sidefn_mock.called
-    assert mainfn_mock.call_count == 1
-    assert mainfn_mock.call_args_list == [call(
-        group=resource.group,
-        version=resource.version,
-        plural=resource.plural,
-        namespace='ns1',
-    )]
+    assert req_mock.get.called
+    assert req_mock.get.call_count == 1
+
+    url = req_mock.get.call_args_list[0][1]['url']
+    assert 'apis/zalando.org/v1/namespaces/ns1/kopfexamples' in url
 
 
 @pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['without-namespace', 'with-namespace'])
 @pytest.mark.parametrize('status', [400, 401, 403, 500, 666])
-def test_raises_api_error(client_mock, resource, namespace, status):
-    error = kubernetes.client.rest.ApiException(status=status)
-    apicls_mock = client_mock.CustomObjectsApi
-    apicls_mock.return_value.list_cluster_custom_object.side_effect = error
-    apicls_mock.return_value.list_namespaced_custom_object.side_effect = error
+def test_raises_api_error(req_mock, resource, namespace, status):
+    response = requests.Response()
+    response.status_code = status
+    error = requests.exceptions.HTTPError("boo!", response=response)
+    req_mock.get.side_effect = error
 
-    with pytest.raises(kubernetes.client.rest.ApiException) as e:
+    with pytest.raises(requests.exceptions.HTTPError) as e:
         list_objs(resource=resource, namespace=namespace)
-    assert e.value.status == status
+    assert e.value.response.status_code == status

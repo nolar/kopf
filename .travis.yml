@@ -16,9 +16,10 @@ env:
     - MINIKUBE_HOME=$HOME
     - MINIKUBE_VERSION=1.0.1
   matrix:
-    - KUBERNETES_VERSION=1.14.0
-    - KUBERNETES_VERSION=1.13.0
-    - KUBERNETES_VERSION=1.12.0
+    - KUBERNETES_VERSION=1.14.0 CLIENT=yes  # only one "yes" is enough
+    - KUBERNETES_VERSION=1.14.0 CLIENT=no
+    - KUBERNETES_VERSION=1.13.0 CLIENT=no
+    - KUBERNETES_VERSION=1.12.0 CLIENT=no
 #    - KUBERNETES_VERSION=1.11.10  # Minikube fails on CRI preflight checks
 #    - KUBERNETES_VERSION=1.10.13  # CRDs require spec.version, which fails on 1.14
 
@@ -32,6 +33,7 @@ matrix:
 
 before_script:
   - tools/minikube-for-travis.sh
+  - tools/kubernetes-client.sh
 
 script:
   - pytest -v

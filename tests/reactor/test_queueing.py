@@ -48,7 +48,7 @@ async def test_event_multiplexing(worker_mock, timer, resource, handler, stream,
     """ Verify that every unique uid goes into its own queue+worker, which are never shared. """
 
     # Inject the events of unique objects - to produce few queues/workers.
-    stream.return_value = iter(events)
+    stream.feed(events)
 
     # Run the watcher (near-instantly and test-blocking).
     with timer:
@@ -120,7 +120,7 @@ async def test_event_batching(mocker, resource, handler, timer, stream, events, 
     mocker.patch('kopf.config.WorkersConfig.worker_exit_timeout', 0.5)
 
     # Inject the events of unique objects - to produce few queues/workers.
-    stream.return_value = iter(events)
+    stream.feed(events)
 
     # Run the watcher (near-instantly and test-blocking).
     with timer:
@@ -168,9 +168,10 @@ async def test_garbage_collection_of_queues(mocker, stream, events, unique, work
     mocker.patch('kopf.config.WorkersConfig.worker_idle_timeout', 0.5)
     mocker.patch('kopf.config.WorkersConfig.worker_batch_window', 0.1)
     mocker.patch('kopf.config.WorkersConfig.worker_exit_timeout', 0.5)
+    mocker.patch('kopf.config.WatchersConfig.watcher_retry_delay', 1.0)  # to prevent src depletion
 
     # Inject the events of unique objects - to produce few queues/workers.
-    stream.return_value = iter(events)
+    stream.feed(events)
 
     # Give it a moment to populate the queues and spawn all the workers.
     # Intercept and remember _any_ seen dict of queues for further checks.

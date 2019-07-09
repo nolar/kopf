@@ -13,18 +13,25 @@ example_py = os.path.relpath(os.path.join(os.path.dirname(__file__), 'example.py
 
 @pytest.fixture(autouse=True)
 def crd_exists():
-    subprocess.run(f"kubectl apply -f {crd_yaml}", shell=True, check=True)
+    subprocess.run(f"kubectl apply -f {crd_yaml}",
+                   check=True, timeout=10, capture_output=True, shell=True)
 
 
 @pytest.fixture(autouse=True)
 def obj_absent():
-    subprocess.run(f"kubectl delete -f {obj_yaml}", shell=True, check=False)
+    # Operator is not running in fixtures, so we need a force-delete (or this patch).
+    subprocess.run(['kubectl', 'patch', '-f', obj_yaml,
+                    '-p', '{"metadata":{"finalizers":[]}}',
+                    '--type', 'merge'],
+                   check=False, timeout=10, capture_output=True)
+    subprocess.run(f"kubectl delete -f {obj_yaml}",
+                   check=False, timeout=10, capture_output=True, shell=True)
 
 
 def test_resource_lifecycle(mocker):
 
     # To prevent lengthy threads in the loop executor when the process exits.
-    mocker.patch('kopf.clients.watching.DEFAULT_STREAM_TIMEOUT', 10)
+    mocker.patch('kopf.config.WatchersConfig.default_stream_timeout', 10)
 
     # Run an operator and simulate some activity with the operated resource.
     with kopf.testing.KopfRunner(['run', '--verbose', '--standalone', example_py]) as runner:
