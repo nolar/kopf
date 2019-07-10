@@ -263,27 +263,42 @@ def run(
         peering_name=peering_name,
     )
 
-    # Run the presumably infinite tasks until one of them fails (they never exit normally).
-    try:
-        done, pending = loop.run_until_complete(asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED))
-    except asyncio.CancelledError:
-        done, pending = [], tasks
-
-    # Allow the remaining tasks to handle the cancellation before re-raising (e.g. via try-finally).
-    # The errors in the cancellation stage will be ignored anyway (never re-raised below).
-    for task in pending:
-        task.cancel()
-    if pending:
-        cancelled, pending = loop.run_until_complete(asyncio.wait(pending, return_when=asyncio.ALL_COMPLETED))
-        assert not pending  # must be empty by now, the tasks are either done or cancelled.
-    else:
-        # when pending list is empty, let's say cancelled is empty too
-        cancelled = []
+    # Run the infinite tasks until one of them fails/exits (they never exit normally).
+    # Give some time for the remaining tasks to handle the cancellations (e.g. via try-finally).
+    done1, pending1 = _wait_gracefully(loop, tasks, return_when=asyncio.FIRST_COMPLETED)
+    done2, pending2 = _wait_cancelled(loop, pending1)
+    done3, pending3 = _wait_gracefully(loop, asyncio.all_tasks(loop), timeout=1.0)
+    done4, pending4 = _wait_cancelled(loop, pending3)
 
     # Check the results of the non-cancelled tasks, and re-raise of there were any exceptions.
-    # The cancelled tasks are not re-raised, as it is a normal flow for the "first-completed" run.
-    # TODO: raise all of the cancelled+done, if there were 2+ failed ones.
-    for task in list(cancelled) + list(done):
+    # The cancelled tasks are not re-raised, as it is a normal flow.
+    _reraise(loop, list(done1) + list(done2) + list(done3) + list(done4))
+
+
+def _wait_gracefully(loop, tasks, *, timeout=None, return_when=asyncio.ALL_COMPLETED):
+    if not tasks:
+        return [], []
+    try:
+        done, pending = loop.run_until_complete(asyncio.wait(tasks, return_when=return_when, timeout=timeout))
+    except asyncio.CancelledError:
+        # ``asyncio.wait()`` is cancelled, but the tasks can be running.
+        done, pending = [], tasks
+    return done, pending
+
+
+def _wait_cancelled(loop, tasks, *, timeout=None):
+    for task in tasks:
+        task.cancel()
+    if tasks:
+        done, pending = loop.run_until_complete(asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED, timeout=timeout))
+        assert not pending
+        return done, pending
+    else:
+        return [], []
+
+
+def _reraise(loop, tasks):
+    for task in tasks:
         try:
             task.result()  # can raise the regular (non-cancellation) exceptions.
         except asyncio.CancelledError:
