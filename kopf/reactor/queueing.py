@@ -89,7 +89,7 @@ async def watcher(
 
     finally:
         # Forcedly terminate all the fire-and-forget per-object jobs, of they are still running.
-        await scheduler.close()
+        await asyncio.shield(scheduler.close())
 
 
 async def worker(
