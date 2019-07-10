@@ -24,8 +24,11 @@ is done in the `kopf.reactor.handling` routines.
 """
 
 import asyncio
+import contextvars
 import functools
 import logging
+import signal
+import threading
 import time
 from typing import Optional, Callable, Tuple, Union, MutableMapping, NewType
 
@@ -177,7 +180,14 @@ def create_tasks(
     registry = registry if registry is not None else registries.get_default_registry()
     event_queue = asyncio.Queue(loop=loop)
     freeze_flag = asyncio.Event(loop=loop)
+    should_stop = asyncio.Event(loop=loop)
     tasks = []
+
+    # A top-level task for external stopping by setting a stop-flag. Once set,
+    # this task will exit, and thus all other top-level tasks will be cancelled.
+    tasks.extend([
+        loop.create_task(_stop_flag_checker(should_stop)),
+    ])
 
     # K8s-event posting. Events are queued in-memory and posted in the background.
     # NB: currently, it is a global task, but can be made per-resource or per-object.
@@ -216,6 +226,13 @@ def create_tasks(
                                           event_queue=event_queue,
                                           freeze=freeze_flag))),  # freeze is only checked
         ])
+
+    # On Ctrl+C or pod termination, cancel all tasks gracefully.
+    if threading.current_thread() is threading.main_thread():
+        loop.add_signal_handler(signal.SIGINT, should_stop.set, tasks)
+        loop.add_signal_handler(signal.SIGTERM, should_stop.set, tasks)
+    else:
+        logger.warning("OS signals are ignored: running not in the main thread.")
 
     return tasks
 
@@ -271,6 +288,15 @@ def run(
             task.result()  # can raise the regular (non-cancellation) exceptions.
         except asyncio.CancelledError:
             pass
+
+
+async def _stop_flag_checker(should_stop):
+    try:
+        await should_stop.wait()
+    except asyncio.CancelledError:
+        pass  # operator is stopping for any other reason
+    else:
+        logger.debug("Stop-flag is raised. Operator is stopping.")
 
 
 async def _wait_for_depletion(*, scheduler, queues):
