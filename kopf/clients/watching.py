@@ -83,9 +83,6 @@ async def streaming_watch(
         yield {'type': None, 'object': item}
 
     # Then, watch the resources starting from the list's resource version.
-    kwargs = {}
-    kwargs.update(dict(resource_version=resource_version) if resource_version else {})
-    kwargs.update(dict(timeout_seconds=config.WatchersConfig.default_stream_timeout) if config.WatchersConfig.default_stream_timeout else {})
     loop = asyncio.get_event_loop()
     stream = fetching.watch_objs(resource=resource, namespace=namespace,
                                  timeout=config.WatchersConfig.default_stream_timeout,
