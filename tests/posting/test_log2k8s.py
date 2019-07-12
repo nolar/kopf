@@ -14,7 +14,7 @@ REF1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
     ['error', "Error"],
     ['critical', "Fatal"],
 ])
-def test_posting_normal_levels(caplog, logstream, logfn, event_type, event_queue):
+async def test_posting_normal_levels(caplog, logstream, logfn, event_type, event_queue, event_queue_loop):
     logger = ObjectLogger(body=OBJ1)
     logger_fn = getattr(logger, logfn)
 
@@ -32,7 +32,7 @@ def test_posting_normal_levels(caplog, logstream, logfn, event_type, event_queue
 @pytest.mark.parametrize('logfn', [
     'debug',
 ])
-def test_skipping_hidden_levels(caplog, logstream, logfn, event_queue):
+async def test_skipping_hidden_levels(caplog, logstream, logfn, event_queue, event_queue_loop):
     logger = ObjectLogger(body=OBJ1)
     logger_fn = getattr(logger, logfn)
 
@@ -50,7 +50,7 @@ def test_skipping_hidden_levels(caplog, logstream, logfn, event_queue):
     'error',
     'critical',
 ])
-def test_skipping_when_local_with_all_levels(caplog, logstream, logfn, event_queue):
+async def test_skipping_when_local_with_all_levels(caplog, logstream, logfn, event_queue, event_queue_loop):
     logger = ObjectLogger(body=OBJ1)
     logger_fn = getattr(logger, logfn)
 

@@ -87,7 +87,7 @@ def threader():
             thread.join()
 
 
-async def test_nonthreadsafe_indeed_fails(timer, awakener, event_loop, event_queue, threader):
+async def test_nonthreadsafe_indeed_fails(timer, awakener, threader, event_queue, event_queue_loop):
 
     def thread_fn():
         event_queue.put_nowait(object())
@@ -101,10 +101,10 @@ async def test_nonthreadsafe_indeed_fails(timer, awakener, event_loop, event_que
     assert 0.6 <= timer.seconds <= 0.8
 
 
-async def test_threadsafe_indeed_works(timer, awakener, event_loop, event_queue, threader):
+async def test_threadsafe_indeed_works(timer, awakener, threader, event_queue, event_queue_loop):
 
     def thread_fn():
-        asyncio.run_coroutine_threadsafe(event_queue.put(object()), loop=event_loop)
+        asyncio.run_coroutine_threadsafe(event_queue.put(object()), loop=event_queue_loop)
 
     awakener(0.7)
     threader(0.3, thread_fn)
@@ -115,7 +115,7 @@ async def test_threadsafe_indeed_works(timer, awakener, event_loop, event_queue,
     assert 0.2 <= timer.seconds <= 0.4
 
 
-async def test_queueing_is_threadsafe(timer, awakener, event_loop, event_queue, threader):
+async def test_queueing_is_threadsafe(timer, awakener, threader, event_queue, event_queue_loop):
 
     def thread_fn():
         event(OBJ1, type='type1', reason='reason1', message='message1')

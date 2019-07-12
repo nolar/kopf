@@ -90,6 +90,7 @@ async def custom_object_handler(
 
     # Each object has its own prefixed logger, to distinguish parallel handling.
     logger = logging_engine.ObjectLogger(body=body)
+    posting.event_queue_loop_var.set(asyncio.get_running_loop())
     posting.event_queue_var.set(event_queue)  # till the end of this object's task.
 
     # If the global freeze is set for the processing (i.e. other operator overrides), do nothing.
