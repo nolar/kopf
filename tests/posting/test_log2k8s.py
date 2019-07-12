@@ -15,7 +15,7 @@ REF1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
     ['critical', "Fatal"],
 ])
 def test_posting_normal_levels(caplog, logstream, logfn, event_type, event_queue):
-    logger = ObjectLogger(body=OBJ1, event_queue=event_queue)
+    logger = ObjectLogger(body=OBJ1)
     logger_fn = getattr(logger, logfn)
 
     logger_fn("hello %s", "world")
@@ -33,7 +33,7 @@ def test_posting_normal_levels(caplog, logstream, logfn, event_type, event_queue
     'debug',
 ])
 def test_skipping_hidden_levels(caplog, logstream, logfn, event_queue):
-    logger = ObjectLogger(body=OBJ1, event_queue=event_queue)
+    logger = ObjectLogger(body=OBJ1)
     logger_fn = getattr(logger, logfn)
 
     logger_fn("hello %s", "world")
@@ -51,7 +51,7 @@ def test_skipping_hidden_levels(caplog, logstream, logfn, event_queue):
     'critical',
 ])
 def test_skipping_when_local_with_all_levels(caplog, logstream, logfn, event_queue):
-    logger = ObjectLogger(body=OBJ1, event_queue=event_queue)
+    logger = ObjectLogger(body=OBJ1)
     logger_fn = getattr(logger, logfn)
 
     logger_fn("hello %s", "world", local=True)

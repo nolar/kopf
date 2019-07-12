@@ -89,7 +89,7 @@ async def custom_object_handler(
     patch = {}
 
     # Each object has its own prefixed logger, to distinguish parallel handling.
-    logger = logging_engine.ObjectLogger(body=body, event_queue=event_queue)
+    logger = logging_engine.ObjectLogger(body=body)
     posting.event_queue_var.set(event_queue)  # till the end of this object's task.
 
     # If the global freeze is set for the processing (i.e. other operator overrides), do nothing.

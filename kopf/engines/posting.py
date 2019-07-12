@@ -38,12 +38,16 @@ class K8sEvent(NamedTuple):
     message: Text
 
 
-def event(objs, *, type, reason, message=''):
+def enqueue(ref, type, reason, message):
     queue = event_queue_var.get()
+    event = K8sEvent(ref=ref, type=type, reason=reason, message=message)
+    queue.put_nowait(event)
+
+
+def event(objs, *, type, reason, message=''):
     for obj in dicts.walk(objs):
         ref = hierarchies.build_object_reference(obj)
-        event = K8sEvent(ref=ref, type=type, reason=reason, message=message)
-        queue.put_nowait(event)
+        enqueue(ref=ref, type=type, reason=reason, message=message)
 
 
 def info(obj, *, reason, message=''):
