@@ -43,6 +43,6 @@ setup(
         'click',
         'iso8601',
         'aiojobs',
-        'pykube-ng>=0.25',
+        'pykube-ng>=0.27',
     ],
 )

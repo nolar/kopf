@@ -134,5 +134,5 @@ def get_pykube_cfg() -> pykube.KubeConfig:
 
 # TODO: add some caching, but keep kwargs in mind. Maybe add a key= for purpose/use-place?
 def get_pykube_api(timeout=None) -> pykube.HTTPClient:
-    kwargs = dict(timeout=timeout) if timeout is not None else dict()
+    kwargs = dict(timeout=timeout)
     return pykube.HTTPClient(get_pykube_cfg(), **kwargs)
