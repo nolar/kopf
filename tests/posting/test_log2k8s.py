@@ -16,8 +16,9 @@ REF1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
 ])
 def test_posting_normal_levels(caplog, logstream, logfn, event_type, event_queue):
     logger = ObjectLogger(body=OBJ1, event_queue=event_queue)
+    logger_fn = getattr(logger, logfn)
 
-    getattr(logger, logfn)("hello %s", "world")
+    logger_fn("hello %s", "world")
 
     assert event_queue.qsize() == 1
     event1 = event_queue.get_nowait()
@@ -31,13 +32,15 @@ def test_posting_normal_levels(caplog, logstream, logfn, event_type, event_queue
 @pytest.mark.parametrize('logfn', [
     'debug',
 ])
-def test_skipping_debug_level(caplog, logstream, logfn, event_queue):
+def test_skipping_hidden_levels(caplog, logstream, logfn, event_queue):
     logger = ObjectLogger(body=OBJ1, event_queue=event_queue)
+    logger_fn = getattr(logger, logfn)
 
-    getattr(logger, logfn)("hello %s", "world")
+    logger_fn("hello %s", "world")
+    logger.info("must be here")
 
-    assert event_queue.empty()
-    assert caplog.messages == ["hello world"]
+    assert event_queue.qsize() == 1  # not 2!
+    assert caplog.messages == ["hello world", "must be here"]
 
 
 @pytest.mark.parametrize('logfn', [
@@ -47,10 +50,12 @@ def test_skipping_debug_level(caplog, logstream, logfn, event_queue):
     'error',
     'critical',
 ])
-def test_skipping_when_local_with_all_level(caplog, logstream, logfn, event_queue):
+def test_skipping_when_local_with_all_levels(caplog, logstream, logfn, event_queue):
     logger = ObjectLogger(body=OBJ1, event_queue=event_queue)
+    logger_fn = getattr(logger, logfn)
 
-    getattr(logger, logfn)("hello %s", "world", local=True)
+    logger_fn("hello %s", "world", local=True)
+    logger.info("must be here")
 
-    assert event_queue.empty()
-    assert caplog.messages == ["hello world"]
+    assert event_queue.qsize() == 1  # not 2!
+    assert caplog.messages == ["hello world", "must be here"]
