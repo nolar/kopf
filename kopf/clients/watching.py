@@ -64,6 +64,27 @@ async def streaming_aiter(src, loop=None, executor=None):
             return
 
 
+async def infinite_watch(
+        resource: registries.Resource,
+        namespace: Union[None, str],
+):
+    """
+    Stream the watch-events infinitely.
+
+    This routine is extracted only due to difficulty of testing
+    of the infinite loops. It is made as simple as possible,
+    and is assumed to work without testing.
+
+    This routine never ends gracefully. If a watcher's stream fails,
+    a new one is recreated, and the stream continues.
+    It only exits with unrecoverable exceptions.
+    """
+    while True:
+        async for event in streaming_watch(resource=resource, namespace=namespace):
+            yield event
+        await asyncio.sleep(config.WatchersConfig.watcher_retry_delay)
+
+
 async def streaming_watch(
         resource: registries.Resource,
         namespace: Union[None, str],
@@ -107,24 +128,3 @@ async def streaming_watch(
 
         # Yield normal events to the consumer.
         yield event
-
-
-async def infinite_watch(
-        resource: registries.Resource,
-        namespace: Union[None, str],
-):
-    """
-    Stream the watch-events infinitely.
-
-    This routine is extracted only due to difficulty of testing
-    of the infinite loops. It is made as simple as possible,
-    and is assumed to work without testing.
-
-    This routine never ends gracefully. If a watcher's stream fails,
-    a new one is recreated, and the stream continues.
-    It only exits with unrecoverable exceptions.
-    """
-    while True:
-        async for event in streaming_watch(resource=resource, namespace=namespace):
-            yield event
-        await asyncio.sleep(config.WatchersConfig.watcher_retry_delay)
