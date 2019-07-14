@@ -22,7 +22,11 @@ import asyncio
 import logging
 from typing import Union
 
+import pykube
+
 from kopf import config
+from kopf.clients import auth
+from kopf.clients import classes
 from kopf.clients import fetching
 from kopf.reactor import registries
 
@@ -105,9 +109,9 @@ async def streaming_watch(
 
     # Then, watch the resources starting from the list's resource version.
     loop = asyncio.get_event_loop()
-    stream = fetching.watch_objs(resource=resource, namespace=namespace,
-                                 timeout=config.WatchersConfig.default_stream_timeout,
-                                 since=resource_version)
+    stream = watch_objs(resource=resource, namespace=namespace,
+                        timeout=config.WatchersConfig.default_stream_timeout,
+                        since=resource_version)
     async for event in streaming_aiter(stream, loop=loop):
 
         # "410 Gone" is for the "resource version too old" error, we must restart watching.
@@ -128,3 +132,29 @@ async def streaming_watch(
 
         # Yield normal events to the consumer.
         yield event
+
+
+def watch_objs(*, resource, namespace=None, timeout=None, since=None):
+    """
+    Watch the objects of specific resource type.
+
+    The cluster-scoped call is used in two cases:
+
+    * The resource itself is cluster-scoped, and namespacing makes not sense.
+    * The operator serves all namespaces for the namespaced custom resource.
+
+    Otherwise, the namespace-scoped call is used:
+
+    * The resource is namespace-scoped AND operator is namespaced-restricted.
+    """
+
+    params = {}
+    if timeout is not None:
+        params['timeoutSeconds'] = timeout
+
+    api = auth.get_pykube_api(timeout=None)
+    cls = classes._make_cls(resource=resource)
+    namespace = namespace if issubclass(cls, pykube.objects.NamespacedAPIObject) else None
+    lst = cls.objects(api, namespace=pykube.all if namespace is None else namespace)
+    src = lst.watch(since=since, params=params)
+    return iter({'type': event.type, 'object': event.object.obj} for event in src)
