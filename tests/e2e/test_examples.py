@@ -41,7 +41,7 @@ def test_all_examples_are_runnable(mocker, with_crd, with_peering, exampledir):
     # Run an operator and simulate some activity with the operated resource.
     with KopfRunner(['run', '--verbose', str(example_py)]) as runner:
         subprocess.run("kubectl apply -f examples/obj.yaml", shell=True, check=True)
-        time.sleep(e2e_create_time or 1)  # give it some time to react and to sleep and to retry
+        time.sleep(e2e_create_time or 2)  # give it some time to react and to sleep and to retry
         subprocess.run("kubectl delete -f examples/obj.yaml", shell=True, check=True)
         time.sleep(e2e_delete_time or 1)  # give it some time to react
 
