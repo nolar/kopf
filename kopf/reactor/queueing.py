@@ -175,8 +175,8 @@ def create_tasks(
     # The freezer and the registry are scoped to this whole task-set, to sync them all.
     lifecycle = lifecycle if lifecycle is not None else lifecycles.get_default_lifecycle()
     registry = registry if registry is not None else registries.get_default_registry()
-    event_queue = asyncio.Queue()
-    freeze = asyncio.Event()
+    event_queue = asyncio.Queue(loop=loop)
+    freeze_flag = asyncio.Event(loop=loop)
     tasks = []
 
     # K8s-event posting. Events are queued in-memory and posted in the background.
@@ -200,7 +200,7 @@ def create_tasks(
                 resource=ourselves.resource,
                 handler=functools.partial(peering.peers_handler,
                                           ourselves=ourselves,
-                                          freeze=freeze))),  # freeze is set/cleared
+                                          freeze=freeze_flag))),  # freeze is set/cleared
         ])
 
     # Resource event handling, only once for every known resource (de-duplicated).
@@ -214,7 +214,7 @@ def create_tasks(
                                           registry=registry,
                                           resource=resource,
                                           event_queue=event_queue,
-                                          freeze=freeze))),  # freeze is only checked
+                                          freeze=freeze_flag))),  # freeze is only checked
         ])
 
     return tasks
