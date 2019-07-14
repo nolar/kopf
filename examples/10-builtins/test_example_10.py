@@ -9,7 +9,7 @@ import kopf.testing
 def test_pods_reacted():
 
     example_py = os.path.join(os.path.dirname(__file__), 'example.py')
-    with kopf.testing.KopfRunner(['run', '--verbose', example_py]) as runner:
+    with kopf.testing.KopfRunner(['run', '--standalone', '--verbose', example_py]) as runner:
         _create_pod()
         time.sleep(5)  # give it some time to react
         _delete_pod()
