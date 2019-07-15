@@ -36,7 +36,7 @@ before_script:
   - tools/kubernetes-client.sh
 
 script:
-  - pytest -v
+  - pytest -v --cov=kopf --cov-branch
   - coveralls
   - codecov --flags unit
   - pytest -v --only-e2e  # NB: after the coverage uploads!
