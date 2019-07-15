@@ -31,6 +31,7 @@ Kopf: Kubernetes Operators Framework
    hierarchies
    async
    loading
+   probing
    peering
    scopes
    errors
