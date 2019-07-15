@@ -11,6 +11,7 @@ from typing import (Optional, Collection, Union, Tuple, Set, Any, Coroutine,
 from kopf.clients import auth
 from kopf.engines import peering
 from kopf.engines import posting
+from kopf.engines import probing
 from kopf.reactor import activities
 from kopf.reactor import causation
 from kopf.reactor import handling
@@ -82,6 +83,7 @@ def run(
         standalone: bool = False,
         priority: int = 0,
         peering_name: Optional[str] = None,
+        liveness_endpoint: Optional[str] = None,
         namespace: Optional[str] = None,
         stop_flag: Optional[Flag] = None,
         ready_flag: Optional[Flag] = None,
@@ -101,6 +103,7 @@ def run(
             namespace=namespace,
             priority=priority,
             peering_name=peering_name,
+            liveness_endpoint=liveness_endpoint,
             stop_flag=stop_flag,
             ready_flag=ready_flag,
             vault=vault,
@@ -115,6 +118,7 @@ async def operator(
         standalone: bool = False,
         priority: int = 0,
         peering_name: Optional[str] = None,
+        liveness_endpoint: Optional[str] = None,
         namespace: Optional[str] = None,
         stop_flag: Optional[Flag] = None,
         ready_flag: Optional[Flag] = None,
@@ -136,6 +140,7 @@ async def operator(
         namespace=namespace,
         priority=priority,
         peering_name=peering_name,
+        liveness_endpoint=liveness_endpoint,
         stop_flag=stop_flag,
         ready_flag=ready_flag,
         vault=vault,
@@ -149,6 +154,7 @@ async def spawn_tasks(
         standalone: bool = False,
         priority: int = 0,
         peering_name: Optional[str] = None,
+        liveness_endpoint: Optional[str] = None,
         namespace: Optional[str] = None,
         stop_flag: Optional[Flag] = None,
         ready_flag: Optional[Flag] = None,
@@ -206,6 +212,15 @@ async def spawn_tasks(
             coro=posting.poster(
                 event_queue=event_queue))),
     ])
+
+    # Liveness probing -- so that Kubernetes would know that the operator is alive.
+    if liveness_endpoint:
+        tasks.extend([
+            loop.create_task(_root_task_checker(
+                name="health reporter", ready_flag=ready_flag,
+                coro=probing.health_reporter(
+                    endpoint=liveness_endpoint))),
+        ])
 
     # Monitor the peers, unless explicitly disabled.
     ourselves: Optional[peering.Peer] = await peering.Peer.detect(

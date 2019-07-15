@@ -46,6 +46,7 @@ def main() -> None:
 @click.option('-n', '--namespace', default=None)
 @click.option('--standalone', is_flag=True, default=False)
 @click.option('--dev', 'priority', type=int, is_flag=True, flag_value=666)
+@click.option('-L', '--liveness', 'liveness_endpoint', type=str)
 @click.option('-P', '--peering', 'peering_name', type=str, default=None, envvar='KOPF_RUN_PEERING')
 @click.option('-p', '--priority', type=int, default=0)
 @click.option('-m', '--module', 'modules', multiple=True)
@@ -59,6 +60,7 @@ def run(
         priority: int,
         standalone: bool,
         namespace: Optional[str],
+        liveness_endpoint: Optional[str],
 ) -> None:
     """ Start an operator process and handle all the requests. """
     loaders.preload(
@@ -70,6 +72,7 @@ def run(
         namespace=namespace,
         priority=priority,
         peering_name=peering_name,
+        liveness_endpoint=liveness_endpoint,
         stop_flag=__controls.stop_flag,
         ready_flag=__controls.ready_flag,
         vault=__controls.vault,
