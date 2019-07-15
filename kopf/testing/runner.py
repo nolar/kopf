@@ -37,11 +37,12 @@ class KopfRunner:
     but not across processes --- the mock's calls (counts, arrgs) are lost.
     """
 
-    def __init__(self, *args, reraise=True, **kwargs):
+    def __init__(self, *args, reraise=True, timeout=None, **kwargs):
         super().__init__()
         self.args = args
         self.kwargs = kwargs
         self.reraise = reraise
+        self.timeout = timeout
         self._loop = None
         self._loop_set = None
         self._thread = None
@@ -71,7 +72,9 @@ class KopfRunner:
         # but instead wait for the thread+loop (CLI command) to finish.
         if self._loop.is_running():
             asyncio.run_coroutine_threadsafe(shutdown(), self._loop)
-        self._thread.join()
+        self._thread.join(timeout=self.timeout)
+
+        # If the thread is not finished, it is a bigger problem than exceptions.
         if self._thread.is_alive():
             raise Exception("The operator didn't stop, still running.")
 
