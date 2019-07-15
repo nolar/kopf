@@ -24,8 +24,11 @@ is done in the `kopf.reactor.handling` routines.
 """
 
 import asyncio
+import contextvars
 import functools
 import logging
+import signal
+import threading
 import time
 from typing import Optional, Callable, Tuple, Union, MutableMapping, NewType
 
@@ -89,7 +92,7 @@ async def watcher(
 
     finally:
         # Forcedly terminate all the fire-and-forget per-object jobs, of they are still running.
-        await scheduler.close()
+        await asyncio.shield(scheduler.close())
 
 
 async def worker(
@@ -175,9 +178,16 @@ def create_tasks(
     # The freezer and the registry are scoped to this whole task-set, to sync them all.
     lifecycle = lifecycle if lifecycle is not None else lifecycles.get_default_lifecycle()
     registry = registry if registry is not None else registries.get_default_registry()
-    event_queue = asyncio.Queue()
-    freeze = asyncio.Event()
+    event_queue = asyncio.Queue(loop=loop)
+    freeze_flag = asyncio.Event(loop=loop)
+    should_stop = asyncio.Event(loop=loop)
     tasks = []
+
+    # A top-level task for external stopping by setting a stop-flag. Once set,
+    # this task will exit, and thus all other top-level tasks will be cancelled.
+    tasks.extend([
+        loop.create_task(_stop_flag_checker(should_stop)),
+    ])
 
     # K8s-event posting. Events are queued in-memory and posted in the background.
     # NB: currently, it is a global task, but can be made per-resource or per-object.
@@ -200,7 +210,7 @@ def create_tasks(
                 resource=ourselves.resource,
                 handler=functools.partial(peering.peers_handler,
                                           ourselves=ourselves,
-                                          freeze=freeze))),  # freeze is set/cleared
+                                          freeze=freeze_flag))),  # freeze is set/cleared
         ])
 
     # Resource event handling, only once for every known resource (de-duplicated).
@@ -214,8 +224,15 @@ def create_tasks(
                                           registry=registry,
                                           resource=resource,
                                           event_queue=event_queue,
-                                          freeze=freeze))),  # freeze is only checked
+                                          freeze=freeze_flag))),  # freeze is only checked
         ])
+
+    # On Ctrl+C or pod termination, cancel all tasks gracefully.
+    if threading.current_thread() is threading.main_thread():
+        loop.add_signal_handler(signal.SIGINT, should_stop.set, tasks)
+        loop.add_signal_handler(signal.SIGTERM, should_stop.set, tasks)
+    else:
+        logger.warning("OS signals are ignored: running not in the main thread.")
 
     return tasks
 
@@ -246,31 +263,55 @@ def run(
         peering_name=peering_name,
     )
 
-    # Run the presumably infinite tasks until one of them fails (they never exit normally).
-    try:
-        done, pending = loop.run_until_complete(asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED))
-    except asyncio.CancelledError:
-        done, pending = [], tasks
-
-    # Allow the remaining tasks to handle the cancellation before re-raising (e.g. via try-finally).
-    # The errors in the cancellation stage will be ignored anyway (never re-raised below).
-    for task in pending:
-        task.cancel()
-    if pending:
-        cancelled, pending = loop.run_until_complete(asyncio.wait(pending, return_when=asyncio.ALL_COMPLETED))
-        assert not pending  # must be empty by now, the tasks are either done or cancelled.
-    else:
-        # when pending list is empty, let's say cancelled is empty too
-        cancelled = []
+    # Run the infinite tasks until one of them fails/exits (they never exit normally).
+    # Give some time for the remaining tasks to handle the cancellations (e.g. via try-finally).
+    done1, pending1 = _wait_gracefully(loop, tasks, return_when=asyncio.FIRST_COMPLETED)
+    done2, pending2 = _wait_cancelled(loop, pending1)
+    done3, pending3 = _wait_gracefully(loop, asyncio.all_tasks(loop), timeout=1.0)
+    done4, pending4 = _wait_cancelled(loop, pending3)
 
     # Check the results of the non-cancelled tasks, and re-raise of there were any exceptions.
-    # The cancelled tasks are not re-raised, as it is a normal flow for the "first-completed" run.
-    # TODO: raise all of the cancelled+done, if there were 2+ failed ones.
-    for task in list(cancelled) + list(done):
+    # The cancelled tasks are not re-raised, as it is a normal flow.
+    _reraise(loop, list(done1) + list(done2) + list(done3) + list(done4))
+
+
+def _wait_gracefully(loop, tasks, *, timeout=None, return_when=asyncio.ALL_COMPLETED):
+    if not tasks:
+        return [], []
+    try:
+        done, pending = loop.run_until_complete(asyncio.wait(tasks, return_when=return_when, timeout=timeout))
+    except asyncio.CancelledError:
+        # ``asyncio.wait()`` is cancelled, but the tasks can be running.
+        done, pending = [], tasks
+    return done, pending
+
+
+def _wait_cancelled(loop, tasks, *, timeout=None):
+    for task in tasks:
+        task.cancel()
+    if tasks:
+        done, pending = loop.run_until_complete(asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED, timeout=timeout))
+        assert not pending
+        return done, pending
+    else:
+        return [], []
+
+
+def _reraise(loop, tasks):
+    for task in tasks:
         try:
             task.result()  # can raise the regular (non-cancellation) exceptions.
         except asyncio.CancelledError:
             pass
+
+
+async def _stop_flag_checker(should_stop):
+    try:
+        await should_stop.wait()
+    except asyncio.CancelledError:
+        pass  # operator is stopping for any other reason
+    else:
+        logger.debug("Stop-flag is raised. Operator is stopping.")
 
 
 async def _wait_for_depletion(*, scheduler, queues):

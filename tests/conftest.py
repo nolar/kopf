@@ -356,3 +356,30 @@ def assert_logs(caplog):
             raise AssertionError(f"Few patterns were missed: {remaining_patterns!r}")
 
     return assert_logs_fn
+
+
+#
+# Helpers for asyncio checks.
+#
+@pytest.fixture(autouse=True)
+def _no_asyncio_pending_tasks():
+    """
+    Ensure there are no unattended asyncio tasks after the test.
+
+    It looks  both in the test's main event-loop, and in all other event-loops,
+    such as the background thread of `KopfRunner` (used in e2e tests).
+
+    Current solution uses some internals of asyncio, since there is no public
+    interface for that. The warnings are printed only at the end of pytest.
+
+    An alternative way: set event-loop's exception handler, force garbage
+    collection after every test, and check messages from `asyncio.Task.__del__`.
+    This, however, requires intercepting all event-loop creation in the code.
+    """
+    # See `asyncio.all_tasks()` implementation for reference.
+    before = {t for t in list(asyncio.tasks._all_tasks) if not t.done()}
+    yield
+    after = {t for t in list(asyncio.tasks._all_tasks) if not t.done()}
+    remains = after - before
+    if remains:
+        pytest.fail(f"Unattended asyncio tasks detected: {remains!r}")
