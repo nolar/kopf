@@ -38,7 +38,7 @@ from kopf.structs import patches
 from kopf.structs import resources
 
 WAITING_KEEPALIVE_INTERVAL = 10 * 60
-""" How often to wake up from the long sleep, to show the liveliness. """
+""" How often to wake up from the long sleep, to show liveness in the logs. """
 
 DEFAULT_RETRY_DELAY = 1 * 60
 """ The default delay duration for the regular exception in retry-mode. """
