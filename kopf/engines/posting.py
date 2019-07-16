@@ -63,8 +63,8 @@ def enqueue(ref, type, reason, message):
     else:
         # No event-loop or another event-loop - assume another thread.
         # Use the cross-thread thread-safe methods. Block until enqueued there.
-        fut = asyncio.run_coroutine_threadsafe(queue.put(event), loop=loop)
-        fut.result()
+        future = asyncio.run_coroutine_threadsafe(queue.put(event), loop=loop)
+        future.result()  # block, wait, re-raise.
 
 
 def event(objs, *, type, reason, message=''):
