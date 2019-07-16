@@ -1,4 +1,5 @@
 import asyncio
+import concurrent.futures
 import threading
 
 import click.testing
@@ -37,22 +38,20 @@ class KopfRunner:
     but not across processes --- the mock's calls (counts, arrgs) are lost.
     """
 
-    def __init__(self, *args, reraise=True, **kwargs):
+    def __init__(self, *args, reraise=True, timeout=None, **kwargs):
         super().__init__()
         self.args = args
         self.kwargs = kwargs
         self.reraise = reraise
-        self._loop = None
-        self._loop_set = None
-        self._thread = None
-        self._result = None
-        self._invoke_exception = None
+        self.timeout = timeout
+        self._loop = asyncio.new_event_loop()
+        self._ready = threading.Event()  # NB: not asyncio.Event!
+        self._thread = threading.Thread(target=self._target)
+        self._future = concurrent.futures.Future()
 
     def __enter__(self):
-        self._loop_set = threading.Event()  # NB: not asyncio.Event!
-        self._thread = threading.Thread(target=self._target)
         self._thread.start()
-        self._loop_set.wait()  # should be nanosecond-fast
+        self._ready.wait()  # should be nanosecond-fast
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -71,29 +70,30 @@ class KopfRunner:
         # but instead wait for the thread+loop (CLI command) to finish.
         if self._loop.is_running():
             asyncio.run_coroutine_threadsafe(shutdown(), self._loop)
-        self._thread.join()
+        self._thread.join(timeout=self.timeout)
+
+        # If the thread is not finished, it is a bigger problem than exceptions.
         if self._thread.is_alive():
             raise Exception("The operator didn't stop, still running.")
 
         # Re-raise the exceptions of the threading & invocation logic.
-        if self._invoke_exception is not None:
+        if self._future.exception() is not None:
             if exc_val is None:
-                raise self._invoke_exception
+                raise self._future.exception()
             else:
-                raise self._invoke_exception from exc_val
-        if self._result.exception is not None and self.reraise:
+                raise self._future.exception() from exc_val
+        if self._future.result().exception is not None and self.reraise:
             if exc_val is None:
-                raise self._result.exception
+                raise self._future.result().exception
             else:
-                raise self._result.exception from exc_val
+                raise self._future.result().exception from exc_val
 
     def _target(self):
 
         # Every thread must have its own loop. The parent thread (pytest)
         # needs to know when the loop is set up, to be able to shut it down.
-        self._loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self._loop)
-        self._loop_set.set()
+        self._ready.set()
 
         # Execute the requested CLI command in the thread & thread's loop.
         # Remember the result & exception for re-raising in the parent thread.
@@ -101,40 +101,42 @@ class KopfRunner:
             runner = click.testing.CliRunner()
             result = runner.invoke(cli.main, *self.args, **self.kwargs)
         except BaseException as e:
-            self._result = None
-            self._invoke_exception = e
+            self._future.set_exception(e)
         else:
-            self._result = result
-            self._invoke_exception = None
+            self._future.set_result(result)
+
+    @property
+    def future(self):
+        return self._future
 
     @property
     def output(self):
-        return self._result.output
+        return self.future.result().output
 
     @property
     def stdout(self):
-        return self._result.stdout
+        return self.future.result().stdout
 
     @property
     def stdout_bytes(self):
-        return self._result.stdout_bytes
+        return self.future.result().stdout_bytes
 
     @property
     def stderr(self):
-        return self._result.stderr
+        return self.future.result().stderr
 
     @property
     def stderr_bytes(self):
-        return self._result.stderr_bytes
+        return self.future.result().stderr_bytes
 
     @property
     def exit_code(self):
-        return self._result.exit_code
+        return self.future.result().exit_code
 
     @property
     def exception(self):
-        return self._result.exception
+        return self.future.result().exception
 
     @property
     def exc_info(self):
-        return self._result.exc_info
+        return self.future.result().exc_info
