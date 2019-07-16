@@ -31,10 +31,6 @@ class K8sPoster(logging.Handler):
     A handler to post all log messages as K8s events.
     """
 
-    def __init__(self, level=logging.NOTSET, queue=None):
-        super().__init__(level=level)
-        self.queue = queue
-
     def createLock(self):
         # Save some time on unneeded locks. Events are posted in the background.
         # We only put events to the queue, which is already lock-protected.
@@ -59,11 +55,11 @@ class K8sPoster(logging.Handler):
                 logging.getLevelName(record.levelno).capitalize())
             reason = 'Logging'
             message = self.format(record)
-            self.queue.put_nowait(posting.K8sEvent(
+            posting.enqueue(
                 ref=record.k8s_ref,
                 type=type,
                 reason=reason,
-                message=message))
+                message=message)
         except Exception:
             self.handleError(record)
 
@@ -84,8 +80,8 @@ class ObjectLogger(logging.LoggerAdapter):
     (e.g. in case of background posting via the queue; see `K8sPoster`).
     """
 
-    def __init__(self, *, body, event_level=logging.INFO, event_queue=None):
-        super().__init__(self._make_logger(event_level, event_queue), dict(
+    def __init__(self, *, body):
+        super().__init__(logger, dict(
             k8s_skip=False,
             k8s_ref=dict(
                 apiVersion=body.get('apiVersion'),
@@ -95,39 +91,6 @@ class ObjectLogger(logging.LoggerAdapter):
                 namespace=body.get('metadata', {}).get('namespace'),
             ),
         ))
-        self.queue = event_queue  # for kopf.event()&co explicit posting
-
-    def __del__(self):
-        # When an object logger is garbage-collected, purge its handlers & posting queues.
-        # Note: Depending on the garbage collection setup, this can never happen or be delayed.
-        # In this case, the object logger stays ready to log, i.e. keeps its handler+queue.
-        # TODO: also remove the dynamic logger itself, to avoid memory leaks.
-        for handler in list(self.logger.handlers):
-            if isinstance(handler, K8sPoster):
-                self.logger.removeHandler(handler)
-                handler.close()
-
-    def _make_logger(self, event_level, event_queue):
-        """
-        Get-or-create a logger for this event queue, and setup the k8s poster.
-
-        If only one global queue is used, it will be one logger.
-
-        If multiple queues are used, each queue uses its own logger
-        with its own handler. This is currently needed for tests
-        (every test provides and later asserts its own k8s-event queue).
-
-        In the future, or now via user tweaks, the framework can create
-        separate k8s-event-queues per resource kind, per individual objects,
-        or on another grouping basis. They should not duplicate each other
-        by posting the same log-message to k8s more than once.
-        For this purpose, separate `logging.Logger` instances are used:
-        strictly one per an `ObjectLogger` instance, dynamically created.
-        """
-        logger = logging.getLogger(f'kopf.objects.{id(event_queue)}')
-        if not logger.handlers:
-            logger.addHandler(K8sPoster(level=event_level, queue=event_queue))
-        return logger
 
     def process(self, msg, kwargs):
         # Native logging overwrites the message's extra with the adapter's extra.
@@ -139,3 +102,7 @@ class ObjectLogger(logging.LoggerAdapter):
         if local:
             kwargs['extra'] = dict(kwargs.pop('extra', {}), k8s_skip=True)
         super().log(level, msg, *args, **kwargs)
+
+
+logger = logging.getLogger('kopf.objects')
+logger.addHandler(K8sPoster(level=logging.INFO))

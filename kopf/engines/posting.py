@@ -24,6 +24,10 @@ from kopf.clients import events
 from kopf.structs import dicts
 from kopf.structs import hierarchies
 
+# Logging and event-posting can happen cross-thread: e.g. in sync-executors.
+# We have to remember our main event-loop with the queue consumer, to make
+# thread-safe coro calls both from inside that event-loop and from outside.
+event_queue_loop_var: ContextVar[asyncio.AbstractEventLoop] = ContextVar('event_queue_loop_var')
 event_queue_var: ContextVar[asyncio.Queue] = ContextVar('event_queue_var')
 
 
@@ -38,12 +42,35 @@ class K8sEvent(NamedTuple):
     message: Text
 
 
-def event(objs, *, type, reason, message=''):
+def enqueue(ref, type, reason, message):
+    loop = event_queue_loop_var.get()
     queue = event_queue_var.get()
+    event = K8sEvent(ref=ref, type=type, reason=reason, message=message)
+
+    # Events can be posted from another thread than the event-loop's thread
+    # (e.g. from sync-handlers, or from explicitly started per-object threads),
+    # or from the same thread (async-handlers and the framework itself).
+    try:
+        running_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        running_loop = None
+
+    if running_loop is loop:
+        # Posting from the same event-loop as the poster task and queue are in.
+        # Therefore, it is the same thread, and all calls here are thread-safe.
+        # Special thread-safe cross-event-loop methods make no effect here.
+        queue.put_nowait(event)
+    else:
+        # No event-loop or another event-loop - assume another thread.
+        # Use the cross-thread thread-safe methods. Block until enqueued there.
+        future = asyncio.run_coroutine_threadsafe(queue.put(event), loop=loop)
+        future.result()  # block, wait, re-raise.
+
+
+def event(objs, *, type, reason, message=''):
     for obj in dicts.walk(objs):
         ref = hierarchies.build_object_reference(obj)
-        event = K8sEvent(ref=ref, type=type, reason=reason, message=message)
-        queue.put_nowait(event)
+        enqueue(ref=ref, type=type, reason=reason, message=message)
 
 
 def info(obj, *, reason, message=''):

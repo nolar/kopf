@@ -4,7 +4,7 @@ import pytest
 from asynctest import call
 
 from kopf import event, info, warn, exception
-from kopf.engines.posting import poster, K8sEvent, event_queue_var
+from kopf.engines.posting import poster, K8sEvent, event_queue_var, event_queue_loop_var
 
 OBJ1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
         'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1'}}
@@ -42,7 +42,7 @@ async def test_poster_polls_and_posts(mocker):
     )
 
 
-def test_queueing_fails_with_no_queue(mocker):
+def test_queueing_fails_with_no_queue(event_queue_loop):
     # Prerequisite: the context-var should not be set by anything in advance.
     sentinel = object()
     assert event_queue_var.get(sentinel) is sentinel
@@ -51,11 +51,18 @@ def test_queueing_fails_with_no_queue(mocker):
         event(OBJ1, type='type1', reason='reason1', message='message1')
 
 
-def test_via_event_function(mocker):
+def test_queueing_fails_with_no_loop(event_queue):
+    # Prerequisite: the context-var should not be set by anything in advance.
+    sentinel = object()
+    assert event_queue_loop_var.get(sentinel) is sentinel
+
+    with pytest.raises(LookupError):
+        event(OBJ1, type='type1', reason='reason1', message='message1')
+
+
+async def test_via_event_function(mocker, event_queue, event_queue_loop):
     post_event = mocker.patch('kopf.clients.events.post_event')
 
-    event_queue = asyncio.Queue()
-    event_queue_var.set(event_queue)
     event(OBJ1, type='type1', reason='reason1', message='message1')
 
     assert not post_event.called
@@ -74,11 +81,9 @@ def test_via_event_function(mocker):
     pytest.param(warn, "Warning", id='warn'),
     pytest.param(exception, "Error", id='exception'),
 ])
-def test_via_shortcut(mocker, event_fn, event_type):
+async def test_via_shortcut(mocker, event_fn, event_type, event_queue, event_queue_loop):
     post_event = mocker.patch('kopf.clients.events.post_event')
 
-    event_queue = asyncio.Queue()
-    event_queue_var.set(event_queue)
     event_fn(OBJ1, reason='reason1', message='message1')
 
     assert not post_event.called
