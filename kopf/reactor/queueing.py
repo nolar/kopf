@@ -229,8 +229,8 @@ def create_tasks(
 
     # On Ctrl+C or pod termination, cancel all tasks gracefully.
     if threading.current_thread() is threading.main_thread():
-        loop.add_signal_handler(signal.SIGINT, should_stop.set, tasks)
-        loop.add_signal_handler(signal.SIGTERM, should_stop.set, tasks)
+        loop.add_signal_handler(signal.SIGINT, should_stop.set)
+        loop.add_signal_handler(signal.SIGTERM, should_stop.set)
     else:
         logger.warning("OS signals are ignored: running not in the main thread.")
 
