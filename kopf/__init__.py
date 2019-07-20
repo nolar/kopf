@@ -44,16 +44,16 @@ from kopf.reactor.lifecycles import (
     get_default_lifecycle,
     set_default_lifecycle,
 )
-from kopf.reactor.queueing import (
-    run,
-    create_tasks,
-)
 from kopf.reactor.registries import (
     BaseRegistry,
     SimpleRegistry,
     GlobalRegistry,
     get_default_registry,
     set_default_registry,
+)
+from kopf.reactor.running import (
+    run,
+    create_tasks,
 )
 from kopf.structs.hierarchies import (
     adopt,

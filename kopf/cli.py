@@ -6,7 +6,7 @@ import click
 from kopf import config
 from kopf.clients import auth
 from kopf.engines import peering
-from kopf.reactor import queueing
+from kopf.reactor import running
 from kopf.utilities import loaders
 
 
@@ -54,7 +54,7 @@ def run(paths, modules, peering_name, priority, standalone, namespace):
         paths=paths,
         modules=modules,
     )
-    return queueing.run(
+    return running.run(
         standalone=standalone,
         namespace=namespace,
         priority=priority,
