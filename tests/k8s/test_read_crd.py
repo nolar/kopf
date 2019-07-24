@@ -1,54 +1,53 @@
+import aiohttp.web
 import pytest
-import requests
 
-from kopf.clients.fetching import read_crd
+from kopf.clients.fetching import read_crd, CRD_CRD
 
 
-async def test_when_present(req_mock, resource):
-    result = {}
-    req_mock.get.return_value.json.return_value = result
+async def test_when_present(
+        resp_mocker, aresponses, hostname, resource):
+
+    get_mock = resp_mocker(return_value=aiohttp.web.json_response({'a': 'b'}))
+    aresponses.add(hostname, CRD_CRD.get_url(name=resource.name), 'get', get_mock)
 
     crd = await read_crd(resource=resource)
-    assert crd is result
+    assert crd == {'a': 'b'}
 
-    assert req_mock.get.called
-    assert req_mock.get.call_count == 1
-
-    url = req_mock.get.call_args_list[0][1]['url']
-    assert '/customresourcedefinitions/kopfexamples.zalando.org' in url
+    assert get_mock.called
+    assert get_mock.call_count == 1
 
 
 @pytest.mark.parametrize('status', [403, 404])
-async def test_when_absent_with_no_default(req_mock, resource, status):
-    response = requests.Response()
-    response.status_code = status
-    error = requests.exceptions.HTTPError("boo!", response=response)
-    req_mock.get.side_effect = error
+async def test_when_absent_with_no_default(
+        resp_mocker, aresponses, hostname, resource, status):
 
-    with pytest.raises(requests.exceptions.HTTPError) as e:
+    get_mock = resp_mocker(return_value=aresponses.Response(status=status, reason="boo!"))
+    aresponses.add(hostname, CRD_CRD.get_url(name=resource.name), 'get', get_mock)
+
+    with pytest.raises(aiohttp.ClientResponseError) as e:
         await read_crd(resource=resource)
-    assert e.value.response.status_code == status
+    assert e.value.status == status
 
 
 @pytest.mark.parametrize('default', [None, object()], ids=['none', 'object'])
 @pytest.mark.parametrize('status', [403, 404])
-async def test_when_absent_with_default(req_mock, resource, default, status):
-    response = requests.Response()
-    response.status_code = status
-    error = requests.exceptions.HTTPError("boo!", response=response)
-    req_mock.get.side_effect = error
+async def test_when_absent_with_default(
+        resp_mocker, aresponses, hostname, resource, default, status):
+
+    get_mock = resp_mocker(return_value=aresponses.Response(status=status, reason="boo!"))
+    aresponses.add(hostname, CRD_CRD.get_url(name=resource.name), 'get', get_mock)
 
     crd = await read_crd(resource=resource, default=default)
     assert crd is default
 
 
 @pytest.mark.parametrize('status', [400, 401, 500, 666])
-async def test_raises_api_error_despite_default(req_mock, resource, status):
-    response = requests.Response()
-    response.status_code = status
-    error = requests.exceptions.HTTPError("boo!", response=response)
-    req_mock.get.side_effect = error
+async def test_raises_api_error_despite_default(
+        resp_mocker, aresponses, hostname, resource, status):
 
-    with pytest.raises(requests.exceptions.HTTPError) as e:
+    get_mock = resp_mocker(return_value=aresponses.Response(status=status, reason="boo!"))
+    aresponses.add(hostname, CRD_CRD.get_url(name=resource.name), 'get', get_mock)
+
+    with pytest.raises(aiohttp.ClientResponseError) as e:
         await read_crd(resource=resource, default=object())
-    assert e.value.response.status_code == status
+    assert e.value.status == status

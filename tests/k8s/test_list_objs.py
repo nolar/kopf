@@ -1,46 +1,46 @@
+import aiohttp.web
 import pytest
-import requests
 
 from kopf.clients.fetching import list_objs_rv
 
 
-async def test_when_successful_clustered(req_mock, resource):
+async def test_when_successful_clustered(
+        resp_mocker, aresponses, hostname, resource):
+
     result = {'items': [{}, {}]}
-    req_mock.get.return_value.json.return_value = result
+    list_mock = resp_mocker(return_value=aiohttp.web.json_response(result))
+    aresponses.add(hostname, resource.get_url(namespace=None), 'get', list_mock)
 
     items, resource_version = await list_objs_rv(resource=resource, namespace=None)
     assert items == result['items']
 
-    assert req_mock.get.called
-    assert req_mock.get.call_count == 1
-
-    url = req_mock.get.call_args_list[0][1]['url']
-    assert 'apis/zalando.org/v1/kopfexamples' in url
-    assert 'namespaces/' not in url
+    assert list_mock.called
+    assert list_mock.call_count == 1
 
 
-async def test_when_successful_namespaced(req_mock, resource):
+async def test_when_successful_namespaced(
+        resp_mocker, aresponses, hostname, resource):
+
     result = {'items': [{}, {}]}
-    req_mock.get.return_value.json.return_value = result
+    list_mock = resp_mocker(return_value=aiohttp.web.json_response(result))
+    aresponses.add(hostname, resource.get_url(namespace='ns1'), 'get', list_mock)
 
     items, resource_version = await list_objs_rv(resource=resource, namespace='ns1')
     assert items == result['items']
 
-    assert req_mock.get.called
-    assert req_mock.get.call_count == 1
-
-    url = req_mock.get.call_args_list[0][1]['url']
-    assert 'apis/zalando.org/v1/namespaces/ns1/kopfexamples' in url
+    assert list_mock.called
+    assert list_mock.call_count == 1
 
 
 @pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['without-namespace', 'with-namespace'])
 @pytest.mark.parametrize('status', [400, 401, 403, 500, 666])
-async def test_raises_api_error(req_mock, resource, namespace, status):
-    response = requests.Response()
-    response.status_code = status
-    error = requests.exceptions.HTTPError("boo!", response=response)
-    req_mock.get.side_effect = error
+async def test_raises_api_error(
+        resp_mocker, aresponses, hostname, resource, namespace, status):
 
-    with pytest.raises(requests.exceptions.HTTPError) as e:
+    list_mock = resp_mocker(return_value=aresponses.Response(status=status, reason="boo!"))
+    aresponses.add(hostname, resource.get_url(namespace=None), 'get', list_mock)
+    aresponses.add(hostname, resource.get_url(namespace='ns1'), 'get', list_mock)
+
+    with pytest.raises(aiohttp.ClientResponseError) as e:
         await list_objs_rv(resource=resource, namespace=namespace)
-    assert e.value.response.status_code == status
+    assert e.value.status == status
