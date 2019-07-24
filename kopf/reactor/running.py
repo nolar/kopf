@@ -200,8 +200,6 @@ async def run_tasks(root_tasks, *, ignored: Collection[asyncio.Task] = frozenset
 
     # If succeeded or if cancellation is silenced, re-raise from failed tasks (if any).
     await _reraise(root_done | root_cancelled | hung_done | hung_cancelled)
-    # assert not root_left
-    # assert not hung_left
 
 
 async def _all_tasks(ignored: Collection[asyncio.Task] = frozenset()) -> Collection[asyncio.Task]:

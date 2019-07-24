@@ -105,8 +105,8 @@ in :mod:`contextvars` containers with values isolated per-loop and per-task.
 .. warning::
     It is not recommended to run Kopf in the same event-loop with other routines
     or applications: it considers all tasks in the event-loop as spawned by its
-    workers and handlers, and cancells them when it exits.
+    workers and handlers, and cancels them when it exits.
 
-    There are some basic safety measures to not cancel the tasks existed before
-    operator startup, but that cannot be applied to the tasks spawned later
-    due to asyncio implementation details.
+    There are some basic safety measures to not cancel tasks existing prior
+    to the operator's startup, but that cannot be applied to the tasks spawned
+    later due to asyncio implementation details.
