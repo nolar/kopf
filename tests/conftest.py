@@ -9,6 +9,7 @@ import sys
 import time
 from unittest.mock import Mock
 
+import aiohttp
 import asynctest
 import pytest
 import pytest_mock
@@ -190,7 +191,7 @@ def resp_mocker(fake_vault, enforced_session, resource, aresponses):
 
 
 @pytest.fixture()
-def stream(req_mock, fake_vault):
+def stream(req_mock, fake_vault, resp_mocker, aresponses, hostname, resource):
     """ A mock for the stream of events as if returned by K8s client. """
     def feed(*args):
         side_effect = []
@@ -199,6 +200,30 @@ def stream(req_mock, fake_vault):
                 arg = iter(json.dumps(event).encode('utf-8') for event in arg)
             side_effect.append(arg)
         req_mock.get.return_value.iter_lines.side_effect = side_effect
+
+        for arg in args:
+
+            # Prepare the stream response pre-rendered (for simplicity, no actual streaming).
+            if isinstance(arg, (list, tuple)):
+                stream_text = '\n'.join(json.dumps(event) for event in arg)
+                stream_resp = aresponses.Response(text=stream_text)
+            else:
+                stream_resp = arg
+
+            # List is requested for every watch, so we simulate it empty.
+            list_data = {'items': [], 'metadata': {'resourceVersion': '0'}}
+            list_resp = aiohttp.web.json_response(list_data)
+            list_url = resource.get_url(namespace=None)
+
+            # The stream is not empty, but is as fed.
+            stream_query = {'watch': 'true', 'resourceVersion': '0'}
+            stream_url = resource.get_url(namespace=None, params=stream_query)
+
+            # Note: `aresponses` excludes a response once it is matched (side-effect-like).
+            # So we just accumulate them there, as many as needed.
+            aresponses.add(hostname, stream_url, 'get', stream_resp, match_querystring=True)
+            aresponses.add(hostname, list_url, 'get', list_resp, match_querystring=True)
+
     return Mock(spec_set=['feed'], feed=feed)
 
 #
