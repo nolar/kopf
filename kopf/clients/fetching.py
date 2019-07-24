@@ -59,29 +59,3 @@ def list_objs(*, resource, namespace=None):
     namespace = namespace if issubclass(cls, pykube.objects.NamespacedAPIObject) else None
     lst = cls.objects(api, namespace=pykube.all if namespace is None else namespace)
     return lst.response
-
-
-def watch_objs(*, resource, namespace=None, timeout=None, since=None):
-    """
-    Watch the objects of specific resource type.
-
-    The cluster-scoped call is used in two cases:
-
-    * The resource itself is cluster-scoped, and namespacing makes not sense.
-    * The operator serves all namespaces for the namespaced custom resource.
-
-    Otherwise, the namespace-scoped call is used:
-
-    * The resource is namespace-scoped AND operator is namespaced-restricted.
-    """
-
-    params = {}
-    if timeout is not None:
-        params['timeoutSeconds'] = timeout
-
-    api = auth.get_pykube_api(timeout=None)
-    cls = classes._make_cls(resource=resource)
-    namespace = namespace if issubclass(cls, pykube.objects.NamespacedAPIObject) else None
-    lst = cls.objects(api, namespace=pykube.all if namespace is None else namespace)
-    src = lst.watch(since=since, params=params)
-    return iter({'type': event.type, 'object': event.object.obj} for event in src)

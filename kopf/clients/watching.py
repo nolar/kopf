@@ -22,7 +22,11 @@ import asyncio
 import logging
 from typing import Union
 
+import pykube
+
 from kopf import config
+from kopf.clients import auth
+from kopf.clients import classes
 from kopf.clients import fetching
 from kopf.reactor import registries
 
@@ -64,6 +68,26 @@ async def streaming_aiter(src, loop=None, executor=None):
             return
 
 
+async def infinite_watch(
+        resource: registries.Resource,
+        namespace: Union[None, str],
+):
+    """
+    Stream the watch-events infinitely.
+
+    This routine is extracted because it is difficult to test infinite loops.
+    It is made as simple as possible, and is assumed to work without testing.
+
+    This routine never ends gracefully. If a watcher's stream fails,
+    a new one is recreated, and the stream continues.
+    It only exits with unrecoverable exceptions.
+    """
+    while True:
+        async for event in streaming_watch(resource=resource, namespace=namespace):
+            yield event
+        await asyncio.sleep(config.WatchersConfig.watcher_retry_delay)
+
+
 async def streaming_watch(
         resource: registries.Resource,
         namespace: Union[None, str],
@@ -83,13 +107,10 @@ async def streaming_watch(
         yield {'type': None, 'object': item}
 
     # Then, watch the resources starting from the list's resource version.
-    kwargs = {}
-    kwargs.update(dict(resource_version=resource_version) if resource_version else {})
-    kwargs.update(dict(timeout_seconds=config.WatchersConfig.default_stream_timeout) if config.WatchersConfig.default_stream_timeout else {})
     loop = asyncio.get_event_loop()
-    stream = fetching.watch_objs(resource=resource, namespace=namespace,
-                                 timeout=config.WatchersConfig.default_stream_timeout,
-                                 since=resource_version)
+    stream = watch_objs(resource=resource, namespace=namespace,
+                        timeout=config.WatchersConfig.default_stream_timeout,
+                        since=resource_version)
     async for event in streaming_aiter(stream, loop=loop):
 
         # "410 Gone" is for the "resource version too old" error, we must restart watching.
@@ -112,22 +133,27 @@ async def streaming_watch(
         yield event
 
 
-async def infinite_watch(
-        resource: registries.Resource,
-        namespace: Union[None, str],
-):
+def watch_objs(*, resource, namespace=None, timeout=None, since=None):
     """
-    Stream the watch-events infinitely.
+    Watch objects of a specific resource type.
 
-    This routine is extracted only due to difficulty of testing
-    of the infinite loops. It is made as simple as possible,
-    and is assumed to work without testing.
+    The cluster-scoped call is used in two cases:
 
-    This routine never ends gracefully. If a watcher's stream fails,
-    a new one is recreated, and the stream continues.
-    It only exits with unrecoverable exceptions.
+    * The resource itself is cluster-scoped, and namespacing makes not sense.
+    * The operator serves all namespaces for the namespaced custom resource.
+
+    Otherwise, the namespace-scoped call is used:
+
+    * The resource is namespace-scoped AND operator is namespaced-restricted.
     """
-    while True:
-        async for event in streaming_watch(resource=resource, namespace=namespace):
-            yield event
-        await asyncio.sleep(config.WatchersConfig.watcher_retry_delay)
+
+    params = {}
+    if timeout is not None:
+        params['timeoutSeconds'] = timeout
+
+    api = auth.get_pykube_api(timeout=None)
+    cls = classes._make_cls(resource=resource)
+    namespace = namespace if issubclass(cls, pykube.objects.NamespacedAPIObject) else None
+    lst = cls.objects(api, namespace=pykube.all if namespace is None else namespace)
+    src = lst.watch(since=since, params=params)
+    return iter({'type': event.type, 'object': event.object.obj} for event in src)

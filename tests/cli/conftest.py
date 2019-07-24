@@ -98,4 +98,4 @@ def preload(mocker):
 
 @pytest.fixture()
 def real_run(mocker):
-    return mocker.patch('kopf.reactor.queueing.run')
+    return mocker.patch('kopf.reactor.running.run')

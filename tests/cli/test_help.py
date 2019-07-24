@@ -26,7 +26,7 @@ def test_help_in_subcommand(invoke, mocker):
     verify_pykube = mocker.patch('kopf.clients.auth.verify_pykube')
     verify_client = mocker.patch('kopf.clients.auth.verify_client')
     preload = mocker.patch('kopf.utilities.loaders.preload')
-    real_run = mocker.patch('kopf.reactor.queueing.run')
+    real_run = mocker.patch('kopf.reactor.running.run')
 
     result = invoke(['run', '--help'])
 
