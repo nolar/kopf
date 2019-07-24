@@ -3,6 +3,7 @@ import functools
 import logging
 import signal
 import threading
+import warnings
 from typing import Optional, Callable, Collection
 
 from kopf.engines import peering
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 def run(
         loop: Optional[asyncio.AbstractEventLoop] = None,
         lifecycle: Optional[Callable] = None,
-        registry: Optional[registries.BaseRegistry] = None,
+        registry: Optional[registries.GlobalRegistry] = None,
         standalone: bool = False,
         priority: int = 0,
         peering_name: str = peering.PEERING_DEFAULT_NAME,
@@ -45,7 +46,7 @@ def run(
 
 async def operator(
         lifecycle: Optional[Callable] = None,
-        registry: Optional[registries.BaseRegistry] = None,
+        registry: Optional[registries.GlobalRegistry] = None,
         standalone: bool = False,
         priority: int = 0,
         peering_name: str = peering.PEERING_DEFAULT_NAME,
@@ -56,6 +57,8 @@ async def operator(
 
     This function should be used to run an operator in an asyncio event-loop
     if the operator is orchestrated explicitly and manually.
+
+    It is efficiently `spawn_tasks` + `run_tasks` with some safety.
     """
     existing_tasks = await _all_tasks()
     operator_tasks = await spawn_tasks(
@@ -71,7 +74,7 @@ async def operator(
 
 async def spawn_tasks(
         lifecycle: Optional[Callable] = None,
-        registry: Optional[registries.BaseRegistry] = None,
+        registry: Optional[registries.GlobalRegistry] = None,
         standalone: bool = False,
         priority: int = 0,
         peering_name: str = peering.PEERING_DEFAULT_NAME,
@@ -267,4 +270,7 @@ def create_tasks(loop: asyncio.AbstractEventLoop, *arg, **kwargs):
         It is only kept for backward compatibility, as it was exposed
         via the public interface of the framework.
     """
+    warnings.warn("kopf.create_tasks() is deprecated: "
+                  "use kopf.spawn_tasks() or kopf.operator().",
+                  DeprecationWarning)
     return loop.run_until_complete(spawn_tasks(*arg, **kwargs))

@@ -52,8 +52,11 @@ from kopf.reactor.registries import (
     set_default_registry,
 )
 from kopf.reactor.running import (
+    spawn_tasks,
+    run_tasks,
+    operator,
     run,
-    create_tasks,
+    create_tasks,  # deprecated
 )
 from kopf.structs.hierarchies import (
     adopt,
@@ -71,7 +74,7 @@ __all__ = [
     'configure',
     'login', 'LoginError',
     'event', 'info', 'warn', 'exception',
-    'run', 'create_tasks',
+    'spawn_tasks', 'run_tasks', 'operator', 'run', 'create_tasks',
     'adopt', 'label',
     'get_default_lifecycle', 'set_default_lifecycle',
     'build_object_reference', 'build_owner_reference',

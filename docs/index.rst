@@ -37,6 +37,7 @@ Kopf: Kubernetes Operators Framework
    events
    testing
    configuring
+   embedding
 
 .. toctree::
    :maxdepth: 2
