@@ -1,17 +1,19 @@
-import asyncio
 import copy
 import datetime
 import logging
 from typing import Optional
 
+import aiohttp
 import pykube
-import requests
 
-from kopf import config
 from kopf.clients import auth
 from kopf.structs import bodies
+from kopf.structs import resources
 
 logger = logging.getLogger(__name__)
+
+EVENTS_V1BETA1_CRD = resources.Resource('events.k8s.io', 'v1beta1', 'events')
+EVENTS_CORE_V1_CRD = resources.Resource('', 'v1', 'events')
 
 MAX_MESSAGE_LENGTH = 1024
 CUT_MESSAGE_INFIX = '...'
@@ -34,13 +36,12 @@ async def post_event(
     and where the rate-limits should be maintained. It can (and should)
     be done by the client library, as it is done in the Go client.
     """
-    now = datetime.datetime.utcnow()
-    if api is None:
+    if session is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 
     # See #164. For cluster-scoped objects, use the current namespace from the current context.
     # It could be "default", but in some systems, we are limited to one specific namespace only.
-    namespace: str = ref.get('namespace') or api.config.namespace
+    namespace: str = ref.get('namespace') or session.default_namespace or 'default'
     full_ref: bodies.ObjectReference = copy.copy(ref)
     full_ref['namespace'] = namespace
 
@@ -51,6 +52,7 @@ async def post_event(
         suffix = message[-MAX_MESSAGE_LENGTH // 2 + (len(infix) - len(infix) // 2):]
         message = f'{prefix}{infix}{suffix}'
 
+    now = datetime.datetime.utcnow()
     body = {
         'metadata': {
             'namespace': namespace,
@@ -74,12 +76,14 @@ async def post_event(
     }
 
     try:
-        obj = pykube.Event(api, body)
+        response = await session.post(
+            url=EVENTS_CORE_V1_CRD.get_url(server=session.server, namespace=namespace),
+            headers={'Content-Type': 'application/json'},
+            json=body,
+        )
+        response.raise_for_status()
 
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(config.WorkersConfig.get_syn_executor(), obj.create)
-
-    except (requests.exceptions.HTTPError, pykube.exceptions.HTTPError) as e:
+    except aiohttp.ClientResponseError as e:
         # Events are helpful but auxiliary, they should not fail the handling cycle.
         # Yet we want to notice that something went wrong (in logs).
         logger.warning("Failed to post an event. Ignoring and continuing. "
