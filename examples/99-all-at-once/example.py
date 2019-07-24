@@ -5,11 +5,19 @@ import pprint
 import time
 
 import kopf
+import pykube
+import yaml
 
 # Marks for the e2e tests (see tests/e2e/test_examples.py):
 E2E_CREATE_TIME = 5
 E2E_DELETE_TIME = 1
 E2E_TRACEBACKS = True
+
+try:
+    cfg = pykube.KubeConfig.from_service_account()
+except FileNotFoundError:
+    cfg = pykube.KubeConfig.from_file()
+api = pykube.HTTPClient(cfg)
 
 
 @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
@@ -57,3 +65,31 @@ def _create_children(owner):
 def wait_for_something():
     # Note: intentionally blocking from the asyncio point of view.
     time.sleep(1)
+
+
+@kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+def create_pod(body, **kwargs):
+
+    # Render the pod yaml with some spec fields used in the template.
+    pod_data = yaml.safe_load(f"""
+        apiVersion: v1
+        kind: Pod
+        spec:
+          containers:
+          - name: the-only-one
+            image: busybox
+            command: ["sh", "-x", "-c", "sleep 1"]
+    """)
+
+    # Make it our child: assign the namespace, name, labels, owner references, etc.
+    kopf.adopt(pod_data, owner=body)
+    kopf.label(pod_data, {'application': 'kopf-example-10'})
+
+    # Actually create an object by requesting the Kubernetes API.
+    pod = pykube.Pod(api, pod_data)
+    pod.create()
+
+
+@kopf.on.event('', 'v1', 'pods', labels={'application': 'kopf-example-10'})
+def example_pod_change(logger, **kwargs):
+    logger.info("This pod is special for us.")
