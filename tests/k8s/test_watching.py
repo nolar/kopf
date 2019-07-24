@@ -10,6 +10,7 @@ They are NOT part of the public interface of the framework.
 """
 import logging
 
+import aiohttp
 import pytest
 
 from kopf.clients.watching import streaming_watch, infinite_watch, WatchingError
@@ -102,8 +103,9 @@ async def test_unknown_error_raises_exception(resource, stream):
     assert '666' in str(e.value)
 
 
-async def test_exception_escalates(resource, stream):
-    stream.feed(SampleException())
+async def test_exception_escalates(resource, stream, enforced_session, mocker):
+    enforced_session.get = mocker.Mock(side_effect=SampleException())
+    stream.feed([])
 
     events = []
     with pytest.raises(SampleException):
@@ -113,17 +115,21 @@ async def test_exception_escalates(resource, stream):
     assert len(events) == 0
 
 
-async def test_infinite_watch_never_exits_normally(resource, stream):
+async def test_infinite_watch_never_exits_normally(resource, stream, aresponses):
+    error = aresponses.Response(status=555, reason='stop-infinite-cycle')
     stream.feed(
         STREAM_WITH_ERROR_410GONE,          # watching restarted
         STREAM_WITH_UNKNOWN_EVENT,          # event ignored
-        SampleException(),                  # to finally exit it somehow
+        error,                              # to finally exit it somehow
     )
 
     events = []
-    with pytest.raises(SampleException):
+    with pytest.raises(aiohttp.ClientResponseError) as e:
         async for event in infinite_watch(resource=resource, namespace=None):
             events.append(event)
+
+    assert e.value.status == 555
+    assert e.value.message == 'stop-infinite-cycle'
 
     assert len(events) == 3
     assert events[0]['object']['spec'] == 'a'

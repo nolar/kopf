@@ -20,15 +20,15 @@ They would not be needed if the client library were natively asynchronous.
 
 import asyncio
 import collections
-import concurrent.futures
+import json
 import logging
-from typing import Optional, Iterator, AsyncIterator, cast
+from typing import Optional, Dict, AsyncIterator, cast
 
+import aiohttp
 import pykube
 
 from kopf import config
 from kopf.clients import auth
-from kopf.clients import classes
 from kopf.clients import fetching
 from kopf.structs import bodies
 from kopf.structs import resources
@@ -43,40 +43,6 @@ class WatchingError(Exception):
     """
     Raised when an unexpected error happens in the watch-stream API.
     """
-
-
-class StopStreaming(RuntimeError):
-    """
-    Raised when the watch-stream generator ends streaming.
-    Replaces `StopIteration`.
-    """
-
-
-def streaming_next(__src: Iterator[PykubeWatchEvent]) -> PykubeWatchEvent:
-    """
-    Same as `next`, but replaces the `StopIteration` with `StopStreaming`.
-    """
-    try:
-        return next(__src)
-    except StopIteration as e:
-        raise StopStreaming(str(e))
-
-
-async def streaming_aiter(
-        __src: Iterator[PykubeWatchEvent],
-        *,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
-        executor: Optional[concurrent.futures.Executor] = None,
-) -> AsyncIterator[PykubeWatchEvent]:
-    """
-    Same as `iter`, but asynchronous and stops on `StopStreaming`, not on `StopIteration`.
-    """
-    loop = loop if loop is not None else asyncio.get_event_loop()
-    while True:
-        try:
-            yield await loop.run_in_executor(executor, streaming_next, __src)
-        except StopStreaming:
-            return
 
 
 async def infinite_watch(
@@ -165,20 +131,24 @@ async def watch_objs(
 
     * The resource is namespace-scoped AND operator is namespaced-restricted.
     """
-    if api is None:
+    if session is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 
-    params = {}
+    params: Dict[str, str] = {}
+    params['watch'] = 'true'
+    if since is not None:
+        params['resourceVersion'] = since
     if timeout is not None:
-        params['timeoutSeconds'] = timeout
+        params['timeoutSeconds'] = str(timeout)
 
-    src: Iterator[PykubeWatchEvent]
-    cls = await classes._make_cls(api=api, resource=resource)
-    namespace = namespace if issubclass(cls, pykube.objects.NamespacedAPIObject) else None
-    lst = cls.objects(api, namespace=pykube.all if namespace is None else namespace)
-    src = lst.watch(since=since, params=params)
-    async for event in streaming_aiter(iter(src)):
-        yield cast(bodies.RawEvent, {
-            'type': event.type,
-            'object': event.object.obj,
-        })
+    # TODO: also add cluster-wide resource when --namespace is set?
+    response = await session.get(
+        url=resource.get_url(server=session.server, namespace=namespace, params=params),
+        timeout=aiohttp.ClientTimeout(total=None),
+    )
+    response.raise_for_status()
+
+    async with response:
+        async for line in response.content:
+            event = cast(bodies.RawEvent, json.loads(line.decode("utf-8")))
+            yield event
