@@ -1,12 +1,9 @@
-import asyncio
 from typing import Optional, cast
 
+import aiohttp
 import pykube
-import requests
 
-from kopf import config
 from kopf.clients import auth
-from kopf.clients import classes
 from kopf.structs import bodies
 from kopf.structs import patches
 from kopf.structs import resources
@@ -33,7 +30,7 @@ async def patch_obj(
     used for the namespaced resources, even if the operator serves
     the whole cluster (i.e. is not namespace-restricted).
     """
-    if api is None:
+    if session is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 
     if body is not None and (name is not None or namespace is not None):
@@ -46,22 +43,15 @@ async def patch_obj(
         if namespace is not None:
             body['metadata']['namespace'] = namespace
 
-    cls = await classes._make_cls(api=api, resource=resource)
-    obj = cls(api, body)
-
-    # The handler could delete its own object, so we have nothing to patch. It is okay, ignore.
     try:
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(config.WorkersConfig.get_syn_executor(), obj.patch, patch)
-    except pykube.ObjectDoesNotExist:
-        pass
-    except pykube.exceptions.HTTPError as e:
-        if e.code == 404:
-            pass
-        else:
-            raise
-    except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 404:
+        await session.patch(
+            url=resource.get_url(server=session.server, namespace=namespace, name=name),
+            headers={'Content-Type': 'application/merge-patch+json'},
+            json=patch,
+            raise_for_status=True,
+        )
+    except aiohttp.ClientResponseError as e:
+        if e.status == 404:
             pass
         else:
             raise
