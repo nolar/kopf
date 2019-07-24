@@ -75,9 +75,8 @@ async def infinite_watch(
     """
     Stream the watch-events infinitely.
 
-    This routine is extracted only due to difficulty of testing
-    of the infinite loops. It is made as simple as possible,
-    and is assumed to work without testing.
+    This routine is extracted because it is difficult to test infinite loops.
+    It is made as simple as possible, and is assumed to work without testing.
 
     This routine never ends gracefully. If a watcher's stream fails,
     a new one is recreated, and the stream continues.
@@ -136,7 +135,7 @@ async def streaming_watch(
 
 def watch_objs(*, resource, namespace=None, timeout=None, since=None):
     """
-    Watch the objects of specific resource type.
+    Watch objects of a specific resource type.
 
     The cluster-scoped call is used in two cases:
 
