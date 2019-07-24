@@ -1,7 +1,6 @@
 from typing import Optional, cast
 
 import aiohttp
-import pykube
 
 from kopf.clients import auth
 from kopf.structs import bodies
@@ -17,7 +16,6 @@ async def patch_obj(
         namespace: Optional[str] = None,
         name: Optional[str] = None,
         body: Optional[bodies.Body] = None,
-        api: Optional[pykube.HTTPClient] = None,  # injected by the decorator
         session: Optional[auth.APISession] = None,  # injected by the decorator
 ) -> None:
     """

@@ -4,7 +4,6 @@ import logging
 from typing import Optional
 
 import aiohttp
-import pykube
 
 from kopf.clients import auth
 from kopf.structs import bodies
@@ -26,7 +25,6 @@ async def post_event(
         type: str,
         reason: str,
         message: str = '',
-        api: Optional[pykube.HTTPClient] = None,  # injected by the decorator
         session: Optional[auth.APISession] = None,  # injected by the decorator
 ) -> None:
     """

@@ -25,7 +25,6 @@ import logging
 from typing import Optional, Dict, AsyncIterator, cast
 
 import aiohttp
-import pykube
 
 from kopf import config
 from kopf.clients import auth
@@ -116,7 +115,6 @@ async def watch_objs(
         namespace: Optional[str] = None,
         timeout: Optional[float] = None,
         since: Optional[str] = None,
-        api: Optional[pykube.HTTPClient] = None,  # injected by the decorator
         session: Optional[auth.APISession] = None,  # injected by the decorator
 ) -> AsyncIterator[bodies.RawEvent]:
     """

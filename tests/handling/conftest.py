@@ -53,7 +53,7 @@ class K8sMocks:
 
 
 @pytest.fixture(autouse=True)
-def k8s_mocked(mocker, req_mock, resp_mocker):
+def k8s_mocked(mocker, resp_mocker):
     # We mock on the level of our own K8s API wrappers, not the K8s client.
     return K8sMocks(
         patch_obj=mocker.patch('kopf.clients.patching.patch_obj'),

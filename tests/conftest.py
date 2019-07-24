@@ -109,22 +109,6 @@ def clear_default_registry():
 #
 
 @pytest.fixture()
-def req_mock(mocker, resource, request, fake_vault):
-
-    # Simulated list of cluster-defined CRDs: all of them at once. See: `resource` fixture(s).
-    # Simulate the resource as cluster-scoped is there is a marker on the test.
-    namespaced = not any(marker.name == 'resource_clustered' for marker in request.node.own_markers)
-    res_mock = mocker.patch('pykube.http.HTTPClient.resource_list')
-    res_mock.return_value = {'resources': [
-        {'name': 'kopfexamples', 'kind': 'KopfExample', 'namespaced': namespaced},
-    ]}
-
-    # Prevent ANY outer requests, no matter what. These ones are usually asserted.
-    req_mock = mocker.patch('requests.Session').return_value
-    return req_mock
-
-
-@pytest.fixture()
 async def enforced_session(fake_vault, mocker):
     """
     A patchable session for some selected tests, e.g. with local exceptions.
@@ -191,16 +175,9 @@ def resp_mocker(fake_vault, enforced_session, resource, aresponses):
 
 
 @pytest.fixture()
-def stream(req_mock, fake_vault, resp_mocker, aresponses, hostname, resource):
+def stream(fake_vault, resp_mocker, aresponses, hostname, resource):
     """ A mock for the stream of events as if returned by K8s client. """
     def feed(*args):
-        side_effect = []
-        for arg in args:
-            if isinstance(arg, (list, tuple)):
-                arg = iter(json.dumps(event).encode('utf-8') for event in arg)
-            side_effect.append(arg)
-        req_mock.get.return_value.iter_lines.side_effect = side_effect
-
         for arg in args:
 
             # Prepare the stream response pre-rendered (for simplicity, no actual streaming).

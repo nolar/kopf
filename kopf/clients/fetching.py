@@ -2,7 +2,6 @@ import enum
 from typing import TypeVar, Optional, Union, Collection, List, Tuple, cast
 
 import aiohttp
-import pykube
 
 from kopf.clients import auth
 from kopf.structs import bodies
@@ -22,7 +21,6 @@ async def read_crd(
         *,
         resource: resources.Resource,
         default: Union[_T, _UNSET] = _UNSET.token,
-        api: Optional[pykube.HTTPClient] = None,  # injected by the decorator
         session: Optional[auth.APISession] = None,  # injected by the decorator
 ) -> Union[bodies.Body, _T]:
     if session is None:
@@ -48,7 +46,6 @@ async def read_obj(
         namespace: Optional[str] = None,
         name: Optional[str] = None,
         default: Union[_T, _UNSET] = _UNSET.token,
-        api: Optional[pykube.HTTPClient] = None,  # injected by the decorator
         session: Optional[auth.APISession] = None,  # injected by the decorator
 ) -> Union[bodies.Body, _T]:
     if session is None:
@@ -74,7 +71,6 @@ async def list_objs_rv(
         *,
         resource: resources.Resource,
         namespace: Optional[str] = None,
-        api: Optional[pykube.HTTPClient] = None,  # injected by the decorator
         session: Optional[auth.APISession] = None,  # injected by the decorator
 ) -> Tuple[Collection[bodies.Body], str]:
     """
