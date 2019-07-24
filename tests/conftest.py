@@ -142,6 +142,53 @@ async def enforced_session(fake_vault, mocker):
         yield session
 
 
+# Note: Unused `fake_vault` is to ensure that the client wrappers have the credentials.
+# Note: Unused `enforced_session` is to ensure that the session is closed for every test.
+@pytest.fixture()
+def resp_mocker(fake_vault, enforced_session, resource, aresponses):
+    """
+    A factory of server-side callbacks for `aresponses` with mocking/spying.
+
+    The value of the fixture is a function, which return a coroutine mock.
+    That coroutine mock should be passed to `aresponses.add` as a response
+    callback function. When called, it calls the mock defined by the function's
+    arguments (specifically, return_value or side_effects).
+
+    The difference from passing the responses directly to `aresponses.add`
+    is that it is possible to assert on whether the response was handled
+    by that callback at all (i.e. HTTP URL & method matched), especially
+    if there are multiple responses registered.
+
+    Sample usage::
+
+        def test_me(resp_mocker):
+            response = aiohttp.web.json_response({'a': 'b'})
+            callback = resp_mocker(return_value=response)
+            aresponses.add(hostname, '/path/', 'get', callback)
+            do_something()
+            assert callback.called
+            assert callback.call_count == 1
+    """
+    def resp_maker(*args, **kwargs):
+        actual_response = asynctest.MagicMock(*args, **kwargs)
+        async def resp_mock_effect(request):
+            nonlocal actual_response
+
+            # The request's content can be read inside of the handler only. We preserve
+            # the data into a conventional field, so that they could be asserted later.
+            try:
+                request.data = await request.json()
+            except json.JSONDecodeError:
+                request.data = await request.text()
+
+            # Get a response/error as it was intended (via return_value/side_effect).
+            response = actual_response()
+            return response
+
+        return asynctest.CoroutineMock(side_effect=resp_mock_effect)
+    return resp_maker
+
+
 @pytest.fixture()
 def stream(req_mock, fake_vault):
     """ A mock for the stream of events as if returned by K8s client. """

@@ -13,6 +13,11 @@ def _autouse_req_mock(req_mock):
     pass
 
 
+@pytest.fixture(autouse=True)
+def _autouse_resp_mocker(resp_mocker):
+    pass
+
+
 @pytest.fixture()
 def handler():
     """ A mock for handler -- to be checked if the handler has been called. """
