@@ -271,3 +271,36 @@ with the ids like ``create_fn/item1``, ``create_fn/item2``, etc.
     As such, the parent handler SHOULD NOT produce any side-effects
     except as the read-only parsing of the inputs (e.g. ``spec``),
     and generating the dynamic functions of the sub-handlers.
+
+
+Filtering
+=========
+
+It is possible to only execute handlers when the object that triggers a handler
+matches certain filters.
+
+The following filters are available for all event, cause, and field handlers:
+
+* Match an object's label and value::
+
+    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', labels={'somelabel': 'somevalue'})
+    def my_handler(spec, **_):
+        pass
+
+* Match on the existence of an object's label::
+
+    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', labels={'somelabel': None})
+    def my_handler(spec, **_):
+        pass
+
+* Match an object's annotation and value::
+
+    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', annotations={'someannotation': 'somevalue'})
+    def my_handler(spec, **_):
+        pass
+
+* Match on the existence of an object's annotation::
+
+    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', annotations={'someannotation': None})
+    def my_handler(spec, **_):
+        pass
