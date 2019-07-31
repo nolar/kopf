@@ -64,6 +64,16 @@ and so they will be re-executed.
 This is conceptually close to *reconciliation*: the handling is finished
 only when all handlers are executed on the latest state of the object.
 
+Creation is treated specially: the creation handlers will never be re-executed.
+In case of changes during the creation handling, the remaining creation handlers
+will get the new state (as normally), and then there will be an update cycle
+with all the changes since the first creation handler -- i.e. not from the last
+handler as usually, when the last-seen state is updated.
+
+Update handlers are assumed to be idempotent by concept, so it should be safe
+to call them with the changes that are already reflected in the system by some
+of the creation handlers.
+
 Note: The Kubernetes-provided "resource version" of the object is not used,
 as it increases with every change of the object, while this digest is used
 only for the changes relevant to the operator and framework (see `get_state`).

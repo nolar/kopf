@@ -232,6 +232,13 @@ async def handle_cause(
             logger.debug("Removing the finalizer, thus allowing the actual deletion.")
             finalizers.remove_finalizers(body=body, patch=patch)
 
+    # Only for creation: freeze the last-seen state as it was in the beginning,
+    # so that an update cycle is triggered if there were changes during the creation cycle.
+    # Otherwise, the changes will be ignored, as they are included into the last-minute state.
+    if cause.event == causation.CREATE and not (done or skip):
+        extra_fields = registry.get_extra_fields(resource=cause.resource)
+        lastseen.freeze_state(body=body, patch=patch, extra_fields=extra_fields)
+
     # Informational causes just print the log lines.
     if cause.event == causation.GONE:
         logger.debug("Deleted, really deleted, and we are notified.")

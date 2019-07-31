@@ -6,7 +6,7 @@ from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
 from kopf.structs.lastseen import compute_digest
 from kopf.structs.lastseen import get_state_diffs
 from kopf.structs.lastseen import has_state, get_state
-from kopf.structs.lastseen import retreive_state, refresh_state
+from kopf.structs.lastseen import retreive_state, refresh_state, freeze_state
 
 
 def test_annotation_is_fqdn():
@@ -131,6 +131,22 @@ def test_refresh_state_ignores_when_present_and_is_the_same():
     body['metadata'] = {'annotations': {LAST_SEEN_ANNOTATION: encoded}}
     patch = {}
     refresh_state(body=body, patch=patch)
+    assert not patch
+
+
+def test_freeze_state_patches_when_absent():
+    body = {'spec': {'depth': {'field': 'x'}}}
+    encoded = json.dumps(body)  # json formatting can vary across interpreters
+    patch = {}
+    freeze_state(body=body, patch=patch)
+    assert patch['status']['kopf']['frozen-state'] == encoded
+
+
+def test_freeze_state_ignores_when_present():
+    body = {'spec': {'depth': {'field': 'x'}},
+            'status': {'kopf': {'frozen-state': '{}'}}}
+    patch = {}
+    freeze_state(body=body, patch=patch)
     assert not patch
 
 

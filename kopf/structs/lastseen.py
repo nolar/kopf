@@ -99,11 +99,23 @@ def retreive_state(body):
 
 
 def refresh_state(*, body, patch, extra_fields=None):
+    frozen_state = body.get('status', {}).get('kopf', {}).get('frozen-state')
     stored_state = retreive_state(body)
     actual_state = get_state(body, extra_fields=extra_fields)
     if stored_state is None or stored_state != actual_state:
         annotations = patch.setdefault('metadata', {}).setdefault('annotations', {})
-        annotations[LAST_SEEN_ANNOTATION] = json.dumps(actual_state)
+        annotations[LAST_SEEN_ANNOTATION] = frozen_state or json.dumps(actual_state)
+    if frozen_state is not None:
+        storage = patch.setdefault('status', {}).setdefault('kopf', {})
+        storage['frozen-state'] = None
+
+
+def freeze_state(*, body, patch, extra_fields=None):
+    frozen_state = body.get('status', {}).get('kopf', {}).get('frozen-state')
+    actual_state = get_state(body, extra_fields=extra_fields)
+    if frozen_state is None:
+        storage = patch.setdefault('status', {}).setdefault('kopf', {})
+        storage['frozen-state'] = json.dumps(actual_state)
 
 
 def compute_digest(body, extra_fields=None):

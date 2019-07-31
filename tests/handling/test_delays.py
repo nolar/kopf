@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 
 import freezegun
@@ -69,12 +70,15 @@ async def test_delayed_handlers_sleep(
 
     cause_mock.event = cause_type
     cause_mock.body.update({
-        'status': {'kopf': {'progress': {
-            'create_fn': {'delayed': ts},
-            'update_fn': {'delayed': ts},
-            'delete_fn': {'delayed': ts},
-            'resume_fn': {'delayed': ts},
-        }}}
+        'status': {'kopf': {
+            'frozen-state': json.dumps({'spec': {}}),  # to prevent re-adding it
+            'progress': {
+                'create_fn': {'delayed': ts},
+                'update_fn': {'delayed': ts},
+                'delete_fn': {'delayed': ts},
+                'resume_fn': {'delayed': ts},
+            },
+        }}
     })
     # make sure the finalizer is added since there are mandatory deletion handlers
     cause_mock.body.setdefault('metadata', {})['finalizers'] = [FINALIZER]

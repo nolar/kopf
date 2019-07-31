@@ -138,6 +138,7 @@ def detect_cause(
     # For an object seen for the first time (i.e. just-created), call the creation handlers,
     # then mark the state as if it was seen when the creation has finished.
     if not lastseen.has_state(body):
+        kwargs['digest'] = True  # or any other true'ish constant (str/int)
         return Cause(
             event=CREATE,
             body=body,
