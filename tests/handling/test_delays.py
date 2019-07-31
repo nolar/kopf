@@ -97,7 +97,7 @@ async def test_delayed_handlers_sleep(
 
     # The dummy patch is needed to trigger the further changes. The value is irrelevant.
     assert k8s_mocked.patch_obj.called
-    assert 'dummy' in k8s_mocked.patch_obj.call_args_list[-1][1]['patch']['status']['kopf']
+    assert k8s_mocked.patch_obj.call_args_list[-1][1]['patch']  # not empty, maybe with ['dummy']
 
     # The duration of sleep should be as expected.
     assert k8s_mocked.sleep_or_wait.called
