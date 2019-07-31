@@ -394,42 +394,49 @@ async def _execute(
         # Unfinished children cause the regular retry, but with less logging and event reporting.
         except HandlerChildrenRetry as e:
             logger.debug(f"Handler {handler.id!r} has unfinished sub-handlers. Will retry soon.")
-            status.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
+            status.set_retry_time(body=cause.body, patch=cause.patch,
+                                  handler=handler, delay=e.delay)
             handlers_left.append(handler)
 
         # Definitely a temporary error, regardless of the error strictness.
         except TemporaryError as e:
             logger.error(f"Handler {handler.id!r} failed temporarily: %s", str(e) or repr(e))
-            status.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
+            status.set_retry_time(body=cause.body, patch=cause.patch,
+                                  handler=handler, delay=e.delay)
             handlers_left.append(handler)
 
         # Same as permanent errors below, but with better logging for our internal cases.
         except HandlerTimeoutError as e:
             logger.error(f"%s", str(e) or repr(e))  # already formatted
-            status.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
+            status.store_failure(body=cause.body, patch=cause.patch,
+                                 handler=handler, exc=e)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
         # Definitely a permanent error, regardless of the error strictness.
         except PermanentError as e:
             logger.error(f"Handler {handler.id!r} failed permanently: %s", str(e) or repr(e))
-            status.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
+            status.store_failure(body=cause.body, patch=cause.patch,
+                                 handler=handler, exc=e)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
         # Regular errors behave as either temporary or permanent depending on the error strictness.
         except Exception as e:
             if retry_on_errors:
                 logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")
-                status.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=DEFAULT_RETRY_DELAY)
+                status.set_retry_time(body=cause.body, patch=cause.patch,
+                                      handler=handler, delay=DEFAULT_RETRY_DELAY)
                 handlers_left.append(handler)
             else:
                 logger.exception(f"Handler {handler.id!r} failed with an exception. Will stop.")
-                status.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
+                status.store_failure(body=cause.body, patch=cause.patch,
+                                     handler=handler, exc=e)
                 # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
         # No errors means the handler should be excluded from future runs in this reaction cycle.
         else:
             logger.info(f"Handler {handler.id!r} succeeded.")
-            status.store_success(body=cause.body, patch=cause.patch, handler=handler, result=result)
+            status.store_success(body=cause.body, patch=cause.patch,
+                                 handler=handler, result=result)
 
     # Provoke the retry of the handling cycle if there were any unfinished handlers,
     # either because they were not selected by the lifecycle, or failed and need a retry.
