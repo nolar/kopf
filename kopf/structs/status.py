@@ -20,11 +20,11 @@ The structure is this:
                 handler1:
                     started: 2018-12-31T23:59:59,999999
                     stopped: 2018-01-01T12:34:56,789000
-                    success: true
+                    success: abcdef1234567890fedcba
                 handler2:
                     started: 2018-12-31T23:59:59,999999
                     stopped: 2018-01-01T12:34:56,789000
-                    failure: true
+                    failure: abcdef1234567890fedcba
                     message: "Error message."
                 handler3:
                     started: 2018-12-31T23:59:59,999999
@@ -126,23 +126,23 @@ def set_retry_time(*, body, patch, handler, delay=None):
     set_awake_time(body=body, patch=patch, handler=handler, delay=delay)
 
 
-def store_failure(*, body, patch, handler, exc):
+def store_failure(*, body, patch, digest, handler, exc):
     retry = get_retry_count(body=body, handler=handler)
     progress = patch.setdefault('status', {}).setdefault('kopf', {}).setdefault('progress', {})
     progress.setdefault(handler.id, {}).update({
         'stopped': datetime.datetime.utcnow().isoformat(),
-        'failure': True,
+        'failure': digest,
         'retries': retry + 1,
         'message': f'{exc}',
     })
 
 
-def store_success(*, body, patch, handler, result=None):
+def store_success(*, body, patch, digest, handler, result=None):
     retry = get_retry_count(body=body, handler=handler)
     progress = patch.setdefault('status', {}).setdefault('kopf', {}).setdefault('progress', {})
     progress.setdefault(handler.id, {}).update({
         'stopped': datetime.datetime.utcnow().isoformat(),
-        'success': True,
+        'success': digest,
         'retries': retry + 1,
         'message': None,
     })

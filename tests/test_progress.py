@@ -261,13 +261,13 @@ def test_set_retry_time(handler, expected, body, delay):
 @pytest.mark.parametrize('body, expected', [
     ({},
      {'status': {'kopf': {'progress': {'some-id': {'stopped': TS0_ISO,
-                                                   'failure': True,
+                                                   'failure': 'digest',
                                                    'retries': 1,
                                                    'message': 'some-error'}}}}}),
 
     ({'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}},
      {'status': {'kopf': {'progress': {'some-id': {'stopped': TS0_ISO,
-                                                   'failure': True,
+                                                   'failure': 'digest',
                                                    'retries': 6,
                                                    'message': 'some-error'}}}}}),
 ])
@@ -275,7 +275,8 @@ def test_set_retry_time(handler, expected, body, delay):
 def test_store_failure(handler, expected, body):
     origbody = copy.deepcopy(body)
     patch = {}
-    store_failure(body=body, patch=patch, handler=handler, exc=Exception("some-error"))
+    store_failure(body=body, patch=patch, digest='digest',
+                  handler=handler, exc=Exception("some-error"))
     assert patch == expected
     assert body == origbody  # not modified
 
@@ -286,13 +287,13 @@ def test_store_failure(handler, expected, body):
     (None,
      {},
      {'status': {'kopf': {'progress': {'some-id': {'stopped': TS0_ISO,
-                                                   'success': True,
+                                                   'success': 'digest',
                                                    'retries': 1,
                                                    'message': None}}}}}),
     (None,
      {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}},
      {'status': {'kopf': {'progress': {'some-id': {'stopped': TS0_ISO,
-                                                   'success': True,
+                                                   'success': 'digest',
                                                    'retries': 6,
                                                    'message': None}}}}}),
 
@@ -300,14 +301,14 @@ def test_store_failure(handler, expected, body):
     ({'field': 'value'},
      {},
      {'status': {'kopf': {'progress': {'some-id': {'stopped': TS0_ISO,
-                                                   'success': True,
+                                                   'success': 'digest',
                                                    'retries': 1,
                                                    'message': None}}},
                  'some-id': {'field': 'value'}}}),
     ({'field': 'value'},
      {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}},
      {'status': {'kopf': {'progress': {'some-id': {'stopped': TS0_ISO,
-                                                   'success': True,
+                                                   'success': 'digest',
                                                    'retries': 6,
                                                    'message': None}}},
                  'some-id': {'field': 'value'}}}),
@@ -316,7 +317,8 @@ def test_store_failure(handler, expected, body):
 def test_store_success(handler, expected, body, result):
     origbody = copy.deepcopy(body)
     patch = {}
-    store_success(body=body, patch=patch, handler=handler, result=result)
+    store_success(body=body, patch=patch, digest='digest',
+                  handler=handler, result=result)
     assert patch == expected
     assert body == origbody  # not modified
 

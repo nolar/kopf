@@ -38,7 +38,7 @@ async def test_1st_step_stores_progress_by_patching(
     assert patch['status']['kopf']['progress'] is not None
 
     assert patch['status']['kopf']['progress'][name1]['retries'] == 1
-    assert patch['status']['kopf']['progress'][name1]['success'] is True
+    assert patch['status']['kopf']['progress'][name1]['success']  # evals to true
 
     assert 'retries' not in patch['status']['kopf']['progress'][name2]
     assert 'success' not in patch['status']['kopf']['progress'][name2]

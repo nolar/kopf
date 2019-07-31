@@ -410,14 +410,14 @@ async def _execute(
         # Same as permanent errors below, but with better logging for our internal cases.
         except HandlerTimeoutError as e:
             logger.error(f"%s", str(e) or repr(e))  # already formatted
-            status.store_failure(body=cause.body, patch=cause.patch,
+            status.store_failure(body=cause.body, patch=cause.patch, digest=cause.digest,
                                  handler=handler, exc=e)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
         # Definitely a permanent error, regardless of the error strictness.
         except PermanentError as e:
             logger.error(f"Handler {handler.id!r} failed permanently: %s", str(e) or repr(e))
-            status.store_failure(body=cause.body, patch=cause.patch,
+            status.store_failure(body=cause.body, patch=cause.patch, digest=cause.digest,
                                  handler=handler, exc=e)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
@@ -430,14 +430,14 @@ async def _execute(
                 handlers_left.append(handler)
             else:
                 logger.exception(f"Handler {handler.id!r} failed with an exception. Will stop.")
-                status.store_failure(body=cause.body, patch=cause.patch,
+                status.store_failure(body=cause.body, patch=cause.patch, digest=cause.digest,
                                      handler=handler, exc=e)
                 # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
         # No errors means the handler should be excluded from future runs in this reaction cycle.
         else:
             logger.info(f"Handler {handler.id!r} succeeded.")
-            status.store_success(body=cause.body, patch=cause.patch,
+            status.store_success(body=cause.body, patch=cause.patch, digest=cause.digest,
                                  handler=handler, result=result)
 
     # Provoke the retry of the handling cycle if there were any unfinished handlers,
