@@ -37,16 +37,36 @@ The structure is this:
                 handler3/sub2:
                     started: 2018-12-31T23:59:59,999999
 
-* ``status.kopf.success`` are the handlers that succeeded (no re-execution).
-* ``status.kopf.failure`` are the handlers that failed completely (no retries).
-* ``status.kopf.delayed`` are the timestamps, until which these handlers sleep.
-* ``status.kopf.retries`` are number of retries for succeeded, failed,
-  and for the progressing handlers.
+* ``status.kopf.progress`` stores the state of each individual handler in the
+  current handling cycle (by their ids, which are usually the function names).
+
+For each handler's status, the following is stored:
+
+* ``started``: when the handler was attempted for the first time (used for timeouts & durations).
+* ``stopped``: when the handler has failed or succeeded.
+* ``delayed``: when the handler can retry again.
+* ``retries``: the number of retried attempted so far (including reruns and successful attempts).
+* ``success``: a digest of where the handler has succeeded (and thus no retries are needed).
+* ``failure``: a digest of where the handler has failed completely (no retries will be done).
+* ``message``: a brief error message from the last exception (as a hint).
 
 When the full event cycle is executed (possibly including multiple re-runs),
 the whole ``status.kopf`` section is purged. The life-long persistence of status
 is not intended: otherwise, multiple distinct causes will clutter the status
 and collide with each other (especially critical for multiple updates).
+
+The digest of each handler's success or failure can be considered a "version"
+of an object being handled, as it was when the handler has finished.
+If the object is changed during the remaining handling cycle, the digest
+of the finished handlers will be mismatching the actual digest of the object,
+and so they will be re-executed.
+
+This is conceptually close to *reconciliation*: the handling is finished
+only when all handlers are executed on the latest state of the object.
+
+Note: The Kubernetes-provided "resource version" of the object is not used,
+as it increases with every change of the object, while this digest is used
+only for the changes relevant to the operator and framework (see `get_state`).
 """
 
 import collections.abc

@@ -106,6 +106,7 @@ def detect_cause(
             initial=initial,
             **kwargs)
 
+    # Marked for deletion, but we still hold it with our finalizer.
     if finalizers.is_deleted(body):
         return Cause(
             event=DELETE,
