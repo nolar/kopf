@@ -98,5 +98,8 @@ def retreive_state(body):
 
 
 def refresh_state(*, body, patch, extra_fields=None):
-    state = get_state(body, extra_fields=extra_fields)
-    patch.setdefault('metadata', {}).setdefault('annotations', {})[LAST_SEEN_ANNOTATION] = json.dumps(state)
+    stored_state = retreive_state(body)
+    actual_state = get_state(body, extra_fields=extra_fields)
+    if stored_state is None or stored_state != actual_state:
+        annotations = patch.setdefault('metadata', {}).setdefault('annotations', {})
+        annotations[LAST_SEEN_ANNOTATION] = json.dumps(actual_state)

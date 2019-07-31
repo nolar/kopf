@@ -107,12 +107,30 @@ def test_get_state_clones_body():
     assert state['spec']['depth']['field'] == 'x'
 
 
-def test_refresh_state():
+def test_refresh_state_patches_when_absent():
     body = {'spec': {'depth': {'field': 'x'}}}
-    patch = {}
     encoded = json.dumps(body)  # json formatting can vary across interpreters
+    patch = {}
     refresh_state(body=body, patch=patch)
     assert patch['metadata']['annotations'][LAST_SEEN_ANNOTATION] == encoded
+
+
+def test_refresh_state_patches_when_present_and_is_different():
+    body = {'spec': {'depth': {'field': 'x'}}}
+    encoded = json.dumps(body)  # json formatting can vary across interpreters
+    body['metadata'] = {'annotations': {LAST_SEEN_ANNOTATION: '{}'}}
+    patch = {}
+    refresh_state(body=body, patch=patch)
+    assert patch['metadata']['annotations'][LAST_SEEN_ANNOTATION] == encoded
+
+
+def test_refresh_state_ignores_when_present_and_is_the_same():
+    body = {'spec': {'depth': {'field': 'x'}}}
+    encoded = json.dumps(body)  # json formatting can vary across interpreters
+    body['metadata'] = {'annotations': {LAST_SEEN_ANNOTATION: encoded}}
+    patch = {}
+    refresh_state(body=body, patch=patch)
+    assert not patch
 
 
 def test_retreive_state_when_present():
