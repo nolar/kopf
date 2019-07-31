@@ -59,23 +59,24 @@ def is_started(*, body, handler):
     return handler.id in progress
 
 
-def is_sleeping(*, body, handler):
+def is_sleeping(*, body, digest, handler):
     ts = get_awake_time(body=body, handler=handler)
-    finished = is_finished(body=body, handler=handler)
+    finished = is_finished(body=body, digest=digest, handler=handler)
     return not finished and ts is not None and ts > datetime.datetime.utcnow()
 
 
-def is_awakened(*, body, handler):
-    finished = is_finished(body=body, handler=handler)
-    sleeping = is_sleeping(body=body, handler=handler)
+def is_awakened(*, body, digest, handler):
+    finished = is_finished(body=body, digest=digest, handler=handler)
+    sleeping = is_sleeping(body=body, digest=digest, handler=handler)
     return bool(not finished and not sleeping)
 
 
-def is_finished(*, body, handler):
+def is_finished(*, body, digest, handler):
     progress = body.get('status', {}).get('kopf', {}).get('progress', {})
     success = progress.get(handler.id, {}).get('success', None)
     failure = progress.get(handler.id, {}).get('failure', None)
-    return bool(success or failure)
+    return ((success is not None and (success is True or success == digest)) or
+            (failure is not None and (failure is True or failure == digest)))
 
 
 def get_start_time(*, body, patch, handler):

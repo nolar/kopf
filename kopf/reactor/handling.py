@@ -358,9 +358,9 @@ async def _execute(
     logger = cause.logger
 
     # Filter and select the handlers to be executed right now, on this event reaction cycle.
-    handlers_done = [h for h in handlers if status.is_finished(body=cause.body, handler=h)]
-    handlers_wait = [h for h in handlers if status.is_sleeping(body=cause.body, handler=h)]
-    handlers_todo = [h for h in handlers if status.is_awakened(body=cause.body, handler=h)]
+    handlers_done = [h for h in handlers if status.is_finished(body=cause.body, digest=cause.digest, handler=h)]
+    handlers_wait = [h for h in handlers if status.is_sleeping(body=cause.body, digest=cause.digest, handler=h)]
+    handlers_todo = [h for h in handlers if status.is_awakened(body=cause.body, digest=cause.digest, handler=h)]
     handlers_plan = [h for h in await invocation.invoke(lifecycle, handlers_todo, cause=cause)]
     handlers_left = [h for h in handlers_todo if h.id not in {h.id for h in handlers_plan}]
 
