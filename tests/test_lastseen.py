@@ -3,8 +3,9 @@ import json
 import pytest
 
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
-from kopf.structs.lastseen import has_state, get_state
+from kopf.structs.lastseen import compute_digest
 from kopf.structs.lastseen import get_state_diffs
+from kopf.structs.lastseen import has_state, get_state
 from kopf.structs.lastseen import retreive_state, refresh_state
 
 
@@ -145,6 +146,18 @@ def test_retreive_state_when_absent():
     body = {}
     state = retreive_state(body=body)
     assert state is None
+
+
+def test_compute_digest():
+    body1 = {'spec': {'depth': {'field': 'x'}}}
+    body2 = {'spec': {'depth': {'field': 'x'}}}
+    digest1 = compute_digest(body=body1)
+    digest2 = compute_digest(body=body2)
+    assert isinstance(digest1, (str, int))
+    assert isinstance(digest2, (str, int))
+    assert digest1  # evals to true
+    assert digest2  # evals to true
+    assert digest1 == digest2
 
 
 def test_state_changed_detected():

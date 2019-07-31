@@ -117,6 +117,7 @@ def kwargs():
         resource=object(),
         logger=object(),
         patch=object(),
+        digest=object(),
     )
 
 def check_kwargs(cause, kwargs):
@@ -124,6 +125,7 @@ def check_kwargs(cause, kwargs):
     assert cause.resource is kwargs['resource']
     assert cause.logger is kwargs['logger']
     assert cause.patch is kwargs['patch']
+    assert cause.digest is kwargs['digest'] or cause.digest is True
 
 
 #

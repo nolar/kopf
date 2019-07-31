@@ -67,6 +67,7 @@ class Cause(NamedTuple):
     initial: bool
     body: MutableMapping
     patch: MutableMapping
+    digest: Union[str, int]
     diff: Optional[diffs.Diff] = None
     old: Optional[Any] = None
     new: Optional[Any] = None

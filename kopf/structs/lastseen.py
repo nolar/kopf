@@ -14,6 +14,7 @@ https://kubernetes.io/docs/concepts/overview/object-management-kubectl/declarati
 """
 
 import copy
+import hashlib
 import json
 
 from kopf.structs import dicts
@@ -103,3 +104,12 @@ def refresh_state(*, body, patch, extra_fields=None):
     if stored_state is None or stored_state != actual_state:
         annotations = patch.setdefault('metadata', {}).setdefault('annotations', {})
         annotations[LAST_SEEN_ANNOTATION] = json.dumps(actual_state)
+
+
+def compute_digest(body, extra_fields=None):
+    state = get_state(body, extra_fields=extra_fields)
+
+    # Any digest with a short str/int result is sufficient. Even CRC. No security is needed.
+    hash = hashlib.md5()
+    hash.update(json.dumps(state).encode('utf-8'))
+    return hash.hexdigest()

@@ -109,6 +109,7 @@ async def custom_object_handler(
     if registry.has_cause_handlers(resource=resource):
         extra_fields = registry.get_extra_fields(resource=resource)
         old, new, diff = lastseen.get_state_diffs(body=body, extra_fields=extra_fields)
+        digest = lastseen.compute_digest(body=body, extra_fields=extra_fields)
         cause = causation.detect_cause(
             event=event,
             resource=resource,
@@ -117,6 +118,7 @@ async def custom_object_handler(
             old=old,
             new=new,
             diff=diff,
+            digest=digest,
             requires_finalizer=registry.requires_finalizer(resource=resource),
         )
         delay = await handle_cause(lifecycle=lifecycle, registry=registry, cause=cause)
