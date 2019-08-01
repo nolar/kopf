@@ -1,5 +1,8 @@
 import asyncio
 
+import pykube
+import requests
+
 from kopf import config
 from kopf.clients import auth
 from kopf.clients import classes
@@ -31,5 +34,14 @@ async def patch_obj(*, resource, patch, namespace=None, name=None, body=None):
     cls = classes._make_cls(resource=resource)
     obj = cls(api, body)
 
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(config.WorkersConfig.get_syn_executor(), obj.patch, patch)
+    # The handler could delete its own object, so we have nothing to patch. It is okay, ignore.
+    try:
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(config.WorkersConfig.get_syn_executor(), obj.patch, patch)
+    except pykube.ObjectDoesNotExist:
+        pass
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code in [404]:
+            pass
+        else:
+            raise

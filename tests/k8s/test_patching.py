@@ -1,6 +1,7 @@
 import json
 
 import pytest
+import requests
 
 from kopf.clients.patching import patch_obj
 
@@ -98,3 +99,30 @@ async def test_raises_when_body_conflicts_with_ids(req_mock, resource):
         await patch_obj(resource=resource, body=body, namespace='ns1', name='name1', patch=patch)
 
     assert not req_mock.patch.called
+
+
+@pytest.mark.parametrize('status', [404])
+async def test_ignores_absent_objects(req_mock, resource, status):
+    response = requests.Response()
+    response.status_code = status
+    error = requests.exceptions.HTTPError("boo!", response=response)
+    req_mock.patch.side_effect = error
+
+    patch = {'x': 'y'}
+    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    await patch_obj(resource=resource, body=body, patch=patch)
+
+
+@pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['without-namespace', 'with-namespace'])
+@pytest.mark.parametrize('status', [400, 401, 403, 500, 666])
+async def test_raises_api_errors(req_mock, resource, namespace, status):
+    response = requests.Response()
+    response.status_code = status
+    error = requests.exceptions.HTTPError("boo!", response=response)
+    req_mock.patch.side_effect = error
+
+    patch = {'x': 'y'}
+    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        await patch_obj(resource=resource, body=body, patch=patch)
+    assert e.value.response.status_code == status
