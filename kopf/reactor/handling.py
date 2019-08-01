@@ -399,6 +399,12 @@ async def _execute(
             status.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
             handlers_left.append(handler)
 
+        # Same as permanent errors below, but with better logging for our internal cases.
+        except HandlerTimeoutError as e:
+            logger.error(f"%s", str(e) or repr(e))  # already formatted
+            status.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
+            # TODO: report the handling failure somehow (beside logs/events). persistent status?
+
         # Definitely a permanent error, regardless of the error strictness.
         except PermanentError as e:
             logger.error(f"Handler {handler.id!r} failed permanently: %s", str(e) or repr(e))
