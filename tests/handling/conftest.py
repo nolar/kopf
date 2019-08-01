@@ -49,6 +49,7 @@ class K8sMocks:
     patch_obj: Mock
     post_event: Mock
     asyncio_sleep: Mock
+    sleep_or_wait: Mock
 
 
 @pytest.fixture(autouse=True)
@@ -58,6 +59,7 @@ def k8s_mocked(mocker, req_mock):
         patch_obj=mocker.patch('kopf.clients.patching.patch_obj'),
         post_event=mocker.patch('kopf.clients.events.post_event'),
         asyncio_sleep=mocker.patch('asyncio.sleep'),
+        sleep_or_wait=mocker.patch('kopf.engines.sleeping.sleep_or_wait', return_value=None),
     )
 
 

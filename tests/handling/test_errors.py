@@ -38,7 +38,7 @@ async def test_fatal_error_stops_handler(
     assert handlers.delete_mock.call_count == (1 if cause_type == DELETE else 0)
     assert handlers.resume_mock.call_count == (1 if cause_type == RESUME else 0)
 
-    assert not k8s_mocked.asyncio_sleep.called
+    assert not k8s_mocked.sleep_or_wait.called
     assert k8s_mocked.patch_obj.called
 
     patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
@@ -80,7 +80,7 @@ async def test_retry_error_delays_handler(
     assert handlers.delete_mock.call_count == (1 if cause_type == DELETE else 0)
     assert handlers.resume_mock.call_count == (1 if cause_type == RESUME else 0)
 
-    assert not k8s_mocked.asyncio_sleep.called
+    assert not k8s_mocked.sleep_or_wait.called
     assert k8s_mocked.patch_obj.called
 
     patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
@@ -123,7 +123,7 @@ async def test_arbitrary_error_delays_handler(
     assert handlers.delete_mock.call_count == (1 if cause_type == DELETE else 0)
     assert handlers.resume_mock.call_count == (1 if cause_type == RESUME else 0)
 
-    assert not k8s_mocked.asyncio_sleep.called
+    assert not k8s_mocked.sleep_or_wait.called
     assert k8s_mocked.patch_obj.called
 
     patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
