@@ -29,6 +29,7 @@ async def test_fatal_error_stops_handler(
         resource=resource,
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 
@@ -70,6 +71,7 @@ async def test_retry_error_delays_handler(
         resource=resource,
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 
@@ -112,6 +114,7 @@ async def test_arbitrary_error_delays_handler(
         resource=resource,
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 

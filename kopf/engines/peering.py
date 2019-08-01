@@ -196,6 +196,7 @@ async def peers_handler(
         freeze: asyncio.Event,
         ourselves: Peer,
         autoclean: bool = True,
+        replenished: asyncio.Event,
 ):
     """
     Handle a single update of the peers by us or by other operators.

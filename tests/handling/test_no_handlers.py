@@ -32,6 +32,7 @@ async def test_skipped_with_no_handlers(
         resource=resource,
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 

@@ -35,6 +35,7 @@ async def test_delayed_handlers_progress(
             resource=resource,
             event={'type': 'irrelevant', 'object': cause_mock.body},
             freeze=asyncio.Event(),
+            replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
 
@@ -85,6 +86,7 @@ async def test_delayed_handlers_sleep(
             resource=resource,
             event={'type': 'irrelevant', 'object': cause_mock.body},
             freeze=asyncio.Event(),
+            replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
 

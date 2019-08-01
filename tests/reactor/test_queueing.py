@@ -44,10 +44,11 @@ CODE_OVERHEAD = 0.1  # 0.01 is too fast, 0.1 is too slow, 0.05 is good enough.
 
 ])
 @pytest.mark.usefixtures('watcher_limited')
-async def test_event_multiplexing(worker_mock, timer, resource, handler, stream, events, uids, cnts):
+async def test_watchevent_demultiplexing(worker_mock, timer, resource, handler,
+                                         stream, events, uids, cnts):
     """ Verify that every unique uid goes into its own queue+worker, which are never shared. """
 
-    # Inject the events of unique objects - to produce few queues/workers.
+    # Inject the events of unique objects - to produce few streams/workers.
     stream.feed(events)
 
     # Run the watcher (near-instantly and test-blocking).
@@ -58,7 +59,7 @@ async def test_event_multiplexing(worker_mock, timer, resource, handler, stream,
             handler=handler,
         )
 
-    # The queues are not cleared by the mocked worker, but the worker exits fast.
+    # The streams are not cleared by the mocked worker, but the worker exits fast.
     assert timer.seconds < CODE_OVERHEAD
 
     # The handler must not be called by the watcher, only by the worker.
@@ -67,20 +68,20 @@ async def test_event_multiplexing(worker_mock, timer, resource, handler, stream,
     assert not handler.called
     assert worker_mock.awaited
 
-    # Are the worker-queues created by the watcher? Populated as expected?
-    # One queue per unique uid? All events are sequential? EOS marker appended?
+    # Are the worker-streams created by the watcher? Populated as expected?
+    # One stream per unique uid? All events are sequential? EOS marker appended?
     assert worker_mock.call_count == len(uids)
     assert worker_mock.call_count == len(cnts)
     for uid, cnt, (args, kwargs) in zip(uids, cnts, worker_mock.call_args_list):
         key = kwargs['key']
-        queues = kwargs['queues']
+        streams = kwargs['streams']
         assert kwargs['handler'] is handler
         assert key == (resource, uid)
-        assert key in queues
+        assert key in streams
 
         queue_events = []
-        while not queues[key].empty():
-            queue_events.append(queues[key].get_nowait())
+        while not streams[key].watchevents.empty():
+            queue_events.append(streams[key].watchevents.get_nowait())
 
         assert len(queue_events) == cnt + 1
         assert queue_events[-1] is EOS
@@ -111,7 +112,7 @@ async def test_event_multiplexing(worker_mock, timer, resource, handler, stream,
 
 ])
 @pytest.mark.usefixtures('watcher_limited')
-async def test_event_batching(mocker, resource, handler, timer, stream, events, uids, vals):
+async def test_watchevent_batching(mocker, resource, handler, timer, stream, events, uids, vals):
     """ Verify that only the last event per uid is actually handled. """
 
     # Override the default timeouts to make the tests faster.
@@ -119,7 +120,7 @@ async def test_event_batching(mocker, resource, handler, timer, stream, events, 
     mocker.patch('kopf.config.WorkersConfig.worker_batch_window', 0.1)
     mocker.patch('kopf.config.WorkersConfig.worker_exit_timeout', 0.5)
 
-    # Inject the events of unique objects - to produce few queues/workers.
+    # Inject the events of unique objects - to produce few streams/workers.
     stream.feed(events)
 
     # Run the watcher (near-instantly and test-blocking).
@@ -162,7 +163,7 @@ async def test_event_batching(mocker, resource, handler, timer, stream, events, 
 
 ])
 @pytest.mark.usefixtures('watcher_in_background')
-async def test_garbage_collection_of_queues(mocker, stream, events, unique, worker_spy):
+async def test_garbage_collection_of_streams(mocker, stream, events, unique, worker_spy):
 
     # Override the default timeouts to make the tests faster.
     mocker.patch('kopf.config.WorkersConfig.worker_idle_timeout', 0.5)
@@ -170,31 +171,32 @@ async def test_garbage_collection_of_queues(mocker, stream, events, unique, work
     mocker.patch('kopf.config.WorkersConfig.worker_exit_timeout', 0.5)
     mocker.patch('kopf.config.WatchersConfig.watcher_retry_delay', 1.0)  # to prevent src depletion
 
-    # Inject the events of unique objects - to produce few queues/workers.
+    # Inject the events of unique objects - to produce few streams/workers.
     stream.feed(events)
 
-    # Give it a moment to populate the queues and spawn all the workers.
-    # Intercept and remember _any_ seen dict of queues for further checks.
+    # Give it a moment to populate the streams and spawn all the workers.
+    # Intercept and remember _any_ seen dict of streams for further checks.
     while worker_spy.call_count < unique:
         await asyncio.sleep(0.001)  # give control to the loop
-    queues = worker_spy.call_args_list[-1][1]['queues']
+    streams = worker_spy.call_args_list[-1][1]['streams']
 
-    # The mutable(!) queues dict is now populated with the objects' queues.
-    assert len(queues) != 0  # usually 1, but can be 2+ if it is fast enough.
+    # The mutable(!) streams dict is now populated with the objects' streams.
+    assert len(streams) != 0  # usually 1, but can be 2+ if it is fast enough.
 
-    # Weakly remember the queues to make sure they are gc'ed later.
-    refs = [weakref.ref(queue) for queue in queues.values()]
+    # Weakly remember the stream's content to make sure it is gc'ed later.
+    # Note: namedtuples are not referable due to __slots__/__weakref__ issues.
+    refs = [weakref.ref(val) for wstream in streams.values() for val in wstream]
     assert all([ref() is not None for ref in refs])
 
     # Give the workers some time to finish waiting for the events.
-    # Once the idle timeout, they will exit and gc their individual queues.
+    # Once the idle timeout, they will exit and gc their individual streams.
     from kopf import config
     await asyncio.sleep(config.WorkersConfig.worker_batch_window)  # depleting the queues.
     await asyncio.sleep(config.WorkersConfig.worker_idle_timeout)  # idling on empty queues.
     await asyncio.sleep(CODE_OVERHEAD)
 
-    # The mutable(!) queues dict is now empty, i.e. garbage-collected.
-    assert len(queues) == 0
+    # The mutable(!) streams dict is now empty, i.e. garbage-collected.
+    assert len(streams) == 0
 
     # Truly garbage-collected? Memory freed?
     assert all([ref() is None for ref in refs])

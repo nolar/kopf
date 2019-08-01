@@ -22,6 +22,7 @@ async def test_acquire(registry, handlers, resource, cause_mock,
         resource=resource,
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 
@@ -56,6 +57,7 @@ async def test_create(registry, handlers, resource, cause_mock,
         resource=resource,
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 
@@ -97,6 +99,7 @@ async def test_update(registry, handlers, resource, cause_mock,
         resource=resource,
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 
@@ -138,6 +141,7 @@ async def test_delete(registry, handlers, resource, cause_mock,
         resource=resource,
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 
@@ -187,6 +191,7 @@ async def test_release(registry, resource, handlers, cause_mock, caplog, k8s_moc
         resource=resource,
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 
@@ -225,6 +230,7 @@ async def test_gone(registry, handlers, resource, cause_mock,
         resource=resource,
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 
@@ -253,6 +259,7 @@ async def test_free(registry, handlers, resource, cause_mock,
         resource=resource,
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 
@@ -281,6 +288,7 @@ async def test_noop(registry, handlers, resource, cause_mock,
         resource=resource,
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 

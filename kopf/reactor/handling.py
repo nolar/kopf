@@ -73,6 +73,7 @@ async def custom_object_handler(
         resource: registries.Resource,
         event: dict,
         freeze: asyncio.Event,
+        replenished: asyncio.Event,
         event_queue: asyncio.Queue,
 ) -> None:
     """
