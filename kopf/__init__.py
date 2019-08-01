@@ -35,8 +35,8 @@ from kopf.reactor import (
     lifecycles,  # as a separate name on the public namespace
 )
 from kopf.reactor.handling import (
-    HandlerRetryError,
-    HandlerFatalError,
+    TemporaryError,
+    PermanentError,
     HandlerTimeoutError,
     execute,
 )
@@ -66,6 +66,9 @@ from kopf.structs.hierarchies import (
     remove_owner_reference,
 )
 
+HandlerFatalError = PermanentError  # a backward-compatibility alias
+HandlerRetryError = TemporaryError  # a backward-compatibility alias
+
 __all__ = [
     'on', 'lifecycles', 'register', 'execute',
     'configure',
@@ -76,8 +79,8 @@ __all__ = [
     'get_default_lifecycle', 'set_default_lifecycle',
     'build_object_reference', 'build_owner_reference',
     'append_owner_reference', 'remove_owner_reference',
-    'HandlerRetryError',
-    'HandlerFatalError',
+    'PermanentError', 'HandlerFatalError',
+    'TemporaryError', 'HandlerRetryError',
     'HandlerTimeoutError',
     'BaseRegistry',
     'SimpleRegistry',

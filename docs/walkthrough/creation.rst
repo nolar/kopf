@@ -63,7 +63,7 @@ We will use the official Kubernetes client library:
         name = meta.get('name')
         size = spec.get('size')
         if not size:
-            raise kopf.HandlerFatalError(f"Size must be set. Got {size!r}.")
+            raise kopf.PermanentError(f"Size must be set. Got {size!r}.")
 
         path = os.path.join(os.path.dirname(__file__), 'pvc.yaml')
         tmpl = open(path, 'rt').read()

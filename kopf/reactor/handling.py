@@ -39,22 +39,22 @@ DEFAULT_RETRY_DELAY = 1 * 60
 """ The default delay duration for the regular exception in retry-mode. """
 
 
-class HandlerFatalError(Exception):
-    """ A fatal handler error, the reties are useless. """
+class PermanentError(Exception):
+    """ A fatal handler error, the retries are useless. """
 
 
-class HandlerRetryError(Exception):
+class TemporaryError(Exception):
     """ A potentially recoverable error, should be retried. """
     def __init__(self, *args, delay=DEFAULT_RETRY_DELAY, **kwargs):
         super().__init__(*args, **kwargs)
         self.delay = delay
 
 
-class HandlerTimeoutError(HandlerFatalError):
+class HandlerTimeoutError(PermanentError):
     """ An error for the handler's timeout (if set). """
 
 
-class HandlerChildrenRetry(HandlerRetryError):
+class HandlerChildrenRetry(TemporaryError):
     """ An internal pseudo-error to retry for the next sub-handlers attempt. """
 
 
@@ -393,19 +393,19 @@ async def _execute(
             status.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
             handlers_left.append(handler)
 
-        # Definitely retriable error, no matter what is the error-reaction mode.
-        except HandlerRetryError as e:
+        # Definitely a temporary error, regardless of the error strictness.
+        except TemporaryError as e:
             logger.exception(f"Handler {handler.id!r} failed with a retry exception. Will retry.")
             status.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
             handlers_left.append(handler)
 
-        # Definitely fatal error, no matter what is the error-reaction mode.
-        except HandlerFatalError as e:
+        # Definitely a permanent error, regardless of the error strictness.
+        except PermanentError as e:
             logger.exception(f"Handler {handler.id!r} failed with a fatal exception. Will stop.")
             status.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
-        # Regular errors behave as either retriable or fatal depending on the error-reaction mode.
+        # Regular errors behave as either temporary or permanent depending on the error strictness.
         except Exception as e:
             if retry_on_errors:
                 logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")

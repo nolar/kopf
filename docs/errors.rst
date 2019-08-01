@@ -14,19 +14,19 @@ and reported via the object's events.
     For persistence, the errors are also stored on the object's status.
 
 
-Retriable errors
+Temporary errors
 ================
 
-If an exception raised inherits from `kopf.HandlerRetryError`,
+If an exception raised inherits from `kopf.TemporaryError`,
 it will postpone the current handler for the next iteration,
-which can be either immediately, or after some delay::
+which can happen either immediately, or after some delay::
 
     import kopf
 
     @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
     def create_fn(spec, **_):
         if not is_data_ready():
-            raise kopf.HandlerRetryError("The data is not yet ready.", delay=60)
+            raise kopf.TemporaryError("The data is not yet ready.", delay=60)
 
 In that case, there is no need to sleep in the handler explicitly, thus blocking
 any other events, causes, and generally any other handlers on the same object
@@ -42,10 +42,10 @@ from being handled (such as deletion or parallel handlers/sub-handlers).
     The only difference is that this special case produces less logs.
 
 
-Fatal errors
-============
+Permanent errors
+================
 
-If a raised exception inherits from `kopf.HandlerFatalError`, the handler
+If a raised exception inherits from `kopf.PermanentError`, the handler
 is considered as non-retriable and non-recoverable and completely failed.
 
 Use this when the domain logic of the application means that there
@@ -57,7 +57,7 @@ is no need to retry over time, as it will not become better::
     def create_fn(spec, **_):
         valid_until = datetime.datetime.fromisoformat(spec['validUntil'])
         if valid_until <= datetime.datetime.utcnow():
-            raise kopf.HandlerFatalError("The object is not valid anymore.")
+            raise kopf.PermanentError("The object is not valid anymore.")
 
 
 
@@ -80,7 +80,7 @@ The overall runtime of the handler can be limited::
 
     @kopf.on.create('zalando.org', 'v1', 'kopfexamples', timeout=60*60)
     def create_fn(spec, **_):
-        raise kopf.HandlerRetryError(delay=60)
+        raise kopf.TemporaryError(delay=60)
 
 If the handler is not succeeded within this time, it is considered
 as fatally failed.

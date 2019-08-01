@@ -45,7 +45,7 @@ Let's extend the creation handler:
         name = meta.get('name')
         size = spec.get('size')
         if not size:
-            raise kopf.HandlerFatalError(f"Size must be set. Got {size!r}.")
+            raise kopf.PermanentError(f"Size must be set. Got {size!r}.")
 
         path = os.path.join(os.path.dirname(__file__), 'pvc-tpl.yaml')
         tmpl = open(path, 'rt').read()
