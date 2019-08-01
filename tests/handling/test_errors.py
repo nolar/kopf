@@ -46,7 +46,7 @@ async def test_fatal_error_stops_handler(
     assert patch['status']['kopf']['progress'][name1]['message'] == 'oops'
 
     assert_logs([
-        "Handler .+ failed with a fatal exception. Will stop.",
+        "Handler .+ failed permanently: oops",
     ])
 
 
@@ -88,7 +88,7 @@ async def test_retry_error_delays_handler(
     assert 'delayed' in patch['status']['kopf']['progress'][name1]
 
     assert_logs([
-        "Handler .+ failed with a retry exception. Will retry.",
+        "Handler .+ failed temporarily: oops",
     ])
 
 

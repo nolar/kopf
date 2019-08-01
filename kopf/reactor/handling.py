@@ -395,13 +395,13 @@ async def _execute(
 
         # Definitely a temporary error, regardless of the error strictness.
         except TemporaryError as e:
-            logger.exception(f"Handler {handler.id!r} failed with a retry exception. Will retry.")
+            logger.error(f"Handler {handler.id!r} failed temporarily: %s", str(e) or repr(e))
             status.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
             handlers_left.append(handler)
 
         # Definitely a permanent error, regardless of the error strictness.
         except PermanentError as e:
-            logger.exception(f"Handler {handler.id!r} failed with a fatal exception. Will stop.")
+            logger.error(f"Handler {handler.id!r} failed permanently: %s", str(e) or repr(e))
             status.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?
 

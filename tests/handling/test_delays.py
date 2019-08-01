@@ -52,7 +52,7 @@ async def test_delayed_handlers_progress(
 
     assert_logs([
         "Invoking handler .+",
-        "Handler .+ failed with a retry exception. Will retry.",
+        "Handler .+ failed temporarily: oops",
     ])
 
 
