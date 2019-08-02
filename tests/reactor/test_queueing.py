@@ -19,7 +19,7 @@ import pytest
 from kopf.reactor.queueing import watcher, EOS
 
 # Some overhead for the synchronous logic in async tests: it also takes time.
-CODE_OVERHEAD = 0.1  # 0.01 is too fast, 0.1 is too slow, 0.05 is good enough.
+CODE_OVERHEAD = 0.13  # 0.01 is too fast, 0.1 is too slow, 0.05 is good enough.
 
 
 @pytest.mark.parametrize('uids, cnts, events', [
