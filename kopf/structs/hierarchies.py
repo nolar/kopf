@@ -7,14 +7,18 @@ from kopf.structs import dicts
 def build_object_reference(body):
     """
     Construct an object reference for the events.
+
+    Keep in mind that some fields can be absent: e.g. ``namespace``
+    for cluster resources, or e.g. ``apiVersion`` for ``kind: Node``, etc.
     """
-    return dict(
-        apiVersion=body['apiVersion'],
-        kind=body['kind'],
-        name=body['metadata']['name'],
-        uid=body['metadata']['uid'],
-        namespace=body['metadata']['namespace'],
+    ref = dict(
+        apiVersion=body.get('apiVersion'),
+        kind=body.get('kind'),
+        name=body.get('metadata', {}).get('name'),
+        uid=body.get('metadata', {}).get('uid'),
+        namespace=body.get('metadata', {}).get('namespace'),
     )
+    return {key: val for key, val in ref.items() if val}
 
 
 def build_owner_reference(body):
@@ -23,15 +27,19 @@ def build_owner_reference(body):
 
     The structure needed to link the children objects to the current object as a parent.
     See https://kubernetes.io/docs/concepts/workloads/controllers/garbage-collection/
+
+    Keep in mind that some fields can be absent: e.g. ``namespace``
+    for cluster resources, or e.g. ``apiVersion`` for ``kind: Node``, etc.
     """
-    return dict(
+    ref = dict(
         controller=True,
         blockOwnerDeletion=True,
-        apiVersion=body['apiVersion'],
-        kind=body['kind'],
-        name=body['metadata']['name'],
-        uid=body['metadata']['uid'],
+        apiVersion=body.get('apiVersion'),
+        kind=body.get('kind'),
+        name=body.get('metadata', {}).get('name'),
+        uid=body.get('metadata', {}).get('uid'),
     )
+    return {key: val for key, val in ref.items() if val}
 
 
 def append_owner_reference(objs, owner):
@@ -44,7 +52,7 @@ def append_owner_reference(objs, owner):
     owner = build_owner_reference(owner)
     for obj in dicts.walk(objs):
         refs = obj.setdefault('metadata', {}).setdefault('ownerReferences', [])
-        matching = [ref for ref in refs if ref['uid'] == owner['uid']]
+        matching = [ref for ref in refs if ref.get('uid') == owner.get('uid')]
         if not matching:
             refs.append(owner)
 
@@ -59,7 +67,7 @@ def remove_owner_reference(objs, owner):
     owner = build_owner_reference(owner)
     for obj in dicts.walk(objs):
         refs = obj.setdefault('metadata', {}).setdefault('ownerReferences', [])
-        matching = [ref for ref in refs if ref['uid'] == owner['uid']]
+        matching = [ref for ref in refs if ref.get('uid') == owner.get('uid')]
         for ref in matching:
             refs.remove(ref)
 

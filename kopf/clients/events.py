@@ -33,7 +33,7 @@ async def post_event(*, obj=None, ref=None, type, reason, message=''):
         ref = hierarchies.build_object_reference(obj)
 
     now = datetime.datetime.utcnow()
-    namespace = ref['namespace'] or 'default'
+    namespace = ref.get('namespace') or 'default'
 
     # Prevent a common case of event posting errors but shortening the message.
     if len(message) > MAX_MESSAGE_LENGTH:
