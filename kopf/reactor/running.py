@@ -3,7 +3,8 @@ import functools
 import logging
 import signal
 import threading
-from typing import Optional, Callable
+import warnings
+from typing import Optional, Callable, Collection
 
 from kopf.engines import peering
 from kopf.engines import posting
@@ -18,21 +19,49 @@ logger = logging.getLogger(__name__)
 def run(
         loop: Optional[asyncio.AbstractEventLoop] = None,
         lifecycle: Optional[Callable] = None,
-        registry: Optional[registries.BaseRegistry] = None,
+        registry: Optional[registries.GlobalRegistry] = None,
         standalone: bool = False,
         priority: int = 0,
         peering_name: str = peering.PEERING_DEFAULT_NAME,
         namespace: Optional[str] = None,
 ):
     """
-    Serve the events for all the registered resources and handlers.
+    Run the whole operator synchronously.
 
-    This process typically never ends, unless an unhandled error happens
-    in one of the consumers/producers.
+    This function should be used to run an operator in normal sync mode.
     """
     loop = loop if loop is not None else asyncio.get_event_loop()
-    tasks = create_tasks(
-        loop=loop,
+    try:
+        loop.run_until_complete(operator(
+            lifecycle=lifecycle,
+            registry=registry,
+            standalone=standalone,
+            namespace=namespace,
+            priority=priority,
+            peering_name=peering_name,
+        ))
+    except asyncio.CancelledError:
+        pass
+
+
+async def operator(
+        lifecycle: Optional[Callable] = None,
+        registry: Optional[registries.GlobalRegistry] = None,
+        standalone: bool = False,
+        priority: int = 0,
+        peering_name: str = peering.PEERING_DEFAULT_NAME,
+        namespace: Optional[str] = None,
+):
+    """
+    Run the whole operator asynchronously.
+
+    This function should be used to run an operator in an asyncio event-loop
+    if the operator is orchestrated explicitly and manually.
+
+    It is efficiently `spawn_tasks` + `run_tasks` with some safety.
+    """
+    existing_tasks = await _all_tasks()
+    operator_tasks = await spawn_tasks(
         lifecycle=lifecycle,
         registry=registry,
         standalone=standalone,
@@ -40,33 +69,23 @@ def run(
         priority=priority,
         peering_name=peering_name,
     )
-
-    # Run the infinite tasks until one of them fails/exits (they never exit normally).
-    # Give some time for the remaining tasks to handle the cancellations (e.g. via try-finally).
-    done1, pending1 = _wait_gracefully(loop, tasks, return_when=asyncio.FIRST_COMPLETED)
-    done2, pending2 = _wait_cancelled(loop, pending1)
-    done3, pending3 = _wait_gracefully(loop, asyncio.all_tasks(loop), timeout=1.0)
-    done4, pending4 = _wait_cancelled(loop, pending3)
-
-    # Check the results of the non-cancelled tasks, and re-raise of there were any exceptions.
-    # The cancelled tasks are not re-raised, as it is a normal flow.
-    _reraise(loop, list(done1) + list(done2) + list(done3) + list(done4))
+    await run_tasks(operator_tasks, ignored=existing_tasks)
 
 
-def create_tasks(
-        loop: asyncio.AbstractEventLoop,
+async def spawn_tasks(
         lifecycle: Optional[Callable] = None,
-        registry: Optional[registries.BaseRegistry] = None,
+        registry: Optional[registries.GlobalRegistry] = None,
         standalone: bool = False,
         priority: int = 0,
         peering_name: str = peering.PEERING_DEFAULT_NAME,
         namespace: Optional[str] = None,
-):
+) -> Collection[asyncio.Task]:
     """
-    Create all the tasks needed to run the operator, but do not spawn/start them.
-    The tasks are properly inter-connected depending on the runtime specification.
-    They can be injected into any event loop as needed.
+    Spawn all the tasks needed to run the operator.
+
+    The tasks are properly inter-connected with the synchronisation primitives.
     """
+    loop = asyncio.get_running_loop()
 
     # The freezer and the registry are scoped to this whole task-set, to sync them all.
     lifecycle = lifecycle if lifecycle is not None else lifecycles.get_default_lifecycle()
@@ -130,29 +149,102 @@ def create_tasks(
     return tasks
 
 
-def _wait_gracefully(loop, tasks, *, timeout=None, return_when=asyncio.ALL_COMPLETED):
-    if not tasks:
-        return [], []
+async def run_tasks(root_tasks, *, ignored: Collection[asyncio.Task] = frozenset()):
+    """
+    Orchestrate the tasks and terminate them gracefully when needed.
+
+    The root tasks are expected to run forever. Their number is limited. Once
+    any of them exits, the whole operator and all other root tasks should exit.
+
+    The root tasks, in turn, can spawn multiple sub-tasks of various purposes.
+    They can be awaited, monitored, or fired-and-forgot.
+
+    The hung tasks are those that were spawned during the operator runtime,
+    and were not cancelled/exited on the root tasks termination. They are given
+    some extra time to finish, after which they are forcely terminated too.
+
+    .. note::
+        Due to implementation details, every task created after the operator's
+        startup is assumed to be a task or a sub-task of the operator.
+        In the end, all tasks are forcely cancelled. Even if those tasks were
+        created by other means. There is no way to trace who spawned what.
+        Only the tasks that existed before the operator startup are ignored
+        (for example, those that spawned the operator itself).
+    """
     try:
-        done, pending = loop.run_until_complete(asyncio.wait(tasks, return_when=return_when, timeout=timeout))
+        # Run the infinite tasks until one of them fails/exits (they never exit normally).
+        root_done, root_pending = await _wait(root_tasks, return_when=asyncio.FIRST_COMPLETED)
     except asyncio.CancelledError:
-        # ``asyncio.wait()`` is cancelled, but the tasks can be running.
-        done, pending = [], tasks
+        # If the operator is cancelled, propagate the cancellation to all the sub-tasks.
+        # There is no graceful period: cancel as soon as possible, but allow them to finish.
+        root_cancelled, root_left = await _stop(root_tasks, title="Root", cancelled=True)
+        hung_tasks = await _all_tasks(ignored=ignored)
+        hung_cancelled, hung_left = await _stop(hung_tasks, title="Hung", cancelled=True)
+        raise
+    else:
+        # If the operator is intact, but one of the root tasks has exited (successfully or not),
+        # cancel all the remaining root tasks, and gracefully exit other spawned sub-tasks.
+        root_cancelled, root_left = await _stop(root_pending, title="Root", cancelled=False)
+        hung_tasks = await _all_tasks(ignored=ignored)
+        try:
+            # After the root tasks are all gone, cancel any spawned sub-tasks (e.g. handlers).
+            # TODO: assumption! the loop is not fully ours! find a way to cancel our spawned tasks.
+            hung_done, hung_pending = await _wait(hung_tasks, timeout=5.0)
+        except asyncio.CancelledError:
+            # If the operator is cancelled, propagate the cancellation to all the sub-tasks.
+            hung_cancelled, hung_left = await _stop(hung_tasks, title="Hung", cancelled=True)
+            raise
+        else:
+            # If the operator is intact, but the timeout is reached, forcely cancel the sub-tasks.
+            hung_cancelled, hung_left = await _stop(hung_pending, title="Hung", cancelled=False)
+
+    # If succeeded or if cancellation is silenced, re-raise from failed tasks (if any).
+    await _reraise(root_done | root_cancelled | hung_done | hung_cancelled)
+
+
+async def _all_tasks(ignored: Collection[asyncio.Task] = frozenset()) -> Collection[asyncio.Task]:
+    current_task = asyncio.current_task()
+    return {task for task in asyncio.all_tasks()
+            if task is not current_task and task not in ignored}
+
+
+async def _wait(tasks, *, timeout=None, return_when=asyncio.ALL_COMPLETED):
+    if not tasks:
+        return set(), ()
+    done, pending = await asyncio.wait(tasks, timeout=timeout, return_when=return_when)
     return done, pending
 
 
-def _wait_cancelled(loop, tasks, *, timeout=None):
+async def _stop(tasks, title, cancelled):
+    if not tasks:
+        logger.debug(f"{title} tasks stopping is skipped: no tasks given.")
+        return set(), set()
+
     for task in tasks:
         task.cancel()
-    if tasks:
-        done, pending = loop.run_until_complete(asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED, timeout=timeout))
-        assert not pending
-        return done, pending
+
+    # If the waiting (current) task is cancelled before the wait is over,
+    # propagate the cancellation to all the awaited (sub-) tasks, and let them finish.
+    try:
+        done, pending = await asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
+    except asyncio.CancelledError:
+        # If the waiting (current) task is cancelled while propagating the cancellation
+        # (i.e. double-cancelled), let it fail without graceful cleanup. It is urgent, it seems.
+        pending = {task for task in tasks if not task.done()}
+        are = 'are' if not pending else 'are not'
+        why = 'double-cancelled at stopping' if cancelled else 'cancelled at stopping'
+        logger.debug(f"{title} tasks {are} stopped: {why}; tasks left: {pending!r}")
+        raise  # the repeated cancellation, handled specially.
     else:
-        return [], []
+        # If the cancellation is propagated normally and the awaited (sub-) tasks exited,
+        # consider it as a successful cleanup.
+        are = 'are' if not pending else 'are not'
+        why = 'cancelled normally' if cancelled else 'finished normally'
+        logger.debug(f"{title} tasks {are} stopped: {why}; tasks left: {pending!r}")
+        return done, pending
 
 
-def _reraise(loop, tasks):
+async def _reraise(tasks):
     for task in tasks:
         try:
             task.result()  # can raise the regular (non-cancellation) exceptions.
@@ -167,3 +259,16 @@ async def _stop_flag_checker(should_stop):
         pass  # operator is stopping for any other reason
     else:
         logger.debug("Stop-flag is raised. Operator is stopping.")
+
+
+def create_tasks(loop: asyncio.AbstractEventLoop, *arg, **kwargs):
+    """
+    .. deprecated:: 1.0
+        This is a synchronous interface to `spawn_tasks`.
+        It is only kept for backward compatibility, as it was exposed
+        via the public interface of the framework.
+    """
+    warnings.warn("kopf.create_tasks() is deprecated: "
+                  "use kopf.spawn_tasks() or kopf.operator().",
+                  DeprecationWarning)
+    return loop.run_until_complete(spawn_tasks(*arg, **kwargs))
