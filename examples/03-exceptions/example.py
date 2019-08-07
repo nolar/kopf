@@ -11,8 +11,8 @@ class MyException(Exception):
 def create_fn(retry, **kwargs):
     time.sleep(2)  # for different timestamps of the events
     if not retry:
-        raise Exception("First failure.")
+        raise kopf.TemporaryError("First failure.", delay=10)
     elif retry == 1:
         raise MyException("Second failure.")
     else:
-        pass
+        raise kopf.PermanentError("Third failure, the final one.")

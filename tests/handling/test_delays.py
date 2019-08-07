@@ -6,7 +6,7 @@ import pytest
 
 import kopf
 from kopf.reactor.causation import HANDLER_CAUSES, CREATE, UPDATE, DELETE, RESUME
-from kopf.reactor.handling import HandlerRetryError
+from kopf.reactor.handling import TemporaryError
 from kopf.reactor.handling import WAITING_KEEPALIVE_INTERVAL
 from kopf.reactor.handling import custom_object_handler
 from kopf.structs.finalizers import FINALIZER
@@ -21,10 +21,10 @@ async def test_delayed_handlers_progress(
         caplog, assert_logs, k8s_mocked, now, ts, delay):
     caplog.set_level(logging.DEBUG)
 
-    handlers.create_mock.side_effect = HandlerRetryError("oops", delay=delay)
-    handlers.update_mock.side_effect = HandlerRetryError("oops", delay=delay)
-    handlers.delete_mock.side_effect = HandlerRetryError("oops", delay=delay)
-    handlers.resume_mock.side_effect = HandlerRetryError("oops", delay=delay)
+    handlers.create_mock.side_effect = TemporaryError("oops", delay=delay)
+    handlers.update_mock.side_effect = TemporaryError("oops", delay=delay)
+    handlers.delete_mock.side_effect = TemporaryError("oops", delay=delay)
+    handlers.resume_mock.side_effect = TemporaryError("oops", delay=delay)
 
     cause_mock.event = cause_type
 
@@ -52,7 +52,7 @@ async def test_delayed_handlers_progress(
 
     assert_logs([
         "Invoking handler .+",
-        "Handler .+ failed with a retry exception. Will retry.",
+        "Handler .+ failed temporarily: oops",
     ])
 
 

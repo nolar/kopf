@@ -5,7 +5,7 @@ import pytest
 
 import kopf
 from kopf.reactor.causation import HANDLER_CAUSES, CREATE, UPDATE, DELETE, RESUME
-from kopf.reactor.handling import HandlerFatalError, HandlerRetryError
+from kopf.reactor.handling import PermanentError, TemporaryError
 from kopf.reactor.handling import custom_object_handler
 
 
@@ -18,10 +18,10 @@ async def test_fatal_error_stops_handler(
     name1 = f'{cause_type}_fn'
 
     cause_mock.event = cause_type
-    handlers.create_mock.side_effect = HandlerFatalError("oops")
-    handlers.update_mock.side_effect = HandlerFatalError("oops")
-    handlers.delete_mock.side_effect = HandlerFatalError("oops")
-    handlers.resume_mock.side_effect = HandlerFatalError("oops")
+    handlers.create_mock.side_effect = PermanentError("oops")
+    handlers.update_mock.side_effect = PermanentError("oops")
+    handlers.delete_mock.side_effect = PermanentError("oops")
+    handlers.resume_mock.side_effect = PermanentError("oops")
 
     await custom_object_handler(
         lifecycle=kopf.lifecycles.one_by_one,
@@ -46,7 +46,7 @@ async def test_fatal_error_stops_handler(
     assert patch['status']['kopf']['progress'][name1]['message'] == 'oops'
 
     assert_logs([
-        "Handler .+ failed with a fatal exception. Will stop.",
+        "Handler .+ failed permanently: oops",
     ])
 
 
@@ -59,10 +59,10 @@ async def test_retry_error_delays_handler(
     name1 = f'{cause_type}_fn'
 
     cause_mock.event = cause_type
-    handlers.create_mock.side_effect = HandlerRetryError("oops")
-    handlers.update_mock.side_effect = HandlerRetryError("oops")
-    handlers.delete_mock.side_effect = HandlerRetryError("oops")
-    handlers.resume_mock.side_effect = HandlerRetryError("oops")
+    handlers.create_mock.side_effect = TemporaryError("oops")
+    handlers.update_mock.side_effect = TemporaryError("oops")
+    handlers.delete_mock.side_effect = TemporaryError("oops")
+    handlers.resume_mock.side_effect = TemporaryError("oops")
 
     await custom_object_handler(
         lifecycle=kopf.lifecycles.one_by_one,
@@ -88,7 +88,7 @@ async def test_retry_error_delays_handler(
     assert 'delayed' in patch['status']['kopf']['progress'][name1]
 
     assert_logs([
-        "Handler .+ failed with a retry exception. Will retry.",
+        "Handler .+ failed temporarily: oops",
     ])
 
 

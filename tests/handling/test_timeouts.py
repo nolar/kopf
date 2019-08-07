@@ -55,5 +55,5 @@ async def test_timed_out_handler_fails(
     assert patch['status']['kopf']['progress'][name1]['failure'] is True
 
     assert_logs([
-        "Handler .+ failed with a fatal exception. Will stop.",
+        "Handler .+ has timed out after",
     ])

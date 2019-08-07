@@ -29,11 +29,11 @@ within one handling cycle.
 
     async def create_a(retry, **kwargs):
         if retry < 2:
-            raise kopf.HandlerRetryError("Not ready yet.", delay=10)
+            raise kopf.TemporaryError("Not ready yet.", delay=10)
 
     async def create_b(retry, **kwargs):
         if retry < 6:
-            raise kopf.HandlerRetryError("Not ready yet.", delay=10)
+            raise kopf.TemporaryError("Not ready yet.", delay=10)
 
 In this example, both ``create_a`` & ``create_b`` are submitted to Kopf
 as the sub-handlers of ``create`` on every attempt to execute it.
