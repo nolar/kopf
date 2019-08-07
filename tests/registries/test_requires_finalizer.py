@@ -1,31 +1,7 @@
 import pytest
 
 import kopf
-from kopf.reactor.causation import CREATE, UPDATE, DELETE
-from kopf.reactor.handling import subregistry_var
-from kopf.reactor.registries import Resource, SimpleRegistry, GlobalRegistry
-
-# labels annos optional deletion other required
-# ----------------- param = optional -----------------------
-# no     no    false    yes      no    true
-# no     no    true     yes      no    false
-# ----------------- param = optional -----------------------------
-# no     no    false    yes      yes   true
-# no     no    true     yes      yes   false
-# ----------------------------------------------
-# no     no    -        no       yes   false
-# ----------------------------------------------
-# match  no    false    yes      no    true
-# match  no    true     yes      no    false
-# ----------------------------------------------
-# misma  no    false    yes      no    false
-# misma  no    true     yes      no    false
-# ----------------------------------------------
-# no     match false    yes      no    true
-# no     match true     yes      no    false
-# ----------------------------------------------
-# no     misma false    yes      no    false
-# no     misma true     yes      no    false
+from kopf.reactor.registries import Resource, GlobalRegistry
 
 
 @pytest.mark.parametrize('optional', [
