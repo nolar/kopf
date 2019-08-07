@@ -23,7 +23,6 @@ def test_on_create_minimal(mocker):
     assert handlers[0].timeout is None
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
-    assert registry.requires_finalizer(resource=resource) is False
 
 
 def test_on_update_minimal(mocker):
@@ -43,7 +42,6 @@ def test_on_update_minimal(mocker):
     assert handlers[0].timeout is None
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
-    assert registry.requires_finalizer(resource=resource) is False
 
 
 def test_on_delete_minimal(mocker):
@@ -63,7 +61,6 @@ def test_on_delete_minimal(mocker):
     assert handlers[0].timeout is None
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
-    assert registry.requires_finalizer(resource=resource) is True
 
 
 def test_on_field_minimal(mocker):
@@ -84,7 +81,6 @@ def test_on_field_minimal(mocker):
     assert handlers[0].timeout is None
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
-    assert registry.requires_finalizer(resource=resource) is False
 
 
 def test_on_field_fails_without_field():
@@ -116,7 +112,6 @@ def test_on_create_with_all_kwargs(mocker):
     assert handlers[0].timeout == 123
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
-    assert registry.requires_finalizer(resource=resource) is False
 
 
 def test_on_update_with_all_kwargs(mocker):
@@ -141,7 +136,6 @@ def test_on_update_with_all_kwargs(mocker):
     assert handlers[0].timeout == 123
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
-    assert registry.requires_finalizer(resource=resource) is False
 
 
 @pytest.mark.parametrize('optional', [
@@ -170,7 +164,6 @@ def test_on_delete_with_all_kwargs(mocker, optional):
     assert handlers[0].timeout == 123
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
-    assert registry.requires_finalizer(resource=resource) is not optional
 
 
 def test_on_field_with_all_kwargs(mocker):
@@ -196,7 +189,6 @@ def test_on_field_with_all_kwargs(mocker):
     assert handlers[0].timeout == 123
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
-    assert registry.requires_finalizer(resource=resource) is False
 
 
 def test_subhandler_declaratively(mocker):
@@ -227,23 +219,3 @@ def test_subhandler_imperatively(mocker):
     handlers = registry.get_cause_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
-
-
-def test_resource_requires_finalizer_mixed_handlers(mocker):
-    registry = kopf.get_default_registry()
-    resource = Resource('group', 'version', 'plural')
-    cause = mocker.MagicMock(resource=resource, event=CREATE)
-
-    @kopf.on.create('group', 'version', 'plural')
-    def fn(**_):
-        pass
-
-    @kopf.on.delete('group', 'version', 'plural')
-    def fn2(**_):
-        pass
-
-    @kopf.on.update('group', 'version', 'plural')
-    def fn3(**_):
-        pass
-
-    assert registry.requires_finalizer(resource=resource) is True
