@@ -1,4 +1,3 @@
-import pykube
 import pytest
 import requests
 
