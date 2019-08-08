@@ -119,7 +119,7 @@ async def custom_object_handler(
             new=new,
             diff=diff,
             digest=digest,
-            requires_finalizer=registry.requires_finalizer(resource=resource),
+            requires_finalizer=registry.requires_finalizer(resource=resource, body=body),
         )
         delay = await handle_cause(lifecycle=lifecycle, registry=registry, cause=cause)
 

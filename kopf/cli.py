@@ -28,9 +28,11 @@ def logging_options(fn):
     def wrapper(verbose, quiet, debug, *args, **kwargs):
         config.configure(debug=debug, verbose=verbose, quiet=quiet)
         return fn(*args, **kwargs)
+
     return wrapper
 
 
+@click.version_option(prog_name='kopf')
 @click.group(name='kopf', context_settings=dict(
     auto_envvar_prefix='KOPF',
 ))
