@@ -40,8 +40,13 @@ async def patch_obj(*, resource, patch, namespace=None, name=None, body=None):
         await loop.run_in_executor(config.WorkersConfig.get_syn_executor(), obj.patch, patch)
     except pykube.ObjectDoesNotExist:
         pass
+    except pykube.exceptions.HTTPError as e:
+        if e.code == 404:
+            pass
+        else:
+            raise
     except requests.exceptions.HTTPError as e:
-        if e.response.status_code in [404]:
+        if e.response.status_code == 404:
             pass
         else:
             raise

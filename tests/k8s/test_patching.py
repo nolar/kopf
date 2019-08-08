@@ -1,5 +1,6 @@
 import json
 
+import pykube.exceptions
 import pytest
 import requests
 
@@ -102,10 +103,20 @@ async def test_raises_when_body_conflicts_with_ids(req_mock, resource):
 
 
 @pytest.mark.parametrize('status', [404])
-async def test_ignores_absent_objects(req_mock, resource, status):
+async def test_ignores_absent_objects_with_requests_httperror(req_mock, resource, status):
     response = requests.Response()
     response.status_code = status
     error = requests.exceptions.HTTPError("boo!", response=response)
+    req_mock.patch.side_effect = error
+
+    patch = {'x': 'y'}
+    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    await patch_obj(resource=resource, body=body, patch=patch)
+
+
+@pytest.mark.parametrize('status', [404])
+async def test_ignores_absent_objects_with_pykube_httperror(req_mock, resource, status):
+    error = pykube.exceptions.HTTPError(status, "boo!")
     req_mock.patch.side_effect = error
 
     patch = {'x': 'y'}
