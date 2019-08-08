@@ -22,7 +22,7 @@ def run(
         registry: Optional[registries.GlobalRegistry] = None,
         standalone: bool = False,
         priority: int = 0,
-        peering_name: str = peering.PEERING_DEFAULT_NAME,
+        peering_name: Optional[str] = None,
         namespace: Optional[str] = None,
 ):
     """
@@ -49,7 +49,7 @@ async def operator(
         registry: Optional[registries.GlobalRegistry] = None,
         standalone: bool = False,
         priority: int = 0,
-        peering_name: str = peering.PEERING_DEFAULT_NAME,
+        peering_name: Optional[str] = None,
         namespace: Optional[str] = None,
 ):
     """
@@ -77,7 +77,7 @@ async def spawn_tasks(
         registry: Optional[registries.GlobalRegistry] = None,
         standalone: bool = False,
         priority: int = 0,
-        peering_name: str = peering.PEERING_DEFAULT_NAME,
+        peering_name: Optional[str] = None,
         namespace: Optional[str] = None,
 ) -> Collection[asyncio.Task]:
     """
