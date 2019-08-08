@@ -19,11 +19,11 @@ OBJECT_BODY = {
 }
 
 
-@pytest.mark.parametrize('optional', [
-    pytest.param(True, id='optional'),
-    pytest.param(False, id='mandatory'),
+@pytest.mark.parametrize('optional, expected', [
+    pytest.param(True, False, id='optional'),
+    pytest.param(False, True, id='mandatory'),
 ])
-def test_requires_finalizer_deletion_handler(optional):
+def test_requires_finalizer_deletion_handler(optional, expected):
     registry = GlobalRegistry()
     resource = Resource('group', 'version', 'plural')
 
@@ -32,14 +32,15 @@ def test_requires_finalizer_deletion_handler(optional):
     def fn(**_):
         pass
 
-    assert registry.requires_finalizer(resource=resource, body=OBJECT_BODY) is not optional
+    requires_finalizer = registry.requires_finalizer(resource=resource, body=OBJECT_BODY)
+    assert requires_finalizer == expected
 
 
-@pytest.mark.parametrize('optional', [
-    pytest.param(True, id='optional'),
-    pytest.param(False, id='mandatory'),
+@pytest.mark.parametrize('optional, expected', [
+    pytest.param(True, False, id='optional'),
+    pytest.param(False, True, id='mandatory'),
 ])
-def test_requires_finalizer_multiple_handlers(optional):
+def test_requires_finalizer_multiple_handlers(optional, expected):
     registry = GlobalRegistry()
     resource = Resource('group', 'version', 'plural')
 
@@ -53,7 +54,8 @@ def test_requires_finalizer_multiple_handlers(optional):
     def fn2(**_):
         pass
 
-    assert registry.requires_finalizer(resource=resource, body=OBJECT_BODY) is not optional
+    requires_finalizer = registry.requires_finalizer(resource=resource, body=OBJECT_BODY)
+    assert requires_finalizer == expected
 
 
 def test_requires_finalizer_no_deletion_handler():
@@ -65,18 +67,19 @@ def test_requires_finalizer_no_deletion_handler():
     def fn1(**_):
         pass
 
-    assert registry.requires_finalizer(resource=resource, body=OBJECT_BODY) is False
+    requires_finalizer = registry.requires_finalizer(resource=resource, body=OBJECT_BODY)
+    assert requires_finalizer is False
 
 
-@pytest.mark.parametrize('optional', [
-    pytest.param(True, id='optional'),
-    pytest.param(False, id='mandatory'),
+@pytest.mark.parametrize('optional, expected', [
+    pytest.param(True, False, id='optional'),
+    pytest.param(False, True, id='mandatory'),
 ])
 @pytest.mark.parametrize('labels', [
     pytest.param({'key': 'value'}, id='value-matches'),
     pytest.param({'key': None}, id='key-exists'),
 ])
-def test_requires_finalizer_deletion_handler_matches_labels(optional, labels):
+def test_requires_finalizer_deletion_handler_matches_labels(labels, optional, expected):
     registry = GlobalRegistry()
     resource = Resource('group', 'version', 'plural')
 
@@ -86,18 +89,19 @@ def test_requires_finalizer_deletion_handler_matches_labels(optional, labels):
     def fn(**_):
         pass
 
-    assert registry.requires_finalizer(resource=resource, body=OBJECT_BODY) is not optional
+    requires_finalizer = registry.requires_finalizer(resource=resource, body=OBJECT_BODY)
+    assert requires_finalizer == expected
 
 
-@pytest.mark.parametrize('optional', [
-    pytest.param(True, id='optional'),
-    pytest.param(False, id='mandatory'),
+@pytest.mark.parametrize('optional, expected', [
+    pytest.param(True, False, id='optional'),
+    pytest.param(False, False, id='mandatory'),
 ])
 @pytest.mark.parametrize('labels', [
     pytest.param({'key': 'othervalue'}, id='value-mismatch'),
     pytest.param({'otherkey': None}, id='key-doesnt-exist'),
 ])
-def test_requires_finalizer_deletion_handler_mismatches_labels(optional, labels):
+def test_requires_finalizer_deletion_handler_mismatches_labels(labels, optional, expected):
     registry = GlobalRegistry()
     resource = Resource('group', 'version', 'plural')
 
@@ -107,18 +111,19 @@ def test_requires_finalizer_deletion_handler_mismatches_labels(optional, labels)
     def fn(**_):
         pass
 
-    assert registry.requires_finalizer(resource=resource, body=OBJECT_BODY) is False
+    requires_finalizer = registry.requires_finalizer(resource=resource, body=OBJECT_BODY)
+    assert requires_finalizer == expected
 
 
-@pytest.mark.parametrize('optional', [
-    pytest.param(True, id='optional'),
-    pytest.param(False, id='mandatory'),
+@pytest.mark.parametrize('optional, expected', [
+    pytest.param(True, False, id='optional'),
+    pytest.param(False, True, id='mandatory'),
 ])
 @pytest.mark.parametrize('annotations', [
     pytest.param({'key': 'value'}, id='value-matches'),
     pytest.param({'key': None}, id='key-exists'),
 ])
-def test_requires_finalizer_deletion_handler_matches_annotations(optional, annotations):
+def test_requires_finalizer_deletion_handler_matches_annotations(annotations, optional, expected):
     registry = GlobalRegistry()
     resource = Resource('group', 'version', 'plural')
 
@@ -128,18 +133,19 @@ def test_requires_finalizer_deletion_handler_matches_annotations(optional, annot
     def fn(**_):
         pass
 
-    assert registry.requires_finalizer(resource=resource, body=OBJECT_BODY) is not optional
-    
-    
-@pytest.mark.parametrize('optional', [
-    pytest.param(True, id='optional'),
-    pytest.param(False, id='mandatory'),
+    requires_finalizer = registry.requires_finalizer(resource=resource, body=OBJECT_BODY)
+    assert requires_finalizer == expected
+
+
+@pytest.mark.parametrize('optional, expected', [
+    pytest.param(True, False, id='optional'),
+    pytest.param(False, False, id='mandatory'),
 ])
 @pytest.mark.parametrize('annotations', [
     pytest.param({'key': 'othervalue'}, id='value-mismatch'),
     pytest.param({'otherkey': None}, id='key-doesnt-exist'),
 ])
-def test_requires_finalizer_deletion_handler_mismatches_annotations(optional, annotations):
+def test_requires_finalizer_deletion_handler_mismatches_annotations(annotations, optional, expected):
     registry = GlobalRegistry()
     resource = Resource('group', 'version', 'plural')
 
@@ -149,4 +155,5 @@ def test_requires_finalizer_deletion_handler_mismatches_annotations(optional, an
     def fn(**_):
         pass
 
-    assert registry.requires_finalizer(resource=resource, body=OBJECT_BODY) is False
+    requires_finalizer = registry.requires_finalizer(resource=resource, body=OBJECT_BODY)
+    assert requires_finalizer == expected
