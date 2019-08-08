@@ -39,7 +39,11 @@ def watcher_limited(mocker):
 
 
 @pytest.fixture()
-def watcher_in_background(resource, handler, event_loop, worker_spy, stream):
+def watcher_in_background(resource, event_loop, worker_spy, stream):
+
+    # Prevent remembering the streaming objects in the mocks.
+    async def no_op_handler(*args, **kwargs):
+        pass
 
     # Prevent any real streaming for the very beginning, before it even starts.
     stream.feed([])
@@ -48,7 +52,7 @@ def watcher_in_background(resource, handler, event_loop, worker_spy, stream):
     coro = watcher(
         namespace=None,
         resource=resource,
-        handler=handler,
+        handler=no_op_handler,
     )
     task = event_loop.create_task(coro)
 

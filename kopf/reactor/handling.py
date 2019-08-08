@@ -23,6 +23,7 @@ from typing import Optional, Callable, Iterable, Collection
 from kopf.clients import patching
 from kopf.engines import logging as logging_engine
 from kopf.engines import posting
+from kopf.engines import sleeping
 from kopf.reactor import causation
 from kopf.reactor import invocation
 from kopf.reactor import registries
@@ -73,6 +74,7 @@ async def custom_object_handler(
         resource: registries.Resource,
         event: dict,
         freeze: asyncio.Event,
+        replenished: asyncio.Event,
         event_queue: asyncio.Queue,
 ) -> None:
     """
@@ -119,11 +121,6 @@ async def custom_object_handler(
         )
         delay = await handle_cause(lifecycle=lifecycle, registry=registry, cause=cause)
 
-    # Provoke a dummy change to trigger the reactor after sleep.
-    # TODO: reimplement via the handler delayed statuses properly.
-    if delay and not patch:
-        patch.setdefault('status', {}).setdefault('kopf', {})['dummy'] = datetime.datetime.utcnow().isoformat()
-
     # Whatever was done, apply the accumulated changes to the object.
     # But only once, to reduce the number of API calls and the generated irrelevant events.
     if patch:
@@ -131,9 +128,16 @@ async def custom_object_handler(
         await patching.patch_obj(resource=resource, patch=patch, body=body)
 
     # Sleep strictly after patching, never before -- to keep the status proper.
-    if delay:
+    # The patching above, if done, interrupts the sleep instantly, so we skip it at all.
+    if delay and not patch:
         logger.debug(f"Sleeping for {delay} seconds for the delayed handlers.")
-        await asyncio.sleep(delay)
+        unslept = await sleeping.sleep_or_wait(delay, replenished)
+        if unslept is not None:
+            logger.debug(f"Sleeping was interrupted by new changes, {unslept} seconds left.")
+        else:
+            dummy = {'status': {'kopf': {'dummy': datetime.datetime.utcnow().isoformat()}}}
+            logger.debug("Provoking reaction with: %r", dummy)
+            await patching.patch_obj(resource=resource, patch=dummy, body=body)
 
 
 async def handle_event(

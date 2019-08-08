@@ -21,6 +21,7 @@ async def test_handlers_called_always(
         resource=resource,
         event={'type': 'ev-type', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 
@@ -55,6 +56,7 @@ async def test_errors_are_ignored(
         resource=resource,
         event={'type': 'ev-type', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 

@@ -22,6 +22,7 @@ async def test_1st_step_stores_progress_by_patching(
         resource=resource,
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 
@@ -30,7 +31,7 @@ async def test_1st_step_stores_progress_by_patching(
     assert handlers.delete_mock.call_count == (1 if cause_type == DELETE else 0)
     assert handlers.resume_mock.call_count == (1 if cause_type == RESUME else 0)
 
-    assert not k8s_mocked.asyncio_sleep.called
+    assert not k8s_mocked.sleep_or_wait.called
     assert k8s_mocked.patch_obj.called
 
     patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
@@ -67,6 +68,7 @@ async def test_2nd_step_finishes_the_handlers(
         resource=resource,
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 
@@ -75,7 +77,7 @@ async def test_2nd_step_finishes_the_handlers(
     assert extrahandlers.delete_mock.call_count == (1 if cause_type == DELETE else 0)
     assert extrahandlers.resume_mock.call_count == (1 if cause_type == RESUME else 0)
 
-    assert not k8s_mocked.asyncio_sleep.called
+    assert not k8s_mocked.sleep_or_wait.called
     assert k8s_mocked.patch_obj.called
 
     patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']

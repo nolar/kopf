@@ -32,10 +32,12 @@ async def test_skipped_with_no_handlers(
         resource=resource,
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
+        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 
     assert not k8s_mocked.asyncio_sleep.called
+    assert not k8s_mocked.sleep_or_wait.called
     assert k8s_mocked.patch_obj.called
 
     # The patch must contain ONLY the last-seen update, and nothing else.
