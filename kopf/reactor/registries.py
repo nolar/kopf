@@ -112,8 +112,8 @@ class SimpleRegistry(BaseRegistry):
     def __init__(self, prefix=None):
         super().__init__()
         self.prefix = prefix
-        self._requires_finalizer = False
         self._handlers = []  # [Handler, ...]
+        self._handlers_requiring_finalizer = []
 
     def __bool__(self):
         return bool(self._handlers)
@@ -141,7 +141,7 @@ class SimpleRegistry(BaseRegistry):
         self.append(handler)
 
         if requires_finalizer:
-            self._requires_finalizer = True
+            self._handlers_requiring_finalizer.append(handler)
 
         return fn  # to be usable as a decorator too.
 
@@ -164,8 +164,13 @@ class SimpleRegistry(BaseRegistry):
             if handler.field:
                 yield handler.field
 
-    def requires_finalizer(self, resource):
-        return self._requires_finalizer
+    def requires_finalizer(self, resource, body):
+        # check whether the body matches a deletion handler
+        for handler in self._handlers_requiring_finalizer:
+            if filters.match(handler=handler, body=body):
+                return True
+
+        return False
 
 
 def get_callable_id(c):
@@ -255,7 +260,7 @@ class GlobalRegistry(BaseRegistry):
         if resource_registry is not None:
             yield from resource_registry.iter_extra_fields(resource=resource)
 
-    def requires_finalizer(self, resource):
+    def requires_finalizer(self, resource, body):
         """
         Return whether a finalizer should be added to
         the given resource or not.
@@ -263,7 +268,7 @@ class GlobalRegistry(BaseRegistry):
         resource_registry = self._cause_handlers.get(resource, None)
         if resource_registry is None:
             return False
-        return resource_registry.requires_finalizer(resource)
+        return resource_registry.requires_finalizer(resource, body)
 
 
 _default_registry = GlobalRegistry()
