@@ -4,6 +4,21 @@ import kopf
 from kopf.reactor.registries import Resource, GlobalRegistry
 
 
+OBJECT_BODY = {
+    'apiVersion': 'group/version',
+    'kind': 'singular',
+    'metadata': {
+        'name': 'test',
+        'labels': {
+            'key': 'value',
+        },
+        'annotations': {
+            'key': 'value',
+        }
+    }
+}
+
+
 @pytest.mark.parametrize('optional', [
     pytest.param(True, id='optional'),
     pytest.param(False, id='mandatory'),
@@ -17,19 +32,7 @@ def test_requires_finalizer_deletion_handler(optional):
     def fn(**_):
         pass
 
-    body = {
-        'metadata': {
-            'name': 'test',
-            'labels': {
-                'key': 'value',
-            },
-            'annotations': {
-                'key': 'value',
-            }
-        }
-    }
-
-    assert registry.requires_finalizer(resource=resource, body=body) is not optional
+    assert registry.requires_finalizer(resource=resource, body=OBJECT_BODY) is not optional
 
 
 @pytest.mark.parametrize('optional', [
@@ -50,19 +53,7 @@ def test_requires_finalizer_multiple_handlers(optional):
     def fn2(**_):
         pass
 
-    body = {
-        'metadata': {
-            'name': 'test',
-            'labels': {
-                'key': 'value',
-            },
-            'annotations': {
-                'key': 'value',
-            }
-        }
-    }
-
-    assert registry.requires_finalizer(resource=resource, body=body) is not optional
+    assert registry.requires_finalizer(resource=resource, body=OBJECT_BODY) is not optional
 
 
 def test_requires_finalizer_no_deletion_handler():
@@ -74,19 +65,7 @@ def test_requires_finalizer_no_deletion_handler():
     def fn1(**_):
         pass
 
-    body = {
-        'metadata': {
-            'name': 'test',
-            'labels': {
-                'key': 'value',
-            },
-            'annotations': {
-                'key': 'value',
-            }
-        }
-    }
-
-    assert registry.requires_finalizer(resource=resource, body=body) is False
+    assert registry.requires_finalizer(resource=resource, body=OBJECT_BODY) is False
 
 
 @pytest.mark.parametrize('optional', [
@@ -107,19 +86,7 @@ def test_requires_finalizer_deletion_handler_matches_labels(optional, labels):
     def fn(**_):
         pass
 
-    body = {
-        'metadata': {
-            'name': 'test',
-            'labels': {
-                'key': 'value',
-            },
-            'annotations': {
-                'key': 'value',
-            }
-        }
-    }
-
-    assert registry.requires_finalizer(resource=resource, body=body) is not optional
+    assert registry.requires_finalizer(resource=resource, body=OBJECT_BODY) is not optional
 
 
 @pytest.mark.parametrize('optional', [
@@ -140,19 +107,7 @@ def test_requires_finalizer_deletion_handler_mismatches_labels(optional, labels)
     def fn(**_):
         pass
 
-    body = {
-        'metadata': {
-            'name': 'test',
-            'labels': {
-                'key': 'value',
-            },
-            'annotations': {
-                'key': 'value',
-            }
-        }
-    }
-
-    assert registry.requires_finalizer(resource=resource, body=body) is False
+    assert registry.requires_finalizer(resource=resource, body=OBJECT_BODY) is False
 
 
 @pytest.mark.parametrize('optional', [
@@ -173,19 +128,7 @@ def test_requires_finalizer_deletion_handler_matches_annotations(optional, annot
     def fn(**_):
         pass
 
-    body = {
-        'metadata': {
-            'name': 'test',
-            'labels': {
-                'key': 'value',
-            },
-            'annotations': {
-                'key': 'value',
-            }
-        }
-    }
-
-    assert registry.requires_finalizer(resource=resource, body=body) is not optional
+    assert registry.requires_finalizer(resource=resource, body=OBJECT_BODY) is not optional
     
     
 @pytest.mark.parametrize('optional', [
@@ -206,16 +149,4 @@ def test_requires_finalizer_deletion_handler_mismatches_annotations(optional, an
     def fn(**_):
         pass
 
-    body = {
-        'metadata': {
-            'name': 'test',
-            'labels': {
-                'key': 'value',
-            },
-            'annotations': {
-                'key': 'value',
-            }
-        }
-    }
-
-    assert registry.requires_finalizer(resource=resource, body=body) is False
+    assert registry.requires_finalizer(resource=resource, body=OBJECT_BODY) is False
