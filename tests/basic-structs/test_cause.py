@@ -15,6 +15,7 @@ def test_all_args(mocker):
     initial = mocker.Mock()
     body = mocker.Mock()
     patch = mocker.Mock()
+    digest = mocker.Mock()
     diff = mocker.Mock()
     old = mocker.Mock()
     new = mocker.Mock()
@@ -25,6 +26,7 @@ def test_all_args(mocker):
         initial=initial,
         body=body,
         patch=patch,
+        digest=digest,
         diff=diff,
         old=old,
         new=new,
@@ -35,6 +37,7 @@ def test_all_args(mocker):
     assert cause.initial is initial
     assert cause.body is body
     assert cause.patch is patch
+    assert cause.digest is digest
     assert cause.diff is diff
     assert cause.old is old
     assert cause.new is new
@@ -47,6 +50,7 @@ def test_required_args(mocker):
     initial = mocker.Mock()
     body = mocker.Mock()
     patch = mocker.Mock()
+    digest = mocker.Mock()
     cause = Cause(
         resource=resource,
         logger=logger,
@@ -54,6 +58,7 @@ def test_required_args(mocker):
         initial=initial,
         body=body,
         patch=patch,
+        digest=digest,
     )
     assert cause.resource is resource
     assert cause.logger is logger
@@ -61,6 +66,7 @@ def test_required_args(mocker):
     assert cause.initial is initial
     assert cause.body is body
     assert cause.patch is patch
+    assert cause.digest is digest
     assert cause.diff is None
     assert cause.old is None
     assert cause.new is None

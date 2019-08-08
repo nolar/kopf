@@ -20,11 +20,11 @@ The structure is this:
                 handler1:
                     started: 2018-12-31T23:59:59,999999
                     stopped: 2018-01-01T12:34:56,789000
-                    success: true
+                    success: abcdef1234567890fedcba
                 handler2:
                     started: 2018-12-31T23:59:59,999999
                     stopped: 2018-01-01T12:34:56,789000
-                    failure: true
+                    failure: abcdef1234567890fedcba
                     message: "Error message."
                 handler3:
                     started: 2018-12-31T23:59:59,999999
@@ -37,16 +37,46 @@ The structure is this:
                 handler3/sub2:
                     started: 2018-12-31T23:59:59,999999
 
-* ``status.kopf.success`` are the handlers that succeeded (no re-execution).
-* ``status.kopf.failure`` are the handlers that failed completely (no retries).
-* ``status.kopf.delayed`` are the timestamps, until which these handlers sleep.
-* ``status.kopf.retries`` are number of retries for succeeded, failed,
-  and for the progressing handlers.
+* ``status.kopf.progress`` stores the state of each individual handler in the
+  current handling cycle (by their ids, which are usually the function names).
+
+For each handler's status, the following is stored:
+
+* ``started``: when the handler was attempted for the first time (used for timeouts & durations).
+* ``stopped``: when the handler has failed or succeeded.
+* ``delayed``: when the handler can retry again.
+* ``retries``: the number of retried attempted so far (including reruns and successful attempts).
+* ``success``: a digest of where the handler has succeeded (and thus no retries are needed).
+* ``failure``: a digest of where the handler has failed completely (no retries will be done).
+* ``message``: a brief error message from the last exception (as a hint).
 
 When the full event cycle is executed (possibly including multiple re-runs),
 the whole ``status.kopf`` section is purged. The life-long persistence of status
 is not intended: otherwise, multiple distinct causes will clutter the status
 and collide with each other (especially critical for multiple updates).
+
+The digest of each handler's success or failure can be considered a "version"
+of an object being handled, as it was when the handler has finished.
+If the object is changed during the remaining handling cycle, the digest
+of the finished handlers will be mismatching the actual digest of the object,
+and so they will be re-executed.
+
+This is conceptually close to *reconciliation*: the handling is finished
+only when all handlers are executed on the latest state of the object.
+
+Creation is treated specially: the creation handlers will never be re-executed.
+In case of changes during the creation handling, the remaining creation handlers
+will get the new state (as normally), and then there will be an update cycle
+with all the changes since the first creation handler -- i.e. not from the last
+handler as usually, when the last-seen state is updated.
+
+Update handlers are assumed to be idempotent by concept, so it should be safe
+to call them with the changes that are already reflected in the system by some
+of the creation handlers.
+
+Note: The Kubernetes-provided "resource version" of the object is not used,
+as it increases with every change of the object, while this digest is used
+only for the changes relevant to the operator and framework (see `get_state`).
 """
 
 import collections.abc
@@ -59,23 +89,24 @@ def is_started(*, body, handler):
     return handler.id in progress
 
 
-def is_sleeping(*, body, handler):
+def is_sleeping(*, body, digest, handler):
     ts = get_awake_time(body=body, handler=handler)
-    finished = is_finished(body=body, handler=handler)
+    finished = is_finished(body=body, digest=digest, handler=handler)
     return not finished and ts is not None and ts > datetime.datetime.utcnow()
 
 
-def is_awakened(*, body, handler):
-    finished = is_finished(body=body, handler=handler)
-    sleeping = is_sleeping(body=body, handler=handler)
+def is_awakened(*, body, digest, handler):
+    finished = is_finished(body=body, digest=digest, handler=handler)
+    sleeping = is_sleeping(body=body, digest=digest, handler=handler)
     return bool(not finished and not sleeping)
 
 
-def is_finished(*, body, handler):
+def is_finished(*, body, digest, handler):
     progress = body.get('status', {}).get('kopf', {}).get('progress', {})
     success = progress.get(handler.id, {}).get('success', None)
     failure = progress.get(handler.id, {}).get('failure', None)
-    return bool(success or failure)
+    return ((success is not None and (success is True or success == digest)) or
+            (failure is not None and (failure is True or failure == digest)))
 
 
 def get_start_time(*, body, patch, handler):
@@ -126,23 +157,23 @@ def set_retry_time(*, body, patch, handler, delay=None):
     set_awake_time(body=body, patch=patch, handler=handler, delay=delay)
 
 
-def store_failure(*, body, patch, handler, exc):
+def store_failure(*, body, patch, digest, handler, exc):
     retry = get_retry_count(body=body, handler=handler)
     progress = patch.setdefault('status', {}).setdefault('kopf', {}).setdefault('progress', {})
     progress.setdefault(handler.id, {}).update({
         'stopped': datetime.datetime.utcnow().isoformat(),
-        'failure': True,
+        'failure': digest,
         'retries': retry + 1,
         'message': f'{exc}',
     })
 
 
-def store_success(*, body, patch, handler, result=None):
+def store_success(*, body, patch, digest, handler, result=None):
     retry = get_retry_count(body=body, handler=handler)
     progress = patch.setdefault('status', {}).setdefault('kopf', {}).setdefault('progress', {})
     progress.setdefault(handler.id, {}).update({
         'stopped': datetime.datetime.utcnow().isoformat(),
-        'success': True,
+        'success': digest,
         'retries': retry + 1,
         'message': None,
     })

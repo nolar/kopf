@@ -43,7 +43,7 @@ async def test_fatal_error_stops_handler(
 
     patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
     assert patch['status']['kopf']['progress'] is not None
-    assert patch['status']['kopf']['progress'][name1]['failure'] is True
+    assert patch['status']['kopf']['progress'][name1]['failure']  # evals to true
     assert patch['status']['kopf']['progress'][name1]['message'] == 'oops'
 
     assert_logs([

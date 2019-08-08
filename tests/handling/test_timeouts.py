@@ -53,7 +53,7 @@ async def test_timed_out_handler_fails(
 
     patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
     assert patch['status']['kopf']['progress'] is not None
-    assert patch['status']['kopf']['progress'][name1]['failure'] is True
+    assert patch['status']['kopf']['progress'][name1]['failure']  # evals to true
 
     assert_logs([
         "Handler .+ has timed out after",
