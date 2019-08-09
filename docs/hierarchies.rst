@@ -39,8 +39,8 @@ Owner references
 Kubernetes natively supports the owner references, when one object (child)
 can be marked as "owned" by one or more other objects (owners or parents).
 
-if the owner is deleted, its children will be deleted too, automatically,
-and not additional handlers are needed.
+If the owner is deleted, its children will be deleted too, automatically,
+and no additional handlers are needed.
 
 To mark an object or objects as owned by another object::
 
@@ -49,6 +49,11 @@ To mark an object or objects as owned by another object::
 To unmark::
 
     kopf.remove_owner_reference(objs, owner=owner)
+
+The currently handled object is the owner by default (if not specified)::
+
+    kopf.append_owner_reference(objs)
+    kopf.remove_owner_reference(objs)
 
 .. seealso::
     :doc:`walkthrough/deletion`.
@@ -79,5 +84,5 @@ Adopting
 
 All of the above can be done in one call::
 
-    kopf.adopt(obj, owner=owner)
-    kopf.adopt([obj1, obj2], owner=owner)
+    kopf.adopt(obj)
+    kopf.adopt([obj1, obj2])

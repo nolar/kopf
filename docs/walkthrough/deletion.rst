@@ -40,7 +40,7 @@ Let's extend the creation handler:
     import yaml
 
     @kopf.on.create('zalando.org', 'v1', 'ephemeralvolumeclaims')
-    def create_fn(meta, body, spec, namespace, logger, **kwargs):
+    def create_fn(meta, spec, namespace, logger, **kwargs):
 
         name = meta.get('name')
         size = spec.get('size')
@@ -52,7 +52,7 @@ Let's extend the creation handler:
         text = tmpl.format(name=name, size=size)
         data = yaml.safe_load(text)
 
-        kopf.adopt(data, owner=body)
+        kopf.adopt(data)
 
         api = kubernetes.client.CoreV1Api()
         obj = api.create_namespaced_persistent_volume_claim(

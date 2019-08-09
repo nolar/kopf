@@ -68,7 +68,7 @@ def wait_for_something():
 
 
 @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
-def create_pod(body, **kwargs):
+def create_pod(**kwargs):
 
     # Render the pod yaml with some spec fields used in the template.
     pod_data = yaml.safe_load(f"""
@@ -82,7 +82,7 @@ def create_pod(body, **kwargs):
     """)
 
     # Make it our child: assign the namespace, name, labels, owner references, etc.
-    kopf.adopt(pod_data, owner=body)
+    kopf.adopt(pod_data)
     kopf.label(pod_data, {'application': 'kopf-example-10'})
 
     # Actually create an object by requesting the Kubernetes API.
