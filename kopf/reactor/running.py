@@ -104,8 +104,8 @@ async def spawn_tasks(
     # K8s-event posting. Events are queued in-memory and posted in the background.
     # NB: currently, it is a global task, but can be made per-resource or per-object.
     tasks.extend([
-        loop.create_task(posting.poster(
-            event_queue=event_queue)),
+        loop.create_task(_root_task_checker("poster of events", posting.poster(
+            event_queue=event_queue))),
     ])
 
     # Monitor the peers, unless explicitly disabled.
@@ -117,18 +117,18 @@ async def spawn_tasks(
         tasks.extend([
             loop.create_task(peering.peers_keepalive(
                 ourselves=ourselves)),
-            loop.create_task(queueing.watcher(
+            loop.create_task(_root_task_checker("watcher of peering", queueing.watcher(
                 namespace=namespace,
                 resource=ourselves.resource,
                 handler=functools.partial(peering.peers_handler,
                                           ourselves=ourselves,
-                                          freeze=freeze_flag))),  # freeze is set/cleared
+                                          freeze=freeze_flag)))),  # freeze is set/cleared
         ])
 
     # Resource event handling, only once for every known resource (de-duplicated).
     for resource in registry.resources:
         tasks.extend([
-            loop.create_task(queueing.watcher(
+            loop.create_task(_root_task_checker(f"watcher of {resource.name}", queueing.watcher(
                 namespace=namespace,
                 resource=resource,
                 handler=functools.partial(handling.custom_object_handler,
@@ -136,7 +136,7 @@ async def spawn_tasks(
                                           registry=registry,
                                           resource=resource,
                                           event_queue=event_queue,
-                                          freeze=freeze_flag))),  # freeze is only checked
+                                          freeze=freeze_flag)))),  # freeze is only checked
         ])
 
     # On Ctrl+C or pod termination, cancel all tasks gracefully.
@@ -250,6 +250,19 @@ async def _reraise(tasks):
             task.result()  # can raise the regular (non-cancellation) exceptions.
         except asyncio.CancelledError:
             pass
+
+
+async def _root_task_checker(name, coro):
+    try:
+        await coro
+    except asyncio.CancelledError:
+        logger.debug(f"Root task {name!r} is cancelled.")
+        raise
+    except Exception as e:
+        logger.error(f"Root task {name!r} is failed: %r", e)
+        raise  # fail the process and its exit status
+    else:
+        logger.warning(f"Root task {name!r} is finished unexpectedly.")
 
 
 async def _stop_flag_checker(should_stop):
