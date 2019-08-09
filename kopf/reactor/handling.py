@@ -500,15 +500,15 @@ async def _call_handler(
     # Store the context of the current resource-object-event-handler, to be used in `@kopf.on.this`,
     # and maybe other places, and consumed in the recursive `execute()` calls for the children.
     # This replaces the multiple kwargs passing through the whole call stack (easy to forget).
-    sublifecycle_token = sublifecycle_var.set(lifecycle)
-    subregistry_token = subregistry_var.set(registries.SimpleRegistry(prefix=handler.id))
-    subexecuted_token = subexecuted_var.set(False)
-    handler_token = handler_var.set(handler)
-    cause_token = cause_var.set(cause)
-
-    # And call it. If the sub-handlers are not called explicitly, run them implicitly
-    # as if it was done inside of the handler (i.e. under try-finally block).
-    try:
+    with invocation.context([
+        (sublifecycle_var, lifecycle),
+        (subregistry_var, registries.SimpleRegistry(prefix=handler.id)),
+        (subexecuted_var, False),
+        (handler_var, handler),
+        (cause_var, cause),
+    ]):
+        # And call it. If the sub-handlers are not called explicitly, run them implicitly
+        # as if it was done inside of the handler (i.e. under try-finally block).
         result = await invocation.invoke(
             handler.fn,
             *args,
@@ -520,11 +520,3 @@ async def _call_handler(
             await execute()
 
         return result
-
-    finally:
-        # Reset the context to the parent's context, or to nothing (if already in a root handler).
-        sublifecycle_var.reset(sublifecycle_token)
-        subregistry_var.reset(subregistry_token)
-        subexecuted_var.reset(subexecuted_token)
-        handler_var.reset(handler_token)
-        cause_var.reset(cause_token)

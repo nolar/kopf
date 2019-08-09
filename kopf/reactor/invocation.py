@@ -6,9 +6,10 @@ Also, decorated wrappers and lambdas are recognized.
 All of this goes via the same invocation logic and protocol.
 """
 import asyncio
+import contextlib
 import contextvars
 import functools
-from typing import Optional, Any, Union
+from typing import Optional, Any, Union, List, Iterable, Tuple
 
 from kopf import config
 from kopf.reactor import causation
@@ -18,6 +19,24 @@ from kopf.structs import bodies
 from kopf.structs import dicts
 
 Invokable = Union[lifecycles.LifeCycleFn, registries.HandlerFn]
+
+
+@contextlib.contextmanager
+def context(
+        values: Iterable[Tuple[contextvars.ContextVar, Any]],
+) -> None:
+    """
+    A context manager to set the context variables temporarily.
+    """
+    tokens: List[Tuple[contextvars.ContextVar, contextvars.Token]] = []
+    try:
+        for var, val in values:
+            token = var.set(val)
+            tokens.append((var, token))
+        yield
+    finally:
+        for var, token in reversed(tokens):
+            var.reset(token)
 
 
 async def invoke(
