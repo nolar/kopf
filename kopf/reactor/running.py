@@ -92,7 +92,7 @@ async def spawn_tasks(
     registry = registry if registry is not None else registries.get_default_registry()
     event_queue = asyncio.Queue(loop=loop)
     freeze_flag = asyncio.Event(loop=loop)
-    should_stop = asyncio.Event(loop=loop)
+    should_stop = asyncio.Future(loop=loop)
     tasks = []
 
     # A top-level task for external stopping by setting a stop-flag. Once set,
@@ -141,8 +141,8 @@ async def spawn_tasks(
 
     # On Ctrl+C or pod termination, cancel all tasks gracefully.
     if threading.current_thread() is threading.main_thread():
-        loop.add_signal_handler(signal.SIGINT, should_stop.set)
-        loop.add_signal_handler(signal.SIGTERM, should_stop.set)
+        loop.add_signal_handler(signal.SIGINT, should_stop.set_result, signal.SIGINT)
+        loop.add_signal_handler(signal.SIGTERM, should_stop.set_result, signal.SIGTERM)
     else:
         logger.warning("OS signals are ignored: running not in the main thread.")
 
@@ -254,11 +254,16 @@ async def _reraise(tasks):
 
 async def _stop_flag_checker(should_stop):
     try:
-        await should_stop.wait()
+        result = await should_stop
     except asyncio.CancelledError:
         pass  # operator is stopping for any other reason
     else:
-        logger.debug("Stop-flag is raised. Operator is stopping.")
+        if result is None:
+            logger.info("Stop-flag is raised. Operator is stopping.")
+        elif isinstance(result, signal.Signals):
+            logger.info("Signal %s is received. Operator is stopping.", result.name)
+        else:
+            logger.info("Stop-flag is set to %r. Operator is stopping.", result)
 
 
 def create_tasks(loop: asyncio.AbstractEventLoop, *arg, **kwargs):
