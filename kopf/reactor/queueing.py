@@ -87,11 +87,10 @@ async def watcher(
                 streams[key].replenished.set()  # interrupt current sleeps, if any.
                 await streams[key].watchevents.put(event)
                 await scheduler.spawn(worker(handler=handler, streams=streams, key=key))
-
+    finally:
         # Allow the existing workers to finish gracefully before killing them.
         await _wait_for_depletion(scheduler=scheduler, streams=streams)
 
-    finally:
         # Forcedly terminate all the fire-and-forget per-object jobs, of they are still running.
         await asyncio.shield(scheduler.close())
 
