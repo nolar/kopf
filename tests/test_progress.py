@@ -53,213 +53,94 @@ def test_is_started(handler, expected, body):
     assert body == origbody  # not modified
 
 
-@pytest.mark.parametrize('body', [
-    {},
-    {'status': {}},
-    {'status': {'kopf': {}}},
-    {'status': {'kopf': {'progress': {}}}},
-    {'status': {'kopf': {'progress': {'some-id': {}}}}},
+@pytest.mark.parametrize('expected, body', [
+    (False, {}),
+    (False, {'status': {}}),
+    (False, {'status': {'kopf': {}}}),
+    (False, {'status': {'kopf': {'progress': {}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'success': False}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'failure': False}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'success': None}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'failure': None}}}}}),
+    (True , {'status': {'kopf': {'progress': {'some-id': {'success': True}}}}}),
+    (True , {'status': {'kopf': {'progress': {'some-id': {'failure': True}}}}}),
 ])
-def test_is_finished_with_partial_status_remains_readonly(handler, body):
+def test_is_finished(handler, expected, body):
     origbody = copy.deepcopy(body)
-    result = is_finished(body=body, digest='good', handler=handler)
-    assert isinstance(result, bool)
-    assert not result
+    result = is_finished(body=body, handler=handler)
+    assert result == expected
     assert body == origbody  # not modified
 
 
-@pytest.mark.parametrize('finish_value', [None, False, 'bad'])
-@pytest.mark.parametrize('finish_field', ['failure', 'success'])
-def test_is_finished_when_not_finished(handler, finish_field, finish_value):
-    body = {'status': {'kopf': {'progress': {'some-id': {}}}}}
-    body['status']['kopf']['progress']['some-id'][finish_field] = finish_value
-    result = is_finished(body=body, digest='good', handler=handler)
-    assert isinstance(result, bool)
-    assert not result
+@pytest.mark.parametrize('expected, body', [
 
+    # Everything that is finished is not sleeping, no matter the sleep/awake field.
+    (False, {'status': {'kopf': {'progress': {'some-id': {'success': True}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'failure': True}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'success': True, 'delayed': TS0_ISO}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'failure': True, 'delayed': TS0_ISO}}}}}),
 
-@pytest.mark.parametrize('finish_value', [True, 'good'])
-@pytest.mark.parametrize('finish_field', ['failure', 'success'])
-def test_is_finished_when_finished(handler, finish_field, finish_value):
-    body = {'status': {'kopf': {'progress': {'some-id': {}}}}}
-    body['status']['kopf']['progress']['some-id'][finish_field] = finish_value
-    result = is_finished(body=body, digest='good', handler=handler)
-    assert isinstance(result, bool)
-    assert result
+    # Everything with no sleep/awake field set is not sleeping either.
+    (False, {'status': {'kopf': {'progress': {'some-id': {}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'delayed': None}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'success': None}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'failure': None}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'success': None, 'delayed': None}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'failure': None, 'delayed': None}}}}}),
 
-
-@pytest.mark.parametrize('body', [
-    {},
-    {'status': {}},
-    {'status': {'kopf': {}}},
-    {'status': {'kopf': {'progress': {}}}},
-    {'status': {'kopf': {'progress': {'some-id': {}}}}},
+    # When not finished and has awake time, the output depends on the relation to "now".
+    (False, {'status': {'kopf': {'progress': {'some-id': {'delayed': TS0_ISO}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'delayed': TS0_ISO, 'success': None}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'delayed': TS0_ISO, 'failure': None}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'delayed': TSB_ISO}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'delayed': TSB_ISO, 'success': None}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'delayed': TSB_ISO, 'failure': None}}}}}),
+    (True , {'status': {'kopf': {'progress': {'some-id': {'delayed': TSA_ISO}}}}}),
+    (True , {'status': {'kopf': {'progress': {'some-id': {'delayed': TSA_ISO, 'success': None}}}}}),
+    (True , {'status': {'kopf': {'progress': {'some-id': {'delayed': TSA_ISO, 'failure': None}}}}}),
 ])
-def test_is_sleeping_with_partial_status_remains_readonly(handler, body):
+@freezegun.freeze_time(TS0)
+def test_is_sleeping(handler, expected, body):
     origbody = copy.deepcopy(body)
-    result = is_finished(body=body, digest='good', handler=handler)
-    assert isinstance(result, bool)
-    assert not result
+    result = is_sleeping(body=body, handler=handler)
+    assert result == expected
     assert body == origbody  # not modified
 
 
-@pytest.mark.parametrize('finish_value', [True, 'good'])
-@pytest.mark.parametrize('finish_field', ['failure', 'success'])
-@pytest.mark.parametrize('delayed_body', [
-    pytest.param({}, id='delayed-empty'),
-    pytest.param({'delayed': None}, id='delayed-none'),
-    pytest.param({'delayed': TSB_ISO}, id='delayed-before'),
-    pytest.param({'delayed': TS0_ISO}, id='delayed-exact'),
-    pytest.param({'delayed': TS1_ISO}, id='delayed-onesec'),
-    pytest.param({'delayed': TSA_ISO}, id='delayed-after'),
+@pytest.mark.parametrize('expected, body', [
+
+    # Everything that is finished never awakens, no matter the sleep/awake field.
+    (False, {'status': {'kopf': {'progress': {'some-id': {'success': True}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'failure': True}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'success': True, 'delayed': TS0_ISO}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'failure': True, 'delayed': TS0_ISO}}}}}),
+
+    # Everything with no sleep/awake field is not sleeping, thus by definition is awake.
+    (True , {'status': {'kopf': {'progress': {'some-id': {}}}}}),
+    (True , {'status': {'kopf': {'progress': {'some-id': {'delayed': None}}}}}),
+    (True , {'status': {'kopf': {'progress': {'some-id': {'success': None}}}}}),
+    (True , {'status': {'kopf': {'progress': {'some-id': {'failure': None}}}}}),
+    (True , {'status': {'kopf': {'progress': {'some-id': {'success': None, 'delayed': None}}}}}),
+    (True , {'status': {'kopf': {'progress': {'some-id': {'failure': None, 'delayed': None}}}}}),
+
+    # When not finished and has awake time, the output depends on the relation to "now".
+    (True , {'status': {'kopf': {'progress': {'some-id': {'delayed': TS0_ISO}}}}}),
+    (True , {'status': {'kopf': {'progress': {'some-id': {'delayed': TS0_ISO, 'success': None}}}}}),
+    (True , {'status': {'kopf': {'progress': {'some-id': {'delayed': TS0_ISO, 'failure': None}}}}}),
+    (True , {'status': {'kopf': {'progress': {'some-id': {'delayed': TSB_ISO}}}}}),
+    (True , {'status': {'kopf': {'progress': {'some-id': {'delayed': TSB_ISO, 'success': None}}}}}),
+    (True , {'status': {'kopf': {'progress': {'some-id': {'delayed': TSB_ISO, 'failure': None}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'delayed': TSA_ISO}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'delayed': TSA_ISO, 'success': None}}}}}),
+    (False, {'status': {'kopf': {'progress': {'some-id': {'delayed': TSA_ISO, 'failure': None}}}}}),
 ])
 @freezegun.freeze_time(TS0)
-def test_is_sleeping_when_finished_regardless_of_delay(
-        handler, finish_field, finish_value, delayed_body):
-    body = {'status': {'kopf': {'progress': {'some-id': {}}}}}
-    body['status']['kopf']['progress']['some-id'].update(delayed_body)
-    body['status']['kopf']['progress']['some-id'][finish_field] = finish_value
-    result = is_sleeping(body=body, digest='good', handler=handler)
-    assert isinstance(result, bool)
-    assert not result
-
-
-@pytest.mark.parametrize('finish_value', [None, False, 'bad'])
-@pytest.mark.parametrize('finish_field', ['failure', 'success'])
-@pytest.mark.parametrize('delayed_body', [
-    pytest.param({}, id='delayed-empty'),
-    pytest.param({'delayed': None}, id='delayed-none'),
-])
-@freezegun.freeze_time(TS0)
-def test_is_sleeping_when_not_finished_and_not_delayed(
-        handler, delayed_body, finish_field, finish_value):
-    body = {'status': {'kopf': {'progress': {'some-id': {}}}}}
-    body['status']['kopf']['progress']['some-id'].update(delayed_body)
-    body['status']['kopf']['progress']['some-id'][finish_field] = finish_value
-    result = is_sleeping(body=body, digest='good', handler=handler)
-    assert isinstance(result, bool)
-    assert not result
-
-
-@pytest.mark.parametrize('finish_value', [None, False, 'bad'])
-@pytest.mark.parametrize('finish_field', ['failure', 'success'])
-@pytest.mark.parametrize('delayed_body', [
-    pytest.param({'delayed': TSB_ISO}, id='delayed-before'),
-    pytest.param({'delayed': TS0_ISO}, id='delayed-exact'),
-])
-@freezegun.freeze_time(TS0)
-def test_is_sleeping_when_not_finished_and_delayed_until_before_now(
-        handler, finish_field, finish_value, delayed_body):
-    body = {'status': {'kopf': {'progress': {'some-id': {}}}}}
-    body['status']['kopf']['progress']['some-id'].update(delayed_body)
-    body['status']['kopf']['progress']['some-id'][finish_field] = finish_value
-    result = is_sleeping(body=body, digest='good', handler=handler)
-    assert isinstance(result, bool)
-    assert not result
-
-
-@pytest.mark.parametrize('finish_value', [None, False, 'bad'])
-@pytest.mark.parametrize('finish_field', ['failure', 'success'])
-@pytest.mark.parametrize('delayed_body', [
-    pytest.param({'delayed': TS1_ISO}, id='delayed-onesec'),
-    pytest.param({'delayed': TSA_ISO}, id='delayed-after'),
-])
-@freezegun.freeze_time(TS0)
-def test_is_sleeping_when_not_finished_and_delayed_until_after_now(
-        handler, finish_field, finish_value, delayed_body):
-    body = {'status': {'kopf': {'progress': {'some-id': {}}}}}
-    body['status']['kopf']['progress']['some-id'].update(delayed_body)
-    body['status']['kopf']['progress']['some-id'][finish_field] = finish_value
-    result = is_sleeping(body=body, digest='good', handler=handler)
-    assert isinstance(result, bool)
-    assert result
-
-
-@pytest.mark.parametrize('body', [
-    {},
-    {'status': {}},
-    {'status': {'kopf': {}}},
-    {'status': {'kopf': {'progress': {}}}},
-    {'status': {'kopf': {'progress': {'some-id': {}}}}},
-])
-def test_is_awakened_with_partial_status_remains_readonly(handler, body):
+def test_is_awakened(handler, expected, body):
     origbody = copy.deepcopy(body)
-    result = is_awakened(body=body, digest='good', handler=handler)
-    assert isinstance(result, bool)
-    assert result
+    result = is_awakened(body=body, handler=handler)
+    assert result == expected
     assert body == origbody  # not modified
-
-
-@pytest.mark.parametrize('finish_value', [True, 'good'])
-@pytest.mark.parametrize('finish_field', ['failure', 'success'])
-@pytest.mark.parametrize('delayed_body', [
-    pytest.param({}, id='delayed-empty'),
-    pytest.param({'delayed': None}, id='delayed-none'),
-    pytest.param({'delayed': TSB_ISO}, id='delayed-before'),
-    pytest.param({'delayed': TS0_ISO}, id='delayed-exact'),
-    pytest.param({'delayed': TS1_ISO}, id='delayed-onesec'),
-    pytest.param({'delayed': TSA_ISO}, id='delayed-after'),
-])
-@freezegun.freeze_time(TS0)
-def test_is_awakened_when_finished_regardless_of_delay(
-        handler, finish_field, finish_value, delayed_body):
-    body = {'status': {'kopf': {'progress': {'some-id': {}}}}}
-    body['status']['kopf']['progress']['some-id'].update(delayed_body)
-    body['status']['kopf']['progress']['some-id'][finish_field] = finish_value
-    result = is_awakened(body=body, digest='good', handler=handler)
-    assert isinstance(result, bool)
-    assert not result
-
-
-@pytest.mark.parametrize('finish_value', [None, False, 'bad'])
-@pytest.mark.parametrize('finish_field', ['failure', 'success'])
-@pytest.mark.parametrize('delayed_body', [
-    pytest.param({}, id='delayed-empty'),
-    pytest.param({'delayed': None}, id='delayed-none'),
-])
-@freezegun.freeze_time(TS0)
-def test_is_awakened_when_not_finished_and_not_delayed(
-        handler, delayed_body, finish_field, finish_value):
-    body = {'status': {'kopf': {'progress': {'some-id': {}}}}}
-    body['status']['kopf']['progress']['some-id'].update(delayed_body)
-    body['status']['kopf']['progress']['some-id'][finish_field] = finish_value
-    result = is_awakened(body=body, digest='good', handler=handler)
-    assert isinstance(result, bool)
-    assert result
-
-
-@pytest.mark.parametrize('finish_value', [None, False, 'bad'])
-@pytest.mark.parametrize('finish_field', ['failure', 'success'])
-@pytest.mark.parametrize('delayed_body', [
-    pytest.param({'delayed': TSB_ISO}, id='delayed-before'),
-    pytest.param({'delayed': TS0_ISO}, id='delayed-exact'),
-])
-@freezegun.freeze_time(TS0)
-def test_is_awakened_when_not_finished_and_delayed_until_before_now(
-        handler, finish_field, finish_value, delayed_body):
-    body = {'status': {'kopf': {'progress': {'some-id': {}}}}}
-    body['status']['kopf']['progress']['some-id'].update(delayed_body)
-    body['status']['kopf']['progress']['some-id'][finish_field] = finish_value
-    result = is_awakened(body=body, digest='good', handler=handler)
-    assert isinstance(result, bool)
-    assert result
-
-
-@pytest.mark.parametrize('finish_value', [None, False, 'bad'])
-@pytest.mark.parametrize('finish_field', ['failure', 'success'])
-@pytest.mark.parametrize('delayed_body', [
-    pytest.param({'delayed': TS1_ISO}, id='delayed-onesec'),
-    pytest.param({'delayed': TSA_ISO}, id='delayed-after'),
-])
-@freezegun.freeze_time(TS0)
-def test_is_awakened_when_not_finished_and_delayed_until_after_now(
-        handler, finish_field, finish_value, delayed_body):
-    body = {'status': {'kopf': {'progress': {'some-id': {}}}}}
-    body['status']['kopf']['progress']['some-id'].update(delayed_body)
-    body['status']['kopf']['progress']['some-id'][finish_field] = finish_value
-    result = is_awakened(body=body, digest='good', handler=handler)
-    assert isinstance(result, bool)
-    assert not result
 
 
 @pytest.mark.parametrize('expected, body', [
@@ -380,13 +261,13 @@ def test_set_retry_time(handler, expected, body, delay):
 @pytest.mark.parametrize('body, expected', [
     ({},
      {'status': {'kopf': {'progress': {'some-id': {'stopped': TS0_ISO,
-                                                   'failure': 'digest',
+                                                   'failure': True,
                                                    'retries': 1,
                                                    'message': 'some-error'}}}}}),
 
     ({'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}},
      {'status': {'kopf': {'progress': {'some-id': {'stopped': TS0_ISO,
-                                                   'failure': 'digest',
+                                                   'failure': True,
                                                    'retries': 6,
                                                    'message': 'some-error'}}}}}),
 ])
@@ -394,8 +275,7 @@ def test_set_retry_time(handler, expected, body, delay):
 def test_store_failure(handler, expected, body):
     origbody = copy.deepcopy(body)
     patch = {}
-    store_failure(body=body, patch=patch, digest='digest',
-                  handler=handler, exc=Exception("some-error"))
+    store_failure(body=body, patch=patch, handler=handler, exc=Exception("some-error"))
     assert patch == expected
     assert body == origbody  # not modified
 
@@ -406,13 +286,13 @@ def test_store_failure(handler, expected, body):
     (None,
      {},
      {'status': {'kopf': {'progress': {'some-id': {'stopped': TS0_ISO,
-                                                   'success': 'digest',
+                                                   'success': True,
                                                    'retries': 1,
                                                    'message': None}}}}}),
     (None,
      {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}},
      {'status': {'kopf': {'progress': {'some-id': {'stopped': TS0_ISO,
-                                                   'success': 'digest',
+                                                   'success': True,
                                                    'retries': 6,
                                                    'message': None}}}}}),
 
@@ -420,14 +300,14 @@ def test_store_failure(handler, expected, body):
     ({'field': 'value'},
      {},
      {'status': {'kopf': {'progress': {'some-id': {'stopped': TS0_ISO,
-                                                   'success': 'digest',
+                                                   'success': True,
                                                    'retries': 1,
                                                    'message': None}}},
                  'some-id': {'field': 'value'}}}),
     ({'field': 'value'},
      {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}},
      {'status': {'kopf': {'progress': {'some-id': {'stopped': TS0_ISO,
-                                                   'success': 'digest',
+                                                   'success': True,
                                                    'retries': 6,
                                                    'message': None}}},
                  'some-id': {'field': 'value'}}}),
@@ -436,8 +316,7 @@ def test_store_failure(handler, expected, body):
 def test_store_success(handler, expected, body, result):
     origbody = copy.deepcopy(body)
     patch = {}
-    store_success(body=body, patch=patch, digest='digest',
-                  handler=handler, result=result)
+    store_success(body=body, patch=patch, handler=handler, result=result)
     assert patch == expected
     assert body == origbody  # not modified
 

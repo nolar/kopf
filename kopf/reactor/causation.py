@@ -67,7 +67,6 @@ class Cause(NamedTuple):
     initial: bool
     body: MutableMapping
     patch: MutableMapping
-    digest: Union[str, int]
     diff: Optional[diffs.Diff] = None
     old: Optional[Any] = None
     new: Optional[Any] = None
@@ -106,7 +105,6 @@ def detect_cause(
             initial=initial,
             **kwargs)
 
-    # Marked for deletion, but we still hold it with our finalizer.
     if finalizers.is_deleted(body):
         return Cause(
             event=DELETE,
@@ -138,7 +136,6 @@ def detect_cause(
     # For an object seen for the first time (i.e. just-created), call the creation handlers,
     # then mark the state as if it was seen when the creation has finished.
     if not lastseen.has_state(body):
-        kwargs['digest'] = True  # or any other true'ish constant (str/int)
         return Cause(
             event=CREATE,
             body=body,

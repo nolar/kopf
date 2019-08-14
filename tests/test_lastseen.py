@@ -3,10 +3,9 @@ import json
 import pytest
 
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
-from kopf.structs.lastseen import compute_digest
-from kopf.structs.lastseen import get_state_diffs
 from kopf.structs.lastseen import has_state, get_state
-from kopf.structs.lastseen import retreive_state, refresh_state, freeze_state
+from kopf.structs.lastseen import get_state_diffs
+from kopf.structs.lastseen import retreive_state, refresh_state
 
 
 def test_annotation_is_fqdn():
@@ -108,46 +107,12 @@ def test_get_state_clones_body():
     assert state['spec']['depth']['field'] == 'x'
 
 
-def test_refresh_state_patches_when_absent():
+def test_refresh_state():
     body = {'spec': {'depth': {'field': 'x'}}}
-    encoded = json.dumps(body)  # json formatting can vary across interpreters
     patch = {}
+    encoded = json.dumps(body)  # json formatting can vary across interpreters
     refresh_state(body=body, patch=patch)
     assert patch['metadata']['annotations'][LAST_SEEN_ANNOTATION] == encoded
-
-
-def test_refresh_state_patches_when_present_and_is_different():
-    body = {'spec': {'depth': {'field': 'x'}}}
-    encoded = json.dumps(body)  # json formatting can vary across interpreters
-    body['metadata'] = {'annotations': {LAST_SEEN_ANNOTATION: '{}'}}
-    patch = {}
-    refresh_state(body=body, patch=patch)
-    assert patch['metadata']['annotations'][LAST_SEEN_ANNOTATION] == encoded
-
-
-def test_refresh_state_ignores_when_present_and_is_the_same():
-    body = {'spec': {'depth': {'field': 'x'}}}
-    encoded = json.dumps(body)  # json formatting can vary across interpreters
-    body['metadata'] = {'annotations': {LAST_SEEN_ANNOTATION: encoded}}
-    patch = {}
-    refresh_state(body=body, patch=patch)
-    assert not patch
-
-
-def test_freeze_state_patches_when_absent():
-    body = {'spec': {'depth': {'field': 'x'}}}
-    encoded = json.dumps(body)  # json formatting can vary across interpreters
-    patch = {}
-    freeze_state(body=body, patch=patch)
-    assert patch['status']['kopf']['frozen-state'] == encoded
-
-
-def test_freeze_state_ignores_when_present():
-    body = {'spec': {'depth': {'field': 'x'}},
-            'status': {'kopf': {'frozen-state': '{}'}}}
-    patch = {}
-    freeze_state(body=body, patch=patch)
-    assert not patch
 
 
 def test_retreive_state_when_present():
@@ -162,18 +127,6 @@ def test_retreive_state_when_absent():
     body = {}
     state = retreive_state(body=body)
     assert state is None
-
-
-def test_compute_digest():
-    body1 = {'spec': {'depth': {'field': 'x'}}}
-    body2 = {'spec': {'depth': {'field': 'x'}}}
-    digest1 = compute_digest(body=body1)
-    digest2 = compute_digest(body=body2)
-    assert isinstance(digest1, (str, int))
-    assert isinstance(digest2, (str, int))
-    assert digest1  # evals to true
-    assert digest2  # evals to true
-    assert digest1 == digest2
 
 
 def test_state_changed_detected():

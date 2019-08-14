@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 
 import freezegun
@@ -70,15 +69,12 @@ async def test_delayed_handlers_sleep(
 
     cause_mock.event = cause_type
     cause_mock.body.update({
-        'status': {'kopf': {
-            'frozen-state': json.dumps({'spec': {}}),  # to prevent re-adding it
-            'progress': {
-                'create_fn': {'delayed': ts},
-                'update_fn': {'delayed': ts},
-                'delete_fn': {'delayed': ts},
-                'resume_fn': {'delayed': ts},
-            },
-        }}
+        'status': {'kopf': {'progress': {
+            'create_fn': {'delayed': ts},
+            'update_fn': {'delayed': ts},
+            'delete_fn': {'delayed': ts},
+            'resume_fn': {'delayed': ts},
+        }}}
     })
     # make sure the finalizer is added since there are mandatory deletion handlers
     cause_mock.body.setdefault('metadata', {})['finalizers'] = [FINALIZER]
@@ -101,7 +97,7 @@ async def test_delayed_handlers_sleep(
 
     # The dummy patch is needed to trigger the further changes. The value is irrelevant.
     assert k8s_mocked.patch_obj.called
-    assert k8s_mocked.patch_obj.call_args_list[-1][1]['patch']  # not empty, maybe with ['dummy']
+    assert 'dummy' in k8s_mocked.patch_obj.call_args_list[-1][1]['patch']['status']['kopf']
 
     # The duration of sleep should be as expected.
     assert k8s_mocked.sleep_or_wait.called
