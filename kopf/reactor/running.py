@@ -55,6 +55,7 @@ async def operator(
         peering_name: Optional[str] = None,
         namespace: Optional[str] = None,
         stop_flag: Optional[Flag] = None,
+        ready_flag: Optional[Flag] = None,
 ):
     """
     Run the whole operator asynchronously.
@@ -73,6 +74,7 @@ async def operator(
         priority=priority,
         peering_name=peering_name,
         stop_flag=stop_flag,
+        ready_flag=ready_flag,
     )
     await run_tasks(operator_tasks, ignored=existing_tasks)
 
@@ -85,6 +87,7 @@ async def spawn_tasks(
         peering_name: Optional[str] = None,
         namespace: Optional[str] = None,
         stop_flag: Optional[Flag] = None,
+        ready_flag: Optional[Flag] = None,
 ) -> Collection[asyncio.Task]:
     """
     Spawn all the tasks needed to run the operator.
@@ -106,6 +109,7 @@ async def spawn_tasks(
     tasks.extend([
         loop.create_task(_stop_flag_checker(
             signal_flag=signal_flag,
+            ready_flag=ready_flag,
             stop_flag=stop_flag,
         )),
     ])
@@ -276,8 +280,13 @@ async def _root_task_checker(name, coro):
 
 async def _stop_flag_checker(
         signal_flag: asyncio.Future,
+        ready_flag: Optional[Flag],
         stop_flag: Optional[Flag],
 ):
+    # TODO: collect the readiness of all root tasks instead, and set this one only when fully ready.
+    # Notify the caller that we are ready to be executed.
+    await _raise_flag(ready_flag)
+
     # Wait until one of the stoppers is set/raised.
     try:
         aws = [signal_flag] + ([] if stop_flag is None else [_wait_flag(stop_flag)])
@@ -329,5 +338,28 @@ async def _wait_flag(
     elif isinstance(flag, threading.Event):
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, flag.wait)
+    else:
+        raise TypeError(f"Unsupported type of a flag: {flag!r}")
+
+
+async def _raise_flag(
+        flag: Optional[Flag],
+):
+    """
+    Raise a flag.
+
+    Non-asyncio primitives are generally not our worry,
+    but we support them for convenience.
+    """
+    if flag is None:
+        pass
+    elif isinstance(flag, asyncio.Future):
+        flag.set_result(None)
+    elif isinstance(flag, asyncio.Event):
+        flag.set()
+    elif isinstance(flag, concurrent.futures.Future):
+        flag.set_result(None)
+    elif isinstance(flag, threading.Event):
+        flag.set()
     else:
         raise TypeError(f"Unsupported type of a flag: {flag!r}")
