@@ -289,8 +289,8 @@ async def _stop_flag_checker(
 
     # Wait until one of the stoppers is set/raised.
     try:
-        aws = [signal_flag] + ([] if stop_flag is None else [_wait_flag(stop_flag)])
-        done, pending = await asyncio.wait(aws, return_when=asyncio.FIRST_COMPLETED)
+        flags = [signal_flag] + ([] if stop_flag is None else [_wait_flag(stop_flag)])
+        done, pending = await asyncio.wait(flags, return_when=asyncio.FIRST_COMPLETED)
         future = done.pop()
         result = await future
     except asyncio.CancelledError:
