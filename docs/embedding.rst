@@ -32,7 +32,7 @@ the main application in the main thread.
         loop.run_until_complete(kopf.operator())
 
     def main():
-        thread = threading.Thread(target_fn=kopf_thread)
+        thread = threading.Thread(target=kopf_thread)
         thread.start()
         # ...
         thread.join()
@@ -96,7 +96,7 @@ in :mod:`contextvars` containers with values isolated per-loop and per-task.
         ))
 
     def main():
-        thread = threading.Thread(target_fn=kopf_thread)
+        thread = threading.Thread(target=kopf_thread)
         thread.start()
         # ...
         thread.join()

@@ -1,10 +1,11 @@
 import asyncio
+import concurrent.futures
 import functools
 import logging
 import signal
 import threading
 import warnings
-from typing import Optional, Callable, Collection
+from typing import Optional, Callable, Collection, Union
 
 from kopf.engines import peering
 from kopf.engines import posting
@@ -12,6 +13,8 @@ from kopf.reactor import handling
 from kopf.reactor import lifecycles
 from kopf.reactor import queueing
 from kopf.reactor import registries
+
+Flag = Union[asyncio.Future, asyncio.Event, concurrent.futures.Future, threading.Event]
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +54,8 @@ async def operator(
         priority: int = 0,
         peering_name: Optional[str] = None,
         namespace: Optional[str] = None,
+        stop_flag: Optional[Flag] = None,
+        ready_flag: Optional[Flag] = None,
 ):
     """
     Run the whole operator asynchronously.
@@ -68,6 +73,8 @@ async def operator(
         namespace=namespace,
         priority=priority,
         peering_name=peering_name,
+        stop_flag=stop_flag,
+        ready_flag=ready_flag,
     )
     await run_tasks(operator_tasks, ignored=existing_tasks)
 
@@ -79,6 +86,8 @@ async def spawn_tasks(
         priority: int = 0,
         peering_name: Optional[str] = None,
         namespace: Optional[str] = None,
+        stop_flag: Optional[Flag] = None,
+        ready_flag: Optional[Flag] = None,
 ) -> Collection[asyncio.Task]:
     """
     Spawn all the tasks needed to run the operator.
@@ -92,13 +101,17 @@ async def spawn_tasks(
     registry = registry if registry is not None else registries.get_default_registry()
     event_queue = asyncio.Queue(loop=loop)
     freeze_flag = asyncio.Event(loop=loop)
-    should_stop = asyncio.Future(loop=loop)
+    signal_flag = asyncio.Future(loop=loop)
     tasks = []
 
     # A top-level task for external stopping by setting a stop-flag. Once set,
     # this task will exit, and thus all other top-level tasks will be cancelled.
     tasks.extend([
-        loop.create_task(_stop_flag_checker(should_stop)),
+        loop.create_task(_stop_flag_checker(
+            signal_flag=signal_flag,
+            ready_flag=ready_flag,
+            stop_flag=stop_flag,
+        )),
     ])
 
     # K8s-event posting. Events are queued in-memory and posted in the background.
@@ -141,8 +154,8 @@ async def spawn_tasks(
 
     # On Ctrl+C or pod termination, cancel all tasks gracefully.
     if threading.current_thread() is threading.main_thread():
-        loop.add_signal_handler(signal.SIGINT, should_stop.set_result, signal.SIGINT)
-        loop.add_signal_handler(signal.SIGTERM, should_stop.set_result, signal.SIGTERM)
+        loop.add_signal_handler(signal.SIGINT, signal_flag.set_result, signal.SIGINT)
+        loop.add_signal_handler(signal.SIGTERM, signal_flag.set_result, signal.SIGTERM)
     else:
         logger.warning("OS signals are ignored: running not in the main thread.")
 
@@ -265,9 +278,21 @@ async def _root_task_checker(name, coro):
         logger.warning(f"Root task {name!r} is finished unexpectedly.")
 
 
-async def _stop_flag_checker(should_stop):
+async def _stop_flag_checker(
+        signal_flag: asyncio.Future,
+        ready_flag: Optional[Flag],
+        stop_flag: Optional[Flag],
+):
+    # TODO: collect the readiness of all root tasks instead, and set this one only when fully ready.
+    # Notify the caller that we are ready to be executed.
+    await _raise_flag(ready_flag)
+
+    # Wait until one of the stoppers is set/raised.
     try:
-        result = await should_stop
+        flags = [signal_flag] + ([] if stop_flag is None else [_wait_flag(stop_flag)])
+        done, pending = await asyncio.wait(flags, return_when=asyncio.FIRST_COMPLETED)
+        future = done.pop()
+        result = await future
     except asyncio.CancelledError:
         pass  # operator is stopping for any other reason
     else:
@@ -290,3 +315,51 @@ def create_tasks(loop: asyncio.AbstractEventLoop, *arg, **kwargs):
                   "use kopf.spawn_tasks() or kopf.operator().",
                   DeprecationWarning)
     return loop.run_until_complete(spawn_tasks(*arg, **kwargs))
+
+
+async def _wait_flag(
+        flag: Optional[Flag],
+):
+    """
+    Wait for a flag to be raised.
+
+    Non-asyncio primitives are generally not our worry,
+    but we support them for convenience.
+    """
+    if flag is None:
+        pass
+    elif isinstance(flag, asyncio.Future):
+        return await flag
+    elif isinstance(flag, asyncio.Event):
+        return await flag.wait()
+    elif isinstance(flag, concurrent.futures.Future):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, flag.result)
+    elif isinstance(flag, threading.Event):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, flag.wait)
+    else:
+        raise TypeError(f"Unsupported type of a flag: {flag!r}")
+
+
+async def _raise_flag(
+        flag: Optional[Flag],
+):
+    """
+    Raise a flag.
+
+    Non-asyncio primitives are generally not our worry,
+    but we support them for convenience.
+    """
+    if flag is None:
+        pass
+    elif isinstance(flag, asyncio.Future):
+        flag.set_result(None)
+    elif isinstance(flag, asyncio.Event):
+        flag.set()
+    elif isinstance(flag, concurrent.futures.Future):
+        flag.set_result(None)
+    elif isinstance(flag, threading.Event):
+        flag.set()
+    else:
+        raise TypeError(f"Unsupported type of a flag: {flag!r}")
