@@ -11,6 +11,7 @@ the operators' code, and can lead to information loss or mismatch
 import copy
 import logging
 
+from kopf import config
 from kopf.engines import posting
 
 
@@ -39,9 +40,10 @@ class K8sPoster(logging.Handler):
     def filter(self, record):
         # Only those which have a k8s object referred (see: `ObjectLogger`).
         # Otherwise, we have nothing to post, and nothing to do.
+        fit_lvl = record.levelno >= config.EventsConfig.events_loglevel
         has_ref = hasattr(record, 'k8s_ref')
         skipped = hasattr(record, 'k8s_skip') and record.k8s_skip
-        return has_ref and not skipped and super().filter(record)
+        return fit_lvl and has_ref and not skipped and super().filter(record)
 
     def emit(self, record):
         # Same try-except as in e.g. `logging.StreamHandler`.
@@ -105,4 +107,4 @@ class ObjectLogger(logging.LoggerAdapter):
 
 
 logger = logging.getLogger('kopf.objects')
-logger.addHandler(K8sPoster(level=logging.INFO))
+logger.addHandler(K8sPoster())
