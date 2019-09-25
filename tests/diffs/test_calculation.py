@@ -1,6 +1,27 @@
 from kopf.structs.diffs import diff
 
 
+def test_none_for_old():
+    a = None
+    b = object()
+    d = diff(a, b)
+    assert d == (('add', (), None, b),)
+
+
+def test_none_for_new():
+    a = object()
+    b = None
+    d = diff(a, b)
+    assert d == (('remove', (), a, None),)
+
+
+def test_nones_for_both():
+    a = None
+    b = None
+    d = diff(a, b)
+    assert d == ()
+
+
 def test_scalars_equal():
     a = 100
     b = 100

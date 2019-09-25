@@ -94,17 +94,21 @@ def diff_iter(a: Any, b: Any, path: dicts.FieldPath = ()) -> Iterator[DiffItem]:
     * https://github.com/seperman/deepdiff
     * https://python-json-patch.readthedocs.io/en/latest/tutorial.html
     """
-    if type(a) != type(b):
+    if a == b:  # incl. cases when both are None
+        pass
+    elif a is None:
+        yield DiffItem(DiffOperation.ADD, path, a, b)
+    elif b is None:
+        yield DiffItem(DiffOperation.REMOVE, path, a, b)
+    elif type(a) != type(b):
         yield DiffItem(DiffOperation.CHANGE, path, a, b)
-    elif a == b:
-        pass  # to exclude the case as soon as possible
     elif isinstance(a, collections.abc.Mapping):
         a_keys = frozenset(a.keys())
         b_keys = frozenset(b.keys())
         for key in b_keys - a_keys:
-            yield DiffItem(DiffOperation.ADD, path+(key,), None, b[key])
+            yield from diff_iter(None, b[key], path=path+(key,))
         for key in a_keys - b_keys:
-            yield DiffItem(DiffOperation.REMOVE, path+(key,), a[key], None)
+            yield from diff_iter(a[key], None, path=path+(key,))
         for key in a_keys & b_keys:
             yield from diff_iter(a[key], b[key], path=path+(key,))
     else:
