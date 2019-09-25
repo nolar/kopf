@@ -2,26 +2,27 @@
 All the functions to calculate the diffs of the dicts.
 """
 import collections.abc
+from typing import Any, Tuple, NewType, Iterator, Sequence
 
-from typing import Any, Tuple, NewType, Generator, Sequence
+from kopf.structs import dicts
+
 
 DiffOp = NewType('DiffOp', str)
-DiffPath = Tuple[str, ...]
-DiffItem = Tuple[DiffOp, DiffPath, Any, Any]
+DiffItem = Tuple[DiffOp, dicts.FieldPath, Any, Any]
 Diff = Sequence[DiffItem]
 
 
-def reduce_iter(d: Diff, path: DiffPath) -> Generator[DiffItem, None, None]:
+def reduce_iter(d: Diff, path: dicts.FieldPath) -> Iterator[DiffItem]:
     for op, field, old, new in d:
         if not path or tuple(field[:len(path)]) == tuple(path):
             yield (op, tuple(field[len(path):]), old, new)
 
 
-def reduce(d: Diff, path: DiffPath) -> Diff:
+def reduce(d: Diff, path: dicts.FieldPath) -> Diff:
     return tuple(reduce_iter(d, path))
 
 
-def diff_iter(a: Any, b: Any, path: DiffPath = ()) -> Generator[DiffItem, None, None]:
+def diff_iter(a: Any, b: Any, path: dicts.FieldPath = ()) -> Iterator[DiffItem]:
     """
     Calculate the diff between two dicts.
 
@@ -57,7 +58,7 @@ def diff_iter(a: Any, b: Any, path: DiffPath = ()) -> Generator[DiffItem, None, 
         yield ('change', path, a, b)
 
 
-def diff(a: Any, b: Any, path: DiffPath = ()) -> Diff:
+def diff(a: Any, b: Any, path: dicts.FieldPath = ()) -> Diff:
     """
     Same as `diff`, but returns the whole tuple instead of iterator.
     """
