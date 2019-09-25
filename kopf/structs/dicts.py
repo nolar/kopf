@@ -37,15 +37,28 @@ def resolve(
         d: Mapping,
         field: FieldSpec,
         default: Any = _UNSET,
+        *,
+        assume_empty: bool = False,
 ):
     """
     Retrieve a nested sub-field from a dict.
+
+    If ``assume_empty`` is set, then the non-existent path keys are assumed
+    to be empty dictionaries, and then the ``default`` is returned.
+
+    Otherwise (by default), any attempt to get a key from ``None``
+    leads to a ``TypeError`` -- same as in Python: ``None['key']``.
     """
     path = parse_field(field)
     try:
         result = d
         for key in path:
-            result = result[key]
+            if result is None and assume_empty and default is not _UNSET:
+                return default
+            elif isinstance(result, collections.abc.Mapping):
+                result = result[key]
+            else:
+                raise TypeError(f"The structure is not a dict with field {key!r}: {result!r}")
         return result
     except KeyError:
         if default is _UNSET:

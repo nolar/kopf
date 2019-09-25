@@ -9,6 +9,9 @@ DIFF = Diff([
     DiffItem(DiffOperation.ADD   , ('key2', 'suba'), 'olda', 'newa'),
     DiffItem(DiffOperation.REMOVE, ('key2', 'subb'), 'oldb', 'newb'),
     DiffItem(DiffOperation.REMOVE, ('key3',), 'old3', None),
+    DiffItem(DiffOperation.CHANGE, ('key4',),
+             {'suba': 'olda', 'subc': 'oldc'},
+             {'subb': 'newb', 'subc': 'newc'}),
 ])
 
 
@@ -51,3 +54,24 @@ def test_existent_path_selects_relevant_ops():
 def test_nonexistent_path_selects_nothing():
     result = reduce(DIFF, ['nonexistent-key'])
     assert result == ()
+
+
+def test_overly_specific_path_dives_into_dicts_for_addition():
+    result = reduce(DIFF, ['key4', 'subb'])
+    assert result == (
+        ('add', (), None, 'newb'),
+    )
+
+
+def test_overly_specific_path_dives_into_dicts_for_removal():
+    result = reduce(DIFF, ['key4', 'suba'])
+    assert result == (
+        ('remove', (), 'olda', None),
+    )
+
+
+def test_overly_specific_path_dives_into_dicts_for_change():
+    result = reduce(DIFF, ['key4', 'subc'])
+    assert result == (
+        ('change', (), 'oldc', 'newc'),
+    )
