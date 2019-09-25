@@ -1,16 +1,15 @@
 import pytest
 
-from kopf.structs.diffs import reduce
+from kopf.structs.diffs import reduce, Diff, DiffItem, DiffOperation
 
 
-DIFF = (
-    ('op'    , (), 'old', 'new'),  # unknown operations should be passed through
-    ('add'   , ('key1',), None, 'new1'),
-    ('change', ('key2',), 'old2', 'new2'),
-    ('add'   , ('key2', 'suba'), 'olda', 'newa'),
-    ('remove', ('key2', 'subb'), 'oldb', 'newb'),
-    ('remove', ('key3',), 'old3', None),
-)
+DIFF = Diff([
+    DiffItem(DiffOperation.ADD   , ('key1',), None, 'new1'),
+    DiffItem(DiffOperation.CHANGE, ('key2',), 'old2', 'new2'),
+    DiffItem(DiffOperation.ADD   , ('key2', 'suba'), 'olda', 'newa'),
+    DiffItem(DiffOperation.REMOVE, ('key2', 'subb'), 'oldb', 'newb'),
+    DiffItem(DiffOperation.REMOVE, ('key3',), 'old3', None),
+])
 
 
 @pytest.mark.parametrize('diff', [

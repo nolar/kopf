@@ -2,24 +2,77 @@
 All the functions to calculate the diffs of the dicts.
 """
 import collections.abc
-from typing import Any, Tuple, NewType, Iterator, Sequence
+import enum
+from typing import Any, Iterator, Sequence, NamedTuple, Iterable
 
 from kopf.structs import dicts
 
 
-DiffOp = NewType('DiffOp', str)
-DiffItem = Tuple[DiffOp, dicts.FieldPath, Any, Any]
-Diff = Sequence[DiffItem]
+class DiffOperation(str, enum.Enum):
+    ADD = 'add'
+    CHANGE = 'change'
+    REMOVE = 'remove'
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return repr(self.value)
+
+
+class DiffItem(NamedTuple):
+    operation: DiffOperation
+    field: dicts.FieldPath
+    old: Any
+    new: Any
+
+    def __repr__(self):
+        return repr(tuple(self))
+
+    def __eq__(self, other):
+        return tuple(self) == tuple(other)
+
+    def __ne__(self, other):
+        return tuple(self) != tuple(other)
+
+    @property
+    def op(self):
+        return self.operation
+
+
+class Diff(Sequence[DiffItem]):
+
+    def __init__(self, __items: Iterable[DiffItem]):
+        super().__init__()
+        self._items = tuple(DiffItem(*item) for item in __items)
+
+    def __repr__(self):
+        return repr(self._items)
+
+    def __len__(self):
+        return len(self._items)
+
+    def __iter__(self):
+        return iter(self._items)
+
+    def __getitem__(self, item):
+        return self._items[item]
+
+    def __eq__(self, other):
+        return tuple(self) == tuple(other)
+
+    def __ne__(self, other):
+        return tuple(self) != tuple(other)
 
 
 def reduce_iter(d: Diff, path: dicts.FieldPath) -> Iterator[DiffItem]:
     for op, field, old, new in d:
         if not path or tuple(field[:len(path)]) == tuple(path):
-            yield (op, tuple(field[len(path):]), old, new)
+            yield DiffItem(op, tuple(field[len(path):]), old, new)
 
 
 def reduce(d: Diff, path: dicts.FieldPath) -> Diff:
-    return tuple(reduce_iter(d, path))
+    return Diff(reduce_iter(d, path))
 
 
 def diff_iter(a: Any, b: Any, path: dicts.FieldPath = ()) -> Iterator[DiffItem]:
@@ -42,24 +95,24 @@ def diff_iter(a: Any, b: Any, path: dicts.FieldPath = ()) -> Iterator[DiffItem]:
     * https://python-json-patch.readthedocs.io/en/latest/tutorial.html
     """
     if type(a) != type(b):
-        yield ('change', path, a, b)
+        yield DiffItem(DiffOperation.CHANGE, path, a, b)
     elif a == b:
         pass  # to exclude the case as soon as possible
     elif isinstance(a, collections.abc.Mapping):
         a_keys = frozenset(a.keys())
         b_keys = frozenset(b.keys())
         for key in b_keys - a_keys:
-            yield ('add', path+(key,), None, b[key])
+            yield DiffItem(DiffOperation.ADD, path+(key,), None, b[key])
         for key in a_keys - b_keys:
-            yield ('remove', path+(key,), a[key], None)
+            yield DiffItem(DiffOperation.REMOVE, path+(key,), a[key], None)
         for key in a_keys & b_keys:
             yield from diff_iter(a[key], b[key], path=path+(key,))
     else:
-        yield ('change', path, a, b)
+        yield DiffItem(DiffOperation.CHANGE, path, a, b)
 
 
 def diff(a: Any, b: Any, path: dicts.FieldPath = ()) -> Diff:
     """
     Same as `diff`, but returns the whole tuple instead of iterator.
     """
-    return tuple(diff_iter(a, b, path=path))
+    return Diff(diff_iter(a, b, path=path))
