@@ -1,9 +1,11 @@
 import asyncio
+import logging
 
 import pytest
 from asynctest import call
 
 from kopf import event, info, warn, exception
+from kopf.config import EventsConfig
 from kopf.engines.posting import poster, K8sEvent, event_queue_var, event_queue_loop_var
 
 OBJ1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
@@ -76,15 +78,19 @@ async def test_via_event_function(mocker, event_queue, event_queue_loop):
     assert event1.message == 'message1'
 
 
-@pytest.mark.parametrize('event_fn, event_type', [
-    pytest.param(info, "Normal", id='info'),
-    pytest.param(warn, "Warning", id='warn'),
-    pytest.param(exception, "Error", id='exception'),
+@pytest.mark.parametrize('event_fn, event_type, min_levelno', [
+    pytest.param(info, "Normal", logging.INFO, id='info'),
+    pytest.param(warn, "Warning", logging.WARNING, id='warn'),
+    pytest.param(exception, "Error", logging.ERROR, id='exception'),
 ])
-async def test_via_shortcut(mocker, event_fn, event_type, event_queue, event_queue_loop):
+async def test_via_shortcut(mocker, event_fn, event_type, min_levelno,
+                            event_queue, event_queue_loop):
     post_event = mocker.patch('kopf.clients.events.post_event')
 
-    event_fn(OBJ1, reason='reason1', message='message1')
+    mocker.patch.object(EventsConfig, 'events_loglevel', min_levelno)
+    event_fn(OBJ1, reason='reason1', message='message1')  # posted
+    mocker.patch.object(EventsConfig, 'events_loglevel', min_levelno + 1)
+    event_fn(OBJ1, reason='reason2', message='message2')  # not posted
 
     assert not post_event.called
     assert event_queue.qsize() == 1

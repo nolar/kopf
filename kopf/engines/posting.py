@@ -74,25 +74,22 @@ def event(objs, *, type, reason, message=''):
 
 
 def info(obj, *, reason, message=''):
-    if config.EventsConfig.events_loglevel > config.LOGLEVEL_INFO:
-        return
-    event(obj, type='Normal', reason=reason, message=message)
+    if config.EventsConfig.events_loglevel <= config.LOGLEVEL_INFO:
+        event(obj, type='Normal', reason=reason, message=message)
 
 
 def warn(obj, *, reason, message=''):
-    if config.EventsConfig.events_loglevel > config.LOGLEVEL_WARNING:
-        return
-    event(obj, type='Warning', reason=reason, message=message)
+    if config.EventsConfig.events_loglevel <= config.LOGLEVEL_WARNING:
+        event(obj, type='Warning', reason=reason, message=message)
 
 
 def exception(obj, *, reason='', message='', exc=None):
-    if config.EventsConfig.events_loglevel > config.LOGLEVEL_ERROR:
-        return
     if exc is None:
         _, exc, _ = sys.exc_info()
     reason = reason if reason else type(exc).__name__
     message = f'{message} {exc}' if message and exc else f'{exc}' if exc else f'{message}'
-    event(obj, type='Error', reason=reason, message=message)
+    if config.EventsConfig.events_loglevel <= config.LOGLEVEL_ERROR:
+        event(obj, type='Error', reason=reason, message=message)
 
 
 async def poster(
