@@ -8,13 +8,13 @@ from kopf.engines import logging as logging_engine
 format = '[%(asctime)s] %(name)-20.20s [%(levelname)-8.8s] %(message)s'
 
 
-LOGLEVEL_INFO = 20
+LOGLEVEL_INFO = logging.INFO
 """ Event loglevel to log all events. """
-LOGLEVEL_WARNING = 30
+LOGLEVEL_WARNING = logging.WARNING
 """ Event loglevel to log all events except informational. """
-LOGLEVEL_ERROR = 40
+LOGLEVEL_ERROR = logging.ERROR
 """ Event loglevel to log only errors and critical events. """
-LOGLEVEL_CRITICAL = 50
+LOGLEVEL_CRITICAL = logging.CRITICAL
 """ Event loglevel to log only critical events(basically - no events). """
 
 
