@@ -16,8 +16,8 @@ env:
     - MINIKUBE_HOME=$HOME
     - MINIKUBE_VERSION=v1.0.1
   matrix:
-    - KUBERNETES_VERSION=v1.14.0 CLIENT=yes  # only one "yes" is enough
-    - KUBERNETES_VERSION=v1.14.0 CLIENT=no
+    - KUBERNETES_VERSION=latest CLIENT=yes  # only one "yes" is enough
+    - KUBERNETES_VERSION=latest CLIENT=no
     - KUBERNETES_VERSION=v1.13.0 CLIENT=no
     - KUBERNETES_VERSION=v1.12.0 CLIENT=no
 #    - KUBERNETES_VERSION=v1.11.10  # Minikube fails on CRI preflight checks

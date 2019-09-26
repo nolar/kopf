@@ -3,6 +3,13 @@
 set -eu
 set -x
 
+: ${KUBERNETES_VERSION:=latest}
+: ${MINIKUBE_VERSION:=latest}
+
+if [[ "${KUBERNETES_VERSION}" == latest ]] ; then
+    KUBERNETES_VERSION=$( curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt )
+fi
+
 curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/"${KUBERNETES_VERSION}"/bin/linux/amd64/kubectl
 chmod +x kubectl
 sudo mv kubectl /usr/local/bin/
