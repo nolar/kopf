@@ -14,7 +14,7 @@ env:
     - MINIKUBE_WANTREPORTERRORPROMPT=false
     - MINIKUBE_IN_STYLE=true
     - MINIKUBE_HOME=$HOME
-    - MINIKUBE_VERSION=v1.0.1
+    - MINIKUBE_VERSION=latest
   matrix:
     - KUBERNETES_VERSION=latest CLIENT=yes  # only one "yes" is enough
     - KUBERNETES_VERSION=latest CLIENT=no
