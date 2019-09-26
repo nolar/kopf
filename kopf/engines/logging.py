@@ -40,10 +40,10 @@ class K8sPoster(logging.Handler):
     def filter(self, record):
         # Only those which have a k8s object referred (see: `ObjectLogger`).
         # Otherwise, we have nothing to post, and nothing to do.
-        fit_lvl = record.levelno >= config.EventsConfig.events_loglevel
+        level_ok = record.levelno >= config.EventsConfig.events_loglevel
         has_ref = hasattr(record, 'k8s_ref')
         skipped = hasattr(record, 'k8s_skip') and record.k8s_skip
-        return fit_lvl and has_ref and not skipped and super().filter(record)
+        return level_ok and has_ref and not skipped and super().filter(record)
 
     def emit(self, record):
         # Same try-except as in e.g. `logging.StreamHandler`.
