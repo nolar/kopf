@@ -98,12 +98,8 @@ async def streaming_watch(
 
     # First, list the resources regularly, and get the list's resource version.
     # Simulate the events with type "None" event - used in detection of causes.
-    rsp = fetching.list_objs(resource=resource, namespace=namespace)
-    resource_version = rsp['metadata']['resourceVersion']
-    for item in rsp['items']:
-        # FIXME: fix in pykube to inject the missing item's fields from the list's metainfo.
-        item.setdefault('kind', rsp['kind'][:-4] if rsp['kind'][-4:] == 'List' else rsp['kind'])
-        item.setdefault('apiVersion', rsp['apiVersion'])
+    items, resource_version = fetching.list_objs_rv(resource=resource, namespace=namespace)
+    for item in items:
         yield {'type': None, 'object': item}
 
     # Then, watch the resources starting from the list's resource version.
