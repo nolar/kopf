@@ -7,7 +7,7 @@ import requests
 
 from kopf import config
 from kopf.clients import auth
-from kopf.toolkits import hierarchies
+from kopf.structs import bodies
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ async def post_event(*, obj=None, ref=None, type, reason, message=''):
     if obj is None and ref is None:
         raise TypeError("One of obj= and ref= is required for a posted event. Got none.")
     if ref is None:
-        ref = hierarchies.build_object_reference(obj)
+        ref = bodies.build_object_reference(obj)
 
     now = datetime.datetime.utcnow()
 
