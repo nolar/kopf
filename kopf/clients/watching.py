@@ -28,7 +28,7 @@ from kopf import config
 from kopf.clients import auth
 from kopf.clients import classes
 from kopf.clients import fetching
-from kopf.reactor import registries
+from kopf.structs import resources
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ async def streaming_aiter(src, loop=None, executor=None):
 
 
 async def infinite_watch(
-        resource: registries.Resource,
+        resource: resources.Resource,
         namespace: Union[None, str],
 ):
     """
@@ -89,7 +89,7 @@ async def infinite_watch(
 
 
 async def streaming_watch(
-        resource: registries.Resource,
+        resource: resources.Resource,
         namespace: Union[None, str],
 ):
     """

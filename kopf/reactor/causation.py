@@ -22,10 +22,10 @@ could execute on the yet-existing object (and its children, if created).
 import logging
 from typing import NamedTuple, Text, Mapping, MutableMapping, Optional, Any, Union
 
-from kopf.reactor import registries
 from kopf.structs import diffs
 from kopf.structs import finalizers
 from kopf.structs import lastseen
+from kopf.structs import resources
 
 # Constants for event types, to prevent a direct usage of strings, and typos.
 # They are not exposed by the framework, but are used internally. See also: `kopf.on`.
@@ -62,7 +62,7 @@ class Cause(NamedTuple):
     of actual field changes, including multi-handler changes.
     """
     logger: Union[logging.Logger, logging.LoggerAdapter]
-    resource: registries.Resource
+    resource: resources.Resource
     event: Text
     initial: bool
     body: MutableMapping

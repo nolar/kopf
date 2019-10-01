@@ -17,22 +17,7 @@ from types import FunctionType, MethodType
 from typing import MutableMapping, NamedTuple, Text, Optional, Tuple, Callable, Mapping
 
 from kopf.structs import filters
-
-
-# An immutable reference to a custom resource definition.
-class Resource(NamedTuple):
-    group: Text
-    version: Text
-    plural: Text
-
-    @property
-    def name(self):
-        return f'{self.plural}.{self.group}'
-
-    @property
-    def api_version(self):
-        # Strip heading/trailing slashes if group is absent (e.g. for pods).
-        return f'{self.group}/{self.version}'.strip('/')
+from kopf.structs import resources as resources_
 
 
 # A registered handler (function + event meta info).
@@ -201,8 +186,8 @@ class GlobalRegistry(BaseRegistry):
 
     def __init__(self):
         super().__init__()
-        self._cause_handlers: MutableMapping[Resource, SimpleRegistry] = {}
-        self._event_handlers: MutableMapping[Resource, SimpleRegistry] = {}
+        self._cause_handlers: MutableMapping[resources_.Resource, SimpleRegistry] = {}
+        self._event_handlers: MutableMapping[resources_.Resource, SimpleRegistry] = {}
 
     def register_cause_handler(self, group, version, plural, fn,
                                id=None, event=None, field=None, timeout=None, initial=None, requires_finalizer=False,
@@ -210,7 +195,7 @@ class GlobalRegistry(BaseRegistry):
         """
         Register an additional handler function for the specific resource and specific event.
         """
-        resource = Resource(group, version, plural)
+        resource = resources_.Resource(group, version, plural)
         registry = self._cause_handlers.setdefault(resource, SimpleRegistry())
         registry.register(event=event, field=field, fn=fn, id=id, timeout=timeout, initial=initial, requires_finalizer=requires_finalizer,
                           labels=labels, annotations=annotations)
@@ -221,7 +206,7 @@ class GlobalRegistry(BaseRegistry):
         """
         Register an additional handler function for low-level events.
         """
-        resource = Resource(group, version, plural)
+        resource = resources_.Resource(group, version, plural)
         registry = self._event_handlers.setdefault(resource, SimpleRegistry())
         registry.register(fn=fn, id=id, labels=labels, annotations=annotations)
         return fn  # to be usable as a decorator too.

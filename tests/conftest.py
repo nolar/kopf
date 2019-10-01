@@ -3,20 +3,18 @@ import dataclasses
 import io
 import json
 import logging
-import os
 import re
 import sys
 import time
 from unittest.mock import Mock
 
 import asynctest
-import pykube
 import pytest
 import pytest_mock
 
 from kopf.config import configure
 from kopf.engines.logging import ObjectPrefixingFormatter
-from kopf.reactor.registries import Resource
+from kopf.structs.resources import Resource
 
 
 def pytest_configure(config):

@@ -31,6 +31,7 @@ from kopf.structs import dicts
 from kopf.structs import diffs
 from kopf.structs import finalizers
 from kopf.structs import lastseen
+from kopf.structs import resources
 from kopf.structs import status
 
 WAITING_KEEPALIVE_INTERVAL = 10 * 60
@@ -71,7 +72,7 @@ cause_var: ContextVar[causation.Cause] = ContextVar('cause_var')
 async def custom_object_handler(
         lifecycle: Callable,
         registry: registries.GlobalRegistry,
-        resource: registries.Resource,
+        resource: resources.Resource,
         event: dict,
         freeze: asyncio.Event,
         replenished: asyncio.Event,
@@ -142,7 +143,7 @@ async def custom_object_handler(
 
 async def handle_event(
         registry: registries.BaseRegistry,
-        resource: registries.Resource,
+        resource: resources.Resource,
         logger: logging_engine.ObjectLogger,
         patch: dict,
         event: dict,

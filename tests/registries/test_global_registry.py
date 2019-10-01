@@ -1,6 +1,7 @@
 import collections
 
-from kopf.reactor.registries import Resource, GlobalRegistry
+from kopf.reactor.registries import GlobalRegistry
+from kopf.structs.resources import Resource
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.
