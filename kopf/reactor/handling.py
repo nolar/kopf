@@ -26,11 +26,11 @@ from kopf.engines import posting
 from kopf.engines import sleeping
 from kopf.reactor import causation
 from kopf.reactor import invocation
-from kopf.reactor import registries
 from kopf.structs import dicts
 from kopf.structs import diffs
 from kopf.structs import finalizers
 from kopf.structs import lastseen
+from kopf.structs import registries
 from kopf.structs import resources
 from kopf.structs import status
 

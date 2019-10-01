@@ -1,7 +1,7 @@
 import pytest
 
 import kopf
-from kopf.reactor.registries import GlobalRegistry
+from kopf.structs.registries import GlobalRegistry
 from kopf.structs.resources import Resource
 
 

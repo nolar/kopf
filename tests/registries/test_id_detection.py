@@ -3,7 +3,7 @@ import functools
 import pytest
 
 from kopf import SimpleRegistry
-from kopf.reactor.registries import get_callable_id
+from kopf.structs.registries import get_callable_id
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.
@@ -72,7 +72,7 @@ def test_id_of_lambda():
 
 
 def test_with_no_hints(mocker):
-    get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
+    get_fn_id = mocker.patch('kopf.structs.registries.get_callable_id', return_value='some-id')
 
     registry = SimpleRegistry()
     registry.register(some_fn)
@@ -86,7 +86,7 @@ def test_with_no_hints(mocker):
 
 
 def test_with_prefix(mocker):
-    get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
+    get_fn_id = mocker.patch('kopf.structs.registries.get_callable_id', return_value='some-id')
 
     registry = SimpleRegistry(prefix='some-prefix')
     registry.register(some_fn)
@@ -100,7 +100,7 @@ def test_with_prefix(mocker):
 
 
 def test_with_suffix(mocker, field):
-    get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
+    get_fn_id = mocker.patch('kopf.structs.registries.get_callable_id', return_value='some-id')
     diff = [('add', ('some-field', 'sub-field'), 'old', 'new')]
 
     registry = SimpleRegistry()
@@ -115,7 +115,7 @@ def test_with_suffix(mocker, field):
 
 
 def test_with_prefix_and_suffix(mocker, field):
-    get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
+    get_fn_id = mocker.patch('kopf.structs.registries.get_callable_id', return_value='some-id')
     diff = [('add', ('some-field', 'sub-field'), 'old', 'new')]
 
     registry = SimpleRegistry(prefix='some-prefix')
@@ -130,7 +130,7 @@ def test_with_prefix_and_suffix(mocker, field):
 
 
 def test_with_explicit_id_and_prefix_and_suffix(mocker, field):
-    get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
+    get_fn_id = mocker.patch('kopf.structs.registries.get_callable_id', return_value='some-id')
     diff = [('add', ('some-field', 'sub-field'), 'old', 'new')]
 
     registry = SimpleRegistry(prefix='some-prefix')

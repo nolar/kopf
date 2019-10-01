@@ -3,7 +3,7 @@ import pytest
 import kopf
 from kopf.reactor.causation import CREATE, UPDATE, DELETE
 from kopf.reactor.handling import subregistry_var
-from kopf.reactor.registries import SimpleRegistry, GlobalRegistry
+from kopf.structs.registries import SimpleRegistry, GlobalRegistry
 from kopf.structs.resources import Resource
 
 
