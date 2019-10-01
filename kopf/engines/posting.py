@@ -22,7 +22,7 @@ from typing import Mapping, Text, NamedTuple
 from kopf import config
 from kopf.clients import events
 from kopf.structs import dicts
-from kopf.structs import hierarchies
+from kopf.toolkits import hierarchies
 
 # Logging and event-posting can happen cross-thread: e.g. in sync-executors.
 # We have to remember our main event-loop with the queue consumer, to make

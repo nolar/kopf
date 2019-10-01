@@ -187,10 +187,10 @@ def test_removal_distinguishes_by_uid():
 def test_adopting(mocker):
     # These methods are tested in their own tests.
     # We just check that they are called at all.
-    append_owner_ref = mocker.patch('kopf.structs.hierarchies.append_owner_reference')
-    harmonize_naming = mocker.patch('kopf.structs.hierarchies.harmonize_naming')
-    adjust_namespace = mocker.patch('kopf.structs.hierarchies.adjust_namespace')
-    label = mocker.patch('kopf.structs.hierarchies.label')
+    append_owner_ref = mocker.patch('kopf.toolkits.hierarchies.append_owner_reference')
+    harmonize_naming = mocker.patch('kopf.toolkits.hierarchies.harmonize_naming')
+    adjust_namespace = mocker.patch('kopf.toolkits.hierarchies.adjust_namespace')
+    label = mocker.patch('kopf.toolkits.hierarchies.label')
 
     obj = Mock()
     kopf.adopt(obj, owner=OWNER, nested=['template'])

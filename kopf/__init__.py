@@ -58,7 +58,7 @@ from kopf.reactor.running import (
     run,
     create_tasks,  # deprecated
 )
-from kopf.structs.hierarchies import (
+from kopf.toolkits.hierarchies import (
     adopt,
     label,
     harmonize_naming,

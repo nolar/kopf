@@ -7,7 +7,7 @@ import requests
 
 from kopf import config
 from kopf.clients import auth
-from kopf.structs import hierarchies
+from kopf.toolkits import hierarchies
 
 logger = logging.getLogger(__name__)
 
