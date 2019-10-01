@@ -163,7 +163,9 @@ async def test_explicit_args_passed_properly(fn):
 @fns
 async def test_special_kwargs_added(fn):
     fn = MagicMock(fn)
-    cause = MagicMock(body={'metadata': {'uid': 'uid', 'name': 'name', 'namespace': 'ns'}})
+    cause = MagicMock(body={'metadata': {'uid': 'uid', 'name': 'name', 'namespace': 'ns'},
+                            'spec': {'field': 'value'},
+                            'status': {'info': 'payload'}})
     await invoke(fn, cause=cause)
 
     assert fn.called
@@ -173,14 +175,14 @@ async def test_special_kwargs_added(fn):
     assert fn.call_args[1]['cause'] is cause
     assert fn.call_args[1]['event'] is cause.event
     assert fn.call_args[1]['body'] is cause.body
-    assert fn.call_args[1]['spec'] is cause.body['spec']
-    assert fn.call_args[1]['meta'] is cause.body['metadata']
-    assert fn.call_args[1]['status'] is cause.body['status']
+    assert fn.call_args[1]['spec'] == cause.body['spec']
+    assert fn.call_args[1]['meta'] == cause.body['metadata']
+    assert fn.call_args[1]['status'] == cause.body['status']
     assert fn.call_args[1]['diff'] is cause.diff
     assert fn.call_args[1]['old'] is cause.old
     assert fn.call_args[1]['new'] is cause.new
     assert fn.call_args[1]['patch'] is cause.patch
     assert fn.call_args[1]['logger'] is cause.logger
-    assert fn.call_args[1]['uid'] is cause.body['metadata']['uid']
-    assert fn.call_args[1]['name'] is cause.body['metadata']['name']
-    assert fn.call_args[1]['namespace'] is cause.body['metadata']['namespace']
+    assert fn.call_args[1]['uid'] == cause.body['metadata']['uid']
+    assert fn.call_args[1]['name'] == cause.body['metadata']['name']
+    assert fn.call_args[1]['namespace'] == cause.body['metadata']['namespace']

@@ -2,7 +2,8 @@
 Some basic dicts and field-in-a-dict manipulation helpers.
 """
 import collections.abc
-from typing import Any, Union, MutableMapping, Mapping, Tuple, List, Text, Iterable, Optional
+from typing import (Any, Union, MutableMapping, Mapping, Tuple, List, Text,
+                    Iterable, Iterator, Optional)
 
 FieldPath = Tuple[str, ...]
 FieldSpec = Union[None, Text, FieldPath, List[str]]
@@ -124,3 +125,40 @@ def walk(
             yield from walk(obj, nested=nested)
     else:
         yield objs  # NB: not a mapping, no nested sub-fields.
+
+
+class DictView(Mapping[Any, Any]):
+    """
+    A lazy resolver for the "on-demand" dict keys.
+
+    This is needed to have ``spec``, ``status``, and other special fields
+    to be *assumed* as dicts, even if they are actually not present.
+    And to prevent their implicit creation with ``.setdefault('spec', {})``,
+    which produces unwanted side-effects (actually adds this field).
+
+    >>> body = {}
+    >>> spec = DictView(body, 'spec')
+
+    >>> spec.get('field', 'default')
+    ... 'default'
+
+    >>> body['spec'] = {'field': 'value'}
+
+    >>> spec.get('field', 'default')
+    ... 'value'
+
+    """
+
+    def __init__(self, __src: Mapping[Any, Any], __path: FieldSpec = None):
+        super().__init__()
+        self._src = __src
+        self._path = parse_field(__path)
+
+    def __len__(self) -> int:
+        return len(resolve(self._src, self._path, {}, assume_empty=True))
+
+    def __iter__(self) -> Iterator[Any]:
+        return iter(resolve(self._src, self._path, {}, assume_empty=True))
+
+    def __getitem__(self, item: Any) -> Any:
+        return resolve(self._src, self._path + (item,))
