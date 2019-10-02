@@ -61,6 +61,7 @@ def test_required_args(mocker):
     assert cause.initial is initial
     assert cause.body is body
     assert cause.patch is patch
-    assert cause.diff is None
+    assert cause.diff is not None
+    assert not cause.diff
     assert cause.old is None
     assert cause.new is None

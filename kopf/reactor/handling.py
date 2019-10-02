@@ -465,8 +465,8 @@ async def _call_handler(
     """
 
     # For the field-handlers, the old/new/diff values must match the field, not the whole object.
-    old = cause.old if handler.field is None else dicts.resolve(cause.old, handler.field, None)
-    new = cause.new if handler.field is None else dicts.resolve(cause.new, handler.field, None)
+    old = cause.old if handler.field is None else dicts.resolve(cause.old, handler.field, None, assume_empty=True)
+    new = cause.new if handler.field is None else dicts.resolve(cause.new, handler.field, None, assume_empty=True)
     diff = cause.diff if handler.field is None else diffs.reduce(cause.diff, handler.field)
     cause = causation.enrich_cause(cause=cause, old=old, new=new, diff=diff)
 
