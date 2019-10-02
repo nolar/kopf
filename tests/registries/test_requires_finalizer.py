@@ -1,9 +1,8 @@
 import pytest
 
 import kopf
-from kopf.structs.registries import GlobalRegistry
+from kopf.reactor.registries import GlobalRegistry
 from kopf.structs.resources import Resource
-
 
 OBJECT_BODY = {
     'apiVersion': 'group/version',

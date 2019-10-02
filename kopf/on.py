@@ -15,7 +15,7 @@ from typing import Optional, Union, Tuple, List, Mapping
 
 from kopf.reactor import causation
 from kopf.reactor import handling
-from kopf.structs import registries
+from kopf.reactor import registries
 
 
 def resume(

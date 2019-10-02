@@ -12,7 +12,7 @@ from kopf.engines import posting
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
 from kopf.reactor import queueing
-from kopf.structs import registries
+from kopf.reactor import registries
 
 Flag = Union[asyncio.Future, asyncio.Event, concurrent.futures.Future, threading.Event]
 

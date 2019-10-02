@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.structs.registries import Handler
+from kopf.reactor.registries import Handler
 
 
 def test_no_args():

@@ -44,6 +44,13 @@ from kopf.reactor.lifecycles import (
     get_default_lifecycle,
     set_default_lifecycle,
 )
+from kopf.reactor.registries import (
+    BaseRegistry,
+    SimpleRegistry,
+    GlobalRegistry,
+    get_default_registry,
+    set_default_registry,
+)
 from kopf.reactor.running import (
     spawn_tasks,
     run_tasks,
@@ -60,13 +67,6 @@ from kopf.structs.hierarchies import (
     build_owner_reference,
     append_owner_reference,
     remove_owner_reference,
-)
-from kopf.structs.registries import (
-    BaseRegistry,
-    SimpleRegistry,
-    GlobalRegistry,
-    get_default_registry,
-    set_default_registry,
 )
 
 HandlerFatalError = PermanentError  # a backward-compatibility alias

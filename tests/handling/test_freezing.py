@@ -3,7 +3,7 @@ import logging
 
 import kopf
 from kopf.reactor.handling import custom_object_handler
-from kopf.structs.registries import GlobalRegistry
+from kopf.reactor.registries import GlobalRegistry
 
 
 async def test_nothing_is_called_when_freeze_is_set(mocker, resource, caplog, assert_logs):

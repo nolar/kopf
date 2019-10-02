@@ -3,7 +3,7 @@ import pytest
 import kopf
 from kopf.reactor.causation import CREATE, UPDATE, DELETE
 from kopf.reactor.handling import subregistry_var
-from kopf.structs.registries import SimpleRegistry, GlobalRegistry
+from kopf.reactor.registries import SimpleRegistry, GlobalRegistry
 from kopf.structs.resources import Resource
 
 
@@ -95,7 +95,7 @@ def test_on_create_with_all_kwargs(mocker):
     registry = GlobalRegistry()
     resource = Resource('group', 'version', 'plural')
     cause = mocker.MagicMock(resource=resource, event=CREATE)
-    mocker.patch('kopf.structs.registries.match', return_value=True)
+    mocker.patch('kopf.reactor.registries.match', return_value=True)
 
     @kopf.on.create('group', 'version', 'plural',
                     id='id', timeout=123, registry=registry,
@@ -119,7 +119,7 @@ def test_on_update_with_all_kwargs(mocker):
     registry = GlobalRegistry()
     resource = Resource('group', 'version', 'plural')
     cause = mocker.MagicMock(resource=resource, event=UPDATE)
-    mocker.patch('kopf.structs.registries.match', return_value=True)
+    mocker.patch('kopf.reactor.registries.match', return_value=True)
 
     @kopf.on.update('group', 'version', 'plural',
                     id='id', timeout=123, registry=registry,
@@ -147,7 +147,7 @@ def test_on_delete_with_all_kwargs(mocker, optional):
     registry = GlobalRegistry()
     resource = Resource('group', 'version', 'plural')
     cause = mocker.MagicMock(resource=resource, event=DELETE)
-    mocker.patch('kopf.structs.registries.match', return_value=True)
+    mocker.patch('kopf.reactor.registries.match', return_value=True)
 
     @kopf.on.delete('group', 'version', 'plural',
                     id='id', timeout=123, registry=registry, optional=optional,
@@ -172,7 +172,7 @@ def test_on_field_with_all_kwargs(mocker):
     resource = Resource('group', 'version', 'plural')
     diff = [('op', ('field', 'subfield'), 'old', 'new')]
     cause = mocker.MagicMock(resource=resource, event=UPDATE, diff=diff)
-    mocker.patch('kopf.structs.registries.match', return_value=True)
+    mocker.patch('kopf.reactor.registries.match', return_value=True)
 
     @kopf.on.field('group', 'version', 'plural', 'field.subfield',
                    id='id', timeout=123, registry=registry,
