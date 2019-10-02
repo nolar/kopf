@@ -1,13 +1,20 @@
+import enum
+
 import pykube
 import requests
+from typing import TypeVar, Optional, Union, Collection, List, Tuple, cast
 
 from kopf.clients import auth
 from kopf.clients import classes
 
-_UNSET_ = object()
+_T = TypeVar('_T')
 
 
-def read_crd(*, resource, default=_UNSET_):
+class _UNSET(enum.Enum):
+    token = enum.auto()
+
+
+def read_crd(*, resource, default=_UNSET.token):
     try:
         api = auth.get_pykube_api()
         cls = pykube.CustomResourceDefinition
@@ -15,16 +22,16 @@ def read_crd(*, resource, default=_UNSET_):
         return obj.obj
 
     except pykube.ObjectDoesNotExist:
-        if default is not _UNSET_:
+        if not isinstance(default, _UNSET):
             return default
         raise
     except requests.exceptions.HTTPError as e:
-        if e.response.status_code in [403, 404] and default is not _UNSET_:
+        if not isinstance(default, _UNSET) and e.response.status_code in [403, 404]:
             return default
         raise
 
 
-def read_obj(*, resource, namespace=None, name=None, default=_UNSET_):
+def read_obj(*, resource, namespace=None, name=None, default=_UNSET.token):
     try:
         api = auth.get_pykube_api()
         cls = classes._make_cls(resource=resource)
@@ -32,11 +39,11 @@ def read_obj(*, resource, namespace=None, name=None, default=_UNSET_):
         obj = cls.objects(api, namespace=namespace).get_by_name(name=name)
         return obj.obj
     except pykube.ObjectDoesNotExist:
-        if default is not _UNSET_:
+        if not isinstance(default, _UNSET):
             return default
         raise
     except requests.exceptions.HTTPError as e:
-        if e.response.status_code in [403, 404] and default is not _UNSET_:
+        if not isinstance(default, _UNSET) and e.response.status_code in [403, 404]:
             return default
         raise
 

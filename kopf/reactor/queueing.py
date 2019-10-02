@@ -24,6 +24,7 @@ is done in the `kopf.reactor.handling` routines.
 """
 
 import asyncio
+import enum
 import logging
 import time
 from typing import Callable, Tuple, Union, MutableMapping, NewType, NamedTuple
@@ -37,6 +38,12 @@ from kopf.structs import resources
 logger = logging.getLogger(__name__)
 
 
+# An end-of-stream marker sent from the watcher to the workers.
+# See: https://www.python.org/dev/peps/pep-0484/#support-for-singleton-types-in-unions
+class EOS(enum.Enum):
+    token = enum.auto()
+
+
 class Stream(NamedTuple):
     """ A single object's stream of watch-events, with some extra helpers. """
     watchevents: asyncio.Queue
@@ -46,9 +53,6 @@ class Stream(NamedTuple):
 ObjectUid = NewType('ObjectUid', str)
 ObjectRef = Tuple[resources.Resource, ObjectUid]
 Streams = MutableMapping[ObjectRef, Stream]
-
-EOS = object()
-""" An end-of-stream marker sent from the watcher to the workers. """
 
 
 # TODO: add the label_selector support for the dev-mode?
@@ -137,13 +141,13 @@ async def worker(
                         next_event = await asyncio.wait_for(
                             watchevents.get(),
                             timeout=config.WorkersConfig.worker_batch_window)
-                        shouldstop = shouldstop or next_event is EOS
-                        event = prev_event if next_event is EOS else next_event
+                        shouldstop = shouldstop or isinstance(next_event, EOS)
+                        event = prev_event if isinstance(next_event, EOS) else next_event
                 except asyncio.TimeoutError:
                     pass
 
             # Exit gracefully and immediately on the end-of-stream marker sent by the watcher.
-            if event is EOS:
+            if isinstance(event, EOS):
                 break
 
             # Try the handler. In case of errors, show the error, but continue the queue processing.
@@ -168,7 +172,7 @@ async def _wait_for_depletion(*, scheduler: aiojobs.Scheduler, streams: Streams)
 
     # Notify all the workers to finish now. Wake them up if they are waiting in the queue-getting.
     for stream in streams.values():
-        await stream.watchevents.put(EOS)
+        await stream.watchevents.put(EOS.token)
 
     # Wait for the queues to be depleted, but only if there are some workers running.
     # Continue with the tasks termination if the timeout is reached, no matter the queues.

@@ -8,14 +8,11 @@ from kopf.engines import logging as logging_engine
 format = '[%(asctime)s] %(name)-20.20s [%(levelname)-8.8s] %(message)s'
 
 
+# Deprecated: use ``logging.*`` constants instead. Kept here for backward-compatibility.
 LOGLEVEL_INFO = logging.INFO
-""" Event loglevel to log all events. """
 LOGLEVEL_WARNING = logging.WARNING
-""" Event loglevel to log all events except informational. """
 LOGLEVEL_ERROR = logging.ERROR
-""" Event loglevel to log only errors and critical events. """
 LOGLEVEL_CRITICAL = logging.CRITICAL
-""" Event loglevel to log only critical events(basically - no events). """
 
 
 def configure(debug=None, verbose=None, quiet=None):

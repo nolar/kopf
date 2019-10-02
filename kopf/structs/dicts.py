@@ -2,13 +2,18 @@
 Some basic dicts and field-in-a-dict manipulation helpers.
 """
 import collections.abc
+import enum
 from typing import (Any, Union, MutableMapping, Mapping, Tuple, List, Text,
-                    Iterable, Iterator, Optional)
+                    Iterable, Iterator, Optional, TypeVar)
 
 FieldPath = Tuple[str, ...]
 FieldSpec = Union[None, Text, FieldPath, List[str]]
 
-_UNSET = object()
+_T = TypeVar('_T')
+
+
+class _UNSET(enum.Enum):
+    token = enum.auto()
 
 
 def parse_field(
@@ -37,10 +42,10 @@ def parse_field(
 def resolve(
         d: Mapping,
         field: FieldSpec,
-        default: Any = _UNSET,
+        default: Union[_T, _UNSET] = _UNSET.token,
         *,
         assume_empty: bool = False,
-):
+) -> Union[Any, _T]:
     """
     Retrieve a nested sub-field from a dict.
 
@@ -54,7 +59,7 @@ def resolve(
     try:
         result = d
         for key in path:
-            if result is None and assume_empty and default is not _UNSET:
+            if result is None and assume_empty and not isinstance(default, _UNSET):
                 return default
             elif isinstance(result, collections.abc.Mapping):
                 result = result[key]
@@ -62,10 +67,9 @@ def resolve(
                 raise TypeError(f"The structure is not a dict with field {key!r}: {result!r}")
         return result
     except KeyError:
-        if default is _UNSET:
-            raise
-        else:
+        if not isinstance(default, _UNSET):
             return default
+        raise
 
 
 def ensure(

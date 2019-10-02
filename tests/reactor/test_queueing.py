@@ -85,7 +85,7 @@ async def test_watchevent_demultiplexing(worker_mock, timer, resource, handler,
             queue_events.append(streams[key].watchevents.get_nowait())
 
         assert len(queue_events) == cnt + 1
-        assert queue_events[-1] is EOS
+        assert queue_events[-1] is EOS.token
         assert all(queue_event['object']['metadata']['uid'] == uid
                    for queue_event in queue_events[:-1])
 
