@@ -17,18 +17,23 @@ This also includes all logging messages posted by the framework itself.
 import asyncio
 import sys
 from contextvars import ContextVar
-from typing import Mapping, Text, NamedTuple
+from typing import NamedTuple, NoReturn, Optional, Union, Iterator, Iterable, cast, TYPE_CHECKING
 
 from kopf import config
 from kopf.clients import events
 from kopf.structs import bodies
 from kopf.structs import dicts
 
+if TYPE_CHECKING:
+    K8sEventQueue = asyncio.Queue["K8sEvent"]
+else:
+    K8sEventQueue = asyncio.Queue
+
 # Logging and event-posting can happen cross-thread: e.g. in sync-executors.
 # We have to remember our main event-loop with the queue consumer, to make
 # thread-safe coro calls both from inside that event-loop and from outside.
 event_queue_loop_var: ContextVar[asyncio.AbstractEventLoop] = ContextVar('event_queue_loop_var')
-event_queue_var: ContextVar[asyncio.Queue] = ContextVar('event_queue_var')
+event_queue_var: ContextVar[K8sEventQueue] = ContextVar('event_queue_var')
 
 
 class K8sEvent(NamedTuple):
@@ -36,13 +41,18 @@ class K8sEvent(NamedTuple):
     A single k8s-event to be posted, with all ref-information preserved.
     It can exist and be posted even after the object is garbage-collected.
     """
-    ref: Mapping
-    type: Text
-    reason: Text
-    message: Text
+    ref: bodies.ObjectReference
+    type: str
+    reason: str
+    message: str
 
 
-def enqueue(ref, type, reason, message):
+def enqueue(
+        ref: bodies.ObjectReference,
+        type: str,
+        reason: str,
+        message: str,
+) -> None:
     loop = event_queue_loop_var.get()
     queue = event_queue_var.get()
     event = K8sEvent(ref=ref, type=type, reason=reason, message=message)
@@ -50,6 +60,7 @@ def enqueue(ref, type, reason, message):
     # Events can be posted from another thread than the event-loop's thread
     # (e.g. from sync-handlers, or from explicitly started per-object threads),
     # or from the same thread (async-handlers and the framework itself).
+    running_loop: Optional[asyncio.AbstractEventLoop]
     try:
         running_loop = asyncio.get_running_loop()
     except RuntimeError:
@@ -67,23 +78,45 @@ def enqueue(ref, type, reason, message):
         future.result()  # block, wait, re-raise.
 
 
-def event(objs, *, type, reason, message=''):
-    for obj in dicts.walk(objs):
+def event(
+        objs: Union[bodies.Body, Iterable[bodies.Body]],
+        *,
+        type: str,
+        reason: str,
+        message: str = '',
+) -> None:
+    for obj in cast(Iterator[bodies.Body], dicts.walk(objs)):
         ref = bodies.build_object_reference(obj)
         enqueue(ref=ref, type=type, reason=reason, message=message)
 
 
-def info(obj, *, reason, message=''):
+def info(
+        obj: bodies.Body,
+        *,
+        reason: str,
+        message: str = '',
+) -> None:
     if config.EventsConfig.events_loglevel <= config.LOGLEVEL_INFO:
         event(obj, type='Normal', reason=reason, message=message)
 
 
-def warn(obj, *, reason, message=''):
+def warn(
+        obj: bodies.Body,
+        *,
+        reason: str,
+        message: str = '',
+) -> None:
     if config.EventsConfig.events_loglevel <= config.LOGLEVEL_WARNING:
         event(obj, type='Warning', reason=reason, message=message)
 
 
-def exception(obj, *, reason='', message='', exc=None):
+def exception(
+        obj: bodies.Body,
+        *,
+        reason: str = '',
+        message: str = '',
+        exc: Optional[BaseException] = None,
+) -> None:
     if exc is None:
         _, exc, _ = sys.exc_info()
     reason = reason if reason else type(exc).__name__
@@ -93,8 +126,8 @@ def exception(obj, *, reason='', message='', exc=None):
 
 
 async def poster(
-        event_queue: asyncio.Queue,
-):
+        event_queue: K8sEventQueue,
+) -> NoReturn:
     """
     Post events in the background as they are queued.
 

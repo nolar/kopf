@@ -3,11 +3,11 @@ Some basic dicts and field-in-a-dict manipulation helpers.
 """
 import collections.abc
 import enum
-from typing import (Any, Union, MutableMapping, Mapping, Tuple, List, Text,
-                    Iterable, Iterator, Optional, TypeVar)
+from typing import (TypeVar, Any, Union, MutableMapping, Mapping, Tuple, List,
+                    Iterable, Iterator, Optional)
 
 FieldPath = Tuple[str, ...]
-FieldSpec = Union[None, Text, FieldPath, List[str]]
+FieldSpec = Union[None, str, FieldPath, List[str]]
 
 _T = TypeVar('_T')
 
@@ -40,7 +40,7 @@ def parse_field(
 
 
 def resolve(
-        d: Mapping,
+        d: Optional[Mapping[Any, Any]],
         field: FieldSpec,
         default: Union[_T, _UNSET] = _UNSET.token,
         *,
@@ -73,10 +73,10 @@ def resolve(
 
 
 def ensure(
-        d: MutableMapping,
+        d: MutableMapping[Any, Any],
         field: FieldSpec,
         value: Any,
-):
+) -> None:
     """
     Force-set a nested sub-field in a dict.
     """
@@ -93,10 +93,10 @@ def ensure(
 
 
 def cherrypick(
-        src: Mapping,
-        dst: MutableMapping,
+        src: Mapping[Any, Any],
+        dst: MutableMapping[Any, Any],
         fields: Optional[Iterable[FieldSpec]],
-):
+) -> None:
     """
     Copy all specified fields between dicts (from src to dst).
     """
@@ -109,16 +109,33 @@ def cherrypick(
 
 
 def walk(
-        objs,
+        objs: Union[_T,
+                    Iterable[_T],
+                    Iterable[Union[_T,
+                                   Iterable[_T]]]],
+        *,
         nested: Optional[Iterable[FieldSpec]] = None,
-):
+) -> Iterator[_T]:
     """
-    Iterate over one or many dicts (and sub-dicts recursively).
+    Iterate over objects, flattening the lists/tuples/iterables recursively.
+
+    In plain English, the source is either an object, or a list/tuple/iterable
+    of objects with any level of nesting. The dicts/mappings are excluded,
+    despite they are iterables too, as they are treated as objects themselves.
+
+    For the output, it yields all the objects in a flat iterable suitable for::
+
+        for obj in walk(objs):
+            pass
+
+    The type declares only 2-level nesting, but this is done only
+    for type-checker's limitations. The actual nesting can be infinite.
+    It is highly unlikely that there will be anything deeper than one level.
     """
     if objs is None:
-        return
+        pass
     elif isinstance(objs, collections.abc.Mapping):
-        yield objs
+        yield objs  # type: ignore
         for subfield in (nested if nested is not None else []):
             try:
                 yield resolve(objs, parse_field(subfield))
@@ -158,7 +175,7 @@ class DictView(Mapping[Any, Any]):
         self._src = __src
         self._path = parse_field(__path)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(dict(self))
 
     def __len__(self) -> int:

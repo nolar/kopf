@@ -117,7 +117,7 @@ syncasyncparams = pytest.mark.parametrize(
 
 async def test_detection_for_none():
     is_async = is_async_fn(None)
-    assert is_async is None
+    assert not is_async
 
 
 @syncasyncparams

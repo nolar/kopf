@@ -3,9 +3,9 @@ import json
 import pytest
 
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
-from kopf.structs.lastseen import has_state, get_state
-from kopf.structs.lastseen import get_state_diffs
-from kopf.structs.lastseen import retreive_state, refresh_state
+from kopf.structs.lastseen import has_essence_stored, get_state
+from kopf.structs.lastseen import get_essential_diffs
+from kopf.structs.lastseen import retreive_essence, refresh_essence
 
 
 def test_annotation_is_fqdn():
@@ -19,7 +19,7 @@ def test_annotation_is_fqdn():
     pytest.param(True, {'metadata': {'annotations': {LAST_SEEN_ANNOTATION: ''}}}, id='present'),
 ])
 def test_has_state(expected, body):
-    result = has_state(body=body)
+    result = has_essence_stored(body=body)
     assert result == expected
 
 
@@ -111,7 +111,7 @@ def test_refresh_state():
     body = {'spec': {'depth': {'field': 'x'}}}
     patch = {}
     encoded = json.dumps(body)  # json formatting can vary across interpreters
-    refresh_state(body=body, patch=patch)
+    refresh_essence(body=body, patch=patch)
     assert patch['metadata']['annotations'][LAST_SEEN_ANNOTATION] == encoded
 
 
@@ -119,13 +119,13 @@ def test_retreive_state_when_present():
     data = {'spec': {'depth': {'field': 'x'}}}
     encoded = json.dumps(data)  # json formatting can vary across interpreters
     body = {'metadata': {'annotations': {LAST_SEEN_ANNOTATION: encoded}}}
-    state = retreive_state(body=body)
+    state = retreive_essence(body=body)
     assert state == data
 
 
 def test_retreive_state_when_absent():
     body = {}
-    state = retreive_state(body=body)
+    state = retreive_essence(body=body)
     assert state is None
 
 
@@ -133,7 +133,7 @@ def test_state_changed_detected():
     data = {'spec': {'depth': {'field': 'x'}}}
     encoded = json.dumps(data)  # json formatting can vary across interpreters
     body = {'metadata': {'annotations': {LAST_SEEN_ANNOTATION: encoded}}}
-    old, new, diff = get_state_diffs(body=body)
+    old, new, diff = get_essential_diffs(body=body)
     assert diff
 
 
@@ -142,7 +142,7 @@ def test_state_change_ignored_with_garbage_annotations():
     encoded = json.dumps(data)  # json formatting can vary across interpreters
     body = {'metadata': {'annotations': {LAST_SEEN_ANNOTATION: encoded}},
             'spec': {'depth': {'field': 'x'}}}
-    old, new, diff = get_state_diffs(body=body)
+    old, new, diff = get_essential_diffs(body=body)
     assert not diff
 
 
@@ -162,7 +162,7 @@ def test_state_changed_ignored_with_system_fields():
                        'other': 'x'
                        },
             'spec': {'depth': {'field': 'x'}}}
-    old, new, diff = get_state_diffs(body=body)
+    old, new, diff = get_essential_diffs(body=body)
     assert not diff
 
 
@@ -174,7 +174,7 @@ def test_state_diff():
     body = {'metadata': {'annotations': {LAST_SEEN_ANNOTATION: encoded}},
             'status': {'x': 'y'},
             'spec': {'depth': {'field': 'y'}}}
-    old, new, diff = get_state_diffs(body=body, extra_fields=['status.x'])
+    old, new, diff = get_essential_diffs(body=body, extra_fields=['status.x'])
     assert old == {'spec': {'depth': {'field': 'x'}}}
     assert new == {'spec': {'depth': {'field': 'y'}}, 'status': {'x': 'y'}}
     assert len(diff) == 2  # spec.depth.field & status.x, but the order is not known.

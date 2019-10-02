@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import datetime
 import logging
 
@@ -15,7 +16,13 @@ MAX_MESSAGE_LENGTH = 1024
 CUT_MESSAGE_INFIX = '...'
 
 
-async def post_event(*, ref, type, reason, message=''):
+async def post_event(
+        *,
+        ref: bodies.ObjectReference,
+        type: str,
+        reason: str,
+        message: str = '',
+) -> None:
     """
     Issue an event for the object.
 
@@ -27,9 +34,9 @@ async def post_event(*, ref, type, reason, message=''):
 
     # See #164. For cluster-scoped objects, use the current namespace from the current context.
     # It could be "default", but in some systems, we are limited to one specific namespace only.
-    namespace = ref.get('namespace') or auth.get_pykube_cfg().namespace
-    if not ref.get('namespace'):
-        ref = dict(ref, namespace=namespace)
+    namespace: str = ref.get('namespace') or auth.get_pykube_cfg().namespace
+    full_ref: bodies.ObjectReference = copy.copy(ref)
+    full_ref['namespace'] = namespace
 
     # Prevent a common case of event posting errors but shortening the message.
     if len(message) > MAX_MESSAGE_LENGTH:
@@ -53,7 +60,7 @@ async def post_event(*, ref, type, reason, message=''):
         'reportingInstance': 'dev',
         'source' : {'component': 'kopf'},  # used in the "From" column in `kubectl describe`.
 
-        'involvedObject': ref,
+        'involvedObject': full_ref,
 
         'firstTimestamp': now.isoformat() + 'Z',  # '2019-01-28T18:25:03.000000Z' -- seen in `kubectl describe ...`
         'lastTimestamp': now.isoformat() + 'Z',  # '2019-01-28T18:25:03.000000Z' - seen in `kubectl get events`

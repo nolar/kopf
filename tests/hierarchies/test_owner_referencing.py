@@ -3,23 +3,24 @@ import copy
 from unittest.mock import call, Mock
 
 import kopf
+from kopf.structs.bodies import Body, Meta, Labels
 
 OWNER_API_VERSION = 'owner-api-version'
 OWNER_NAMESPACE = 'owner-namespace'
 OWNER_KIND = 'OwnerKind'
 OWNER_NAME = 'owner-name'
 OWNER_UID = 'owner-uid'
-OWNER_LABELS = {'label-1': 'value-1', 'label-2': 'value-2'}
-OWNER = {
-    'apiVersion': OWNER_API_VERSION,
-    'kind': OWNER_KIND,
-    'metadata': {
-        'namespace': OWNER_NAMESPACE,
-        'name': OWNER_NAME,
-        'uid': OWNER_UID,
-        'labels': OWNER_LABELS,
-    },
-}
+OWNER_LABELS: Labels = {'label-1': 'value-1', 'label-2': 'value-2'}
+OWNER = Body(
+    apiVersion=OWNER_API_VERSION,
+    kind=OWNER_KIND,
+    metadata=Meta(
+        namespace=OWNER_NAMESPACE,
+        name=OWNER_NAME,
+        uid=OWNER_UID,
+        labels=OWNER_LABELS,
+    ),
+)
 
 
 def test_appending_to_dict():

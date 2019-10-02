@@ -18,9 +18,13 @@ import importlib
 import importlib.util
 import os.path
 import sys
+from typing import Iterable
 
 
-def preload(paths, modules):
+def preload(
+        paths: Iterable[str],
+        modules: Iterable[str],
+) -> None:
     """
     Ensure the handlers are registered by loading/importing the files/modules.
     """
@@ -30,7 +34,7 @@ def preload(paths, modules):
         name, _ = os.path.splitext(os.path.basename(path))
         spec = importlib.util.spec_from_file_location(name, path)
         module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        spec.loader.exec_module(module)  # type: ignore
 
     for name in modules:
         importlib.import_module(name)

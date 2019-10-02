@@ -27,15 +27,25 @@ import asyncio
 import enum
 import logging
 import time
-from typing import Callable, Tuple, Union, MutableMapping, NewType, NamedTuple
+from typing import Tuple, Union, MutableMapping, NewType, NamedTuple, TYPE_CHECKING, cast
 
 import aiojobs
+from typing_extensions import Protocol
 
 from kopf import config
 from kopf.clients import watching
+from kopf.structs import bodies
 from kopf.structs import resources
 
 logger = logging.getLogger(__name__)
+
+
+class WatcherCallback(Protocol):
+    async def __call__(self,
+                 *,
+                 event: bodies.Event,
+                 replenished: asyncio.Event,
+                 ) -> None: ...
 
 
 # An end-of-stream marker sent from the watcher to the workers.
@@ -44,9 +54,15 @@ class EOS(enum.Enum):
     token = enum.auto()
 
 
+if TYPE_CHECKING:
+    WatchEventQueue = asyncio.Queue[Union[bodies.Event, EOS]]
+else:
+    WatchEventQueue = asyncio.Queue
+
+
 class Stream(NamedTuple):
     """ A single object's stream of watch-events, with some extra helpers. """
-    watchevents: asyncio.Queue
+    watchevents: WatchEventQueue
     replenished: asyncio.Event  # means: "hurry up, there are new events queued again"
 
 
@@ -59,8 +75,8 @@ Streams = MutableMapping[ObjectRef, Stream]
 async def watcher(
         namespace: Union[None, str],
         resource: resources.Resource,
-        handler: Callable,
-):
+        handler: WatcherCallback,
+) -> None:
     """
     The watchers watches for the resource events via the API, and spawns the handlers for every object.
 
@@ -82,7 +98,7 @@ async def watcher(
         # Either use the existing object's queue, or create a new one together with the per-object job.
         # "Fire-and-forget": we do not wait for the result; the job destroys itself when it is fully done.
         async for event in watching.infinite_watch(resource=resource, namespace=namespace):
-            key = (resource, event['object']['metadata']['uid'])
+            key = cast(ObjectRef, (resource, event['object']['metadata']['uid']))
             try:
                 streams[key].replenished.set()  # interrupt current sleeps, if any.
                 await streams[key].watchevents.put(event)
@@ -100,10 +116,10 @@ async def watcher(
 
 
 async def worker(
-        handler: Callable,
+        handler: WatcherCallback,
         streams: Streams,
         key: ObjectRef,
-):
+) -> None:
     """
     The per-object workers consume the object's events and invoke the handler.
 
@@ -168,7 +184,11 @@ async def worker(
             pass
 
 
-async def _wait_for_depletion(*, scheduler: aiojobs.Scheduler, streams: Streams):
+async def _wait_for_depletion(
+        *,
+        scheduler: aiojobs.Scheduler,
+        streams: Streams,
+) -> None:
 
     # Notify all the workers to finish now. Wake them up if they are waiting in the queue-getting.
     for stream in streams.values():

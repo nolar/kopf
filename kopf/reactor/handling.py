@@ -18,7 +18,7 @@ import asyncio
 import collections.abc
 import datetime
 from contextvars import ContextVar
-from typing import Optional, Callable, Iterable, Collection
+from typing import Optional, Iterable, Collection, Any
 
 from kopf.clients import patching
 from kopf.engines import logging as logging_engine
@@ -26,12 +26,15 @@ from kopf.engines import posting
 from kopf.engines import sleeping
 from kopf.reactor import causation
 from kopf.reactor import invocation
+from kopf.reactor import lifecycles
 from kopf.reactor import registries
 from kopf.reactor import state
+from kopf.structs import bodies
 from kopf.structs import dicts
 from kopf.structs import diffs
 from kopf.structs import finalizers
 from kopf.structs import lastseen
+from kopf.structs import patches
 from kopf.structs import resources
 
 WAITING_KEEPALIVE_INTERVAL = 10 * 60
@@ -47,8 +50,11 @@ class PermanentError(Exception):
 
 class TemporaryError(Exception):
     """ A potentially recoverable error, should be retried. """
-    def __init__(self, *args, delay=DEFAULT_RETRY_DELAY, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self,
+                 __msg: Optional[str] = None,
+                 delay: Optional[float] = DEFAULT_RETRY_DELAY,
+                 ):
+        super().__init__(__msg)
         self.delay = delay
 
 
@@ -62,7 +68,7 @@ class HandlerChildrenRetry(TemporaryError):
 
 # The task-local context; propagated down the stack instead of multiple kwargs.
 # Used in `@kopf.on.this` and `kopf.execute()` to add/get the sub-handlers.
-sublifecycle_var: ContextVar[Callable] = ContextVar('sublifecycle_var')
+sublifecycle_var: ContextVar[lifecycles.LifeCycleFn] = ContextVar('sublifecycle_var')
 subregistry_var: ContextVar[registries.SimpleRegistry] = ContextVar('subregistry_var')
 subexecuted_var: ContextVar[bool] = ContextVar('subexecuted_var')
 handler_var: ContextVar[registries.Handler] = ContextVar('handler_var')
@@ -70,13 +76,13 @@ cause_var: ContextVar[causation.Cause] = ContextVar('cause_var')
 
 
 async def custom_object_handler(
-        lifecycle: Callable,
+        lifecycle: lifecycles.LifeCycleFn,
         registry: registries.GlobalRegistry,
         resource: resources.Resource,
-        event: dict,
+        event: bodies.Event,
         freeze: asyncio.Event,
         replenished: asyncio.Event,
-        event_queue: asyncio.Queue,
+        event_queue: posting.K8sEventQueue,
 ) -> None:
     """
     Handle a single custom object low-level watch-event.
@@ -87,9 +93,9 @@ async def custom_object_handler(
     All the internally provoked changes are intercepted, do not create causes,
     and therefore do not call the handling logic.
     """
-    body = event['object']
-    delay = None
-    patch = {}
+    body: bodies.Body = event['object']
+    patch: patches.Patch = patches.Patch()
+    delay: Optional[float] = None
 
     # Each object has its own prefixed logger, to distinguish parallel handling.
     logger = logging_engine.ObjectLogger(body=body)
@@ -109,7 +115,7 @@ async def custom_object_handler(
     # Detect the cause and handle it (or at least log this happened).
     if registry.has_cause_handlers(resource=resource):
         extra_fields = registry.get_extra_fields(resource=resource)
-        old, new, diff = lastseen.get_state_diffs(body=body, extra_fields=extra_fields)
+        old, new, diff = lastseen.get_essential_diffs(body=body, extra_fields=extra_fields)
         cause = causation.detect_cause(
             event=event,
             resource=resource,
@@ -136,7 +142,8 @@ async def custom_object_handler(
         if unslept is not None:
             logger.debug(f"Sleeping was interrupted by new changes, {unslept} seconds left.")
         else:
-            dummy = {'status': {'kopf': {'dummy': datetime.datetime.utcnow().isoformat()}}}
+            now = datetime.datetime.utcnow()
+            dummy = patches.Patch({'status': {'kopf': {'dummy': now.isoformat()}}})
             logger.debug("Provoking reaction with: %r", dummy)
             await patching.patch_obj(resource=resource, patch=dummy, body=body)
 
@@ -145,9 +152,9 @@ async def handle_event(
         registry: registries.BaseRegistry,
         resource: resources.Resource,
         logger: logging_engine.ObjectLogger,
-        patch: dict,
-        event: dict,
-):
+        patch: patches.Patch,
+        event: bodies.Event,
+) -> None:
     """
     Handle a received event, log but ignore all errors.
 
@@ -182,10 +189,10 @@ async def handle_event(
 
 
 async def handle_cause(
-        lifecycle: Callable,
+        lifecycle: lifecycles.LifeCycleFn,
         registry: registries.BaseRegistry,
         cause: causation.Cause,
-):
+) -> Optional[float]:
     """
     Handle a detected cause, as part of the bigger handler routine.
     """
@@ -224,7 +231,7 @@ async def handle_cause(
     # Regular causes also do some implicit post-handling when all handlers are done.
     if done or skip:
         extra_fields = registry.get_extra_fields(resource=cause.resource)
-        lastseen.refresh_state(body=body, patch=patch, extra_fields=extra_fields)
+        lastseen.refresh_essence(body=body, patch=patch, extra_fields=extra_fields)
         if done:
             state.purge_progress(body=body, patch=patch)
         if cause.event == causation.DELETE:
@@ -262,11 +269,11 @@ async def handle_cause(
 
 async def execute(
         *,
-        fns: Optional[Iterable[Callable]] = None,
+        fns: Optional[Iterable[invocation.Invokable]] = None,
         handlers: Optional[Iterable[registries.Handler]] = None,
         registry: Optional[registries.BaseRegistry] = None,
-        lifecycle: Callable = None,
-        cause: causation.Cause = None,
+        lifecycle: Optional[lifecycles.LifeCycleFn] = None,
+        cause: Optional[causation.Cause] = None,
 ) -> None:
     """
     Execute the handlers in an isolated lifecycle.
@@ -286,8 +293,12 @@ async def execute(
 
     # Restore the current context as set in the handler execution cycle.
     lifecycle = lifecycle if lifecycle is not None else sublifecycle_var.get()
-    handler = handler_var.get(None)
     cause = cause if cause is not None else cause_var.get()
+    handler: Optional[registries.Handler]
+    try:
+        handler = handler_var.get()
+    except LookupError:
+        handler = None
 
     # Validate the inputs; the function signatures cannot put these kind of restrictions, so we do.
     if len([v for v in [fns, handlers, registry] if v is not None]) > 1:
@@ -334,7 +345,7 @@ async def execute(
 
 
 async def _execute(
-        lifecycle: Callable,
+        lifecycle: lifecycles.LifeCycleFn,
         handlers: Collection[registries.Handler],
         cause: causation.Cause,
         retry_on_errors: bool = True,
@@ -374,7 +385,7 @@ async def _execute(
         # Restore the handler's progress status. It can be useful in the handlers.
         retry = state.get_retry_count(body=cause.body, handler=handler)
         started = state.get_start_time(body=cause.body, handler=handler, patch=cause.patch)
-        runtime = datetime.datetime.utcnow() - started
+        runtime = datetime.datetime.utcnow() - (started if started else datetime.datetime.utcnow())
 
         # The exceptions are handled locally and are not re-raised, to keep the operator running.
         try:
@@ -441,19 +452,21 @@ async def _execute(
     # Other (non-delayed) handlers will continue as normlally, due to raise few lines above.
     # Other objects will continue as normally in their own handling asyncio tasks.
     if handlers_wait:
-        times = [state.get_awake_time(body=cause.body, handler=handler) for handler in handlers_wait]
-        until = min(times)  # the soonest awake datetime.
-        delay = (until - datetime.datetime.utcnow()).total_seconds()
-        delay = max(0, min(WAITING_KEEPALIVE_INTERVAL, delay))
+        now = datetime.datetime.utcnow()
+        limit = now + datetime.timedelta(seconds=WAITING_KEEPALIVE_INTERVAL)
+        times = [state.get_awake_time(body=cause.body, handler=h) for h in handlers_wait]
+        until = min([t for t in times if t is not None] + [limit])  # the soonest awake datetime.
+        delay = max(0, (until - now).total_seconds())
         raise HandlerChildrenRetry(delay=delay)
 
 
 async def _call_handler(
         handler: registries.Handler,
-        *args,
+        *args: Any,
         cause: causation.Cause,
-        lifecycle: Callable,
-        **kwargs):
+        lifecycle: lifecycles.LifeCycleFn,
+        **kwargs: Any,
+) -> Any:
     """
     Invoke one handler only, according to the calling conventions.
 

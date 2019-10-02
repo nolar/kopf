@@ -1,5 +1,6 @@
 import asyncio
 import functools
+from typing import Any, Optional, Callable, List
 
 import click
 
@@ -10,7 +11,7 @@ from kopf.reactor import running
 from kopf.utilities import loaders
 
 
-def cli_login():
+def cli_login() -> None:
     try:
         auth.login(verify=True)
     except auth.LoginError as e:
@@ -19,13 +20,13 @@ def cli_login():
         raise click.ClickException(str(e))
 
 
-def logging_options(fn):
+def logging_options(fn: Callable[..., Any]) -> Callable[..., Any]:
     """ A decorator to configure logging in all command in the same way."""
     @click.option('-v', '--verbose', is_flag=True)
     @click.option('-d', '--debug', is_flag=True)
     @click.option('-q', '--quiet', is_flag=True)
     @functools.wraps(fn)  # to preserve other opts/args
-    def wrapper(verbose, quiet, debug, *args, **kwargs):
+    def wrapper(verbose: bool, quiet: bool, debug: bool, *args: Any, **kwargs: Any) -> Any:
         config.configure(debug=debug, verbose=verbose, quiet=quiet)
         return fn(*args, **kwargs)
 
@@ -36,7 +37,7 @@ def logging_options(fn):
 @click.group(name='kopf', context_settings=dict(
     auto_envvar_prefix='KOPF',
 ))
-def main():
+def main() -> None:
     pass
 
 
@@ -49,7 +50,14 @@ def main():
 @click.option('-p', '--priority', type=int, default=0)
 @click.option('-m', '--module', 'modules', multiple=True)
 @click.argument('paths', nargs=-1)
-def run(paths, modules, peering_name, priority, standalone, namespace):
+def run(
+        paths: List[str],
+        modules: List[str],
+        peering_name: Optional[str],
+        priority: int,
+        standalone: bool,
+        namespace: Optional[str],
+) -> None:
     """ Start an operator process and handle all the requests. """
     cli_login()
     loaders.preload(
@@ -69,11 +77,18 @@ def run(paths, modules, peering_name, priority, standalone, namespace):
 @click.option('-n', '--namespace', default=None)
 @click.option('-i', '--id', type=str, default=None)
 @click.option('--dev', 'priority', flag_value=666)
-@click.option('-P', '--peering', 'peering_name', type=str, default=None, envvar='KOPF_FREEZE_PEERING')
-@click.option('-p', '--priority', type=int, default=100)
+@click.option('-P', '--peering', 'peering_name', type=str, required=True, envvar='KOPF_FREEZE_PEERING')
+@click.option('-p', '--priority', type=int, default=100, required=True)
 @click.option('-t', '--lifetime', type=int, required=True)
 @click.option('-m', '--message', type=str)
-def freeze(id, message, lifetime, namespace, peering_name, priority):
+def freeze(
+        id: Optional[str],
+        message: Optional[str],
+        lifetime: int,
+        namespace: Optional[str],
+        peering_name: str,
+        priority: int,
+) -> None:
     """ Freeze the resource handling in the cluster. """
     cli_login()
     ourserlves = peering.Peer(
@@ -91,8 +106,12 @@ def freeze(id, message, lifetime, namespace, peering_name, priority):
 @logging_options
 @click.option('-n', '--namespace', default=None)
 @click.option('-i', '--id', type=str, default=None)
-@click.option('-P', '--peering', 'peering_name', type=str, default=None, envvar='KOPF_RESUME_PEERING')
-def resume(id, namespace, peering_name):
+@click.option('-P', '--peering', 'peering_name', type=str, required=True, envvar='KOPF_RESUME_PEERING')
+def resume(
+        id: Optional[str],
+        namespace: Optional[str],
+        peering_name: str,
+) -> None:
     """ Resume the resource handling in the cluster. """
     cli_login()
     ourselves = peering.Peer(

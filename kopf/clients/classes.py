@@ -3,9 +3,13 @@ from typing import Type
 import pykube
 
 from kopf.clients import auth
+from kopf.structs import resources
 
 
-def _make_cls(resource) -> Type[pykube.objects.APIObject]:
+def _make_cls(
+        resource: resources.Resource,
+) -> Type[pykube.objects.APIObject]:
+
     api = auth.get_pykube_api()
     api_resources = api.resource_list(resource.api_version)['resources']
     resource_kind = next((r['kind'] for r in api_resources if r['name'] == resource.plural), None)

@@ -40,6 +40,7 @@ setup(
         'setuptools_scm',
     ],
     install_requires=[
+        'typing_extensions',
         'click',
         'iso8601',
         'aiojobs',

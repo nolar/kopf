@@ -3,7 +3,7 @@ All the functions to calculate the diffs of the dicts.
 """
 import collections.abc
 import enum
-from typing import Any, Iterator, Sequence, NamedTuple, Iterable
+from typing import Any, Iterator, Sequence, NamedTuple, Iterable, Union, overload
 
 from kopf.structs import dicts
 
@@ -13,10 +13,10 @@ class DiffOperation(str, enum.Enum):
     CHANGE = 'change'
     REMOVE = 'remove'
 
-    def __str__(self):
-        return self.value
+    def __str__(self) -> str:
+        return str(self.value)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(self.value)
 
 
@@ -26,17 +26,23 @@ class DiffItem(NamedTuple):
     old: Any
     new: Any
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(tuple(self))
 
-    def __eq__(self, other):
-        return tuple(self) == tuple(other)
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, collections.abc.Sequence):
+            return tuple(self) == tuple(other)
+        else:
+            return NotImplemented
 
-    def __ne__(self, other):
-        return tuple(self) != tuple(other)
+    def __ne__(self, other: object) -> bool:
+        if isinstance(other, collections.abc.Sequence):
+            return tuple(self) != tuple(other)
+        else:
+            return NotImplemented
 
     @property
-    def op(self):
+    def op(self) -> DiffOperation:
         return self.operation
 
 
@@ -46,26 +52,41 @@ class Diff(Sequence[DiffItem]):
         super().__init__()
         self._items = tuple(DiffItem(*item) for item in __items)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(self._items)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._items)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[DiffItem]:
         return iter(self._items)
 
-    def __getitem__(self, item):
+    @overload
+    def __getitem__(self, i: int) -> DiffItem: ...
+
+    @overload
+    def __getitem__(self, s: slice) -> Sequence[DiffItem]: ...
+
+    def __getitem__(self, item: Union[int, slice]) -> Union[DiffItem, Sequence[DiffItem]]:
         return self._items[item]
 
-    def __eq__(self, other):
-        return tuple(self) == tuple(other)
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, collections.abc.Sequence):
+            return tuple(self) == tuple(other)
+        else:
+            return NotImplemented
 
-    def __ne__(self, other):
-        return tuple(self) != tuple(other)
+    def __ne__(self, other: object) -> bool:
+        if isinstance(other, collections.abc.Sequence):
+            return tuple(self) != tuple(other)
+        else:
+            return NotImplemented
 
 
-def reduce_iter(d: Diff, path: dicts.FieldPath) -> Iterator[DiffItem]:
+def reduce_iter(
+        d: Diff,
+        path: dicts.FieldPath,
+) -> Iterator[DiffItem]:
     for op, field, old, new in d:
 
         # As-is diff (i.e. a root field).
@@ -86,11 +107,18 @@ def reduce_iter(d: Diff, path: dicts.FieldPath) -> Iterator[DiffItem]:
             yield from diff_iter(old_tail, new_tail)
 
 
-def reduce(d: Diff, path: dicts.FieldPath) -> Diff:
+def reduce(
+        d: Diff,
+        path: dicts.FieldPath,
+) -> Diff:
     return Diff(reduce_iter(d, path))
 
 
-def diff_iter(a: Any, b: Any, path: dicts.FieldPath = ()) -> Iterator[DiffItem]:
+def diff_iter(
+        a: Any,
+        b: Any,
+        path: dicts.FieldPath = (),
+) -> Iterator[DiffItem]:
     """
     Calculate the diff between two dicts.
 
@@ -130,8 +158,15 @@ def diff_iter(a: Any, b: Any, path: dicts.FieldPath = ()) -> Iterator[DiffItem]:
         yield DiffItem(DiffOperation.CHANGE, path, a, b)
 
 
-def diff(a: Any, b: Any, path: dicts.FieldPath = ()) -> Diff:
+def diff(
+        a: Any,
+        b: Any,
+        path: dicts.FieldPath = (),
+) -> Diff:
     """
     Same as `diff`, but returns the whole tuple instead of iterator.
     """
     return Diff(diff_iter(a, b, path=path))
+
+
+EMPTY = diff(None, None)
