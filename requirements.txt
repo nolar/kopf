@@ -13,3 +13,4 @@ asynctest
 freezegun
 codecov
 coveralls
+mypy
