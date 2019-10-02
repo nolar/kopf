@@ -15,7 +15,7 @@ MAX_MESSAGE_LENGTH = 1024
 CUT_MESSAGE_INFIX = '...'
 
 
-async def post_event(*, obj=None, ref=None, type, reason, message=''):
+async def post_event(*, ref, type, reason, message=''):
     """
     Issue an event for the object.
 
@@ -23,15 +23,6 @@ async def post_event(*, obj=None, ref=None, type, reason, message=''):
     and where the rate-limits should be maintained. It can (and should)
     be done by the client library, as it is done in the Go client.
     """
-
-    # Object reference - similar to the owner reference, but different.
-    if obj is not None and ref is not None:
-        raise TypeError("Only one of obj= and ref= is allowed for a posted event. Got both.")
-    if obj is None and ref is None:
-        raise TypeError("One of obj= and ref= is required for a posted event. Got none.")
-    if ref is None:
-        ref = bodies.build_object_reference(obj)
-
     now = datetime.datetime.utcnow()
 
     # See #164. For cluster-scoped objects, use the current namespace from the current context.
