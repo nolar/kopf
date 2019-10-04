@@ -3,11 +3,18 @@
 set -eu
 set -x
 
-curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v${KUBERNETES_VERSION}/bin/linux/amd64/kubectl
+: ${KUBERNETES_VERSION:=latest}
+: ${MINIKUBE_VERSION:=latest}
+
+if [[ "${KUBERNETES_VERSION}" == latest ]] ; then
+    KUBERNETES_VERSION=$( curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt )
+fi
+
+curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/"${KUBERNETES_VERSION}"/bin/linux/amd64/kubectl
 chmod +x kubectl
 sudo mv kubectl /usr/local/bin/
 
-curl -Lo minikube https://storage.googleapis.com/minikube/releases/v${MINIKUBE_VERSION}/minikube-linux-amd64
+curl -Lo minikube https://storage.googleapis.com/minikube/releases/"${MINIKUBE_VERSION}"/minikube-linux-amd64
 chmod +x minikube
 sudo mv minikube /usr/local/bin/
 
@@ -18,6 +25,6 @@ sudo minikube start \
     --vm-driver=none \
     --extra-config=apiserver.authorization-mode=RBAC \
     --extra-config=apiserver.runtime-config=events.k8s.io/v1beta1=false \
-    --kubernetes-version=v${KUBERNETES_VERSION}
+    --kubernetes-version="${KUBERNETES_VERSION}"
 
 sudo chown -R travis: /home/travis/.minikube/
