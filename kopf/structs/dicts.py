@@ -154,6 +154,9 @@ class DictView(Mapping[Any, Any]):
         self._src = __src
         self._path = parse_field(__path)
 
+    def __repr__(self):
+        return repr(dict(self))
+
     def __len__(self) -> int:
         return len(resolve(self._src, self._path, {}, assume_empty=True))
 
