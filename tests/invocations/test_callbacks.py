@@ -2,7 +2,7 @@ import functools
 import traceback
 
 import pytest
-from asynctest import Mock, MagicMock
+from asynctest import MagicMock
 
 from kopf.reactor.invocation import invoke, is_async_fn
 
@@ -129,24 +129,21 @@ async def test_async_detection(fn, expected):
 @syncasyncparams
 async def test_stacktrace_visibility(fn, expected):
     stack_trace_marker = STACK_TRACE_MARKER  # searched by fn
-    cause = Mock()
-    found = await invoke(fn, cause=cause)
+    found = await invoke(fn)
     assert found is expected
 
 
 @fns
 async def test_result_returned(fn):
     fn = MagicMock(fn, return_value=999)
-    cause = Mock()
-    result = await invoke(fn, cause=cause)
+    result = await invoke(fn)
     assert result == 999
 
 
 @fns
 async def test_explicit_args_passed_properly(fn):
     fn = MagicMock(fn)
-    cause = Mock()
-    await invoke(fn, 100, 200, cause=cause, kw1=300, kw2=400)
+    await invoke(fn, 100, 200, kw1=300, kw2=400)
 
     assert fn.called
     assert fn.call_count == 1
