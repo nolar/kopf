@@ -21,8 +21,8 @@ from typing import Mapping, Text, NamedTuple
 
 from kopf import config
 from kopf.clients import events
+from kopf.structs import bodies
 from kopf.structs import dicts
-from kopf.structs import hierarchies
 
 # Logging and event-posting can happen cross-thread: e.g. in sync-executors.
 # We have to remember our main event-loop with the queue consumer, to make
@@ -69,7 +69,7 @@ def enqueue(ref, type, reason, message):
 
 def event(objs, *, type, reason, message=''):
     for obj in dicts.walk(objs):
-        ref = hierarchies.build_object_reference(obj)
+        ref = bodies.build_object_reference(obj)
         enqueue(ref=ref, type=type, reason=reason, message=message)
 
 
