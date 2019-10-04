@@ -7,6 +7,7 @@ The decorators for the event handlers. Usually used as::
     def creation_handler(**kwargs):
         pass
 
+This module is a part of the framework's public interface.
 """
 
 # TODO: add cluster=True support (different API methods)

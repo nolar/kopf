@@ -58,13 +58,15 @@ from kopf.reactor.running import (
     run,
     create_tasks,  # deprecated
 )
-from kopf.structs.hierarchies import (
+from kopf.structs.bodies import (
+    build_object_reference,
+    build_owner_reference,
+)
+from kopf.toolkits.hierarchies import (
     adopt,
     label,
     harmonize_naming,
     adjust_namespace,
-    build_object_reference,
-    build_owner_reference,
     append_owner_reference,
     remove_owner_reference,
 )
