@@ -4,24 +4,24 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.causation import HANDLER_CAUSES
+from kopf.reactor.causation import HANDLER_REASONS
 from kopf.reactor.handling import custom_object_handler
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
 
 
-@pytest.mark.parametrize('cause_type', HANDLER_CAUSES)
+@pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_skipped_with_no_handlers(
         registry, resource, cause_mock, cause_type,
         caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
-    cause_mock.event = cause_type
+    cause_mock.reason = cause_type
 
     assert not registry.has_cause_handlers(resource=resource)  # prerequisite
     registry.register_cause_handler(
         group=resource.group,
         version=resource.version,
         plural=resource.plural,
-        event='a-non-existent-cause-type',
+        reason='a-non-existent-cause-type',
         fn=lambda **_: None,
     )
     assert registry.has_cause_handlers(resource=resource)  # prerequisite

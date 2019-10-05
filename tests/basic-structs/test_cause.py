@@ -11,7 +11,7 @@ def test_no_args():
 def test_all_args(mocker):
     logger = mocker.Mock()
     resource = mocker.Mock()
-    event = mocker.Mock()
+    reason = mocker.Mock()
     initial = mocker.Mock()
     body = mocker.Mock()
     patch = mocker.Mock()
@@ -21,7 +21,7 @@ def test_all_args(mocker):
     cause = Cause(
         resource=resource,
         logger=logger,
-        event=event,
+        reason=reason,
         initial=initial,
         body=body,
         patch=patch,
@@ -31,7 +31,7 @@ def test_all_args(mocker):
     )
     assert cause.resource is resource
     assert cause.logger is logger
-    assert cause.event is event
+    assert cause.reason is reason
     assert cause.initial is initial
     assert cause.body is body
     assert cause.patch is patch
@@ -43,21 +43,21 @@ def test_all_args(mocker):
 def test_required_args(mocker):
     logger = mocker.Mock()
     resource = mocker.Mock()
-    event = mocker.Mock()
+    reason = mocker.Mock()
     initial = mocker.Mock()
     body = mocker.Mock()
     patch = mocker.Mock()
     cause = Cause(
         resource=resource,
         logger=logger,
-        event=event,
+        reason=reason,
         initial=initial,
         body=body,
         patch=patch,
     )
     assert cause.resource is resource
     assert cause.logger is logger
-    assert cause.event is event
+    assert cause.reason is reason
     assert cause.initial is initial
     assert cause.body is body
     assert cause.patch is patch

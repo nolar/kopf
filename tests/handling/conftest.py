@@ -41,7 +41,7 @@ from unittest.mock import Mock
 import pytest
 
 import kopf
-from kopf.reactor.causation import Cause, RESUME
+from kopf.reactor.causation import Cause, Reason
 
 
 @dataclasses.dataclass(frozen=True, eq=False)
@@ -186,12 +186,13 @@ def cause_mock(mocker, resource):
 
         # Avoid collision of our mocked values with the passed kwargs.
         original_event = kwargs.pop('event', None)
+        original_reason = kwargs.pop('reason', None)
         original_body = kwargs.pop('body', None)
         original_diff = kwargs.pop('diff', None)
         original_new = kwargs.pop('new', None)
         original_old = kwargs.pop('old', None)
-        event = mock.event if mock.event is not None else original_event
-        initial = bool(event == RESUME)
+        reason = mock.reason if mock.reason is not None else original_reason
+        initial = bool(reason == Reason.RESUME)
         body = copy.deepcopy(mock.body) if mock.body is not None else original_body
         diff = copy.deepcopy(mock.diff) if mock.diff is not None else original_diff
         new = copy.deepcopy(mock.new) if mock.new is not None else original_new
@@ -201,9 +202,9 @@ def cause_mock(mocker, resource):
         kwargs.pop('requires_finalizer', None)
 
         # Pass through kwargs: resource, logger, patch, diff, old, new.
-        # I.e. everything except what we mock: event & body.
+        # I.e. everything except what we mock: reason & body.
         cause = Cause(
-            event=event,
+            reason=reason,
             initial=initial,
             body=body,
             diff=diff,
@@ -224,8 +225,8 @@ def cause_mock(mocker, resource):
     mocker.patch('kopf.reactor.causation.detect_cause', new=new_detect_fn)
 
     # The mock object stores some values later used by the factory substitute.
-    mock = mocker.Mock(spec_set=['event', 'body', 'diff', 'new', 'old'])
-    mock.event = None
+    mock = mocker.Mock(spec_set=['reason', 'body', 'diff', 'new', 'old'])
+    mock.reason = None
     mock.body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
     mock.diff = None
     mock.new = None

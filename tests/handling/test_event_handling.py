@@ -4,16 +4,16 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.causation import ALL_CAUSES
+from kopf.reactor.causation import ALL_REASONS
 from kopf.reactor.handling import custom_object_handler
 
 
-@pytest.mark.parametrize('cause_type', ALL_CAUSES)
+@pytest.mark.parametrize('cause_type', ALL_REASONS)
 async def test_handlers_called_always(
         registry, handlers, extrahandlers, resource, cause_mock, cause_type,
         caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
-    cause_mock.event = cause_type
+    cause_mock.reason = cause_type
 
     await custom_object_handler(
         lifecycle=kopf.lifecycles.all_at_once,
@@ -42,12 +42,12 @@ async def test_handlers_called_always(
     ])
 
 
-@pytest.mark.parametrize('cause_type', ALL_CAUSES)
+@pytest.mark.parametrize('cause_type', ALL_REASONS)
 async def test_errors_are_ignored(
         registry, handlers, extrahandlers, resource, cause_mock, cause_type,
         caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
-    cause_mock.event = cause_type
+    cause_mock.reason = cause_type
     handlers.event_mock.side_effect = Exception("oops")
 
     await custom_object_handler(

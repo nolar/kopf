@@ -57,7 +57,8 @@ async def invoke(
     if cause is not None:
         kwargs.update(
             cause=cause,
-            event=cause.event,
+            event=cause.reason,  # deprecated; kept for backward-compatibility
+            reason=cause.reason,
             body=cause.body,
             diff=cause.diff,
             old=cause.old,

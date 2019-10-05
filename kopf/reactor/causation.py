@@ -19,8 +19,10 @@ For deletion, the cause is detected when the object is just marked for deletion,
 not when it is actually deleted (as the events notify): so that the handlers
 could execute on the yet-existing object (and its children, if created).
 """
+import enum
 import logging
-from typing import Any, NamedTuple, Text, Optional, Union
+import warnings
+from typing import Any, NamedTuple, Optional, Union
 
 from kopf.structs import bodies
 from kopf.structs import diffs
@@ -29,30 +31,47 @@ from kopf.structs import lastseen
 from kopf.structs import patches
 from kopf.structs import resources
 
-# Constants for event types, to prevent a direct usage of strings, and typos.
+
+# Constants for cause types, to prevent a direct usage of strings, and typos.
 # They are not exposed by the framework, but are used internally. See also: `kopf.on`.
-CREATE = 'create'
-UPDATE = 'update'
-DELETE = 'delete'
-RESUME = 'resume'
-NOOP = 'noop'
-FREE = 'free'
-GONE = 'gone'
-ACQUIRE = 'acquire'
-RELEASE = 'release'
+class Reason(str, enum.Enum):
+    CREATE = 'create'
+    UPDATE = 'update'
+    DELETE = 'delete'
+    RESUME = 'resume'
+    NOOP = 'noop'
+    FREE = 'free'
+    GONE = 'gone'
+    ACQUIRE = 'acquire'
+    RELEASE = 'release'
+
+    def __str__(self) -> str:
+        return str(self.value)
+
 
 # These sets are checked in few places, so we keep them centralised:
-# the user-facing causes (for handlers), and internally facing (so as handled).
-HANDLER_CAUSES = (CREATE, UPDATE, DELETE, RESUME)
-REACTOR_CAUSES = (NOOP, FREE, GONE, ACQUIRE, RELEASE)
-ALL_CAUSES = HANDLER_CAUSES + REACTOR_CAUSES
+# the user-facing causes (for handlers) and internally facing (for the reactor).
+HANDLER_REASONS = (
+    Reason.CREATE,
+    Reason.UPDATE,
+    Reason.DELETE,
+    Reason.RESUME,
+)
+REACTOR_REASONS = (
+    Reason.NOOP,
+    Reason.FREE,
+    Reason.GONE,
+    Reason.ACQUIRE,
+    Reason.RELEASE,
+)
+ALL_REASONS = HANDLER_REASONS + REACTOR_REASONS
 
 # The human-readable names of these causes. Will be capitalised when needed.
 TITLES = {
-    CREATE: 'creation',
-    UPDATE: 'update',
-    DELETE: 'deletion',
-    RESUME: 'resuming',
+    Reason.CREATE: 'creation',
+    Reason.UPDATE: 'update',
+    Reason.DELETE: 'deletion',
+    Reason.RESUME: 'resuming',
 }
 
 
@@ -65,7 +84,7 @@ class Cause(NamedTuple):
     """
     logger: Union[logging.Logger, logging.LoggerAdapter]
     resource: resources.Resource
-    event: Text
+    reason: Reason
     initial: bool
     body: bodies.Body
     patch: patches.Patch
@@ -99,45 +118,45 @@ def detect_cause(
 
     # The object was really deleted from the cluster. But we do not care anymore.
     if event['type'] == 'DELETED':
-        return Cause(event=GONE, **kwargs)
+        return Cause(reason=Reason.GONE, **kwargs)
 
     # The finalizer has been just removed. We are fully done.
     if finalizers.is_deleted(body) and not finalizers.has_finalizers(body):
-        return Cause(event=FREE, **kwargs)
+        return Cause(reason=Reason.FREE, **kwargs)
 
     if finalizers.is_deleted(body):
-        return Cause(event=DELETE, **kwargs)
+        return Cause(reason=Reason.DELETE, **kwargs)
 
     # For a fresh new object, first block it from accidental deletions without our permission.
     # The actual handler will be called on the next call.
     # Only return this cause if the resource requires finalizers to be added.
     if requires_finalizer and not finalizers.has_finalizers(body):
-        return Cause(event=ACQUIRE, **kwargs)
+        return Cause(reason=Reason.ACQUIRE, **kwargs)
 
     # Check whether or not the resource has finalizers, but doesn't require them. If this is
     # the case, then a resource may not be able to be deleted completely as finalizers may
     # not be removed by the operator under normal operation. We remove the finalizers first,
     # and any handler that should be called will be done on the next call.
     if not requires_finalizer and finalizers.has_finalizers(body):
-        return Cause(event=RELEASE, **kwargs)
+        return Cause(reason=Reason.RELEASE, **kwargs)
 
     # For an object seen for the first time (i.e. just-created), call the creation handlers,
     # then mark the state as if it was seen when the creation has finished.
     if not lastseen.has_essence_stored(body):
-        return Cause(event=CREATE, **kwargs)
+        return Cause(reason=Reason.CREATE, **kwargs)
 
     # Cases with no state changes are usually ignored (NOOP). But for the "None" events,
     # as simulated for the initial listing, we call the resuming handlers (e.g. threads/tasks).
     if not diff and initial:
-        return Cause(event=RESUME, **kwargs)
+        return Cause(reason=Reason.RESUME, **kwargs)
 
     # The previous step triggers one more patch operation without actual changes. Ignore it.
     # Either the last-seen state or the status field has changed.
     if not diff:
-        return Cause(event=NOOP, **kwargs)
+        return Cause(reason=Reason.NOOP, **kwargs)
 
     # And what is left, is the update operation on one of the useful fields of the existing object.
-    return Cause(event=UPDATE, **kwargs)
+    return Cause(reason=Reason.UPDATE, **kwargs)
 
 
 def enrich_cause(

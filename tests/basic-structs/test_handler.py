@@ -11,7 +11,7 @@ def test_no_args():
 def test_all_args(mocker):
     fn = mocker.Mock()
     id = mocker.Mock()
-    event = mocker.Mock()
+    reason = mocker.Mock()
     field = mocker.Mock()
     timeout = mocker.Mock()
     initial = mocker.Mock()
@@ -20,7 +20,7 @@ def test_all_args(mocker):
     handler = Handler(
         fn=fn,
         id=id,
-        event=event,
+        reason=reason,
         field=field,
         timeout=timeout,
         initial=initial,
@@ -29,7 +29,7 @@ def test_all_args(mocker):
     )
     assert handler.fn is fn
     assert handler.id is id
-    assert handler.event is event
+    assert handler.reason is reason
     assert handler.field is field
     assert handler.timeout is timeout
     assert handler.initial is initial
