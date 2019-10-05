@@ -5,7 +5,7 @@ from unittest.mock import Mock
 import freezegun
 import pytest
 
-from kopf.structs.status import (
+from kopf.reactor.state import (
     is_started,
     is_sleeping,
     is_awakened,

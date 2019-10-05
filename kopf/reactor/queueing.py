@@ -32,7 +32,7 @@ import aiojobs
 
 from kopf import config
 from kopf.clients import watching
-from kopf.reactor import registries
+from kopf.structs import resources
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ class Stream(NamedTuple):
 
 
 ObjectUid = NewType('ObjectUid', str)
-ObjectRef = Tuple[registries.Resource, ObjectUid]
+ObjectRef = Tuple[resources.Resource, ObjectUid]
 Streams = MutableMapping[ObjectRef, Stream]
 
 EOS = object()
@@ -54,7 +54,7 @@ EOS = object()
 # TODO: add the label_selector support for the dev-mode?
 async def watcher(
         namespace: Union[None, str],
-        resource: registries.Resource,
+        resource: resources.Resource,
         handler: Callable,
 ):
     """

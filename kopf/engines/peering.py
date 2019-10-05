@@ -42,13 +42,14 @@ import iso8601
 
 from kopf.clients import fetching
 from kopf.clients import patching
-from kopf.reactor import registries
+from kopf.structs import resources
+
 logger = logging.getLogger(__name__)
 
 # The CRD info on the special sync-object.
-CLUSTER_PEERING_RESOURCE = registries.Resource('zalando.org', 'v1', 'clusterkopfpeerings')
-NAMESPACED_PEERING_RESOURCE = registries.Resource('zalando.org', 'v1', 'kopfpeerings')
-LEGACY_PEERING_RESOURCE = registries.Resource('zalando.org', 'v1', 'kopfpeerings')
+CLUSTER_PEERING_RESOURCE = resources.Resource('zalando.org', 'v1', 'clusterkopfpeerings')
+NAMESPACED_PEERING_RESOURCE = resources.Resource('zalando.org', 'v1', 'kopfpeerings')
+LEGACY_PEERING_RESOURCE = resources.Resource('zalando.org', 'v1', 'kopfpeerings')
 PEERING_DEFAULT_NAME = 'default'
 
 

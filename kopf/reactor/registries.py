@@ -16,23 +16,7 @@ import functools
 from types import FunctionType, MethodType
 from typing import MutableMapping, NamedTuple, Text, Optional, Tuple, Callable, Mapping
 
-from kopf.structs import filters
-
-
-# An immutable reference to a custom resource definition.
-class Resource(NamedTuple):
-    group: Text
-    version: Text
-    plural: Text
-
-    @property
-    def name(self):
-        return f'{self.plural}.{self.group}'
-
-    @property
-    def api_version(self):
-        # Strip heading/trailing slashes if group is absent (e.g. for pods).
-        return f'{self.group}/{self.version}'.strip('/')
+from kopf.structs import resources as resources_
 
 
 # A registered handler (function + event meta info).
@@ -151,12 +135,12 @@ class SimpleRegistry(BaseRegistry):
             if handler.event is None or handler.event == cause.event:
                 if handler.initial and not cause.initial:
                     pass  # ignore initial handlers in non-initial causes.
-                elif filters.match(handler=handler, body=cause.body, changed_fields=changed_fields):
+                elif match(handler=handler, body=cause.body, changed_fields=changed_fields):
                     yield handler
 
     def iter_event_handlers(self, resource, event):
         for handler in self._handlers:
-            if filters.match(handler=handler, body=event['object']):
+            if match(handler=handler, body=event['object']):
                 yield handler
 
     def iter_extra_fields(self, resource):
@@ -167,7 +151,7 @@ class SimpleRegistry(BaseRegistry):
     def requires_finalizer(self, resource, body):
         # check whether the body matches a deletion handler
         for handler in self._handlers_requiring_finalizer:
-            if filters.match(handler=handler, body=body):
+            if match(handler=handler, body=body):
                 return True
 
         return False
@@ -201,8 +185,8 @@ class GlobalRegistry(BaseRegistry):
 
     def __init__(self):
         super().__init__()
-        self._cause_handlers: MutableMapping[Resource, SimpleRegistry] = {}
-        self._event_handlers: MutableMapping[Resource, SimpleRegistry] = {}
+        self._cause_handlers: MutableMapping[resources_.Resource, SimpleRegistry] = {}
+        self._event_handlers: MutableMapping[resources_.Resource, SimpleRegistry] = {}
 
     def register_cause_handler(self, group, version, plural, fn,
                                id=None, event=None, field=None, timeout=None, initial=None, requires_finalizer=False,
@@ -210,7 +194,7 @@ class GlobalRegistry(BaseRegistry):
         """
         Register an additional handler function for the specific resource and specific event.
         """
-        resource = Resource(group, version, plural)
+        resource = resources_.Resource(group, version, plural)
         registry = self._cause_handlers.setdefault(resource, SimpleRegistry())
         registry.register(event=event, field=field, fn=fn, id=id, timeout=timeout, initial=initial, requires_finalizer=requires_finalizer,
                           labels=labels, annotations=annotations)
@@ -221,7 +205,7 @@ class GlobalRegistry(BaseRegistry):
         """
         Register an additional handler function for low-level events.
         """
-        resource = Resource(group, version, plural)
+        resource = resources_.Resource(group, version, plural)
         registry = self._event_handlers.setdefault(resource, SimpleRegistry())
         registry.register(fn=fn, id=id, labels=labels, annotations=annotations)
         return fn  # to be usable as a decorator too.
@@ -289,3 +273,38 @@ def set_default_registry(registry: GlobalRegistry):
     """
     global _default_registry
     _default_registry = registry
+
+
+def match(handler, body, changed_fields=None):
+    return (
+        (not handler.field or _matches_field(handler, changed_fields or [])) and
+        (not handler.labels or _matches_labels(handler, body)) and
+        (not handler.annotations or _matches_annotations(handler, body))
+    )
+
+
+def _matches_field(handler, changed_fields):
+    return any(field[:len(handler.field)] == handler.field for field in changed_fields)
+
+
+def _matches_labels(handler, body):
+    return _matches_metadata(handler=handler, body=body, metadata_type='labels')
+
+
+def _matches_annotations(handler, body):
+    return _matches_metadata(handler=handler, body=body, metadata_type='annotations')
+
+
+def _matches_metadata(handler, body, metadata_type):
+    metadata = getattr(handler, metadata_type)
+    object_metadata = body.get('metadata', {}).get(metadata_type, {})
+
+    for key, value in metadata.items():
+        if key not in object_metadata:
+            return False
+        elif value is not None and value != object_metadata[key]:
+            return False
+        else:
+            continue
+
+    return True

@@ -12,7 +12,7 @@ execute in the order they are registered, one by one.
 import logging
 import random
 
-from kopf.structs import status
+from kopf.reactor import state
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ def shuffled(handlers, **kwargs):
 
 def asap(handlers, *, body, **kwargs):
     """ Execute one handler at a time, skip on failure, try the next one, retry after the full cycle. """
-    retryfn = lambda handler: status.get_retry_count(body=body, handler=handler)
+    retryfn = lambda handler: state.get_retry_count(body=body, handler=handler)
     return sorted(handlers, key=retryfn)[:1]
 
 
