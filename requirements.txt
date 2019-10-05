@@ -6,7 +6,7 @@ urllib3<1.25
 
 # Everything needed to develop (test, debug) the framework.
 pytest-asyncio
-pytest-mock
+pytest-mock>=1.11.1
 pytest-cov
 pytest
 asynctest
