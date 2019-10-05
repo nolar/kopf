@@ -11,6 +11,7 @@ import functools
 from typing import Callable
 
 from kopf import config
+from kopf.structs import dicts
 
 
 async def invoke(
@@ -37,9 +38,9 @@ async def invoke(
         kwargs.update(
             type=event['type'],
             body=event['object'],
-            spec=event['object'].setdefault('spec', {}),
-            meta=event['object'].setdefault('metadata', {}),
-            status=event['object'].setdefault('status', {}),
+            spec=dicts.DictView(event['object'], 'spec'),
+            meta=dicts.DictView(event['object'], 'metadata'),
+            status=dicts.DictView(event['object'], 'status'),
             uid=event['object'].get('metadata', {}).get('uid'),
             name=event['object'].get('metadata', {}).get('name'),
             namespace=event['object'].get('metadata', {}).get('namespace'),
@@ -54,9 +55,9 @@ async def invoke(
             new=cause.new,
             patch=cause.patch,
             logger=cause.logger,
-            spec=cause.body.setdefault('spec', {}),
-            meta=cause.body.setdefault('metadata', {}),
-            status=cause.body.setdefault('status', {}),
+            spec=dicts.DictView(cause.body, 'spec'),
+            meta=dicts.DictView(cause.body, 'metadata'),
+            status=dicts.DictView(cause.body, 'status'),
             uid=cause.body.get('metadata', {}).get('uid'),
             name=cause.body.get('metadata', {}).get('name'),
             namespace=cause.body.get('metadata', {}).get('namespace'),
