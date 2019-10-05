@@ -41,7 +41,7 @@ def read_obj(*, resource, namespace=None, name=None, default=_UNSET_):
         raise
 
 
-def list_objs(*, resource, namespace=None):
+def list_objs_rv(*, resource, namespace=None):
     """
     List the objects of specific resource type.
 
@@ -58,4 +58,16 @@ def list_objs(*, resource, namespace=None):
     cls = classes._make_cls(resource=resource)
     namespace = namespace if issubclass(cls, pykube.objects.NamespacedAPIObject) else None
     lst = cls.objects(api, namespace=pykube.all if namespace is None else namespace)
-    return lst.response
+    rsp = lst.response
+
+    items = []
+    resource_version = rsp.get('metadata', {}).get('resourceVersion', None)
+    for item in rsp['items']:
+        # FIXME: fix in pykube to inject the missing item's fields from the list's metainfo.
+        if 'kind' in rsp:
+            item.setdefault('kind', rsp['kind'][:-4] if rsp['kind'][-4:] == 'List' else rsp['kind'])
+        if 'apiVersion' in rsp:
+            item.setdefault('apiVersion', rsp['apiVersion'])
+        items.append(item)
+
+    return items, resource_version
