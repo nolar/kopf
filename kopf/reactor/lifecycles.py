@@ -32,12 +32,13 @@ class LifeCycleFn(Protocol):
     and specific return type. But we cannot express it with `typing`.
     For the names and types of kwargs, see `Invokable`.
     """
-    def __call__(self,
-                 handlers: Handlers,
-                 *,
-                 body: bodies.Body,
-                 **kwargs: Any,
-                 ) -> Handlers: ...
+    def __call__(
+            self,
+            handlers: Handlers,
+            *,
+            body: bodies.Body,
+            **kwargs: Any,
+    ) -> Handlers: ...
 
 
 def all_at_once(handlers: Handlers, **kwargs: Any) -> Handlers:

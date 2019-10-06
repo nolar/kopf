@@ -33,24 +33,25 @@ HandlerId = NewType('HandlerId', str)
 
 
 class HandlerFn(Protocol):
-    def __call__(self,
-                 *args: Any,
-                 type: str,
-                 event: Union[str, bodies.Event],  # FIXME: or str for cause-handlers.
-                 body: bodies.Body,
-                 meta: bodies.Meta,
-                 spec: bodies.Spec,
-                 status: bodies.Status,
-                 uid: str,
-                 name: str,
-                 namespace: Optional[str],
-                 patch: patches.Patch,
-                 logger: Union[logging.Logger, logging.LoggerAdapter],
-                 diff: diffs.Diff,  # TODO:? Optional[diffs.Diff]?
-                 old: bodies.Body,  # TODO: or Any for field-handlers.
-                 new: bodies.Body,  # TODO: or Any for field-handlers.
-                 **kwargs: Any,
-                 ) -> Any: ...
+    def __call__(
+            self,
+            *args: Any,
+            type: str,
+            event: Union[str, bodies.Event],  # FIXME: or str for cause-handlers.
+            body: bodies.Body,
+            meta: bodies.Meta,
+            spec: bodies.Spec,
+            status: bodies.Status,
+            uid: str,
+            name: str,
+            namespace: Optional[str],
+            patch: patches.Patch,
+            logger: Union[logging.Logger, logging.LoggerAdapter],
+            diff: diffs.Diff,  # TODO:? Optional[diffs.Diff]?
+            old: bodies.Body,  # TODO: or Any for field-handlers.
+            new: bodies.Body,  # TODO: or Any for field-handlers.
+            **kwargs: Any,
+    ) -> Any: ...
 
 
 # A registered handler (function + event meta info).
@@ -70,28 +71,32 @@ class BaseRegistry(metaclass=abc.ABCMeta):
     A registry stores the handlers and provides them to the reactor.
     """
 
-    def get_cause_handlers(self,
-                           cause: causation.Cause,
-                           ) -> Sequence[Handler]:
+    def get_cause_handlers(
+            self,
+            cause: causation.Cause,
+    ) -> Sequence[Handler]:
         return list(self._deduplicated(self.iter_cause_handlers(cause=cause)))
 
     @abc.abstractmethod
-    def iter_cause_handlers(self,
-                            cause: causation.Cause,
-                            ) -> Iterator[Handler]:
+    def iter_cause_handlers(
+            self,
+            cause: causation.Cause,
+    ) -> Iterator[Handler]:
         pass
 
-    def get_event_handlers(self,
-                           resource: resources_.Resource,
-                           event: bodies.Event,
-                           ) -> Sequence[Handler]:
+    def get_event_handlers(
+            self,
+            resource: resources_.Resource,
+            event: bodies.Event,
+    ) -> Sequence[Handler]:
         return list(self._deduplicated(self.iter_event_handlers(resource=resource, event=event)))
 
     @abc.abstractmethod
-    def iter_event_handlers(self,
-                            resource: resources_.Resource,
-                            event: bodies.Event,
-                            ) -> Iterator[Handler]:
+    def iter_event_handlers(
+            self,
+            resource: resources_.Resource,
+            event: bodies.Event,
+    ) -> Iterator[Handler]:
         pass
 
     def get_extra_fields(self, resource: resources_.Resource) -> Set[dicts.FieldPath]:
@@ -149,17 +154,18 @@ class SimpleRegistry(BaseRegistry):
     def append(self, handler: Handler) -> None:
         self._handlers.append(handler)
 
-    def register(self,
-                 fn: HandlerFn,
-                 id: Optional[str] = None,
-                 event: Optional[str] = None,
-                 field: Optional[dicts.FieldSpec] = None,
-                 timeout: Optional[float] = None,
-                 initial: Optional[bool] = None,
-                 requires_finalizer: bool = False,
-                 labels: Optional[bodies.Labels] = None,
-                 annotations: Optional[bodies.Annotations] = None,
-                 ) -> HandlerFn:
+    def register(
+            self,
+            fn: HandlerFn,
+            id: Optional[str] = None,
+            event: Optional[str] = None,
+            field: Optional[dicts.FieldSpec] = None,
+            timeout: Optional[float] = None,
+            initial: Optional[bool] = None,
+            requires_finalizer: bool = False,
+            labels: Optional[bodies.Labels] = None,
+            annotations: Optional[bodies.Annotations] = None,
+    ) -> HandlerFn:
         if field is None:
             field = None  # for the non-field events
         elif isinstance(field, str):
@@ -183,9 +189,10 @@ class SimpleRegistry(BaseRegistry):
 
         return fn  # to be usable as a decorator too.
 
-    def iter_cause_handlers(self,
-                            cause: causation.Cause,
-                            ) -> Iterator[Handler]:
+    def iter_cause_handlers(
+            self,
+            cause: causation.Cause,
+    ) -> Iterator[Handler]:
         changed_fields = frozenset(field for _, field, _, _ in cause.diff or [])
         for handler in self._handlers:
             if handler.event is None or handler.event == cause.event:
@@ -194,25 +201,28 @@ class SimpleRegistry(BaseRegistry):
                 elif match(handler=handler, body=cause.body, changed_fields=changed_fields):
                     yield handler
 
-    def iter_event_handlers(self,
-                            resource: resources_.Resource,
-                            event: bodies.Event,
-                            ) -> Iterator[Handler]:
+    def iter_event_handlers(
+            self,
+            resource: resources_.Resource,
+            event: bodies.Event,
+    ) -> Iterator[Handler]:
         for handler in self._handlers:
             if match(handler=handler, body=event['object']):
                 yield handler
 
-    def iter_extra_fields(self,
-                          resource: resources_.Resource,
-                          ) -> Iterator[dicts.FieldPath]:
+    def iter_extra_fields(
+            self,
+            resource: resources_.Resource,
+    ) -> Iterator[dicts.FieldPath]:
         for handler in self._handlers:
             if handler.field:
                 yield handler.field
 
-    def requires_finalizer(self,
-                           resource: resources_.Resource,
-                           body: bodies.Body,
-                           ) -> bool:
+    def requires_finalizer(
+            self,
+            resource: resources_.Resource,
+            body: bodies.Body,
+    ) -> bool:
         # check whether the body matches a deletion handler
         for handler in self._handlers_requiring_finalizer:
             if match(handler=handler, body=body):
@@ -252,20 +262,21 @@ class GlobalRegistry(BaseRegistry):
         self._cause_handlers: MutableMapping[resources_.Resource, SimpleRegistry] = {}
         self._event_handlers: MutableMapping[resources_.Resource, SimpleRegistry] = {}
 
-    def register_cause_handler(self,
-                               group: str,
-                               version: str,
-                               plural: str,
-                               fn: HandlerFn,
-                               id: Optional[str] = None,
-                               event: Optional[str] = None,
-                               field: Optional[dicts.FieldSpec] = None,
-                               timeout: Optional[float] = None,
-                               initial: Optional[bool] = None,
-                               requires_finalizer: bool = False,
-                               labels: Optional[bodies.Labels] = None,
-                               annotations: Optional[bodies.Annotations] = None,
-                               ) -> HandlerFn:
+    def register_cause_handler(
+            self,
+            group: str,
+            version: str,
+            plural: str,
+            fn: HandlerFn,
+            id: Optional[str] = None,
+            event: Optional[str] = None,
+            field: Optional[dicts.FieldSpec] = None,
+            timeout: Optional[float] = None,
+            initial: Optional[bool] = None,
+            requires_finalizer: bool = False,
+            labels: Optional[bodies.Labels] = None,
+            annotations: Optional[bodies.Annotations] = None,
+    ) -> HandlerFn:
         """
         Register an additional handler function for the specific resource and specific event.
         """
@@ -275,15 +286,16 @@ class GlobalRegistry(BaseRegistry):
                           labels=labels, annotations=annotations)
         return fn  # to be usable as a decorator too.
 
-    def register_event_handler(self,
-                               group: str,
-                               version: str,
-                               plural: str,
-                               fn: HandlerFn,
-                               id: Optional[str] = None,
-                               labels: Optional[bodies.Labels] = None,
-                               annotations: Optional[bodies.Annotations] = None,
-                               ) -> HandlerFn:
+    def register_event_handler(
+            self,
+            group: str,
+            version: str,
+            plural: str,
+            fn: HandlerFn,
+            id: Optional[str] = None,
+            labels: Optional[bodies.Labels] = None,
+            annotations: Optional[bodies.Annotations] = None,
+    ) -> HandlerFn:
         """
         Register an additional handler function for low-level events.
         """
@@ -297,21 +309,24 @@ class GlobalRegistry(BaseRegistry):
         """ All known resources in the registry. """
         return frozenset(self._cause_handlers) | frozenset(self._event_handlers)
 
-    def has_cause_handlers(self,
-                           resource: resources_.Resource,
-                           ) -> bool:
+    def has_cause_handlers(
+            self,
+            resource: resources_.Resource,
+    ) -> bool:
         resource_registry = self._cause_handlers.get(resource, None)
         return bool(resource_registry)
 
-    def has_event_handlers(self,
-                           resource: resources_.Resource,
-                           ) -> bool:
+    def has_event_handlers(
+            self,
+            resource: resources_.Resource,
+    ) -> bool:
         resource_registry = self._event_handlers.get(resource, None)
         return bool(resource_registry)
 
-    def iter_cause_handlers(self,
-                            cause: causation.Cause,
-                            ) -> Iterator[Handler]:
+    def iter_cause_handlers(
+            self,
+            cause: causation.Cause,
+    ) -> Iterator[Handler]:
         """
         Iterate all handlers that match this cause/event, in the order they were registered (even if mixed).
         """
@@ -319,10 +334,11 @@ class GlobalRegistry(BaseRegistry):
         if resource_registry is not None:
             yield from resource_registry.iter_cause_handlers(cause=cause)
 
-    def iter_event_handlers(self,
-                            resource: resources_.Resource,
-                            event: bodies.Event,
-                            ) -> Iterator[Handler]:
+    def iter_event_handlers(
+            self,
+            resource: resources_.Resource,
+            event: bodies.Event,
+    ) -> Iterator[Handler]:
         """
         Iterate all handlers for the low-level events.
         """
@@ -330,17 +346,19 @@ class GlobalRegistry(BaseRegistry):
         if resource_registry is not None:
             yield from resource_registry.iter_event_handlers(resource=resource, event=event)
 
-    def iter_extra_fields(self,
-                          resource: resources_.Resource,
-                          ) -> Iterator[dicts.FieldPath]:
+    def iter_extra_fields(
+            self,
+            resource: resources_.Resource,
+    ) -> Iterator[dicts.FieldPath]:
         resource_registry = self._cause_handlers.get(resource, None)
         if resource_registry is not None:
             yield from resource_registry.iter_extra_fields(resource=resource)
 
-    def requires_finalizer(self,
-                           resource: resources_.Resource,
-                           body: bodies.Body,
-                           ) -> bool:
+    def requires_finalizer(
+            self,
+            resource: resources_.Resource,
+            body: bodies.Body,
+    ) -> bool:
         """
         Return whether a finalizer should be added to
         the given resource or not.

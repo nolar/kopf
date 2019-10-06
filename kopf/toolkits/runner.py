@@ -54,11 +54,13 @@ class KopfRunner(_AbstractKopfRunner):
     """
     _future: ResultFuture
 
-    def __init__(self,
-                 *args: Any,
-                 reraise: bool = True,
-                 timeout: Optional[float] = None,
-                 **kwargs: Any):
+    def __init__(
+            self,
+            *args: Any,
+            reraise: bool = True,
+            timeout: Optional[float] = None,
+            **kwargs: Any,
+    ):
         super().__init__()
         self.args = args
         self.kwargs = kwargs
@@ -74,11 +76,12 @@ class KopfRunner(_AbstractKopfRunner):
         self._ready.wait()  # should be nanosecond-fast
         return self
 
-    def __exit__(self,
-                 exc_type: Optional[Type[BaseException]],
-                 exc_val: Optional[BaseException],
-                 exc_tb: Optional[types.TracebackType],
-                 ) -> Optional[bool]:
+    def __exit__(
+            self,
+            exc_type: Optional[Type[BaseException]],
+            exc_val: Optional[BaseException],
+            exc_tb: Optional[types.TracebackType],
+    ) -> Optional[bool]:
 
         # A coroutine that is injected into the loop to cancel everything in it.
         # Cancellations are caught in `run`, so that it exits gracefully.

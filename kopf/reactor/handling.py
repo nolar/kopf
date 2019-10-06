@@ -50,10 +50,11 @@ class PermanentError(Exception):
 
 class TemporaryError(Exception):
     """ A potentially recoverable error, should be retried. """
-    def __init__(self,
-                 __msg: Optional[str] = None,
-                 delay: Optional[float] = DEFAULT_RETRY_DELAY,
-                 ):
+    def __init__(
+            self,
+            __msg: Optional[str] = None,
+            delay: Optional[float] = DEFAULT_RETRY_DELAY,
+    ):
         super().__init__(__msg)
         self.delay = delay
 

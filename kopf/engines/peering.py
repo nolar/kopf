@@ -59,17 +59,18 @@ PEERING_DEFAULT_NAME = 'default'
 # The extra fields are for easier calculation when and if the peer is dead to the moment.
 class Peer:
 
-    def __init__(self,
-                 id: str,
-                 *,
-                 name: str,
-                 priority: int = 0,
-                 lastseen: Optional[str] = None,
-                 lifetime: int = 60,
-                 namespace: Optional[str] = None,
-                 legacy: bool = False,
-                 **_: Any,  # for the forward-compatibility with the new fields
-                 ):
+    def __init__(
+            self,
+            id: str,
+            *,
+            name: str,
+            priority: int = 0,
+            lastseen: Optional[str] = None,
+            lifetime: int = 60,
+            namespace: Optional[str] = None,
+            legacy: bool = False,
+            **_: Any,  # for the forward-compatibility with the new fields
+    ):
         super().__init__()
         self.id = id
         self.name = name
@@ -93,12 +94,13 @@ class Peer:
         return LEGACY_PEERING_RESOURCE if self.legacy else CLUSTER_PEERING_RESOURCE if self.namespace is None else NAMESPACED_PEERING_RESOURCE
 
     @classmethod
-    def detect(cls,
-               standalone: bool,
-               namespace: Optional[str],
-               name: Optional[str],
-               **kwargs: Any,
-               ) -> Optional["Peer"]:
+    def detect(
+            cls,
+            standalone: bool,
+            namespace: Optional[str],
+            name: Optional[str],
+            **kwargs: Any,
+    ) -> Optional["Peer"]:
 
         if standalone:
             return None

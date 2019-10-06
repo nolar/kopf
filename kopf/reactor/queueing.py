@@ -41,11 +41,12 @@ logger = logging.getLogger(__name__)
 
 
 class WatcherCallback(Protocol):
-    async def __call__(self,
-                 *,
-                 event: bodies.Event,
-                 replenished: asyncio.Event,
-                 ) -> None: ...
+    async def __call__(
+            self,
+            *,
+            event: bodies.Event,
+            replenished: asyncio.Event,
+    ) -> None: ...
 
 
 # An end-of-stream marker sent from the watcher to the workers.

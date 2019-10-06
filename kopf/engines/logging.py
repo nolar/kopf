@@ -97,22 +97,24 @@ class ObjectLogger(logging.LoggerAdapter):
             ),
         ))
 
-    def process(self,
-                msg: str,
-                kwargs: MutableMapping[str, Any],
-                ) -> Tuple[str, MutableMapping[str, Any]]:
+    def process(
+            self,
+            msg: str,
+            kwargs: MutableMapping[str, Any],
+    ) -> Tuple[str, MutableMapping[str, Any]]:
         # Native logging overwrites the message's extra with the adapter's extra.
         # We merge them, so that both message's & adapter's extras are available.
         kwargs["extra"] = dict(self.extra, **kwargs.get('extra', {}))
         return msg, kwargs
 
-    def log(self,
+    def log(
+            self,
             level: int,
             msg: str,
             *args: Any,
             local: bool = False,
             **kwargs: Any,
-            ) -> None:
+    ) -> None:
         if local:
             kwargs['extra'] = dict(kwargs.pop('extra', {}), k8s_skip=True)
         super().log(level, msg, *args, **kwargs)
