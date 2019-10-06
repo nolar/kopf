@@ -109,12 +109,12 @@ async def custom_object_handler(
         return
 
     # Invoke all silent spies. No causation, no progress storage is performed.
-    if registry.has_event_handlers(resource=resource):
+    if registry.has_event_watching_handlers(resource=resource):
         await handle_event(registry=registry, resource=resource, event=event, logger=logger, patch=patch)
 
     # Object patch accumulator. Populated by the methods. Applied in the end of the handler.
     # Detect the cause and handle it (or at least log this happened).
-    if registry.has_cause_handlers(resource=resource):
+    if registry.has_state_changing_handlers(resource=resource):
         extra_fields = registry.get_extra_fields(resource=resource)
         old, new, diff = lastseen.get_essential_diffs(body=body, extra_fields=extra_fields)
         state_changing_cause = causation.detect_state_changing_cause(
@@ -170,7 +170,7 @@ async def handle_event(
     Note: K8s-event posting is skipped for `kopf.on.event` handlers,
     as they should be silent. Still, the messages are logged normally.
     """
-    handlers = registry.get_event_handlers(resource=resource, event=event)
+    handlers = registry.get_event_watching_handlers(resource=resource, event=event)
     for handler in handlers:
 
         # The exceptions are handled locally and are not re-raised, to keep the operator running.
@@ -215,7 +215,7 @@ async def handle_state_changing_cause(
         if cause.diff is not None and cause.old is not None and cause.new is not None:
             logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
 
-        handlers = registry.get_cause_handlers(cause=cause)
+        handlers = registry.get_state_changing_handlers(cause=cause)
         if handlers:
             try:
                 await _execute(
@@ -344,7 +344,7 @@ async def execute(
     # Raises `HandlerChildrenRetry` if the execute should be continued on the next iteration.
     await _execute(
         lifecycle=lifecycle,
-        handlers=registry.get_cause_handlers(cause=cause),
+        handlers=registry.get_state_changing_handlers(cause=cause),
         cause=cause,
     )
 
