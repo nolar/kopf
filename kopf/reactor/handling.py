@@ -73,7 +73,7 @@ sublifecycle_var: ContextVar[lifecycles.LifeCycleFn] = ContextVar('sublifecycle_
 subregistry_var: ContextVar[registries.SimpleRegistry] = ContextVar('subregistry_var')
 subexecuted_var: ContextVar[bool] = ContextVar('subexecuted_var')
 handler_var: ContextVar[registries.Handler] = ContextVar('handler_var')
-cause_var: ContextVar[causation.Cause] = ContextVar('cause_var')
+cause_var: ContextVar[causation.StateChangingCause] = ContextVar('cause_var')
 
 
 async def custom_object_handler(
@@ -192,7 +192,7 @@ async def handle_event(
 async def handle_cause(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.BaseRegistry,
-        cause: causation.Cause,
+        cause: causation.StateChangingCause,
 ) -> Optional[float]:
     """
     Handle a detected cause, as part of the bigger handler routine.
@@ -274,7 +274,7 @@ async def execute(
         handlers: Optional[Iterable[registries.Handler]] = None,
         registry: Optional[registries.BaseRegistry] = None,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
-        cause: Optional[causation.Cause] = None,
+        cause: Optional[causation.StateChangingCause] = None,
 ) -> None:
     """
     Execute the handlers in an isolated lifecycle.
@@ -348,7 +348,7 @@ async def execute(
 async def _execute(
         lifecycle: lifecycles.LifeCycleFn,
         handlers: Collection[registries.Handler],
-        cause: causation.Cause,
+        cause: causation.StateChangingCause,
         retry_on_errors: bool = True,
 ) -> None:
     """
@@ -464,7 +464,7 @@ async def _execute(
 async def _call_handler(
         handler: registries.Handler,
         *args: Any,
-        cause: causation.Cause,
+        cause: causation.StateChangingCause,
         lifecycle: lifecycles.LifeCycleFn,
         **kwargs: Any,
 ) -> Any:

@@ -24,7 +24,7 @@ async def invoke(
         fn: Invokable,
         *args: Any,
         event: Optional[bodies.Event] = None,
-        cause: Optional[causation.Cause] = None,
+        cause: Optional[causation.StateChangingCause] = None,
         **kwargs: Any,
 ) -> Any:
     """

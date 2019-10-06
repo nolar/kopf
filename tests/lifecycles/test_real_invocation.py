@@ -3,7 +3,7 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.causation import Cause, Reason
+from kopf.reactor.causation import StateChangingCause, Reason
 from kopf.reactor.invocation import invoke
 from kopf.structs.bodies import Body
 from kopf.structs.patches import Patch
@@ -22,7 +22,7 @@ async def test_protocol_invocation(lifecycle, resource):
     Especially when the new kwargs are added or an invocation protocol changed.
     """
     # The values are irrelevant, they can be anything.
-    cause = Cause(
+    cause = StateChangingCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
         resource=resource,
         patch=Patch(),

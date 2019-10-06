@@ -41,7 +41,7 @@ from unittest.mock import Mock
 import pytest
 
 import kopf
-from kopf.reactor.causation import Cause, Reason
+from kopf.reactor.causation import StateChangingCause, Reason
 
 
 @dataclasses.dataclass(frozen=True, eq=False)
@@ -198,12 +198,12 @@ def cause_mock(mocker, resource):
         new = copy.deepcopy(mock.new) if mock.new is not None else original_new
         old = copy.deepcopy(mock.old) if mock.old is not None else original_old
 
-        # Remove requires_finalizer from kwargs as it shouldn't be passed to the Cause object
+        # Remove requires_finalizer from kwargs as it shouldn't be passed to the cause.
         kwargs.pop('requires_finalizer', None)
 
         # Pass through kwargs: resource, logger, patch, diff, old, new.
         # I.e. everything except what we mock: reason & body.
-        cause = Cause(
+        cause = StateChangingCause(
             reason=reason,
             initial=initial,
             body=body,

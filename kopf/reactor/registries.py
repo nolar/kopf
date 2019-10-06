@@ -80,14 +80,14 @@ class BaseRegistry(metaclass=abc.ABCMeta):
 
     def get_cause_handlers(
             self,
-            cause: causation.Cause,
+            cause: causation.StateChangingCause,
     ) -> Sequence[Handler]:
         return list(self._deduplicated(self.iter_cause_handlers(cause=cause)))
 
     @abc.abstractmethod
     def iter_cause_handlers(
             self,
-            cause: causation.Cause,
+            cause: causation.StateChangingCause,
     ) -> Iterator[Handler]:
         pass
 
@@ -202,7 +202,7 @@ class SimpleRegistry(BaseRegistry):
 
     def iter_cause_handlers(
             self,
-            cause: causation.Cause,
+            cause: causation.StateChangingCause,
     ) -> Iterator[Handler]:
         changed_fields = frozenset(field for _, field, _, _ in cause.diff or [])
         for handler in self._handlers:
@@ -338,7 +338,7 @@ class GlobalRegistry(BaseRegistry):
 
     def iter_cause_handlers(
             self,
-            cause: causation.Cause,
+            cause: causation.StateChangingCause,
     ) -> Iterator[Handler]:
         """
         Iterate all handlers that match this cause/event, in the order they were registered (even if mixed).
