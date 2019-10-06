@@ -19,10 +19,11 @@ For deletion, the cause is detected when the object is just marked for deletion,
 not when it is actually deleted (as the events notify): so that the handlers
 could execute on the yet-existing object (and its children, if created).
 """
+import dataclasses
 import enum
 import logging
 import warnings
-from typing import Any, NamedTuple, Optional, Union
+from typing import Any, Optional, Union
 
 from kopf.structs import bodies
 from kopf.structs import diffs
@@ -75,7 +76,8 @@ TITLES = {
 }
 
 
-class Cause(NamedTuple):
+@dataclasses.dataclass
+class Cause:
     """
     The cause is what has caused the whole reaction as a chain of handlers.
 
@@ -174,4 +176,4 @@ def enrich_cause(
     Usually, those are the old/new/diff fields, and used when a field-handler
     is invoked (the old/new/diff refer to the field's values only).
     """
-    return cause._replace(**kwargs)
+    return dataclasses.replace(cause, **kwargs)
