@@ -23,7 +23,7 @@ import dataclasses
 import enum
 import logging
 import warnings
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, TypeVar
 
 from kopf.structs import bodies
 from kopf.structs import diffs
@@ -77,19 +77,34 @@ TITLES = {
 
 
 @dataclasses.dataclass
-class StateChangingCause:
+class BaseCause:
+    logger: Union[logging.Logger, logging.LoggerAdapter]
+    resource: resources.Resource
+    patch: patches.Patch
+    body: bodies.Body
+
+
+@dataclasses.dataclass
+class EventWatchingCause(BaseCause):
+    """
+    The raw event received from the API.
+
+    It is a read-only mapping with some extra properties and methods.
+    """
+    type: bodies.EventType
+    raw: bodies.Event
+
+
+@dataclasses.dataclass
+class StateChangingCause(BaseCause):
     """
     The cause is what has caused the whole reaction as a chain of handlers.
 
     Unlike the low-level Kubernetes watch-events, the cause is aware
     of actual field changes, including multi-handler changes.
     """
-    logger: Union[logging.Logger, logging.LoggerAdapter]
-    resource: resources.Resource
-    reason: Reason
     initial: bool
-    body: bodies.Body
-    patch: patches.Patch
+    reason: Reason
     diff: diffs.Diff = diffs.EMPTY
     old: Optional[bodies.BodyEssence] = None
     new: Optional[bodies.BodyEssence] = None
@@ -98,6 +113,17 @@ class StateChangingCause:
     def event(self) -> Reason:
         warnings.warn("`cause.event` is deprecated; use `cause.reason`.", DeprecationWarning)
         return self.reason
+
+
+def detect_event_watching_cause(
+        event: bodies.Event,
+        **kwargs: Any,
+) -> EventWatchingCause:
+    return EventWatchingCause(
+        raw=event,
+        type=event['type'],
+        body=event['object'],
+        **kwargs)
 
 
 def detect_state_changing_cause(
@@ -166,10 +192,13 @@ def detect_state_changing_cause(
     return StateChangingCause(reason=Reason.UPDATE, **kwargs)
 
 
+_CT = TypeVar('_CT', bound=BaseCause)
+
+
 def enrich_cause(
-        cause: StateChangingCause,
+        cause: _CT,
         **kwargs: Any,
-) -> StateChangingCause:
+) -> _CT:
     """
     Produce a new derived cause with some fields modified ().
 

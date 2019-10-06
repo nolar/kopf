@@ -93,16 +93,14 @@ class BaseRegistry(metaclass=abc.ABCMeta):
 
     def get_event_watching_handlers(
             self,
-            resource: resources_.Resource,
-            event: bodies.Event,
+            cause: causation.EventWatchingCause,
     ) -> Sequence[Handler]:
-        return list(self._deduplicated(self.iter_event_watching_handlers(resource=resource, event=event)))
+        return list(self._deduplicated(self.iter_event_watching_handlers(cause=cause)))
 
     @abc.abstractmethod
     def iter_event_watching_handlers(
             self,
-            resource: resources_.Resource,
-            event: bodies.Event,
+            cause: causation.EventWatchingCause,
     ) -> Iterator[Handler]:
         pass
 
@@ -214,11 +212,10 @@ class SimpleRegistry(BaseRegistry):
 
     def iter_event_watching_handlers(
             self,
-            resource: resources_.Resource,
-            event: bodies.Event,
+            cause: causation.EventWatchingCause,
     ) -> Iterator[Handler]:
         for handler in self._handlers:
-            if match(handler=handler, body=event['object']):
+            if match(handler=handler, body=cause.body):
                 yield handler
 
     def iter_extra_fields(
@@ -349,15 +346,14 @@ class GlobalRegistry(BaseRegistry):
 
     def iter_event_watching_handlers(
             self,
-            resource: resources_.Resource,
-            event: bodies.Event,
+            cause: causation.EventWatchingCause,
     ) -> Iterator[Handler]:
         """
         Iterate all handlers for the low-level events.
         """
-        resource_registry = self._event_handlers.get(resource, None)
+        resource_registry = self._event_handlers.get(cause.resource, None)
         if resource_registry is not None:
-            yield from resource_registry.iter_event_watching_handlers(resource=resource, event=event)
+            yield from resource_registry.iter_event_watching_handlers(cause=cause)
 
     def iter_extra_fields(
             self,

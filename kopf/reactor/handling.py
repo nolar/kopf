@@ -73,7 +73,7 @@ sublifecycle_var: ContextVar[lifecycles.LifeCycleFn] = ContextVar('sublifecycle_
 subregistry_var: ContextVar[registries.SimpleRegistry] = ContextVar('subregistry_var')
 subexecuted_var: ContextVar[bool] = ContextVar('subexecuted_var')
 handler_var: ContextVar[registries.Handler] = ContextVar('handler_var')
-cause_var: ContextVar[causation.StateChangingCause] = ContextVar('cause_var')
+cause_var: ContextVar[causation.BaseCause] = ContextVar('cause_var')
 
 
 async def custom_object_handler(
@@ -110,7 +110,17 @@ async def custom_object_handler(
 
     # Invoke all silent spies. No causation, no progress storage is performed.
     if registry.has_event_watching_handlers(resource=resource):
-        await handle_event(registry=registry, resource=resource, event=event, logger=logger, patch=patch)
+        event_watching_cause = causation.detect_event_watching_cause(
+            event=event,
+            resource=resource,
+            logger=logger,
+            patch=patch,
+        )
+        await handle_event_watching_cause(
+            lifecycle=lifecycles.all_at_once,
+            registry=registry,
+            cause=event_watching_cause,
+        )
 
     # Object patch accumulator. Populated by the methods. Applied in the end of the handler.
     # Detect the cause and handle it (or at least log this happened).
@@ -153,12 +163,10 @@ async def custom_object_handler(
             await patching.patch_obj(resource=resource, patch=dummy, body=body)
 
 
-async def handle_event(
+async def handle_event_watching_cause(
+        lifecycle: lifecycles.LifeCycleFn,
         registry: registries.BaseRegistry,
-        resource: resources.Resource,
-        logger: logging_engine.ObjectLogger,
-        patch: patches.Patch,
-        event: bodies.Event,
+        cause: causation.EventWatchingCause,
 ) -> None:
     """
     Handle a received event, log but ignore all errors.
@@ -170,19 +178,18 @@ async def handle_event(
     Note: K8s-event posting is skipped for `kopf.on.event` handlers,
     as they should be silent. Still, the messages are logged normally.
     """
-    handlers = registry.get_event_watching_handlers(resource=resource, event=event)
+    logger = cause.logger
+    handlers = registry.get_event_watching_handlers(cause=cause)
     for handler in handlers:
 
         # The exceptions are handled locally and are not re-raised, to keep the operator running.
         try:
             logger.debug(f"Invoking handler {handler.id!r}.")
 
-            # TODO: also set the context-vars, despite most of the make no sense here.
-            result = await invocation.invoke(
-                handler.fn,
-                event=event,
-                patch=patch,
-                logger=logger,
+            result = await _call_handler(
+                handler,
+                cause=cause,
+                lifecycle=lifecycle,
             )
 
         except Exception:
@@ -190,7 +197,7 @@ async def handle_event(
 
         else:
             logger.info(f"Handler {handler.id!r} succeeded.", local=True)
-            state.store_result(patch=patch, handler=handler, result=result)
+            state.store_result(patch=cause.patch, handler=handler, result=result)
 
 
 async def handle_state_changing_cause(
@@ -278,7 +285,7 @@ async def execute(
         handlers: Optional[Iterable[registries.Handler]] = None,
         registry: Optional[registries.BaseRegistry] = None,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
-        cause: Optional[causation.StateChangingCause] = None,
+        cause: Optional[causation.BaseCause] = None,
 ) -> None:
     """
     Execute the handlers in an isolated lifecycle.
@@ -357,7 +364,7 @@ async def execute(
 async def _execute(
         lifecycle: lifecycles.LifeCycleFn,
         handlers: Collection[registries.Handler],
-        cause: causation.StateChangingCause,
+        cause: causation.BaseCause,
         retry_on_errors: bool = True,
 ) -> None:
     """
@@ -473,7 +480,7 @@ async def _execute(
 async def _call_handler(
         handler: registries.Handler,
         *args: Any,
-        cause: causation.StateChangingCause,
+        cause: causation.BaseCause,
         lifecycle: lifecycles.LifeCycleFn,
         **kwargs: Any,
 ) -> Any:
@@ -488,10 +495,11 @@ async def _call_handler(
     """
 
     # For the field-handlers, the old/new/diff values must match the field, not the whole object.
-    old = cause.old if handler.field is None else dicts.resolve(cause.old, handler.field, None, assume_empty=True)
-    new = cause.new if handler.field is None else dicts.resolve(cause.new, handler.field, None, assume_empty=True)
-    diff = cause.diff if handler.field is None else diffs.reduce(cause.diff, handler.field)
-    cause = causation.enrich_cause(cause=cause, old=old, new=new, diff=diff)
+    if isinstance(cause, causation.StateChangingCause) and handler.field is not None:
+        old = dicts.resolve(cause.old, handler.field, None, assume_empty=True)
+        new = dicts.resolve(cause.new, handler.field, None, assume_empty=True)
+        diff = diffs.reduce(cause.diff, handler.field)
+        cause = causation.enrich_cause(cause=cause, old=old, new=new, diff=diff)
 
     # Store the context of the current resource-object-event-handler, to be used in `@kopf.on.this`,
     # and maybe other places, and consumed in the recursive `execute()` calls for the children.

@@ -5,7 +5,7 @@ This can be not desired when the objects do not belong to this operator,
 but a probably served by some other operator, and are just watched
 by the current operator, e.g. for their status fields.
 
-Event-handlers can be used as the silent spies on the raw events:
+Event-watching handlers can be used as the silent spies on the raw events:
 they do not store anything on the object, and do not create the k8s-events.
 
 If the event handler fails, the error is logged to the operator's log,
