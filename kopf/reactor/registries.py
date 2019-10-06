@@ -37,7 +37,7 @@ class HandlerFn(Protocol):
             self,
             *args: Any,
             type: str,
-            event: Union[str, bodies.Event],  # FIXME: or str for cause-handlers.
+            event: Union[str, bodies.Event],
             body: bodies.Body,
             meta: bodies.Meta,
             spec: bodies.Spec,
@@ -47,9 +47,9 @@ class HandlerFn(Protocol):
             namespace: Optional[str],
             patch: patches.Patch,
             logger: Union[logging.Logger, logging.LoggerAdapter],
-            diff: diffs.Diff,  # TODO:? Optional[diffs.Diff]?
-            old: bodies.Body,  # TODO: or Any for field-handlers.
-            new: bodies.Body,  # TODO: or Any for field-handlers.
+            diff: diffs.Diff,
+            old: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
+            new: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
             **kwargs: Any,
     ) -> Any: ...
 
