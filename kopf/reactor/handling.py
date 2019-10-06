@@ -340,6 +340,11 @@ async def execute(
         subexecuted_var.set(True)
         registry = subregistry_var.get()
 
+    # The sub-handlers are only for upper-level causes, not for lower-level events.
+    if not isinstance(cause, causation.StateChangingCause):
+        raise RuntimeError("Sub-handlers of event-handlers are not supported and have "
+                           "no practical use (there are no retries or state tracking).")
+
     # Execute the real handlers (all or few or one of them, as per the lifecycle).
     # Raises `HandlerChildrenRetry` if the execute should be continued on the next iteration.
     await _execute(
@@ -507,7 +512,7 @@ async def _call_handler(
             **kwargs,
         )
 
-        if not subexecuted_var.get():
+        if not subexecuted_var.get() and isinstance(cause, causation.StateChangingCause):
             await execute()
 
         return result
