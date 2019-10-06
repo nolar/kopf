@@ -1,10 +1,13 @@
 import functools
+import logging
 import traceback
 
 import pytest
 from asynctest import MagicMock
 
+from kopf.reactor.causation import Cause, Reason
 from kopf.reactor.invocation import invoke, is_async_fn
+from kopf.structs.patches import Patch
 
 STACK_TRACE_MARKER = object()
 
@@ -158,11 +161,25 @@ async def test_explicit_args_passed_properly(fn):
 
 
 @fns
-async def test_special_kwargs_added(fn):
+async def test_special_kwargs_added(fn, resource):
+    body = {'metadata': {'uid': 'uid', 'name': 'name', 'namespace': 'ns'},
+            'spec': {'field': 'value'},
+            'status': {'info': 'payload'}}
+
+    # Values can be any.
+    cause = Cause(
+        logger=logging.getLogger('kopf.test.fake.logger'),
+        resource=resource,
+        patch=Patch(),
+        initial=False,
+        reason=Reason.NOOP,
+        body=body,
+        diff=object(),
+        old=object(),
+        new=object(),
+    )
+
     fn = MagicMock(fn)
-    cause = MagicMock(body={'metadata': {'uid': 'uid', 'name': 'name', 'namespace': 'ns'},
-                            'spec': {'field': 'value'},
-                            'status': {'info': 'payload'}})
     await invoke(fn, cause=cause)
 
     assert fn.called
