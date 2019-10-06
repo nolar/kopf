@@ -66,6 +66,11 @@ class Handler(NamedTuple):
     labels: Optional[bodies.Labels] = None
     annotations: Optional[bodies.Annotations] = None
 
+    @property
+    def event(self) -> Optional[causation.Reason]:
+        warnings.warn("`handler.event` is deprecated; use `handler.reason`.", DeprecationWarning)
+        return self.reason
+
 
 
 class BaseRegistry(metaclass=abc.ABCMeta):
@@ -161,6 +166,7 @@ class SimpleRegistry(BaseRegistry):
             fn: HandlerFn,
             id: Optional[str] = None,
             reason: Optional[causation.Reason] = None,
+            event: Optional[str] = None,  # deprecated, use `reason`
             field: Optional[dicts.FieldSpec] = None,
             timeout: Optional[float] = None,
             initial: Optional[bool] = None,
@@ -168,6 +174,9 @@ class SimpleRegistry(BaseRegistry):
             labels: Optional[bodies.Labels] = None,
             annotations: Optional[bodies.Annotations] = None,
     ) -> HandlerFn:
+        if reason is None and event is not None:
+            reason = causation.Reason(event)
+
         if field is None:
             field = None  # for the non-field events
         elif isinstance(field, str):
@@ -272,6 +281,7 @@ class GlobalRegistry(BaseRegistry):
             fn: HandlerFn,
             id: Optional[str] = None,
             reason: Optional[causation.Reason] = None,
+            event: Optional[str] = None,  # deprecated, use `reason`
             field: Optional[dicts.FieldSpec] = None,
             timeout: Optional[float] = None,
             initial: Optional[bool] = None,
@@ -284,7 +294,7 @@ class GlobalRegistry(BaseRegistry):
         """
         resource = resources_.Resource(group, version, plural)
         registry = self._cause_handlers.setdefault(resource, SimpleRegistry())
-        registry.register(reason=reason, field=field, fn=fn, id=id, timeout=timeout,
+        registry.register(reason=reason, event=event, field=field, fn=fn, id=id, timeout=timeout,
                           initial=initial, requires_finalizer=requires_finalizer,
                           labels=labels, annotations=annotations)
         return fn  # to be usable as a decorator too.

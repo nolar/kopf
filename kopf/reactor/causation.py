@@ -92,6 +92,11 @@ class Cause(NamedTuple):
     old: Optional[bodies.BodyEssence] = None
     new: Optional[bodies.BodyEssence] = None
 
+    @property
+    def event(self) -> Reason:
+        warnings.warn("`cause.event` is deprecated; use `cause.reason`.", DeprecationWarning)
+        return self.reason
+
 
 def detect_cause(
         *,

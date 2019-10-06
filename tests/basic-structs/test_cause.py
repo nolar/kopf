@@ -32,6 +32,7 @@ def test_all_args(mocker):
     assert cause.resource is resource
     assert cause.logger is logger
     assert cause.reason is reason
+    assert cause.event is reason  # deprecated
     assert cause.initial is initial
     assert cause.body is body
     assert cause.patch is patch
@@ -58,6 +59,7 @@ def test_required_args(mocker):
     assert cause.resource is resource
     assert cause.logger is logger
     assert cause.reason is reason
+    assert cause.event is reason  # deprecated
     assert cause.initial is initial
     assert cause.body is body
     assert cause.patch is patch

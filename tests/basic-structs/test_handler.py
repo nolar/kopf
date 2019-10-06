@@ -30,6 +30,7 @@ def test_all_args(mocker):
     assert handler.fn is fn
     assert handler.id is id
     assert handler.reason is reason
+    assert handler.event is reason  # deprecated
     assert handler.field is field
     assert handler.timeout is timeout
     assert handler.initial is initial
