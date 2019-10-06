@@ -10,21 +10,17 @@ Configure logging events
 ========================
 
 `kopf.config.EventsConfig` allows to set what types of kopf logs should be
-reflected in events.
-
-Loglevels are:
-
-* ``kopf.config.LOGLEVEL_INFO``
-* ``kopf.config.LOGLEVEL_WARNING``
-* ``kopf.config.LOGLEVEL_ERROR``
-* ``kopf.config.LOGLEVEL_CRITICAL``
+reflected in events. Use `logging` constants or integer values to set the level:
+e.g., `logging.WARNING`, `logging.ERROR`, etc. The default is `logging.INFO`.
 
 .. code-block:: python
 
+    import logging
     import kopf
 
     # Now kopf will send events only when error or critical occasion happens
-    kopf.EventsConfig.events_loglevel = config.LOGLEVEL_ERROR
+    kopf.EventsConfig.events_loglevel = logging.ERROR
+
 
 Configure Workers
 =================
