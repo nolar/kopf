@@ -100,7 +100,7 @@ class StateChangingCause:
         return self.reason
 
 
-def detect_cause(
+def detect_state_changing_cause(
         *,
         event: bodies.Event,
         diff: Optional[diffs.Diff] = None,

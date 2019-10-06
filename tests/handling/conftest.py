@@ -22,7 +22,7 @@ Therefore, we do not mock/spy/intercept anything within the handling routines
 (except for cause detection), leaving it as the implementation details.
 Specifically, this internal chain of calls happens on every event:
 
-* ``causation.detect_cause()`` -- tested separately in ``/tests/causation/``.
+* ``causation.detect_*_cause()`` -- tested separately in ``/tests/causation/``.
 * ``handle_cause()``
 * ``execute()``
 * ``_execute()``
@@ -222,7 +222,7 @@ def cause_mock(mocker, resource):
         return cause
 
     # Substitute the real cause detector with out own mock-based one.
-    mocker.patch('kopf.reactor.causation.detect_cause', new=new_detect_fn)
+    mocker.patch('kopf.reactor.causation.detect_state_changing_cause', new=new_detect_fn)
 
     # The mock object stores some values later used by the factory substitute.
     mock = mocker.Mock(spec_set=['reason', 'body', 'diff', 'new', 'old'])

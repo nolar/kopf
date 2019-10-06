@@ -117,7 +117,7 @@ async def custom_object_handler(
     if registry.has_cause_handlers(resource=resource):
         extra_fields = registry.get_extra_fields(resource=resource)
         old, new, diff = lastseen.get_essential_diffs(body=body, extra_fields=extra_fields)
-        cause = causation.detect_cause(
+        state_changing_cause = causation.detect_state_changing_cause(
             event=event,
             resource=resource,
             logger=logger,
@@ -127,7 +127,11 @@ async def custom_object_handler(
             diff=diff,
             requires_finalizer=registry.requires_finalizer(resource=resource, body=body),
         )
-        delay = await handle_cause(lifecycle=lifecycle, registry=registry, cause=cause)
+        delay = await handle_state_changing_cause(
+            lifecycle=lifecycle,
+            registry=registry,
+            cause=state_changing_cause,
+        )
 
     # Whatever was done, apply the accumulated changes to the object.
     # But only once, to reduce the number of API calls and the generated irrelevant events.
@@ -189,7 +193,7 @@ async def handle_event(
             state.store_result(patch=patch, handler=handler, result=result)
 
 
-async def handle_cause(
+async def handle_state_changing_cause(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.BaseRegistry,
         cause: causation.StateChangingCause,
