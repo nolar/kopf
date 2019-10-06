@@ -306,11 +306,7 @@ async def execute(
     # Restore the current context as set in the handler execution cycle.
     lifecycle = lifecycle if lifecycle is not None else sublifecycle_var.get()
     cause = cause if cause is not None else cause_var.get()
-    handler: Optional[registries.Handler]
-    try:
-        handler = handler_var.get()
-    except LookupError:
-        handler = None
+    handler: registries.Handler = handler_var.get()
 
     # Validate the inputs; the function signatures cannot put these kind of restrictions, so we do.
     if len([v for v in [fns, handlers, registry] if v is not None]) > 1:
