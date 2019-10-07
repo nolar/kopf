@@ -23,8 +23,7 @@ Invokable = Union[lifecycles.LifeCycleFn, registries.HandlerFn]
 async def invoke(
         fn: Invokable,
         *args: Any,
-        event: Optional[bodies.Event] = None,
-        cause: Optional[causation.Cause] = None,
+        cause: Optional[causation.BaseCause] = None,
         **kwargs: Any,
 ) -> Any:
     """
@@ -42,19 +41,21 @@ async def invoke(
     """
 
     # Add aliases for the kwargs, directly linked to the body, or to the assumed defaults.
-    if event is not None:
+    if isinstance(cause, causation.EventWatchingCause):
         kwargs.update(
-            event=event,
-            type=event['type'],
-            body=event['object'],
-            spec=dicts.DictView(event['object'], 'spec'),
-            meta=dicts.DictView(event['object'], 'metadata'),
-            status=dicts.DictView(event['object'], 'status'),
-            uid=event['object'].get('metadata', {}).get('uid'),
-            name=event['object'].get('metadata', {}).get('name'),
-            namespace=event['object'].get('metadata', {}).get('namespace'),
+            event=cause.raw,
+            patch=cause.patch,
+            logger=cause.logger,
+            type=cause.type,
+            body=cause.body,
+            spec=dicts.DictView(cause.body, 'spec'),
+            meta=dicts.DictView(cause.body, 'metadata'),
+            status=dicts.DictView(cause.body, 'status'),
+            uid=cause.body.get('metadata', {}).get('uid'),
+            name=cause.body.get('metadata', {}).get('name'),
+            namespace=cause.body.get('metadata', {}).get('namespace'),
         )
-    if cause is not None:
+    if isinstance(cause, causation.StateChangingCause):
         kwargs.update(
             cause=cause,
             event=cause.reason,  # deprecated; kept for backward-compatibility

@@ -22,7 +22,7 @@ Therefore, we do not mock/spy/intercept anything within the handling routines
 (except for cause detection), leaving it as the implementation details.
 Specifically, this internal chain of calls happens on every event:
 
-* ``causation.detect_cause()`` -- tested separately in ``/tests/causation/``.
+* ``causation.detect_*_cause()`` -- tested separately in ``/tests/causation/``.
 * ``handle_cause()``
 * ``execute()``
 * ``_execute()``
@@ -41,7 +41,7 @@ from unittest.mock import Mock
 import pytest
 
 import kopf
-from kopf.reactor.causation import Cause, Reason
+from kopf.reactor.causation import StateChangingCause, Reason
 
 
 @dataclasses.dataclass(frozen=True, eq=False)
@@ -198,12 +198,12 @@ def cause_mock(mocker, resource):
         new = copy.deepcopy(mock.new) if mock.new is not None else original_new
         old = copy.deepcopy(mock.old) if mock.old is not None else original_old
 
-        # Remove requires_finalizer from kwargs as it shouldn't be passed to the Cause object
+        # Remove requires_finalizer from kwargs as it shouldn't be passed to the cause.
         kwargs.pop('requires_finalizer', None)
 
         # Pass through kwargs: resource, logger, patch, diff, old, new.
         # I.e. everything except what we mock: reason & body.
-        cause = Cause(
+        cause = StateChangingCause(
             reason=reason,
             initial=initial,
             body=body,
@@ -222,7 +222,7 @@ def cause_mock(mocker, resource):
         return cause
 
     # Substitute the real cause detector with out own mock-based one.
-    mocker.patch('kopf.reactor.causation.detect_cause', new=new_detect_fn)
+    mocker.patch('kopf.reactor.causation.detect_state_changing_cause', new=new_detect_fn)
 
     # The mock object stores some values later used by the factory substitute.
     mock = mocker.Mock(spec_set=['reason', 'body', 'diff', 'new', 'old'])

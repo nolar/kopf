@@ -19,10 +19,11 @@ For deletion, the cause is detected when the object is just marked for deletion,
 not when it is actually deleted (as the events notify): so that the handlers
 could execute on the yet-existing object (and its children, if created).
 """
+import dataclasses
 import enum
 import logging
 import warnings
-from typing import Any, NamedTuple, Optional, Union
+from typing import Any, Optional, Union, TypeVar
 
 from kopf.structs import bodies
 from kopf.structs import diffs
@@ -75,19 +76,35 @@ TITLES = {
 }
 
 
-class Cause(NamedTuple):
+@dataclasses.dataclass
+class BaseCause:
+    logger: Union[logging.Logger, logging.LoggerAdapter]
+    resource: resources.Resource
+    patch: patches.Patch
+    body: bodies.Body
+
+
+@dataclasses.dataclass
+class EventWatchingCause(BaseCause):
+    """
+    The raw event received from the API.
+
+    It is a read-only mapping with some extra properties and methods.
+    """
+    type: bodies.EventType
+    raw: bodies.Event
+
+
+@dataclasses.dataclass
+class StateChangingCause(BaseCause):
     """
     The cause is what has caused the whole reaction as a chain of handlers.
 
     Unlike the low-level Kubernetes watch-events, the cause is aware
     of actual field changes, including multi-handler changes.
     """
-    logger: Union[logging.Logger, logging.LoggerAdapter]
-    resource: resources.Resource
-    reason: Reason
     initial: bool
-    body: bodies.Body
-    patch: patches.Patch
+    reason: Reason
     diff: diffs.Diff = diffs.EMPTY
     old: Optional[bodies.BodyEssence] = None
     new: Optional[bodies.BodyEssence] = None
@@ -98,13 +115,24 @@ class Cause(NamedTuple):
         return self.reason
 
 
-def detect_cause(
+def detect_event_watching_cause(
+        event: bodies.Event,
+        **kwargs: Any,
+) -> EventWatchingCause:
+    return EventWatchingCause(
+        raw=event,
+        type=event['type'],
+        body=event['object'],
+        **kwargs)
+
+
+def detect_state_changing_cause(
         *,
         event: bodies.Event,
         diff: Optional[diffs.Diff] = None,
         requires_finalizer: bool = True,
         **kwargs: Any,
-) -> Cause:
+) -> StateChangingCause:
     """
     Detect the cause of the event to be handled.
 
@@ -123,55 +151,58 @@ def detect_cause(
 
     # The object was really deleted from the cluster. But we do not care anymore.
     if event['type'] == 'DELETED':
-        return Cause(reason=Reason.GONE, **kwargs)
+        return StateChangingCause(reason=Reason.GONE, **kwargs)
 
     # The finalizer has been just removed. We are fully done.
     if finalizers.is_deleted(body) and not finalizers.has_finalizers(body):
-        return Cause(reason=Reason.FREE, **kwargs)
+        return StateChangingCause(reason=Reason.FREE, **kwargs)
 
     if finalizers.is_deleted(body):
-        return Cause(reason=Reason.DELETE, **kwargs)
+        return StateChangingCause(reason=Reason.DELETE, **kwargs)
 
     # For a fresh new object, first block it from accidental deletions without our permission.
     # The actual handler will be called on the next call.
     # Only return this cause if the resource requires finalizers to be added.
     if requires_finalizer and not finalizers.has_finalizers(body):
-        return Cause(reason=Reason.ACQUIRE, **kwargs)
+        return StateChangingCause(reason=Reason.ACQUIRE, **kwargs)
 
     # Check whether or not the resource has finalizers, but doesn't require them. If this is
     # the case, then a resource may not be able to be deleted completely as finalizers may
     # not be removed by the operator under normal operation. We remove the finalizers first,
     # and any handler that should be called will be done on the next call.
     if not requires_finalizer and finalizers.has_finalizers(body):
-        return Cause(reason=Reason.RELEASE, **kwargs)
+        return StateChangingCause(reason=Reason.RELEASE, **kwargs)
 
     # For an object seen for the first time (i.e. just-created), call the creation handlers,
     # then mark the state as if it was seen when the creation has finished.
     if not lastseen.has_essence_stored(body):
-        return Cause(reason=Reason.CREATE, **kwargs)
+        return StateChangingCause(reason=Reason.CREATE, **kwargs)
 
     # Cases with no state changes are usually ignored (NOOP). But for the "None" events,
     # as simulated for the initial listing, we call the resuming handlers (e.g. threads/tasks).
     if not diff and initial:
-        return Cause(reason=Reason.RESUME, **kwargs)
+        return StateChangingCause(reason=Reason.RESUME, **kwargs)
 
     # The previous step triggers one more patch operation without actual changes. Ignore it.
     # Either the last-seen state or the status field has changed.
     if not diff:
-        return Cause(reason=Reason.NOOP, **kwargs)
+        return StateChangingCause(reason=Reason.NOOP, **kwargs)
 
     # And what is left, is the update operation on one of the useful fields of the existing object.
-    return Cause(reason=Reason.UPDATE, **kwargs)
+    return StateChangingCause(reason=Reason.UPDATE, **kwargs)
+
+
+_CT = TypeVar('_CT', bound=BaseCause)
 
 
 def enrich_cause(
-        cause: Cause,
+        cause: _CT,
         **kwargs: Any,
-) -> Cause:
+) -> _CT:
     """
     Produce a new derived cause with some fields modified ().
 
     Usually, those are the old/new/diff fields, and used when a field-handler
     is invoked (the old/new/diff refer to the field's values only).
     """
-    return cause._replace(**kwargs)
+    return dataclasses.replace(cause, **kwargs)

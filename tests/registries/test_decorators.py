@@ -16,7 +16,7 @@ def test_on_create_minimal(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.get_cause_handlers(cause)
+    handlers = registry.get_state_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.CREATE
@@ -35,7 +35,7 @@ def test_on_update_minimal(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.get_cause_handlers(cause)
+    handlers = registry.get_state_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.UPDATE
@@ -54,7 +54,7 @@ def test_on_delete_minimal(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.get_cause_handlers(cause)
+    handlers = registry.get_state_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.DELETE
@@ -74,7 +74,7 @@ def test_on_field_minimal(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.get_cause_handlers(cause)
+    handlers = registry.get_state_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
@@ -104,7 +104,7 @@ def test_on_create_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.get_cause_handlers(cause)
+    handlers = registry.get_state_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.CREATE
@@ -128,7 +128,7 @@ def test_on_update_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.get_cause_handlers(cause)
+    handlers = registry.get_state_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.UPDATE
@@ -156,7 +156,7 @@ def test_on_delete_with_all_kwargs(mocker, optional):
     def fn(**_):
         pass
 
-    handlers = registry.get_cause_handlers(cause)
+    handlers = registry.get_state_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.DELETE
@@ -181,7 +181,7 @@ def test_on_field_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.get_cause_handlers(cause)
+    handlers = registry.get_state_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
@@ -202,7 +202,7 @@ def test_subhandler_declaratively(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.get_cause_handlers(cause)
+    handlers = registry.get_state_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
 
@@ -217,6 +217,6 @@ def test_subhandler_imperatively(mocker):
         pass
     kopf.register(fn)
 
-    handlers = registry.get_cause_handlers(cause)
+    handlers = registry.get_state_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn

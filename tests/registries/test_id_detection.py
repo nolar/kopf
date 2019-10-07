@@ -76,7 +76,7 @@ def test_with_no_hints(mocker):
 
     registry = SimpleRegistry()
     registry.register(some_fn)
-    handlers = registry.get_cause_handlers(mocker.MagicMock())
+    handlers = registry.get_state_changing_handlers(mocker.MagicMock())
 
     assert get_fn_id.called
 
@@ -90,7 +90,7 @@ def test_with_prefix(mocker):
 
     registry = SimpleRegistry(prefix='some-prefix')
     registry.register(some_fn)
-    handlers = registry.get_cause_handlers(mocker.MagicMock())
+    handlers = registry.get_state_changing_handlers(mocker.MagicMock())
 
     assert get_fn_id.called
 
@@ -105,7 +105,7 @@ def test_with_suffix(mocker, field):
 
     registry = SimpleRegistry()
     registry.register(some_fn, field=field)
-    handlers = registry.get_cause_handlers(mocker.MagicMock(diff=diff))
+    handlers = registry.get_state_changing_handlers(mocker.MagicMock(diff=diff))
 
     assert get_fn_id.called
 
@@ -120,7 +120,7 @@ def test_with_prefix_and_suffix(mocker, field):
 
     registry = SimpleRegistry(prefix='some-prefix')
     registry.register(some_fn, field=field)
-    handlers = registry.get_cause_handlers(mocker.MagicMock(diff=diff))
+    handlers = registry.get_state_changing_handlers(mocker.MagicMock(diff=diff))
 
     assert get_fn_id.called
 
@@ -135,7 +135,7 @@ def test_with_explicit_id_and_prefix_and_suffix(mocker, field):
 
     registry = SimpleRegistry(prefix='some-prefix')
     registry.register(some_fn, id='explicit-id', field=field)
-    handlers = registry.get_cause_handlers(mocker.MagicMock(diff=diff))
+    handlers = registry.get_state_changing_handlers(mocker.MagicMock(diff=diff))
 
     assert not get_fn_id.called
 

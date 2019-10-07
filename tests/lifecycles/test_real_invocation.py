@@ -1,8 +1,12 @@
+import logging
+
 import pytest
 
 import kopf
-from kopf.reactor.causation import Cause
+from kopf.reactor.causation import StateChangingCause, Reason
 from kopf.reactor.invocation import invoke
+from kopf.structs.bodies import Body
+from kopf.structs.patches import Patch
 
 
 @pytest.mark.parametrize('lifecycle', [
@@ -12,12 +16,20 @@ from kopf.reactor.invocation import invoke
     kopf.lifecycles.shuffled,
     kopf.lifecycles.asap,
 ])
-async def test_protocol_invocation(mocker, lifecycle):
+async def test_protocol_invocation(lifecycle, resource):
     """
     To be sure that all kwargs are accepted properly.
     Especially when the new kwargs are added or an invocation protocol changed.
     """
-    cause = mocker.Mock(spec=Cause)
+    # The values are irrelevant, they can be anything.
+    cause = StateChangingCause(
+        logger=logging.getLogger('kopf.test.fake.logger'),
+        resource=resource,
+        patch=Patch(),
+        body=Body(),
+        initial=False,
+        reason=Reason.NOOP,
+    )
     handlers = []
     selected = await invoke(lifecycle, handlers, cause=cause)
     assert isinstance(selected, (tuple, list))

@@ -177,7 +177,7 @@ async def test_release(registry, resource, handlers, cause_mock, caplog, k8s_moc
     cause_mock.body.setdefault('metadata', {})['finalizers'] = [FINALIZER]
 
     # register handlers (no deletion handlers)
-    registry.register_cause_handler(
+    registry.register_state_changing_handler(
         group=resource.group,
         version=resource.version,
         plural=resource.plural,

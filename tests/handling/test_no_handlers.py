@@ -16,15 +16,15 @@ async def test_skipped_with_no_handlers(
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = cause_type
 
-    assert not registry.has_cause_handlers(resource=resource)  # prerequisite
-    registry.register_cause_handler(
+    assert not registry.has_state_changing_handlers(resource=resource)  # prerequisite
+    registry.register_state_changing_handler(
         group=resource.group,
         version=resource.version,
         plural=resource.plural,
         reason='a-non-existent-cause-type',
         fn=lambda **_: None,
     )
-    assert registry.has_cause_handlers(resource=resource)  # prerequisite
+    assert registry.has_state_changing_handlers(resource=resource)  # prerequisite
 
     await custom_object_handler(
         lifecycle=kopf.lifecycles.all_at_once,

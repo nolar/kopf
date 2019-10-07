@@ -34,7 +34,7 @@ def resume(
     """ ``@kopf.on.resume()`` handler for the object resuming on operator (re)start. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: registries.HandlerFn) -> registries.HandlerFn:
-        actual_registry.register_cause_handler(
+        actual_registry.register_state_changing_handler(
             group=group, version=version, plural=plural,
             reason=None, initial=True, id=id, timeout=timeout,
             fn=fn, labels=labels, annotations=annotations)
@@ -54,7 +54,7 @@ def create(
     """ ``@kopf.on.create()`` handler for the object creation. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: registries.HandlerFn) -> registries.HandlerFn:
-        actual_registry.register_cause_handler(
+        actual_registry.register_state_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.CREATE, id=id, timeout=timeout,
             fn=fn, labels=labels, annotations=annotations)
@@ -74,7 +74,7 @@ def update(
     """ ``@kopf.on.update()`` handler for the object update or change. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: registries.HandlerFn) -> registries.HandlerFn:
-        actual_registry.register_cause_handler(
+        actual_registry.register_state_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.UPDATE, id=id, timeout=timeout,
             fn=fn, labels=labels, annotations=annotations)
@@ -95,7 +95,7 @@ def delete(
     """ ``@kopf.on.delete()`` handler for the object deletion. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: registries.HandlerFn) -> registries.HandlerFn:
-        actual_registry.register_cause_handler(
+        actual_registry.register_state_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.DELETE, id=id, timeout=timeout,
             fn=fn, requires_finalizer=bool(not optional),
@@ -117,7 +117,7 @@ def field(
     """ ``@kopf.on.field()`` handler for the individual field changes. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: registries.HandlerFn) -> registries.HandlerFn:
-        actual_registry.register_cause_handler(
+        actual_registry.register_state_changing_handler(
             group=group, version=version, plural=plural,
             reason=None, field=field, id=id, timeout=timeout,
             fn=fn, labels=labels, annotations=annotations)
@@ -136,7 +136,7 @@ def event(
     """ ``@kopf.on.event()`` handler for the silent spies on the events. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: registries.HandlerFn) -> registries.HandlerFn:
-        actual_registry.register_event_handler(
+        actual_registry.register_event_watching_handler(
             group=group, version=version, plural=plural,
             id=id, fn=fn, labels=labels, annotations=annotations)
         return fn

@@ -84,8 +84,8 @@ is required for the forward compatibility: the framework can add new keywords
 in the future, and the existing handlers should accept them and not break.
 
 
-Event handlers
-==============
+Event-watching handlers
+=======================
 
 Low-level events can be intercepted and handled silently, without
 storing the handlers' status (errors, retries, successes) on the object.
@@ -114,8 +114,8 @@ and then ignored.
     (re-executable with do duplicating side-effects).
 
 
-Cause handlers
-==============
+State-changing handlers
+=======================
 
 Kopf goes further and beyond: it detects the actual causes of these events,
 i.e. what actually happened to the object:
