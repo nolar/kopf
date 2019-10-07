@@ -9,13 +9,12 @@ import asyncio
 import contextlib
 import contextvars
 import functools
-from typing import Optional, Any, Union, List, Iterable, Tuple
+from typing import Optional, Any, Union, List, Iterable, Iterator, Tuple
 
 from kopf import config
 from kopf.reactor import causation
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
-from kopf.structs import bodies
 from kopf.structs import dicts
 
 Invokable = Union[lifecycles.LifeCycleFn, registries.HandlerFn]
@@ -23,12 +22,12 @@ Invokable = Union[lifecycles.LifeCycleFn, registries.HandlerFn]
 
 @contextlib.contextmanager
 def context(
-        values: Iterable[Tuple[contextvars.ContextVar, Any]],
-) -> None:
+        values: Iterable[Tuple[contextvars.ContextVar[Any], Any]],
+) -> Iterator[None]:
     """
     A context manager to set the context variables temporarily.
     """
-    tokens: List[Tuple[contextvars.ContextVar, contextvars.Token]] = []
+    tokens: List[Tuple[contextvars.ContextVar[Any], contextvars.Token[Any]]] = []
     try:
         for var, val in values:
             token = var.set(val)
