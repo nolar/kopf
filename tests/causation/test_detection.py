@@ -3,9 +3,7 @@ import json
 
 import pytest
 
-from kopf.reactor.causation import CREATE, UPDATE, DELETE, NOOP, FREE, GONE, ACQUIRE, RELEASE
-from kopf.reactor.causation import detect_cause
-from kopf.structs.diffs import Diff
+from kopf.reactor.causation import Reason, detect_cause
 from kopf.structs.finalizers import FINALIZER
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
 
@@ -140,7 +138,7 @@ def test_for_gone(kwargs, event, finalizers, deletion_ts, requires_finalizer):
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
     cause = detect_cause(event=event, requires_finalizer=requires_finalizer, **kwargs)
-    assert cause.event == GONE
+    assert cause.reason == Reason.GONE
     check_kwargs(cause, kwargs)
 
 
@@ -153,7 +151,7 @@ def test_for_free(kwargs, event, finalizers, deletion_ts, requires_finalizer):
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
     cause = detect_cause(event=event, requires_finalizer=requires_finalizer, **kwargs)
-    assert cause.event == FREE
+    assert cause.reason == Reason.FREE
     check_kwargs(cause, kwargs)
 
 
@@ -166,7 +164,7 @@ def test_for_delete(kwargs, event, finalizers, deletion_ts, requires_finalizer):
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
     cause = detect_cause(event=event, requires_finalizer=requires_finalizer, **kwargs)
-    assert cause.event == DELETE
+    assert cause.reason == Reason.DELETE
     check_kwargs(cause, kwargs)
 
 
@@ -179,7 +177,7 @@ def test_for_acquire(kwargs, event, finalizers, deletion_ts, requires_finalizer)
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
     cause = detect_cause(event=event, requires_finalizer=requires_finalizer, **kwargs)
-    assert cause.event == ACQUIRE
+    assert cause.reason == Reason.ACQUIRE
     check_kwargs(cause, kwargs)
 
 
@@ -192,7 +190,7 @@ def test_for_release(kwargs, event, finalizers, deletion_ts, requires_finalizer)
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
     cause = detect_cause(event=event, requires_finalizer=requires_finalizer, **kwargs)
-    assert cause.event == RELEASE
+    assert cause.reason == Reason.RELEASE
     check_kwargs(cause, kwargs)
 
 
@@ -208,7 +206,7 @@ def test_for_create(kwargs, event, finalizers, deletion_ts, annotations, content
     event['object']['metadata'].update(deletion_ts)
     event['object']['metadata'].update(annotations)
     cause = detect_cause(event=event, requires_finalizer=requires_finalizer, **kwargs)
-    assert cause.event == CREATE
+    assert cause.reason == Reason.CREATE
     check_kwargs(cause, kwargs)
 
 
@@ -221,7 +219,7 @@ def test_for_create_skip_acquire(kwargs, event, finalizers, deletion_ts, require
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
     cause = detect_cause(event=event, requires_finalizer=requires_finalizer, **kwargs)
-    assert cause.event == CREATE
+    assert cause.reason == Reason.CREATE
     check_kwargs(cause, kwargs)
 
 
@@ -237,7 +235,7 @@ def test_for_no_op(kwargs, event, finalizers, deletion_ts, annotations, content,
     event['object']['metadata'].update(deletion_ts)
     event['object']['metadata'].update(annotations)
     cause = detect_cause(event=event, requires_finalizer=requires_finalizer, **kwargs)
-    assert cause.event == NOOP
+    assert cause.reason == Reason.NOOP
     check_kwargs(cause, kwargs)
 
 
@@ -253,5 +251,5 @@ def test_for_update(kwargs, event, finalizers, deletion_ts, annotations, content
     event['object']['metadata'].update(deletion_ts)
     event['object']['metadata'].update(annotations)
     cause = detect_cause(event=event, requires_finalizer=requires_finalizer, diff=True, **kwargs)
-    assert cause.event == UPDATE
+    assert cause.reason == Reason.UPDATE
     check_kwargs(cause, kwargs)

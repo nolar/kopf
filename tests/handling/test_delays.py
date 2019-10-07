@@ -5,19 +5,19 @@ import freezegun
 import pytest
 
 import kopf
-from kopf.reactor.causation import HANDLER_CAUSES, CREATE, UPDATE, DELETE, RESUME
+from kopf.reactor.causation import Reason, HANDLER_REASONS
 from kopf.reactor.handling import TemporaryError
 from kopf.reactor.handling import WAITING_KEEPALIVE_INTERVAL
 from kopf.reactor.handling import custom_object_handler
 from kopf.structs.finalizers import FINALIZER
 
 
-@pytest.mark.parametrize('cause_type', HANDLER_CAUSES)
+@pytest.mark.parametrize('cause_reason', HANDLER_REASONS)
 @pytest.mark.parametrize('now, ts, delay', [
     ['2020-01-01T00:00:00', '2020-01-01T00:04:56.789000', 4 * 60 + 56.789],
 ], ids=['fast'])
 async def test_delayed_handlers_progress(
-        registry, handlers, resource, cause_mock, cause_type,
+        registry, handlers, resource, cause_mock, cause_reason,
         caplog, assert_logs, k8s_mocked, now, ts, delay):
     caplog.set_level(logging.DEBUG)
 
@@ -26,7 +26,7 @@ async def test_delayed_handlers_progress(
     handlers.delete_mock.side_effect = TemporaryError("oops", delay=delay)
     handlers.resume_mock.side_effect = TemporaryError("oops", delay=delay)
 
-    cause_mock.event = cause_type
+    cause_mock.reason = cause_reason
 
     with freezegun.freeze_time(now):
         await custom_object_handler(
@@ -39,15 +39,15 @@ async def test_delayed_handlers_progress(
             event_queue=asyncio.Queue(),
         )
 
-    assert handlers.create_mock.call_count == (1 if cause_type == CREATE else 0)
-    assert handlers.update_mock.call_count == (1 if cause_type == UPDATE else 0)
-    assert handlers.delete_mock.call_count == (1 if cause_type == DELETE else 0)
-    assert handlers.resume_mock.call_count == (1 if cause_type == RESUME else 0)
+    assert handlers.create_mock.call_count == (1 if cause_reason == Reason.CREATE else 0)
+    assert handlers.update_mock.call_count == (1 if cause_reason == Reason.UPDATE else 0)
+    assert handlers.delete_mock.call_count == (1 if cause_reason == Reason.DELETE else 0)
+    assert handlers.resume_mock.call_count == (1 if cause_reason == Reason.RESUME else 0)
 
     assert not k8s_mocked.sleep_or_wait.called
     assert k8s_mocked.patch_obj.called
 
-    fname = f'{cause_type}_fn'
+    fname = f'{cause_reason}_fn'
     patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
     assert patch['status']['kopf']['progress'][fname]['delayed'] == ts
 
@@ -57,17 +57,17 @@ async def test_delayed_handlers_progress(
     ])
 
 
-@pytest.mark.parametrize('cause_type', HANDLER_CAUSES)
+@pytest.mark.parametrize('cause_reason', HANDLER_REASONS)
 @pytest.mark.parametrize('now, ts, delay', [
     ['2020-01-01T00:00:00', '2020-01-01T00:04:56.789000', 4 * 60 + 56.789],
     ['2020-01-01T00:00:00', '2099-12-31T23:59:59.000000', WAITING_KEEPALIVE_INTERVAL],
 ], ids=['fast', 'slow'])
 async def test_delayed_handlers_sleep(
-        registry, handlers, resource, cause_mock, cause_type,
+        registry, handlers, resource, cause_mock, cause_reason,
         caplog, assert_logs, k8s_mocked, now, ts, delay):
     caplog.set_level(logging.DEBUG)
 
-    cause_mock.event = cause_type
+    cause_mock.reason = cause_reason
     cause_mock.body.update({
         'status': {'kopf': {'progress': {
             'create_fn': {'delayed': ts},

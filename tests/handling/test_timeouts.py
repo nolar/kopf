@@ -5,13 +5,13 @@ import freezegun
 import pytest
 
 import kopf
-from kopf.reactor.causation import HANDLER_CAUSES
+from kopf.reactor.causation import HANDLER_REASONS
 from kopf.reactor.handling import custom_object_handler
 
 
 # The timeout is hard-coded in conftest.py:handlers().
 # The extrahandlers are needed to prevent the cycle ending and status purging.
-@pytest.mark.parametrize('cause_type', HANDLER_CAUSES)
+@pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 @pytest.mark.parametrize('now, ts', [
     ['2099-12-31T23:59:59', '2020-01-01T00:00:00'],
 ], ids=['slow'])
@@ -21,7 +21,7 @@ async def test_timed_out_handler_fails(
     caplog.set_level(logging.DEBUG)
     name1 = f'{cause_type}_fn'
 
-    cause_mock.event = cause_type
+    cause_mock.reason = cause_type
     cause_mock.body.update({
         'status': {'kopf': {'progress': {
             'create_fn': {'started': ts},

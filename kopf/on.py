@@ -36,7 +36,7 @@ def resume(
     def decorator(fn: registries.HandlerFn) -> registries.HandlerFn:
         actual_registry.register_cause_handler(
             group=group, version=version, plural=plural,
-            event=None, initial=True, id=id, timeout=timeout,
+            reason=None, initial=True, id=id, timeout=timeout,
             fn=fn, labels=labels, annotations=annotations)
         return fn
     return decorator
@@ -56,7 +56,7 @@ def create(
     def decorator(fn: registries.HandlerFn) -> registries.HandlerFn:
         actual_registry.register_cause_handler(
             group=group, version=version, plural=plural,
-            event=causation.CREATE, id=id, timeout=timeout,
+            reason=causation.Reason.CREATE, id=id, timeout=timeout,
             fn=fn, labels=labels, annotations=annotations)
         return fn
     return decorator
@@ -76,7 +76,7 @@ def update(
     def decorator(fn: registries.HandlerFn) -> registries.HandlerFn:
         actual_registry.register_cause_handler(
             group=group, version=version, plural=plural,
-            event=causation.UPDATE, id=id, timeout=timeout,
+            reason=causation.Reason.UPDATE, id=id, timeout=timeout,
             fn=fn, labels=labels, annotations=annotations)
         return fn
     return decorator
@@ -97,7 +97,7 @@ def delete(
     def decorator(fn: registries.HandlerFn) -> registries.HandlerFn:
         actual_registry.register_cause_handler(
             group=group, version=version, plural=plural,
-            event=causation.DELETE, id=id, timeout=timeout,
+            reason=causation.Reason.DELETE, id=id, timeout=timeout,
             fn=fn, requires_finalizer=bool(not optional),
             labels=labels, annotations=annotations)
         return fn
@@ -119,7 +119,7 @@ def field(
     def decorator(fn: registries.HandlerFn) -> registries.HandlerFn:
         actual_registry.register_cause_handler(
             group=group, version=version, plural=plural,
-            event=None, field=field, id=id, timeout=timeout,
+            reason=None, field=field, id=id, timeout=timeout,
             fn=fn, labels=labels, annotations=annotations)
         return fn
     return decorator

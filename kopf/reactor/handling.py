@@ -205,8 +205,8 @@ async def handle_cause(
     skip = None
 
     # Regular causes invoke the handlers.
-    if cause.event in causation.HANDLER_CAUSES:
-        title = causation.TITLES.get(cause.event, repr(cause.event))
+    if cause.reason in causation.HANDLER_REASONS:
+        title = causation.TITLES.get(cause.reason, repr(cause.reason))
         logger.debug(f"{title.capitalize()} event: %r", body)
         if cause.diff is not None and cause.old is not None and cause.new is not None:
             logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
@@ -235,18 +235,18 @@ async def handle_cause(
         lastseen.refresh_essence(body=body, patch=patch, extra_fields=extra_fields)
         if done:
             state.purge_progress(body=body, patch=patch)
-        if cause.event == causation.DELETE:
+        if cause.reason == causation.Reason.DELETE:
             logger.debug("Removing the finalizer, thus allowing the actual deletion.")
             finalizers.remove_finalizers(body=body, patch=patch)
 
     # Informational causes just print the log lines.
-    if cause.event == causation.GONE:
+    if cause.reason == causation.Reason.GONE:
         logger.debug("Deleted, really deleted, and we are notified.")
 
-    if cause.event == causation.FREE:
+    if cause.reason == causation.Reason.FREE:
         logger.debug("Deletion event, but we are done with it, and we do not care.")
 
-    if cause.event == causation.NOOP:
+    if cause.reason == causation.Reason.NOOP:
         logger.debug("Something has changed, but we are not interested (state is the same).")
 
     # For the case of a newly created object, or one that doesn't have the correct
@@ -254,13 +254,13 @@ async def handle_cause(
     # produce an 'ACQUIRE' causation event. This only happens when there are
     # mandatory deletion handlers registered for the given object, i.e. if finalizers
     # are required.
-    if cause.event == causation.ACQUIRE:
+    if cause.reason == causation.Reason.ACQUIRE:
         logger.debug("Adding the finalizer, thus preventing the actual deletion.")
         finalizers.append_finalizers(body=body, patch=patch)
 
     # Remove finalizers from an object, since the object currently has finalizers, but
     # shouldn't, thus releasing the locking of the object to this operator.
-    if cause.event == causation.RELEASE:
+    if cause.reason == causation.Reason.RELEASE:
         logger.debug("Removing the finalizer, as there are no handlers requiring it.")
         finalizers.remove_finalizers(body=body, patch=patch)
 

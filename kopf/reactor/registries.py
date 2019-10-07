@@ -14,9 +14,10 @@ of the handlers to be executed on each reaction cycle.
 import abc
 import functools
 import logging
+import warnings
 from types import FunctionType, MethodType
 from typing import (Any, MutableMapping, Optional, Sequence, Collection, Iterable, Iterator,
-                    NamedTuple, Union, Tuple, List, Set, FrozenSet, Mapping, NewType, cast)
+                    NamedTuple, Union, List, Set, FrozenSet, Mapping, NewType, cast)
 
 from typing_extensions import Protocol
 
@@ -58,12 +59,18 @@ class HandlerFn(Protocol):
 class Handler(NamedTuple):
     fn: HandlerFn
     id: HandlerId
-    event: Optional[str]
-    field: Optional[Tuple[str, ...]]
+    reason: Optional[causation.Reason]
+    field: Optional[dicts.FieldPath]
     timeout: Optional[float] = None
     initial: Optional[bool] = None
     labels: Optional[bodies.Labels] = None
     annotations: Optional[bodies.Annotations] = None
+
+    @property
+    def event(self) -> Optional[causation.Reason]:
+        warnings.warn("`handler.event` is deprecated; use `handler.reason`.", DeprecationWarning)
+        return self.reason
+
 
 
 class BaseRegistry(metaclass=abc.ABCMeta):
@@ -158,7 +165,8 @@ class SimpleRegistry(BaseRegistry):
             self,
             fn: HandlerFn,
             id: Optional[str] = None,
-            event: Optional[str] = None,
+            reason: Optional[causation.Reason] = None,
+            event: Optional[str] = None,  # deprecated, use `reason`
             field: Optional[dicts.FieldSpec] = None,
             timeout: Optional[float] = None,
             initial: Optional[bool] = None,
@@ -166,6 +174,9 @@ class SimpleRegistry(BaseRegistry):
             labels: Optional[bodies.Labels] = None,
             annotations: Optional[bodies.Annotations] = None,
     ) -> HandlerFn:
+        if reason is None and event is not None:
+            reason = causation.Reason(event)
+
         if field is None:
             field = None  # for the non-field events
         elif isinstance(field, str):
@@ -179,7 +190,7 @@ class SimpleRegistry(BaseRegistry):
         real_id = cast(HandlerId, id) if id is not None else cast(HandlerId, get_callable_id(fn))
         real_id = real_id if field is None else cast(HandlerId, f'{real_id}/{".".join(field)}')
         real_id = real_id if self.prefix is None else cast(HandlerId, f'{self.prefix}/{real_id}')
-        handler = Handler(id=real_id, fn=fn, event=event, field=field, timeout=timeout,
+        handler = Handler(id=real_id, fn=fn, reason=reason, field=field, timeout=timeout,
                           initial=initial, labels=labels, annotations=annotations)
 
         self.append(handler)
@@ -195,7 +206,7 @@ class SimpleRegistry(BaseRegistry):
     ) -> Iterator[Handler]:
         changed_fields = frozenset(field for _, field, _, _ in cause.diff or [])
         for handler in self._handlers:
-            if handler.event is None or handler.event == cause.event:
+            if handler.reason is None or handler.reason == cause.reason:
                 if handler.initial and not cause.initial:
                     pass  # ignore initial handlers in non-initial causes.
                 elif match(handler=handler, body=cause.body, changed_fields=changed_fields):
@@ -269,7 +280,8 @@ class GlobalRegistry(BaseRegistry):
             plural: str,
             fn: HandlerFn,
             id: Optional[str] = None,
-            event: Optional[str] = None,
+            reason: Optional[causation.Reason] = None,
+            event: Optional[str] = None,  # deprecated, use `reason`
             field: Optional[dicts.FieldSpec] = None,
             timeout: Optional[float] = None,
             initial: Optional[bool] = None,
@@ -278,11 +290,12 @@ class GlobalRegistry(BaseRegistry):
             annotations: Optional[bodies.Annotations] = None,
     ) -> HandlerFn:
         """
-        Register an additional handler function for the specific resource and specific event.
+        Register an additional handler function for the specific resource and specific reason.
         """
         resource = resources_.Resource(group, version, plural)
         registry = self._cause_handlers.setdefault(resource, SimpleRegistry())
-        registry.register(event=event, field=field, fn=fn, id=id, timeout=timeout, initial=initial, requires_finalizer=requires_finalizer,
+        registry.register(reason=reason, event=event, field=field, fn=fn, id=id, timeout=timeout,
+                          initial=initial, requires_finalizer=requires_finalizer,
                           labels=labels, annotations=annotations)
         return fn  # to be usable as a decorator too.
 
