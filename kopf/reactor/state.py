@@ -52,33 +52,59 @@ and collide with each other (especially critical for multiple updates).
 import collections.abc
 import copy
 import datetime
+from typing import Any, Optional
+
+from kopf.reactor import registries
+from kopf.structs import bodies
+from kopf.structs import patches
 
 
-def is_started(*, body, handler):
+def is_started(
+        *,
+        body: bodies.Body,
+        handler: registries.Handler,
+) -> bool:
     progress = body.get('status', {}).get('kopf', {}).get('progress', {})
     return handler.id in progress
 
 
-def is_sleeping(*, body, handler):
+def is_sleeping(
+        *,
+        body: bodies.Body,
+        handler: registries.Handler,
+) -> bool:
     ts = get_awake_time(body=body, handler=handler)
     finished = is_finished(body=body, handler=handler)
     return not finished and ts is not None and ts > datetime.datetime.utcnow()
 
 
-def is_awakened(*, body, handler):
+def is_awakened(
+        *,
+        body: bodies.Body,
+        handler: registries.Handler,
+) -> bool:
     finished = is_finished(body=body, handler=handler)
     sleeping = is_sleeping(body=body, handler=handler)
     return bool(not finished and not sleeping)
 
 
-def is_finished(*, body, handler):
+def is_finished(
+        *,
+        body: bodies.Body,
+        handler: registries.Handler,
+) -> bool:
     progress = body.get('status', {}).get('kopf', {}).get('progress', {})
     success = progress.get(handler.id, {}).get('success', None)
     failure = progress.get(handler.id, {}).get('failure', None)
     return bool(success or failure)
 
 
-def get_start_time(*, body, patch, handler):
+def get_start_time(
+        *,
+        body: bodies.Body,
+        patch: patches.Patch,
+        handler: registries.Handler,
+) -> Optional[datetime.datetime]:
     progress = patch.get('status', {}).get('kopf', {}).get('progress', {})
     new_value = progress.get(handler.id, {}).get('started', None)
     progress = body.get('status', {}).get('kopf', {}).get('progress', {})
@@ -87,37 +113,63 @@ def get_start_time(*, body, patch, handler):
     return None if value is None else datetime.datetime.fromisoformat(value)
 
 
-def get_awake_time(*, body, handler):
+def get_awake_time(
+        *,
+        body: bodies.Body,
+        handler: registries.Handler,
+) -> Optional[datetime.datetime]:
     progress = body.get('status', {}).get('kopf', {}).get('progress', {})
     value = progress.get(handler.id, {}).get('delayed', None)
     return None if value is None else datetime.datetime.fromisoformat(value)
 
 
-def get_retry_count(*, body, handler):
+def get_retry_count(
+        *,
+        body: bodies.Body,
+        handler: registries.Handler,
+) -> int:
     progress = body.get('status', {}).get('kopf', {}).get('progress', {})
     return progress.get(handler.id, {}).get('retries', None) or 0
 
 
-def set_start_time(*, body, patch, handler):
+def set_start_time(
+        *,
+        body: bodies.Body,
+        patch: patches.Patch,
+        handler: registries.Handler,
+) -> None:
     progress = patch.setdefault('status', {}).setdefault('kopf', {}).setdefault('progress', {})
     progress.setdefault(handler.id, {}).update({
         'started': datetime.datetime.utcnow().isoformat(),
     })
 
 
-def set_awake_time(*, body, patch, handler, delay=None):
+def set_awake_time(
+        *,
+        body: bodies.Body,
+        patch: patches.Patch,
+        handler: registries.Handler,
+        delay: Optional[float] = None,
+) -> None:
+    ts_str: Optional[str]
     if delay is not None:
         ts = datetime.datetime.utcnow() + datetime.timedelta(seconds=delay)
-        ts = ts.isoformat()
+        ts_str = ts.isoformat()
     else:
-        ts = None
+        ts_str = None
     progress = patch.setdefault('status', {}).setdefault('kopf', {}).setdefault('progress', {})
     progress.setdefault(handler.id, {}).update({
-        'delayed': ts,
+        'delayed': ts_str,
     })
 
 
-def set_retry_time(*, body, patch, handler, delay=None):
+def set_retry_time(
+        *,
+        body: bodies.Body,
+        patch: patches.Patch,
+        handler: registries.Handler,
+        delay: Optional[float] = None,
+) -> None:
     retry = get_retry_count(body=body, handler=handler)
     progress = patch.setdefault('status', {}).setdefault('kopf', {}).setdefault('progress', {})
     progress.setdefault(handler.id, {}).update({
@@ -126,7 +178,13 @@ def set_retry_time(*, body, patch, handler, delay=None):
     set_awake_time(body=body, patch=patch, handler=handler, delay=delay)
 
 
-def store_failure(*, body, patch, handler, exc):
+def store_failure(
+        *,
+        body: bodies.Body,
+        patch: patches.Patch,
+        handler: registries.Handler,
+        exc: BaseException,
+) -> None:
     retry = get_retry_count(body=body, handler=handler)
     progress = patch.setdefault('status', {}).setdefault('kopf', {}).setdefault('progress', {})
     progress.setdefault(handler.id, {}).update({
@@ -137,7 +195,13 @@ def store_failure(*, body, patch, handler, exc):
     })
 
 
-def store_success(*, body, patch, handler, result=None):
+def store_success(
+        *,
+        body: bodies.Body,
+        patch: patches.Patch,
+        handler: registries.Handler,
+        result: Any = None,
+) -> None:
     retry = get_retry_count(body=body, handler=handler)
     progress = patch.setdefault('status', {}).setdefault('kopf', {}).setdefault('progress', {})
     progress.setdefault(handler.id, {}).update({
@@ -149,7 +213,12 @@ def store_success(*, body, patch, handler, result=None):
     store_result(patch=patch, handler=handler, result=result)
 
 
-def store_result(*, patch, handler, result=None):
+def store_result(
+        *,
+        patch: patches.Patch,
+        handler: registries.Handler,
+        result: Any = None,
+) -> None:
     if result is None:
         pass
     elif isinstance(result, collections.abc.Mapping):
@@ -160,5 +229,9 @@ def store_result(*, patch, handler, result=None):
         patch.setdefault('status', {})[handler.id] = copy.deepcopy(result)
 
 
-def purge_progress(*, body, patch):
+def purge_progress(
+        *,
+        body: bodies.Body,
+        patch: patches.Patch,
+) -> None:
     patch.setdefault('status', {}).setdefault('kopf', {})['progress'] = None

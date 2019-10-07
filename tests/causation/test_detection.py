@@ -5,6 +5,7 @@ import pytest
 
 from kopf.reactor.causation import CREATE, UPDATE, DELETE, NOOP, FREE, GONE, ACQUIRE, RELEASE
 from kopf.reactor.causation import detect_cause
+from kopf.structs.diffs import Diff
 from kopf.structs.finalizers import FINALIZER
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
 

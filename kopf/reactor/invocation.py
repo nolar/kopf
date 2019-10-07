@@ -8,16 +8,25 @@ All of this goes via the same invocation logic and protocol.
 import asyncio
 import contextvars
 import functools
-from typing import Callable
+from typing import Optional, Any, Union
 
 from kopf import config
+from kopf.reactor import causation
+from kopf.reactor import lifecycles
+from kopf.reactor import registries
+from kopf.structs import bodies
 from kopf.structs import dicts
+
+Invokable = Union[lifecycles.LifeCycleFn, registries.HandlerFn]
 
 
 async def invoke(
-        fn: Callable,
-        *args,
-        **kwargs):
+        fn: Invokable,
+        *args: Any,
+        event: Optional[bodies.Event] = None,
+        cause: Optional[causation.Cause] = None,
+        **kwargs: Any,
+) -> Any:
     """
     Invoke a single function, but safely for the main asyncio process.
 
@@ -33,9 +42,9 @@ async def invoke(
     """
 
     # Add aliases for the kwargs, directly linked to the body, or to the assumed defaults.
-    if 'event' in kwargs:
-        event = kwargs.get('event')
+    if event is not None:
         kwargs.update(
+            event=event,
             type=event['type'],
             body=event['object'],
             spec=dicts.DictView(event['object'], 'spec'),
@@ -45,9 +54,9 @@ async def invoke(
             name=event['object'].get('metadata', {}).get('name'),
             namespace=event['object'].get('metadata', {}).get('namespace'),
         )
-    if 'cause' in kwargs:
-        cause = kwargs.get('cause')
+    if cause is not None:
         kwargs.update(
+            cause=cause,
             event=cause.event,
             body=cause.body,
             diff=cause.diff,
@@ -64,7 +73,7 @@ async def invoke(
         )
 
     if is_async_fn(fn):
-        result = await fn(*args, **kwargs)
+        result = await fn(*args, **kwargs)  # type: ignore
     else:
 
         # Not that we want to use functools, but for executors kwargs, it is officially recommended:
@@ -81,12 +90,14 @@ async def invoke(
     return result
 
 
-def is_async_fn(fn):
+def is_async_fn(
+        fn: Optional[Invokable],
+) -> bool:
     if fn is None:
-        return None
+        return False
     elif isinstance(fn, functools.partial):
         return is_async_fn(fn.func)
     elif hasattr(fn, '__wrapped__'):  # @functools.wraps()
-        return is_async_fn(fn.__wrapped__)
+        return is_async_fn(fn.__wrapped__)  # type: ignore
     else:
         return asyncio.iscoroutinefunction(fn)

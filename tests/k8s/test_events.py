@@ -4,6 +4,7 @@ import pytest
 import requests
 
 from kopf.clients.events import post_event
+from kopf.structs.bodies import build_object_reference
 
 
 async def test_posting(req_mock):
@@ -12,7 +13,8 @@ async def test_posting(req_mock):
            'metadata': {'namespace': 'ns',
                         'name': 'name',
                         'uid': 'uid'}}
-    await post_event(obj=obj, type='type', reason='reason', message='message')
+    ref = build_object_reference(obj)
+    await post_event(ref=ref, type='type', reason='reason', message='message')
 
     assert req_mock.post.called
     assert req_mock.post.call_count == 1
@@ -35,7 +37,8 @@ async def test_type_is_v1_not_v1beta1(req_mock):
            'metadata': {'namespace': 'ns',
                         'name': 'name',
                         'uid': 'uid'}}
-    await post_event(obj=obj, type='type', reason='reason', message='message')
+    ref = build_object_reference(obj)
+    await post_event(ref=ref, type='type', reason='reason', message='message')
 
     assert req_mock.post.called
 
@@ -54,7 +57,8 @@ async def test_api_errors_logged_but_suppressed(req_mock, assert_logs):
            'metadata': {'namespace': 'ns',
                         'name': 'name',
                         'uid': 'uid'}}
-    await post_event(obj=obj, type='type', reason='reason', message='message')
+    ref = build_object_reference(obj)
+    await post_event(ref=ref, type='type', reason='reason', message='message')
 
     assert req_mock.post.called
     assert_logs([
@@ -71,9 +75,10 @@ async def test_regular_errors_escalate(req_mock):
            'metadata': {'namespace': 'ns',
                         'name': 'name',
                         'uid': 'uid'}}
+    ref = build_object_reference(obj)
 
     with pytest.raises(Exception) as excinfo:
-        await post_event(obj=obj, type='type', reason='reason', message='message')
+        await post_event(ref=ref, type='type', reason='reason', message='message')
 
     assert excinfo.value is error
 
@@ -84,8 +89,9 @@ async def test_message_is_cut_to_max_length(req_mock):
            'metadata': {'namespace': 'ns',
                         'name': 'name',
                         'uid': 'uid'}}
+    ref = build_object_reference(obj)
     message = 'start' + ('x' * 2048) + 'end'
-    await post_event(obj=obj, type='type', reason='reason', message=message)
+    await post_event(ref=ref, type='type', reason='reason', message=message)
 
     data = json.loads(req_mock.post.call_args_list[0][1]['data'])
     assert len(data['message']) <= 1024  # max supported API message length

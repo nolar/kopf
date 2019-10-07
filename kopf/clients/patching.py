@@ -1,4 +1,5 @@
 import asyncio
+from typing import Optional, cast
 
 import pykube
 import requests
@@ -6,9 +7,19 @@ import requests
 from kopf import config
 from kopf.clients import auth
 from kopf.clients import classes
+from kopf.structs import bodies
+from kopf.structs import patches
+from kopf.structs import resources
 
 
-async def patch_obj(*, resource, patch, namespace=None, name=None, body=None):
+async def patch_obj(
+        *,
+        resource: resources.Resource,
+        patch: patches.Patch,
+        namespace: Optional[str] = None,
+        name: Optional[str] = None,
+        body: Optional[bodies.Body] = None,
+) -> None:
     """
     Patch a resource of specific kind.
 
@@ -26,9 +37,9 @@ async def patch_obj(*, resource, patch, namespace=None, name=None, body=None):
     namespace = body.get('metadata', {}).get('namespace') if body is not None else namespace
     name = body.get('metadata', {}).get('name') if body is not None else name
     if body is None:
-        nskw = {} if namespace is None else dict(namespace=namespace)
-        body = {'metadata': {'name': name}}
-        body['metadata'].update(nskw)
+        body = cast(bodies.Body, {'metadata': {'name': name}})
+        if namespace is not None:
+            body['metadata']['namespace'] = namespace
 
     api = auth.get_pykube_api()
     cls = classes._make_cls(resource=resource)

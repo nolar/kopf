@@ -5,7 +5,8 @@ import logging
 import signal
 import threading
 import warnings
-from typing import Optional, Callable, Collection, Union
+from typing import (Optional, Collection, Union, Tuple, Set, Text, Any, Coroutine,
+                    cast, TYPE_CHECKING)
 
 from kopf.engines import peering
 from kopf.engines import posting
@@ -14,20 +15,28 @@ from kopf.reactor import lifecycles
 from kopf.reactor import queueing
 from kopf.reactor import registries
 
-Flag = Union[asyncio.Future, asyncio.Event, concurrent.futures.Future, threading.Event]
+if TYPE_CHECKING:
+    asyncio_Task = asyncio.Task[None]
+    asyncio_Future = asyncio.Future[Any]
+else:
+    asyncio_Task = asyncio.Task
+    asyncio_Future = asyncio.Future
+
+Flag = Union[asyncio_Future, asyncio.Event, concurrent.futures.Future, threading.Event]
+Tasks = Collection[asyncio_Task]
 
 logger = logging.getLogger(__name__)
 
 
 def run(
         loop: Optional[asyncio.AbstractEventLoop] = None,
-        lifecycle: Optional[Callable] = None,
+        lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         registry: Optional[registries.GlobalRegistry] = None,
         standalone: bool = False,
         priority: int = 0,
         peering_name: Optional[str] = None,
         namespace: Optional[str] = None,
-):
+) -> None:
     """
     Run the whole operator synchronously.
 
@@ -48,7 +57,7 @@ def run(
 
 
 async def operator(
-        lifecycle: Optional[Callable] = None,
+        lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         registry: Optional[registries.GlobalRegistry] = None,
         standalone: bool = False,
         priority: int = 0,
@@ -56,7 +65,7 @@ async def operator(
         namespace: Optional[str] = None,
         stop_flag: Optional[Flag] = None,
         ready_flag: Optional[Flag] = None,
-):
+) -> None:
     """
     Run the whole operator asynchronously.
 
@@ -80,7 +89,7 @@ async def operator(
 
 
 async def spawn_tasks(
-        lifecycle: Optional[Callable] = None,
+        lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         registry: Optional[registries.GlobalRegistry] = None,
         standalone: bool = False,
         priority: int = 0,
@@ -88,7 +97,7 @@ async def spawn_tasks(
         namespace: Optional[str] = None,
         stop_flag: Optional[Flag] = None,
         ready_flag: Optional[Flag] = None,
-) -> Collection[asyncio.Task]:
+) -> Tasks:
     """
     Spawn all the tasks needed to run the operator.
 
@@ -99,9 +108,9 @@ async def spawn_tasks(
     # The freezer and the registry are scoped to this whole task-set, to sync them all.
     lifecycle = lifecycle if lifecycle is not None else lifecycles.get_default_lifecycle()
     registry = registry if registry is not None else registries.get_default_registry()
-    event_queue = asyncio.Queue(loop=loop)
-    freeze_flag = asyncio.Event(loop=loop)
-    signal_flag = asyncio.Future(loop=loop)
+    event_queue: posting.K8sEventQueue = asyncio.Queue(loop=loop)
+    freeze_flag: asyncio.Event = asyncio.Event(loop=loop)
+    signal_flag: asyncio_Future = asyncio.Future(loop=loop)
     tasks = []
 
     # A top-level task for external stopping by setting a stop-flag. Once set,
@@ -162,7 +171,11 @@ async def spawn_tasks(
     return tasks
 
 
-async def run_tasks(root_tasks, *, ignored: Collection[asyncio.Task] = frozenset()):
+async def run_tasks(
+        root_tasks: Tasks,
+        *,
+        ignored: Tasks = frozenset(),
+) -> None:
     """
     Orchestrate the tasks and terminate them gracefully when needed.
 
@@ -215,20 +228,31 @@ async def run_tasks(root_tasks, *, ignored: Collection[asyncio.Task] = frozenset
     await _reraise(root_done | root_cancelled | hung_done | hung_cancelled)
 
 
-async def _all_tasks(ignored: Collection[asyncio.Task] = frozenset()) -> Collection[asyncio.Task]:
+async def _all_tasks(
+        ignored: Tasks = frozenset(),
+) -> Tasks:
     current_task = asyncio.current_task()
     return {task for task in asyncio.all_tasks()
             if task is not current_task and task not in ignored}
 
 
-async def _wait(tasks, *, timeout=None, return_when=asyncio.ALL_COMPLETED):
+async def _wait(
+        tasks: Tasks,
+        *,
+        timeout: Optional[float] = None,
+        return_when: Any = asyncio.ALL_COMPLETED,
+) -> Tuple[Set[asyncio_Task], Set[asyncio_Task]]:
     if not tasks:
-        return set(), ()
+        return set(), set()
     done, pending = await asyncio.wait(tasks, timeout=timeout, return_when=return_when)
-    return done, pending
+    return cast(Set[asyncio_Task], done), cast(Set[asyncio_Task], pending)
 
 
-async def _stop(tasks, title, cancelled):
+async def _stop(
+        tasks: Tasks,
+        title: str,
+        cancelled: bool,
+) -> Tuple[Set[asyncio_Task], Set[asyncio_Task]]:
     if not tasks:
         logger.debug(f"{title} tasks stopping is skipped: no tasks given.")
         return set(), set()
@@ -254,10 +278,12 @@ async def _stop(tasks, title, cancelled):
         are = 'are' if not pending else 'are not'
         why = 'cancelled normally' if cancelled else 'finished normally'
         logger.debug(f"{title} tasks {are} stopped: {why}; tasks left: {pending!r}")
-        return done, pending
+        return cast(Set[asyncio_Task], done), cast(Set[asyncio_Task], pending)
 
 
-async def _reraise(tasks):
+async def _reraise(
+        tasks: Tasks,
+) -> None:
     for task in tasks:
         try:
             task.result()  # can raise the regular (non-cancellation) exceptions.
@@ -265,7 +291,10 @@ async def _reraise(tasks):
             pass
 
 
-async def _root_task_checker(name, coro):
+async def _root_task_checker(
+        name: Text,
+        coro: Coroutine[Any, Any, Any],
+) -> None:
     try:
         await coro
     except asyncio.CancelledError:
@@ -279,17 +308,23 @@ async def _root_task_checker(name, coro):
 
 
 async def _stop_flag_checker(
-        signal_flag: asyncio.Future,
+        signal_flag: asyncio_Future,
         ready_flag: Optional[Flag],
         stop_flag: Optional[Flag],
-):
+) -> None:
     # TODO: collect the readiness of all root tasks instead, and set this one only when fully ready.
     # Notify the caller that we are ready to be executed.
     await _raise_flag(ready_flag)
 
+    # Selects the flags to be awaited (if set).
+    flags = []
+    if signal_flag is not None:
+        flags.append(signal_flag)
+    if stop_flag is not None:
+        flags.append(asyncio.create_task(_wait_flag(stop_flag)))
+
     # Wait until one of the stoppers is set/raised.
     try:
-        flags = [signal_flag] + ([] if stop_flag is None else [_wait_flag(stop_flag)])
         done, pending = await asyncio.wait(flags, return_when=asyncio.FIRST_COMPLETED)
         future = done.pop()
         result = await future
@@ -304,7 +339,11 @@ async def _stop_flag_checker(
             logger.info("Stop-flag is set to %r. Operator is stopping.", result)
 
 
-def create_tasks(loop: asyncio.AbstractEventLoop, *arg, **kwargs):
+def create_tasks(
+        loop: asyncio.AbstractEventLoop,
+        *arg: Any,
+        **kwargs: Any,
+) -> Tasks:
     """
     .. deprecated:: 1.0
         This is a synchronous interface to `spawn_tasks`.
@@ -319,7 +358,7 @@ def create_tasks(loop: asyncio.AbstractEventLoop, *arg, **kwargs):
 
 async def _wait_flag(
         flag: Optional[Flag],
-):
+) -> Any:
     """
     Wait for a flag to be raised.
 
@@ -344,7 +383,7 @@ async def _wait_flag(
 
 async def _raise_flag(
         flag: Optional[Flag],
-):
+) -> None:
     """
     Raise a flag.
 

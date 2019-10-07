@@ -8,10 +8,10 @@ class Resource(NamedTuple):
     plural: str
 
     @property
-    def name(self):
+    def name(self) -> str:
         return f'{self.plural}.{self.group}'
 
     @property
-    def api_version(self):
+    def api_version(self) -> str:
         # Strip heading/trailing slashes if group is absent (e.g. for pods).
         return f'{self.group}/{self.version}'.strip('/')

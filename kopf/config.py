@@ -8,17 +8,18 @@ from kopf.engines import logging as logging_engine
 format = '[%(asctime)s] %(name)-20.20s [%(levelname)-8.8s] %(message)s'
 
 
+# Deprecated: use ``logging.*`` constants instead. Kept here for backward-compatibility.
 LOGLEVEL_INFO = logging.INFO
-""" Event loglevel to log all events. """
 LOGLEVEL_WARNING = logging.WARNING
-""" Event loglevel to log all events except informational. """
 LOGLEVEL_ERROR = logging.ERROR
-""" Event loglevel to log only errors and critical events. """
 LOGLEVEL_CRITICAL = logging.CRITICAL
-""" Event loglevel to log only critical events(basically - no events). """
 
 
-def configure(debug=None, verbose=None, quiet=None):
+def configure(
+        debug: Optional[bool] = None,
+        verbose: Optional[bool] = None,
+        quiet: Optional[bool] = None,
+) -> None:
     log_level = 'DEBUG' if debug or verbose else 'WARNING' if quiet else 'INFO'
 
     logger = logging.getLogger()
@@ -47,12 +48,12 @@ def configure(debug=None, verbose=None, quiet=None):
         del logger.handlers[1:]  # everything except the default NullHandler
 
     # Prevent the low-level logging unless in the debug verbosity mode. Keep only the operator's messages.
-    logging.getLogger('urllib3').propagate = debug
-    logging.getLogger('asyncio').propagate = debug
-    logging.getLogger('kubernetes').propagate = debug
+    logging.getLogger('urllib3').propagate = bool(debug)
+    logging.getLogger('asyncio').propagate = bool(debug)
+    logging.getLogger('kubernetes').propagate = bool(debug)
 
     loop = asyncio.get_event_loop()
-    loop.set_debug(debug)
+    loop.set_debug(bool(debug))
 
 
 class EventsConfig:
@@ -60,7 +61,7 @@ class EventsConfig:
     Used to configure events sending behaviour.
     """
 
-    events_loglevel = LOGLEVEL_INFO
+    events_loglevel: int = logging.INFO
     """ What events should be logged. """
 
 
@@ -95,7 +96,7 @@ class WorkersConfig:
         return WorkersConfig.threadpool_executor
 
     @staticmethod
-    def set_synchronous_tasks_threadpool_limit(new_limit: int):
+    def set_synchronous_tasks_threadpool_limit(new_limit: int) -> None:
         """
         Call this static method at any time to change synchronous_tasks_threadpool_limit in runtime.
         """
@@ -104,7 +105,7 @@ class WorkersConfig:
 
         WorkersConfig.synchronous_tasks_threadpool_limit = new_limit
         if WorkersConfig.threadpool_executor:
-            WorkersConfig.threadpool_executor._max_workers = new_limit
+            WorkersConfig.threadpool_executor._max_workers = new_limit  # type: ignore
 
 
 class WatchersConfig:
@@ -112,8 +113,8 @@ class WatchersConfig:
     Used to configure the K8s API watchers and streams.
     """
 
-    default_stream_timeout = None
+    default_stream_timeout: Optional[float] = None
     """ The maximum duration of one streaming request. Patched in some tests. """
 
-    watcher_retry_delay = 0.1
+    watcher_retry_delay: float = 0.1
     """ How long should a pause be between watch requests (to prevent flooding). """

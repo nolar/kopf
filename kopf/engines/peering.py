@@ -36,12 +36,14 @@ import logging
 import os
 import random
 import socket
-from typing import Iterable, Mapping, Optional, Union
+from typing import Any, Dict, Iterable, Optional, Union, NoReturn
 
 import iso8601
 
 from kopf.clients import fetching
 from kopf.clients import patching
+from kopf.structs import bodies
+from kopf.structs import patches
 from kopf.structs import resources
 
 logger = logging.getLogger(__name__)
@@ -57,15 +59,18 @@ PEERING_DEFAULT_NAME = 'default'
 # The extra fields are for easier calculation when and if the peer is dead to the moment.
 class Peer:
 
-    def __init__(self,
-                 id: str, *,
-                 name: str,
-                 priority: int = 0,
-                 lastseen: Optional[str] = None,
-                 lifetime: int = 60,
-                 namespace: Optional[str] = None,
-                 legacy: bool = False,
-                 **kwargs):  # for the forward-compatibility with the new fields
+    def __init__(
+            self,
+            id: str,
+            *,
+            name: str,
+            priority: int = 0,
+            lastseen: Optional[str] = None,
+            lifetime: int = 60,
+            namespace: Optional[str] = None,
+            legacy: bool = False,
+            **_: Any,  # for the forward-compatibility with the new fields
+    ):
         super().__init__()
         self.id = id
         self.name = name
@@ -81,19 +86,21 @@ class Peer:
         self.is_dead = self.deadline <= datetime.datetime.utcnow()
         self.legacy = legacy
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.id}, namespace={self.namespace}, priority={self.priority}, lastseen={self.lastseen}, lifetime={self.lifetime})"
 
     @property
-    def resource(self):
+    def resource(self) -> resources.Resource:
         return LEGACY_PEERING_RESOURCE if self.legacy else CLUSTER_PEERING_RESOURCE if self.namespace is None else NAMESPACED_PEERING_RESOURCE
 
     @classmethod
-    def detect(cls,
-               standalone: bool,
-               namespace: Optional[str],
-               name: Optional[str],
-               **kwargs) -> Optional:
+    def detect(
+            cls,
+            standalone: bool,
+            namespace: Optional[str],
+            name: Optional[str],
+            **kwargs: Any,
+    ) -> Optional["Peer"]:
 
         if standalone:
             return None
@@ -114,7 +121,7 @@ class Peer:
         logger.warning(f"Default peering object not found, falling back to the standalone mode.")
         return None
 
-    def as_dict(self):
+    def as_dict(self) -> Dict[str, Any]:
         # Only the non-calculated and non-identifying fields.
         return {
             'namespace': self.namespace,
@@ -123,7 +130,7 @@ class Peer:
             'lifetime': self.lifetime.total_seconds(),
         }
 
-    def touch(self, *, lifetime: Optional[int] = None):
+    def touch(self, *, lifetime: Optional[int] = None) -> None:
         self.lastseen = datetime.datetime.utcnow()
         self.lifetime = (self.lifetime if lifetime is None else
                          lifetime if isinstance(lifetime, datetime.timedelta) else
@@ -131,14 +138,14 @@ class Peer:
         self.deadline = self.lastseen + self.lifetime
         self.is_dead = self.deadline <= datetime.datetime.utcnow()
 
-    async def keepalive(self):
+    async def keepalive(self) -> None:
         """
         Add a peer to the peers, and update its alive status.
         """
         self.touch()
         await apply_peers([self], name=self.name, namespace=self.namespace, legacy=self.legacy)
 
-    async def disappear(self):
+    async def disappear(self) -> None:
         """
         Remove a peer from the peers (gracefully).
         """
@@ -146,13 +153,13 @@ class Peer:
         await apply_peers([self], name=self.name, namespace=self.namespace, legacy=self.legacy)
 
     @staticmethod
-    def _is_peering_exist(name: str, namespace: Optional[str]):
+    def _is_peering_exist(name: str, namespace: Optional[str]) -> bool:
         resource = CLUSTER_PEERING_RESOURCE if namespace is None else NAMESPACED_PEERING_RESOURCE
         obj = fetching.read_obj(resource=resource, namespace=namespace, name=name, default=None)
         return obj is not None
 
     @staticmethod
-    def _is_peering_legacy(name: str, namespace: Optional[str]):
+    def _is_peering_legacy(name: str, namespace: Optional[str]) -> bool:
         """
         Legacy mode for the peering: cluster-scoped KopfPeering (new mode: namespaced).
 
@@ -177,14 +184,15 @@ async def apply_peers(
         name: str,
         namespace: Union[None, str],
         legacy: bool = False,
-):
+) -> None:
     """
     Apply the changes in the peers to the sync-object.
 
     The dead peers are removed, the new or alive peers are stored.
     Note: this does NOT change their `lastseen` field, so do it explicitly with ``touch()``.
     """
-    patch = {'status': {peer.id: None if peer.is_dead else peer.as_dict() for peer in peers}}
+    patch = patches.Patch()
+    patch.update({'status': {peer.id: None if peer.is_dead else peer.as_dict() for peer in peers}})
     resource = (LEGACY_PEERING_RESOURCE if legacy else
                 CLUSTER_PEERING_RESOURCE if namespace is None else
                 NAMESPACED_PEERING_RESOURCE)
@@ -193,12 +201,12 @@ async def apply_peers(
 
 async def peers_handler(
         *,
-        event: Mapping,
+        event: bodies.Event,
         freeze: asyncio.Event,
         ourselves: Peer,
         autoclean: bool = True,
         replenished: asyncio.Event,
-):
+) -> None:
     """
     Handle a single update of the peers by us or by other operators.
 
@@ -214,7 +222,7 @@ async def peers_handler(
     body = event['object']
     name = body.get('metadata', {}).get('name', None)
     namespace = body.get('metadata', {}).get('namespace', None)
-    if namespace != ourselves.namespace or name != ourselves.name:
+    if namespace != ourselves.namespace or name != ourselves.name or name is None:
         return
 
     # Find if we are still the highest priority operator.
@@ -245,7 +253,7 @@ async def peers_handler(
 async def peers_keepalive(
         *,
         ourselves: Peer,
-):
+) -> NoReturn:
     """
     An ever-running coroutine to regularly send our own keep-alive status for the peers.
     """

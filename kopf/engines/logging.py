@@ -10,17 +10,19 @@ the operators' code, and can lead to information loss or mismatch
 """
 import copy
 import logging
+from typing import Tuple, MutableMapping, Any
 
 from kopf import config
 from kopf.engines import posting
+from kopf.structs import bodies
 
 
 class ObjectPrefixingFormatter(logging.Formatter):
     """ An utility to prefix the per-object log messages. """
 
-    def format(self, record):
+    def format(self, record: logging.LogRecord) -> str:
         if hasattr(record, 'k8s_ref'):
-            ref = record.k8s_ref
+            ref = getattr(record, 'k8s_ref')
             prefix = f"[{ref.get('namespace', '')}/{ref.get('name', '')}]"
             record = copy.copy(record)  # shallow
             record.msg = f"{prefix} {record.msg}"
@@ -32,22 +34,23 @@ class K8sPoster(logging.Handler):
     A handler to post all log messages as K8s events.
     """
 
-    def createLock(self):
+    def createLock(self) -> None:
         # Save some time on unneeded locks. Events are posted in the background.
         # We only put events to the queue, which is already lock-protected.
         self.lock = None
 
-    def filter(self, record):
+    def filter(self, record: logging.LogRecord) -> bool:
         # Only those which have a k8s object referred (see: `ObjectLogger`).
         # Otherwise, we have nothing to post, and nothing to do.
         level_ok = record.levelno >= config.EventsConfig.events_loglevel
         has_ref = hasattr(record, 'k8s_ref')
-        skipped = hasattr(record, 'k8s_skip') and record.k8s_skip
+        skipped = hasattr(record, 'k8s_skip') and getattr(record, 'k8s_skip')
         return level_ok and has_ref and not skipped and super().filter(record)
 
-    def emit(self, record):
+    def emit(self, record: logging.LogRecord) -> None:
         # Same try-except as in e.g. `logging.StreamHandler`.
         try:
+            ref = getattr(record, 'k8s_ref')
             type = (
                 "Debug" if record.levelno <= logging.DEBUG else
                 "Normal" if record.levelno <= logging.INFO else
@@ -58,7 +61,7 @@ class K8sPoster(logging.Handler):
             reason = 'Logging'
             message = self.format(record)
             posting.enqueue(
-                ref=record.k8s_ref,
+                ref=ref,
                 type=type,
                 reason=reason,
                 message=message)
@@ -82,7 +85,7 @@ class ObjectLogger(logging.LoggerAdapter):
     (e.g. in case of background posting via the queue; see `K8sPoster`).
     """
 
-    def __init__(self, *, body):
+    def __init__(self, *, body: bodies.Body):
         super().__init__(logger, dict(
             k8s_skip=False,
             k8s_ref=dict(
@@ -94,13 +97,24 @@ class ObjectLogger(logging.LoggerAdapter):
             ),
         ))
 
-    def process(self, msg, kwargs):
+    def process(
+            self,
+            msg: str,
+            kwargs: MutableMapping[str, Any],
+    ) -> Tuple[str, MutableMapping[str, Any]]:
         # Native logging overwrites the message's extra with the adapter's extra.
         # We merge them, so that both message's & adapter's extras are available.
         kwargs["extra"] = dict(self.extra, **kwargs.get('extra', {}))
         return msg, kwargs
 
-    def log(self, level, msg, *args, local=False, **kwargs):
+    def log(
+            self,
+            level: int,
+            msg: str,
+            *args: Any,
+            local: bool = False,
+            **kwargs: Any,
+    ) -> None:
         if local:
             kwargs['extra'] = dict(kwargs.pop('extra', {}), k8s_skip=True)
         super().log(level, msg, *args, **kwargs)

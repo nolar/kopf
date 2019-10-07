@@ -19,8 +19,9 @@ They would not be needed if the client library were natively asynchronous.
 """
 
 import asyncio
+import concurrent.futures
 import logging
-from typing import Union
+from typing import Optional, Iterator, AsyncIterator, cast
 
 import pykube
 
@@ -28,6 +29,7 @@ from kopf import config
 from kopf.clients import auth
 from kopf.clients import classes
 from kopf.clients import fetching
+from kopf.structs import bodies
 from kopf.structs import resources
 
 logger = logging.getLogger(__name__)
@@ -46,32 +48,38 @@ class StopStreaming(RuntimeError):
     """
 
 
-def streaming_next(src):
+def streaming_next(__src: Iterator[bodies.RawEvent]) -> bodies.RawEvent:
     """
     Same as `next`, but replaces the `StopIteration` with `StopStreaming`.
     """
     try:
-        return next(src)
+        return next(__src)
     except StopIteration as e:
         raise StopStreaming(str(e))
 
 
-async def streaming_aiter(src, loop=None, executor=None):
+async def streaming_aiter(
+        __src: Iterator[bodies.RawEvent],
+        *,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+        executor: Optional[concurrent.futures.Executor] = None,
+) -> AsyncIterator[bodies.RawEvent]:
     """
     Same as `iter`, but asynchronous and stops on `StopStreaming`, not on `StopIteration`.
     """
     loop = loop if loop is not None else asyncio.get_event_loop()
     while True:
         try:
-            yield await loop.run_in_executor(executor, streaming_next, src)
+            yield await loop.run_in_executor(executor, streaming_next, __src)
         except StopStreaming:
             return
 
 
 async def infinite_watch(
+        *,
         resource: resources.Resource,
-        namespace: Union[None, str],
-):
+        namespace: Optional[str],
+) -> AsyncIterator[bodies.Event]:
     """
     Stream the watch-events infinitely.
 
@@ -89,9 +97,10 @@ async def infinite_watch(
 
 
 async def streaming_watch(
+        *,
         resource: resources.Resource,
-        namespace: Union[None, str],
-):
+        namespace: Optional[str],
+) -> AsyncIterator[bodies.Event]:
     """
     Stream the watch-events from one single API watch-call.
     """
@@ -112,7 +121,7 @@ async def streaming_watch(
         # "410 Gone" is for the "resource version too old" error, we must restart watching.
         # The resource versions are lost by k8s after few minutes (as per the official doc).
         # The error occurs when there is nothing happening for few minutes. This is normal.
-        if event['type'] == 'ERROR' and event['object']['code'] == 410:
+        if event['type'] == 'ERROR' and cast(bodies.Error, event['object'])['code'] == 410:
             logger.debug("Restarting the watch-stream for %r", resource)
             break  # out of for-cycle, to the while-true-cycle.
 
@@ -125,11 +134,17 @@ async def streaming_watch(
             logger.warning("Ignoring an unsupported event type: %r", event)
             continue
 
-        # Yield normal events to the consumer.
-        yield event
+        # Yield normal events to the consumer. Errors are already filtered out.
+        yield cast(bodies.Event, event)
 
 
-def watch_objs(*, resource, namespace=None, timeout=None, since=None):
+def watch_objs(
+        *,
+        resource: resources.Resource,
+        namespace: Optional[str] = None,
+        timeout: Optional[float] = None,
+        since: Optional[str] = None,
+) -> Iterator[bodies.RawEvent]:
     """
     Watch objects of a specific resource type.
 
@@ -152,4 +167,7 @@ def watch_objs(*, resource, namespace=None, timeout=None, since=None):
     namespace = namespace if issubclass(cls, pykube.objects.NamespacedAPIObject) else None
     lst = cls.objects(api, namespace=pykube.all if namespace is None else namespace)
     src = lst.watch(since=since, params=params)
-    return iter({'type': event.type, 'object': event.object.obj} for event in src)
+    return iter(cast(bodies.RawEvent, {
+        'type': event.type,
+        'object': event.object.obj,
+    }) for event in src)

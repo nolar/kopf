@@ -21,6 +21,7 @@ coverage.xml
 junit.xml
 *.cover
 .hypothesis/
+.mypy_cache
 
 # Documentation
 docs/_build

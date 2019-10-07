@@ -2,13 +2,18 @@
 Some basic dicts and field-in-a-dict manipulation helpers.
 """
 import collections.abc
-from typing import (Any, Union, MutableMapping, Mapping, Tuple, List, Text,
+import enum
+from typing import (TypeVar, Any, Union, MutableMapping, Mapping, Tuple, List,
                     Iterable, Iterator, Optional)
 
 FieldPath = Tuple[str, ...]
-FieldSpec = Union[None, Text, FieldPath, List[str]]
+FieldSpec = Union[None, str, FieldPath, List[str]]
 
-_UNSET = object()
+_T = TypeVar('_T')
+
+
+class _UNSET(enum.Enum):
+    token = enum.auto()
 
 
 def parse_field(
@@ -35,12 +40,12 @@ def parse_field(
 
 
 def resolve(
-        d: Mapping,
+        d: Optional[Mapping[Any, Any]],
         field: FieldSpec,
-        default: Any = _UNSET,
+        default: Union[_T, _UNSET] = _UNSET.token,
         *,
         assume_empty: bool = False,
-):
+) -> Union[Any, _T]:
     """
     Retrieve a nested sub-field from a dict.
 
@@ -54,7 +59,7 @@ def resolve(
     try:
         result = d
         for key in path:
-            if result is None and assume_empty and default is not _UNSET:
+            if result is None and assume_empty and not isinstance(default, _UNSET):
                 return default
             elif isinstance(result, collections.abc.Mapping):
                 result = result[key]
@@ -62,17 +67,16 @@ def resolve(
                 raise TypeError(f"The structure is not a dict with field {key!r}: {result!r}")
         return result
     except KeyError:
-        if default is _UNSET:
-            raise
-        else:
+        if not isinstance(default, _UNSET):
             return default
+        raise
 
 
 def ensure(
-        d: MutableMapping,
+        d: MutableMapping[Any, Any],
         field: FieldSpec,
         value: Any,
-):
+) -> None:
     """
     Force-set a nested sub-field in a dict.
     """
@@ -89,10 +93,10 @@ def ensure(
 
 
 def cherrypick(
-        src: Mapping,
-        dst: MutableMapping,
+        src: Mapping[Any, Any],
+        dst: MutableMapping[Any, Any],
         fields: Optional[Iterable[FieldSpec]],
-):
+) -> None:
     """
     Copy all specified fields between dicts (from src to dst).
     """
@@ -105,16 +109,33 @@ def cherrypick(
 
 
 def walk(
-        objs,
+        objs: Union[_T,
+                    Iterable[_T],
+                    Iterable[Union[_T,
+                                   Iterable[_T]]]],
+        *,
         nested: Optional[Iterable[FieldSpec]] = None,
-):
+) -> Iterator[_T]:
     """
-    Iterate over one or many dicts (and sub-dicts recursively).
+    Iterate over objects, flattening the lists/tuples/iterables recursively.
+
+    In plain English, the source is either an object, or a list/tuple/iterable
+    of objects with any level of nesting. The dicts/mappings are excluded,
+    despite they are iterables too, as they are treated as objects themselves.
+
+    For the output, it yields all the objects in a flat iterable suitable for::
+
+        for obj in walk(objs):
+            pass
+
+    The type declares only 2-level nesting, but this is done only
+    for type-checker's limitations. The actual nesting can be infinite.
+    It is highly unlikely that there will be anything deeper than one level.
     """
     if objs is None:
-        return
+        pass
     elif isinstance(objs, collections.abc.Mapping):
-        yield objs
+        yield objs  # type: ignore
         for subfield in (nested if nested is not None else []):
             try:
                 yield resolve(objs, parse_field(subfield))
@@ -154,7 +175,7 @@ class DictView(Mapping[Any, Any]):
         self._src = __src
         self._path = parse_field(__path)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(dict(self))
 
     def __len__(self) -> int:

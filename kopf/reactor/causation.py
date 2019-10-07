@@ -20,11 +20,13 @@ not when it is actually deleted (as the events notify): so that the handlers
 could execute on the yet-existing object (and its children, if created).
 """
 import logging
-from typing import NamedTuple, Text, Mapping, MutableMapping, Optional, Any, Union
+from typing import Any, NamedTuple, Text, Optional, Union
 
+from kopf.structs import bodies
 from kopf.structs import diffs
 from kopf.structs import finalizers
 from kopf.structs import lastseen
+from kopf.structs import patches
 from kopf.structs import resources
 
 # Constants for event types, to prevent a direct usage of strings, and typos.
@@ -65,17 +67,19 @@ class Cause(NamedTuple):
     resource: resources.Resource
     event: Text
     initial: bool
-    body: MutableMapping
-    patch: MutableMapping
-    diff: Optional[diffs.Diff] = None
-    old: Optional[Any] = None
-    new: Optional[Any] = None
+    body: bodies.Body
+    patch: patches.Patch
+    diff: diffs.Diff = diffs.EMPTY
+    old: Optional[bodies.BodyEssence] = None
+    new: Optional[bodies.BodyEssence] = None
 
 
 def detect_cause(
-        event: Mapping,
+        *,
+        event: bodies.Event,
+        diff: Optional[diffs.Diff] = None,
         requires_finalizer: bool = True,
-        **kwargs
+        **kwargs: Any,
 ) -> Cause:
     """
     Detect the cause of the event to be handled.
@@ -85,92 +89,60 @@ def detect_cause(
     which performs the actual handler invocation, logging, patching,
     and other side-effects.
     """
-    diff = kwargs.get('diff')
+
+    # Put them back to the pass-through kwargs (to avoid code duplication).
     body = event['object']
     initial = event['type'] is None  # special value simulated by us in kopf.reactor.watching.
+    kwargs.update(body=body, initial=initial)
+    if diff is not None:
+        kwargs.update(diff=diff)
 
     # The object was really deleted from the cluster. But we do not care anymore.
     if event['type'] == 'DELETED':
-        return Cause(
-            event=GONE,
-            body=body,
-            initial=initial,
-            **kwargs)
+        return Cause(event=GONE, **kwargs)
 
     # The finalizer has been just removed. We are fully done.
     if finalizers.is_deleted(body) and not finalizers.has_finalizers(body):
-        return Cause(
-            event=FREE,
-            body=body,
-            initial=initial,
-            **kwargs)
+        return Cause(event=FREE, **kwargs)
 
     if finalizers.is_deleted(body):
-        return Cause(
-            event=DELETE,
-            body=body,
-            initial=initial,
-            **kwargs)
+        return Cause(event=DELETE, **kwargs)
 
     # For a fresh new object, first block it from accidental deletions without our permission.
     # The actual handler will be called on the next call.
     # Only return this cause if the resource requires finalizers to be added.
     if requires_finalizer and not finalizers.has_finalizers(body):
-        return Cause(
-            event=ACQUIRE,
-            body=body,
-            initial=initial,
-            **kwargs)
+        return Cause(event=ACQUIRE, **kwargs)
 
     # Check whether or not the resource has finalizers, but doesn't require them. If this is
     # the case, then a resource may not be able to be deleted completely as finalizers may
     # not be removed by the operator under normal operation. We remove the finalizers first,
     # and any handler that should be called will be done on the next call.
     if not requires_finalizer and finalizers.has_finalizers(body):
-        return Cause(
-            event=RELEASE,
-            body=body,
-            initial=initial,
-            **kwargs)
+        return Cause(event=RELEASE, **kwargs)
 
     # For an object seen for the first time (i.e. just-created), call the creation handlers,
     # then mark the state as if it was seen when the creation has finished.
-    if not lastseen.has_state(body):
-        return Cause(
-            event=CREATE,
-            body=body,
-            initial=initial,
-            **kwargs)
+    if not lastseen.has_essence_stored(body):
+        return Cause(event=CREATE, **kwargs)
 
     # Cases with no state changes are usually ignored (NOOP). But for the "None" events,
     # as simulated for the initial listing, we call the resuming handlers (e.g. threads/tasks).
     if not diff and initial:
-        return Cause(
-            event=RESUME,
-            body=body,
-            initial=initial,
-            **kwargs)
+        return Cause(event=RESUME, **kwargs)
 
     # The previous step triggers one more patch operation without actual changes. Ignore it.
     # Either the last-seen state or the status field has changed.
     if not diff:
-        return Cause(
-            event=NOOP,
-            body=body,
-            initial=initial,
-            **kwargs)
+        return Cause(event=NOOP, **kwargs)
 
     # And what is left, is the update operation on one of the useful fields of the existing object.
-    return Cause(
-        event=UPDATE,
-        body=body,
-        initial=initial,
-        **kwargs)
+    return Cause(event=UPDATE, **kwargs)
 
 
 def enrich_cause(
         cause: Cause,
-        **kwargs
+        **kwargs: Any,
 ) -> Cause:
     """
     Produce a new derived cause with some fields modified ().

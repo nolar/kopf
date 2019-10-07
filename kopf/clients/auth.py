@@ -19,7 +19,7 @@ class AccessError(Exception):
     """ Raised when the operator cannot access the cluster API. """
 
 
-def login(verify=False):
+def login(verify: bool = False) -> None:
     """
     Login to Kubernetes cluster, locally or remotely.
 
@@ -47,7 +47,7 @@ def login(verify=False):
         login_client(verify=verify)
 
 
-def login_pykube(verify=False):
+def login_pykube(verify: bool = False) -> None:
     global _pykube_cfg
     try:
         _pykube_cfg = pykube.KubeConfig.from_service_account()
@@ -63,7 +63,7 @@ def login_pykube(verify=False):
         verify_pykube()
 
 
-def login_client(verify=False):
+def login_client(verify: bool = False) -> None:
     import kubernetes.client
     try:
         kubernetes.config.load_incluster_config()  # cluster env vars
@@ -79,7 +79,7 @@ def login_client(verify=False):
         verify_client()
 
 
-def verify_pykube():
+def verify_pykube() -> None:
     """
     Verify if login has succeeded, and the access configuration is still valid.
 
@@ -105,7 +105,7 @@ def verify_pykube():
                               "Please login or configure the tokens.")
 
 
-def verify_client():
+def verify_client() -> None:
     """
     Verify if login has succeeded, and the access configuration is still valid.
 
@@ -133,6 +133,8 @@ def get_pykube_cfg() -> pykube.KubeConfig:
 
 
 # TODO: add some caching, but keep kwargs in mind. Maybe add a key= for purpose/use-place?
-def get_pykube_api(timeout=None) -> pykube.HTTPClient:
+def get_pykube_api(
+        timeout: Optional[float] = None,
+) -> pykube.HTTPClient:
     kwargs = dict(timeout=timeout)
     return pykube.HTTPClient(get_pykube_cfg(), **kwargs)

@@ -11,47 +11,71 @@ execute in the order they are registered, one by one.
 
 import logging
 import random
+from typing import Sequence, Any, Optional
 
+from typing_extensions import Protocol
+
+from kopf.reactor import registries
 from kopf.reactor import state
+from kopf.structs import bodies
 
 logger = logging.getLogger(__name__)
 
+Handlers = Sequence[registries.Handler]
 
-def all_at_once(handlers, **kwargs):
+
+class LifeCycleFn(Protocol):
+    """
+    A callback type for handlers selection based on the event/cause.
+
+    It is basically `Invokable` extended with an additional positional parameter
+    and specific return type. But we cannot express it with `typing`.
+    For the names and types of kwargs, see `Invokable`.
+    """
+    def __call__(
+            self,
+            handlers: Handlers,
+            *,
+            body: bodies.Body,
+            **kwargs: Any,
+    ) -> Handlers: ...
+
+
+def all_at_once(handlers: Handlers, **kwargs: Any) -> Handlers:
     """ Execute all handlers at once, in one event reaction cycle, if possible. """
     return handlers
 
 
-def one_by_one(handlers, **kwargs):
+def one_by_one(handlers: Handlers, **kwargs: Any) -> Handlers:
     """ Execute handlers one at a time, in the order they were registered. """
     return handlers[:1]
 
 
-def randomized(handlers, **kwargs):
+def randomized(handlers: Handlers, **kwargs: Any) -> Handlers:
     """ Execute one handler at a time, in the random order. """
     return [random.choice(handlers)] if handlers else []
 
 
-def shuffled(handlers, **kwargs):
+def shuffled(handlers: Handlers, **kwargs: Any) -> Handlers:
     """ Execute all handlers at once, but in the random order. """
     return random.sample(handlers, k=len(handlers)) if handlers else []
 
 
-def asap(handlers, *, body, **kwargs):
+def asap(handlers: Handlers, *, body: bodies.Body, **kwargs: Any) -> Handlers:
     """ Execute one handler at a time, skip on failure, try the next one, retry after the full cycle. """
     retryfn = lambda handler: state.get_retry_count(body=body, handler=handler)
     return sorted(handlers, key=retryfn)[:1]
 
 
-_default_lifecycle = None
+_default_lifecycle: LifeCycleFn = asap
 
 
-def get_default_lifecycle():
-    return _default_lifecycle if _default_lifecycle is not None else asap
+def get_default_lifecycle() -> LifeCycleFn:
+    return _default_lifecycle
 
 
-def set_default_lifecycle(lifecycle):
+def set_default_lifecycle(lifecycle: Optional[LifeCycleFn]) -> None:
     global _default_lifecycle
     if _default_lifecycle is not None:
         logger.warning(f"The default lifecycle is already set to {_default_lifecycle}, overriding it to {lifecycle}.")
-    _default_lifecycle = lifecycle
+    _default_lifecycle = lifecycle if lifecycle is not None else asap

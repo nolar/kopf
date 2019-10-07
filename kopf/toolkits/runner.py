@@ -1,13 +1,28 @@
 import asyncio
 import concurrent.futures
+import contextlib
 import threading
+import types
+from typing import cast, Any, Optional, Tuple, Type, TYPE_CHECKING
 
 import click.testing
 
 from kopf import cli
 
+_ExcType = BaseException
+_ExcInfo = Tuple[Type[_ExcType], _ExcType, types.TracebackType]
 
-class KopfRunner:
+if TYPE_CHECKING:
+    ResultFuture = concurrent.futures.Future[click.testing.Result]
+    class _AbstractKopfRunner(contextlib.AbstractContextManager["_AbstractKopfRunner"]):
+        pass
+else:
+    ResultFuture = concurrent.futures.Future
+    class _AbstractKopfRunner(contextlib.AbstractContextManager):
+        pass
+
+
+class KopfRunner(_AbstractKopfRunner):
     """
     A context manager to run a Kopf-based operator in parallel with the tests.
 
@@ -37,8 +52,15 @@ class KopfRunner:
     Second, mocking works within one process (all threads),
     but not across processes --- the mock's calls (counts, arrgs) are lost.
     """
+    _future: ResultFuture
 
-    def __init__(self, *args, reraise=True, timeout=None, **kwargs):
+    def __init__(
+            self,
+            *args: Any,
+            reraise: bool = True,
+            timeout: Optional[float] = None,
+            **kwargs: Any,
+    ):
         super().__init__()
         self.args = args
         self.kwargs = kwargs
@@ -49,17 +71,22 @@ class KopfRunner:
         self._thread = threading.Thread(target=self._target)
         self._future = concurrent.futures.Future()
 
-    def __enter__(self):
+    def __enter__(self) -> "KopfRunner":
         self._thread.start()
         self._ready.wait()  # should be nanosecond-fast
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+            self,
+            exc_type: Optional[Type[BaseException]],
+            exc_val: Optional[BaseException],
+            exc_tb: Optional[types.TracebackType],
+    ) -> Optional[bool]:
 
         # A coroutine that is injected into the loop to cancel everything in it.
         # Cancellations are caught in `run`, so that it exits gracefully.
         # TODO: also cancel/stop the streaming API calls in the thread executor.
-        async def shutdown():
+        async def shutdown() -> None:
             current_task = asyncio.current_task()
             tasks = [task for task in asyncio.all_tasks() if task is not current_task]
             for task in tasks:
@@ -79,16 +106,18 @@ class KopfRunner:
         # Re-raise the exceptions of the threading & invocation logic.
         if self._future.exception() is not None:
             if exc_val is None:
-                raise self._future.exception()
+                raise self._future.exception()  # type: ignore
             else:
-                raise self._future.exception() from exc_val
+                raise self._future.exception() from exc_val  # type: ignore
         if self._future.result().exception is not None and self.reraise:
             if exc_val is None:
                 raise self._future.result().exception
             else:
                 raise self._future.result().exception from exc_val
 
-    def _target(self):
+        return False
+
+    def _target(self) -> None:
 
         # Every thread must have its own loop. The parent thread (pytest)
         # needs to know when the loop is set up, to be able to shut it down.
@@ -106,37 +135,37 @@ class KopfRunner:
             self._future.set_result(result)
 
     @property
-    def future(self):
+    def future(self) -> ResultFuture:
         return self._future
 
     @property
-    def output(self):
+    def output(self) -> str:
         return self.future.result().output
 
     @property
-    def stdout(self):
+    def stdout(self) -> str:
         return self.future.result().stdout
 
     @property
-    def stdout_bytes(self):
+    def stdout_bytes(self) -> bytes:
         return self.future.result().stdout_bytes
 
     @property
-    def stderr(self):
+    def stderr(self) -> str:
         return self.future.result().stderr
 
     @property
-    def stderr_bytes(self):
+    def stderr_bytes(self) -> bytes:
         return self.future.result().stderr_bytes
 
     @property
-    def exit_code(self):
+    def exit_code(self) -> int:
         return self.future.result().exit_code
 
     @property
-    def exception(self):
-        return self.future.result().exception
+    def exception(self) -> _ExcType:
+        return cast(_ExcType, self.future.result().exception)
 
     @property
-    def exc_info(self):
-        return self.future.result().exc_info
+    def exc_info(self) -> _ExcInfo:
+        return cast(_ExcInfo, self.future.result().exc_info)

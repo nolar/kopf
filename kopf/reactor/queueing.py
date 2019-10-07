@@ -24,22 +24,46 @@ is done in the `kopf.reactor.handling` routines.
 """
 
 import asyncio
+import enum
 import logging
 import time
-from typing import Callable, Tuple, Union, MutableMapping, NewType, NamedTuple
+from typing import Tuple, Union, MutableMapping, NewType, NamedTuple, TYPE_CHECKING, cast
 
 import aiojobs
+from typing_extensions import Protocol
 
 from kopf import config
 from kopf.clients import watching
+from kopf.structs import bodies
 from kopf.structs import resources
 
 logger = logging.getLogger(__name__)
 
 
+class WatcherCallback(Protocol):
+    async def __call__(
+            self,
+            *,
+            event: bodies.Event,
+            replenished: asyncio.Event,
+    ) -> None: ...
+
+
+# An end-of-stream marker sent from the watcher to the workers.
+# See: https://www.python.org/dev/peps/pep-0484/#support-for-singleton-types-in-unions
+class EOS(enum.Enum):
+    token = enum.auto()
+
+
+if TYPE_CHECKING:
+    WatchEventQueue = asyncio.Queue[Union[bodies.Event, EOS]]
+else:
+    WatchEventQueue = asyncio.Queue
+
+
 class Stream(NamedTuple):
     """ A single object's stream of watch-events, with some extra helpers. """
-    watchevents: asyncio.Queue
+    watchevents: WatchEventQueue
     replenished: asyncio.Event  # means: "hurry up, there are new events queued again"
 
 
@@ -47,16 +71,13 @@ ObjectUid = NewType('ObjectUid', str)
 ObjectRef = Tuple[resources.Resource, ObjectUid]
 Streams = MutableMapping[ObjectRef, Stream]
 
-EOS = object()
-""" An end-of-stream marker sent from the watcher to the workers. """
-
 
 # TODO: add the label_selector support for the dev-mode?
 async def watcher(
         namespace: Union[None, str],
         resource: resources.Resource,
-        handler: Callable,
-):
+        handler: WatcherCallback,
+) -> None:
     """
     The watchers watches for the resource events via the API, and spawns the handlers for every object.
 
@@ -78,7 +99,7 @@ async def watcher(
         # Either use the existing object's queue, or create a new one together with the per-object job.
         # "Fire-and-forget": we do not wait for the result; the job destroys itself when it is fully done.
         async for event in watching.infinite_watch(resource=resource, namespace=namespace):
-            key = (resource, event['object']['metadata']['uid'])
+            key = cast(ObjectRef, (resource, event['object']['metadata']['uid']))
             try:
                 streams[key].replenished.set()  # interrupt current sleeps, if any.
                 await streams[key].watchevents.put(event)
@@ -96,10 +117,10 @@ async def watcher(
 
 
 async def worker(
-        handler: Callable,
+        handler: WatcherCallback,
         streams: Streams,
         key: ObjectRef,
-):
+) -> None:
     """
     The per-object workers consume the object's events and invoke the handler.
 
@@ -137,13 +158,13 @@ async def worker(
                         next_event = await asyncio.wait_for(
                             watchevents.get(),
                             timeout=config.WorkersConfig.worker_batch_window)
-                        shouldstop = shouldstop or next_event is EOS
-                        event = prev_event if next_event is EOS else next_event
+                        shouldstop = shouldstop or isinstance(next_event, EOS)
+                        event = prev_event if isinstance(next_event, EOS) else next_event
                 except asyncio.TimeoutError:
                     pass
 
             # Exit gracefully and immediately on the end-of-stream marker sent by the watcher.
-            if event is EOS:
+            if isinstance(event, EOS):
                 break
 
             # Try the handler. In case of errors, show the error, but continue the queue processing.
@@ -164,11 +185,15 @@ async def worker(
             pass
 
 
-async def _wait_for_depletion(*, scheduler: aiojobs.Scheduler, streams: Streams):
+async def _wait_for_depletion(
+        *,
+        scheduler: aiojobs.Scheduler,
+        streams: Streams,
+) -> None:
 
     # Notify all the workers to finish now. Wake them up if they are waiting in the queue-getting.
     for stream in streams.values():
-        await stream.watchevents.put(EOS)
+        await stream.watchevents.put(EOS.token)
 
     # Wait for the queues to be depleted, but only if there are some workers running.
     # Continue with the tasks termination if the timeout is reached, no matter the queues.
