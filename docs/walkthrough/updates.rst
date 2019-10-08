@@ -43,7 +43,7 @@ with one additional line:
         text = tmpl.format(size=size, name=name)
         data = yaml.safe_load(text)
 
-        kopf.adopt(data, owner=body)
+        kopf.adopt(data)
 
         api = kubernetes.client.CoreV1Api()
         obj = api.create_namespaced_persistent_volume_claim(

@@ -4,7 +4,7 @@ import yaml
 
 
 @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
-def create_fn(body, spec, **kwargs):
+def create_fn(spec, **kwargs):
 
     # Render the pod yaml with some spec fields used in the template.
     doc = yaml.safe_load(f"""
@@ -25,7 +25,7 @@ def create_fn(body, spec, **kwargs):
     """)
 
     # Make it our child: assign the namespace, name, labels, owner references, etc.
-    kopf.adopt(doc, owner=body)
+    kopf.adopt(doc)
 
     # Actually create an object by requesting the Kubernetes API.
     api = kubernetes.client.CoreV1Api()
