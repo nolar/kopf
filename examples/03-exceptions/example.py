@@ -4,6 +4,9 @@ import kopf
 
 E2E_TRACEBACKS = True
 E2E_CREATE_TIME = 3.5
+E2E_SUCCESS_COUNTS = {}
+E2E_FAILURE_COUNTS = {'create_fn': 1}
+
 
 class MyException(Exception):
     pass
