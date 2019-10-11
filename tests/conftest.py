@@ -12,6 +12,7 @@ import asynctest
 import pytest
 import pytest_mock
 
+import kopf
 from kopf.config import configure
 from kopf.engines.logging import ObjectPrefixingFormatter
 from kopf.structs.resources import Resource
@@ -74,6 +75,26 @@ def enforce_asyncio_mocker():
 def resource():
     """ The resource used in the tests. Usually mocked, so it does not matter. """
     return Resource('zalando.org', 'v1', 'kopfexamples')
+
+
+#
+# Mocks for Kopf's internal but global variables.
+#
+
+
+@pytest.fixture(autouse=True)
+def clear_default_registry():
+    """
+    Ensure that the tests have a fresh new global (not re-used) registry.
+    """
+    old_registry = kopf.get_default_registry()
+    new_registry = kopf.GlobalRegistry()
+    kopf.set_default_registry(new_registry)
+    try:
+        yield new_registry
+    finally:
+        kopf.set_default_registry(old_registry)
+
 
 #
 # Mocks for Kubernetes API clients (any of them). Reasons:

@@ -44,16 +44,6 @@ def srcdir(tmpdir):
 
 
 @pytest.fixture(autouse=True)
-def clean_default_registry():
-    registry = kopf.get_default_registry()
-    kopf.set_default_registry(kopf.GlobalRegistry())
-    try:
-        yield
-    finally:
-        kopf.set_default_registry(registry)
-
-
-@pytest.fixture(autouse=True)
 def clean_modules_cache():
     # Otherwise, the first loaded test-modules remain there forever,
     # preventing 2nd and further tests from passing.
