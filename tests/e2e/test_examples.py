@@ -13,11 +13,11 @@ def test_all_examples_are_runnable(mocker, with_crd, exampledir):
     # If the example has its own opinion on the timing, try to respect it.
     # See e.g. /examples/99-all-at-once/example.py.
     example_py = exampledir / 'example.py'
-    m = re.search(r'^E2E_CREATE_TIME\s*=\s*(\d+)$', example_py.read_text(), re.M)
+    m = re.search(r'^E2E_CREATE_TIME\s*=\s*(.+)$', example_py.read_text(), re.M)
     e2e_create_time = eval(m.group(1)) if m else None
-    m = re.search(r'^E2E_DELETE_TIME\s*=\s*(\d+)$', example_py.read_text(), re.M)
+    m = re.search(r'^E2E_DELETE_TIME\s*=\s*(.+)$', example_py.read_text(), re.M)
     e2e_delete_time = eval(m.group(1)) if m else None
-    m = re.search(r'^E2E_TRACEBACKS\s*=\s*(\w+)$', example_py.read_text(), re.M)
+    m = re.search(r'^E2E_TRACEBACKS\s*=\s*(.+)$', example_py.read_text(), re.M)
     e2e_tracebacks = eval(m.group(1)) if m else None
     # check whether there are mandatory deletion handlers or not
     m = re.search(r'@kopf\.on\.delete\((\s|.*)?(optional=(\w+))?\)', example_py.read_text(), re.M)
