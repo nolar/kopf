@@ -2,6 +2,7 @@ import time
 
 import kopf
 
+E2E_TRACEBACKS = True
 
 class MyException(Exception):
     pass
