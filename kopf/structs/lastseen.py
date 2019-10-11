@@ -63,7 +63,7 @@ def get_state(
     dicts.cherrypick(src=body, dst=essence, fields=[
         'metadata.labels',
         'metadata.annotations',  # but not all of them! deleted below.
-    ])
+    ], picker=copy.copy)
 
     # But we do not want not all of the annotations, only potentially useful.
     annotations = essence.get('metadata', {}).get('annotations', {})

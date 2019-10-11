@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 
 from kopf.structs.dicts import cherrypick
@@ -64,3 +66,29 @@ def test_fails_on_nonmapping_dst_key():
     dst = {'sub': 'scalar-value'}
     with pytest.raises(TypeError):
         cherrypick(src=src, dst=dst, fields=['sub.tested-key'])
+
+
+def test_exact_object_picked_by_default():
+    src = {'tested-key': {'key': 'val'}}
+    dst = {}
+    cherrypick(src=src, dst=dst, fields=['tested-key'])
+
+    assert dst == {'tested-key': {'key': 'val'}}
+    assert dst['tested-key'] == src['tested-key']
+    assert dst['tested-key'] is src['tested-key']
+
+    src['tested-key']['key'] = 'replaced-val'
+    assert dst['tested-key']['key'] == 'replaced-val'
+
+
+def test_copied_object_picked_on_request():
+    src = {'tested-key': {'key': 'val'}}
+    dst = {}
+    cherrypick(src=src, dst=dst, fields=['tested-key'], picker=copy.copy)
+
+    assert dst == {'tested-key': {'key': 'val'}}
+    assert dst['tested-key'] == src['tested-key']
+    assert dst['tested-key'] is not src['tested-key']
+
+    src['tested-key']['key'] = 'another-val'
+    assert dst['tested-key']['key'] == 'val'
