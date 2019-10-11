@@ -3,6 +3,7 @@ import time
 import kopf
 
 E2E_TRACEBACKS = True
+E2E_CREATE_TIME = 3.5
 
 class MyException(Exception):
     pass
@@ -10,9 +11,9 @@ class MyException(Exception):
 
 @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
 def create_fn(retry, **kwargs):
-    time.sleep(2)  # for different timestamps of the events
+    time.sleep(0.1)  # for different timestamps of the events
     if not retry:
-        raise kopf.TemporaryError("First failure.", delay=10)
+        raise kopf.TemporaryError("First failure.", delay=1)
     elif retry == 1:
         raise MyException("Second failure.")
     else:
