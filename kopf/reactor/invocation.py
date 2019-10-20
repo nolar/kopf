@@ -59,12 +59,11 @@ async def invoke(
     """
 
     # Add aliases for the kwargs, directly linked to the body, or to the assumed defaults.
-    if isinstance(cause, causation.ResourceWatchingCause):
+    if isinstance(cause, causation.BaseCause):
         kwargs.update(
-            event=cause.raw,
-            patch=cause.patch,
+            cause=cause,
             logger=cause.logger,
-            type=cause.type,
+            patch=cause.patch,
             body=cause.body,
             spec=dicts.DictView(cause.body, 'spec'),
             meta=dicts.DictView(cause.body, 'metadata'),
@@ -73,23 +72,18 @@ async def invoke(
             name=cause.body.get('metadata', {}).get('name'),
             namespace=cause.body.get('metadata', {}).get('namespace'),
         )
+    if isinstance(cause, causation.ResourceWatchingCause):
+        kwargs.update(
+            event=cause.raw,
+            type=cause.type,
+        )
     if isinstance(cause, causation.ResourceChangingCause):
         kwargs.update(
-            cause=cause,
             event=cause.reason,  # deprecated; kept for backward-compatibility
             reason=cause.reason,
-            body=cause.body,
             diff=cause.diff,
             old=cause.old,
             new=cause.new,
-            patch=cause.patch,
-            logger=cause.logger,
-            spec=dicts.DictView(cause.body, 'spec'),
-            meta=dicts.DictView(cause.body, 'metadata'),
-            status=dicts.DictView(cause.body, 'status'),
-            uid=cause.body.get('metadata', {}).get('uid'),
-            name=cause.body.get('metadata', {}).get('name'),
-            namespace=cause.body.get('metadata', {}).get('namespace'),
         )
 
     if is_async_fn(fn):
