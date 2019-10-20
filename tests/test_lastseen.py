@@ -3,9 +3,9 @@ import json
 import pytest
 
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
-from kopf.structs.lastseen import has_essence_stored, get_state
+from kopf.structs.lastseen import has_essence_stored, get_essence
 from kopf.structs.lastseen import get_essential_diffs
-from kopf.structs.lastseen import retreive_essence, refresh_essence
+from kopf.structs.lastseen import retrieve_essence, refresh_essence
 
 
 def test_annotation_is_fqdn():
@@ -18,15 +18,15 @@ def test_annotation_is_fqdn():
     pytest.param(False, {'metadata': {'annotations': {}}}, id='no-lastseen'),
     pytest.param(True, {'metadata': {'annotations': {LAST_SEEN_ANNOTATION: ''}}}, id='present'),
 ])
-def test_has_state(expected, body):
+def test_has_essence(expected, body):
     result = has_essence_stored(body=body)
     assert result == expected
 
 
-def test_get_state_removes_resource_references():
+def test_get_essence_removes_resource_references():
     body = {'apiVersion': 'group/version', 'kind': 'Kind'}
-    state = get_state(body=body)
-    assert state == {}
+    essence = get_essence(body=body)
+    assert essence == {}
 
 
 @pytest.mark.parametrize('field', [
@@ -41,10 +41,10 @@ def test_get_state_removes_resource_references():
     'deletionTimestamp',
     'any-unexpected-field',
 ])
-def test_get_state_removes_system_fields_and_cleans_parents(field):
+def test_get_essence_removes_system_fields_and_cleans_parents(field):
     body = {'metadata': {field: 'x'}}
-    state = get_state(body=body)
-    assert state == {}
+    essence = get_essence(body=body)
+    assert essence == {}
 
 
 @pytest.mark.parametrize('field', [
@@ -59,55 +59,55 @@ def test_get_state_removes_system_fields_and_cleans_parents(field):
     'deletionTimestamp',
     'any-unexpected-field',
 ])
-def test_get_state_removes_system_fields_but_keeps_extra_fields(field):
+def test_get_essence_removes_system_fields_but_keeps_extra_fields(field):
     body = {'metadata': {field: 'x', 'other': 'y'}}
-    state = get_state(body=body, extra_fields=['metadata.other'])
-    assert state == {'metadata': {'other': 'y'}}
+    essence = get_essence(body=body, extra_fields=['metadata.other'])
+    assert essence == {'metadata': {'other': 'y'}}
 
 
 @pytest.mark.parametrize('annotation', [
     pytest.param(LAST_SEEN_ANNOTATION, id='kopf'),
     pytest.param('kubectl.kubernetes.io/last-applied-configuration', id='kubectl'),
 ])
-def test_get_state_removes_garbage_annotations_and_cleans_parents(annotation):
+def test_get_essence_removes_garbage_annotations_and_cleans_parents(annotation):
     body = {'metadata': {'annotations': {annotation: 'x'}}}
-    state = get_state(body=body)
-    assert state == {}
+    essence = get_essence(body=body)
+    assert essence == {}
 
 
 @pytest.mark.parametrize('annotation', [
     pytest.param(LAST_SEEN_ANNOTATION, id='kopf'),
     pytest.param('kubectl.kubernetes.io/last-applied-configuration', id='kubectl'),
 ])
-def test_get_state_removes_garbage_annotations_but_keeps_others(annotation):
+def test_get_essence_removes_garbage_annotations_but_keeps_others(annotation):
     body = {'metadata': {'annotations': {annotation: 'x', 'other': 'y'}}}
-    state = get_state(body=body)
-    assert state == {'metadata': {'annotations': {'other': 'y'}}}
+    essence = get_essence(body=body)
+    assert essence == {'metadata': {'annotations': {'other': 'y'}}}
 
 
-def test_get_state_removes_status_and_cleans_parents():
+def test_get_essence_removes_status_and_cleans_parents():
     body = {'status': {'kopf': {'progress': 'x', 'anything': 'y'}, 'other': 'z'}}
-    state = get_state(body=body)
-    assert state == {}
+    essence = get_essence(body=body)
+    assert essence == {}
 
 
-def test_get_state_removes_status_but_keeps_extra_fields():
+def test_get_essence_removes_status_but_keeps_extra_fields():
     body = {'status': {'kopf': {'progress': 'x', 'anything': 'y'}, 'other': 'z'}}
-    state = get_state(body=body, extra_fields=['status.other'])
-    assert state == {'status': {'other': 'z'}}
+    essence = get_essence(body=body, extra_fields=['status.other'])
+    assert essence == {'status': {'other': 'z'}}
 
 
-def test_get_state_clones_body():
+def test_get_essence_clones_body():
     body = {'spec': {'depth': {'field': 'x'}}}
-    state = get_state(body=body)
+    essence = get_essence(body=body)
     body['spec']['depth']['field'] = 'y'
-    assert state is not body
-    assert state['spec'] is not body['spec']
-    assert state['spec']['depth'] is not body['spec']['depth']
-    assert state['spec']['depth']['field'] == 'x'
+    assert essence is not body
+    assert essence['spec'] is not body['spec']
+    assert essence['spec']['depth'] is not body['spec']['depth']
+    assert essence['spec']['depth']['field'] == 'x'
 
 
-def test_refresh_state():
+def test_refresh_essence():
     body = {'spec': {'depth': {'field': 'x'}}}
     patch = {}
     encoded = json.dumps(body)  # json formatting can vary across interpreters
@@ -115,21 +115,21 @@ def test_refresh_state():
     assert patch['metadata']['annotations'][LAST_SEEN_ANNOTATION] == encoded
 
 
-def test_retreive_state_when_present():
+def test_retreive_essence_when_present():
     data = {'spec': {'depth': {'field': 'x'}}}
     encoded = json.dumps(data)  # json formatting can vary across interpreters
     body = {'metadata': {'annotations': {LAST_SEEN_ANNOTATION: encoded}}}
-    state = retreive_essence(body=body)
-    assert state == data
+    essence = retrieve_essence(body=body)
+    assert essence == data
 
 
-def test_retreive_state_when_absent():
+def test_retreive_essence_when_absent():
     body = {}
-    state = retreive_essence(body=body)
-    assert state is None
+    essence = retrieve_essence(body=body)
+    assert essence is None
 
 
-def test_state_changed_detected():
+def test_essence_changed_detected():
     data = {'spec': {'depth': {'field': 'x'}}}
     encoded = json.dumps(data)  # json formatting can vary across interpreters
     body = {'metadata': {'annotations': {LAST_SEEN_ANNOTATION: encoded}}}
@@ -137,7 +137,7 @@ def test_state_changed_detected():
     assert diff
 
 
-def test_state_change_ignored_with_garbage_annotations():
+def test_essence_change_ignored_with_garbage_annotations():
     data = {'spec': {'depth': {'field': 'x'}}}
     encoded = json.dumps(data)  # json formatting can vary across interpreters
     body = {'metadata': {'annotations': {LAST_SEEN_ANNOTATION: encoded}},
@@ -146,7 +146,7 @@ def test_state_change_ignored_with_garbage_annotations():
     assert not diff
 
 
-def test_state_changed_ignored_with_system_fields():
+def test_essence_changed_ignored_with_system_fields():
     data = {'spec': {'depth': {'field': 'x'}}}
     encoded = json.dumps(data)  # json formatting can vary across interpreters
     body = {'metadata': {'annotations': {LAST_SEEN_ANNOTATION: encoded},
@@ -168,7 +168,7 @@ def test_state_changed_ignored_with_system_fields():
 
 # This is to ensure it is callable with proper signature.
 # For actual tests of diffing, see `/tests/diffs/`.
-def test_state_diff():
+def test_essence_diff():
     data = {'spec': {'depth': {'field': 'x'}}}
     encoded = json.dumps(data)  # json formatting can vary across interpreters
     body = {'metadata': {'annotations': {LAST_SEEN_ANNOTATION: encoded}},

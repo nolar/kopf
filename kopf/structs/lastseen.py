@@ -26,7 +26,7 @@ LAST_SEEN_ANNOTATION = 'kopf.zalando.org/last-handled-configuration'
 """ The annotation name for the last stored state of the resource. """
 
 
-def get_state(
+def get_essence(
         body: bodies.Body,
         extra_fields: Optional[Iterable[dicts.FieldSpec]] = None,
 ) -> bodies.BodyEssence:
@@ -98,12 +98,12 @@ def get_essential_diffs(
         body: bodies.Body,
         extra_fields: Optional[Iterable[dicts.FieldSpec]] = None,
 ) -> Tuple[Optional[bodies.BodyEssence], Optional[bodies.BodyEssence], diffs.Diff]:
-    old: Optional[bodies.BodyEssence] = retreive_essence(body)
-    new: Optional[bodies.BodyEssence] = get_state(body, extra_fields=extra_fields)
+    old: Optional[bodies.BodyEssence] = retrieve_essence(body)
+    new: Optional[bodies.BodyEssence] = get_essence(body, extra_fields=extra_fields)
     return old, new, diffs.diff(old, new)
 
 
-def retreive_essence(
+def retrieve_essence(
         body: bodies.Body,
 ) -> Optional[bodies.BodyEssence]:
     if not has_essence_stored(body):
@@ -119,5 +119,5 @@ def refresh_essence(
         patch: patches.Patch,
         extra_fields: Optional[Iterable[dicts.FieldSpec]] = None,
 ) -> None:
-    state = get_state(body, extra_fields=extra_fields)
+    state = get_essence(body, extra_fields=extra_fields)
     patch.setdefault('metadata', {}).setdefault('annotations', {})[LAST_SEEN_ANNOTATION] = json.dumps(state)
