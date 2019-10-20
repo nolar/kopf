@@ -76,7 +76,7 @@ handler_var: ContextVar[registries.Handler] = ContextVar('handler_var')
 cause_var: ContextVar[causation.BaseCause] = ContextVar('cause_var')
 
 
-async def custom_object_handler(
+async def resource_handler(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.GlobalRegistry,
         resource: resources.Resource,

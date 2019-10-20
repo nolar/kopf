@@ -4,7 +4,7 @@ import pytest
 
 import kopf
 from kopf.reactor.causation import Reason, HANDLER_REASONS
-from kopf.reactor.handling import custom_object_handler
+from kopf.reactor.handling import resource_handler
 
 
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
@@ -16,7 +16,7 @@ async def test_1st_step_stores_progress_by_patching(
 
     cause_mock.reason = cause_type
 
-    await custom_object_handler(
+    await resource_handler(
         lifecycle=kopf.lifecycles.asap,
         registry=registry,
         resource=resource,
@@ -62,7 +62,7 @@ async def test_2nd_step_finishes_the_handlers(
         }}}
     })
 
-    await custom_object_handler(
+    await resource_handler(
         lifecycle=kopf.lifecycles.one_by_one,
         registry=registry,
         resource=resource,

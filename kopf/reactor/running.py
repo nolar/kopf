@@ -153,7 +153,7 @@ async def spawn_tasks(
             loop.create_task(_root_task_checker(f"watcher of {resource.name}", queueing.watcher(
                 namespace=namespace,
                 resource=resource,
-                handler=functools.partial(handling.custom_object_handler,
+                handler=functools.partial(handling.resource_handler,
                                           lifecycle=lifecycle,
                                           registry=registry,
                                           resource=resource,

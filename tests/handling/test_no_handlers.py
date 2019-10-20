@@ -5,7 +5,7 @@ import pytest
 
 import kopf
 from kopf.reactor.causation import HANDLER_REASONS
-from kopf.reactor.handling import custom_object_handler
+from kopf.reactor.handling import resource_handler
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
 
 
@@ -26,7 +26,7 @@ async def test_skipped_with_no_handlers(
     )
     assert registry.has_state_changing_handlers(resource=resource)  # prerequisite
 
-    await custom_object_handler(
+    await resource_handler(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,

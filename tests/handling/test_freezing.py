@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 import kopf
-from kopf.reactor.handling import custom_object_handler
+from kopf.reactor.handling import resource_handler
 from kopf.reactor.registries import GlobalRegistry
 
 
@@ -23,7 +23,7 @@ async def test_nothing_is_called_when_freeze_is_set(mocker, resource, caplog, as
     freeze.set()
 
     caplog.set_level(logging.DEBUG)
-    await custom_object_handler(
+    await resource_handler(
         lifecycle=lifecycle,
         registry=registry,
         resource=resource,
