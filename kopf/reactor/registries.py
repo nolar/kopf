@@ -17,7 +17,7 @@ import logging
 import warnings
 from types import FunctionType, MethodType
 from typing import (Any, MutableMapping, Optional, Sequence, Collection, Iterable, Iterator,
-                    NamedTuple, Union, List, Set, FrozenSet, Mapping, NewType, cast)
+                    NamedTuple, Union, List, Set, FrozenSet, Mapping, NewType, Callable, cast)
 
 from typing_extensions import Protocol
 
@@ -289,26 +289,6 @@ class ResourceRegistry(BaseRegistry):
         return False
 
 
-def get_callable_id(c: ResourceHandlerFn) -> str:
-    """ Get an reasonably good id of any commonly used callable. """
-    if c is None:
-        raise ValueError("Cannot build a persistent id of None.")
-    elif isinstance(c, functools.partial):
-        return get_callable_id(c.func)
-    elif hasattr(c, '__wrapped__'):  # @functools.wraps()
-        return get_callable_id(getattr(c, '__wrapped__'))
-    elif isinstance(c, FunctionType) and c.__name__ == '<lambda>':
-        # The best we can do to keep the id stable across the process restarts,
-        # assuming at least no code changes. The code changes are not detectable.
-        line = c.__code__.co_firstlineno
-        path = c.__code__.co_filename
-        return f'lambda:{path}:{line}'
-    elif isinstance(c, (FunctionType, MethodType)):
-        return str(getattr(c, '__qualname__', getattr(c, '__name__', repr(c))))
-    else:
-        raise ValueError(f"Cannot get id of {c!r}.")
-
-
 class OperatorRegistry(BaseRegistry):
     """
     A global registry is used for handling of the multiple resources.
@@ -473,6 +453,26 @@ def set_default_registry(registry: OperatorRegistry) -> None:
     """
     global _default_registry
     _default_registry = registry
+
+
+def get_callable_id(c: Optional[Callable[..., Any]]) -> str:
+    """ Get an reasonably good id of any commonly used callable. """
+    if c is None:
+        raise ValueError("Cannot build a persistent id of None.")
+    elif isinstance(c, functools.partial):
+        return get_callable_id(c.func)
+    elif hasattr(c, '__wrapped__'):  # @functools.wraps()
+        return get_callable_id(getattr(c, '__wrapped__'))
+    elif isinstance(c, FunctionType) and c.__name__ == '<lambda>':
+        # The best we can do to keep the id stable across the process restarts,
+        # assuming at least no code changes. The code changes are not detectable.
+        line = c.__code__.co_firstlineno
+        path = c.__code__.co_filename
+        return f'lambda:{path}:{line}'
+    elif isinstance(c, (FunctionType, MethodType)):
+        return str(getattr(c, '__qualname__', getattr(c, '__name__', repr(c))))
+    else:
+        raise ValueError(f"Cannot get id of {c!r}.")
 
 
 def match(
