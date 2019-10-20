@@ -109,25 +109,25 @@ async def resource_handler(
         return
 
     # Invoke all silent spies. No causation, no progress storage is performed.
-    if registry.has_event_watching_handlers(resource=resource):
-        event_watching_cause = causation.detect_event_watching_cause(
+    if registry.has_resource_watching_handlers(resource=resource):
+        resource_watching_cause = causation.detect_resource_watching_cause(
             event=event,
             resource=resource,
             logger=logger,
             patch=patch,
         )
-        await handle_event_watching_cause(
+        await handle_resource_watching_cause(
             lifecycle=lifecycles.all_at_once,
             registry=registry,
-            cause=event_watching_cause,
+            cause=resource_watching_cause,
         )
 
     # Object patch accumulator. Populated by the methods. Applied in the end of the handler.
     # Detect the cause and handle it (or at least log this happened).
-    if registry.has_state_changing_handlers(resource=resource):
+    if registry.has_resource_changing_handlers(resource=resource):
         extra_fields = registry.get_extra_fields(resource=resource)
         old, new, diff = lastseen.get_essential_diffs(body=body, extra_fields=extra_fields)
-        state_changing_cause = causation.detect_state_changing_cause(
+        resource_changing_cause = causation.detect_resource_changing_cause(
             event=event,
             resource=resource,
             logger=logger,
@@ -137,10 +137,10 @@ async def resource_handler(
             diff=diff,
             requires_finalizer=registry.requires_finalizer(resource=resource, body=body),
         )
-        delay = await handle_state_changing_cause(
+        delay = await handle_resource_changing_cause(
             lifecycle=lifecycle,
             registry=registry,
-            cause=state_changing_cause,
+            cause=resource_changing_cause,
         )
 
     # Whatever was done, apply the accumulated changes to the object.
@@ -163,10 +163,10 @@ async def resource_handler(
             await patching.patch_obj(resource=resource, patch=dummy, body=body)
 
 
-async def handle_event_watching_cause(
+async def handle_resource_watching_cause(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.BaseRegistry,
-        cause: causation.EventWatchingCause,
+        cause: causation.ResourceWatchingCause,
 ) -> None:
     """
     Handle a received event, log but ignore all errors.
@@ -179,7 +179,7 @@ async def handle_event_watching_cause(
     as they should be silent. Still, the messages are logged normally.
     """
     logger = cause.logger
-    handlers = registry.get_event_watching_handlers(cause=cause)
+    handlers = registry.get_resource_watching_handlers(cause=cause)
     for handler in handlers:
 
         # The exceptions are handled locally and are not re-raised, to keep the operator running.
@@ -200,10 +200,10 @@ async def handle_event_watching_cause(
             state.store_result(patch=cause.patch, handler=handler, result=result)
 
 
-async def handle_state_changing_cause(
+async def handle_resource_changing_cause(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.BaseRegistry,
-        cause: causation.StateChangingCause,
+        cause: causation.ResourceChangingCause,
 ) -> Optional[float]:
     """
     Handle a detected cause, as part of the bigger handler routine.
@@ -222,7 +222,7 @@ async def handle_state_changing_cause(
         if cause.diff is not None and cause.old is not None and cause.new is not None:
             logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
 
-        handlers = registry.get_state_changing_handlers(cause=cause)
+        handlers = registry.get_resource_changing_handlers(cause=cause)
         if handlers:
             try:
                 await _execute(
@@ -344,7 +344,7 @@ async def execute(
         registry = subregistry_var.get()
 
     # The sub-handlers are only for upper-level causes, not for lower-level events.
-    if not isinstance(cause, causation.StateChangingCause):
+    if not isinstance(cause, causation.ResourceChangingCause):
         raise RuntimeError("Sub-handlers of event-handlers are not supported and have "
                            "no practical use (there are no retries or state tracking).")
 
@@ -352,7 +352,7 @@ async def execute(
     # Raises `HandlerChildrenRetry` if the execute should be continued on the next iteration.
     await _execute(
         lifecycle=lifecycle,
-        handlers=registry.get_state_changing_handlers(cause=cause),
+        handlers=registry.get_resource_changing_handlers(cause=cause),
         cause=cause,
     )
 
@@ -491,7 +491,7 @@ async def _call_handler(
     """
 
     # For the field-handlers, the old/new/diff values must match the field, not the whole object.
-    if isinstance(cause, causation.StateChangingCause) and handler.field is not None:
+    if isinstance(cause, causation.ResourceChangingCause) and handler.field is not None:
         old = dicts.resolve(cause.old, handler.field, None, assume_empty=True)
         new = dicts.resolve(cause.new, handler.field, None, assume_empty=True)
         diff = diffs.reduce(cause.diff, handler.field)
@@ -516,7 +516,7 @@ async def _call_handler(
             **kwargs,
         )
 
-        if not subexecuted_var.get() and isinstance(cause, causation.StateChangingCause):
+        if not subexecuted_var.get() and isinstance(cause, causation.ResourceChangingCause):
             await execute()
 
         return result

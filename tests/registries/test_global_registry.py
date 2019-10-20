@@ -11,8 +11,8 @@ def some_fn():
 
 def test_resources():
     registry = GlobalRegistry()
-    registry.register_state_changing_handler('group1', 'version1', 'plural1', some_fn)
-    registry.register_state_changing_handler('group2', 'version2', 'plural2', some_fn)
+    registry.register_resource_changing_handler('group1', 'version1', 'plural1', some_fn)
+    registry.register_resource_changing_handler('group2', 'version2', 'plural2', some_fn)
 
     resources = registry.resources
 

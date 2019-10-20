@@ -3,7 +3,7 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.causation import Reason, StateChangingCause, EventWatchingCause
+from kopf.reactor.causation import Reason, ResourceChangingCause, ResourceWatchingCause
 from kopf.reactor.handling import cause_var
 from kopf.reactor.invocation import context
 from kopf.structs.bodies import Body, Meta, Labels, Event
@@ -30,7 +30,7 @@ OWNER = Body(
 @pytest.fixture(params=['state-changing-cause', 'event-watching-cause'])
 def owner(request, resource):
     if request.param == 'state-changing-cause':
-        cause = StateChangingCause(
+        cause = ResourceChangingCause(
             logger=logging.getLogger('kopf.test.fake.logger'),
             resource=resource,
             patch=Patch(),
@@ -41,7 +41,7 @@ def owner(request, resource):
         with context([(cause_var, cause)]):
             yield
     elif request.param == 'event-watching-cause':
-        cause = EventWatchingCause(
+        cause = ResourceWatchingCause(
             logger=logging.getLogger('kopf.test.fake.logger'),
             resource=resource,
             patch=Patch(),

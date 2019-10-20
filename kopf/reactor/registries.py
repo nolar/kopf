@@ -78,29 +78,29 @@ class BaseRegistry(metaclass=abc.ABCMeta):
     A registry stores the handlers and provides them to the reactor.
     """
 
-    def get_state_changing_handlers(
+    def get_resource_changing_handlers(
             self,
-            cause: causation.StateChangingCause,
+            cause: causation.ResourceChangingCause,
     ) -> Sequence[Handler]:
-        return list(self._deduplicated(self.iter_state_changing_handlers(cause=cause)))
+        return list(self._deduplicated(self.iter_resource_changing_handlers(cause=cause)))
 
     @abc.abstractmethod
-    def iter_state_changing_handlers(
+    def iter_resource_changing_handlers(
             self,
-            cause: causation.StateChangingCause,
+            cause: causation.ResourceChangingCause,
     ) -> Iterator[Handler]:
         pass
 
-    def get_event_watching_handlers(
+    def get_resource_watching_handlers(
             self,
-            cause: causation.EventWatchingCause,
+            cause: causation.ResourceWatchingCause,
     ) -> Sequence[Handler]:
-        return list(self._deduplicated(self.iter_event_watching_handlers(cause=cause)))
+        return list(self._deduplicated(self.iter_resource_watching_handlers(cause=cause)))
 
     @abc.abstractmethod
-    def iter_event_watching_handlers(
+    def iter_resource_watching_handlers(
             self,
-            cause: causation.EventWatchingCause,
+            cause: causation.ResourceWatchingCause,
     ) -> Iterator[Handler]:
         pass
 
@@ -148,19 +148,19 @@ class BaseRegistry(metaclass=abc.ABCMeta):
 
     def get_cause_handlers(
             self,
-            cause: causation.StateChangingCause,
+            cause: causation.ResourceChangingCause,
     ) -> Sequence[Handler]:
         warnings.warn("registry.get_cause_handlers() is deprecated; "
-                      "use registry.get_state_changing_handlers().", DeprecationWarning)
-        return self.get_state_changing_handlers(cause=cause)
+                      "use registry.get_resource_changing_handlers().", DeprecationWarning)
+        return self.get_resource_changing_handlers(cause=cause)
 
     def iter_cause_handlers(
             self,
-            cause: causation.StateChangingCause,
+            cause: causation.ResourceChangingCause,
     ) -> Iterator[Handler]:
         warnings.warn("registry.iter_cause_handlers() is deprecated; "
-                      "use registry.iter_state_changing_handlers().", DeprecationWarning)
-        return self.iter_state_changing_handlers(cause=cause)
+                      "use registry.iter_resource_changing_handlers().", DeprecationWarning)
+        return self.iter_resource_changing_handlers(cause=cause)
 
     def get_event_handlers(
             self,
@@ -168,7 +168,7 @@ class BaseRegistry(metaclass=abc.ABCMeta):
             event: bodies.Event,
     ) -> Sequence[Handler]:
         warnings.warn("registry.get_event_handlers() is deprecated; "
-                      "use registry.get_event_watching_handlers().", DeprecationWarning)
+                      "use registry.get_resource_watching_handlers().", DeprecationWarning)
         return list(self._deduplicated(self.iter_event_handlers(resource=resource, event=event)))
 
     def iter_event_handlers(
@@ -177,8 +177,8 @@ class BaseRegistry(metaclass=abc.ABCMeta):
             event: bodies.Event,
     ) -> Iterator[Handler]:
         warnings.warn("registry.iter_event_handlers() is deprecated; "
-                      "use registry.iter_event_watching_handlers().", DeprecationWarning)
-        return self.iter_event_watching_handlers(cause=causation.detect_event_watching_cause(
+                      "use registry.iter_resource_watching_handlers().", DeprecationWarning)
+        return self.iter_resource_watching_handlers(cause=causation.detect_resource_watching_cause(
             resource=resource,
             event=event,
             patch=patches.Patch(),          # unused
@@ -245,9 +245,9 @@ class SimpleRegistry(BaseRegistry):
 
         return fn  # to be usable as a decorator too.
 
-    def iter_state_changing_handlers(
+    def iter_resource_changing_handlers(
             self,
-            cause: causation.StateChangingCause,
+            cause: causation.ResourceChangingCause,
     ) -> Iterator[Handler]:
         changed_fields = frozenset(field for _, field, _, _ in cause.diff or [])
         for handler in self._handlers:
@@ -257,9 +257,9 @@ class SimpleRegistry(BaseRegistry):
                 elif match(handler=handler, body=cause.body, changed_fields=changed_fields):
                     yield handler
 
-    def iter_event_watching_handlers(
+    def iter_resource_watching_handlers(
             self,
-            cause: causation.EventWatchingCause,
+            cause: causation.ResourceWatchingCause,
     ) -> Iterator[Handler]:
         for handler in self._handlers:
             if match(handler=handler, body=cause.body):
@@ -311,13 +311,15 @@ class GlobalRegistry(BaseRegistry):
     A global registry is used for handling of the multiple resources.
     It is usually populated by the `@kopf.on...` decorators.
     """
+    _resource_changing_handlers: MutableMapping[resources_.Resource, SimpleRegistry]
+    _resource_watching_handlers: MutableMapping[resources_.Resource, SimpleRegistry]
 
     def __init__(self) -> None:
         super().__init__()
-        self._cause_handlers: MutableMapping[resources_.Resource, SimpleRegistry] = {}
-        self._event_handlers: MutableMapping[resources_.Resource, SimpleRegistry] = {}
+        self._resource_changing_handlers = {}
+        self._resource_watching_handlers = {}
 
-    def register_state_changing_handler(
+    def register_resource_changing_handler(
             self,
             group: str,
             version: str,
@@ -337,13 +339,13 @@ class GlobalRegistry(BaseRegistry):
         Register an additional handler function for the specific resource and specific reason.
         """
         resource = resources_.Resource(group, version, plural)
-        registry = self._cause_handlers.setdefault(resource, SimpleRegistry())
+        registry = self._resource_changing_handlers.setdefault(resource, SimpleRegistry())
         registry.register(reason=reason, event=event, field=field, fn=fn, id=id, timeout=timeout,
                           initial=initial, requires_finalizer=requires_finalizer,
                           labels=labels, annotations=annotations)
         return fn  # to be usable as a decorator too.
 
-    def register_event_watching_handler(
+    def register_resource_watching_handler(
             self,
             group: str,
             version: str,
@@ -357,56 +359,56 @@ class GlobalRegistry(BaseRegistry):
         Register an additional handler function for low-level events.
         """
         resource = resources_.Resource(group, version, plural)
-        registry = self._event_handlers.setdefault(resource, SimpleRegistry())
+        registry = self._resource_watching_handlers.setdefault(resource, SimpleRegistry())
         registry.register(fn=fn, id=id, labels=labels, annotations=annotations)
         return fn  # to be usable as a decorator too.
 
     @property
     def resources(self) -> FrozenSet[resources_.Resource]:
         """ All known resources in the registry. """
-        return frozenset(self._cause_handlers) | frozenset(self._event_handlers)
+        return frozenset(self._resource_changing_handlers) | frozenset(self._resource_watching_handlers)
 
-    def has_state_changing_handlers(
+    def has_resource_changing_handlers(
             self,
             resource: resources_.Resource,
     ) -> bool:
-        resource_registry = self._cause_handlers.get(resource, None)
+        resource_registry = self._resource_changing_handlers.get(resource, None)
         return bool(resource_registry)
 
-    def has_event_watching_handlers(
+    def has_resource_watching_handlers(
             self,
             resource: resources_.Resource,
     ) -> bool:
-        resource_registry = self._event_handlers.get(resource, None)
+        resource_registry = self._resource_watching_handlers.get(resource, None)
         return bool(resource_registry)
 
-    def iter_state_changing_handlers(
+    def iter_resource_changing_handlers(
             self,
-            cause: causation.StateChangingCause,
+            cause: causation.ResourceChangingCause,
     ) -> Iterator[Handler]:
         """
         Iterate all handlers that match this cause/event, in the order they were registered (even if mixed).
         """
-        resource_registry = self._cause_handlers.get(cause.resource, None)
+        resource_registry = self._resource_changing_handlers.get(cause.resource, None)
         if resource_registry is not None:
-            yield from resource_registry.iter_state_changing_handlers(cause=cause)
+            yield from resource_registry.iter_resource_changing_handlers(cause=cause)
 
-    def iter_event_watching_handlers(
+    def iter_resource_watching_handlers(
             self,
-            cause: causation.EventWatchingCause,
+            cause: causation.ResourceWatchingCause,
     ) -> Iterator[Handler]:
         """
         Iterate all handlers for the low-level events.
         """
-        resource_registry = self._event_handlers.get(cause.resource, None)
+        resource_registry = self._resource_watching_handlers.get(cause.resource, None)
         if resource_registry is not None:
-            yield from resource_registry.iter_event_watching_handlers(cause=cause)
+            yield from resource_registry.iter_resource_watching_handlers(cause=cause)
 
     def iter_extra_fields(
             self,
             resource: resources_.Resource,
     ) -> Iterator[dicts.FieldPath]:
-        resource_registry = self._cause_handlers.get(resource, None)
+        resource_registry = self._resource_changing_handlers.get(resource, None)
         if resource_registry is not None:
             yield from resource_registry.iter_extra_fields(resource=resource)
 
@@ -419,7 +421,7 @@ class GlobalRegistry(BaseRegistry):
         Return whether a finalizer should be added to
         the given resource or not.
         """
-        resource_registry = self._cause_handlers.get(resource, None)
+        resource_registry = self._resource_changing_handlers.get(resource, None)
         if resource_registry is None:
             return False
         return resource_registry.requires_finalizer(resource, body)
@@ -431,23 +433,23 @@ class GlobalRegistry(BaseRegistry):
 
     def register_cause_handler(self, *args:Any, **kwargs: Any) -> Any:
         warnings.warn("registry.register_cause_handler() is deprecated; "
-                      "use registry.register_state_changing_handler().", DeprecationWarning)
-        return self.register_state_changing_handler(*args, **kwargs)
+                      "use registry.register_resource_changing_handler().", DeprecationWarning)
+        return self.register_resource_changing_handler(*args, **kwargs)
 
     def register_event_handler(self, *args:Any, **kwargs: Any) -> Any:
         warnings.warn("registry.register_event_handler() is deprecated; "
-                      "use registry.register_event_watching_handler().", DeprecationWarning)
-        return self.register_event_watching_handler(*args, **kwargs)
+                      "use registry.register_resource_watching_handler().", DeprecationWarning)
+        return self.register_resource_watching_handler(*args, **kwargs)
 
     def has_cause_handlers(self, *args:Any, **kwargs: Any) -> Any:
         warnings.warn("registry.has_cause_handlers() is deprecated; "
-                      "use registry.has_state_changing_handlers().", DeprecationWarning)
-        return self.has_state_changing_handlers(*args, **kwargs)
+                      "use registry.has_resource_changing_handlers().", DeprecationWarning)
+        return self.has_resource_changing_handlers(*args, **kwargs)
 
     def has_event_handlers(self, *args:Any, **kwargs: Any) -> Any:
         warnings.warn("registry.has_event_handlers() is deprecated; "
-                      "use registry.has_event_watching_handlers().", DeprecationWarning)
-        return self.has_event_watching_handlers(*args, **kwargs)
+                      "use registry.has_resource_watching_handlers().", DeprecationWarning)
+        return self.has_resource_watching_handlers(*args, **kwargs)
 
 
 _default_registry: GlobalRegistry = GlobalRegistry()

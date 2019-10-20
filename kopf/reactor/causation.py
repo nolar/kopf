@@ -85,7 +85,7 @@ class BaseCause:
 
 
 @dataclasses.dataclass
-class EventWatchingCause(BaseCause):
+class ResourceWatchingCause(BaseCause):
     """
     The raw event received from the API.
 
@@ -96,7 +96,7 @@ class EventWatchingCause(BaseCause):
 
 
 @dataclasses.dataclass
-class StateChangingCause(BaseCause):
+class ResourceChangingCause(BaseCause):
     """
     The cause is what has caused the whole reaction as a chain of handlers.
 
@@ -115,24 +115,24 @@ class StateChangingCause(BaseCause):
         return self.reason
 
 
-def detect_event_watching_cause(
+def detect_resource_watching_cause(
         event: bodies.Event,
         **kwargs: Any,
-) -> EventWatchingCause:
-    return EventWatchingCause(
+) -> ResourceWatchingCause:
+    return ResourceWatchingCause(
         raw=event,
         type=event['type'],
         body=event['object'],
         **kwargs)
 
 
-def detect_state_changing_cause(
+def detect_resource_changing_cause(
         *,
         event: bodies.Event,
         diff: Optional[diffs.Diff] = None,
         requires_finalizer: bool = True,
         **kwargs: Any,
-) -> StateChangingCause:
+) -> ResourceChangingCause:
     """
     Detect the cause of the event to be handled.
 
@@ -151,45 +151,45 @@ def detect_state_changing_cause(
 
     # The object was really deleted from the cluster. But we do not care anymore.
     if event['type'] == 'DELETED':
-        return StateChangingCause(reason=Reason.GONE, **kwargs)
+        return ResourceChangingCause(reason=Reason.GONE, **kwargs)
 
     # The finalizer has been just removed. We are fully done.
     if finalizers.is_deleted(body) and not finalizers.has_finalizers(body):
-        return StateChangingCause(reason=Reason.FREE, **kwargs)
+        return ResourceChangingCause(reason=Reason.FREE, **kwargs)
 
     if finalizers.is_deleted(body):
-        return StateChangingCause(reason=Reason.DELETE, **kwargs)
+        return ResourceChangingCause(reason=Reason.DELETE, **kwargs)
 
     # For a fresh new object, first block it from accidental deletions without our permission.
     # The actual handler will be called on the next call.
     # Only return this cause if the resource requires finalizers to be added.
     if requires_finalizer and not finalizers.has_finalizers(body):
-        return StateChangingCause(reason=Reason.ACQUIRE, **kwargs)
+        return ResourceChangingCause(reason=Reason.ACQUIRE, **kwargs)
 
     # Check whether or not the resource has finalizers, but doesn't require them. If this is
     # the case, then a resource may not be able to be deleted completely as finalizers may
     # not be removed by the operator under normal operation. We remove the finalizers first,
     # and any handler that should be called will be done on the next call.
     if not requires_finalizer and finalizers.has_finalizers(body):
-        return StateChangingCause(reason=Reason.RELEASE, **kwargs)
+        return ResourceChangingCause(reason=Reason.RELEASE, **kwargs)
 
     # For an object seen for the first time (i.e. just-created), call the creation handlers,
     # then mark the state as if it was seen when the creation has finished.
     if not lastseen.has_essence_stored(body):
-        return StateChangingCause(reason=Reason.CREATE, **kwargs)
+        return ResourceChangingCause(reason=Reason.CREATE, **kwargs)
 
     # Cases with no state changes are usually ignored (NOOP). But for the "None" events,
     # as simulated for the initial listing, we call the resuming handlers (e.g. threads/tasks).
     if not diff and initial:
-        return StateChangingCause(reason=Reason.RESUME, **kwargs)
+        return ResourceChangingCause(reason=Reason.RESUME, **kwargs)
 
     # The previous step triggers one more patch operation without actual changes. Ignore it.
     # Either the last-seen state or the status field has changed.
     if not diff:
-        return StateChangingCause(reason=Reason.NOOP, **kwargs)
+        return ResourceChangingCause(reason=Reason.NOOP, **kwargs)
 
     # And what is left, is the update operation on one of the useful fields of the existing object.
-    return StateChangingCause(reason=Reason.UPDATE, **kwargs)
+    return ResourceChangingCause(reason=Reason.UPDATE, **kwargs)
 
 
 _CT = TypeVar('_CT', bound=BaseCause)
