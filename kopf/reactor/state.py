@@ -62,7 +62,7 @@ from kopf.structs import patches
 def is_started(
         *,
         body: bodies.Body,
-        handler: registries.Handler,
+        handler: registries.ResourceHandler,
 ) -> bool:
     progress = body.get('status', {}).get('kopf', {}).get('progress', {})
     return handler.id in progress
@@ -71,7 +71,7 @@ def is_started(
 def is_sleeping(
         *,
         body: bodies.Body,
-        handler: registries.Handler,
+        handler: registries.ResourceHandler,
 ) -> bool:
     ts = get_awake_time(body=body, handler=handler)
     finished = is_finished(body=body, handler=handler)
@@ -81,7 +81,7 @@ def is_sleeping(
 def is_awakened(
         *,
         body: bodies.Body,
-        handler: registries.Handler,
+        handler: registries.ResourceHandler,
 ) -> bool:
     finished = is_finished(body=body, handler=handler)
     sleeping = is_sleeping(body=body, handler=handler)
@@ -91,7 +91,7 @@ def is_awakened(
 def is_finished(
         *,
         body: bodies.Body,
-        handler: registries.Handler,
+        handler: registries.ResourceHandler,
 ) -> bool:
     progress = body.get('status', {}).get('kopf', {}).get('progress', {})
     success = progress.get(handler.id, {}).get('success', None)
@@ -103,7 +103,7 @@ def get_start_time(
         *,
         body: bodies.Body,
         patch: patches.Patch,
-        handler: registries.Handler,
+        handler: registries.ResourceHandler,
 ) -> Optional[datetime.datetime]:
     progress = patch.get('status', {}).get('kopf', {}).get('progress', {})
     new_value = progress.get(handler.id, {}).get('started', None)
@@ -116,7 +116,7 @@ def get_start_time(
 def get_awake_time(
         *,
         body: bodies.Body,
-        handler: registries.Handler,
+        handler: registries.ResourceHandler,
 ) -> Optional[datetime.datetime]:
     progress = body.get('status', {}).get('kopf', {}).get('progress', {})
     value = progress.get(handler.id, {}).get('delayed', None)
@@ -126,7 +126,7 @@ def get_awake_time(
 def get_retry_count(
         *,
         body: bodies.Body,
-        handler: registries.Handler,
+        handler: registries.ResourceHandler,
 ) -> int:
     progress = body.get('status', {}).get('kopf', {}).get('progress', {})
     return progress.get(handler.id, {}).get('retries', None) or 0
@@ -136,7 +136,7 @@ def set_start_time(
         *,
         body: bodies.Body,
         patch: patches.Patch,
-        handler: registries.Handler,
+        handler: registries.ResourceHandler,
 ) -> None:
     progress = patch.setdefault('status', {}).setdefault('kopf', {}).setdefault('progress', {})
     progress.setdefault(handler.id, {}).update({
@@ -148,7 +148,7 @@ def set_awake_time(
         *,
         body: bodies.Body,
         patch: patches.Patch,
-        handler: registries.Handler,
+        handler: registries.ResourceHandler,
         delay: Optional[float] = None,
 ) -> None:
     ts_str: Optional[str]
@@ -167,7 +167,7 @@ def set_retry_time(
         *,
         body: bodies.Body,
         patch: patches.Patch,
-        handler: registries.Handler,
+        handler: registries.ResourceHandler,
         delay: Optional[float] = None,
 ) -> None:
     retry = get_retry_count(body=body, handler=handler)
@@ -182,7 +182,7 @@ def store_failure(
         *,
         body: bodies.Body,
         patch: patches.Patch,
-        handler: registries.Handler,
+        handler: registries.ResourceHandler,
         exc: BaseException,
 ) -> None:
     retry = get_retry_count(body=body, handler=handler)
@@ -199,7 +199,7 @@ def store_success(
         *,
         body: bodies.Body,
         patch: patches.Patch,
-        handler: registries.Handler,
+        handler: registries.ResourceHandler,
         result: Any = None,
 ) -> None:
     retry = get_retry_count(body=body, handler=handler)
@@ -216,7 +216,7 @@ def store_success(
 def store_result(
         *,
         patch: patches.Patch,
-        handler: registries.Handler,
+        handler: registries.ResourceHandler,
         result: Any = None,
 ) -> None:
     if result is None:

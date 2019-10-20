@@ -70,9 +70,9 @@ class HandlerChildrenRetry(TemporaryError):
 # The task-local context; propagated down the stack instead of multiple kwargs.
 # Used in `@kopf.on.this` and `kopf.execute()` to add/get the sub-handlers.
 sublifecycle_var: ContextVar[lifecycles.LifeCycleFn] = ContextVar('sublifecycle_var')
-subregistry_var: ContextVar[registries.SimpleRegistry] = ContextVar('subregistry_var')
+subregistry_var: ContextVar[registries.ResourceRegistry] = ContextVar('subregistry_var')
 subexecuted_var: ContextVar[bool] = ContextVar('subexecuted_var')
-handler_var: ContextVar[registries.Handler] = ContextVar('handler_var')
+handler_var: ContextVar[registries.ResourceHandler] = ContextVar('handler_var')
 cause_var: ContextVar[causation.BaseCause] = ContextVar('cause_var')
 
 
@@ -282,7 +282,7 @@ async def handle_resource_changing_cause(
 async def execute(
         *,
         fns: Optional[Iterable[invocation.Invokable]] = None,
-        handlers: Optional[Iterable[registries.Handler]] = None,
+        handlers: Optional[Iterable[registries.ResourceHandler]] = None,
         registry: Optional[registries.BaseRegistry] = None,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         cause: Optional[causation.BaseCause] = None,
@@ -306,19 +306,19 @@ async def execute(
     # Restore the current context as set in the handler execution cycle.
     lifecycle = lifecycle if lifecycle is not None else sublifecycle_var.get()
     cause = cause if cause is not None else cause_var.get()
-    handler: registries.Handler = handler_var.get()
+    handler: registries.ResourceHandler = handler_var.get()
 
     # Validate the inputs; the function signatures cannot put these kind of restrictions, so we do.
     if len([v for v in [fns, handlers, registry] if v is not None]) > 1:
         raise TypeError("Only one of the fns, handlers, registry can be passed. Got more.")
 
     elif fns is not None and isinstance(fns, collections.abc.Mapping):
-        registry = registries.SimpleRegistry(prefix=handler.id if handler else None)
+        registry = registries.ResourceRegistry(prefix=handler.id if handler else None)
         for id, fn in fns.items():
             registry.register(fn=fn, id=id)
 
     elif fns is not None and isinstance(fns, collections.abc.Iterable):
-        registry = registries.SimpleRegistry(prefix=handler.id if handler else None)
+        registry = registries.ResourceRegistry(prefix=handler.id if handler else None)
         for fn in fns:
             registry.register(fn=fn)
 
@@ -326,7 +326,7 @@ async def execute(
         raise ValueError(f"fns must be a mapping or an iterable, got {fns.__class__}.")
 
     elif handlers is not None:
-        registry = registries.SimpleRegistry(prefix=handler.id if handler else None)
+        registry = registries.ResourceRegistry(prefix=handler.id if handler else None)
         for handler in handlers:
             registry.append(handler=handler)
 
@@ -359,7 +359,7 @@ async def execute(
 
 async def _execute(
         lifecycle: lifecycles.LifeCycleFn,
-        handlers: Collection[registries.Handler],
+        handlers: Collection[registries.ResourceHandler],
         cause: causation.BaseCause,
         retry_on_errors: bool = True,
 ) -> None:
@@ -474,7 +474,7 @@ async def _execute(
 
 
 async def _call_handler(
-        handler: registries.Handler,
+        handler: registries.ResourceHandler,
         *args: Any,
         cause: causation.BaseCause,
         lifecycle: lifecycles.LifeCycleFn,
@@ -502,7 +502,7 @@ async def _call_handler(
     # This replaces the multiple kwargs passing through the whole call stack (easy to forget).
     with invocation.context([
         (sublifecycle_var, lifecycle),
-        (subregistry_var, registries.SimpleRegistry(prefix=handler.id)),
+        (subregistry_var, registries.ResourceRegistry(prefix=handler.id)),
         (subexecuted_var, False),
         (handler_var, handler),
         (cause_var, cause),

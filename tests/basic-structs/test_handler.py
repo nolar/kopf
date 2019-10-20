@@ -1,11 +1,11 @@
 import pytest
 
-from kopf.reactor.registries import Handler
+from kopf.reactor.registries import ResourceHandler
 
 
 def test_no_args():
     with pytest.raises(TypeError):
-        Handler()
+        ResourceHandler()
 
 
 def test_all_args(mocker):
@@ -17,7 +17,7 @@ def test_all_args(mocker):
     initial = mocker.Mock()
     labels = mocker.Mock()
     annotations = mocker.Mock()
-    handler = Handler(
+    handler = ResourceHandler(
         fn=fn,
         id=id,
         reason=reason,

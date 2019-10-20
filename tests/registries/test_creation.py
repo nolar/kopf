@@ -1,20 +1,20 @@
-from kopf import BaseRegistry, SimpleRegistry, GlobalRegistry
+from kopf import BaseRegistry, ResourceRegistry, GlobalRegistry
 
 
 def test_creation_of_simple_no_prefix():
-    registry = SimpleRegistry()
+    registry = ResourceRegistry()
     assert isinstance(registry, BaseRegistry)
-    assert isinstance(registry, SimpleRegistry)
+    assert isinstance(registry, ResourceRegistry)
     assert registry.prefix is None
 
 
 def test_creation_of_simple_with_prefix_argument():
-    registry = SimpleRegistry('hello')
+    registry = ResourceRegistry('hello')
     assert registry.prefix == 'hello'
 
 
 def test_creation_of_simple_with_prefix_keyword():
-    registry = SimpleRegistry(prefix='hello')
+    registry = ResourceRegistry(prefix='hello')
     assert registry.prefix == 'hello'
 
 

@@ -3,7 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from kopf import SimpleRegistry, GlobalRegistry
+from kopf import ResourceRegistry, GlobalRegistry
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.
@@ -12,7 +12,7 @@ def some_fn(x=None):
 
 
 @pytest.fixture(params=[
-    pytest.param(SimpleRegistry, id='in-simple-registry'),
+    pytest.param(ResourceRegistry, id='in-simple-registry'),
     pytest.param(GlobalRegistry, id='in-global-registry'),
 ])
 def registry(request):
@@ -21,7 +21,7 @@ def registry(request):
 
 @pytest.fixture()
 def register_fn(registry, resource):
-    if isinstance(registry, SimpleRegistry):
+    if isinstance(registry, ResourceRegistry):
         return registry.register
     if isinstance(registry, GlobalRegistry):
         return functools.partial(registry.register_resource_changing_handler, resource.group, resource.version, resource.plural)

@@ -19,7 +19,7 @@ from kopf.reactor import handling
 from kopf.reactor import registries
 from kopf.structs import bodies
 
-HandlerDecorator = Callable[[registries.HandlerFn], registries.HandlerFn]
+ResourceHandlerDecorator = Callable[[registries.ResourceHandlerFn], registries.ResourceHandlerFn]
 
 
 def resume(
@@ -30,10 +30,10 @@ def resume(
         registry: Optional[registries.GlobalRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
-) -> HandlerDecorator:
+) -> ResourceHandlerDecorator:
     """ ``@kopf.on.resume()`` handler for the object resuming on operator (re)start. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
-    def decorator(fn: registries.HandlerFn) -> registries.HandlerFn:
+    def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
         actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=None, initial=True, id=id, timeout=timeout,
@@ -50,10 +50,10 @@ def create(
         registry: Optional[registries.GlobalRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
-) -> HandlerDecorator:
+) -> ResourceHandlerDecorator:
     """ ``@kopf.on.create()`` handler for the object creation. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
-    def decorator(fn: registries.HandlerFn) -> registries.HandlerFn:
+    def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
         actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.CREATE, id=id, timeout=timeout,
@@ -70,10 +70,10 @@ def update(
         registry: Optional[registries.GlobalRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
-) -> HandlerDecorator:
+) -> ResourceHandlerDecorator:
     """ ``@kopf.on.update()`` handler for the object update or change. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
-    def decorator(fn: registries.HandlerFn) -> registries.HandlerFn:
+    def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
         actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.UPDATE, id=id, timeout=timeout,
@@ -91,10 +91,10 @@ def delete(
         optional: Optional[bool] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
-) -> HandlerDecorator:
+) -> ResourceHandlerDecorator:
     """ ``@kopf.on.delete()`` handler for the object deletion. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
-    def decorator(fn: registries.HandlerFn) -> registries.HandlerFn:
+    def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
         actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.DELETE, id=id, timeout=timeout,
@@ -113,10 +113,10 @@ def field(
         registry: Optional[registries.GlobalRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
-) -> HandlerDecorator:
+) -> ResourceHandlerDecorator:
     """ ``@kopf.on.field()`` handler for the individual field changes. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
-    def decorator(fn: registries.HandlerFn) -> registries.HandlerFn:
+    def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
         actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=None, field=field, id=id, timeout=timeout,
@@ -132,10 +132,10 @@ def event(
         registry: Optional[registries.GlobalRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
-) -> HandlerDecorator:
+) -> ResourceHandlerDecorator:
     """ ``@kopf.on.event()`` handler for the silent spies on the events. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
-    def decorator(fn: registries.HandlerFn) -> registries.HandlerFn:
+    def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
         actual_registry.register_resource_watching_handler(
             group=group, version=version, plural=plural,
             id=id, fn=fn, labels=labels, annotations=annotations)
@@ -149,8 +149,8 @@ def this(
         *,
         id: Optional[str] = None,
         timeout: Optional[float] = None,
-        registry: Optional[registries.SimpleRegistry] = None,
-) -> HandlerDecorator:
+        registry: Optional[registries.ResourceRegistry] = None,
+) -> ResourceHandlerDecorator:
     """
     ``@kopf.on.this()`` decorator for the dynamically generated sub-handlers.
 
@@ -181,19 +181,19 @@ def this(
     create function will have its own value, not the latest in the for-cycle.
     """
     actual_registry = registry if registry is not None else handling.subregistry_var.get()
-    def decorator(fn: registries.HandlerFn) -> registries.HandlerFn:
+    def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
         actual_registry.register(id=id, fn=fn, timeout=timeout)
         return fn
     return decorator
 
 
 def register(
-        fn: registries.HandlerFn,
+        fn: registries.ResourceHandlerFn,
         *,
         id: Optional[str] = None,
         timeout: Optional[float] = None,
-        registry: Optional[registries.SimpleRegistry] = None,
-) -> registries.HandlerFn:
+        registry: Optional[registries.ResourceRegistry] = None,
+) -> registries.ResourceHandlerFn:
     """
     Register a function as a sub-handler of the currently executed handler.
 

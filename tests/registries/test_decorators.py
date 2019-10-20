@@ -3,7 +3,7 @@ import pytest
 import kopf
 from kopf.reactor.causation import Reason
 from kopf.reactor.handling import subregistry_var
-from kopf.reactor.registries import SimpleRegistry, GlobalRegistry
+from kopf.reactor.registries import ResourceRegistry, GlobalRegistry
 from kopf.structs.resources import Resource
 
 
@@ -195,7 +195,7 @@ def test_on_field_with_all_kwargs(mocker):
 def test_subhandler_declaratively(mocker):
     cause = mocker.MagicMock(reason=Reason.UPDATE, diff=None)
 
-    registry = SimpleRegistry()
+    registry = ResourceRegistry()
     subregistry_var.set(registry)
 
     @kopf.on.this()
@@ -210,7 +210,7 @@ def test_subhandler_declaratively(mocker):
 def test_subhandler_imperatively(mocker):
     cause = mocker.MagicMock(reason=Reason.UPDATE, diff=None)
 
-    registry = SimpleRegistry()
+    registry = ResourceRegistry()
     subregistry_var.set(registry)
 
     def fn(**_):
