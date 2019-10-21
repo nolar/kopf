@@ -65,6 +65,7 @@ class ResourceHandler(NamedTuple):
     initial: Optional[bool] = None
     labels: Optional[bodies.Labels] = None
     annotations: Optional[bodies.Annotations] = None
+    requires_finalizer: Optional[bool] = None
 
     @property
     def event(self) -> Optional[causation.Reason]:
@@ -168,7 +169,6 @@ class ResourceRegistry(BaseRegistry):
         super().__init__()
         self.prefix = prefix
         self._handlers: List[ResourceHandler] = []
-        self._handlers_requiring_finalizer: List[ResourceHandler] = []
 
     def __bool__(self) -> bool:
         return bool(self._handlers)
@@ -196,15 +196,11 @@ class ResourceRegistry(BaseRegistry):
         real_id = generate_id(fn=fn, id=id, prefix=self.prefix, suffix=".".join(real_field or []))
         handler = ResourceHandler(
             id=real_id, fn=fn, reason=reason, field=real_field, timeout=timeout,
-            initial=initial,
+            initial=initial, requires_finalizer=requires_finalizer,
             labels=labels, annotations=annotations,
         )
 
         self.append(handler)
-
-        if requires_finalizer:
-            self._handlers_requiring_finalizer.append(handler)
-
         return fn  # to be usable as a decorator too.
 
     def iter_resource_watching_handlers(
@@ -241,8 +237,8 @@ class ResourceRegistry(BaseRegistry):
             body: bodies.Body,
     ) -> bool:
         # check whether the body matches a deletion handler
-        for handler in self._handlers_requiring_finalizer:
-            if match(handler=handler, body=body):
+        for handler in self._handlers:
+            if handler.requires_finalizer and match(handler=handler, body=body):
                 return True
 
         return False
