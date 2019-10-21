@@ -82,13 +82,13 @@ class BaseRegistry(metaclass=abc.ABCMeta):
             self,
             cause: causation.ResourceWatchingCause,
     ) -> Sequence[ResourceHandler]:
-        return list(self._deduplicated(self.iter_resource_watching_handlers(cause=cause)))
+        return list(_deduplicated(self.iter_resource_watching_handlers(cause=cause)))
 
     def get_resource_changing_handlers(
             self,
             cause: causation.ResourceChangingCause,
     ) -> Sequence[ResourceHandler]:
-        return list(self._deduplicated(self.iter_resource_changing_handlers(cause=cause)))
+        return list(_deduplicated(self.iter_resource_changing_handlers(cause=cause)))
 
     @abc.abstractmethod
     def iter_resource_watching_handlers(
@@ -111,36 +111,6 @@ class BaseRegistry(metaclass=abc.ABCMeta):
     def iter_extra_fields(self, resource: resources_.Resource) -> Iterator[dicts.FieldPath]:
         pass
 
-    @staticmethod
-    def _deduplicated(handlers: Iterable[ResourceHandler]) -> Iterator[ResourceHandler]:
-        """
-        Yield the handlers deduplicated.
-
-        The same handler function should not be invoked more than once for one
-        single event/cause, even if it is registered with multiple decorators
-        (e.g. different filtering criteria or different but same-effect causes).
-
-        One of the ways how this could happen::
-
-            @kopf.on.create(...)
-            @kopf.on.resume(...)
-            def fn(**kwargs): pass
-
-        In normal cases, the function will be called either on resource creation
-        or on operator restart for the pre-existing (already handled) resources.
-        When a resource is created during the operator downtime, it is
-        both creation and resuming at the same time: the object is new (not yet
-        handled) **AND** it is detected as per-existing before operator start.
-        But `fn()` should be called only once for this cause.
-        """
-        seen_ids: Set[int] = set()
-        for handler in handlers:
-            if id(handler.fn) in seen_ids:
-                pass
-            else:
-                seen_ids.add(id(handler.fn))
-                yield handler
-
     #
     # Backward-compatibility of a semi-public interface: registries are exposed,
     # but these methods were not documented or demonstrated, but could be used.
@@ -153,7 +123,7 @@ class BaseRegistry(metaclass=abc.ABCMeta):
     ) -> Sequence[ResourceHandler]:
         warnings.warn("registry.get_event_handlers() is deprecated; "
                       "use registry.get_resource_watching_handlers().", DeprecationWarning)
-        return list(self._deduplicated(self.iter_event_handlers(resource=resource, event=event)))
+        return list(_deduplicated(self.iter_event_handlers(resource=resource, event=event)))
 
     def get_cause_handlers(
             self,
@@ -455,6 +425,38 @@ def get_callable_id(c: Optional[Callable[..., Any]]) -> str:
         return str(getattr(c, '__qualname__', getattr(c, '__name__', repr(c))))
     else:
         raise ValueError(f"Cannot get id of {c!r}.")
+
+
+def _deduplicated(
+        handlers: Iterable[ResourceHandler],
+) -> Iterator[ResourceHandler]:
+    """
+    Yield the handlers deduplicated.
+
+    The same handler function should not be invoked more than once for one
+    single event/cause, even if it is registered with multiple decorators
+    (e.g. different filtering criteria or different but same-effect causes).
+
+    One of the ways how this could happen::
+
+        @kopf.on.create(...)
+        @kopf.on.resume(...)
+        def fn(**kwargs): pass
+
+    In normal cases, the function will be called either on resource creation
+    or on operator restart for the pre-existing (already handled) resources.
+    When a resource is created during the operator downtime, it is
+    both creation and resuming at the same time: the object is new (not yet
+    handled) **AND** it is detected as per-existing before operator start.
+    But `fn()` should be called only once for this cause.
+    """
+    seen_ids: Set[int] = set()
+    for handler in handlers:
+        if id(handler.fn) in seen_ids:
+            pass
+        else:
+            seen_ids.add(id(handler.fn))
+            yield handler
 
 
 def match(
