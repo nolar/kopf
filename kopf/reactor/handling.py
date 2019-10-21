@@ -70,7 +70,7 @@ class HandlerChildrenRetry(TemporaryError):
 # The task-local context; propagated down the stack instead of multiple kwargs.
 # Used in `@kopf.on.this` and `kopf.execute()` to add/get the sub-handlers.
 sublifecycle_var: ContextVar[lifecycles.LifeCycleFn] = ContextVar('sublifecycle_var')
-subregistry_var: ContextVar[registries.ResourceRegistry] = ContextVar('subregistry_var')
+subregistry_var: ContextVar[registries.ResourceChangingRegistry] = ContextVar('subregistry_var')
 subexecuted_var: ContextVar[bool] = ContextVar('subexecuted_var')
 handler_var: ContextVar[registries.ResourceHandler] = ContextVar('handler_var')
 cause_var: ContextVar[causation.BaseCause] = ContextVar('cause_var')
@@ -283,7 +283,7 @@ async def execute(
         *,
         fns: Optional[Iterable[invocation.Invokable]] = None,
         handlers: Optional[Iterable[registries.ResourceHandler]] = None,
-        registry: Optional[registries.ResourceRegistry] = None,
+        registry: Optional[registries.ResourceChangingRegistry] = None,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         cause: Optional[causation.BaseCause] = None,
 ) -> None:
@@ -313,12 +313,12 @@ async def execute(
         raise TypeError("Only one of the fns, handlers, registry can be passed. Got more.")
 
     elif fns is not None and isinstance(fns, collections.abc.Mapping):
-        registry = registries.ResourceRegistry(prefix=handler.id if handler else None)
+        registry = registries.ResourceChangingRegistry(prefix=handler.id if handler else None)
         for id, fn in fns.items():
             registry.register(fn=fn, id=id)
 
     elif fns is not None and isinstance(fns, collections.abc.Iterable):
-        registry = registries.ResourceRegistry(prefix=handler.id if handler else None)
+        registry = registries.ResourceChangingRegistry(prefix=handler.id if handler else None)
         for fn in fns:
             registry.register(fn=fn)
 
@@ -326,7 +326,7 @@ async def execute(
         raise ValueError(f"fns must be a mapping or an iterable, got {fns.__class__}.")
 
     elif handlers is not None:
-        registry = registries.ResourceRegistry(prefix=handler.id if handler else None)
+        registry = registries.ResourceChangingRegistry(prefix=handler.id if handler else None)
         for handler in handlers:
             registry.append(handler=handler)
 
@@ -352,7 +352,7 @@ async def execute(
     # Raises `HandlerChildrenRetry` if the execute should be continued on the next iteration.
     await _execute(
         lifecycle=lifecycle,
-        handlers=registry.get_resource_changing_handlers(cause=cause),
+        handlers=registry.get_handlers(cause=cause),
         cause=cause,
     )
 
@@ -502,7 +502,7 @@ async def _call_handler(
     # This replaces the multiple kwargs passing through the whole call stack (easy to forget).
     with invocation.context([
         (sublifecycle_var, lifecycle),
-        (subregistry_var, registries.ResourceRegistry(prefix=handler.id)),
+        (subregistry_var, registries.ResourceChangingRegistry(prefix=handler.id)),
         (subexecuted_var, False),
         (handler_var, handler),
         (cause_var, cause),

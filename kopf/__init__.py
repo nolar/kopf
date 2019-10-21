@@ -46,6 +46,8 @@ from kopf.reactor.lifecycles import (
 )
 from kopf.reactor.registries import (
     ResourceRegistry,
+    ResourceWatchingRegistry,
+    ResourceChangingRegistry,
     OperatorRegistry,
     get_default_registry,
     set_default_registry,
@@ -95,6 +97,8 @@ __all__ = [
     'SimpleRegistry',  # deprecated
     'GlobalRegistry',  # deprecated
     'ResourceRegistry',
+    'ResourceWatchingRegistry',
+    'ResourceChangingRegistry',
     'OperatorRegistry',
     'get_default_registry',
     'set_default_registry',

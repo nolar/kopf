@@ -18,7 +18,8 @@ import logging
 import warnings
 from types import FunctionType, MethodType
 from typing import (Any, MutableMapping, Optional, Sequence, Collection, Iterable, Iterator,
-                    NamedTuple, Union, List, Set, FrozenSet, Mapping, NewType, Callable, cast)
+                    NamedTuple, Union, List, Set, FrozenSet, Mapping, NewType, Callable, cast,
+                    Generic, TypeVar)
 
 from typing_extensions import Protocol
 
@@ -74,54 +75,18 @@ class ResourceHandler(NamedTuple):
         return self.reason
 
 
-class AbstractRegistry(metaclass=abc.ABCMeta):
-    """
-    A registry stores the handlers and provides them to the reactor.
-    """
-
-    def get_resource_watching_handlers(
-            self,
-            cause: causation.ResourceWatchingCause,
-    ) -> Sequence[ResourceHandler]:
-        return list(_deduplicated(self.iter_resource_watching_handlers(cause=cause)))
-
-    def get_resource_changing_handlers(
-            self,
-            cause: causation.ResourceChangingCause,
-    ) -> Sequence[ResourceHandler]:
-        return list(_deduplicated(self.iter_resource_changing_handlers(cause=cause)))
-
-    @abc.abstractmethod
-    def iter_resource_watching_handlers(
-            self,
-            cause: causation.ResourceWatchingCause,
-    ) -> Iterator[ResourceHandler]:
-        pass
-
-    @abc.abstractmethod
-    def iter_resource_changing_handlers(
-            self,
-            cause: causation.ResourceChangingCause,
-    ) -> Iterator[ResourceHandler]:
-        pass
-
-    def get_extra_fields(self, resource: resources_.Resource) -> Set[dicts.FieldPath]:
-        return set(self.iter_extra_fields(resource=resource))
-
-    @abc.abstractmethod
-    def iter_extra_fields(self, resource: resources_.Resource) -> Iterator[dicts.FieldPath]:
-        pass
+# We only type-check for known classes of handlers/callbacks, and ignore any custom subclasses.
+CauseT = TypeVar('CauseT', bound=causation.BaseCause)
 
 
-class ResourceRegistry(AbstractRegistry):
-    """
-    A simple registry is just a list of handlers, no grouping.
-    """
+class ResourceRegistry(Generic[CauseT]):
+    """ An generic base registry of resource handlers. """
+    _handlers: List[ResourceHandler]
 
     def __init__(self, prefix: Optional[str] = None) -> None:
         super().__init__()
         self.prefix = prefix
-        self._handlers: List[ResourceHandler] = []
+        self._handlers = []
 
     def __bool__(self) -> bool:
         return bool(self._handlers)
@@ -132,6 +97,7 @@ class ResourceRegistry(AbstractRegistry):
     def register(
             self,
             fn: ResourceHandlerFn,
+            *,
             id: Optional[str] = None,
             reason: Optional[causation.Reason] = None,
             event: Optional[str] = None,  # deprecated, use `reason`
@@ -154,17 +120,59 @@ class ResourceRegistry(AbstractRegistry):
         )
 
         self.append(handler)
-        return fn  # to be usable as a decorator too.
+        return fn
 
-    def iter_resource_watching_handlers(
+    def get_handlers(
+            self,
+            cause: CauseT,
+    ) -> Sequence[ResourceHandler]:
+        return list(_deduplicated(self.iter_handlers(cause=cause)))
+
+    @abc.abstractmethod
+    def iter_handlers(
+            self,
+            cause: CauseT,
+    ) -> Iterator[ResourceHandler]:
+        raise NotImplementedError
+
+    def get_extra_fields(
+            self,
+    ) -> Set[dicts.FieldPath]:
+        return set(self.iter_extra_fields())
+
+    def iter_extra_fields(
+            self,
+    ) -> Iterator[dicts.FieldPath]:
+        for handler in self._handlers:
+            if handler.field:
+                yield handler.field
+
+    def requires_finalizer(
+            self,
+            body: bodies.Body,
+    ) -> bool:
+        # check whether the body matches a deletion handler
+        for handler in self._handlers:
+            if handler.requires_finalizer and match(handler=handler, body=body):
+                return True
+
+        return False
+
+
+class ResourceWatchingRegistry(ResourceRegistry[causation.ResourceWatchingCause]):
+
+    def iter_handlers(
             self,
             cause: causation.ResourceWatchingCause,
     ) -> Iterator[ResourceHandler]:
         for handler in self._handlers:
-            if match(handler=handler, body=cause.body):
+            if match(handler=handler, body=cause.body, ignore_fields=True):
                 yield handler
 
-    def iter_resource_changing_handlers(
+
+class ResourceChangingRegistry(ResourceRegistry[causation.ResourceChangingCause]):
+
+    def iter_handlers(
             self,
             cause: causation.ResourceChangingCause,
     ) -> Iterator[ResourceHandler]:
@@ -176,39 +184,19 @@ class ResourceRegistry(AbstractRegistry):
                 elif match(handler=handler, body=cause.body, changed_fields=changed_fields):
                     yield handler
 
-    def iter_extra_fields(
-            self,
-            resource: resources_.Resource,
-    ) -> Iterator[dicts.FieldPath]:
-        for handler in self._handlers:
-            if handler.field:
-                yield handler.field
 
-    def requires_finalizer(
-            self,
-            resource: resources_.Resource,
-            body: bodies.Body,
-    ) -> bool:
-        # check whether the body matches a deletion handler
-        for handler in self._handlers:
-            if handler.requires_finalizer and match(handler=handler, body=body):
-                return True
-
-        return False
-
-
-class OperatorRegistry(AbstractRegistry):
+class OperatorRegistry:
     """
     A global registry is used for handling of the multiple resources.
     It is usually populated by the `@kopf.on...` decorators.
     """
-    _resource_watching_handlers: MutableMapping[resources_.Resource, ResourceRegistry]
-    _resource_changing_handlers: MutableMapping[resources_.Resource, ResourceRegistry]
+    _resource_watching_handlers: MutableMapping[resources_.Resource, ResourceWatchingRegistry]
+    _resource_changing_handlers: MutableMapping[resources_.Resource, ResourceChangingRegistry]
 
     def __init__(self) -> None:
         super().__init__()
-        self._resource_watching_handlers = collections.defaultdict(ResourceRegistry)
-        self._resource_changing_handlers = collections.defaultdict(ResourceRegistry)
+        self._resource_watching_handlers = collections.defaultdict(ResourceWatchingRegistry)
+        self._resource_changing_handlers = collections.defaultdict(ResourceChangingRegistry)
 
     @property
     def resources(self) -> FrozenSet[resources_.Resource]:
@@ -274,6 +262,18 @@ class OperatorRegistry(AbstractRegistry):
         return (resource in self._resource_changing_handlers and
                 bool(self._resource_changing_handlers[resource]))
 
+    def get_resource_watching_handlers(
+            self,
+            cause: causation.ResourceWatchingCause,
+    ) -> Sequence[ResourceHandler]:
+        return list(_deduplicated(self.iter_resource_watching_handlers(cause=cause)))
+
+    def get_resource_changing_handlers(
+            self,
+            cause: causation.ResourceChangingCause,
+    ) -> Sequence[ResourceHandler]:
+        return list(_deduplicated(self.iter_resource_changing_handlers(cause=cause)))
+
     def iter_resource_watching_handlers(
             self,
             cause: causation.ResourceWatchingCause,
@@ -282,7 +282,7 @@ class OperatorRegistry(AbstractRegistry):
         Iterate all handlers for the low-level events.
         """
         if cause.resource in self._resource_watching_handlers:
-            yield from self._resource_watching_handlers[cause.resource].iter_resource_watching_handlers(cause=cause)
+            yield from self._resource_watching_handlers[cause.resource].iter_handlers(cause=cause)
 
     def iter_resource_changing_handlers(
             self,
@@ -292,14 +292,20 @@ class OperatorRegistry(AbstractRegistry):
         Iterate all handlers that match this cause/event, in the order they were registered (even if mixed).
         """
         if cause.resource in self._resource_changing_handlers:
-            yield from self._resource_changing_handlers[cause.resource].iter_resource_changing_handlers(cause=cause)
+            yield from self._resource_changing_handlers[cause.resource].iter_handlers(cause=cause)
+
+    def get_extra_fields(
+            self,
+            resource: resources_.Resource,
+    ) -> Set[dicts.FieldPath]:
+        return set(self.iter_extra_fields(resource=resource))
 
     def iter_extra_fields(
             self,
             resource: resources_.Resource,
     ) -> Iterator[dicts.FieldPath]:
         if resource in self._resource_changing_handlers:
-            yield from self._resource_changing_handlers[resource].iter_extra_fields(resource=resource)
+            yield from self._resource_changing_handlers[resource].iter_extra_fields()
 
     def requires_finalizer(
             self,
@@ -382,9 +388,10 @@ def match(
         handler: ResourceHandler,
         body: bodies.Body,
         changed_fields: Collection[dicts.FieldPath] = frozenset(),
+        ignore_fields: bool = False,
 ) -> bool:
     return all([
-        _matches_field(handler, changed_fields or {}),
+        _matches_field(handler, changed_fields or {}, ignore_fields),
         _matches_labels(handler, body),
         _matches_annotations(handler, body),
     ])
@@ -393,8 +400,10 @@ def match(
 def _matches_field(
         handler: ResourceHandler,
         changed_fields: Collection[dicts.FieldPath] = frozenset(),
+        ignore_fields: bool = False,
 ) -> bool:
-    return (not handler.field or
+    return (ignore_fields or
+            not handler.field or
             any(field[:len(handler.field)] == handler.field for field in changed_fields))
 
 

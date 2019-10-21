@@ -149,7 +149,7 @@ def this(
         *,
         id: Optional[str] = None,
         timeout: Optional[float] = None,
-        registry: Optional[registries.ResourceRegistry] = None,
+        registry: Optional[registries.ResourceChangingRegistry] = None,
 ) -> ResourceHandlerDecorator:
     """
     ``@kopf.on.this()`` decorator for the dynamically generated sub-handlers.
@@ -192,7 +192,7 @@ def register(
         *,
         id: Optional[str] = None,
         timeout: Optional[float] = None,
-        registry: Optional[registries.ResourceRegistry] = None,
+        registry: Optional[registries.ResourceChangingRegistry] = None,
 ) -> registries.ResourceHandlerFn:
     """
     Register a function as a sub-handler of the currently executed handler.
