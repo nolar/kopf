@@ -222,21 +222,10 @@ class ResourceRegistry(BaseRegistry):
         if reason is None and event is not None:
             reason = causation.Reason(event)
 
-        if field is None:
-            field = None  # for the non-field events
-        elif isinstance(field, str):
-            field = tuple(field.split('.'))
-        elif isinstance(field, (list, tuple)):
-            field = tuple(field)
-        else:
-            raise ValueError(f"Field must be either a str, or a list/tuple. Got {field!r}")
-
-        real_id: HandlerId
-        real_id = cast(HandlerId, id) if id is not None else cast(HandlerId, get_callable_id(fn))
-        real_id = real_id if field is None else cast(HandlerId, f'{real_id}/{".".join(field)}')
-        real_id = real_id if self.prefix is None else cast(HandlerId, f'{self.prefix}/{real_id}')
+        real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
+        real_id = generate_id(fn=fn, id=id, prefix=self.prefix, suffix=".".join(real_field or []))
         handler = ResourceHandler(
-            id=real_id, fn=fn, reason=reason, field=field, timeout=timeout,
+            id=real_id, fn=fn, reason=reason, field=real_field, timeout=timeout,
             initial=initial,
             labels=labels, annotations=annotations,
         )
@@ -433,6 +422,19 @@ class OperatorRegistry(BaseRegistry):
         warnings.warn("registry.has_cause_handlers() is deprecated; "
                       "use registry.has_resource_changing_handlers().", DeprecationWarning)
         return self.has_resource_changing_handlers(*args, **kwargs)
+
+
+def generate_id(
+        fn: ResourceHandlerFn,
+        id: Optional[str],
+        prefix: Optional[str] = None,
+        suffix: Optional[str] = None,
+) -> HandlerId:
+    real_id: str
+    real_id = id if id is not None else get_callable_id(fn)
+    real_id = real_id if not suffix else f'{real_id}/{suffix}'
+    real_id = real_id if not prefix else f'{prefix}/{real_id}'
+    return cast(HandlerId, real_id)
 
 
 def get_callable_id(c: Optional[Callable[..., Any]]) -> str:
