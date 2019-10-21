@@ -12,6 +12,7 @@ Both are used in the `kopf.reactor.handling` to retrieve the list
 of the handlers to be executed on each reaction cycle.
 """
 import abc
+import collections
 import functools
 import logging
 import warnings
@@ -254,8 +255,8 @@ class OperatorRegistry(BaseRegistry):
 
     def __init__(self) -> None:
         super().__init__()
-        self._resource_watching_handlers = {}
-        self._resource_changing_handlers = {}
+        self._resource_watching_handlers = collections.defaultdict(ResourceRegistry)
+        self._resource_changing_handlers = collections.defaultdict(ResourceRegistry)
 
     @property
     def resources(self) -> FrozenSet[resources_.Resource]:
@@ -276,9 +277,10 @@ class OperatorRegistry(BaseRegistry):
         Register an additional handler function for low-level events.
         """
         resource = resources_.Resource(group, version, plural)
-        registry = self._resource_watching_handlers.setdefault(resource, ResourceRegistry())
-        registry.register(fn=fn, id=id, labels=labels, annotations=annotations)
-        return fn  # to be usable as a decorator too.
+        return self._resource_watching_handlers[resource].register(
+            fn=fn, id=id,
+            labels=labels, annotations=annotations,
+        )
 
     def register_resource_changing_handler(
             self,
@@ -300,25 +302,25 @@ class OperatorRegistry(BaseRegistry):
         Register an additional handler function for the specific resource and specific reason.
         """
         resource = resources_.Resource(group, version, plural)
-        registry = self._resource_changing_handlers.setdefault(resource, ResourceRegistry())
-        registry.register(reason=reason, event=event, field=field, fn=fn, id=id, timeout=timeout,
-                          initial=initial, requires_finalizer=requires_finalizer,
-                          labels=labels, annotations=annotations)
-        return fn  # to be usable as a decorator too.
+        return self._resource_changing_handlers[resource].register(
+            reason=reason, event=event, field=field, fn=fn, id=id, timeout=timeout,
+            initial=initial, requires_finalizer=requires_finalizer,
+            labels=labels, annotations=annotations,
+        )
 
     def has_resource_watching_handlers(
             self,
             resource: resources_.Resource,
     ) -> bool:
-        resource_registry = self._resource_watching_handlers.get(resource, None)
-        return bool(resource_registry)
+        return (resource in self._resource_watching_handlers and
+                bool(self._resource_watching_handlers[resource]))
 
     def has_resource_changing_handlers(
             self,
             resource: resources_.Resource,
     ) -> bool:
-        resource_registry = self._resource_changing_handlers.get(resource, None)
-        return bool(resource_registry)
+        return (resource in self._resource_changing_handlers and
+                bool(self._resource_changing_handlers[resource]))
 
     def iter_resource_watching_handlers(
             self,
@@ -327,9 +329,8 @@ class OperatorRegistry(BaseRegistry):
         """
         Iterate all handlers for the low-level events.
         """
-        resource_registry = self._resource_watching_handlers.get(cause.resource, None)
-        if resource_registry is not None:
-            yield from resource_registry.iter_resource_watching_handlers(cause=cause)
+        if cause.resource in self._resource_watching_handlers:
+            yield from self._resource_watching_handlers[cause.resource].iter_resource_watching_handlers(cause=cause)
 
     def iter_resource_changing_handlers(
             self,
@@ -338,17 +339,15 @@ class OperatorRegistry(BaseRegistry):
         """
         Iterate all handlers that match this cause/event, in the order they were registered (even if mixed).
         """
-        resource_registry = self._resource_changing_handlers.get(cause.resource, None)
-        if resource_registry is not None:
-            yield from resource_registry.iter_resource_changing_handlers(cause=cause)
+        if cause.resource in self._resource_changing_handlers:
+            yield from self._resource_changing_handlers[cause.resource].iter_resource_changing_handlers(cause=cause)
 
     def iter_extra_fields(
             self,
             resource: resources_.Resource,
     ) -> Iterator[dicts.FieldPath]:
-        resource_registry = self._resource_changing_handlers.get(resource, None)
-        if resource_registry is not None:
-            yield from resource_registry.iter_extra_fields(resource=resource)
+        if resource in self._resource_changing_handlers:
+            yield from self._resource_changing_handlers[resource].iter_extra_fields(resource=resource)
 
     def requires_finalizer(
             self,
@@ -356,13 +355,10 @@ class OperatorRegistry(BaseRegistry):
             body: bodies.Body,
     ) -> bool:
         """
-        Return whether a finalizer should be added to
-        the given resource or not.
+        Check whether a finalizer should be added to the given resource or not.
         """
-        resource_registry = self._resource_changing_handlers.get(resource, None)
-        if resource_registry is None:
-            return False
-        return resource_registry.requires_finalizer(resource, body)
+        return (resource in self._resource_changing_handlers and
+                self._resource_changing_handlers[resource].requires_finalizer(body=body))
 
     #
     # Backward-compatibility of a semi-public interface: registries are exposed,
