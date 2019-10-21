@@ -435,26 +435,6 @@ class OperatorRegistry(BaseRegistry):
         return self.has_resource_changing_handlers(*args, **kwargs)
 
 
-_default_registry: OperatorRegistry = OperatorRegistry()
-
-
-def get_default_registry() -> OperatorRegistry:
-    """
-    Get the default registry to be used by the decorators and the reactor
-    unless the explicit registry is provided to them.
-    """
-    return _default_registry
-
-
-def set_default_registry(registry: OperatorRegistry) -> None:
-    """
-    Set the default registry to be used by the decorators and the reactor
-    unless the explicit registry is provided to them.
-    """
-    global _default_registry
-    _default_registry = registry
-
-
 def get_callable_id(c: Optional[Callable[..., Any]]) -> str:
     """ Get an reasonably good id of any commonly used callable. """
     if c is None:
@@ -526,3 +506,23 @@ def _matches_metadata(
         else:
             continue
     return True
+
+
+_default_registry: OperatorRegistry = OperatorRegistry()
+
+
+def get_default_registry() -> OperatorRegistry:
+    """
+    Get the default registry to be used by the decorators and the reactor
+    unless the explicit registry is provided to them.
+    """
+    return _default_registry
+
+
+def set_default_registry(registry: OperatorRegistry) -> None:
+    """
+    Set the default registry to be used by the decorators and the reactor
+    unless the explicit registry is provided to them.
+    """
+    global _default_registry
+    _default_registry = registry
