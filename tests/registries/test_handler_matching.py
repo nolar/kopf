@@ -12,7 +12,7 @@ def some_fn(x=None):
 
 
 @pytest.fixture(params=[
-    pytest.param(ResourceRegistry, id='in-simple-registry'),
+    # pytest.param(ResourceRegistry, id='in-simple-registry'),
     pytest.param(OperatorRegistry, id='in-global-registry'),
 ])
 def registry(request):
@@ -21,8 +21,8 @@ def registry(request):
 
 @pytest.fixture()
 def register_fn(registry, resource):
-    if isinstance(registry, ResourceRegistry):
-        return registry.register
+    # if isinstance(registry, ResourceRegistry):
+    #     return registry.register
     if isinstance(registry, OperatorRegistry):
         return functools.partial(registry.register_resource_changing_handler, resource.group, resource.version, resource.plural)
     raise Exception(f"Unsupported registry type: {registry}")

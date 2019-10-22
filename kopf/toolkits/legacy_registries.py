@@ -63,12 +63,13 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[AnyCause]):
         Replaced with `ResourceWatchingRegistry` and `ResourceChangingRegistry`.
     """
 
+    # A dummy to avoid ABCMeta restrictions, and for rudimentary class testing.
+    # Yield/return everything unconditionally -- it was not used previously anyway.
     def iter_handlers(
             self,
             cause: AnyCause,
     ) -> Iterator[registries.ResourceHandler]:
-        raise NotImplementedError("A dummy method to avoid new ABC restrictions "
-                                  "in an old legacy registry. Should not be used.")
+        yield from self._handlers
 
     def get_event_handlers(
             self,
