@@ -2,6 +2,7 @@ import kopf
 
 # Marks for the e2e tests (see tests/e2e/test_examples.py):
 E2E_TRACEBACKS = True
+E2E_SUCCESS_COUNTS = {'normal_event_fn': 2}
 
 
 @kopf.on.event('zalando.org', 'v1', 'kopfexamples')

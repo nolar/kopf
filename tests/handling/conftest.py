@@ -63,17 +63,6 @@ def k8s_mocked(mocker, req_mock):
     )
 
 
-@pytest.fixture(autouse=True)
-def clear_default_registry():
-    old_registry = kopf.get_default_registry()
-    new_registry = kopf.GlobalRegistry()
-    kopf.set_default_registry(new_registry)
-    try:
-        yield new_registry
-    finally:
-        kopf.set_default_registry(old_registry)
-
-
 @pytest.fixture()
 def registry(clear_default_registry):
     return clear_default_registry

@@ -63,7 +63,7 @@ def get_state(
     dicts.cherrypick(src=body, dst=essence, fields=[
         'metadata.labels',
         'metadata.annotations',  # but not all of them! deleted below.
-    ])
+    ], picker=copy.deepcopy)
 
     # But we do not want not all of the annotations, only potentially useful.
     annotations = essence.get('metadata', {}).get('annotations', {})
@@ -74,7 +74,7 @@ def get_state(
             del annotations[annotation]
 
     # Restore all explicitly whitelisted extra-fields from the original body.
-    dicts.cherrypick(src=body, dst=essence, fields=extra_fields)
+    dicts.cherrypick(src=body, dst=essence, fields=extra_fields, picker=copy.deepcopy)
 
     # Cleanup the parent structs if they have become empty, for consistent state comparison.
     if 'annotations' in essence.get('metadata', {}) and not essence['metadata']['annotations']:

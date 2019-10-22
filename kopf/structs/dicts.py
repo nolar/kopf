@@ -4,7 +4,7 @@ Some basic dicts and field-in-a-dict manipulation helpers.
 import collections.abc
 import enum
 from typing import (TypeVar, Any, Union, MutableMapping, Mapping, Tuple, List,
-                    Iterable, Iterator, Optional)
+                    Iterable, Iterator, Callable, Optional)
 
 FieldPath = Tuple[str, ...]
 FieldSpec = Union[None, str, FieldPath, List[str]]
@@ -96,14 +96,16 @@ def cherrypick(
         src: Mapping[Any, Any],
         dst: MutableMapping[Any, Any],
         fields: Optional[Iterable[FieldSpec]],
+        picker: Optional[Callable[[_T], _T]] = None,
 ) -> None:
     """
     Copy all specified fields between dicts (from src to dst).
     """
+    picker = picker if picker is not None else lambda x: x
     fields = fields if fields is not None else []
     for field in fields:
         try:
-            ensure(dst, field, resolve(src, field))
+            ensure(dst, field, picker(resolve(src, field)))
         except KeyError:
             pass  # absent in the source, nothing to merge
 
