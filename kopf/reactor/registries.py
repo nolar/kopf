@@ -309,7 +309,7 @@ def get_callable_id(c: ResourceHandlerFn) -> str:
         raise ValueError(f"Cannot get id of {c!r}.")
 
 
-class GlobalRegistry(BaseRegistry):
+class OperatorRegistry(BaseRegistry):
     """
     A global registry is used for handling of the multiple resources.
     It is usually populated by the `@kopf.on...` decorators.
@@ -455,10 +455,10 @@ class GlobalRegistry(BaseRegistry):
         return self.has_resource_watching_handlers(*args, **kwargs)
 
 
-_default_registry: GlobalRegistry = GlobalRegistry()
+_default_registry: OperatorRegistry = OperatorRegistry()
 
 
-def get_default_registry() -> GlobalRegistry:
+def get_default_registry() -> OperatorRegistry:
     """
     Get the default registry to be used by the decorators and the reactor
     unless the explicit registry is provided to them.
@@ -466,7 +466,7 @@ def get_default_registry() -> GlobalRegistry:
     return _default_registry
 
 
-def set_default_registry(registry: GlobalRegistry) -> None:
+def set_default_registry(registry: OperatorRegistry) -> None:
     """
     Set the default registry to be used by the decorators and the reactor
     unless the explicit registry is provided to them.

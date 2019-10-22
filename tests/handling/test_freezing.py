@@ -3,7 +3,7 @@ import logging
 
 import kopf
 from kopf.reactor.handling import resource_handler
-from kopf.reactor.registries import GlobalRegistry
+from kopf.reactor.registries import OperatorRegistry
 
 
 async def test_nothing_is_called_when_freeze_is_set(mocker, resource, caplog, assert_logs):
@@ -15,7 +15,7 @@ async def test_nothing_is_called_when_freeze_is_set(mocker, resource, caplog, as
     # Nothing of these is actually used, but we need to feed something.
     # Except for namespace+name, which are used for the logger prefixes.
     lifecycle = kopf.lifecycles.all_at_once
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     event = {'object': {'metadata': {'namespace': 'ns1', 'name': 'name1'}}}
 
     # This is what makes it frozen.

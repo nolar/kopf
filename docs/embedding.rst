@@ -83,7 +83,7 @@ in :mod:`contextvars` containers with values isolated per-loop and per-task.
 
     import kopf
 
-    registry = kopf.GlobalRegistry()
+    registry = kopf.OperatorRegistry()
 
     @kopf.on.create('zalando.org', 'v1', 'kopfexamples', registry=registry)
     def create_fn(**_):

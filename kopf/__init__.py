@@ -47,7 +47,7 @@ from kopf.reactor.lifecycles import (
 from kopf.reactor.registries import (
     BaseRegistry,
     ResourceRegistry,
-    GlobalRegistry,
+    OperatorRegistry,
     get_default_registry,
     set_default_registry,
 )
@@ -74,6 +74,7 @@ from kopf.toolkits.hierarchies import (
 HandlerFatalError = PermanentError  # a backward-compatibility alias
 HandlerRetryError = TemporaryError  # a backward-compatibility alias
 SimpleRegistry = ResourceRegistry  # a backward-compatibility alias
+GlobalRegistry = OperatorRegistry  # a backward-compatibility alias
 
 __all__ = [
     'on', 'lifecycles', 'register', 'execute',
@@ -90,7 +91,7 @@ __all__ = [
     'HandlerTimeoutError',
     'BaseRegistry',
     'ResourceRegistry', 'SimpleRegistry',
-    'GlobalRegistry',
+    'OperatorRegistry', 'GlobalRegistry',
     'get_default_registry',
     'set_default_registry',
 ]

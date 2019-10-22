@@ -27,7 +27,7 @@ def resume(
         *,
         id: Optional[str] = None,
         timeout: Optional[float] = None,
-        registry: Optional[registries.GlobalRegistry] = None,
+        registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
 ) -> ResourceHandlerDecorator:
@@ -47,7 +47,7 @@ def create(
         *,
         id: Optional[str] = None,
         timeout: Optional[float] = None,
-        registry: Optional[registries.GlobalRegistry] = None,
+        registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
 ) -> ResourceHandlerDecorator:
@@ -67,7 +67,7 @@ def update(
         *,
         id: Optional[str] = None,
         timeout: Optional[float] = None,
-        registry: Optional[registries.GlobalRegistry] = None,
+        registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
 ) -> ResourceHandlerDecorator:
@@ -87,7 +87,7 @@ def delete(
         *,
         id: Optional[str] = None,
         timeout: Optional[float] = None,
-        registry: Optional[registries.GlobalRegistry] = None,
+        registry: Optional[registries.OperatorRegistry] = None,
         optional: Optional[bool] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
@@ -110,7 +110,7 @@ def field(
         *,
         id: Optional[str] = None,
         timeout: Optional[float] = None,
-        registry: Optional[registries.GlobalRegistry] = None,
+        registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
 ) -> ResourceHandlerDecorator:
@@ -129,7 +129,7 @@ def event(
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
-        registry: Optional[registries.GlobalRegistry] = None,
+        registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
 ) -> ResourceHandlerDecorator:

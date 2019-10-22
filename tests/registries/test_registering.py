@@ -1,6 +1,6 @@
 import collections.abc
 
-from kopf import ResourceRegistry, GlobalRegistry
+from kopf import ResourceRegistry, OperatorRegistry
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.
@@ -49,7 +49,7 @@ def test_simple_registry_with_minimal_signature(mocker):
 def test_global_registry_via_iter(mocker, resource):
     cause = mocker.Mock(resource=resource, event=None, diff=None)
 
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     iterator = registry.iter_resource_changing_handlers(cause)
 
     assert isinstance(iterator, collections.abc.Iterator)
@@ -64,7 +64,7 @@ def test_global_registry_via_iter(mocker, resource):
 def test_global_registry_via_list(mocker, resource):
     cause = mocker.Mock(resource=resource, event=None, diff=None)
 
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     handlers = registry.get_resource_changing_handlers(cause)
 
     assert isinstance(handlers, collections.abc.Iterable)
@@ -76,7 +76,7 @@ def test_global_registry_via_list(mocker, resource):
 def test_global_registry_with_minimal_signature(mocker, resource):
     cause = mocker.Mock(resource=resource, event=None, diff=None)
 
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     registry.register_resource_changing_handler(resource.group, resource.version, resource.plural, some_fn)
     handlers = registry.get_resource_changing_handlers(cause)
 

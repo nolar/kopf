@@ -3,7 +3,7 @@ import pytest
 import kopf
 from kopf.reactor.causation import Reason
 from kopf.reactor.handling import subregistry_var
-from kopf.reactor.registries import ResourceRegistry, GlobalRegistry
+from kopf.reactor.registries import ResourceRegistry, OperatorRegistry
 from kopf.structs.resources import Resource
 
 
@@ -92,7 +92,7 @@ def test_on_field_fails_without_field():
 
 
 def test_on_create_with_all_kwargs(mocker):
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
     cause = mocker.MagicMock(resource=resource, reason=Reason.CREATE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
@@ -116,7 +116,7 @@ def test_on_create_with_all_kwargs(mocker):
 
 
 def test_on_update_with_all_kwargs(mocker):
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
     cause = mocker.MagicMock(resource=resource, reason=Reason.UPDATE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
@@ -144,7 +144,7 @@ def test_on_update_with_all_kwargs(mocker):
     pytest.param(False, id='mandatory'),
 ])
 def test_on_delete_with_all_kwargs(mocker, optional):
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
     cause = mocker.MagicMock(resource=resource, reason=Reason.DELETE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
@@ -168,7 +168,7 @@ def test_on_delete_with_all_kwargs(mocker, optional):
 
 
 def test_on_field_with_all_kwargs(mocker):
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
     diff = [('op', ('field', 'subfield'), 'old', 'new')]
     cause = mocker.MagicMock(resource=resource, reason=Reason.UPDATE, diff=diff)

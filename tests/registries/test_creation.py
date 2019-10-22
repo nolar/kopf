@@ -1,4 +1,4 @@
-from kopf import BaseRegistry, ResourceRegistry, GlobalRegistry
+from kopf import BaseRegistry, ResourceRegistry, OperatorRegistry
 
 
 def test_creation_of_simple_no_prefix():
@@ -19,6 +19,6 @@ def test_creation_of_simple_with_prefix_keyword():
 
 
 def test_creation_of_global():
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     assert isinstance(registry, BaseRegistry)
-    assert isinstance(registry, GlobalRegistry)
+    assert isinstance(registry, OperatorRegistry)

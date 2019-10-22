@@ -78,7 +78,7 @@ cause_var: ContextVar[causation.BaseCause] = ContextVar('cause_var')
 
 async def resource_handler(
         lifecycle: lifecycles.LifeCycleFn,
-        registry: registries.GlobalRegistry,
+        registry: registries.OperatorRegistry,
         resource: resources.Resource,
         event: bodies.Event,
         freeze: asyncio.Event,
