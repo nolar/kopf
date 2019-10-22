@@ -6,6 +6,7 @@ import types
 from typing import cast, Any, Optional, Tuple, Type, TYPE_CHECKING
 
 import click.testing
+from typing_extensions import Literal
 
 from kopf import cli
 
@@ -81,7 +82,7 @@ class KopfRunner(_AbstractKopfRunner):
             exc_type: Optional[Type[BaseException]],
             exc_val: Optional[BaseException],
             exc_tb: Optional[types.TracebackType],
-    ) -> Optional[bool]:
+    ) -> Literal[False]:
 
         # A coroutine that is injected into the loop to cancel everything in it.
         # Cancellations are caught in `run`, so that it exits gracefully.
