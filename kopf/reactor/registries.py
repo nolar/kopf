@@ -74,8 +74,7 @@ class ResourceHandler(NamedTuple):
         return self.reason
 
 
-
-class BaseRegistry(metaclass=abc.ABCMeta):
+class AbstractRegistry(metaclass=abc.ABCMeta):
     """
     A registry stores the handlers and provides them to the reactor.
     """
@@ -113,55 +112,8 @@ class BaseRegistry(metaclass=abc.ABCMeta):
     def iter_extra_fields(self, resource: resources_.Resource) -> Iterator[dicts.FieldPath]:
         pass
 
-    #
-    # Backward-compatibility of a semi-public interface: registries are exposed,
-    # but these methods were not documented or demonstrated, but could be used.
-    #
 
-    def get_event_handlers(
-            self,
-            resource: resources_.Resource,
-            event: bodies.Event,
-    ) -> Sequence[ResourceHandler]:
-        warnings.warn("registry.get_event_handlers() is deprecated; "
-                      "use registry.get_resource_watching_handlers().", DeprecationWarning)
-        return list(_deduplicated(self.iter_event_handlers(resource=resource, event=event)))
-
-    def get_cause_handlers(
-            self,
-            cause: causation.ResourceChangingCause,
-    ) -> Sequence[ResourceHandler]:
-        warnings.warn("registry.get_cause_handlers() is deprecated; "
-                      "use registry.get_resource_changing_handlers().", DeprecationWarning)
-        return self.get_resource_changing_handlers(cause=cause)
-
-    def iter_event_handlers(
-            self,
-            resource: resources_.Resource,
-            event: bodies.Event,
-    ) -> Iterator[ResourceHandler]:
-        warnings.warn("registry.iter_event_handlers() is deprecated; "
-                      "use registry.iter_resource_watching_handlers().", DeprecationWarning)
-        return self.iter_resource_watching_handlers(cause=causation.detect_resource_watching_cause(
-            resource=resource,
-            event=event,
-            patch=patches.Patch(),          # unused
-            type=event['type'],             # unused
-            body=event['object'],           # unused
-            raw=event,                      # unused
-            logger=logging.Logger('kopf'),  # unused
-        ))
-
-    def iter_cause_handlers(
-            self,
-            cause: causation.ResourceChangingCause,
-    ) -> Iterator[ResourceHandler]:
-        warnings.warn("registry.iter_cause_handlers() is deprecated; "
-                      "use registry.iter_resource_changing_handlers().", DeprecationWarning)
-        return self.iter_resource_changing_handlers(cause=cause)
-
-
-class ResourceRegistry(BaseRegistry):
+class ResourceRegistry(AbstractRegistry):
     """
     A simple registry is just a list of handlers, no grouping.
     """
@@ -245,7 +197,7 @@ class ResourceRegistry(BaseRegistry):
         return False
 
 
-class OperatorRegistry(BaseRegistry):
+class OperatorRegistry(AbstractRegistry):
     """
     A global registry is used for handling of the multiple resources.
     It is usually populated by the `@kopf.on...` decorators.
@@ -359,31 +311,6 @@ class OperatorRegistry(BaseRegistry):
         """
         return (resource in self._resource_changing_handlers and
                 self._resource_changing_handlers[resource].requires_finalizer(body=body))
-
-    #
-    # Backward-compatibility of a semi-public interface: registries are exposed,
-    # but these methods were not documented or demonstrated, but could be used.
-    #
-
-    def register_event_handler(self, *args: Any, **kwargs: Any) -> Any:
-        warnings.warn("registry.register_event_handler() is deprecated; "
-                      "use registry.register_resource_watching_handler().", DeprecationWarning)
-        return self.register_resource_watching_handler(*args, **kwargs)
-
-    def register_cause_handler(self, *args: Any, **kwargs: Any) -> Any:
-        warnings.warn("registry.register_cause_handler() is deprecated; "
-                      "use registry.register_resource_changing_handler().", DeprecationWarning)
-        return self.register_resource_changing_handler(*args, **kwargs)
-
-    def has_event_handlers(self, *args: Any, **kwargs: Any) -> Any:
-        warnings.warn("registry.has_event_handlers() is deprecated; "
-                      "use registry.has_resource_watching_handlers().", DeprecationWarning)
-        return self.has_resource_watching_handlers(*args, **kwargs)
-
-    def has_cause_handlers(self, *args: Any, **kwargs: Any) -> Any:
-        warnings.warn("registry.has_cause_handlers() is deprecated; "
-                      "use registry.has_resource_changing_handlers().", DeprecationWarning)
-        return self.has_resource_changing_handlers(*args, **kwargs)
 
 
 def generate_id(
@@ -504,7 +431,7 @@ def _matches_metadata(
     return True
 
 
-_default_registry: OperatorRegistry = OperatorRegistry()
+_default_registry: Optional[OperatorRegistry] = None
 
 
 def get_default_registry() -> OperatorRegistry:
@@ -512,6 +439,11 @@ def get_default_registry() -> OperatorRegistry:
     Get the default registry to be used by the decorators and the reactor
     unless the explicit registry is provided to them.
     """
+    global _default_registry
+    if _default_registry is None:
+        # TODO: Deprecated registry to ensure backward-compatibility until removal:
+        from kopf.toolkits.legacy_registries import GlobalRegistry
+        _default_registry = GlobalRegistry()
     return _default_registry
 
 
