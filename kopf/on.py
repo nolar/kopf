@@ -20,6 +20,7 @@ from kopf.reactor import registries
 from kopf.structs import bodies
 
 ResourceHandlerDecorator = Callable[[registries.ResourceHandlerFn], registries.ResourceHandlerFn]
+ActivityHandlerDecorator = Callable[[registries.ActivityHandlerFn], registries.ActivityHandlerFn]
 
 
 def resume(

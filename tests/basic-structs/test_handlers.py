@@ -1,14 +1,41 @@
 import pytest
 
-from kopf.reactor.registries import ResourceHandler
+from kopf.reactor.registries import ActivityHandler, ResourceHandler
 
 
-def test_no_args():
+@pytest.mark.parametrize('cls', [ActivityHandler, ResourceHandler])
+def test_handler_with_no_args(cls):
     with pytest.raises(TypeError):
-        ResourceHandler()
+        cls()
 
 
-def test_all_args(mocker):
+def test_activity_handler_with_all_args(mocker):
+    fn = mocker.Mock()
+    id = mocker.Mock()
+    errors = mocker.Mock()
+    timeout = mocker.Mock()
+    retries = mocker.Mock()
+    cooldown = mocker.Mock()
+    activity = mocker.Mock()
+    handler = ActivityHandler(
+        fn=fn,
+        id=id,
+        errors=errors,
+        timeout=timeout,
+        retries=retries,
+        cooldown=cooldown,
+        activity=activity,
+    )
+    assert handler.fn is fn
+    assert handler.id is id
+    assert handler.errors is errors
+    assert handler.timeout is timeout
+    assert handler.retries is retries
+    assert handler.cooldown is cooldown
+    assert handler.activity is activity
+
+
+def test_resource_handler_with_all_args(mocker):
     fn = mocker.Mock()
     id = mocker.Mock()
     reason = mocker.Mock()

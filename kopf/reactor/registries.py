@@ -48,6 +48,15 @@ class ErrorsMode(enum.Enum):
     PERMANENT = enum.auto()
 
 
+class ActivityHandlerFn(Protocol):
+    def __call__(
+            self,
+            *args: Any,
+            logger: Union[logging.Logger, logging.LoggerAdapter],
+            **kwargs: Any,
+    ) -> Optional[HandlerResult]: ...
+
+
 class ResourceHandlerFn(Protocol):
     def __call__(
             self,
@@ -70,17 +79,31 @@ class ResourceHandlerFn(Protocol):
     ) -> Optional[HandlerResult]: ...
 
 
-# A registered handler (function + event meta info).
-@dataclasses.dataclass(frozen=True)
-class ResourceHandler:
-    fn: ResourceHandlerFn
+# A registered handler (function + meta info).
+# FIXME: Must be frozen, but mypy fails in _call_handler() with a cryptic error:
+# FIXME:    Argument 1 to "invoke" has incompatible type "Optional[HandlerResult]";
+# FIXME:    expected "Union[LifeCycleFn, ActivityHandlerFn, ResourceHandlerFn]"
+@dataclasses.dataclass
+class BaseHandler:
     id: HandlerId
+    fn: Callable[..., Optional[HandlerResult]]
+    errors: Optional[ErrorsMode]
+    timeout: Optional[float]
+    retries: Optional[int]
+    cooldown: Optional[float]
+
+
+@dataclasses.dataclass
+class ActivityHandler(BaseHandler):
+    fn: ActivityHandlerFn  # type clarification
+    activity: Optional[causation.Activity] = None
+
+
+@dataclasses.dataclass
+class ResourceHandler(BaseHandler):
+    fn: ResourceHandlerFn  # type clarification
     reason: Optional[causation.Reason]
     field: Optional[dicts.FieldPath]
-    errors: Optional[ErrorsMode] = None
-    timeout: Optional[float] = None
-    retries: Optional[int] = None
-    cooldown: Optional[float] = None
     initial: Optional[bool] = None
     labels: Optional[bodies.Labels] = None
     annotations: Optional[bodies.Annotations] = None
@@ -93,12 +116,14 @@ class ResourceHandler:
 
 
 # We only type-check for known classes of handlers/callbacks, and ignore any custom subclasses.
+HandlerFnT = TypeVar('HandlerFnT', ActivityHandlerFn, ResourceHandlerFn)
+HandlerT = TypeVar('HandlerT', ActivityHandler, ResourceHandler)
 CauseT = TypeVar('CauseT', bound=causation.BaseCause)
 
 
-class ResourceRegistry(Generic[CauseT]):
-    """ An generic base registry of resource handlers. """
-    _handlers: List[ResourceHandler]
+class GenericRegistry(Generic[HandlerT, HandlerFnT]):
+    """ A generic base class of a simple registry (with no handler getters). """
+    _handlers: List[HandlerT]
 
     def __init__(self, prefix: Optional[str] = None) -> None:
         super().__init__()
@@ -108,8 +133,49 @@ class ResourceRegistry(Generic[CauseT]):
     def __bool__(self) -> bool:
         return bool(self._handlers)
 
-    def append(self, handler: ResourceHandler) -> None:
+    def append(self, handler: HandlerT) -> None:
         self._handlers.append(handler)
+
+
+class ActivityRegistry(GenericRegistry[ActivityHandler, ActivityHandlerFn]):
+    """ An actual registry of activity handlers. """
+
+    def register(
+            self,
+            fn: ActivityHandlerFn,
+            *,
+            id: Optional[str] = None,
+            errors: Optional[ErrorsMode] = None,
+            timeout: Optional[float] = None,
+            retries: Optional[int] = None,
+            cooldown: Optional[float] = None,
+            activity: Optional[causation.Activity] = None,
+    ) -> ActivityHandlerFn:
+        real_id = generate_id(fn=fn, id=id, prefix=self.prefix)
+        handler = ActivityHandler(
+            id=real_id, fn=fn, activity=activity,
+            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+        )
+        self.append(handler)
+        return fn
+
+    def get_handlers(
+            self,
+            activity: causation.Activity,
+    ) -> Sequence[ActivityHandler]:
+        return list(_deduplicated(self.iter_handlers(activity=activity)))
+
+    def iter_handlers(
+            self,
+            activity: causation.Activity,
+    ) -> Iterator[ActivityHandler]:
+        for handler in self._handlers:
+            if handler.activity is None or handler.activity == activity:
+                yield handler
+
+
+class ResourceRegistry(GenericRegistry[ResourceHandler, ResourceHandlerFn], Generic[CauseT]):
+    """ An actual registry of resource handlers. """
 
     def register(
             self,
@@ -208,14 +274,18 @@ class ResourceChangingRegistry(ResourceRegistry[causation.ResourceChangingCause]
 
 class OperatorRegistry:
     """
-    A global registry is used for handling of the multiple resources.
-    It is usually populated by the `@kopf.on...` decorators.
+    A global registry is used for handling of multiple resources & activities.
+
+    It is usually populated by the ``@kopf.on...`` decorators, but can also
+    be explicitly created and used in the embedded operators.
     """
+    _activity_handlers: ActivityRegistry
     _resource_watching_handlers: MutableMapping[resources_.Resource, ResourceWatchingRegistry]
     _resource_changing_handlers: MutableMapping[resources_.Resource, ResourceChangingRegistry]
 
     def __init__(self) -> None:
         super().__init__()
+        self._activity_handlers = ActivityRegistry()
         self._resource_watching_handlers = collections.defaultdict(ResourceWatchingRegistry)
         self._resource_changing_handlers = collections.defaultdict(ResourceChangingRegistry)
 
@@ -223,6 +293,22 @@ class OperatorRegistry:
     def resources(self) -> FrozenSet[resources_.Resource]:
         """ All known resources in the registry. """
         return frozenset(self._resource_watching_handlers) | frozenset(self._resource_changing_handlers)
+
+    def register_activity_handler(
+            self,
+            fn: ActivityHandlerFn,
+            *,
+            id: Optional[str] = None,
+            errors: Optional[ErrorsMode] = None,
+            timeout: Optional[float] = None,
+            retries: Optional[int] = None,
+            cooldown: Optional[float] = None,
+            activity: Optional[causation.Activity] = None,
+    ) -> ActivityHandlerFn:
+        return self._activity_handlers.register(
+            fn=fn, id=id, activity=activity,
+            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+        )
 
     def register_resource_watching_handler(
             self,
@@ -273,6 +359,11 @@ class OperatorRegistry:
             labels=labels, annotations=annotations,
         )
 
+    def has_activity_handlers(
+            self,
+    ) -> bool:
+        return bool(self._activity_handlers)
+
     def has_resource_watching_handlers(
             self,
             resource: resources_.Resource,
@@ -287,6 +378,13 @@ class OperatorRegistry:
         return (resource in self._resource_changing_handlers and
                 bool(self._resource_changing_handlers[resource]))
 
+    def get_activity_handlers(
+            self,
+            *,
+            activity: causation.Activity,
+    ) -> Sequence[ActivityHandler]:
+        return list(_deduplicated(self.iter_activity_handlers(activity=activity)))
+
     def get_resource_watching_handlers(
             self,
             cause: causation.ResourceWatchingCause,
@@ -298,6 +396,13 @@ class OperatorRegistry:
             cause: causation.ResourceChangingCause,
     ) -> Sequence[ResourceHandler]:
         return list(_deduplicated(self.iter_resource_changing_handlers(cause=cause)))
+
+    def iter_activity_handlers(
+            self,
+            *,
+            activity: causation.Activity,
+    ) -> Iterator[ActivityHandler]:
+        yield from self._activity_handlers.iter_handlers(activity=activity)
 
     def iter_resource_watching_handlers(
             self,
@@ -378,8 +483,8 @@ def get_callable_id(c: Optional[Callable[..., Any]]) -> str:
 
 
 def _deduplicated(
-        handlers: Iterable[ResourceHandler],
-) -> Iterator[ResourceHandler]:
+        handlers: Iterable[HandlerT],
+) -> Iterator[HandlerT]:
     """
     Yield the handlers deduplicated.
 

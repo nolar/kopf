@@ -190,7 +190,7 @@ class State(Mapping[registries.HandlerId, HandlerState]):
     def from_scratch(
             cls,
             *,
-            handlers: Sequence[registries.ResourceHandler],
+            handlers: Sequence[registries.BaseHandler],
     ) -> "State":
         return cls.from_body(cast(bodies.Body, {}), handlers=handlers)
 
@@ -199,7 +199,7 @@ class State(Mapping[registries.HandlerId, HandlerState]):
             cls,
             body: bodies.Body,
             *,
-            handlers: Sequence[registries.ResourceHandler],
+            handlers: Sequence[registries.BaseHandler],
     ) -> "State":
         storage = body.get('status', {}).get('kopf', {})
         progress = storage.get('progress', {})

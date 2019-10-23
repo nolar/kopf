@@ -33,6 +33,8 @@ from kopf.structs import patches
 from kopf.structs import resources
 
 
+class Activity(str, enum.Enum):
+    _TODO = 'todo'
 # Constants for cause types, to prevent a direct usage of strings, and typos.
 # They are not exposed by the framework, but are used internally. See also: `kopf.on`.
 class Reason(str, enum.Enum):

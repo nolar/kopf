@@ -17,7 +17,11 @@ from kopf.reactor import lifecycles
 from kopf.reactor import registries
 from kopf.structs import dicts
 
-Invokable = Union[lifecycles.LifeCycleFn, registries.ResourceHandlerFn]
+Invokable = Union[
+    lifecycles.LifeCycleFn,
+    registries.ActivityHandlerFn,
+    registries.ResourceHandlerFn,
+]
 
 
 @contextlib.contextmanager
