@@ -1,7 +1,7 @@
 import pytest
 
 import kopf
-from kopf.reactor.registries import GlobalRegistry
+from kopf.reactor.registries import OperatorRegistry
 from kopf.structs.resources import Resource
 
 OBJECT_BODY = {
@@ -24,7 +24,7 @@ OBJECT_BODY = {
     pytest.param(False, True, id='mandatory'),
 ])
 def test_requires_finalizer_deletion_handler(optional, expected):
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
 
     @kopf.on.delete('group', 'version', 'plural',
@@ -41,7 +41,7 @@ def test_requires_finalizer_deletion_handler(optional, expected):
     pytest.param(False, True, id='mandatory'),
 ])
 def test_requires_finalizer_multiple_handlers(optional, expected):
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
 
     @kopf.on.create('group', 'version', 'plural',
@@ -59,7 +59,7 @@ def test_requires_finalizer_multiple_handlers(optional, expected):
 
 
 def test_requires_finalizer_no_deletion_handler():
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
 
     @kopf.on.create('group', 'version', 'plural',
@@ -80,7 +80,7 @@ def test_requires_finalizer_no_deletion_handler():
     pytest.param({'key': None}, id='key-exists'),
 ])
 def test_requires_finalizer_deletion_handler_matches_labels(labels, optional, expected):
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
 
     @kopf.on.delete('group', 'version', 'plural',
@@ -102,7 +102,7 @@ def test_requires_finalizer_deletion_handler_matches_labels(labels, optional, ex
     pytest.param({'otherkey': None}, id='key-doesnt-exist'),
 ])
 def test_requires_finalizer_deletion_handler_mismatches_labels(labels, optional, expected):
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
 
     @kopf.on.delete('group', 'version', 'plural',
@@ -124,7 +124,7 @@ def test_requires_finalizer_deletion_handler_mismatches_labels(labels, optional,
     pytest.param({'key': None}, id='key-exists'),
 ])
 def test_requires_finalizer_deletion_handler_matches_annotations(annotations, optional, expected):
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
 
     @kopf.on.delete('group', 'version', 'plural',
@@ -146,7 +146,7 @@ def test_requires_finalizer_deletion_handler_matches_annotations(annotations, op
     pytest.param({'otherkey': None}, id='key-doesnt-exist'),
 ])
 def test_requires_finalizer_deletion_handler_mismatches_annotations(annotations, optional, expected):
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
 
     @kopf.on.delete('group', 'version', 'plural',

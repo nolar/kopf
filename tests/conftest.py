@@ -88,7 +88,7 @@ def clear_default_registry():
     Ensure that the tests have a fresh new global (not re-used) registry.
     """
     old_registry = kopf.get_default_registry()
-    new_registry = kopf.GlobalRegistry()
+    new_registry = kopf.OperatorRegistry()
     kopf.set_default_registry(new_registry)
     try:
         yield new_registry

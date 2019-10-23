@@ -17,7 +17,7 @@ from kopf.reactor import lifecycles
 from kopf.reactor import registries
 from kopf.structs import dicts
 
-Invokable = Union[lifecycles.LifeCycleFn, registries.HandlerFn]
+Invokable = Union[lifecycles.LifeCycleFn, registries.ResourceHandlerFn]
 
 
 @contextlib.contextmanager
@@ -59,7 +59,7 @@ async def invoke(
     """
 
     # Add aliases for the kwargs, directly linked to the body, or to the assumed defaults.
-    if isinstance(cause, causation.EventWatchingCause):
+    if isinstance(cause, causation.ResourceWatchingCause):
         kwargs.update(
             event=cause.raw,
             patch=cause.patch,
@@ -73,7 +73,7 @@ async def invoke(
             name=cause.body.get('metadata', {}).get('name'),
             namespace=cause.body.get('metadata', {}).get('namespace'),
         )
-    if isinstance(cause, causation.StateChangingCause):
+    if isinstance(cause, causation.ResourceChangingCause):
         kwargs.update(
             cause=cause,
             event=cause.reason,  # deprecated; kept for backward-compatibility

@@ -3,7 +3,7 @@ import pytest
 import kopf
 from kopf.reactor.causation import Reason
 from kopf.reactor.handling import subregistry_var
-from kopf.reactor.registries import SimpleRegistry, GlobalRegistry
+from kopf.reactor.registries import ResourceRegistry, OperatorRegistry
 from kopf.structs.resources import Resource
 
 
@@ -16,7 +16,7 @@ def test_on_create_minimal(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.get_state_changing_handlers(cause)
+    handlers = registry.get_resource_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.CREATE
@@ -35,7 +35,7 @@ def test_on_update_minimal(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.get_state_changing_handlers(cause)
+    handlers = registry.get_resource_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.UPDATE
@@ -54,7 +54,7 @@ def test_on_delete_minimal(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.get_state_changing_handlers(cause)
+    handlers = registry.get_resource_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.DELETE
@@ -74,7 +74,7 @@ def test_on_field_minimal(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.get_state_changing_handlers(cause)
+    handlers = registry.get_resource_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
@@ -92,7 +92,7 @@ def test_on_field_fails_without_field():
 
 
 def test_on_create_with_all_kwargs(mocker):
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
     cause = mocker.MagicMock(resource=resource, reason=Reason.CREATE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
@@ -104,7 +104,7 @@ def test_on_create_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.get_state_changing_handlers(cause)
+    handlers = registry.get_resource_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.CREATE
@@ -116,7 +116,7 @@ def test_on_create_with_all_kwargs(mocker):
 
 
 def test_on_update_with_all_kwargs(mocker):
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
     cause = mocker.MagicMock(resource=resource, reason=Reason.UPDATE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
@@ -128,7 +128,7 @@ def test_on_update_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.get_state_changing_handlers(cause)
+    handlers = registry.get_resource_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.UPDATE
@@ -144,7 +144,7 @@ def test_on_update_with_all_kwargs(mocker):
     pytest.param(False, id='mandatory'),
 ])
 def test_on_delete_with_all_kwargs(mocker, optional):
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
     cause = mocker.MagicMock(resource=resource, reason=Reason.DELETE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
@@ -156,7 +156,7 @@ def test_on_delete_with_all_kwargs(mocker, optional):
     def fn(**_):
         pass
 
-    handlers = registry.get_state_changing_handlers(cause)
+    handlers = registry.get_resource_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.DELETE
@@ -168,7 +168,7 @@ def test_on_delete_with_all_kwargs(mocker, optional):
 
 
 def test_on_field_with_all_kwargs(mocker):
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
     diff = [('op', ('field', 'subfield'), 'old', 'new')]
     cause = mocker.MagicMock(resource=resource, reason=Reason.UPDATE, diff=diff)
@@ -181,7 +181,7 @@ def test_on_field_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.get_state_changing_handlers(cause)
+    handlers = registry.get_resource_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
@@ -195,14 +195,14 @@ def test_on_field_with_all_kwargs(mocker):
 def test_subhandler_declaratively(mocker):
     cause = mocker.MagicMock(reason=Reason.UPDATE, diff=None)
 
-    registry = SimpleRegistry()
+    registry = ResourceRegistry()
     subregistry_var.set(registry)
 
     @kopf.on.this()
     def fn(**_):
         pass
 
-    handlers = registry.get_state_changing_handlers(cause)
+    handlers = registry.get_resource_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
 
@@ -210,13 +210,13 @@ def test_subhandler_declaratively(mocker):
 def test_subhandler_imperatively(mocker):
     cause = mocker.MagicMock(reason=Reason.UPDATE, diff=None)
 
-    registry = SimpleRegistry()
+    registry = ResourceRegistry()
     subregistry_var.set(registry)
 
     def fn(**_):
         pass
     kopf.register(fn)
 
-    handlers = registry.get_state_changing_handlers(cause)
+    handlers = registry.get_resource_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn

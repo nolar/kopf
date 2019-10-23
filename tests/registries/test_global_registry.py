@@ -1,6 +1,6 @@
 import collections
 
-from kopf.reactor.registries import GlobalRegistry
+from kopf.reactor.registries import OperatorRegistry
 from kopf.structs.resources import Resource
 
 
@@ -10,9 +10,9 @@ def some_fn():
 
 
 def test_resources():
-    registry = GlobalRegistry()
-    registry.register_state_changing_handler('group1', 'version1', 'plural1', some_fn)
-    registry.register_state_changing_handler('group2', 'version2', 'plural2', some_fn)
+    registry = OperatorRegistry()
+    registry.register_resource_changing_handler('group1', 'version1', 'plural1', some_fn)
+    registry.register_resource_changing_handler('group2', 'version2', 'plural2', some_fn)
 
     resources = registry.resources
 

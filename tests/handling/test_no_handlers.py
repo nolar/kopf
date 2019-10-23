@@ -5,7 +5,7 @@ import pytest
 
 import kopf
 from kopf.reactor.causation import HANDLER_REASONS
-from kopf.reactor.handling import custom_object_handler
+from kopf.reactor.handling import resource_handler
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
 
 
@@ -16,17 +16,17 @@ async def test_skipped_with_no_handlers(
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = cause_type
 
-    assert not registry.has_state_changing_handlers(resource=resource)  # prerequisite
-    registry.register_state_changing_handler(
+    assert not registry.has_resource_changing_handlers(resource=resource)  # prerequisite
+    registry.register_resource_changing_handler(
         group=resource.group,
         version=resource.version,
         plural=resource.plural,
         reason='a-non-existent-cause-type',
         fn=lambda **_: None,
     )
-    assert registry.has_state_changing_handlers(resource=resource)  # prerequisite
+    assert registry.has_resource_changing_handlers(resource=resource)  # prerequisite
 
-    await custom_object_handler(
+    await resource_handler(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,

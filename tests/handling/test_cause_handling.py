@@ -3,7 +3,7 @@ import logging
 
 import kopf
 from kopf.reactor.causation import Reason
-from kopf.reactor.handling import custom_object_handler
+from kopf.reactor.handling import resource_handler
 from kopf.structs.finalizers import FINALIZER
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
 
@@ -14,7 +14,7 @@ async def test_acquire(registry, handlers, resource, cause_mock,
     cause_mock.reason = Reason.ACQUIRE
 
     event_queue = asyncio.Queue()
-    await custom_object_handler(
+    await resource_handler(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
@@ -50,7 +50,7 @@ async def test_create(registry, handlers, resource, cause_mock,
     cause_mock.reason = Reason.CREATE
 
     event_queue = asyncio.Queue()
-    await custom_object_handler(
+    await resource_handler(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
@@ -93,7 +93,7 @@ async def test_update(registry, handlers, resource, cause_mock,
     cause_mock.reason = Reason.UPDATE
 
     event_queue = asyncio.Queue()
-    await custom_object_handler(
+    await resource_handler(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
@@ -136,7 +136,7 @@ async def test_delete(registry, handlers, resource, cause_mock,
     cause_mock.reason = Reason.DELETE
 
     event_queue = asyncio.Queue()
-    await custom_object_handler(
+    await resource_handler(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
@@ -177,7 +177,7 @@ async def test_release(registry, resource, handlers, cause_mock, caplog, k8s_moc
     cause_mock.body.setdefault('metadata', {})['finalizers'] = [FINALIZER]
 
     # register handlers (no deletion handlers)
-    registry.register_state_changing_handler(
+    registry.register_resource_changing_handler(
         group=resource.group,
         version=resource.version,
         plural=resource.plural,
@@ -187,7 +187,7 @@ async def test_release(registry, resource, handlers, cause_mock, caplog, k8s_moc
     )
 
     event_queue = asyncio.Queue()
-    await custom_object_handler(
+    await resource_handler(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
@@ -227,7 +227,7 @@ async def test_gone(registry, handlers, resource, cause_mock,
     cause_mock.reason = Reason.GONE
 
     event_queue = asyncio.Queue()
-    await custom_object_handler(
+    await resource_handler(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
@@ -257,7 +257,7 @@ async def test_free(registry, handlers, resource, cause_mock,
     cause_mock.reason = Reason.FREE
 
     event_queue = asyncio.Queue()
-    await custom_object_handler(
+    await resource_handler(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
@@ -287,7 +287,7 @@ async def test_noop(registry, handlers, resource, cause_mock,
     cause_mock.reason = Reason.NOOP
 
     event_queue = asyncio.Queue()
-    await custom_object_handler(
+    await resource_handler(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,

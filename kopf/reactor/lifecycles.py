@@ -8,7 +8,6 @@ and return the list of handlers in the order and amount to be executed.
 The default behaviour of the framework is the most simplistic:
 execute in the order they are registered, one by one.
 """
-
 import logging
 import random
 from typing import Sequence, Any, Optional
@@ -21,7 +20,7 @@ from kopf.structs import bodies
 
 logger = logging.getLogger(__name__)
 
-Handlers = Sequence[registries.Handler]
+Handlers = Sequence[registries.ResourceHandler]
 
 
 class LifeCycleFn(Protocol):

@@ -6,7 +6,7 @@ import pytest
 import kopf
 from kopf.reactor.causation import Reason, HANDLER_REASONS
 from kopf.reactor.handling import PermanentError, TemporaryError
-from kopf.reactor.handling import custom_object_handler
+from kopf.reactor.handling import resource_handler
 
 
 # The extrahandlers are needed to prevent the cycle ending and status purging.
@@ -23,7 +23,7 @@ async def test_fatal_error_stops_handler(
     handlers.delete_mock.side_effect = PermanentError("oops")
     handlers.resume_mock.side_effect = PermanentError("oops")
 
-    await custom_object_handler(
+    await resource_handler(
         lifecycle=kopf.lifecycles.one_by_one,
         registry=registry,
         resource=resource,
@@ -65,7 +65,7 @@ async def test_retry_error_delays_handler(
     handlers.delete_mock.side_effect = TemporaryError("oops")
     handlers.resume_mock.side_effect = TemporaryError("oops")
 
-    await custom_object_handler(
+    await resource_handler(
         lifecycle=kopf.lifecycles.one_by_one,
         registry=registry,
         resource=resource,
@@ -108,7 +108,7 @@ async def test_arbitrary_error_delays_handler(
     handlers.delete_mock.side_effect = Exception("oops")
     handlers.resume_mock.side_effect = Exception("oops")
 
-    await custom_object_handler(
+    await resource_handler(
         lifecycle=kopf.lifecycles.one_by_one,
         registry=registry,
         resource=resource,

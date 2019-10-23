@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 def run(
         loop: Optional[asyncio.AbstractEventLoop] = None,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
-        registry: Optional[registries.GlobalRegistry] = None,
+        registry: Optional[registries.OperatorRegistry] = None,
         standalone: bool = False,
         priority: int = 0,
         peering_name: Optional[str] = None,
@@ -58,7 +58,7 @@ def run(
 
 async def operator(
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
-        registry: Optional[registries.GlobalRegistry] = None,
+        registry: Optional[registries.OperatorRegistry] = None,
         standalone: bool = False,
         priority: int = 0,
         peering_name: Optional[str] = None,
@@ -90,7 +90,7 @@ async def operator(
 
 async def spawn_tasks(
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
-        registry: Optional[registries.GlobalRegistry] = None,
+        registry: Optional[registries.OperatorRegistry] = None,
         standalone: bool = False,
         priority: int = 0,
         peering_name: Optional[str] = None,
@@ -153,7 +153,7 @@ async def spawn_tasks(
             loop.create_task(_root_task_checker(f"watcher of {resource.name}", queueing.watcher(
                 namespace=namespace,
                 resource=resource,
-                handler=functools.partial(handling.custom_object_handler,
+                handler=functools.partial(handling.resource_handler,
                                           lifecycle=lifecycle,
                                           registry=registry,
                                           resource=resource,

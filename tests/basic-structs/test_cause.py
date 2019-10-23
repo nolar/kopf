@@ -1,11 +1,11 @@
 import pytest
 
-from kopf.reactor.causation import StateChangingCause
+from kopf.reactor.causation import ResourceChangingCause
 
 
 def test_no_args():
     with pytest.raises(TypeError):
-        StateChangingCause()
+        ResourceChangingCause()
 
 
 def test_all_args(mocker):
@@ -18,7 +18,7 @@ def test_all_args(mocker):
     diff = mocker.Mock()
     old = mocker.Mock()
     new = mocker.Mock()
-    cause = StateChangingCause(
+    cause = ResourceChangingCause(
         resource=resource,
         logger=logger,
         reason=reason,
@@ -48,7 +48,7 @@ def test_required_args(mocker):
     initial = mocker.Mock()
     body = mocker.Mock()
     patch = mocker.Mock()
-    cause = StateChangingCause(
+    cause = ResourceChangingCause(
         resource=resource,
         logger=logger,
         reason=reason,

@@ -2,20 +2,20 @@ import asyncio
 import logging
 
 import kopf
-from kopf.reactor.handling import custom_object_handler
-from kopf.reactor.registries import GlobalRegistry
+from kopf.reactor.handling import resource_handler
+from kopf.reactor.registries import OperatorRegistry
 
 
 async def test_nothing_is_called_when_freeze_is_set(mocker, resource, caplog, assert_logs):
-    detect_state_changing_cause = mocker.patch('kopf.reactor.causation.detect_state_changing_cause')
-    handle_cause = mocker.patch('kopf.reactor.handling.handle_state_changing_cause')
+    detect_cause = mocker.patch('kopf.reactor.causation.detect_resource_changing_cause')
+    handle_cause = mocker.patch('kopf.reactor.handling.handle_resource_changing_cause')
     patch_obj = mocker.patch('kopf.clients.patching.patch_obj')
     asyncio_sleep = mocker.patch('asyncio.sleep')
 
     # Nothing of these is actually used, but we need to feed something.
     # Except for namespace+name, which are used for the logger prefixes.
     lifecycle = kopf.lifecycles.all_at_once
-    registry = GlobalRegistry()
+    registry = OperatorRegistry()
     event = {'object': {'metadata': {'namespace': 'ns1', 'name': 'name1'}}}
 
     # This is what makes it frozen.
@@ -23,7 +23,7 @@ async def test_nothing_is_called_when_freeze_is_set(mocker, resource, caplog, as
     freeze.set()
 
     caplog.set_level(logging.DEBUG)
-    await custom_object_handler(
+    await resource_handler(
         lifecycle=lifecycle,
         registry=registry,
         resource=resource,
@@ -33,7 +33,7 @@ async def test_nothing_is_called_when_freeze_is_set(mocker, resource, caplog, as
         event_queue=asyncio.Queue(),
     )
 
-    assert not detect_state_changing_cause.called
+    assert not detect_cause.called
     assert not handle_cause.called
     assert not patch_obj.called
     assert not asyncio_sleep.called
