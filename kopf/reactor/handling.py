@@ -225,7 +225,7 @@ async def handle_resource_changing_cause(
         handlers = registry.get_resource_changing_handlers(cause=cause)
         if handlers:
             try:
-                await _execute(
+                await _execute_handlers(
                     lifecycle=lifecycle,
                     handlers=handlers,
                     cause=cause,
@@ -350,14 +350,14 @@ async def execute(
 
     # Execute the real handlers (all or few or one of them, as per the lifecycle).
     # Raises `HandlerChildrenRetry` if the execute should be continued on the next iteration.
-    await _execute(
+    await _execute_handlers(
         lifecycle=lifecycle,
         handlers=registry.get_handlers(cause=cause),
         cause=cause,
     )
 
 
-async def _execute(
+async def _execute_handlers(
         lifecycle: lifecycles.LifeCycleFn,
         handlers: Collection[registries.ResourceHandler],
         cause: causation.BaseCause,
@@ -378,7 +378,6 @@ async def _execute(
 
     Exits normally if all handlers for this cause are fully done.
     """
-    logger = cause.logger
 
     # Filter and select the handlers to be executed right now, on this event reaction cycle.
     handlers_done = [h for h in handlers if states.is_finished(body=cause.body, handler=h)]
@@ -394,67 +393,14 @@ async def _execute(
 
     # Execute all planned (selected) handlers in one event reaction cycle, even if there are few.
     for handler in handlers_plan:
-
-        # Restore the handler's progress status. It can be useful in the handlers.
-        retry = states.get_retry_count(body=cause.body, handler=handler)
-        started = states.get_start_time(body=cause.body, handler=handler, patch=cause.patch)
-        runtime = datetime.datetime.utcnow() - (started if started else datetime.datetime.utcnow())
-
-        # The exceptions are handled locally and are not re-raised, to keep the operator running.
-        try:
-            logger.debug(f"Invoking handler {handler.id!r}.")
-
-            if handler.timeout is not None and runtime.total_seconds() > handler.timeout:
-                raise HandlerTimeoutError(f"Handler {handler.id!r} has timed out after {runtime}.")
-
-            result = await _call_handler(
-                handler,
-                cause=cause,
-                retry=retry,
-                started=started,
-                runtime=runtime,
-                lifecycle=lifecycle,  # just a default for the sub-handlers, not used directly.
-            )
-
-        # Unfinished children cause the regular retry, but with less logging and event reporting.
-        except HandlerChildrenRetry as e:
-            logger.debug(f"Handler {handler.id!r} has unfinished sub-handlers. Will retry soon.")
-            states.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
+        final = await _execute_handler(
+            handler=handler,
+            cause=cause,
+            lifecycle=lifecycle,
+            retry_on_errors=retry_on_errors,
+        )
+        if not final:
             handlers_left.append(handler)
-
-        # Definitely a temporary error, regardless of the error strictness.
-        except TemporaryError as e:
-            logger.error(f"Handler {handler.id!r} failed temporarily: %s", str(e) or repr(e))
-            states.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
-            handlers_left.append(handler)
-
-        # Same as permanent errors below, but with better logging for our internal cases.
-        except HandlerTimeoutError as e:
-            logger.error(f"%s", str(e) or repr(e))  # already formatted
-            states.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
-            # TODO: report the handling failure somehow (beside logs/events). persistent status?
-
-        # Definitely a permanent error, regardless of the error strictness.
-        except PermanentError as e:
-            logger.error(f"Handler {handler.id!r} failed permanently: %s", str(e) or repr(e))
-            states.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
-            # TODO: report the handling failure somehow (beside logs/events). persistent status?
-
-        # Regular errors behave as either temporary or permanent depending on the error strictness.
-        except Exception as e:
-            if retry_on_errors:
-                logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")
-                states.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=DEFAULT_RETRY_DELAY)
-                handlers_left.append(handler)
-            else:
-                logger.exception(f"Handler {handler.id!r} failed with an exception. Will stop.")
-                states.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
-                # TODO: report the handling failure somehow (beside logs/events). persistent status?
-
-        # No errors means the handler should be excluded from future runs in this reaction cycle.
-        else:
-            logger.info(f"Handler {handler.id!r} succeeded.")
-            states.store_success(body=cause.body, patch=cause.patch, handler=handler, result=result)
 
     # Provoke the retry of the handling cycle if there were any unfinished handlers,
     # either because they were not selected by the lifecycle, or failed and need a retry.
@@ -471,6 +417,90 @@ async def _execute(
         until = min([t for t in times if t is not None] + [limit])  # the soonest awake datetime.
         delay = max(0, (until - now).total_seconds())
         raise HandlerChildrenRetry(delay=delay)
+
+
+async def _execute_handler(
+        handler: registries.ResourceHandler,
+        cause: causation.BaseCause,
+        lifecycle: lifecycles.LifeCycleFn,
+        retry_on_errors: bool = True,
+) -> bool:
+    """
+    Execute one and only one handler.
+
+    *Execution* means not just *calling* the handler in properly set context
+    (see `_call_handler`), but also interpreting its result and errors,
+    and wrapping them into the persisted state.
+
+    This method is not supposed to raise any exceptions from the handlers:
+    exceptions mean the failure of execution itself.
+    """
+    logger = cause.logger
+
+    # Restore the handler's progress status. It can be useful in the handlers.
+    retry = states.get_retry_count(body=cause.body, handler=handler)
+    started = states.get_start_time(body=cause.body, handler=handler, patch=cause.patch)
+    runtime = datetime.datetime.utcnow() - (started if started else datetime.datetime.utcnow())
+
+    # The exceptions are handled locally and are not re-raised, to keep the operator running.
+    try:
+        logger.debug(f"Invoking handler {handler.id!r}.")
+
+        if handler.timeout is not None and runtime.total_seconds() > handler.timeout:
+            raise HandlerTimeoutError(f"Handler {handler.id!r} has timed out after {runtime}.")
+
+        result = await _call_handler(
+            handler,
+            cause=cause,
+            retry=retry,
+            started=started,
+            runtime=runtime,
+            lifecycle=lifecycle,  # just a default for the sub-handlers, not used directly.
+        )
+
+    # Unfinished children cause the regular retry, but with less logging and event reporting.
+    except HandlerChildrenRetry as e:
+        logger.debug(f"Handler {handler.id!r} has unfinished sub-handlers. Will retry soon.")
+        states.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
+        return False
+
+    # Definitely a temporary error, regardless of the error strictness.
+    except TemporaryError as e:
+        logger.error(f"Handler {handler.id!r} failed temporarily: %s", str(e) or repr(e))
+        states.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
+        return False
+
+    # Same as permanent errors below, but with better logging for our internal cases.
+    except HandlerTimeoutError as e:
+        logger.error(f"%s", str(e) or repr(e))  # already formatted
+        states.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
+        return True
+        # TODO: report the handling failure somehow (beside logs/events). persistent status?
+
+    # Definitely a permanent error, regardless of the error strictness.
+    except PermanentError as e:
+        logger.error(f"Handler {handler.id!r} failed permanently: %s", str(e) or repr(e))
+        states.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
+        return True
+        # TODO: report the handling failure somehow (beside logs/events). persistent status?
+
+    # Regular errors behave as either temporary or permanent depending on the error strictness.
+    except Exception as e:
+        if retry_on_errors:
+            logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")
+            states.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=DEFAULT_RETRY_DELAY)
+            return False
+        else:
+            logger.exception(f"Handler {handler.id!r} failed with an exception. Will stop.")
+            states.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
+            return True
+            # TODO: report the handling failure somehow (beside logs/events). persistent status?
+
+    # No errors means the handler should be excluded from future runs in this reaction cycle.
+    else:
+        logger.info(f"Handler {handler.id!r} succeeded.")
+        states.store_success(body=cause.body, patch=cause.patch, handler=handler, result=result)
+        return True
 
 
 async def _call_handler(
