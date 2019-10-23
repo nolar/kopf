@@ -44,6 +44,19 @@ DEFAULT_RETRY_DELAY = 1 * 60
 """ The default delay duration for the regular exception in retry-mode. """
 
 
+class ActivityError(Exception):
+    """ An error in the activity, as caused by mandatory handlers' failures. """
+
+    def __init__(
+            self,
+            msg: str,
+            *,
+            outcomes: Mapping[registries.HandlerId, states.HandlerOutcome],
+    ) -> None:
+        super().__init__(msg)
+        self.outcomes = outcomes
+
+
 class PermanentError(Exception):
     """ A fatal handler error, the retries are useless. """
 
@@ -76,8 +89,57 @@ class HandlerChildrenRetry(TemporaryError):
 sublifecycle_var: ContextVar[lifecycles.LifeCycleFn] = ContextVar('sublifecycle_var')
 subregistry_var: ContextVar[registries.ResourceChangingRegistry] = ContextVar('subregistry_var')
 subexecuted_var: ContextVar[bool] = ContextVar('subexecuted_var')
-handler_var: ContextVar[registries.ResourceHandler] = ContextVar('handler_var')
+handler_var: ContextVar[registries.BaseHandler] = ContextVar('handler_var')
 cause_var: ContextVar[causation.BaseCause] = ContextVar('cause_var')
+
+
+async def activity_trigger(
+        *,
+        lifecycle: lifecycles.LifeCycleFn,
+        registry: registries.OperatorRegistry,
+        activity: causation.Activity,
+) -> Mapping[registries.HandlerId, registries.HandlerResult]:
+    """
+    Execute a handling cycle until succeeded or permanently failed.
+
+    This mimics the behaviour of patching-watching in Kubernetes, but in-memory.
+    """
+    logger = logging.getLogger(f'kopf.activities.{activity.value}')
+
+    # For the activity handlers, we have neither bodies, nor patches, just the state.
+    cause = causation.ActivityCause(logger=logger, activity=activity)
+    handlers = registry.get_activity_handlers(activity=activity)
+    state = states.State.from_scratch(handlers=handlers)
+    latest_outcomes: MutableMapping[registries.HandlerId, states.HandlerOutcome] = {}
+    while not state.done:
+        outcomes = await _execute_handlers(
+            lifecycle=lifecycle,
+            handlers=handlers,
+            cause=cause,
+            state=state,
+        )
+        latest_outcomes.update(outcomes)
+        state = state.with_outcomes(outcomes)
+        delay = state.delay
+        if delay:
+            await sleeping.sleep_or_wait(min(delay, WAITING_KEEPALIVE_INTERVAL), asyncio.Event())
+
+    # Activities assume that all handlers must eventually succeed.
+    # We raise from the 1st exception only: just to have something real in the tracebacks.
+    # For multiple handlers' errors, the logs should be investigated instead.
+    exceptions = [outcome.exception
+                  for outcome in latest_outcomes.values()
+                  if outcome.exception is not None]
+    if exceptions:
+        raise ActivityError("One or more handlers failed.", outcomes=latest_outcomes) \
+            from exceptions[0]
+
+    # If nothing has failed, we return identifiable results. The outcomes/states are internal.
+    # The order of results is not guaranteed (the handlers can succeed on one of the retries).
+    results = {handler_id: outcome.result
+               for handler_id, outcome in latest_outcomes.items()
+               if outcome.result is not None}
+    return results
 
 
 async def resource_handler(
@@ -305,7 +367,7 @@ async def execute(
     # Restore the current context as set in the handler execution cycle.
     lifecycle = lifecycle if lifecycle is not None else sublifecycle_var.get()
     cause = cause if cause is not None else cause_var.get()
-    handler: registries.ResourceHandler = handler_var.get()
+    handler: registries.BaseHandler = handler_var.get()
 
     # Validate the inputs; the function signatures cannot put these kind of restrictions, so we do.
     if len([v for v in [fns, handlers, registry] if v is not None]) > 1:
@@ -367,7 +429,7 @@ async def execute(
 
 async def _execute_handlers(
         lifecycle: lifecycles.LifeCycleFn,
-        handlers: Collection[registries.ResourceHandler],
+        handlers: Collection[registries.BaseHandler],
         cause: causation.BaseCause,
         state: states.State,
         default_errors: registries.ErrorsMode = registries.ErrorsMode.TEMPORARY,
@@ -402,7 +464,7 @@ async def _execute_handlers(
 
 
 async def _execute_handler(
-        handler: registries.ResourceHandler,
+        handler: registries.BaseHandler,
         cause: causation.BaseCause,
         state: states.HandlerState,
         lifecycle: lifecycles.LifeCycleFn,
@@ -491,7 +553,7 @@ async def _execute_handler(
 
 
 async def _call_handler(
-        handler: registries.ResourceHandler,
+        handler: registries.BaseHandler,
         *args: Any,
         cause: causation.BaseCause,
         lifecycle: lifecycles.LifeCycleFn,
@@ -508,7 +570,10 @@ async def _call_handler(
     """
 
     # For the field-handlers, the old/new/diff values must match the field, not the whole object.
-    if isinstance(cause, causation.ResourceChangingCause) and handler.field is not None:
+    if (True and  # for readable indenting
+            isinstance(cause, causation.ResourceChangingCause) and
+            isinstance(handler, registries.ResourceHandler) and
+            handler.field is not None):
         old = dicts.resolve(cause.old, handler.field, None, assume_empty=True)
         new = dicts.resolve(cause.new, handler.field, None, assume_empty=True)
         diff = diffs.reduce(cause.diff, handler.field)
