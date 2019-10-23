@@ -28,7 +28,7 @@ from kopf.reactor import causation
 from kopf.reactor import invocation
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
-from kopf.reactor import state
+from kopf.reactor import states
 from kopf.structs import bodies
 from kopf.structs import dicts
 from kopf.structs import diffs
@@ -197,7 +197,7 @@ async def handle_resource_watching_cause(
 
         else:
             logger.info(f"Handler {handler.id!r} succeeded.")
-            state.store_result(patch=cause.patch, handler=handler, result=result)
+            states.store_result(patch=cause.patch, handler=handler, result=result)
 
 
 async def handle_resource_changing_cause(
@@ -245,7 +245,7 @@ async def handle_resource_changing_cause(
         extra_fields = registry.get_extra_fields(resource=cause.resource)
         lastseen.refresh_essence(body=body, patch=patch, extra_fields=extra_fields)
         if done:
-            state.purge_progress(body=body, patch=patch)
+            states.purge_progress(body=body, patch=patch)
         if cause.reason == causation.Reason.DELETE:
             logger.debug("Removing the finalizer, thus allowing the actual deletion.")
             finalizers.remove_finalizers(body=body, patch=patch)
@@ -381,23 +381,23 @@ async def _execute(
     logger = cause.logger
 
     # Filter and select the handlers to be executed right now, on this event reaction cycle.
-    handlers_done = [h for h in handlers if state.is_finished(body=cause.body, handler=h)]
-    handlers_wait = [h for h in handlers if state.is_sleeping(body=cause.body, handler=h)]
-    handlers_todo = [h for h in handlers if state.is_awakened(body=cause.body, handler=h)]
+    handlers_done = [h for h in handlers if states.is_finished(body=cause.body, handler=h)]
+    handlers_wait = [h for h in handlers if states.is_sleeping(body=cause.body, handler=h)]
+    handlers_todo = [h for h in handlers if states.is_awakened(body=cause.body, handler=h)]
     handlers_plan = [h for h in await invocation.invoke(lifecycle, handlers_todo, cause=cause)]
     handlers_left = [h for h in handlers_todo if h.id not in {h.id for h in handlers_plan}]
 
     # Set the timestamps -- even if not executed on this event, but just got registered.
     for handler in handlers:
-        if not state.is_started(body=cause.body, handler=handler):
-            state.set_start_time(body=cause.body, patch=cause.patch, handler=handler)
+        if not states.is_started(body=cause.body, handler=handler):
+            states.set_start_time(body=cause.body, patch=cause.patch, handler=handler)
 
     # Execute all planned (selected) handlers in one event reaction cycle, even if there are few.
     for handler in handlers_plan:
 
         # Restore the handler's progress status. It can be useful in the handlers.
-        retry = state.get_retry_count(body=cause.body, handler=handler)
-        started = state.get_start_time(body=cause.body, handler=handler, patch=cause.patch)
+        retry = states.get_retry_count(body=cause.body, handler=handler)
+        started = states.get_start_time(body=cause.body, handler=handler, patch=cause.patch)
         runtime = datetime.datetime.utcnow() - (started if started else datetime.datetime.utcnow())
 
         # The exceptions are handled locally and are not re-raised, to keep the operator running.
@@ -419,42 +419,42 @@ async def _execute(
         # Unfinished children cause the regular retry, but with less logging and event reporting.
         except HandlerChildrenRetry as e:
             logger.debug(f"Handler {handler.id!r} has unfinished sub-handlers. Will retry soon.")
-            state.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
+            states.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
             handlers_left.append(handler)
 
         # Definitely a temporary error, regardless of the error strictness.
         except TemporaryError as e:
             logger.error(f"Handler {handler.id!r} failed temporarily: %s", str(e) or repr(e))
-            state.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
+            states.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
             handlers_left.append(handler)
 
         # Same as permanent errors below, but with better logging for our internal cases.
         except HandlerTimeoutError as e:
             logger.error(f"%s", str(e) or repr(e))  # already formatted
-            state.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
+            states.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
         # Definitely a permanent error, regardless of the error strictness.
         except PermanentError as e:
             logger.error(f"Handler {handler.id!r} failed permanently: %s", str(e) or repr(e))
-            state.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
+            states.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
         # Regular errors behave as either temporary or permanent depending on the error strictness.
         except Exception as e:
             if retry_on_errors:
                 logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")
-                state.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=DEFAULT_RETRY_DELAY)
+                states.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=DEFAULT_RETRY_DELAY)
                 handlers_left.append(handler)
             else:
                 logger.exception(f"Handler {handler.id!r} failed with an exception. Will stop.")
-                state.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
+                states.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
                 # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
         # No errors means the handler should be excluded from future runs in this reaction cycle.
         else:
             logger.info(f"Handler {handler.id!r} succeeded.")
-            state.store_success(body=cause.body, patch=cause.patch, handler=handler, result=result)
+            states.store_success(body=cause.body, patch=cause.patch, handler=handler, result=result)
 
     # Provoke the retry of the handling cycle if there were any unfinished handlers,
     # either because they were not selected by the lifecycle, or failed and need a retry.
@@ -467,7 +467,7 @@ async def _execute(
     if handlers_wait:
         now = datetime.datetime.utcnow()
         limit = now + datetime.timedelta(seconds=WAITING_KEEPALIVE_INTERVAL)
-        times = [state.get_awake_time(body=cause.body, handler=h) for h in handlers_wait]
+        times = [states.get_awake_time(body=cause.body, handler=h) for h in handlers_wait]
         until = min([t for t in times if t is not None] + [limit])  # the soonest awake datetime.
         delay = max(0, (until - now).total_seconds())
         raise HandlerChildrenRetry(delay=delay)

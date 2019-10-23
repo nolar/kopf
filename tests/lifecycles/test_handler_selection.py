@@ -1,7 +1,7 @@
 import pytest
 
 import kopf
-from kopf.reactor.state import set_retry_time, get_retry_count
+from kopf.reactor.states import set_retry_time, get_retry_count
 
 
 @pytest.mark.parametrize('lifecycle', [

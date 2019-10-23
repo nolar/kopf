@@ -15,7 +15,7 @@ from typing import Sequence, Any, Optional
 from typing_extensions import Protocol
 
 from kopf.reactor import registries
-from kopf.reactor import state
+from kopf.reactor import states
 from kopf.structs import bodies
 
 logger = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ def shuffled(handlers: Handlers, **kwargs: Any) -> Handlers:
 
 def asap(handlers: Handlers, *, body: bodies.Body, **kwargs: Any) -> Handlers:
     """ Execute one handler at a time, skip on failure, try the next one, retry after the full cycle. """
-    retryfn = lambda handler: state.get_retry_count(body=body, handler=handler)
+    retryfn = lambda handler: states.get_retry_count(body=body, handler=handler)
     return sorted(handlers, key=retryfn)[:1]
 
 
