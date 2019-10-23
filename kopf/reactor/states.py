@@ -51,12 +51,28 @@ and collide with each other (especially critical for multiple updates).
 
 import collections.abc
 import copy
+import dataclasses
 import datetime
-from typing import Optional
+from typing import Optional, Mapping
 
 from kopf.reactor import registries
 from kopf.structs import bodies
 from kopf.structs import patches
+
+
+@dataclasses.dataclass(frozen=True)
+class HandlerOutcome:
+    """
+    An in-memory outcome of one single invocation of one single handler.
+
+    Conceptually, an outcome is similar to the async futures, but some cases
+    are handled specially: e.g., the temporary errors have exceptions,
+    but the handler should be retried later, unlike with the permanent errors.
+    """
+    final: bool
+    delay: Optional[float] = None
+    result: Optional[registries.HandlerResult] = None
+    exception: Optional[Exception] = None
 
 
 def is_started(
@@ -144,89 +160,75 @@ def set_start_time(
     })
 
 
-def set_awake_time(
+def persist_progress(
         *,
+        outcomes: Mapping[registries.HandlerId, HandlerOutcome],
+        patch: patches.Patch,
         body: bodies.Body,
-        patch: patches.Patch,
-        handler: registries.ResourceHandler,
-        delay: Optional[float] = None,
 ) -> None:
-    ts_str: Optional[str]
-    if delay is not None:
-        ts = datetime.datetime.utcnow() + datetime.timedelta(seconds=delay)
-        ts_str = ts.isoformat()
-    else:
-        ts_str = None
-    progress = patch.setdefault('status', {}).setdefault('kopf', {}).setdefault('progress', {})
-    progress.setdefault(handler.id, {}).update({
-        'delayed': ts_str,
-    })
+    current = body.get('status', {}).get('kopf', {}).get('progress', {})
+    storage = patch.setdefault('status', {}).setdefault('kopf', {}).setdefault('progress', {})
+    for handler_id, outcome in outcomes.items():
+        retry = current.get(handler_id, {}).get('retries', None) or 0
+        ts_str: Optional[str]
+        if outcome.delay is not None:
+            ts = datetime.datetime.utcnow() + datetime.timedelta(seconds=outcome.delay)
+            ts_str = ts.isoformat()
+        else:
+            ts_str = None
+
+        if not outcome.final:
+            storage.setdefault(handler_id, {}).update({
+                'delayed': ts_str,
+                'retries': retry + 1,
+            })
+        elif outcome.exception is not None:
+            storage.setdefault(handler_id, {}).update({
+                'stopped': datetime.datetime.utcnow().isoformat(),
+                'failure': True,
+                'retries': retry + 1,
+                'message': f'{outcome.exception}',
+            })
+        else:
+            storage.setdefault(handler_id, {}).update({
+                'stopped': datetime.datetime.utcnow().isoformat(),
+                'success': True,
+                'retries': retry + 1,
+                'message': None,
+            })
 
 
-def set_retry_time(
+def deliver_results(
         *,
-        body: bodies.Body,
+        outcomes: Mapping[registries.HandlerId, HandlerOutcome],
         patch: patches.Patch,
-        handler: registries.ResourceHandler,
-        delay: Optional[float] = None,
 ) -> None:
-    retry = get_retry_count(body=body, handler=handler)
-    progress = patch.setdefault('status', {}).setdefault('kopf', {}).setdefault('progress', {})
-    progress.setdefault(handler.id, {}).update({
-        'retries': retry + 1,
-    })
-    set_awake_time(body=body, patch=patch, handler=handler, delay=delay)
+    """
+    Store the results (as returned from the handlers) to the resource.
 
+    This is not the handlers' state persistence, but the results' persistence.
 
-def store_failure(
-        *,
-        body: bodies.Body,
-        patch: patches.Patch,
-        handler: registries.ResourceHandler,
-        exc: BaseException,
-) -> None:
-    retry = get_retry_count(body=body, handler=handler)
-    progress = patch.setdefault('status', {}).setdefault('kopf', {}).setdefault('progress', {})
-    progress.setdefault(handler.id, {}).update({
-        'stopped': datetime.datetime.utcnow().isoformat(),
-        'failure': True,
-        'retries': retry + 1,
-        'message': f'{exc}',
-    })
+    First, the state persistence is stored under ``.status.kopf.progress``,
+    and can (later) be configured to be stored in different fields for different
+    operators operating the same objects: ``.status.kopf.{somename}.progress``.
+    The handlers' result are stored in the top-level ``.status``.
 
+    Second, the handler results can (also later) be delivered to other objects,
+    e.g. to their owners or label-selected related objects. For this, another
+    class/module will be added.
 
-def store_success(
-        *,
-        body: bodies.Body,
-        patch: patches.Patch,
-        handler: registries.ResourceHandler,
-        result: Optional[registries.HandlerResult] = None,
-) -> None:
-    retry = get_retry_count(body=body, handler=handler)
-    progress = patch.setdefault('status', {}).setdefault('kopf', {}).setdefault('progress', {})
-    progress.setdefault(handler.id, {}).update({
-        'stopped': datetime.datetime.utcnow().isoformat(),
-        'success': True,
-        'retries': retry + 1,
-        'message': None,
-    })
-    store_result(patch=patch, handler=handler, result=result)
-
-
-def store_result(
-        *,
-        patch: patches.Patch,
-        handler: registries.ResourceHandler,
-        result: Optional[registries.HandlerResult] = None,
-) -> None:
-    if result is None:
-        pass
-    elif isinstance(result, collections.abc.Mapping):
-        # TODO: merge recursively (patch-merge), do not overwrite the keys if they are present.
-        patch.setdefault('status', {}).setdefault(handler.id, {}).update(result)
-    else:
-        # TODO? Fail if already present?
-        patch.setdefault('status', {})[handler.id] = copy.deepcopy(result)
+    For now, we keep state- and result persistence in one module, but separated.
+    """
+    for handler_id, outcome in outcomes.items():
+        if outcome.exception is not None:
+            pass
+        elif outcome.result is None:
+            pass
+        elif isinstance(outcome.result, collections.abc.Mapping):
+            # TODO: merge recursively (patch-merge), do not overwrite the keys if they are present.
+            patch.setdefault('status', {}).setdefault(handler_id, {}).update(outcome.result)
+        else:
+            patch.setdefault('status', {})[handler_id] = copy.deepcopy(outcome.result)
 
 
 def purge_progress(
