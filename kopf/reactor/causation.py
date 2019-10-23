@@ -81,13 +81,22 @@ TITLES = {
 @dataclasses.dataclass
 class BaseCause:
     logger: Union[logging.Logger, logging.LoggerAdapter]
+
+
+@dataclasses.dataclass
+class ActivityCause(BaseCause):
+    activity: Activity
+
+
+@dataclasses.dataclass
+class ResourceCause(BaseCause):
     resource: resources.Resource
     patch: patches.Patch
     body: bodies.Body
 
 
 @dataclasses.dataclass
-class ResourceWatchingCause(BaseCause):
+class ResourceWatchingCause(ResourceCause):
     """
     The raw event received from the API.
 
@@ -98,7 +107,7 @@ class ResourceWatchingCause(BaseCause):
 
 
 @dataclasses.dataclass
-class ResourceChangingCause(BaseCause):
+class ResourceChangingCause(ResourceCause):
     """
     The cause is what has caused the whole reaction as a chain of handlers.
 

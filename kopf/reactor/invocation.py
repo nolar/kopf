@@ -67,6 +67,13 @@ async def invoke(
         kwargs.update(
             cause=cause,
             logger=cause.logger,
+        )
+    if isinstance(cause, causation.ActivityCause):
+        kwargs.update(
+            activity=cause.activity,
+        )
+    if isinstance(cause, causation.ResourceCause):
+        kwargs.update(
             patch=cause.patch,
             body=cause.body,
             spec=dicts.DictView(cause.body, 'spec'),
