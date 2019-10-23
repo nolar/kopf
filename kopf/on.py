@@ -34,11 +34,10 @@ def resume(
     """ ``@kopf.on.resume()`` handler for the object resuming on operator (re)start. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
-        actual_registry.register_resource_changing_handler(
+        return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=None, initial=True, id=id, timeout=timeout,
             fn=fn, labels=labels, annotations=annotations)
-        return fn
     return decorator
 
 
@@ -54,11 +53,10 @@ def create(
     """ ``@kopf.on.create()`` handler for the object creation. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
-        actual_registry.register_resource_changing_handler(
+        return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.CREATE, id=id, timeout=timeout,
             fn=fn, labels=labels, annotations=annotations)
-        return fn
     return decorator
 
 
@@ -74,11 +72,10 @@ def update(
     """ ``@kopf.on.update()`` handler for the object update or change. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
-        actual_registry.register_resource_changing_handler(
+        return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.UPDATE, id=id, timeout=timeout,
             fn=fn, labels=labels, annotations=annotations)
-        return fn
     return decorator
 
 
@@ -95,12 +92,11 @@ def delete(
     """ ``@kopf.on.delete()`` handler for the object deletion. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
-        actual_registry.register_resource_changing_handler(
+        return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.DELETE, id=id, timeout=timeout,
             fn=fn, requires_finalizer=bool(not optional),
             labels=labels, annotations=annotations)
-        return fn
     return decorator
 
 
@@ -117,11 +113,10 @@ def field(
     """ ``@kopf.on.field()`` handler for the individual field changes. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
-        actual_registry.register_resource_changing_handler(
+        return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=None, field=field, id=id, timeout=timeout,
             fn=fn, labels=labels, annotations=annotations)
-        return fn
     return decorator
 
 
@@ -136,10 +131,9 @@ def event(
     """ ``@kopf.on.event()`` handler for the silent spies on the events. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
-        actual_registry.register_resource_watching_handler(
+        return actual_registry.register_resource_watching_handler(
             group=group, version=version, plural=plural,
             id=id, fn=fn, labels=labels, annotations=annotations)
-        return fn
     return decorator
 
 
@@ -182,8 +176,7 @@ def this(
     """
     actual_registry = registry if registry is not None else handling.subregistry_var.get()
     def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
-        actual_registry.register(id=id, fn=fn, timeout=timeout)
-        return fn
+        return actual_registry.register(id=id, fn=fn, timeout=timeout)
     return decorator
 
 
