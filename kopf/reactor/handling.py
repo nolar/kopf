@@ -479,7 +479,7 @@ async def _call_handler(
         cause: causation.BaseCause,
         lifecycle: lifecycles.LifeCycleFn,
         **kwargs: Any,
-) -> Any:
+) -> Optional[registries.HandlerResult]:
     """
     Invoke one handler only, according to the calling conventions.
 
@@ -519,4 +519,5 @@ async def _call_handler(
         if not subexecuted_var.get() and isinstance(cause, causation.ResourceChangingCause):
             await execute()
 
-        return result
+        # Since we know that we invoked the handler, we cast "any" result to a handler result.
+        return registries.HandlerResult(result)

@@ -52,7 +52,7 @@ and collide with each other (especially critical for multiple updates).
 import collections.abc
 import copy
 import datetime
-from typing import Any, Optional
+from typing import Optional
 
 from kopf.reactor import registries
 from kopf.structs import bodies
@@ -200,7 +200,7 @@ def store_success(
         body: bodies.Body,
         patch: patches.Patch,
         handler: registries.ResourceHandler,
-        result: Any = None,
+        result: Optional[registries.HandlerResult] = None,
 ) -> None:
     retry = get_retry_count(body=body, handler=handler)
     progress = patch.setdefault('status', {}).setdefault('kopf', {}).setdefault('progress', {})
@@ -217,7 +217,7 @@ def store_result(
         *,
         patch: patches.Patch,
         handler: registries.ResourceHandler,
-        result: Any = None,
+        result: Optional[registries.HandlerResult] = None,
 ) -> None:
     if result is None:
         pass
