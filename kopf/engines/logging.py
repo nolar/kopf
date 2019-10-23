@@ -107,17 +107,20 @@ class ObjectLogger(logging.LoggerAdapter):
         kwargs["extra"] = dict(self.extra, **kwargs.get('extra', {}))
         return msg, kwargs
 
-    def log(
-            self,
-            level: int,
-            msg: str,
-            *args: Any,
-            local: bool = False,
-            **kwargs: Any,
-    ) -> None:
-        if local:
-            kwargs['extra'] = dict(kwargs.pop('extra', {}), k8s_skip=True)
-        super().log(level, msg, *args, **kwargs)
+
+class LocalObjectLogger(ObjectLogger):
+    """
+    Same as `ObjectLogger`, but does not post the messages as k8s-events.
+
+    Used in the resource-watching handlers to log the handler's invocation
+    successes/failures without overloading K8s with excessively many k8s-events.
+
+    This class is used internally only and is not exposed publicly in any way.
+    """
+
+    def log(self, *args: Any, **kwargs: Any) -> None:
+        kwargs['extra'] = dict(kwargs.pop('extra', {}), k8s_skip=True)
+        return super().log(*args, **kwargs)
 
 
 logger = logging.getLogger('kopf.objects')

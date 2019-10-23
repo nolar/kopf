@@ -178,7 +178,7 @@ async def handle_resource_watching_cause(
     Note: K8s-event posting is skipped for `kopf.on.event` handlers,
     as they should be silent. Still, the messages are logged normally.
     """
-    logger = cause.logger
+    logger = logging_engine.LocalObjectLogger(body=cause.body)
     handlers = registry.get_resource_watching_handlers(cause=cause)
     for handler in handlers:
 
@@ -193,10 +193,10 @@ async def handle_resource_watching_cause(
             )
 
         except Exception:
-            logger.exception(f"Handler {handler.id!r} failed with an exception. Will ignore.", local=True)
+            logger.exception(f"Handler {handler.id!r} failed with an exception. Will ignore.")
 
         else:
-            logger.info(f"Handler {handler.id!r} succeeded.", local=True)
+            logger.info(f"Handler {handler.id!r} succeeded.")
             state.store_result(patch=cause.patch, handler=handler, result=result)
 
 
