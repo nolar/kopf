@@ -13,13 +13,14 @@ of the handlers to be executed on each reaction cycle.
 """
 import abc
 import collections
+import dataclasses
 import enum
 import functools
 import logging
 import warnings
 from types import FunctionType, MethodType
 from typing import (Any, MutableMapping, Optional, Sequence, Collection, Iterable, Iterator,
-                    NamedTuple, Union, List, Set, FrozenSet, Mapping, NewType, Callable, cast,
+                    Union, List, Set, FrozenSet, Mapping, NewType, Callable, cast,
                     Generic, TypeVar)
 
 from typing_extensions import Protocol
@@ -70,7 +71,8 @@ class ResourceHandlerFn(Protocol):
 
 
 # A registered handler (function + event meta info).
-class ResourceHandler(NamedTuple):
+@dataclasses.dataclass(frozen=True)
+class ResourceHandler:
     fn: ResourceHandlerFn
     id: HandlerId
     reason: Optional[causation.Reason]
