@@ -17,8 +17,9 @@ and therefore do not trigger the user-defined handlers.
 import asyncio
 import collections.abc
 import datetime
+import logging
 from contextvars import ContextVar
-from typing import Optional, Iterable, Collection, MutableMapping, Any
+from typing import Optional, Union, Iterable, Collection, MutableMapping, Any
 
 from kopf.clients import patching
 from kopf.engines import logging as logging_engine
@@ -178,28 +179,16 @@ async def handle_resource_watching_cause(
     Note: K8s-event posting is skipped for `kopf.on.event` handlers,
     as they should be silent. Still, the messages are logged normally.
     """
-    logger = logging_engine.LocalObjectLogger(body=cause.body)
     handlers = registry.get_resource_watching_handlers(cause=cause)
     outcomes: MutableMapping[registries.HandlerId, states.HandlerOutcome] = {}
     for handler in handlers:
-
-        # The exceptions are handled locally and are not re-raised, to keep the operator running.
-        try:
-            logger.debug(f"Invoking handler {handler.id!r}.")
-
-            result = await _call_handler(
-                handler,
-                cause=cause,
-                lifecycle=lifecycle,
-            )
-
-        except Exception as e:
-            logger.exception(f"Handler {handler.id!r} failed with an exception. Will ignore.")
-            outcomes[handler.id] = states.HandlerOutcome(final=True, exception=e)
-
-        else:
-            logger.info(f"Handler {handler.id!r} succeeded.")
-            outcomes[handler.id] = states.HandlerOutcome(final=True, result=result)
+        outcome = await _execute_handler(
+            handler=handler,
+            cause=cause,
+            lifecycle=lifecycle,
+            ignore_errors=True,
+        )
+        outcomes[handler.id] = outcome
 
     # Store the results, but not the handlers' progress.
     states.deliver_results(outcomes=outcomes, patch=cause.patch)
@@ -366,6 +355,7 @@ async def _execute_handlers(
         lifecycle: lifecycles.LifeCycleFn,
         handlers: Collection[registries.ResourceHandler],
         cause: causation.BaseCause,
+        ignore_errors: bool = False,
         retry_on_errors: bool = True,
 ) -> None:
     """
@@ -403,6 +393,7 @@ async def _execute_handlers(
             handler=handler,
             cause=cause,
             lifecycle=lifecycle,
+            ignore_errors=ignore_errors,
             retry_on_errors=retry_on_errors,
         )
         outcomes[handler.id] = outcome
@@ -433,6 +424,7 @@ async def _execute_handler(
         handler: registries.ResourceHandler,
         cause: causation.BaseCause,
         lifecycle: lifecycles.LifeCycleFn,
+        ignore_errors: bool = False,
         retry_on_errors: bool = True,
 ) -> states.HandlerOutcome:
     """
@@ -445,7 +437,13 @@ async def _execute_handler(
     This method is not supposed to raise any exceptions from the handlers:
     exceptions mean the failure of execution itself.
     """
-    logger = cause.logger
+
+    # Prevent successes/failures from posting k8s-events for resource-watching causes.
+    logger: Union[logging.Logger, logging.LoggerAdapter]
+    if isinstance(cause, causation.ResourceWatchingCause):
+        logger = logging_engine.LocalObjectLogger(body=cause.body)
+    else:
+        logger = cause.logger
 
     # Restore the handler's progress status. It can be useful in the handlers.
     retry = states.get_retry_count(body=cause.body, handler=handler)
@@ -492,7 +490,10 @@ async def _execute_handler(
 
     # Regular errors behave as either temporary or permanent depending on the error strictness.
     except Exception as e:
-        if retry_on_errors:
+        if ignore_errors:
+            logger.exception(f"Handler {handler.id!r} failed with an exception. Will ignore.")
+            return states.HandlerOutcome(final=True, exception=e)
+        elif retry_on_errors:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")
             return states.HandlerOutcome(final=False, exception=e, delay=DEFAULT_RETRY_DELAY)
         else:
