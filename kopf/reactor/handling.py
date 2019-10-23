@@ -165,7 +165,7 @@ async def resource_handler(
 
 async def handle_resource_watching_cause(
         lifecycle: lifecycles.LifeCycleFn,
-        registry: registries.BaseRegistry,
+        registry: registries.OperatorRegistry,
         cause: causation.ResourceWatchingCause,
 ) -> None:
     """
@@ -202,7 +202,7 @@ async def handle_resource_watching_cause(
 
 async def handle_resource_changing_cause(
         lifecycle: lifecycles.LifeCycleFn,
-        registry: registries.BaseRegistry,
+        registry: registries.OperatorRegistry,
         cause: causation.ResourceChangingCause,
 ) -> Optional[float]:
     """
@@ -283,7 +283,7 @@ async def execute(
         *,
         fns: Optional[Iterable[invocation.Invokable]] = None,
         handlers: Optional[Iterable[registries.ResourceHandler]] = None,
-        registry: Optional[registries.BaseRegistry] = None,
+        registry: Optional[registries.ResourceRegistry] = None,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         cause: Optional[causation.BaseCause] = None,
 ) -> None:
