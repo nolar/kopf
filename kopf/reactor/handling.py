@@ -19,7 +19,7 @@ import collections.abc
 import datetime
 import logging
 from contextvars import ContextVar
-from typing import Optional, Union, Iterable, Collection, MutableMapping, Any
+from typing import Optional, Union, Iterable, Collection, Mapping, MutableMapping, Any
 
 from kopf.clients import patching
 from kopf.engines import logging as logging_engine
@@ -152,9 +152,11 @@ async def resource_handler(
 
     # Sleep strictly after patching, never before -- to keep the status proper.
     # The patching above, if done, interrupts the sleep instantly, so we skip it at all.
-    if delay and not patch:
+    if delay and patch:
+        logger.debug(f"Sleeping was skipped because of the patch, {delay} seconds left.")
+    elif delay:
         logger.debug(f"Sleeping for {delay} seconds for the delayed handlers.")
-        unslept = await sleeping.sleep_or_wait(delay, replenished)
+        unslept = await sleeping.sleep_or_wait(min(delay, WAITING_KEEPALIVE_INTERVAL), replenished)
         if unslept is not None:
             logger.debug(f"Sleeping was interrupted by new changes, {unslept} seconds left.")
         else:
@@ -180,15 +182,13 @@ async def handle_resource_watching_cause(
     as they should be silent. Still, the messages are logged normally.
     """
     handlers = registry.get_resource_watching_handlers(cause=cause)
-    outcomes: MutableMapping[registries.HandlerId, states.HandlerOutcome] = {}
-    for handler in handlers:
-        outcome = await _execute_handler(
-            handler=handler,
-            cause=cause,
-            lifecycle=lifecycle,
-            ignore_errors=True,
-        )
-        outcomes[handler.id] = outcome
+    outcomes = await _execute_handlers(
+        lifecycle=lifecycle,
+        handlers=handlers,
+        cause=cause,
+        state=states.State.from_scratch(handlers=handlers),
+        ignore_errors=True,  # affects the log messages
+    )
 
     # Store the results, but not the handlers' progress.
     states.deliver_results(outcomes=outcomes, patch=cause.patch)
@@ -217,20 +217,24 @@ async def handle_resource_changing_cause(
             logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
 
         handlers = registry.get_resource_changing_handlers(cause=cause)
+        state = states.State.from_body(body=cause.body, handlers=handlers)
         if handlers:
-            try:
-                await _execute_handlers(
-                    lifecycle=lifecycle,
-                    handlers=handlers,
-                    cause=cause,
-                )
-            except HandlerChildrenRetry as e:
-                # on the top-level, no patches -- it is pre-patched.
-                delay = e.delay
-                done = False
-            else:
+            outcomes = await _execute_handlers(
+                lifecycle=lifecycle,
+                handlers=handlers,
+                cause=cause,
+                state=state,
+            )
+            state = state.with_outcomes(outcomes)
+            state.store(patch=cause.patch)
+            states.deliver_results(outcomes=outcomes, patch=cause.patch)
+
+            if state.done:
                 logger.info(f"All handlers succeeded for {title}.")
-                done = True
+                state.purge(patch=cause.patch)
+
+            done = state.done
+            delay = state.delay
         else:
             skip = True
 
@@ -238,8 +242,6 @@ async def handle_resource_changing_cause(
     if done or skip:
         extra_fields = registry.get_extra_fields(resource=cause.resource)
         lastseen.refresh_essence(body=body, patch=patch, extra_fields=extra_fields)
-        if done:
-            states.purge_progress(body=body, patch=patch)
         if cause.reason == causation.Reason.DELETE:
             logger.debug("Removing the finalizer, thus allowing the actual deletion.")
             finalizers.remove_finalizers(body=body, patch=patch)
@@ -343,86 +345,65 @@ async def execute(
                            "no practical use (there are no retries or state tracking).")
 
     # Execute the real handlers (all or few or one of them, as per the lifecycle).
-    # Raises `HandlerChildrenRetry` if the execute should be continued on the next iteration.
-    await _execute_handlers(
+    handlers = registry.get_handlers(cause=cause)
+    state = states.State.from_body(body=cause.body, handlers=handlers)
+    outcomes = await _execute_handlers(
         lifecycle=lifecycle,
-        handlers=registry.get_handlers(cause=cause),
+        handlers=handlers,
         cause=cause,
+        state=state,
     )
+    state = state.with_outcomes(outcomes)
+    state.store(patch=cause.patch)
+    states.deliver_results(outcomes=outcomes, patch=cause.patch)
+
+    # Escalate `HandlerChildrenRetry` if the execute should be continued on the next iteration.
+    if not state.done:
+        raise HandlerChildrenRetry(delay=state.delay)
 
 
 async def _execute_handlers(
         lifecycle: lifecycles.LifeCycleFn,
         handlers: Collection[registries.ResourceHandler],
         cause: causation.BaseCause,
+        state: states.State,
         ignore_errors: bool = False,
         retry_on_errors: bool = True,
-) -> None:
+) -> Mapping[registries.HandlerId, states.HandlerOutcome]:
     """
     Call the next handler(s) from the chain of the handlers.
 
-    Keep the record on the progression of the handlers in the object's status,
+    Keep the record on the progression of the handlers in the object's state,
     and use it on the next invocation to determined which handler(s) to call.
 
     This routine is used both for the global handlers (via global registry),
     and for the sub-handlers (via a simple registry of the current handler).
-
-    Raises `HandlerChildrenRetry` if there are children handlers to be executed
-    on the next call, and implicitly provokes such a call by making the changes
-    to the status fields (on the handler progression and number of retries).
-
-    Exits normally if all handlers for this cause are fully done.
     """
 
     # Filter and select the handlers to be executed right now, on this event reaction cycle.
-    handlers_done = [h for h in handlers if states.is_finished(body=cause.body, handler=h)]
-    handlers_wait = [h for h in handlers if states.is_sleeping(body=cause.body, handler=h)]
-    handlers_todo = [h for h in handlers if states.is_awakened(body=cause.body, handler=h)]
-    handlers_plan = [h for h in await invocation.invoke(lifecycle, handlers_todo, cause=cause)]
-    handlers_left = [h for h in handlers_todo if h.id not in {h.id for h in handlers_plan}]
-
-    # Set the timestamps -- even if not executed on this event, but just got registered.
-    for handler in handlers:
-        if not states.is_started(body=cause.body, handler=handler):
-            states.set_start_time(body=cause.body, patch=cause.patch, handler=handler)
+    handlers_todo = [h for h in handlers if state[h.id].awakened]
+    handlers_plan = await invocation.invoke(lifecycle, handlers_todo, cause=cause, state=state)
 
     # Execute all planned (selected) handlers in one event reaction cycle, even if there are few.
     outcomes: MutableMapping[registries.HandlerId, states.HandlerOutcome] = {}
     for handler in handlers_plan:
         outcome = await _execute_handler(
             handler=handler,
+            state=state[handler.id],
             cause=cause,
-            lifecycle=lifecycle,
+            lifecycle=lifecycle,  # just a default for the sub-handlers, not used directly.
             ignore_errors=ignore_errors,
             retry_on_errors=retry_on_errors,
         )
         outcomes[handler.id] = outcome
-        if not outcome.final:
-            handlers_left.append(handler)
 
-    states.persist_progress(outcomes=outcomes, patch=cause.patch, body=cause.body)
-    states.deliver_results(outcomes=outcomes, patch=cause.patch)
-
-    # Provoke the retry of the handling cycle if there were any unfinished handlers,
-    # either because they were not selected by the lifecycle, or failed and need a retry.
-    if handlers_left:
-        raise HandlerChildrenRetry(delay=None)
-
-    # If there are delayed handlers, block this object's cycle; but do keep-alives every few mins.
-    # Other (non-delayed) handlers will continue as normlally, due to raise few lines above.
-    # Other objects will continue as normally in their own handling asyncio tasks.
-    if handlers_wait:
-        now = datetime.datetime.utcnow()
-        limit = now + datetime.timedelta(seconds=WAITING_KEEPALIVE_INTERVAL)
-        times = [states.get_awake_time(body=cause.body, handler=h) for h in handlers_wait]
-        until = min([t for t in times if t is not None] + [limit])  # the soonest awake datetime.
-        delay = max(0, (until - now).total_seconds())
-        raise HandlerChildrenRetry(delay=delay)
+    return outcomes
 
 
 async def _execute_handler(
         handler: registries.ResourceHandler,
         cause: causation.BaseCause,
+        state: states.HandlerState,
         lifecycle: lifecycles.LifeCycleFn,
         ignore_errors: bool = False,
         retry_on_errors: bool = True,
@@ -445,24 +426,19 @@ async def _execute_handler(
     else:
         logger = cause.logger
 
-    # Restore the handler's progress status. It can be useful in the handlers.
-    retry = states.get_retry_count(body=cause.body, handler=handler)
-    started = states.get_start_time(body=cause.body, handler=handler, patch=cause.patch)
-    runtime = datetime.datetime.utcnow() - (started if started else datetime.datetime.utcnow())
-
     # The exceptions are handled locally and are not re-raised, to keep the operator running.
     try:
         logger.debug(f"Invoking handler {handler.id!r}.")
 
-        if handler.timeout is not None and runtime.total_seconds() > handler.timeout:
-            raise HandlerTimeoutError(f"Handler {handler.id!r} has timed out after {runtime}.")
+        if handler.timeout is not None and state.runtime.total_seconds() > handler.timeout:
+            raise HandlerTimeoutError(f"Handler {handler.id!r} has timed out after {state.runtime}.")
 
         result = await _call_handler(
             handler,
             cause=cause,
-            retry=retry,
-            started=started,
-            runtime=runtime,
+            retry=state.retries,
+            started=state.started,
+            runtime=state.runtime,
             lifecycle=lifecycle,  # just a default for the sub-handlers, not used directly.
         )
 

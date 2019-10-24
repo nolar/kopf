@@ -16,7 +16,6 @@ from typing_extensions import Protocol
 
 from kopf.reactor import registries
 from kopf.reactor import states
-from kopf.structs import bodies
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +34,7 @@ class LifeCycleFn(Protocol):
             self,
             handlers: Handlers,
             *,
-            body: bodies.Body,
+            state: states.State,
             **kwargs: Any,
     ) -> Handlers: ...
 
@@ -60,10 +59,13 @@ def shuffled(handlers: Handlers, **kwargs: Any) -> Handlers:
     return random.sample(handlers, k=len(handlers)) if handlers else []
 
 
-def asap(handlers: Handlers, *, body: bodies.Body, **kwargs: Any) -> Handlers:
+def asap(handlers: Handlers, *, state: states.State, **kwargs: Any) -> Handlers:
     """ Execute one handler at a time, skip on failure, try the next one, retry after the full cycle. """
-    retryfn = lambda handler: states.get_retry_count(body=body, handler=handler)
-    return sorted(handlers, key=retryfn)[:1]
+
+    def keyfn(handler: registries.ResourceHandler) -> int:
+        return state[handler.id].retries or 0
+
+    return sorted(handlers, key=keyfn)[:1]
 
 
 _default_lifecycle: LifeCycleFn = asap
