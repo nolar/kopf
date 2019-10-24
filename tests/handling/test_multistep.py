@@ -40,11 +40,11 @@ async def test_1st_step_stores_progress_by_patching(
     assert patch['status']['kopf']['progress'][name1]['retries'] == 1
     assert patch['status']['kopf']['progress'][name1]['success'] is True
 
-    assert 'retries' not in patch['status']['kopf']['progress'][name2]
-    assert 'success' not in patch['status']['kopf']['progress'][name2]
+    assert patch['status']['kopf']['progress'][name2]['retries'] == 0
+    assert patch['status']['kopf']['progress'][name2]['success'] is False
 
-    assert 'started' in patch['status']['kopf']['progress'][name1]
-    assert 'started' in patch['status']['kopf']['progress'][name2]
+    assert patch['status']['kopf']['progress'][name1]['started']
+    assert patch['status']['kopf']['progress'][name2]['started']
 
 
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)

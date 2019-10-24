@@ -1,7 +1,7 @@
 import pytest
 
 import kopf
-from kopf.reactor.states import set_retry_time, get_retry_count
+from kopf.reactor.states import State, HandlerOutcome
 
 
 @pytest.mark.parametrize('lifecycle', [
@@ -12,8 +12,9 @@ from kopf.reactor.states import set_retry_time, get_retry_count
     kopf.lifecycles.asap,
 ])
 def test_with_empty_input(lifecycle):
+    state = State.from_scratch(handlers=[])
     handlers = []
-    selected = lifecycle(handlers, body={})
+    selected = lifecycle(handlers, state=state)
     assert isinstance(selected, (tuple, list))
     assert len(selected) == 0
 
@@ -78,34 +79,34 @@ def test_shuffled_takes_them_all():
 
 
 def test_asap_takes_the_first_one_when_no_retries(mocker):
-    body = {}
     handler1 = mocker.Mock(id='id1', spec_set=['id'])
     handler2 = mocker.Mock(id='id2', spec_set=['id'])
     handler3 = mocker.Mock(id='id3', spec_set=['id'])
 
+    state = State.from_scratch(handlers=[handler1, handler2, handler3])
     handlers = [handler1, handler2, handler3]
-    selected = kopf.lifecycles.asap(handlers, body=body)
+    selected = kopf.lifecycles.asap(handlers, state=state)
     assert isinstance(selected, (tuple, list))
     assert len(selected) == 1
     assert selected[0] is handler1
 
 
 def test_asap_takes_the_least_retried(mocker):
-    body = {}
     handler1 = mocker.Mock(id='id1', spec_set=['id'])
     handler2 = mocker.Mock(id='id2', spec_set=['id'])
     handler3 = mocker.Mock(id='id3', spec_set=['id'])
 
     # Set the pre-existing state, and verify that it was set properly.
-    set_retry_time(body=body, patch=body, handler=handler1)
-    set_retry_time(body=body, patch=body, handler=handler1)
-    set_retry_time(body=body, patch=body, handler=handler3)
-    assert get_retry_count(body=body, handler=handler1) == 2
-    assert get_retry_count(body=body, handler=handler2) == 0
-    assert get_retry_count(body=body, handler=handler3) == 1
+    state = State.from_scratch(handlers=[handler1, handler2, handler3])
+    state = state.with_outcomes({handler1.id: HandlerOutcome(final=False)})
+    state = state.with_outcomes({handler1.id: HandlerOutcome(final=False)})
+    state = state.with_outcomes({handler3.id: HandlerOutcome(final=False)})
+    assert state[handler1.id].retries == 2
+    assert state[handler2.id].retries == 0
+    assert state[handler3.id].retries == 1
 
     handlers = [handler1, handler2, handler3]
-    selected = kopf.lifecycles.asap(handlers, body=body)
+    selected = kopf.lifecycles.asap(handlers, state=state)
     assert isinstance(selected, (tuple, list))
     assert len(selected) == 1
     assert selected[0] is handler2

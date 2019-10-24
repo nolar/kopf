@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import logging
 
 import freezegun
@@ -9,16 +10,17 @@ from kopf.reactor.causation import Reason, HANDLER_REASONS
 from kopf.reactor.handling import TemporaryError
 from kopf.reactor.handling import WAITING_KEEPALIVE_INTERVAL
 from kopf.reactor.handling import resource_handler
+from kopf.reactor.states import HandlerState
 from kopf.structs.finalizers import FINALIZER
 
 
 @pytest.mark.parametrize('cause_reason', HANDLER_REASONS)
-@pytest.mark.parametrize('now, ts, delay', [
+@pytest.mark.parametrize('now, delayed_iso, delay', [
     ['2020-01-01T00:00:00', '2020-01-01T00:04:56.789000', 4 * 60 + 56.789],
 ], ids=['fast'])
 async def test_delayed_handlers_progress(
         registry, handlers, resource, cause_mock, cause_reason,
-        caplog, assert_logs, k8s_mocked, now, ts, delay):
+        caplog, assert_logs, k8s_mocked, now, delayed_iso, delay):
     caplog.set_level(logging.DEBUG)
 
     handlers.create_mock.side_effect = TemporaryError("oops", delay=delay)
@@ -49,7 +51,7 @@ async def test_delayed_handlers_progress(
 
     fname = f'{cause_reason}_fn'
     patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
-    assert patch['status']['kopf']['progress'][fname]['delayed'] == ts
+    assert patch['status']['kopf']['progress'][fname]['delayed'] == delayed_iso
 
     assert_logs([
         "Invoking handler .+",
@@ -58,22 +60,25 @@ async def test_delayed_handlers_progress(
 
 
 @pytest.mark.parametrize('cause_reason', HANDLER_REASONS)
-@pytest.mark.parametrize('now, ts, delay', [
+@pytest.mark.parametrize('now, delayed_iso, delay', [
     ['2020-01-01T00:00:00', '2020-01-01T00:04:56.789000', 4 * 60 + 56.789],
     ['2020-01-01T00:00:00', '2099-12-31T23:59:59.000000', WAITING_KEEPALIVE_INTERVAL],
 ], ids=['fast', 'slow'])
 async def test_delayed_handlers_sleep(
         registry, handlers, resource, cause_mock, cause_reason,
-        caplog, assert_logs, k8s_mocked, now, ts, delay):
+        caplog, assert_logs, k8s_mocked, now, delayed_iso, delay):
     caplog.set_level(logging.DEBUG)
 
+    # Simulate the original persisted state of the resource.
+    started_dt = datetime.datetime.fromisoformat('2000-01-01T00:00:00')  # long time ago is fine.
+    delayed_dt = datetime.datetime.fromisoformat(delayed_iso)
     cause_mock.reason = cause_reason
     cause_mock.body.update({
         'status': {'kopf': {'progress': {
-            'create_fn': {'delayed': ts},
-            'update_fn': {'delayed': ts},
-            'delete_fn': {'delayed': ts},
-            'resume_fn': {'delayed': ts},
+            'create_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_dict(),
+            'update_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_dict(),
+            'delete_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_dict(),
+            'resume_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_dict(),
         }}}
     })
     # make sure the finalizer is added since there are mandatory deletion handlers

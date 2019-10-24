@@ -5,22 +5,7 @@ from unittest.mock import Mock
 import freezegun
 import pytest
 
-from kopf.reactor.states import (
-    is_started,
-    is_sleeping,
-    is_awakened,
-    is_finished,
-    get_start_time,
-    get_awake_time,
-    get_retry_count,
-    set_start_time,
-    set_awake_time,
-    set_retry_time,
-    store_failure,
-    store_success,
-    store_result,
-    purge_progress,
-)
+from kopf.reactor.states import HandlerOutcome, State, deliver_results
 
 # Timestamps: time zero (0), before (B), after (A), and time zero+1s (1).
 TSB = datetime.datetime(2020, 12, 31, 23, 59, 59, 000000)
@@ -31,6 +16,7 @@ TSB_ISO = '2020-12-31T23:59:59.000000'
 TS0_ISO = '2020-12-31T23:59:59.123456'
 TS1_ISO = '2021-01-01T00:00:00.123456'
 TSA_ISO = '2020-12-31T23:59:59.999999'
+ZERO_DELTA = datetime.timedelta(seconds=0)
 
 
 @pytest.fixture()
@@ -38,17 +24,51 @@ def handler():
     return Mock(id='some-id', spec_set=['id'])
 
 
+@freezegun.freeze_time(TS0)
+def test_always_started_when_created_from_scratch(handler):
+    patch = {}
+    state = State.from_scratch(handlers=[handler])
+    state.store(patch=patch)
+    assert patch['status']['kopf']['progress']['some-id']['started'] == TS0_ISO
+
+
 @pytest.mark.parametrize('expected, body', [
-    (False, {}),
-    (False, {'status': {}}),
-    (False, {'status': {'kopf': {}}}),
-    (False, {'status': {'kopf': {'progress': {}}}}),
-    (False, {'status': {'kopf': {'progress': {'etc-id': {}}}}}),
-    (True , {'status': {'kopf': {'progress': {'some-id': {}}}}}),
+    (TS0_ISO, {}),
+    (TS0_ISO, {'status': {}}),
+    (TS0_ISO, {'status': {'kopf': {}}}),
+    (TS0_ISO, {'status': {'kopf': {'progress': {}}}}),
+    (TS0_ISO, {'status': {'kopf': {'progress': {'some-id': {}}}}}),
+    (TS0_ISO, {'status': {'kopf': {'progress': {'some-id': {'started': None}}}}}),
+    (TS0_ISO, {'status': {'kopf': {'progress': {'some-id': {'started': TS0_ISO}}}}}),
+    (TSB_ISO, {'status': {'kopf': {'progress': {'some-id': {'started': TSB_ISO}}}}}),
+    (TSA_ISO, {'status': {'kopf': {'progress': {'some-id': {'started': TSA_ISO}}}}}),
 ])
-def test_is_started(handler, expected, body):
+@freezegun.freeze_time(TS0)
+def test_always_started_when_created_from_body(handler, body, expected):
     origbody = copy.deepcopy(body)
-    result = is_started(body=body, handler=handler)
+    patch = {}
+    state = State.from_body(body=body, handlers=[handler])
+    state.store(patch=patch)
+    assert patch['status']['kopf']['progress']['some-id']['started'] == expected
+    assert body == origbody  # not modified
+
+
+@pytest.mark.parametrize('expected, body', [
+    (ZERO_DELTA, {}),
+    (ZERO_DELTA, {'status': {}}),
+    (ZERO_DELTA, {'status': {'kopf': {}}}),
+    (ZERO_DELTA, {'status': {'kopf': {'progress': {}}}}),
+    (ZERO_DELTA, {'status': {'kopf': {'progress': {'some-id': {}}}}}),
+    (ZERO_DELTA, {'status': {'kopf': {'progress': {'some-id': {'started': None}}}}}),
+    (ZERO_DELTA, {'status': {'kopf': {'progress': {'some-id': {'started': TS0_ISO}}}}}),
+    (TS0 - TSB, {'status': {'kopf': {'progress': {'some-id': {'started': TSB_ISO}}}}}),
+    (TS0 - TSA, {'status': {'kopf': {'progress': {'some-id': {'started': TSA_ISO}}}}}),
+])
+@freezegun.freeze_time(TS0)
+def test_runtime(handler, expected, body):
+    origbody = copy.deepcopy(body)
+    state = State.from_body(body=body, handlers=[handler])
+    result = state[handler.id].runtime
     assert result == expected
     assert body == origbody  # not modified
 
@@ -66,9 +86,10 @@ def test_is_started(handler, expected, body):
     (True , {'status': {'kopf': {'progress': {'some-id': {'success': True}}}}}),
     (True , {'status': {'kopf': {'progress': {'some-id': {'failure': True}}}}}),
 ])
-def test_is_finished(handler, expected, body):
+def test_finished_flag(handler, expected, body):
     origbody = copy.deepcopy(body)
-    result = is_finished(body=body, handler=handler)
+    state = State.from_body(body=body, handlers=[handler])
+    result = state[handler.id].finished
     assert result == expected
     assert body == origbody  # not modified
 
@@ -101,9 +122,10 @@ def test_is_finished(handler, expected, body):
     (True , {'status': {'kopf': {'progress': {'some-id': {'delayed': TSA_ISO, 'failure': None}}}}}),
 ])
 @freezegun.freeze_time(TS0)
-def test_is_sleeping(handler, expected, body):
+def test_sleeping_flag(handler, expected, body):
     origbody = copy.deepcopy(body)
-    result = is_sleeping(body=body, handler=handler)
+    state = State.from_body(body=body, handlers=[handler])
+    result = state[handler.id].sleeping
     assert result == expected
     assert body == origbody  # not modified
 
@@ -136,9 +158,10 @@ def test_is_sleeping(handler, expected, body):
     (False, {'status': {'kopf': {'progress': {'some-id': {'delayed': TSA_ISO, 'failure': None}}}}}),
 ])
 @freezegun.freeze_time(TS0)
-def test_is_awakened(handler, expected, body):
+def test_awakened_flag(handler, expected, body):
     origbody = copy.deepcopy(body)
-    result = is_awakened(body=body, handler=handler)
+    state = State.from_body(body=body, handlers=[handler])
+    result = state[handler.id].awakened
     assert result == expected
     assert body == origbody  # not modified
 
@@ -152,38 +175,12 @@ def test_is_awakened(handler, expected, body):
     (None, {'status': {'kopf': {'progress': {'some-id': {'delayed': None}}}}}),
     (TS0, {'status': {'kopf': {'progress': {'some-id': {'delayed': TS0_ISO}}}}}),
 ])
-def test_get_awake_time(handler, expected, body):
+def test_awakening_time(handler, expected, body):
     origbody = copy.deepcopy(body)
-    result = get_awake_time(body=body, handler=handler)
+    state = State.from_body(body=body, handlers=[handler])
+    result = state[handler.id].delayed
     assert result == expected
     assert body == origbody  # not modified
-
-
-@pytest.mark.parametrize('expected, body, patch', [
-    (None, {}, {}),
-    (None, {'status': {}}, {}),
-    (None, {'status': {'kopf': {}}}, {}),
-    (None, {'status': {'kopf': {'progress': {}}}}, {}),
-    (None, {'status': {'kopf': {'progress': {'some-id': {}}}}}, {}),
-    (None, {'status': {'kopf': {'progress': {'some-id': {'started': None}}}}}, {}),
-    (TS0, {'status': {'kopf': {'progress': {'some-id': {'started': TS0_ISO}}}}}, {}),
-    (None, {}, {'status': {}}),
-    (None, {}, {'status': {'kopf': {}}}),
-    (None, {}, {'status': {'kopf': {'progress': {}}}}),
-    (None, {}, {'status': {'kopf': {'progress': {'some-id': {}}}}}),
-    (None, {}, {'status': {'kopf': {'progress': {'some-id': {'started': None}}}}}),
-    (TS0, {}, {'status': {'kopf': {'progress': {'some-id': {'started': TS0_ISO}}}}}),
-    (TSB,  # the patch has priority
-     {'status': {'kopf': {'progress': {'some-id': {'started': TSA_ISO}}}}},
-     {'status': {'kopf': {'progress': {'some-id': {'started': TSB_ISO}}}}}),
-])
-def test_get_start_time(handler, expected, body, patch):
-    origbody = copy.deepcopy(body)
-    origpatch = copy.deepcopy(patch)
-    result = get_start_time(body=body, patch=patch, handler=handler)
-    assert result == expected
-    assert body == origbody  # not modified
-    assert patch == origpatch  # not modified
 
 
 @pytest.mark.parametrize('expected, body', [
@@ -196,153 +193,112 @@ def test_get_start_time(handler, expected, body, patch):
 ])
 def test_get_retry_count(handler, expected, body):
     origbody = copy.deepcopy(body)
-    result = get_retry_count(body=body, handler=handler)
+    state = State.from_body(body=body, handlers=[handler])
+    result = state[handler.id].retries
     assert result == expected
     assert body == origbody  # not modified
 
 
-@pytest.mark.parametrize('body, expected', [
-    ({}, {'status': {'kopf': {'progress': {'some-id': {'started': TS0_ISO}}}}}),
-])
-@freezegun.freeze_time(TS0)
-def test_set_start_time(handler, expected, body):
-    origbody = copy.deepcopy(body)
-    patch = {}
-    set_start_time(body=body, patch=patch, handler=handler)
-    assert patch == expected
-    assert body == origbody  # not modified
-
-
 @pytest.mark.parametrize('body, delay, expected', [
-    ({}, None, {'status': {'kopf': {'progress': {'some-id': {'delayed': None}}}}}),
-    ({}, 0, {'status': {'kopf': {'progress': {'some-id': {'delayed': TS0_ISO}}}}}),
-    ({}, 1, {'status': {'kopf': {'progress': {'some-id': {'delayed': TS1_ISO}}}}}),
+    ({}, None, None),
+    ({}, 0, TS0_ISO),
+    ({}, 1, TS1_ISO),
 ])
 @freezegun.freeze_time(TS0)
 def test_set_awake_time(handler, expected, body, delay):
     origbody = copy.deepcopy(body)
     patch = {}
-    set_awake_time(body=body, patch=patch, handler=handler, delay=delay)
-    assert patch == expected
+    state = State.from_body(body=body, handlers=[handler])
+    state = state.with_outcomes(outcomes={handler.id: HandlerOutcome(final=False, delay=delay)})
+    state.store(patch=patch)
+    assert patch['status']['kopf']['progress']['some-id'].get('delayed') == expected
     assert body == origbody  # not modified
 
 
-@pytest.mark.parametrize('body, delay, expected', [
-    ({}, None,
-     {'status': {'kopf': {'progress': {'some-id': {'retries': 1, 'delayed': None}}}}}),
-    ({}, 0,
-     {'status': {'kopf': {'progress': {'some-id': {'retries': 1, 'delayed': TS0_ISO}}}}}),
-    ({}, 1,
-     {'status': {'kopf': {'progress': {'some-id': {'retries': 1, 'delayed': TS1_ISO}}}}}),
+@pytest.mark.parametrize('expected_retries, expected_delayed, delay, body', [
+    (1, None, None, {}),
+    (1, TS0_ISO, 0, {}),
+    (1, TS1_ISO, 1, {}),
 
-    ({'status': {'kopf': {'progress': {'some-id': {'retries': None}}}}}, None,
-     {'status': {'kopf': {'progress': {'some-id': {'retries': 1, 'delayed': None}}}}}),
-    ({'status': {'kopf': {'progress': {'some-id': {'retries': None}}}}}, 0,
-     {'status': {'kopf': {'progress': {'some-id': {'retries': 1, 'delayed': TS0_ISO}}}}}),
-    ({'status': {'kopf': {'progress': {'some-id': {'retries': None}}}}}, 1,
-     {'status': {'kopf': {'progress': {'some-id': {'retries': 1, 'delayed': TS1_ISO}}}}}),
+    (1, None, None, {'status': {'kopf': {'progress': {'some-id': {'retries': None}}}}}),
+    (1, TS0_ISO, 0, {'status': {'kopf': {'progress': {'some-id': {'retries': None}}}}}),
+    (1, TS1_ISO, 1, {'status': {'kopf': {'progress': {'some-id': {'retries': None}}}}}),
 
-    ({'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}, None,
-     {'status': {'kopf': {'progress': {'some-id': {'retries': 6, 'delayed': None}}}}}),
-    ({'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}, 0,
-     {'status': {'kopf': {'progress': {'some-id': {'retries': 6, 'delayed': TS0_ISO}}}}}),
-    ({'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}, 1,
-     {'status': {'kopf': {'progress': {'some-id': {'retries': 6, 'delayed': TS1_ISO}}}}}),
+    (6, None, None, {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}),
+    (6, TS0_ISO, 0, {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}),
+    (6, TS1_ISO, 1, {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}),
 ])
 @freezegun.freeze_time(TS0)
-def test_set_retry_time(handler, expected, body, delay):
+def test_set_retry_time(handler, expected_retries, expected_delayed, body, delay):
     origbody = copy.deepcopy(body)
     patch = {}
-    set_retry_time(body=body, patch=patch, handler=handler, delay=delay)
-    assert patch == expected
+    state = State.from_body(body=body, handlers=[handler])
+    state = state.with_outcomes(outcomes={handler.id: HandlerOutcome(final=False, delay=delay)})
+    state.store(patch=patch)
+    assert patch['status']['kopf']['progress']['some-id']['retries'] == expected_retries
+    assert patch['status']['kopf']['progress']['some-id']['delayed'] == expected_delayed
     assert body == origbody  # not modified
 
 
-@pytest.mark.parametrize('body, expected', [
-    ({},
-     {'status': {'kopf': {'progress': {'some-id': {'stopped': TS0_ISO,
-                                                   'failure': True,
-                                                   'retries': 1,
-                                                   'message': 'some-error'}}}}}),
-
-    ({'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}},
-     {'status': {'kopf': {'progress': {'some-id': {'stopped': TS0_ISO,
-                                                   'failure': True,
-                                                   'retries': 6,
-                                                   'message': 'some-error'}}}}}),
+@pytest.mark.parametrize('expected_retries, expected_stopped, body', [
+    (1, TS0_ISO, {}),
+    (6, TS0_ISO, {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}),
 ])
 @freezegun.freeze_time(TS0)
-def test_store_failure(handler, expected, body):
+def test_store_failure(handler, expected_retries, expected_stopped, body):
+    error = Exception('some-error')
     origbody = copy.deepcopy(body)
     patch = {}
-    store_failure(body=body, patch=patch, handler=handler, exc=Exception("some-error"))
-    assert patch == expected
+    state = State.from_body(body=body, handlers=[handler])
+    state = state.with_outcomes(outcomes={handler.id: HandlerOutcome(final=True, exception=error)})
+    state.store(patch=patch)
+    assert patch['status']['kopf']['progress']['some-id']['success'] is False
+    assert patch['status']['kopf']['progress']['some-id']['failure'] is True
+    assert patch['status']['kopf']['progress']['some-id']['retries'] == expected_retries
+    assert patch['status']['kopf']['progress']['some-id']['stopped'] == expected_stopped
+    assert patch['status']['kopf']['progress']['some-id']['message'] == 'some-error'
     assert body == origbody  # not modified
 
 
-@pytest.mark.parametrize('result, body, expected', [
-
-    # With no result, it updates only the progress.
-    (None,
-     {},
-     {'status': {'kopf': {'progress': {'some-id': {'stopped': TS0_ISO,
-                                                   'success': True,
-                                                   'retries': 1,
-                                                   'message': None}}}}}),
-    (None,
-     {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}},
-     {'status': {'kopf': {'progress': {'some-id': {'stopped': TS0_ISO,
-                                                   'success': True,
-                                                   'retries': 6,
-                                                   'message': None}}}}}),
-
-    # With the result, it updates also the status.
-    ({'field': 'value'},
-     {},
-     {'status': {'kopf': {'progress': {'some-id': {'stopped': TS0_ISO,
-                                                   'success': True,
-                                                   'retries': 1,
-                                                   'message': None}}},
-                 'some-id': {'field': 'value'}}}),
-    ({'field': 'value'},
-     {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}},
-     {'status': {'kopf': {'progress': {'some-id': {'stopped': TS0_ISO,
-                                                   'success': True,
-                                                   'retries': 6,
-                                                   'message': None}}},
-                 'some-id': {'field': 'value'}}}),
+@pytest.mark.parametrize('expected_retries, expected_stopped, body', [
+    (1, TS0_ISO, {}),
+    (6, TS0_ISO, {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}),
 ])
 @freezegun.freeze_time(TS0)
-def test_store_success(handler, expected, body, result):
+def test_store_success(handler, expected_retries, expected_stopped, body):
     origbody = copy.deepcopy(body)
     patch = {}
-    store_success(body=body, patch=patch, handler=handler, result=result)
-    assert patch == expected
+    state = State.from_body(body=body, handlers=[handler])
+    state = state.with_outcomes(outcomes={handler.id: HandlerOutcome(final=True)})
+    state.store(patch=patch)
+    assert patch['status']['kopf']['progress']['some-id']['success'] is True
+    assert patch['status']['kopf']['progress']['some-id']['failure'] is False
+    assert patch['status']['kopf']['progress']['some-id']['retries'] == expected_retries
+    assert patch['status']['kopf']['progress']['some-id']['stopped'] == expected_stopped
+    assert patch['status']['kopf']['progress']['some-id']['message'] is None
     assert body == origbody  # not modified
 
 
-
-@pytest.mark.parametrize('result, expected', [
-    (None,
-     {}),
-    ({'field': 'value'},
-     {'status': {'some-id': {'field': 'value'}}}),
-    ('string',
-     {'status': {'some-id': 'string'}}),
+@pytest.mark.parametrize('result, expected_patch', [
+    (None, {}),
+    ('string', {'status': {'some-id': 'string'}}),
+    ({'field': 'value'}, {'status': {'some-id': {'field': 'value'}}}),
 ])
-def test_store_result(handler, expected, result):
+def test_store_result(handler, expected_patch, result):
     patch = {}
-    store_result(patch=patch, handler=handler, result=result)
-    assert patch == expected
+    outcomes = {handler.id: HandlerOutcome(final=True, result=result)}
+    deliver_results(outcomes=outcomes, patch=patch)
+    assert patch == expected_patch
 
 
 @pytest.mark.parametrize('body', [
     ({}),
     ({'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}),
 ])
-def test_purge_progress(body):
+def test_purge_progress(handler, body):
     origbody = copy.deepcopy(body)
     patch = {}
-    purge_progress(body=body, patch=patch)
+    state = State.from_body(body=body, handlers=[handler])
+    state.purge(patch=patch)
     assert patch == {'status': {'kopf': {'progress': None}}}
     assert body == origbody  # not modified
