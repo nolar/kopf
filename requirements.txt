@@ -19,5 +19,6 @@ isort>=5.5.0
 certvalidator
 certbuilder
 pyngrok
+lxml
 astpath[xpath]
 import-linter
