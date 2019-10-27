@@ -1,10 +1,44 @@
 import pytest
 
 import kopf
-from kopf.reactor.causation import Reason
+from kopf.reactor.causation import Reason, Activity
 from kopf.reactor.handling import subregistry_var
 from kopf.reactor.registries import ErrorsMode, OperatorRegistry, ResourceChangingRegistry
 from kopf.structs.resources import Resource
+
+
+def test_on_startup_minimal():
+    registry = kopf.get_default_registry()
+
+    @kopf.on.startup()
+    def fn(**_):
+        pass
+
+    handlers = registry.get_activity_handlers(activity=Activity.STARTUP)
+    assert len(handlers) == 1
+    assert handlers[0].fn is fn
+    assert handlers[0].activity == Activity.STARTUP
+    assert handlers[0].errors is None
+    assert handlers[0].timeout is None
+    assert handlers[0].retries is None
+    assert handlers[0].cooldown is None
+
+
+def test_on_cleanup_minimal():
+    registry = kopf.get_default_registry()
+
+    @kopf.on.cleanup()
+    def fn(**_):
+        pass
+
+    handlers = registry.get_activity_handlers(activity=Activity.CLEANUP)
+    assert len(handlers) == 1
+    assert handlers[0].fn is fn
+    assert handlers[0].activity == Activity.CLEANUP
+    assert handlers[0].errors is None
+    assert handlers[0].timeout is None
+    assert handlers[0].retries is None
+    assert handlers[0].cooldown is None
 
 
 def test_on_create_minimal(mocker):
@@ -101,6 +135,46 @@ def test_on_field_fails_without_field():
         @kopf.on.field('group', 'version', 'plural')
         def fn(**_):
             pass
+
+
+def test_on_startup_with_all_kwargs(mocker):
+    registry = OperatorRegistry()
+
+    @kopf.on.startup(
+        id='id', registry=registry,
+        errors=ErrorsMode.PERMANENT, timeout=123, retries=456, cooldown=78)
+    def fn(**_):
+        pass
+
+    handlers = registry.get_activity_handlers(activity=Activity.STARTUP)
+    assert len(handlers) == 1
+    assert handlers[0].fn is fn
+    assert handlers[0].activity == Activity.STARTUP
+    assert handlers[0].id == 'id'
+    assert handlers[0].errors == ErrorsMode.PERMANENT
+    assert handlers[0].timeout == 123
+    assert handlers[0].retries == 456
+    assert handlers[0].cooldown == 78
+
+
+def test_on_cleanup_with_all_kwargs(mocker):
+    registry = OperatorRegistry()
+
+    @kopf.on.cleanup(
+        id='id', registry=registry,
+        errors=ErrorsMode.PERMANENT, timeout=123, retries=456, cooldown=78)
+    def fn(**_):
+        pass
+
+    handlers = registry.get_activity_handlers(activity=Activity.CLEANUP)
+    assert len(handlers) == 1
+    assert handlers[0].fn is fn
+    assert handlers[0].activity == Activity.CLEANUP
+    assert handlers[0].id == 'id'
+    assert handlers[0].errors == ErrorsMode.PERMANENT
+    assert handlers[0].timeout == 123
+    assert handlers[0].retries == 456
+    assert handlers[0].cooldown == 78
 
 
 def test_on_create_with_all_kwargs(mocker):
