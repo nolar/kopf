@@ -42,7 +42,7 @@ async def patch_obj(
             body['metadata']['namespace'] = namespace
 
     api = auth.get_pykube_api()
-    cls = classes._make_cls(resource=resource)
+    cls = await classes._make_cls(resource=resource)
     obj = cls(api, body)
 
     # The handler could delete its own object, so we have nothing to patch. It is okay, ignore.

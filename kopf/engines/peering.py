@@ -94,7 +94,7 @@ class Peer:
         return LEGACY_PEERING_RESOURCE if self.legacy else CLUSTER_PEERING_RESOURCE if self.namespace is None else NAMESPACED_PEERING_RESOURCE
 
     @classmethod
-    def detect(
+    async def detect(
             cls,
             standalone: bool,
             namespace: Optional[str],
@@ -106,16 +106,16 @@ class Peer:
             return None
 
         if name:
-            if Peer._is_peering_exist(name, namespace=namespace):
+            if await Peer._is_peering_exist(name, namespace=namespace):
                 return cls(name=name, namespace=namespace, **kwargs)
-            elif Peer._is_peering_legacy(name, namespace=namespace):
+            elif await Peer._is_peering_legacy(name, namespace=namespace):
                 return cls(name=name, namespace=namespace, legacy=True, **kwargs)
             else:
                 raise Exception(f"The peering {name!r} was not found")
 
-        if Peer._is_peering_exist(name=PEERING_DEFAULT_NAME, namespace=namespace):
+        if await Peer._is_peering_exist(name=PEERING_DEFAULT_NAME, namespace=namespace):
             return cls(name=PEERING_DEFAULT_NAME, namespace=namespace, **kwargs)
-        elif Peer._is_peering_legacy(name=PEERING_DEFAULT_NAME, namespace=namespace):
+        elif await Peer._is_peering_legacy(name=PEERING_DEFAULT_NAME, namespace=namespace):
             return cls(name=PEERING_DEFAULT_NAME, namespace=namespace, legacy=True, **kwargs)
 
         logger.warning(f"Default peering object not found, falling back to the standalone mode.")
@@ -153,13 +153,13 @@ class Peer:
         await apply_peers([self], name=self.name, namespace=self.namespace, legacy=self.legacy)
 
     @staticmethod
-    def _is_peering_exist(name: str, namespace: Optional[str]) -> bool:
+    async def _is_peering_exist(name: str, namespace: Optional[str]) -> bool:
         resource = CLUSTER_PEERING_RESOURCE if namespace is None else NAMESPACED_PEERING_RESOURCE
-        obj = fetching.read_obj(resource=resource, namespace=namespace, name=name, default=None)
+        obj = await fetching.read_obj(resource=resource, namespace=namespace, name=name, default=None)
         return obj is not None
 
     @staticmethod
-    def _is_peering_legacy(name: str, namespace: Optional[str]) -> bool:
+    async def _is_peering_legacy(name: str, namespace: Optional[str]) -> bool:
         """
         Legacy mode for the peering: cluster-scoped KopfPeering (new mode: namespaced).
 
@@ -168,14 +168,14 @@ class Peer:
             This logic will be removed since 1.0.
             Deploy ``ClusterKopfPeering`` as per documentation, and use it normally.
         """
-        crd = fetching.read_crd(resource=LEGACY_PEERING_RESOURCE, default=None)
+        crd = await fetching.read_crd(resource=LEGACY_PEERING_RESOURCE, default=None)
         if crd is None:
             return False
 
         if str(crd.get('spec', {}).get('scope', '')).lower() != 'cluster':
             return False  # no legacy mode detected
 
-        obj = fetching.read_obj(resource=LEGACY_PEERING_RESOURCE, name=name, default=None)
+        obj = await fetching.read_obj(resource=LEGACY_PEERING_RESOURCE, name=name, default=None)
         return obj is not None
 
 
