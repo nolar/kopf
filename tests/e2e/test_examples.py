@@ -9,13 +9,15 @@ import pytest
 from kopf.testing import KopfRunner
 
 
-def test_all_examples_are_runnable(mocker, with_crd, exampledir):
+def test_all_examples_are_runnable(mocker, with_crd, exampledir, caplog):
 
     # If the example has its own opinion on the timing, try to respect it.
     # See e.g. /examples/99-all-at-once/example.py.
     example_py = exampledir / 'example.py'
     e2e_creation_time_limit = _parse_e2e_value(str(example_py), 'E2E_CREATION_TIME_LIMIT')
+    e2e_creation_stop_words = _parse_e2e_value(str(example_py), 'E2E_CREATION_STOP_WORDS')
     e2e_deletion_time_limit = _parse_e2e_value(str(example_py), 'E2E_DELETION_TIME_LIMIT')
+    e2e_deletion_stop_words = _parse_e2e_value(str(example_py), 'E2E_DELETION_STOP_WORDS')
     e2e_tracebacks = _parse_e2e_value(str(example_py), 'E2E_TRACEBACKS')
     e2e_success_counts = _parse_e2e_value(str(example_py), 'E2E_SUCCESS_COUNTS')
     e2e_failure_counts = _parse_e2e_value(str(example_py), 'E2E_FAILURE_COUNTS')
@@ -46,11 +48,15 @@ def test_all_examples_are_runnable(mocker, with_crd, exampledir):
 
         # Trigger the reaction. Give it some time to react and to sleep and to retry.
         subprocess.run("kubectl apply -f examples/obj.yaml", shell=True, check=True)
-        time.sleep(e2e_creation_time_limit or 2)
+        _sleep_till_stopword(caplog=caplog,
+                             delay=e2e_creation_time_limit,
+                             patterns=e2e_creation_stop_words)
 
         # Trigger the reaction. Give it some time to react.
         subprocess.run("kubectl delete -f examples/obj.yaml", shell=True, check=True)
-        time.sleep(e2e_deletion_time_limit or 1)
+        _sleep_till_stopword(caplog=caplog,
+                             delay=e2e_deletion_time_limit,
+                             patterns=e2e_deletion_stop_words)
 
     # Verify that the operator did not die on start, or during the operation.
     assert runner.exception is None
@@ -103,3 +109,25 @@ def _parse_e2e_presence(path: str, pattern: str) -> bool:
         text = f.read()
         m = re.search(pattern, text, re.M)
         return bool(m)
+
+
+def _sleep_till_stopword(
+        caplog,
+        delay: float,
+        patterns: Sequence[str] = (),
+        *,
+        interval: Optional[float] = None,
+) -> bool:
+    patterns = list(patterns or [])
+    delay = delay or (10.0 if patterns else 1.0)
+    interval = interval or min(1.0, max(0.1, delay / 10.))
+    started = time.perf_counter()
+    found = False
+    while not found and time.perf_counter() - started < delay:
+        for message in list(caplog.messages):
+            if any(re.search(pattern, message) for pattern in patterns):
+                found = True
+                break
+        else:
+            time.sleep(interval)
+    return found

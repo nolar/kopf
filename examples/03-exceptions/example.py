@@ -3,7 +3,7 @@ import time
 import kopf
 
 E2E_TRACEBACKS = True
-E2E_CREATION_TIME_LIMIT = 3.5
+E2E_CREATION_STOP_WORDS = ['Third failure, the final one']
 E2E_SUCCESS_COUNTS = {}
 E2E_FAILURE_COUNTS = {'create_fn': 1}
 
