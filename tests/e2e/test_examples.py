@@ -2,6 +2,7 @@ import collections
 import re
 import subprocess
 import time
+from typing import Any, Optional, Sequence
 
 import pytest
 
@@ -13,20 +14,13 @@ def test_all_examples_are_runnable(mocker, with_crd, exampledir):
     # If the example has its own opinion on the timing, try to respect it.
     # See e.g. /examples/99-all-at-once/example.py.
     example_py = exampledir / 'example.py'
-    m = re.search(r'^E2E_CREATE_TIME\s*=\s*(.+)$', example_py.read_text(), re.M)
-    e2e_create_time = eval(m.group(1)) if m else None
-    m = re.search(r'^E2E_DELETE_TIME\s*=\s*(.+)$', example_py.read_text(), re.M)
-    e2e_delete_time = eval(m.group(1)) if m else None
-    m = re.search(r'^E2E_TRACEBACKS\s*=\s*(.+)$', example_py.read_text(), re.M)
-    e2e_tracebacks = eval(m.group(1)) if m else None
-    m = re.search(r'^E2E_SUCCESS_COUNTS\s*=\s*(.+)$', example_py.read_text(), re.M)
-    e2e_success_counts = eval(m.group(1)) if m else None
-    m = re.search(r'^E2E_FAILURE_COUNTS\s*=\s*(.+)$', example_py.read_text(), re.M)
-    e2e_failure_counts = eval(m.group(1)) if m else None
-    m = re.search(r'@kopf.on.create\(', example_py.read_text(), re.M)
-    e2e_test_creation = bool(m)
-    m = re.search(r'@kopf.on.(create|update|delete)\(', example_py.read_text(), re.M)
-    e2e_test_highlevel = bool(m)
+    e2e_creation_time_limit = _parse_e2e_value(str(example_py), 'E2E_CREATION_TIME_LIMIT')
+    e2e_deletion_time_limit = _parse_e2e_value(str(example_py), 'E2E_DELETION_TIME_LIMIT')
+    e2e_tracebacks = _parse_e2e_value(str(example_py), 'E2E_TRACEBACKS')
+    e2e_success_counts = _parse_e2e_value(str(example_py), 'E2E_SUCCESS_COUNTS')
+    e2e_failure_counts = _parse_e2e_value(str(example_py), 'E2E_FAILURE_COUNTS')
+    e2e_test_creation = _parse_e2e_presence(str(example_py), r'@kopf.on.create\(')
+    e2e_test_highlevel = _parse_e2e_presence(str(example_py), r'@kopf.on.(create|update|delete)\(')
 
     # check whether there are mandatory deletion handlers or not
     m = re.search(r'@kopf\.on\.delete\((\s|.*)?(optional=(\w+))?\)', example_py.read_text(), re.M)
@@ -49,10 +43,14 @@ def test_all_examples_are_runnable(mocker, with_crd, exampledir):
 
     # Run an operator and simulate some activity with the operated resource.
     with KopfRunner(['run', '--standalone', '--verbose', str(example_py)], timeout=60) as runner:
+
+        # Trigger the reaction. Give it some time to react and to sleep and to retry.
         subprocess.run("kubectl apply -f examples/obj.yaml", shell=True, check=True)
-        time.sleep(e2e_create_time or 2)  # give it some time to react and to sleep and to retry
+        time.sleep(e2e_creation_time_limit or 2)
+
+        # Trigger the reaction. Give it some time to react.
         subprocess.run("kubectl delete -f examples/obj.yaml", shell=True, check=True)
-        time.sleep(e2e_delete_time or 1)  # give it some time to react
+        time.sleep(e2e_deletion_time_limit or 1)
 
     # Verify that the operator did not die on start, or during the operation.
     assert runner.exception is None
@@ -90,3 +88,18 @@ def test_all_examples_are_runnable(mocker, with_crd, exampledir):
     else:
         name_counts = collections.Counter(handler_names)
         assert not name_counts
+
+
+def _parse_e2e_value(path: str, name: str) -> Any:
+    with open(path, 'rt', encoding='utf-8') as f:
+        name = re.escape(name)
+        text = f.read()
+        m = re.search(fr'^{name}\s*=\s*(.+)$', text, re.M)
+        return eval(m.group(1)) if m else None
+
+
+def _parse_e2e_presence(path: str, pattern: str) -> bool:
+    with open(path, 'rt', encoding='utf-8') as f:
+        text = f.read()
+        m = re.search(pattern, text, re.M)
+        return bool(m)
