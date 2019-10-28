@@ -1,6 +1,7 @@
 """
 Kubernetes operator example: all the features at once (for debugging & testing).
 """
+import asyncio
 import pprint
 import time
 
@@ -13,7 +14,7 @@ E2E_STARTUP_STOP_WORDS = ['Served by the background task.']
 E2E_CLEANUP_STOP_WORDS = ['Hung tasks', 'Root tasks']
 E2E_CREATION_STOP_WORDS = ['All handlers succeeded for creation']
 E2E_DELETION_STOP_WORDS = ['Deleted, really deleted']
-E2E_SUCCESS_COUNTS = {'create_1': 1, 'create_2': 1, 'create_pod': 1, 'delete': 1}
+E2E_SUCCESS_COUNTS = {'create_1': 1, 'create_2': 1, 'create_pod': 1, 'delete': 1, 'startup_fn_simple': 1, 'startup_fn_retried': 1, 'cleanup_fn': 1}
 E2E_FAILURE_COUNTS = {}
 E2E_TRACEBACKS = True
 
@@ -22,6 +23,27 @@ try:
 except FileNotFoundError:
     cfg = pykube.KubeConfig.from_file()
 api = pykube.HTTPClient(cfg)
+
+
+@kopf.on.startup()
+async def startup_fn_simple(logger, **kwargs):
+    logger.info('Starting in 1s...')
+    await asyncio.sleep(1)
+
+
+@kopf.on.startup()
+async def startup_fn_retried(retry, logger, **kwargs):
+    if retry < 3:
+        raise kopf.TemporaryError(f"Going to succeed in {3-retry}s", delay=1)
+    else:
+        logger.info('Starting retried...')
+        # raise kopf.PermanentError("Unable to start!")
+
+
+@kopf.on.cleanup()
+async def cleanup_fn(logger, **kwargs):
+    logger.info('Cleaning up in 3s...')
+    await asyncio.sleep(3)
 
 
 @kopf.on.create('zalando.org', 'v1', 'kopfexamples')

@@ -304,3 +304,48 @@ The following filters are available for all event, cause, and field handlers:
     @kopf.on.create('zalando.org', 'v1', 'kopfexamples', annotations={'someannotation': None})
     def my_handler(spec, **_):
         pass
+
+
+Startup handlers
+================
+
+The startup handlers are slightly different from the module-level code:
+the actual tasks (e.g. API calls for resource watching) are not started
+until all the startup handlers succeed.
+
+The handlers run inside of the operator's event loop, so they can initialise
+the loop-bound variables -- which is impossible in the module-level code::
+
+    import asyncio
+    import kopf
+
+    LOCK: asyncio.Lock
+
+    @kopf.on.startup()
+    async def startup_fn(logger, **kwargs):
+        global LOCK
+        LOCK = asyncio.Lock()  # uses the running asyncio loop by default
+
+If any of the startup handlers fails, the operator fails to start
+without making any external API calls.
+
+
+Cleanup handlers
+================
+
+The cleanup handlers are executed when the operator exits
+either by a signal (e.g. SIGTERM), or by catching an exception,
+or by raising the stop-flag, or by cancelling the operator's task
+(for :doc:`embedded operators </embedding>`)::
+
+    import kopf
+
+    @kopf.on.cleanup()
+    async def cleanup_fn(logger, **kwargs):
+        pass
+
+The cleanup handlers are not guaranteed to be fully executed if they take
+too long -- due to a limited graceful period or non-graceful termination.
+
+Similarly, the cleanup handlers are not executed if the operator
+is force-killed with no possibility to react (e.g. by SIGKILL).
