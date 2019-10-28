@@ -68,6 +68,7 @@ class KopfRunner(_AbstractKopfRunner):
         self.reraise = reraise
         self.timeout = timeout
         self._loop = asyncio.new_event_loop()
+        self._stop = threading.Event()
         self._ready = threading.Event()  # NB: not asyncio.Event!
         self._thread = threading.Thread(target=self._target)
         self._future = concurrent.futures.Future()
@@ -84,20 +85,10 @@ class KopfRunner(_AbstractKopfRunner):
             exc_tb: Optional[types.TracebackType],
     ) -> Literal[False]:
 
-        # A coroutine that is injected into the loop to cancel everything in it.
-        # Cancellations are caught in `run`, so that it exits gracefully.
-        # TODO: also cancel/stop the streaming API calls in the thread executor.
-        async def shutdown() -> None:
-            current_task = asyncio.current_task()
-            tasks = [task for task in asyncio.all_tasks() if task is not current_task]
-            for task in tasks:
-                task.cancel()
-
         # When the `with` block ends, shut down the parallel thread & loop
         # by cancelling all the tasks. Do not wait for the tasks to finish,
         # but instead wait for the thread+loop (CLI command) to finish.
-        if self._loop.is_running():
-            asyncio.run_coroutine_threadsafe(shutdown(), self._loop)
+        self._stop.set()
         self._thread.join(timeout=self.timeout)
 
         # If the thread is not finished, it is a bigger problem than exceptions.
@@ -128,8 +119,9 @@ class KopfRunner(_AbstractKopfRunner):
         # Execute the requested CLI command in the thread & thread's loop.
         # Remember the result & exception for re-raising in the parent thread.
         try:
+            ctxobj = cli.CLIControls(stop_flag=self._stop)
             runner = click.testing.CliRunner()
-            result = runner.invoke(cli.main, *self.args, **self.kwargs)
+            result = runner.invoke(cli.main, *self.args, **self.kwargs, obj=ctxobj)
         except BaseException as e:
             self._future.set_exception(e)
         else:
