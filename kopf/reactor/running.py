@@ -10,6 +10,7 @@ from typing import (Optional, Collection, Union, Tuple, Set, Any, Coroutine,
 
 from kopf.engines import peering
 from kopf.engines import posting
+from kopf.reactor import activities
 from kopf.reactor import causation
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
@@ -137,6 +138,15 @@ async def spawn_tasks(
             ready_flag=ready_flag,
             registry=registry,
         )),
+    ])
+
+    # Keeping the credentials fresh and valid via the authentication handlers on demand.
+    tasks.extend([
+        loop.create_task(_root_task_checker(
+            name="credentials retriever", ready_flag=ready_flag,
+            coro=activities.authenticator(
+                registry=registry,
+                vault=vault))),
     ])
 
     # K8s-event posting. Events are queued in-memory and posted in the background.
