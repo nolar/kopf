@@ -143,12 +143,14 @@ async def streaming_watch(
         yield cast(bodies.Event, event)
 
 
+@auth.reauthenticated_stream
 async def watch_objs(
         *,
         resource: resources.Resource,
         namespace: Optional[str] = None,
         timeout: Optional[float] = None,
         since: Optional[str] = None,
+        api: Optional[pykube.HTTPClient] = None,  # injected by the decorator
 ) -> AsyncIterator[bodies.RawEvent]:
     """
     Watch objects of a specific resource type.
@@ -162,14 +164,15 @@ async def watch_objs(
 
     * The resource is namespace-scoped AND operator is namespaced-restricted.
     """
-    src: Iterator[PykubeWatchEvent]
+    if api is None:
+        raise RuntimeError("API instance is not injected by the decorator.")
 
     params = {}
     if timeout is not None:
         params['timeoutSeconds'] = timeout
 
-    api = auth.get_pykube_api(timeout=None)
-    cls = await classes._make_cls(resource=resource)
+    src: Iterator[PykubeWatchEvent]
+    cls = await classes._make_cls(api=api, resource=resource)
     namespace = namespace if issubclass(cls, pykube.objects.NamespacedAPIObject) else None
     lst = cls.objects(api, namespace=pykube.all if namespace is None else namespace)
     src = lst.watch(since=since, params=params)

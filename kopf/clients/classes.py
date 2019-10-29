@@ -5,16 +5,15 @@ from typing import Type
 import pykube
 
 from kopf import config
-from kopf.clients import auth
 from kopf.structs import resources
 
 
 async def _make_cls(
+        *,
+        api: pykube.HTTPClient,
         resource: resources.Resource,
 ) -> Type[pykube.objects.APIObject]:
-
     loop = asyncio.get_running_loop()
-    api = auth.get_pykube_api()
     fn = functools.partial(api.resource_list, resource.api_version)
     rsp = await loop.run_in_executor(config.WorkersConfig.get_syn_executor(), fn)
 

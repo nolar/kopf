@@ -16,6 +16,7 @@ import pytest_mock
 import kopf
 from kopf.config import configure
 from kopf.engines.logging import ObjectPrefixingFormatter
+from kopf.structs.credentials import Vault, VaultKey, ConnectionInfo
 from kopf.structs.resources import Resource
 
 
@@ -106,7 +107,7 @@ def clear_default_registry():
 #
 
 @pytest.fixture()
-def req_mock(mocker, resource, request):
+def req_mock(mocker, resource, request, fake_vault):
 
     # Pykube config is needed to create a pykube's API instance.
     # But we do not want and do not need to actually authenticate, so we mock.
@@ -129,7 +130,7 @@ def req_mock(mocker, resource, request):
 
 
 @pytest.fixture()
-def stream(req_mock):
+def stream(req_mock, fake_vault):
     """ A mock for the stream of events as if returned by K8s client. """
     def feed(*args):
         side_effect = []
@@ -144,6 +145,12 @@ def stream(req_mock):
 # Mocks for login & checks. Used in specifialised login tests,
 # and in all CLI tests (since login is implicit with CLI commands).
 #
+
+@pytest.fixture()
+def hostname():
+    """ A fake hostname to be used in all aiohttp/aresponses tests. """
+    return 'fake-host'
+
 
 @dataclasses.dataclass(frozen=True, eq=False, order=False)
 class LoginMocks:
@@ -199,6 +206,31 @@ def clean_kubernetes_client():
         pass  # absent client is already "clean" (or not "dirty" at least).
     else:
         kubernetes.client.configuration.Configuration.set_default(None)
+
+
+@pytest.fixture()
+def fake_vault(event_loop, mocker, hostname):
+    """
+    Provide a freshly created and populated authentication vault for every test.
+
+    Most of the tests expect some credentials to be at least provided
+    (even if not used). So, we create and set the vault as if every coroutine
+    is invoked from the central `operator` method (where it is set normally).
+
+    Any blocking activities are mocked, so that the tests do not hang.
+    """
+    from kopf.clients import auth
+
+    key = VaultKey('fixture')
+    info = ConnectionInfo(server=f'https://{hostname}')
+    vault = Vault({key: info}, loop=event_loop)
+    token = auth.vault_var.set(vault)
+    mocker.patch.object(vault.readiness, 'wait')
+    mocker.patch.object(vault.emptiness, 'wait')
+    try:
+        yield vault
+    finally:
+        auth.vault_var.reset(token)
 
 #
 # Simulating that Kubernetes client libraries are not installed.

@@ -19,14 +19,18 @@ class _UNSET(enum.Enum):
     token = enum.auto()
 
 
+@auth.reauthenticated_request
 async def read_crd(
         *,
         resource: resources.Resource,
         default: Union[_T, _UNSET] = _UNSET.token,
+        api: Optional[pykube.HTTPClient] = None,  # injected by the decorator
 ) -> Union[bodies.Body, _T]:
+    if api is None:
+        raise RuntimeError("API instance is not injected by the decorator.")
+
     try:
         loop = asyncio.get_running_loop()
-        api = auth.get_pykube_api()
         cls = pykube.CustomResourceDefinition
         qry = cls.objects(api, namespace=None)
         fn = functools.partial(qry.get_by_name, name=resource.name)
@@ -42,17 +46,21 @@ async def read_crd(
         raise
 
 
+@auth.reauthenticated_request
 async def read_obj(
         *,
         resource: resources.Resource,
         namespace: Optional[str] = None,
         name: Optional[str] = None,
         default: Union[_T, _UNSET] = _UNSET.token,
+        api: Optional[pykube.HTTPClient] = None,  # injected by the decorator
 ) -> Union[bodies.Body, _T]:
+    if api is None:
+        raise RuntimeError("API instance is not injected by the decorator.")
+
     try:
         loop = asyncio.get_running_loop()
-        api = auth.get_pykube_api()
-        cls = await classes._make_cls(resource=resource)
+        cls = await classes._make_cls(api=api, resource=resource)
         namespace = namespace if issubclass(cls, pykube.objects.NamespacedAPIObject) else None
         qry = cls.objects(api, namespace=namespace)
         fn = functools.partial(qry.get_by_name, name=name)
@@ -68,10 +76,12 @@ async def read_obj(
         raise
 
 
+@auth.reauthenticated_request
 async def list_objs_rv(
         *,
         resource: resources.Resource,
         namespace: Optional[str] = None,
+        api: Optional[pykube.HTTPClient] = None,  # injected by the decorator
 ) -> Tuple[Collection[bodies.Body], str]:
     """
     List the objects of specific resource type.
@@ -85,9 +95,11 @@ async def list_objs_rv(
 
     * The resource is namespace-scoped AND operator is namespaced-restricted.
     """
+    if api is None:
+        raise RuntimeError("API instance is not injected by the decorator.")
+
     loop = asyncio.get_running_loop()
-    api = auth.get_pykube_api()
-    cls = await classes._make_cls(resource=resource)
+    cls = await classes._make_cls(api=api, resource=resource)
     namespace = namespace if issubclass(cls, pykube.objects.NamespacedAPIObject) else None
     qry = cls.objects(api, namespace=pykube.all if namespace is None else namespace)
     fn = lambda: qry.response  # it is a property, so cannot be threaded without lambdas.

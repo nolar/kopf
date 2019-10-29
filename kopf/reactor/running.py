@@ -8,6 +8,7 @@ import warnings
 from typing import (Optional, Collection, Union, Tuple, Set, Any, Coroutine,
                     Sequence, MutableSequence, cast, TYPE_CHECKING)
 
+from kopf.clients import auth
 from kopf.engines import peering
 from kopf.engines import posting
 from kopf.reactor import activities
@@ -126,6 +127,9 @@ async def spawn_tasks(
     signal_flag: asyncio_Future = asyncio.Future(loop=loop)
     ready_flag = ready_flag if ready_flag is not None else asyncio.Event()
     tasks: MutableSequence[asyncio_Task] = []
+
+    # Global credentials store for this operator, also for CRD-reading & peering mode detection.
+    auth.vault_var.set(vault)
 
     # Few common background forever-running infrastructural tasks (irregular root tasks).
     tasks.extend([
