@@ -6,7 +6,6 @@ from typing import Any, Optional, Callable, List
 import click
 
 from kopf import config
-from kopf.clients import auth
 from kopf.engines import peering
 from kopf.reactor import running
 from kopf.structs import credentials
@@ -23,7 +22,7 @@ class CLIControls:
 
 def cli_login() -> None:
     try:
-        auth.login(verify=True)
+        running.login(verify=True)
     except credentials.LoginError as e:
         raise click.ClickException(str(e))
     except credentials.AccessError as e:

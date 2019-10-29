@@ -31,6 +31,49 @@ Tasks = Collection[asyncio_Task]
 
 logger = logging.getLogger(__name__)
 
+# An exchange point between login() and run()/operator().
+# DEPRECATED: As soon as login() is removed, this global variable is not needed.
+global_vault: Optional[credentials.Vault] = None
+
+
+def login(
+        verify: bool = False,  # DEPRECATED: kept for backward compatibility
+        *,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+) -> None:
+    """
+    Login to Kubernetes cluster, locally or remotely.
+
+    Keep the logged in state or config object in the global variable,
+    so that it is available for future operator runs.
+    """
+    warnings.warn("kopf.login() is deprecated; the operator now authenticates "
+                  "internally; cease using kopf.login().", DeprecationWarning)
+
+    # Remember the credentials store for later usage in the actual operator.
+    # Set the global vault for the legacy login()->run() scenario.
+    global global_vault
+    global_vault = credentials.Vault()
+
+    # Perform the initial one-time authentication in presumably the same loop.
+    loop = loop if loop is not None else asyncio.get_event_loop()
+    registry = registries.get_default_registry()
+    try:
+        loop.run_until_complete(activities.authenticate(
+            registry=registry,
+            vault=global_vault,
+        ))
+    except asyncio.CancelledError:
+        pass
+    except handling.ActivityError as e:
+        # Detect and re-raise the original LoginErrors, not the general activity error.
+        # This is only needed for the legacy one-shot login, not for a background job.
+        for outcome in e.outcomes.values():
+            if isinstance(outcome.exception, credentials.LoginError):
+                raise outcome.exception
+        else:
+            raise
+
 
 def run(
         loop: Optional[asyncio.AbstractEventLoop] = None,
@@ -121,6 +164,7 @@ async def spawn_tasks(
     # The freezer and the registry are scoped to this whole task-set, to sync them all.
     lifecycle = lifecycle if lifecycle is not None else lifecycles.get_default_lifecycle()
     registry = registry if registry is not None else registries.get_default_registry()
+    vault = vault if vault is not None else global_vault
     vault = vault if vault is not None else credentials.Vault()
     event_queue: posting.K8sEventQueue = asyncio.Queue(loop=loop)
     freeze_flag: asyncio.Event = asyncio.Event(loop=loop)

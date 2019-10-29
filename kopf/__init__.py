@@ -9,9 +9,6 @@ The main Kopf module for all the exported functions & classes.
 from kopf import (
     on,  # as a separate name on the public namespace
 )
-from kopf.clients.auth import (
-    login,
-)
 from kopf.config import (
     configure,
     LOGLEVEL_INFO,
@@ -59,6 +56,7 @@ from kopf.reactor.running import (
     run_tasks,
     operator,
     run,
+    login,  # deprecated
     create_tasks,  # deprecated
 )
 from kopf.structs.bodies import (

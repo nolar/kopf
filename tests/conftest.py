@@ -156,10 +156,8 @@ def hostname():
 class LoginMocks:
     pykube_in_cluster: Mock = None
     pykube_from_file: Mock = None
-    pykube_checker: Mock = None
     client_in_cluster: Mock = None
     client_from_file: Mock = None
-    client_checker: Mock = None
 
 
 @pytest.fixture()
@@ -183,7 +181,6 @@ def login_mocks(mocker):
         kwargs.update(
             pykube_in_cluster=mocker.patch.object(pykube.KubeConfig, 'from_service_account'),
             pykube_from_file=mocker.patch.object(pykube.KubeConfig, 'from_file'),
-            pykube_checker=mocker.patch.object(pykube.http.HTTPClient, 'get'),
         )
     try:
         import kubernetes
@@ -193,7 +190,6 @@ def login_mocks(mocker):
         kwargs.update(
             client_in_cluster=mocker.patch.object(kubernetes.config, 'load_incluster_config'),
             client_from_file=mocker.patch.object(kubernetes.config, 'load_kube_config'),
-            client_checker=mocker.patch.object(kubernetes.client, 'CoreApi'),
         )
     return LoginMocks(**kwargs)
 

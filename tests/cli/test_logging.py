@@ -61,7 +61,8 @@ def test_no_lowlevel_dumps_in_nondebug(invoke, caplog, options, preload, real_ru
     logging.getLogger('asyncio').error('boom!')
     logging.getLogger('urllib3').error('boom!')
 
-    assert len(caplog.records) == 0
+    alien_records = [m for m in caplog.records if not m.name.startswith('kopf')]
+    assert len(alien_records) == 0
     assert not asyncio.get_event_loop().get_debug()
     assert not kubernetes.client.configuration.Configuration().debug
 
@@ -80,6 +81,7 @@ def test_lowlevel_dumps_in_debug_mode(invoke, caplog, options, preload, real_run
     logging.getLogger('asyncio').debug('hello!')
     logging.getLogger('urllib3').debug('hello!')
 
-    assert len(caplog.records) == 3
+    alien_records = [m for m in caplog.records if not m.name.startswith('kopf')]
+    assert len(alien_records) == 3
     assert asyncio.get_event_loop().get_debug()
     assert kubernetes.client.configuration.Configuration().debug
