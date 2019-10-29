@@ -97,6 +97,7 @@ class BaseHandler:
 class ActivityHandler(BaseHandler):
     fn: ActivityHandlerFn  # type clarification
     activity: Optional[causation.Activity] = None
+    _fallback: bool = False  # non-public!
 
 
 @dataclasses.dataclass
@@ -150,11 +151,13 @@ class ActivityRegistry(GenericRegistry[ActivityHandler, ActivityHandlerFn]):
             retries: Optional[int] = None,
             cooldown: Optional[float] = None,
             activity: Optional[causation.Activity] = None,
+            _fallback: bool = False,
     ) -> ActivityHandlerFn:
         real_id = generate_id(fn=fn, id=id, prefix=self.prefix)
         handler = ActivityHandler(
             id=real_id, fn=fn, activity=activity,
             errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            _fallback=_fallback,
         )
         self.append(handler)
         return fn
@@ -169,9 +172,19 @@ class ActivityRegistry(GenericRegistry[ActivityHandler, ActivityHandlerFn]):
             self,
             activity: causation.Activity,
     ) -> Iterator[ActivityHandler]:
+        found: bool = False
+
+        # Regular handlers go first.
         for handler in self._handlers:
-            if handler.activity is None or handler.activity == activity:
+            if handler.activity is None or handler.activity == activity and not handler._fallback:
                 yield handler
+                found = True
+
+        # Fallback handlers -- only if there were no matching regular handlers.
+        if not found:
+            for handler in self._handlers:
+                if handler.activity is None or handler.activity == activity and handler._fallback:
+                    yield handler
 
 
 class ResourceRegistry(GenericRegistry[ResourceHandler, ResourceHandlerFn], Generic[CauseT]):
@@ -304,10 +317,12 @@ class OperatorRegistry:
             retries: Optional[int] = None,
             cooldown: Optional[float] = None,
             activity: Optional[causation.Activity] = None,
+            _fallback: bool = False,
     ) -> ActivityHandlerFn:
         return self._activity_handlers.register(
             fn=fn, id=id, activity=activity,
             errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            _fallback=_fallback,
         )
 
     def register_resource_watching_handler(
