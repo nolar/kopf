@@ -15,6 +15,7 @@ from kopf.reactor import handling
 from kopf.reactor import lifecycles
 from kopf.reactor import queueing
 from kopf.reactor import registries
+from kopf.structs import credentials
 
 if TYPE_CHECKING:
     asyncio_Task = asyncio.Task[None]
@@ -39,6 +40,7 @@ def run(
         namespace: Optional[str] = None,
         stop_flag: Optional[Flag] = None,
         ready_flag: Optional[Flag] = None,
+        vault: Optional[credentials.Vault] = None,
 ) -> None:
     """
     Run the whole operator synchronously.
@@ -56,6 +58,7 @@ def run(
             peering_name=peering_name,
             stop_flag=stop_flag,
             ready_flag=ready_flag,
+            vault=vault,
         ))
     except asyncio.CancelledError:
         pass
@@ -70,6 +73,7 @@ async def operator(
         namespace: Optional[str] = None,
         stop_flag: Optional[Flag] = None,
         ready_flag: Optional[Flag] = None,
+        vault: Optional[credentials.Vault] = None,
 ) -> None:
     """
     Run the whole operator asynchronously.
@@ -89,6 +93,7 @@ async def operator(
         peering_name=peering_name,
         stop_flag=stop_flag,
         ready_flag=ready_flag,
+        vault=vault,
     )
     await run_tasks(operator_tasks, ignored=existing_tasks)
 
@@ -102,6 +107,7 @@ async def spawn_tasks(
         namespace: Optional[str] = None,
         stop_flag: Optional[Flag] = None,
         ready_flag: Optional[Flag] = None,
+        vault: Optional[credentials.Vault] = None,
 ) -> Tasks:
     """
     Spawn all the tasks needed to run the operator.
@@ -113,6 +119,7 @@ async def spawn_tasks(
     # The freezer and the registry are scoped to this whole task-set, to sync them all.
     lifecycle = lifecycle if lifecycle is not None else lifecycles.get_default_lifecycle()
     registry = registry if registry is not None else registries.get_default_registry()
+    vault = vault if vault is not None else credentials.Vault()
     event_queue: posting.K8sEventQueue = asyncio.Queue(loop=loop)
     freeze_flag: asyncio.Event = asyncio.Event(loop=loop)
     signal_flag: asyncio_Future = asyncio.Future(loop=loop)

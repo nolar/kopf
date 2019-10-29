@@ -5,18 +5,12 @@ import pykube
 import requests
 import urllib3.exceptions
 
+from kopf.structs import credentials
+
 logger = logging.getLogger(__name__)
 
 # Set in login(), consumed in get_pykube_cfg() and all API calls.
 _pykube_cfg: Optional[pykube.KubeConfig] = None
-
-
-class LoginError(Exception):
-    """ Raised when the operator cannot login to the API. """
-
-
-class AccessError(Exception):
-    """ Raised when the operator cannot access the cluster API. """
 
 
 def login(verify: bool = False) -> None:
@@ -57,7 +51,7 @@ def login_pykube(verify: bool = False) -> None:
             _pykube_cfg = pykube.KubeConfig.from_file()
             logger.debug("Pykube is configured via kubeconfig file.")
         except (pykube.PyKubeError, FileNotFoundError):
-            raise LoginError(f"Cannot authenticate pykube neither in-cluster, nor via kubeconfig.")
+            raise credentials.LoginError(f"Cannot authenticate pykube neither in-cluster, nor via kubeconfig.")
 
     if verify:
         verify_pykube()
@@ -73,7 +67,7 @@ def login_client(verify: bool = False) -> None:
             kubernetes.config.load_kube_config()  # developer's config files
             logger.debug("Client is configured via kubeconfig file.")
         except kubernetes.config.ConfigException as e2:
-            raise LoginError(f"Cannot authenticate client neither in-cluster, nor via kubeconfig.")
+            raise credentials.LoginError(f"Cannot authenticate client neither in-cluster, nor via kubeconfig.")
 
     if verify:
         verify_client()
@@ -93,16 +87,16 @@ def verify_pykube() -> None:
         rsp.raise_for_status()
         api.raise_for_status(rsp)  # replaces requests's HTTPError with its own.
     except requests.exceptions.ConnectionError as e:
-        raise AccessError("Cannot connect to the Kubernetes API. "
-                          "Please configure the cluster access.")
+        raise credentials.AccessError("Cannot connect to the Kubernetes API. "
+                                      "Please configure the cluster access.")
     except pykube.exceptions.HTTPError as e:
         if e.code == 401:
-            raise AccessError("Cannot authenticate to the Kubernetes API. "
-                              "Please login or configure the tokens.")
+            raise credentials.AccessError("Cannot authenticate to the Kubernetes API. "
+                                          "Please login or configure the tokens.")
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 401:
-            raise AccessError("Cannot authenticate to the Kubernetes API. "
-                              "Please login or configure the tokens.")
+            raise credentials.AccessError("Cannot authenticate to the Kubernetes API. "
+                                          "Please login or configure the tokens.")
 
 
 def verify_client() -> None:
@@ -118,17 +112,17 @@ def verify_client() -> None:
         api = kubernetes.client.CoreApi()
         api.get_api_versions()
     except urllib3.exceptions.HTTPError as e:
-        raise AccessError("Cannot connect to the Kubernetes API. "
-                          "Please configure the cluster access.")
+        raise credentials.AccessError("Cannot connect to the Kubernetes API. "
+                                      "Please configure the cluster access.")
     except kubernetes.client.rest.ApiException as e:
         if e.status == 401:
-            raise AccessError("Cannot authenticate to the Kubernetes API. "
-                              "Please login or configure the tokens.")
+            raise credentials.AccessError("Cannot authenticate to the Kubernetes API. "
+                                          "Please login or configure the tokens.")
 
 
 def get_pykube_cfg() -> pykube.KubeConfig:
     if _pykube_cfg is None:
-        raise LoginError("Not logged in with PyKube.")
+        raise credentials.LoginError("Not logged in with PyKube.")
     return _pykube_cfg
 
 

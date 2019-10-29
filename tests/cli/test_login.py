@@ -6,7 +6,8 @@ import pytest
 import requests
 import urllib3
 
-from kopf.clients.auth import login, LoginError, AccessError
+from kopf.clients.auth import login
+from kopf.structs.credentials import LoginError, AccessError
 
 RESPONSE_401 = requests.Response()
 RESPONSE_401.status_code = 401

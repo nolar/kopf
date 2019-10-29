@@ -9,22 +9,24 @@ from kopf import config
 from kopf.clients import auth
 from kopf.engines import peering
 from kopf.reactor import running
+from kopf.structs import credentials
 from kopf.utilities import loaders
 
 
 @dataclasses.dataclass()
 class CLIControls:
     """ `KopfRunner` controls, which are impossible to pass via CLI. """
-    stop_flag: Optional[running.Flag] = None
     ready_flag: Optional[running.Flag] = None
+    stop_flag: Optional[running.Flag] = None
+    vault: Optional[credentials.Vault] = None
 
 
 def cli_login() -> None:
     try:
         auth.login(verify=True)
-    except auth.LoginError as e:
+    except credentials.LoginError as e:
         raise click.ClickException(str(e))
-    except auth.AccessError as e:
+    except credentials.AccessError as e:
         raise click.ClickException(str(e))
 
 
@@ -81,6 +83,7 @@ def run(
         peering_name=peering_name,
         stop_flag=__controls.stop_flag,
         ready_flag=__controls.ready_flag,
+        vault=__controls.vault,
     )
 
 

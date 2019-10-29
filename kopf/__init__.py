@@ -11,7 +11,6 @@ from kopf import (
 )
 from kopf.clients.auth import (
     login,
-    LoginError,
 )
 from kopf.config import (
     configure,
@@ -66,6 +65,10 @@ from kopf.structs.bodies import (
     build_object_reference,
     build_owner_reference,
 )
+from kopf.structs.credentials import (
+    LoginError,
+    ConnectionInfo,
+)
 from kopf.toolkits.hierarchies import (
     adopt,
     label,
@@ -86,7 +89,7 @@ HandlerRetryError = TemporaryError  # a backward-compatibility alias
 __all__ = [
     'on', 'lifecycles', 'register', 'execute',
     'configure',
-    'login', 'LoginError',
+    'login', 'LoginError', 'ConnectionInfo',
     'event', 'info', 'warn', 'exception',
     'spawn_tasks', 'run_tasks', 'operator', 'run', 'create_tasks',
     'adopt', 'label',
