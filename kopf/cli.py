@@ -20,15 +20,6 @@ class CLIControls:
     vault: Optional[credentials.Vault] = None
 
 
-def cli_login() -> None:
-    try:
-        running.login(verify=True)
-    except credentials.LoginError as e:
-        raise click.ClickException(str(e))
-    except credentials.AccessError as e:
-        raise click.ClickException(str(e))
-
-
 def logging_options(fn: Callable[..., Any]) -> Callable[..., Any]:
     """ A decorator to configure logging in all command in the same way."""
     @click.option('-v', '--verbose', is_flag=True)
@@ -70,7 +61,6 @@ def run(
         namespace: Optional[str],
 ) -> None:
     """ Start an operator process and handle all the requests. """
-    cli_login()
     loaders.preload(
         paths=paths,
         modules=modules,
@@ -104,7 +94,6 @@ def freeze(
         priority: int,
 ) -> None:
     """ Freeze the resource handling in the cluster. """
-    cli_login()
     ourserlves = peering.Peer(
         id=id or peering.detect_own_id(),
         name=peering_name,
@@ -127,7 +116,6 @@ def resume(
         peering_name: str,
 ) -> None:
     """ Resume the resource handling in the cluster. """
-    cli_login()
     ourselves = peering.Peer(
         id=id or peering.detect_own_id(),
         name=peering_name,
