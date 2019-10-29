@@ -80,6 +80,10 @@ from kopf.toolkits.legacy_registries import (
     SimpleRegistry,
     GlobalRegistry,
 )
+from kopf.utilities.piggybacking import (
+    login_via_pykube,
+    login_via_client,
+)
 
 HandlerFatalError = PermanentError  # a backward-compatibility alias
 HandlerRetryError = TemporaryError  # a backward-compatibility alias
@@ -88,6 +92,7 @@ __all__ = [
     'on', 'lifecycles', 'register', 'execute',
     'configure',
     'login', 'LoginError', 'ConnectionInfo',
+    'login_via_pykube', 'login_via_client',
     'event', 'info', 'warn', 'exception',
     'spawn_tasks', 'run_tasks', 'operator', 'run', 'create_tasks',
     'adopt', 'label',
