@@ -43,14 +43,6 @@ class AccessError(Exception):
 class ConnectionInfo:
     """
     A single endpoint with specific credentials and connection flags to use.
-
-    No matter how the endpoints or credentials are retrieved, they are directly
-    mapped to TCP/SSL/HTTPS in the API clients. It is the responsibility
-    of the authentication handlers to ensure that the values are consistent
-    and valid (e.g. via internal verification calls). It is in theory possible
-    to mix all authentication methods at once, or to have none of them at all.
-    If the credentials are inconsistent or invalid, there will be permanent
-    re-authentication happening.
     """
     server: str  # e.g. "https://localhost:443"
     ca_path: Optional[str] = None
