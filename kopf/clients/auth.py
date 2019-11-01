@@ -84,25 +84,12 @@ def reauthenticated_stream(fn: _F) -> _F:
 
 
 # DEPRECATED: Should be removed with login()/get_pykube_cfg()/get_pykube_api().
-# Set in login()/authenticator(), consumed in get_pykube_cfg()/get_pykube_api().
-_pykube_cfg: Optional[pykube.KubeConfig] = None
-
-
-# DEPRECATED: Should be removed with login()/get_pykube_cfg()/get_pykube_api().
-def get_pykube_cfg() -> pykube.KubeConfig:
+# Previously, in some cases, get_pykube_cfg() was monkey-patched to inject
+# custom authentication methods. Support these hacks as long as possible.
+# See: piggybacking.login_via_pykube() for the usage of this monkey-patched function.
+def get_pykube_cfg() -> Any:
     warnings.warn("get_pykube_cfg() is deprecated and unused.", DeprecationWarning)
-    if _pykube_cfg is None:
-        raise credentials.LoginError("Not logged in with PyKube.")
-    return _pykube_cfg
-
-
-# DEPRECATED: Should be removed with login()/get_pykube_cfg()/get_pykube_api().
-def get_pykube_api(
-        timeout: Optional[float] = None,
-) -> pykube.HTTPClient:
-    warnings.warn("get_pykube_api() is deprecated and unused.", DeprecationWarning)
-    kwargs = dict(timeout=timeout)
-    return pykube.HTTPClient(get_pykube_cfg(), **kwargs)
+    raise NotImplementedError("get_pykube_cfg() is not supported unless monkey-patched.")
 
 
 def create_pykube_client(

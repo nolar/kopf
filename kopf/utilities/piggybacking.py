@@ -13,6 +13,7 @@ in them, and extracts the basic credentials for its own use.
 import logging
 from typing import Any, Union, Optional, Sequence
 
+from kopf.clients import auth
 from kopf.structs import credentials
 
 
@@ -79,16 +80,23 @@ def login_via_pykube(
         return None
 
     # Read the pykube config either way for later interpretation.
+    # DEPRECATED: Previously, in some cases, get_pykube_cfg() was monkey-patched
+    # to inject custom authentication methods. Support these hacks if possible.
     config: pykube.KubeConfig
     try:
-        config = pykube.KubeConfig.from_service_account()
-        logger.debug("Pykube is configured in cluster with service account.")
-    except FileNotFoundError:
+        config = auth.get_pykube_cfg()
+        logger.debug("Pykube is configured via monkey-patched get_pykube_cfg().")
+    except NotImplementedError:
         try:
-            config = pykube.KubeConfig.from_file()
-            logger.debug("Pykube is configured via kubeconfig file.")
-        except (pykube.PyKubeError, FileNotFoundError):
-            raise credentials.LoginError(f"Cannot authenticate pykube neither in-cluster, nor via kubeconfig.")
+            config = pykube.KubeConfig.from_service_account()
+            logger.debug("Pykube is configured in cluster with service account.")
+        except FileNotFoundError:
+            try:
+                config = pykube.KubeConfig.from_file()
+                logger.debug("Pykube is configured via kubeconfig file.")
+            except (pykube.PyKubeError, FileNotFoundError):
+                raise credentials.LoginError(f"Cannot authenticate pykube "
+                                             f"neither in-cluster, nor via kubeconfig.")
 
     # We don't know how this token will be retrieved, we just get it afterwards.
     provider_token = None

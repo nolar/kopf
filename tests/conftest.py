@@ -109,13 +109,6 @@ def clear_default_registry():
 @pytest.fixture()
 def req_mock(mocker, resource, request, fake_vault):
 
-    # Pykube config is needed to create a pykube's API instance.
-    # But we do not want and do not need to actually authenticate, so we mock.
-    # Some fields are used by pykube's objects: we have to know them ("leaky abstractions").
-    cfg_mock = mocker.patch('kopf.clients.auth.get_pykube_cfg').return_value
-    cfg_mock.cluster = {'server': 'localhost'}
-    cfg_mock.namespace = 'default'
-
     # Simulated list of cluster-defined CRDs: all of them at once. See: `resource` fixture(s).
     # Simulate the resource as cluster-scoped is there is a marker on the test.
     namespaced = not any(marker.name == 'resource_clustered' for marker in request.node.own_markers)
@@ -162,25 +155,26 @@ class LoginMocks:
 
 @pytest.fixture()
 def login_mocks(mocker):
-
-    # Pykube config is needed to create a pykube's API instance.
-    # But we do not want and do not need to actually authenticate, so we mock.
-    # Some fields are used by pykube's objects: we have to know them ("leaky abstractions").
-    cfg_mock = mocker.patch('kopf.clients.auth.get_pykube_cfg').return_value
-    cfg_mock.cluster = {'server': 'localhost'}
-    cfg_mock.namespace = 'default'
-
-    # Make all client libraries potentially optional, but do not skip the tests:
-    # skipping the tests is the tests' decision, not this mocking fixture's one.
+    """
+    Make all client libraries potentially optional, but do not skip the tests:
+    skipping the tests is the tests' decision, not this mocking fixture's one.
+    """
     kwargs = {}
     try:
         import pykube
     except ImportError:
         pass
     else:
+        cfg = pykube.KubeConfig({
+            'current-context': 'self',
+            'clusters': [{'name': 'self',
+                          'cluster': {'server': 'localhost'}}],
+            'contexts': [{'name': 'self',
+                          'context': {'cluster': 'self', 'namespace': 'default'}}],
+        })
         kwargs.update(
-            pykube_in_cluster=mocker.patch.object(pykube.KubeConfig, 'from_service_account'),
-            pykube_from_file=mocker.patch.object(pykube.KubeConfig, 'from_file'),
+            pykube_in_cluster=mocker.patch.object(pykube.KubeConfig, 'from_service_account', return_value=cfg),
+            pykube_from_file=mocker.patch.object(pykube.KubeConfig, 'from_file', return_value=cfg),
         )
     try:
         import kubernetes
