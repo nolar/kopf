@@ -60,15 +60,30 @@ is no need to retry over time, as it will not become better::
             raise kopf.PermanentError("The object is not valid anymore.")
 
 
-
 Regular errors
 ==============
 
-Any other exceptions behave as either the retriable (default) or fatal,
-depending on the settings.
+Kopf assumes that any arbitrary errors
+(i.e. not `TemporaryError` and not `PermanentError`)
+are the environment issues and can self-resolve after some time.
 
-.. todo::
-    An example of an unexpected HTTP error?
+As such, as a default behaviour,
+Kopf retries the handlers with arbitrary errors
+infinitely until they either succeed or fail permanently.
+
+The reaction to the arbitrary errors can be configured::
+
+    import kopf
+
+    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', errors=kopf.ErrorsMode.PERMANENT)
+    def create_fn(spec, **_):
+        raise Exception()
+
+Possible values of ``errors`` are:
+
+* `kopf.ErrorsMode.TEMPORARY` (the default).
+* `kopf.ErrorsMode.PERMANENT` (prevent retries).
+* `kopf.ErrorsMode.IGNORED` (same as in the resource watching handlers).
 
 
 Timeouts
@@ -90,3 +105,40 @@ an `asyncio.TimeoutError` is raised;
 there is no equivalent way of terminating the synchronous functions by force.
 
 By default, there is no timeout, so the retries continue forever.
+
+
+Retries
+=======
+
+The number of retries can be limited too::
+
+    import kopf
+
+    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', retries=3)
+    def create_fn(spec, **_):
+        raise Exception()
+
+Once the number of retries is reached, the handler fails permanently.
+
+By default, there is no limit, so the retries continue forever.
+
+
+Cool-down on errors
+===================
+
+The interval between retries on arbitrary errors, when an external environment
+is supposed to recover and be able to succeed the handler execution,
+can be configured::
+
+    import kopf
+
+    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', cooldown=30)
+    def create_fn(spec, **_):
+        raise Exception()
+
+The default is 60 seconds.
+
+.. note::
+
+    This only affects the arbitrary errors. When `TemporaryError`
+    is explicitly used, the delay should be configured with ``delay=...``.
