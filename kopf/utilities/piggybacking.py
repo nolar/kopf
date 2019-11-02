@@ -16,6 +16,10 @@ from typing import Any, Union, Optional, Sequence
 from kopf.clients import auth
 from kopf.structs import credentials
 
+# Keep as constants to make them patchable. Higher priority is more preferred.
+PRIORITY_OF_CLIENT: int = 10
+PRIORITY_OF_PYKUBE: int = 20
+
 
 # We keep the official client library auto-login only because it was
 # an implied behavior before switching to pykube -- to keep it so (implied).
@@ -64,6 +68,7 @@ def login_via_client(
         token=token,
         certificate_path=config.cert_file,  # can be a temporary file
         private_key_path=config.key_file,  # can be a temporary file
+        priority=PRIORITY_OF_CLIENT,
     )
 
 
@@ -120,4 +125,5 @@ def login_via_pykube(
         certificate_path=cert.filename() if cert else None,  # can be a temporary file
         private_key_path=pkey.filename() if pkey else None,  # can be a temporary file
         default_namespace=config.namespace,
+        priority=PRIORITY_OF_PYKUBE,
     )

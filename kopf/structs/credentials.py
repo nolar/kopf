@@ -65,6 +65,7 @@ class ConnectionInfo:
     private_key_path: Optional[str] = None
     private_key_data: Optional[bytes] = None
     default_namespace: Optional[str] = None  # used for cluster objects' k8s-events.
+    priority: int = 0
 
 
 _T = TypeVar('_T', bound=object)
@@ -215,8 +216,12 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
         """
         if not self._current:
             raise LoginError("No valid credentials are available.")
-        key = random.choice(list(self._current))
-        item = self._current[key]
+        prioritised: Dict[int, List[Tuple[VaultKey, VaultItem]]]
+        prioritised = collections.defaultdict(list)
+        for key, item in self._current.items():
+            prioritised[item.info.priority].append((key, item))
+        top_priority = max(list(prioritised.keys()))
+        key, item = random.choice(prioritised[top_priority])
         return key, item
 
     async def invalidate(

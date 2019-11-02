@@ -479,6 +479,7 @@ class SmartOperatorRegistry(OperatorRegistry):
                 id='login_via_pykube',
                 fn=cast(ActivityHandlerFn, piggybacking.login_via_pykube),
                 activity=causation.Activity.AUTHENTICATION,
+                errors=ErrorsMode.IGNORED,
                 _fallback=True,
             )
 
@@ -491,6 +492,7 @@ class SmartOperatorRegistry(OperatorRegistry):
                 id='login_via_client',
                 fn=cast(ActivityHandlerFn, piggybacking.login_via_client),
                 activity=causation.Activity.AUTHENTICATION,
+                errors=ErrorsMode.IGNORED,
                 _fallback=True,
             )
 
