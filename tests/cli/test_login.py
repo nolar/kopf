@@ -11,11 +11,6 @@ from kopf.clients.auth import login, LoginError, AccessError
 RESPONSE_401 = requests.Response()
 RESPONSE_401.status_code = 401
 
-
-@pytest.fixture(autouse=True)
-def _auto_clean_kubernetes_client(clean_kubernetes_client):
-    pass
-
 #
 # Tests via the direct function invocation.
 #
