@@ -414,6 +414,7 @@ async def _execute_handler(
     This method is not supposed to raise any exceptions from the handlers:
     exceptions mean the failure of execution itself.
     """
+    errors = handler.errors if handler.errors is not None else default_errors
 
     # Prevent successes/failures from posting k8s-events for resource-watching causes.
     logger: Union[logging.Logger, logging.LoggerAdapter]
@@ -462,18 +463,18 @@ async def _execute_handler(
 
     # Regular errors behave as either temporary or permanent depending on the error strictness.
     except Exception as e:
-        if default_errors == registries.ErrorsMode.IGNORED:
+        if errors == registries.ErrorsMode.IGNORED:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will ignore.")
             return states.HandlerOutcome(final=True, exception=e)
-        elif default_errors == registries.ErrorsMode.TEMPORARY:
+        elif errors == registries.ErrorsMode.TEMPORARY:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")
             return states.HandlerOutcome(final=False, exception=e, delay=DEFAULT_RETRY_DELAY)
-        elif default_errors == registries.ErrorsMode.PERMANENT:
+        elif errors == registries.ErrorsMode.PERMANENT:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will stop.")
             return states.HandlerOutcome(final=True, exception=e)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?
         else:
-            raise RuntimeError(f"Unknown mode for errors: {default_errors!r}")
+            raise RuntimeError(f"Unknown mode for errors: {errors!r}")
 
     # No errors means the handler should be excluded from future runs in this reaction cycle.
     else:

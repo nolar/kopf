@@ -13,6 +13,7 @@ def test_all_args(mocker):
     id = mocker.Mock()
     reason = mocker.Mock()
     field = mocker.Mock()
+    errors = mocker.Mock()
     timeout = mocker.Mock()
     initial = mocker.Mock()
     labels = mocker.Mock()
@@ -23,6 +24,7 @@ def test_all_args(mocker):
         id=id,
         reason=reason,
         field=field,
+        errors=errors,
         timeout=timeout,
         initial=initial,
         labels=labels,
@@ -34,6 +36,7 @@ def test_all_args(mocker):
     assert handler.reason is reason
     assert handler.event is reason  # deprecated
     assert handler.field is field
+    assert handler.errors is errors
     assert handler.timeout is timeout
     assert handler.initial is initial
     assert handler.labels is labels

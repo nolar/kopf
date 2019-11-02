@@ -45,6 +45,7 @@ from kopf.reactor.lifecycles import (
     set_default_lifecycle,
 )
 from kopf.reactor.registries import (
+    ErrorsMode,
     ResourceRegistry,
     ResourceWatchingRegistry,
     ResourceChangingRegistry,
@@ -90,6 +91,7 @@ __all__ = [
     'get_default_lifecycle', 'set_default_lifecycle',
     'build_object_reference', 'build_owner_reference',
     'append_owner_reference', 'remove_owner_reference',
+    'ErrorsMode',
     'PermanentError', 'HandlerFatalError',
     'TemporaryError', 'HandlerRetryError',
     'HandlerTimeoutError',

@@ -75,6 +75,7 @@ class ResourceHandler(NamedTuple):
     id: HandlerId
     reason: Optional[causation.Reason]
     field: Optional[dicts.FieldPath]
+    errors: Optional[ErrorsMode] = None
     timeout: Optional[float] = None
     initial: Optional[bool] = None
     labels: Optional[bodies.Labels] = None
@@ -114,6 +115,7 @@ class ResourceRegistry(Generic[CauseT]):
             reason: Optional[causation.Reason] = None,
             event: Optional[str] = None,  # deprecated, use `reason`
             field: Optional[dicts.FieldSpec] = None,
+            errors: Optional[ErrorsMode] = None,
             timeout: Optional[float] = None,
             initial: Optional[bool] = None,
             requires_finalizer: bool = False,
@@ -126,7 +128,8 @@ class ResourceRegistry(Generic[CauseT]):
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = generate_id(fn=fn, id=id, prefix=self.prefix, suffix=".".join(real_field or []))
         handler = ResourceHandler(
-            id=real_id, fn=fn, reason=reason, field=real_field, timeout=timeout,
+            id=real_id, fn=fn, reason=reason, field=real_field,
+            errors=errors, timeout=timeout,
             initial=initial, requires_finalizer=requires_finalizer,
             labels=labels, annotations=annotations,
         )
@@ -244,6 +247,7 @@ class OperatorRegistry:
             reason: Optional[causation.Reason] = None,
             event: Optional[str] = None,  # deprecated, use `reason`
             field: Optional[dicts.FieldSpec] = None,
+            errors: Optional[ErrorsMode] = None,
             timeout: Optional[float] = None,
             initial: Optional[bool] = None,
             requires_finalizer: bool = False,
@@ -255,7 +259,8 @@ class OperatorRegistry:
         """
         resource = resources_.Resource(group, version, plural)
         return self._resource_changing_handlers[resource].register(
-            reason=reason, event=event, field=field, fn=fn, id=id, timeout=timeout,
+            reason=reason, event=event, field=field, fn=fn, id=id,
+            errors=errors, timeout=timeout,
             initial=initial, requires_finalizer=requires_finalizer,
             labels=labels, annotations=annotations,
         )
