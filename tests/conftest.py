@@ -1,5 +1,6 @@
 import asyncio
 import dataclasses
+import importlib
 import io
 import json
 import logging
@@ -190,36 +191,34 @@ def login_mocks(mocker):
     return LoginMocks(**kwargs)
 
 #
-# Simulating that Kubernetes client library is not installed.
+# Simulating that Kubernetes client libraries are not installed.
 #
 
-class ProhibitedImportFinder:
-    def find_spec(self, fullname, path, target=None):
-        if fullname == 'kubernetes' or fullname.startswith('kubernetes.'):
-            raise ImportError("Import is prohibited for tests.")
-
-
-@pytest.fixture()
-def _kubernetes():
-    # If kubernetes client is required, it should either be installed,
+def _with_module_present(name: str):
+    # If the module is required, it should either be installed,
     # or skip the test: we cannot simulate its presence (unlike its absence).
-    return pytest.importorskip('kubernetes')
+    yield pytest.importorskip(name)
 
 
-@pytest.fixture()
-def _no_kubernetes():
+def _with_module_absent(name: str):
+
+    class ProhibitedImportFinder:
+        def find_spec(self, fullname, path, target=None):
+            if fullname.split('.')[0] == name:
+                raise ImportError("Import is prohibited for tests.")
+
     try:
-        import kubernetes as kubernetes_before
+        mod_before = importlib.import_module(name)
     except ImportError:
         yield
         return  # nothing to patch & restore.
 
     # Remove any cached modules.
     preserved = {}
-    for name, mod in list(sys.modules.items()):
-        if name == 'kubernetes' or name.startswith('kubernetes.'):
-            preserved[name] = mod
-            del sys.modules[name]
+    for fullname, mod in list(sys.modules.items()):
+        if fullname.split('.')[0] == name:
+            preserved[fullname] = mod
+            del sys.modules[fullname]
 
     # Inject the prohibition for loading this module. And restore when done.
     finder = ProhibitedImportFinder()
@@ -231,26 +230,44 @@ def _no_kubernetes():
         sys.modules.update(preserved)
 
         # Verify if it works and that we didn't break the importing machinery.
-        import kubernetes as kubernetes_after
-        assert kubernetes_after is kubernetes_before
+        mod_after = importlib.import_module(name)
+        assert mod_after is mod_before
 
 
 @pytest.fixture(params=[True], ids=['with-client'])  # for hinting suffixes
-def kubernetes(request):
-    return request.getfixturevalue('_kubernetes')
+def kubernetes():
+    yield from _with_module_present('kubernetes')
 
 
 @pytest.fixture(params=[False], ids=['no-client'])  # for hinting suffixes
-def no_kubernetes(request):
-    return request.getfixturevalue('_no_kubernetes')
+def no_kubernetes():
+    yield from _with_module_absent('kubernetes')
 
 
 @pytest.fixture(params=[False, True], ids=['no-client', 'with-client'])
 def any_kubernetes(request):
     if request.param:
-        return request.getfixturevalue('_kubernetes')
+        yield from _with_module_present('kubernetes')
     else:
-        return request.getfixturevalue('_no_kubernetes')
+        yield from _with_module_absent('kubernetes')
+
+
+@pytest.fixture(params=[True], ids=['with-pykube'])  # for hinting suffixes
+def pykube():
+    yield from _with_module_present('pykube')
+
+
+@pytest.fixture(params=[False], ids=['no-pykube'])  # for hinting suffixes
+def no_pykube():
+    yield from _with_module_absent('pykube')
+
+
+@pytest.fixture(params=[False, True], ids=['no-pykube', 'with-pykube'])
+def any_pykube(request):
+    if request.param:
+        yield from _with_module_present('pykube')
+    else:
+        yield from _with_module_absent('pykube')
 
 #
 # Helpers for the timing checks.

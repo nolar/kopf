@@ -16,11 +16,6 @@ RESPONSE_401.status_code = 401
 def _auto_clean_kubernetes_client(clean_kubernetes_client):
     pass
 
-
-def test_kubernetes_uninstalled_has_effect(no_kubernetes):
-    with pytest.raises(ImportError):
-        import kubernetes
-
 #
 # Tests via the direct function invocation.
 #
