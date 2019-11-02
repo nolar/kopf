@@ -419,6 +419,7 @@ async def _execute_handler(
     exceptions mean the failure of execution itself.
     """
     errors = handler.errors if handler.errors is not None else default_errors
+    cooldown = handler.cooldown if handler.cooldown is not None else DEFAULT_RETRY_DELAY
 
     # Prevent successes/failures from posting k8s-events for resource-watching causes.
     logger: Union[logging.Logger, logging.LoggerAdapter]
@@ -475,7 +476,7 @@ async def _execute_handler(
             return states.HandlerOutcome(final=True, exception=e)
         elif errors == registries.ErrorsMode.TEMPORARY:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")
-            return states.HandlerOutcome(final=False, exception=e, delay=DEFAULT_RETRY_DELAY)
+            return states.HandlerOutcome(final=False, exception=e, delay=cooldown)
         elif errors == registries.ErrorsMode.PERMANENT:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will stop.")
             return states.HandlerOutcome(final=True, exception=e)

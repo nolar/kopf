@@ -24,6 +24,7 @@ def test_on_create_minimal(mocker):
     assert handlers[0].errors is None
     assert handlers[0].timeout is None
     assert handlers[0].retries is None
+    assert handlers[0].cooldown is None
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
 
@@ -45,6 +46,7 @@ def test_on_update_minimal(mocker):
     assert handlers[0].errors is None
     assert handlers[0].timeout is None
     assert handlers[0].retries is None
+    assert handlers[0].cooldown is None
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
 
@@ -66,6 +68,7 @@ def test_on_delete_minimal(mocker):
     assert handlers[0].errors is None
     assert handlers[0].timeout is None
     assert handlers[0].retries is None
+    assert handlers[0].cooldown is None
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
 
@@ -88,6 +91,7 @@ def test_on_field_minimal(mocker):
     assert handlers[0].errors is None
     assert handlers[0].timeout is None
     assert handlers[0].retries is None
+    assert handlers[0].cooldown is None
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
 
@@ -107,7 +111,7 @@ def test_on_create_with_all_kwargs(mocker):
 
     @kopf.on.create('group', 'version', 'plural',
                     id='id', registry=registry,
-                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456,
+                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, cooldown=78,
                     labels={'somelabel': 'somevalue'},
                     annotations={'someanno': 'somevalue'})
     def fn(**_):
@@ -122,6 +126,7 @@ def test_on_create_with_all_kwargs(mocker):
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
     assert handlers[0].retries == 456
+    assert handlers[0].cooldown == 78
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
 
@@ -134,7 +139,7 @@ def test_on_update_with_all_kwargs(mocker):
 
     @kopf.on.update('group', 'version', 'plural',
                     id='id', registry=registry,
-                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456,
+                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, cooldown=78,
                     labels={'somelabel': 'somevalue'},
                     annotations={'someanno': 'somevalue'})
     def fn(**_):
@@ -149,6 +154,7 @@ def test_on_update_with_all_kwargs(mocker):
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
     assert handlers[0].retries == 456
+    assert handlers[0].cooldown == 78
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
 
@@ -165,7 +171,7 @@ def test_on_delete_with_all_kwargs(mocker, optional):
 
     @kopf.on.delete('group', 'version', 'plural',
                     id='id', registry=registry,
-                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456,
+                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, cooldown=78,
                     optional=optional,
                     labels={'somelabel': 'somevalue'},
                     annotations={'someanno': 'somevalue'})
@@ -181,6 +187,7 @@ def test_on_delete_with_all_kwargs(mocker, optional):
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
     assert handlers[0].retries == 456
+    assert handlers[0].cooldown == 78
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
 
@@ -194,7 +201,7 @@ def test_on_field_with_all_kwargs(mocker):
 
     @kopf.on.field('group', 'version', 'plural', 'field.subfield',
                    id='id', registry=registry,
-                   errors=ErrorsMode.PERMANENT, timeout=123, retries=456,
+                   errors=ErrorsMode.PERMANENT, timeout=123, retries=456, cooldown=78,
                    labels={'somelabel': 'somevalue'},
                    annotations={'someanno': 'somevalue'})
     def fn(**_):
@@ -209,6 +216,7 @@ def test_on_field_with_all_kwargs(mocker):
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
     assert handlers[0].retries == 456
+    assert handlers[0].cooldown == 78
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
 

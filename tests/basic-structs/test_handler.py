@@ -16,6 +16,7 @@ def test_all_args(mocker):
     errors = mocker.Mock()
     timeout = mocker.Mock()
     retries = mocker.Mock()
+    cooldown = mocker.Mock()
     initial = mocker.Mock()
     labels = mocker.Mock()
     annotations = mocker.Mock()
@@ -28,6 +29,7 @@ def test_all_args(mocker):
         errors=errors,
         timeout=timeout,
         retries=retries,
+        cooldown=cooldown,
         initial=initial,
         labels=labels,
         annotations=annotations,
@@ -41,6 +43,7 @@ def test_all_args(mocker):
     assert handler.errors is errors
     assert handler.timeout is timeout
     assert handler.retries is retries
+    assert handler.cooldown is cooldown
     assert handler.initial is initial
     assert handler.labels is labels
     assert handler.annotations is annotations

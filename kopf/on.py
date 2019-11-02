@@ -29,6 +29,7 @@ def resume(
         errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
+        cooldown: Optional[float] = None,
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
@@ -39,7 +40,7 @@ def resume(
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=None, initial=True, id=id,
-            errors=errors, timeout=timeout, retries=retries,
+            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
             fn=fn, labels=labels, annotations=annotations,
         )
     return decorator
@@ -52,6 +53,7 @@ def create(
         errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
+        cooldown: Optional[float] = None,
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
@@ -62,7 +64,7 @@ def create(
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.CREATE, id=id,
-            errors=errors, timeout=timeout, retries=retries,
+            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
             fn=fn, labels=labels, annotations=annotations,
         )
     return decorator
@@ -75,6 +77,7 @@ def update(
         errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
+        cooldown: Optional[float] = None,
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
@@ -85,7 +88,7 @@ def update(
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.UPDATE, id=id,
-            errors=errors, timeout=timeout, retries=retries,
+            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
             fn=fn, labels=labels, annotations=annotations,
         )
     return decorator
@@ -98,6 +101,7 @@ def delete(
         errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
+        cooldown: Optional[float] = None,
         registry: Optional[registries.OperatorRegistry] = None,
         optional: Optional[bool] = None,
         labels: Optional[bodies.Labels] = None,
@@ -109,7 +113,7 @@ def delete(
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.DELETE, id=id,
-            errors=errors, timeout=timeout, retries=retries,
+            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
             fn=fn, requires_finalizer=bool(not optional),
             labels=labels, annotations=annotations,
         )
@@ -124,6 +128,7 @@ def field(
         errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
+        cooldown: Optional[float] = None,
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
@@ -134,7 +139,7 @@ def field(
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=None, field=field, id=id,
-            errors=errors, timeout=timeout, retries=retries,
+            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
             fn=fn, labels=labels, annotations=annotations,
         )
     return decorator
@@ -166,6 +171,7 @@ def this(
         errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
+        cooldown: Optional[float] = None,
         registry: Optional[registries.ResourceChangingRegistry] = None,
 ) -> ResourceHandlerDecorator:
     """
@@ -201,7 +207,7 @@ def this(
     def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
         return actual_registry.register(
             id=id, fn=fn,
-            errors=errors, timeout=timeout, retries=retries,
+            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
         )
     return decorator
 
@@ -213,6 +219,7 @@ def register(
         errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
+        cooldown: Optional[float] = None,
         registry: Optional[registries.ResourceChangingRegistry] = None,
 ) -> registries.ResourceHandlerFn:
     """
@@ -241,6 +248,6 @@ def register(
     """
     decorator = this(
         id=id, registry=registry,
-        errors=errors, timeout=timeout, retries=retries,
+        errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
     )
     return decorator(fn)
