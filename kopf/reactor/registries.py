@@ -77,6 +77,7 @@ class ResourceHandler(NamedTuple):
     field: Optional[dicts.FieldPath]
     errors: Optional[ErrorsMode] = None
     timeout: Optional[float] = None
+    retries: Optional[int] = None
     initial: Optional[bool] = None
     labels: Optional[bodies.Labels] = None
     annotations: Optional[bodies.Annotations] = None
@@ -117,6 +118,7 @@ class ResourceRegistry(Generic[CauseT]):
             field: Optional[dicts.FieldSpec] = None,
             errors: Optional[ErrorsMode] = None,
             timeout: Optional[float] = None,
+            retries: Optional[int] = None,
             initial: Optional[bool] = None,
             requires_finalizer: bool = False,
             labels: Optional[bodies.Labels] = None,
@@ -129,7 +131,7 @@ class ResourceRegistry(Generic[CauseT]):
         real_id = generate_id(fn=fn, id=id, prefix=self.prefix, suffix=".".join(real_field or []))
         handler = ResourceHandler(
             id=real_id, fn=fn, reason=reason, field=real_field,
-            errors=errors, timeout=timeout,
+            errors=errors, timeout=timeout, retries=retries,
             initial=initial, requires_finalizer=requires_finalizer,
             labels=labels, annotations=annotations,
         )
@@ -249,6 +251,7 @@ class OperatorRegistry:
             field: Optional[dicts.FieldSpec] = None,
             errors: Optional[ErrorsMode] = None,
             timeout: Optional[float] = None,
+            retries: Optional[int] = None,
             initial: Optional[bool] = None,
             requires_finalizer: bool = False,
             labels: Optional[bodies.Labels] = None,
@@ -260,7 +263,7 @@ class OperatorRegistry:
         resource = resources_.Resource(group, version, plural)
         return self._resource_changing_handlers[resource].register(
             reason=reason, event=event, field=field, fn=fn, id=id,
-            errors=errors, timeout=timeout,
+            errors=errors, timeout=timeout, retries=retries,
             initial=initial, requires_finalizer=requires_finalizer,
             labels=labels, annotations=annotations,
         )

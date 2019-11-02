@@ -38,6 +38,7 @@ from kopf.reactor.handling import (
     TemporaryError,
     PermanentError,
     HandlerTimeoutError,
+    HandlerRetriesError,
     execute,
 )
 from kopf.reactor.lifecycles import (
@@ -95,6 +96,7 @@ __all__ = [
     'PermanentError', 'HandlerFatalError',
     'TemporaryError', 'HandlerRetryError',
     'HandlerTimeoutError',
+    'HandlerRetriesError',
     'BaseRegistry',  # deprecated
     'SimpleRegistry',  # deprecated
     'GlobalRegistry',  # deprecated

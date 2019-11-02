@@ -94,19 +94,19 @@ def handlers(clear_default_registry):
     async def event_fn(**kwargs):
         return event_mock(**kwargs)
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', id='create_fn', timeout=600)
+    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', id='create_fn', timeout=600, retries=100)
     async def create_fn(**kwargs):
         return create_mock(**kwargs)
 
-    @kopf.on.update('zalando.org', 'v1', 'kopfexamples', id='update_fn', timeout=600)
+    @kopf.on.update('zalando.org', 'v1', 'kopfexamples', id='update_fn', timeout=600, retries=100)
     async def update_fn(**kwargs):
         return update_mock(**kwargs)
 
-    @kopf.on.delete('zalando.org', 'v1', 'kopfexamples', id='delete_fn', timeout=600)
+    @kopf.on.delete('zalando.org', 'v1', 'kopfexamples', id='delete_fn', timeout=600, retries=100)
     async def delete_fn(**kwargs):
         return delete_mock(**kwargs)
 
-    @kopf.on.resume('zalando.org', 'v1', 'kopfexamples', id='resume_fn', timeout=600)
+    @kopf.on.resume('zalando.org', 'v1', 'kopfexamples', id='resume_fn', timeout=600, retries=100)
     async def resume_fn(**kwargs):
         return resume_mock(**kwargs)
 

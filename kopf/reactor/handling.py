@@ -63,6 +63,10 @@ class HandlerTimeoutError(PermanentError):
     """ An error for the handler's timeout (if set). """
 
 
+class HandlerRetriesError(PermanentError):
+    """ An error for the handler's retries exceeded (if set). """
+
+
 class HandlerChildrenRetry(TemporaryError):
     """ An internal pseudo-error to retry for the next sub-handlers attempt. """
 
@@ -429,6 +433,9 @@ async def _execute_handler(
 
         if handler.timeout is not None and state.runtime.total_seconds() > handler.timeout:
             raise HandlerTimeoutError(f"Handler {handler.id!r} has timed out after {state.runtime}.")
+
+        if handler.retries is not None and state.retries >= handler.retries:
+            raise HandlerRetriesError(f"Handler {handler.id!r} has exceeded {state.retries} retries.")
 
         result = await _call_handler(
             handler,
