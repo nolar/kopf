@@ -5,8 +5,6 @@ import subprocess
 
 import pytest
 
-from kopf.clients.auth import login
-
 root_dir = os.path.relpath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 examples = sorted(glob.glob(os.path.join(root_dir, 'examples/*/')))
 assert examples  # if empty, it is just the detection failed
@@ -16,12 +14,6 @@ examples = [path for path in examples if not glob.glob((os.path.join(path, 'test
 @pytest.fixture(params=examples, ids=[os.path.basename(path.rstrip('/')) for path in examples])
 def exampledir(request):
     return pathlib.Path(request.param)
-
-
-@pytest.fixture(scope='session', autouse=True)
-def autologin(request):
-    if request.config.getoption('--with-e2e') or request.config.getoption('--only-e2e'):
-        login()  # or anything like that; it is not a unit-under-test
 
 
 @pytest.fixture()

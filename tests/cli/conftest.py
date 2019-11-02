@@ -63,14 +63,6 @@ def invoke(runner):
 
 
 @pytest.fixture()
-def login(mocker):
-    mocker.patch('kopf.clients.auth.login_pykube')
-    mocker.patch('kopf.clients.auth.login_client')
-    mocker.patch('kopf.clients.auth.verify_pykube')
-    mocker.patch('kopf.clients.auth.verify_client')
-
-
-@pytest.fixture()
 def preload(mocker):
     return mocker.patch('kopf.utilities.loaders.preload')
 

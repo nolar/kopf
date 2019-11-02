@@ -24,7 +24,7 @@ import pytest
     'opt-short-d', 'opt-long-debug', 'env-debug-true', 'env-debug-empty',
     'opt-short-v', 'opt-long-verbose', 'env-verbose-true', 'env-verbose-empty',
 ])
-def test_verbosity(invoke, caplog, options, envvars, expect_debug, expect_info, login, preload, real_run):
+def test_verbosity(invoke, caplog, options, envvars, expect_debug, expect_info, preload, real_run):
     result = invoke(['run'] + options, env=envvars)
     assert result.exit_code == 0
 
@@ -50,7 +50,7 @@ def test_verbosity(invoke, caplog, options, envvars, expect_debug, expect_info, 
     (['-v']),
     (['--verbose']),
 ], ids=['default', 'q', 'quiet', 'v', 'verbose'])
-def test_no_lowlevel_dumps_in_nondebug(invoke, caplog, options, login, preload, real_run):
+def test_no_lowlevel_dumps_in_nondebug(invoke, caplog, options, preload, real_run):
     kubernetes = pytest.importorskip('kubernetes')
 
     result = invoke(['run'] + options)
@@ -70,7 +70,7 @@ def test_no_lowlevel_dumps_in_nondebug(invoke, caplog, options, login, preload, 
     (['-d']),
     (['--debug']),
 ], ids=['d', 'debug'])
-def test_lowlevel_dumps_in_debug_mode(invoke, caplog, options, login, preload, real_run):
+def test_lowlevel_dumps_in_debug_mode(invoke, caplog, options, preload, real_run):
     kubernetes = pytest.importorskip('kubernetes')
 
     result = invoke(['run'] + options)

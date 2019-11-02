@@ -14,7 +14,7 @@ import pytest
     'default-paths', 'arg-paths', #'env-paths',
     'default-modules', 'opt-short-m', 'opt-long-modules', 'env-modules',
 ])
-def test_options_passed_to_preload(invoke, options, envvars, kwarg, value, login, preload, real_run):
+def test_options_passed_to_preload(invoke, options, envvars, kwarg, value, preload, real_run):
     result = invoke(['run'] + options, env=envvars)
     assert result.exit_code == 0
     assert preload.called
@@ -47,7 +47,7 @@ def test_options_passed_to_preload(invoke, options, envvars, kwarg, value, login
     'default-peering', 'opt-short-P', 'opt-long-peering', 'env-peering',
     'default-priority', 'opt-short-p', 'opt-long-priority', 'env-priority', 'opt-long-dev',
 ])
-def test_options_passed_to_realrun(invoke, options, envvars, kwarg, value, login, preload, real_run):
+def test_options_passed_to_realrun(invoke, options, envvars, kwarg, value, preload, real_run):
     result = invoke(['run'] + options, env=envvars)
     assert result.exit_code == 0
     assert real_run.called
