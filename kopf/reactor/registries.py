@@ -13,6 +13,7 @@ of the handlers to be executed on each reaction cycle.
 """
 import abc
 import collections
+import enum
 import functools
 import logging
 import warnings
@@ -37,6 +38,13 @@ HandlerId = NewType('HandlerId', str)
 # A specialised type to highlight the purpose or origin of the data of type Any,
 # to not be mixed with other arbitrary Any values, where it is indeed "any".
 HandlerResult = NewType('HandlerResult', object)
+
+
+class ErrorsMode(enum.Enum):
+    """ How arbitrary (non-temporary/non-permanent) exceptions are treated. """
+    IGNORED = enum.auto()
+    TEMPORARY = enum.auto()
+    PERMANENT = enum.auto()
 
 
 class ResourceHandlerFn(Protocol):
