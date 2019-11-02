@@ -431,7 +431,7 @@ async def _execute_handler(
     try:
         logger.debug(f"Invoking handler {handler.id!r}.")
 
-        if handler.timeout is not None and state.runtime.total_seconds() > handler.timeout:
+        if handler.timeout is not None and state.runtime.total_seconds() >= handler.timeout:
             raise HandlerTimeoutError(f"Handler {handler.id!r} has timed out after {state.runtime}.")
 
         if handler.retries is not None and state.retries >= handler.retries:
