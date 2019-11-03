@@ -1,8 +1,10 @@
 import functools
+import ssl
 import warnings
 from contextvars import ContextVar
 from typing import Optional, Callable, Any, TypeVar, Dict, cast
 
+import aiohttp
 import pykube
 import requests
 
@@ -26,14 +28,18 @@ def reauthenticated_request(fn: _F) -> _F:
     activity. Meanwhile, the request-performing function will be awaiting
     for the new credentials, and re-executed once they are available.
     """
-    factory = create_pykube_client
-    purpose = f'pykube-client-with-defaults'
     @functools.wraps(fn)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
         vault: credentials.Vault = vault_var.get()
-        async for key, info, api in vault.extended(factory=factory, purpose=purpose):
+        async for key, info, session in vault.extended(APISession.from_connection_info, 'sessions'):
+            api = create_pykube_client(info)
             try:
-                return await fn(*args, **kwargs, api=api)
+                return await fn(*args, **kwargs, api=api, session=session)
+            except aiohttp.ClientResponseError as e:
+                if e.status == 401:
+                    await vault.invalidate(key, exc=e)
+                else:
+                    raise
             except pykube.exceptions.HTTPError as e:
                 if e.code == 401:
                     await vault.invalidate(key, exc=e)
@@ -58,16 +64,20 @@ def reauthenticated_stream(fn: _F) -> _F:
     activity. Meanwhile, the function will be awaiting for the new credentials,
     and re-executed once they are available.
     """
-    factory = functools.partial(create_pykube_client, timeout=None)
-    purpose = f'pykube-client-no-timeout'
     @functools.wraps(fn)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
         vault: credentials.Vault = vault_var.get()
-        async for key, info, api in vault.extended(factory=factory, purpose=purpose):
+        async for key, info, session in vault.extended(APISession.from_connection_info, 'sessions'):
+            api = create_pykube_client(info, timeout=None)
             try:
-                async for item in fn(*args, **kwargs, api=api):
+                async for item in fn(*args, **kwargs, api=api, session=session):
                     yield item
                 break  # out of credentials cycle (instead of `return`)
+            except aiohttp.ClientResponseError as e:
+                if e.status == 401:
+                    await vault.invalidate(key, exc=e)
+                else:
+                    raise
             except pykube.exceptions.HTTPError as e:
                 if e.code == 401:
                     await vault.invalidate(key, exc=e)
@@ -81,6 +91,80 @@ def reauthenticated_stream(fn: _F) -> _F:
         else:
             raise credentials.LoginError("Ran out of connection credentials.")
     return cast(_F, wrapper)
+
+
+class APISession(aiohttp.ClientSession):
+    """
+    An extended aiohttp session, with k8s scopes for server & namespace scopes.
+
+    It is constructed once per every `ConnectionInfo`, and then cached
+    for later re-use (see `Vault.extended`).
+
+    We assume that the whole operator runs in the same event loop, so there is
+    no need to split the sessions for multiple loops. Synchronous handlers are
+    threaded with other event loops per thread, but no operator's requests are
+    performed inside of those threads: everything is in the main thread/loop.
+    """
+    server: str
+    default_namespace: Optional[str] = None
+
+    @classmethod
+    def from_connection_info(
+            cls,
+            info: credentials.ConnectionInfo,
+    ) -> "APISession":
+
+        # The SSL part (both client certificate auth and CA verification).
+        # TODO:2: also use cert/pkey/ca binary data
+        context: ssl.SSLContext
+        if info.certificate_path and info.private_key_path:
+            context = ssl.create_default_context(
+                cafile=info.ca_path,
+                purpose=ssl.Purpose.CLIENT_AUTH)
+            context.load_cert_chain(
+                certfile=info.certificate_path,
+                keyfile=info.private_key_path)
+        else:
+            context = ssl.create_default_context(
+                cafile=info.ca_path)
+        if info.insecure:
+            context.verify_mode = ssl.CERT_NONE
+            context.check_hostname = False
+
+        # The token auth part.
+        headers: Dict[str, str] = {}
+        if info.scheme and info.token:
+            headers['Authorization'] = f'{info.scheme} {info.token}'
+        elif info.scheme:
+            headers['Authorization'] = f'{info.scheme}'
+        elif info.token:
+            headers['Authorization'] = f'Bearer {info.token}'
+
+        # The basic auth part.
+        auth: Optional[aiohttp.BasicAuth]
+        if info.username and info.password:
+            auth = aiohttp.BasicAuth(info.username, info.password)
+        else:
+            auth = None
+
+        # It is a good practice to self-identify a bit.
+        headers['User-Agent'] = f'kopf/unknown'  # TODO: add version someday
+
+        # Generic aiohttp session based on the constructed credentials.
+        session = cls(
+            connector=aiohttp.TCPConnector(
+                limit=0,
+                ssl=context,
+            ),
+            headers=headers,
+            auth=auth,
+        )
+
+        # Add the extra payload information. We avoid overriding the constructor.
+        session.server = info.server
+        session.default_namespace = info.default_namespace
+
+        return session
 
 
 # DEPRECATED: Should be removed with login()/get_pykube_cfg()/get_pykube_api().

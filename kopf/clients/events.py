@@ -25,6 +25,7 @@ async def post_event(
         reason: str,
         message: str = '',
         api: Optional[pykube.HTTPClient] = None,  # injected by the decorator
+        session: Optional[auth.APISession] = None,  # injected by the decorator
 ) -> None:
     """
     Issue an event for the object.

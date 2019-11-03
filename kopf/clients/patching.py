@@ -21,6 +21,7 @@ async def patch_obj(
         name: Optional[str] = None,
         body: Optional[bodies.Body] = None,
         api: Optional[pykube.HTTPClient] = None,  # injected by the decorator
+        session: Optional[auth.APISession] = None,  # injected by the decorator
 ) -> None:
     """
     Patch a resource of specific kind.

@@ -25,6 +25,7 @@ async def read_crd(
         resource: resources.Resource,
         default: Union[_T, _UNSET] = _UNSET.token,
         api: Optional[pykube.HTTPClient] = None,  # injected by the decorator
+        session: Optional[auth.APISession] = None,  # injected by the decorator
 ) -> Union[bodies.Body, _T]:
     if api is None:
         raise RuntimeError("API instance is not injected by the decorator.")
@@ -54,6 +55,7 @@ async def read_obj(
         name: Optional[str] = None,
         default: Union[_T, _UNSET] = _UNSET.token,
         api: Optional[pykube.HTTPClient] = None,  # injected by the decorator
+        session: Optional[auth.APISession] = None,  # injected by the decorator
 ) -> Union[bodies.Body, _T]:
     if api is None:
         raise RuntimeError("API instance is not injected by the decorator.")
@@ -82,6 +84,7 @@ async def list_objs_rv(
         resource: resources.Resource,
         namespace: Optional[str] = None,
         api: Optional[pykube.HTTPClient] = None,  # injected by the decorator
+        session: Optional[auth.APISession] = None,  # injected by the decorator
 ) -> Tuple[Collection[bodies.Body], str]:
     """
     List the objects of specific resource type.

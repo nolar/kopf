@@ -9,6 +9,7 @@ pytest-asyncio
 pytest-mock>=1.11.1
 pytest-cov
 pytest
+aresponses
 asynctest
 freezegun
 codecov

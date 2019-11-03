@@ -151,6 +151,7 @@ async def watch_objs(
         timeout: Optional[float] = None,
         since: Optional[str] = None,
         api: Optional[pykube.HTTPClient] = None,  # injected by the decorator
+        session: Optional[auth.APISession] = None,  # injected by the decorator
 ) -> AsyncIterator[bodies.RawEvent]:
     """
     Watch objects of a specific resource type.

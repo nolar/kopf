@@ -43,6 +43,7 @@ setup(
         'typing_extensions',
         'click',
         'iso8601',
+        'aiohttp',
         'aiojobs',
         'pykube-ng>=0.27',
     ],
