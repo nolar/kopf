@@ -185,6 +185,7 @@ async def spawn_tasks(
             root_tasks=tasks,  # used as a "live" view, populated later.
             ready_flag=ready_flag,
             registry=registry,
+            vault=vault,  # to purge & finalize the caches in the end.
         )),
     ])
 
@@ -434,6 +435,7 @@ async def _startup_cleanup_activities(
         root_tasks: Sequence[asyncio_Task],  # mutated externally!
         ready_flag: Optional[Flag],
         registry: registries.OperatorRegistry,
+        vault: credentials.Vault,
 ) -> None:
     """
     Startup and cleanup activities.
@@ -485,6 +487,7 @@ async def _startup_cleanup_activities(
             registry=registry,
             activity=causation.Activity.CLEANUP,
         )
+        await vault.close()
     except asyncio.CancelledError:
         logger.warning("Cleanup activity is only partially executed due to cancellation.")
         raise
