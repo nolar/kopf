@@ -14,6 +14,7 @@ import pytest
 import pytest_mock
 
 import kopf
+from kopf.clients.auth import APISession
 from kopf.config import configure
 from kopf.engines.logging import ObjectPrefixingFormatter
 from kopf.structs.credentials import Vault, VaultKey, ConnectionInfo
@@ -120,6 +121,25 @@ def req_mock(mocker, resource, request, fake_vault):
     # Prevent ANY outer requests, no matter what. These ones are usually asserted.
     req_mock = mocker.patch('requests.Session').return_value
     return req_mock
+
+
+@pytest.fixture()
+async def enforced_session(fake_vault, mocker):
+    """
+    A patchable session for some selected tests, e.g. with local exceptions.
+
+    The local exceptions are supposed to simulate either the code issues,
+    or the connection issues. `aresponses` does not allow to raise arbitrary
+    exceptions on the client side, but only to return the erroneous responses.
+
+    This test forces the reauthentication decorators to always use one specific
+    session for the duration of the test, so that the patches would have effect.
+    """
+    _, item = fake_vault.select()
+    session = APISession.from_connection_info(item.info)
+    mocker.patch.object(APISession, 'from_connection_info', return_value=session)
+    async with session:
+        yield session
 
 
 @pytest.fixture()
