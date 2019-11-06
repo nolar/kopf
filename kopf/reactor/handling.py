@@ -319,7 +319,7 @@ async def handle_resource_changing_cause(
         logger.debug("Deletion event, but we are done with it, and we do not care.")
 
     if cause.reason == causation.Reason.NOOP:
-        logger.debug("Something has changed, but we are not interested (state is the same).")
+        logger.debug("Something has changed, but we are not interested (the essence is the same).")
 
     # For the case of a newly created object, or one that doesn't have the correct
     # finalizers, lock it to this operator. Not all newly created objects will
