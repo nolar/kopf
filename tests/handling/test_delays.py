@@ -11,6 +11,7 @@ from kopf.reactor.handling import TemporaryError
 from kopf.reactor.handling import WAITING_KEEPALIVE_INTERVAL
 from kopf.reactor.handling import resource_handler
 from kopf.reactor.states import HandlerState
+from kopf.structs.containers import ResourceMemories
 from kopf.structs.finalizers import FINALIZER
 
 
@@ -35,6 +36,7 @@ async def test_delayed_handlers_progress(
             lifecycle=kopf.lifecycles.all_at_once,
             registry=registry,
             resource=resource,
+            memories=ResourceMemories(),
             event={'type': 'irrelevant', 'object': cause_mock.body},
             freeze=asyncio.Event(),
             replenished=asyncio.Event(),
@@ -89,6 +91,7 @@ async def test_delayed_handlers_sleep(
             lifecycle=kopf.lifecycles.all_at_once,
             registry=registry,
             resource=resource,
+            memories=ResourceMemories(),
             event={'type': 'irrelevant', 'object': cause_mock.body},
             freeze=asyncio.Event(),
             replenished=asyncio.Event(),

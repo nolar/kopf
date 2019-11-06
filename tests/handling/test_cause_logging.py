@@ -6,6 +6,7 @@ import pytest
 import kopf
 from kopf.reactor.causation import ALL_REASONS, HANDLER_REASONS
 from kopf.reactor.handling import resource_handler
+from kopf.structs.containers import ResourceMemories
 
 
 @pytest.mark.parametrize('cause_type', ALL_REASONS)
@@ -17,6 +18,7 @@ async def test_all_logs_are_prefixed(registry, resource, handlers,
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
+        memories=ResourceMemories(),
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
@@ -46,6 +48,7 @@ async def test_diffs_logged_if_present(registry, resource, handlers, cause_type,
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
+        memories=ResourceMemories(),
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
@@ -68,6 +71,7 @@ async def test_diffs_not_logged_if_absent(registry, resource, handlers, cause_ty
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
+        memories=ResourceMemories(),
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),

@@ -6,6 +6,7 @@ import pytest
 import kopf
 from kopf.reactor.causation import ALL_REASONS
 from kopf.reactor.handling import resource_handler
+from kopf.structs.containers import ResourceMemories
 
 
 @pytest.mark.parametrize('cause_type', ALL_REASONS)
@@ -19,6 +20,7 @@ async def test_handlers_called_always(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
+        memories=ResourceMemories(),
         event={'type': 'ev-type', 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
@@ -54,6 +56,7 @@ async def test_errors_are_ignored(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
+        memories=ResourceMemories(),
         event={'type': 'ev-type', 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),

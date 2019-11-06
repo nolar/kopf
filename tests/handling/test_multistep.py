@@ -5,6 +5,7 @@ import pytest
 import kopf
 from kopf.reactor.causation import Reason, HANDLER_REASONS
 from kopf.reactor.handling import resource_handler
+from kopf.structs.containers import ResourceMemories
 
 
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
@@ -20,6 +21,7 @@ async def test_1st_step_stores_progress_by_patching(
         lifecycle=kopf.lifecycles.asap,
         registry=registry,
         resource=resource,
+        memories=ResourceMemories(),
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
@@ -66,6 +68,7 @@ async def test_2nd_step_finishes_the_handlers(
         lifecycle=kopf.lifecycles.one_by_one,
         registry=registry,
         resource=resource,
+        memories=ResourceMemories(),
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),

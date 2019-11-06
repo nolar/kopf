@@ -30,6 +30,7 @@ from kopf.reactor import lifecycles
 from kopf.reactor import registries
 from kopf.reactor import states
 from kopf.structs import bodies
+from kopf.structs import containers
 from kopf.structs import dicts
 from kopf.structs import diffs
 from kopf.structs import finalizers
@@ -145,6 +146,7 @@ async def activity_trigger(
 async def resource_handler(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
+        memories: containers.ResourceMemories,
         resource: resources.Resource,
         event: bodies.Event,
         freeze: asyncio.Event,
@@ -174,6 +176,12 @@ async def resource_handler(
         logger.debug("Ignoring the events due to freeze.")
         return
 
+    # Recall what is stored about that object. Share it in little portions with the consumers.
+    # And immediately forget it if the object is deleted from the cluster (but keep in memory).
+    memory = await memories.recall(body)
+    if event['type'] == 'DELETED':
+        await memories.forget(body)
+
     # Invoke all silent spies. No causation, no progress storage is performed.
     if registry.has_resource_watching_handlers(resource=resource):
         resource_watching_cause = causation.detect_resource_watching_cause(
@@ -185,6 +193,7 @@ async def resource_handler(
         await handle_resource_watching_cause(
             lifecycle=lifecycles.all_at_once,
             registry=registry,
+            memory=memory,
             cause=resource_watching_cause,
         )
 
@@ -206,6 +215,7 @@ async def resource_handler(
         delay = await handle_resource_changing_cause(
             lifecycle=lifecycle,
             registry=registry,
+            memory=memory,
             cause=resource_changing_cause,
         )
 
@@ -234,6 +244,7 @@ async def resource_handler(
 async def handle_resource_watching_cause(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
+        memory: containers.ResourceMemory,
         cause: causation.ResourceWatchingCause,
 ) -> None:
     """
@@ -262,6 +273,7 @@ async def handle_resource_watching_cause(
 async def handle_resource_changing_cause(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
+        memory: containers.ResourceMemory,
         cause: causation.ResourceChangingCause,
 ) -> Optional[float]:
     """

@@ -1,5 +1,4 @@
 import asyncio
-import datetime
 import logging
 
 import freezegun
@@ -8,6 +7,7 @@ import pytest
 import kopf
 from kopf.reactor.causation import HANDLER_REASONS
 from kopf.reactor.handling import resource_handler
+from kopf.structs.containers import ResourceMemories
 
 
 # The timeout is hard-coded in conftest.py:handlers().
@@ -37,6 +37,7 @@ async def test_timed_out_handler_fails(
             lifecycle=kopf.lifecycles.one_by_one,
             registry=registry,
             resource=resource,
+            memories=ResourceMemories(),
             event={'type': 'irrelevant', 'object': cause_mock.body},
             freeze=asyncio.Event(),
             replenished=asyncio.Event(),
@@ -84,6 +85,7 @@ async def test_retries_limited_handler_fails(
         lifecycle=kopf.lifecycles.one_by_one,
         registry=registry,
         resource=resource,
+        memories=ResourceMemories(),
         event={'type': 'irrelevant', 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
