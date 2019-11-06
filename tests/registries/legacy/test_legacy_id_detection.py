@@ -2,6 +2,7 @@ import functools
 
 import pytest
 
+from kopf import SimpleRegistry
 from kopf.reactor.registries import get_callable_id
 
 
@@ -70,14 +71,12 @@ def test_id_of_lambda():
     assert fn_id.startswith(f'lambda:{__file__}:')
 
 
-def test_with_no_hints(
-        mocker, resource_registry_cls):
-
+def test_with_no_hints(mocker):
     get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
 
-    registry = resource_registry_cls()
+    registry = SimpleRegistry()
     registry.register(some_fn)
-    handlers = registry.get_handlers(mocker.MagicMock())
+    handlers = registry.get_cause_handlers(mocker.MagicMock())
 
     assert get_fn_id.called
 
@@ -86,14 +85,12 @@ def test_with_no_hints(
     assert handlers[0].id == 'some-id'
 
 
-def test_with_prefix(
-        mocker, resource_registry_cls):
-
+def test_with_prefix(mocker):
     get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
 
-    registry = resource_registry_cls(prefix='some-prefix')
+    registry = SimpleRegistry(prefix='some-prefix')
     registry.register(some_fn)
-    handlers = registry.get_handlers(mocker.MagicMock())
+    handlers = registry.get_cause_handlers(mocker.MagicMock())
 
     assert get_fn_id.called
 
@@ -102,15 +99,13 @@ def test_with_prefix(
     assert handlers[0].id == 'some-prefix/some-id'
 
 
-def test_with_suffix(
-        mocker, field, resource_registry_cls):
-
+def test_with_suffix(mocker, field):
     get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
     diff = [('add', ('some-field', 'sub-field'), 'old', 'new')]
 
-    registry = resource_registry_cls()
+    registry = SimpleRegistry()
     registry.register(some_fn, field=field)
-    handlers = registry.get_handlers(mocker.MagicMock(diff=diff))
+    handlers = registry.get_cause_handlers(mocker.MagicMock(diff=diff))
 
     assert get_fn_id.called
 
@@ -119,15 +114,13 @@ def test_with_suffix(
     assert handlers[0].id == 'some-id/some-field.sub-field'
 
 
-def test_with_prefix_and_suffix(
-        mocker, field, resource_registry_cls):
-
+def test_with_prefix_and_suffix(mocker, field):
     get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
     diff = [('add', ('some-field', 'sub-field'), 'old', 'new')]
 
-    registry = resource_registry_cls(prefix='some-prefix')
+    registry = SimpleRegistry(prefix='some-prefix')
     registry.register(some_fn, field=field)
-    handlers = registry.get_handlers(mocker.MagicMock(diff=diff))
+    handlers = registry.get_cause_handlers(mocker.MagicMock(diff=diff))
 
     assert get_fn_id.called
 
@@ -136,15 +129,13 @@ def test_with_prefix_and_suffix(
     assert handlers[0].id == 'some-prefix/some-id/some-field.sub-field'
 
 
-def test_with_explicit_id_and_prefix_and_suffix(
-        mocker, field, resource_registry_cls):
-
+def test_with_explicit_id_and_prefix_and_suffix(mocker, field):
     get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
     diff = [('add', ('some-field', 'sub-field'), 'old', 'new')]
 
-    registry = resource_registry_cls(prefix='some-prefix')
+    registry = SimpleRegistry(prefix='some-prefix')
     registry.register(some_fn, id='explicit-id', field=field)
-    handlers = registry.get_handlers(mocker.MagicMock(diff=diff))
+    handlers = registry.get_cause_handlers(mocker.MagicMock(diff=diff))
 
     assert not get_fn_id.called
 

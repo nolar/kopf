@@ -17,6 +17,7 @@ def test_all_args(mocker):
     initial = mocker.Mock()
     labels = mocker.Mock()
     annotations = mocker.Mock()
+    requires_finalizer = mocker.Mock()
     handler = ResourceHandler(
         fn=fn,
         id=id,
@@ -26,6 +27,7 @@ def test_all_args(mocker):
         initial=initial,
         labels=labels,
         annotations=annotations,
+        requires_finalizer=requires_finalizer,
     )
     assert handler.fn is fn
     assert handler.id is id
@@ -36,3 +38,4 @@ def test_all_args(mocker):
     assert handler.initial is initial
     assert handler.labels is labels
     assert handler.annotations is annotations
+    assert handler.requires_finalizer is requires_finalizer
