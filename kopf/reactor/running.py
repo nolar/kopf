@@ -36,6 +36,8 @@ def run(
         priority: int = 0,
         peering_name: Optional[str] = None,
         namespace: Optional[str] = None,
+        stop_flag: Optional[Flag] = None,
+        ready_flag: Optional[Flag] = None,
 ) -> None:
     """
     Run the whole operator synchronously.
@@ -51,6 +53,8 @@ def run(
             namespace=namespace,
             priority=priority,
             peering_name=peering_name,
+            stop_flag=stop_flag,
+            ready_flag=ready_flag,
         ))
     except asyncio.CancelledError:
         pass

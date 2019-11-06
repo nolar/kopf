@@ -2,31 +2,27 @@ import collections
 import re
 import subprocess
 import time
+from typing import Any, Optional, Sequence
 
 import pytest
 
 from kopf.testing import KopfRunner
 
 
-def test_all_examples_are_runnable(mocker, with_crd, exampledir):
+def test_all_examples_are_runnable(mocker, with_crd, exampledir, caplog):
 
     # If the example has its own opinion on the timing, try to respect it.
     # See e.g. /examples/99-all-at-once/example.py.
     example_py = exampledir / 'example.py'
-    m = re.search(r'^E2E_CREATE_TIME\s*=\s*(.+)$', example_py.read_text(), re.M)
-    e2e_create_time = eval(m.group(1)) if m else None
-    m = re.search(r'^E2E_DELETE_TIME\s*=\s*(.+)$', example_py.read_text(), re.M)
-    e2e_delete_time = eval(m.group(1)) if m else None
-    m = re.search(r'^E2E_TRACEBACKS\s*=\s*(.+)$', example_py.read_text(), re.M)
-    e2e_tracebacks = eval(m.group(1)) if m else None
-    m = re.search(r'^E2E_SUCCESS_COUNTS\s*=\s*(.+)$', example_py.read_text(), re.M)
-    e2e_success_counts = eval(m.group(1)) if m else None
-    m = re.search(r'^E2E_FAILURE_COUNTS\s*=\s*(.+)$', example_py.read_text(), re.M)
-    e2e_failure_counts = eval(m.group(1)) if m else None
-    m = re.search(r'@kopf.on.create\(', example_py.read_text(), re.M)
-    e2e_test_creation = bool(m)
-    m = re.search(r'@kopf.on.(create|update|delete)\(', example_py.read_text(), re.M)
-    e2e_test_highlevel = bool(m)
+    e2e_creation_time_limit = _parse_e2e_value(str(example_py), 'E2E_CREATION_TIME_LIMIT')
+    e2e_creation_stop_words = _parse_e2e_value(str(example_py), 'E2E_CREATION_STOP_WORDS')
+    e2e_deletion_time_limit = _parse_e2e_value(str(example_py), 'E2E_DELETION_TIME_LIMIT')
+    e2e_deletion_stop_words = _parse_e2e_value(str(example_py), 'E2E_DELETION_STOP_WORDS')
+    e2e_tracebacks = _parse_e2e_value(str(example_py), 'E2E_TRACEBACKS')
+    e2e_success_counts = _parse_e2e_value(str(example_py), 'E2E_SUCCESS_COUNTS')
+    e2e_failure_counts = _parse_e2e_value(str(example_py), 'E2E_FAILURE_COUNTS')
+    e2e_test_creation = _parse_e2e_presence(str(example_py), r'@kopf.on.create\(')
+    e2e_test_highlevel = _parse_e2e_presence(str(example_py), r'@kopf.on.(create|update|delete)\(')
 
     # check whether there are mandatory deletion handlers or not
     m = re.search(r'@kopf\.on\.delete\((\s|.*)?(optional=(\w+))?\)', example_py.read_text(), re.M)
@@ -49,10 +45,18 @@ def test_all_examples_are_runnable(mocker, with_crd, exampledir):
 
     # Run an operator and simulate some activity with the operated resource.
     with KopfRunner(['run', '--standalone', '--verbose', str(example_py)], timeout=60) as runner:
+
+        # Trigger the reaction. Give it some time to react and to sleep and to retry.
         subprocess.run("kubectl apply -f examples/obj.yaml", shell=True, check=True)
-        time.sleep(e2e_create_time or 2)  # give it some time to react and to sleep and to retry
+        _sleep_till_stopword(caplog=caplog,
+                             delay=e2e_creation_time_limit,
+                             patterns=e2e_creation_stop_words)
+
+        # Trigger the reaction. Give it some time to react.
         subprocess.run("kubectl delete -f examples/obj.yaml", shell=True, check=True)
-        time.sleep(e2e_delete_time or 1)  # give it some time to react
+        _sleep_till_stopword(caplog=caplog,
+                             delay=e2e_deletion_time_limit,
+                             patterns=e2e_deletion_stop_words)
 
     # Verify that the operator did not die on start, or during the operation.
     assert runner.exception is None
@@ -90,3 +94,40 @@ def test_all_examples_are_runnable(mocker, with_crd, exampledir):
     else:
         name_counts = collections.Counter(handler_names)
         assert not name_counts
+
+
+def _parse_e2e_value(path: str, name: str) -> Any:
+    with open(path, 'rt', encoding='utf-8') as f:
+        name = re.escape(name)
+        text = f.read()
+        m = re.search(fr'^{name}\s*=\s*(.+)$', text, re.M)
+        return eval(m.group(1)) if m else None
+
+
+def _parse_e2e_presence(path: str, pattern: str) -> bool:
+    with open(path, 'rt', encoding='utf-8') as f:
+        text = f.read()
+        m = re.search(pattern, text, re.M)
+        return bool(m)
+
+
+def _sleep_till_stopword(
+        caplog,
+        delay: float,
+        patterns: Sequence[str] = (),
+        *,
+        interval: Optional[float] = None,
+) -> bool:
+    patterns = list(patterns or [])
+    delay = delay or (10.0 if patterns else 1.0)
+    interval = interval or min(1.0, max(0.1, delay / 10.))
+    started = time.perf_counter()
+    found = False
+    while not found and time.perf_counter() - started < delay:
+        for message in list(caplog.messages):
+            if any(re.search(pattern, message) for pattern in patterns):
+                found = True
+                break
+        else:
+            time.sleep(interval)
+    return found

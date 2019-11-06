@@ -13,7 +13,7 @@ assert examples  # if empty, it is just the detection failed
 examples = [path for path in examples if not glob.glob((os.path.join(path, 'test*.py')))]
 
 
-@pytest.fixture(params=examples)
+@pytest.fixture(params=examples, ids=[os.path.basename(path.rstrip('/')) for path in examples])
 def exampledir(request):
     return pathlib.Path(request.param)
 

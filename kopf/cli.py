@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 import functools
 from typing import Any, Optional, Callable, List
 
@@ -9,6 +10,13 @@ from kopf.clients import auth
 from kopf.engines import peering
 from kopf.reactor import running
 from kopf.utilities import loaders
+
+
+@dataclasses.dataclass()
+class CLIControls:
+    """ `KopfRunner` controls, which are impossible to pass via CLI. """
+    stop_flag: Optional[running.Flag] = None
+    ready_flag: Optional[running.Flag] = None
 
 
 def cli_login() -> None:
@@ -50,7 +58,9 @@ def main() -> None:
 @click.option('-p', '--priority', type=int, default=0)
 @click.option('-m', '--module', 'modules', multiple=True)
 @click.argument('paths', nargs=-1)
+@click.make_pass_decorator(CLIControls, ensure=True)
 def run(
+        __controls: CLIControls,
         paths: List[str],
         modules: List[str],
         peering_name: Optional[str],
@@ -69,6 +79,8 @@ def run(
         namespace=namespace,
         priority=priority,
         peering_name=peering_name,
+        stop_flag=__controls.stop_flag,
+        ready_flag=__controls.ready_flag,
     )
 
 

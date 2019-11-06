@@ -9,8 +9,8 @@ import pykube
 import yaml
 
 # Marks for the e2e tests (see tests/e2e/test_examples.py):
-E2E_CREATE_TIME = 5
-E2E_DELETE_TIME = 1
+E2E_CREATION_STOP_WORDS = ['All handlers succeeded for creation']
+E2E_DELETION_STOP_WORDS = ['Deleted, really deleted']
 E2E_SUCCESS_COUNTS = {'create_1': 1, 'create_2': 1, 'create_pod': 1, 'delete': 1}
 E2E_FAILURE_COUNTS = {}
 E2E_TRACEBACKS = True
