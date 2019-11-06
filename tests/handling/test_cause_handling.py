@@ -1,6 +1,8 @@
 import asyncio
 import logging
 
+import pytest
+
 import kopf
 from kopf.reactor.causation import Reason
 from kopf.reactor.handling import resource_handler
@@ -8,10 +10,14 @@ from kopf.structs.containers import ResourceMemories
 from kopf.structs.finalizers import FINALIZER
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
 
+EVENT_TYPES = [None, 'ADDED', 'MODIFIED', 'DELETED']
 
-async def test_acquire(registry, handlers, resource, cause_mock,
+
+@pytest.mark.parametrize('event_type', EVENT_TYPES)
+async def test_acquire(registry, handlers, resource, cause_mock, event_type,
                    caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
+
     cause_mock.reason = Reason.ACQUIRE
 
     event_queue = asyncio.Queue()
@@ -20,7 +26,7 @@ async def test_acquire(registry, handlers, resource, cause_mock,
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        event={'type': event_type, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=event_queue,
@@ -46,7 +52,8 @@ async def test_acquire(registry, handlers, resource, cause_mock,
     ])
 
 
-async def test_create(registry, handlers, resource, cause_mock,
+@pytest.mark.parametrize('event_type', EVENT_TYPES)
+async def test_create(registry, handlers, resource, cause_mock, event_type,
                       caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = Reason.CREATE
@@ -57,7 +64,7 @@ async def test_create(registry, handlers, resource, cause_mock,
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        event={'type': event_type, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=event_queue,
@@ -90,7 +97,8 @@ async def test_create(registry, handlers, resource, cause_mock,
     ])
 
 
-async def test_update(registry, handlers, resource, cause_mock,
+@pytest.mark.parametrize('event_type', EVENT_TYPES)
+async def test_update(registry, handlers, resource, cause_mock, event_type,
                       caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = Reason.UPDATE
@@ -101,7 +109,7 @@ async def test_update(registry, handlers, resource, cause_mock,
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        event={'type': event_type, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=event_queue,
@@ -134,7 +142,8 @@ async def test_update(registry, handlers, resource, cause_mock,
     ])
 
 
-async def test_delete(registry, handlers, resource, cause_mock,
+@pytest.mark.parametrize('event_type', EVENT_TYPES)
+async def test_delete(registry, handlers, resource, cause_mock, event_type,
                       caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = Reason.DELETE
@@ -145,7 +154,7 @@ async def test_delete(registry, handlers, resource, cause_mock,
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        event={'type': event_type, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=event_queue,
@@ -176,7 +185,9 @@ async def test_delete(registry, handlers, resource, cause_mock,
     ])
 
 
-async def test_release(registry, resource, handlers, cause_mock, caplog, k8s_mocked, assert_logs):
+@pytest.mark.parametrize('event_type', EVENT_TYPES)
+async def test_release(registry, resource, handlers, cause_mock, event_type,
+                       caplog, k8s_mocked, assert_logs):
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = Reason.RELEASE
     cause_mock.body.setdefault('metadata', {})['finalizers'] = [FINALIZER]
@@ -197,7 +208,7 @@ async def test_release(registry, resource, handlers, cause_mock, caplog, k8s_moc
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        event={'type': event_type, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=event_queue,
@@ -227,7 +238,8 @@ async def test_release(registry, resource, handlers, cause_mock, caplog, k8s_moc
 # Informational causes: just log, and do nothing else.
 #
 
-async def test_gone(registry, handlers, resource, cause_mock,
+@pytest.mark.parametrize('event_type', EVENT_TYPES)
+async def test_gone(registry, handlers, resource, cause_mock, event_type,
                     caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = Reason.GONE
@@ -238,7 +250,7 @@ async def test_gone(registry, handlers, resource, cause_mock,
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        event={'type': event_type, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=event_queue,
@@ -258,7 +270,8 @@ async def test_gone(registry, handlers, resource, cause_mock,
     ])
 
 
-async def test_free(registry, handlers, resource, cause_mock,
+@pytest.mark.parametrize('event_type', EVENT_TYPES)
+async def test_free(registry, handlers, resource, cause_mock, event_type,
                     caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = Reason.FREE
@@ -269,7 +282,7 @@ async def test_free(registry, handlers, resource, cause_mock,
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        event={'type': event_type, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=event_queue,
@@ -289,7 +302,8 @@ async def test_free(registry, handlers, resource, cause_mock,
     ])
 
 
-async def test_noop(registry, handlers, resource, cause_mock,
+@pytest.mark.parametrize('event_type', EVENT_TYPES)
+async def test_noop(registry, handlers, resource, cause_mock, event_type,
                     caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = Reason.NOOP
@@ -300,7 +314,7 @@ async def test_noop(registry, handlers, resource, cause_mock,
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        event={'type': event_type, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=event_queue,

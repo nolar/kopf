@@ -18,6 +18,7 @@ async def test_fatal_error_stops_handler(
     caplog.set_level(logging.DEBUG)
     name1 = f'{cause_type}_fn'
 
+    event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_type
     handlers.create_mock.side_effect = PermanentError("oops")
     handlers.update_mock.side_effect = PermanentError("oops")
@@ -29,7 +30,7 @@ async def test_fatal_error_stops_handler(
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        event={'type': event_type, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
@@ -61,6 +62,7 @@ async def test_retry_error_delays_handler(
     caplog.set_level(logging.DEBUG)
     name1 = f'{cause_type}_fn'
 
+    event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_type
     handlers.create_mock.side_effect = TemporaryError("oops")
     handlers.update_mock.side_effect = TemporaryError("oops")
@@ -72,7 +74,7 @@ async def test_retry_error_delays_handler(
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        event={'type': event_type, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
@@ -105,6 +107,7 @@ async def test_arbitrary_error_delays_handler(
     caplog.set_level(logging.DEBUG)
     name1 = f'{cause_type}_fn'
 
+    event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_type
     handlers.create_mock.side_effect = Exception("oops")
     handlers.update_mock.side_effect = Exception("oops")
@@ -116,7 +119,7 @@ async def test_arbitrary_error_delays_handler(
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        event={'type': event_type, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),

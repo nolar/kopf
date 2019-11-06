@@ -146,6 +146,7 @@ def detect_resource_changing_cause(
         event: bodies.Event,
         diff: Optional[diffs.Diff] = None,
         requires_finalizer: bool = True,
+        initial: bool = False,
         **kwargs: Any,
 ) -> ResourceChangingCause:
     """
@@ -159,7 +160,6 @@ def detect_resource_changing_cause(
 
     # Put them back to the pass-through kwargs (to avoid code duplication).
     body = event['object']
-    initial = event['type'] is None  # special value simulated by us in kopf.reactor.watching.
     kwargs.update(body=body, initial=initial)
     if diff is not None:
         kwargs.update(diff=diff)
@@ -190,11 +190,15 @@ def detect_resource_changing_cause(
 
     # For an object seen for the first time (i.e. just-created), call the creation handlers,
     # then mark the state as if it was seen when the creation has finished.
+    # Creation never mixes with resuming, even if an object is detected on startup (first listing).
     if not lastseen.has_essence_stored(body):
+        kwargs['initial'] = False
         return ResourceChangingCause(reason=Reason.CREATE, **kwargs)
 
-    # Cases with no state changes are usually ignored (NOOP). But for the "None" events,
-    # as simulated for the initial listing, we call the resuming handlers (e.g. threads/tasks).
+    # Cases with no essence changes are usually ignored (NOOP). But for the not-yet-resumed objects,
+    # we simulate a fake cause to invoke the resuming handlers. For cases with the essence changes,
+    # the resuming handlers will be mixed-in to the regular cause handling ("cuckoo-style")
+    # due to the ``initial=True`` flag on the cause, regardless of the reason.
     if not diff and initial:
         return ResourceChangingCause(reason=Reason.RESUME, **kwargs)
 

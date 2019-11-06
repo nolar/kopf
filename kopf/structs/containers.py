@@ -16,7 +16,8 @@ from kopf.structs import bodies
 @dataclasses.dataclass(frozen=False)
 class ResourceMemory:
     """ A memo about a single resource/object. Usually stored in `Memories`. """
-    pass
+    noticed_by_listing: bool = False
+    fully_handled_once: bool = False
 
 
 class ResourceMemories:
@@ -46,13 +47,15 @@ class ResourceMemories:
     async def recall(
             self,
             body: bodies.Body,
+            *,
+            noticed_by_listing: bool = False,
     ) -> ResourceMemory:
         """
         Either find a resource's memory, or create and remember a new one.
         """
         key = self._build_key(body)
         if key not in self._items:
-            memory = ResourceMemory()
+            memory = ResourceMemory(noticed_by_listing=noticed_by_listing)
             self._items[key] = memory
         return self._items[key]
 

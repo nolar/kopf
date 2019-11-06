@@ -29,6 +29,7 @@ async def test_delayed_handlers_progress(
     handlers.delete_mock.side_effect = TemporaryError("oops", delay=delay)
     handlers.resume_mock.side_effect = TemporaryError("oops", delay=delay)
 
+    event_type = None if cause_reason == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_reason
 
     with freezegun.freeze_time(now):
@@ -37,7 +38,7 @@ async def test_delayed_handlers_progress(
             registry=registry,
             resource=resource,
             memories=ResourceMemories(),
-            event={'type': 'irrelevant', 'object': cause_mock.body},
+            event={'type': event_type, 'object': cause_mock.body},
             freeze=asyncio.Event(),
             replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
@@ -74,6 +75,7 @@ async def test_delayed_handlers_sleep(
     # Simulate the original persisted state of the resource.
     started_dt = datetime.datetime.fromisoformat('2000-01-01T00:00:00')  # long time ago is fine.
     delayed_dt = datetime.datetime.fromisoformat(delayed_iso)
+    event_type = None if cause_reason == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_reason
     cause_mock.body.update({
         'status': {'kopf': {'progress': {
@@ -92,7 +94,7 @@ async def test_delayed_handlers_sleep(
             registry=registry,
             resource=resource,
             memories=ResourceMemories(),
-            event={'type': 'irrelevant', 'object': cause_mock.body},
+            event={'type': event_type, 'object': cause_mock.body},
             freeze=asyncio.Event(),
             replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),

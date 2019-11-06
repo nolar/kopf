@@ -178,7 +178,7 @@ async def resource_handler(
 
     # Recall what is stored about that object. Share it in little portions with the consumers.
     # And immediately forget it if the object is deleted from the cluster (but keep in memory).
-    memory = await memories.recall(body)
+    memory = await memories.recall(body, noticed_by_listing=event['type'] is None)
     if event['type'] == 'DELETED':
         await memories.forget(body)
 
@@ -210,6 +210,7 @@ async def resource_handler(
             old=old,
             new=new,
             diff=diff,
+            initial=memory.noticed_by_listing and not memory.fully_handled_once,
             requires_finalizer=registry.requires_finalizer(resource=resource, body=body),
         )
         delay = await handle_resource_changing_cause(
@@ -322,6 +323,10 @@ async def handle_resource_changing_cause(
         if cause.reason == causation.Reason.DELETE:
             logger.debug("Removing the finalizer, thus allowing the actual deletion.")
             finalizers.remove_finalizers(body=body, patch=patch)
+
+        # Once all handlers have succeeded at least once for any reason, or if there were none,
+        # prevent further resume-handlers (which otherwise happens on each watch-stream re-listing).
+        memory.fully_handled_once = True
 
     # Informational causes just print the log lines.
     if cause.reason == causation.Reason.GONE:

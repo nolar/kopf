@@ -15,6 +15,7 @@ async def test_1st_step_stores_progress_by_patching(
     name1 = f'{cause_type}_fn'
     name2 = f'{cause_type}_fn2'
 
+    event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_type
 
     await resource_handler(
@@ -22,7 +23,7 @@ async def test_1st_step_stores_progress_by_patching(
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        event={'type': event_type, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
@@ -50,15 +51,18 @@ async def test_1st_step_stores_progress_by_patching(
 
 
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
-async def test_2nd_step_finishes_the_handlers(
+async def test_2nd_step_finishes_the_handlers(caplog,
         registry, handlers, extrahandlers,
         resource, cause_mock, cause_type, k8s_mocked):
     name1 = f'{cause_type}_fn'
     name2 = f'{cause_type}_fn2'
 
+    event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_type
     cause_mock.body.update({
         'status': {'kopf': {'progress': {
+            'resume_fn':  {'started': '1979-01-01T00:00:00', 'success': True},
+            'resume_fn2':  {'started': '1979-01-01T00:00:00', 'success': True},
             name1: {'started': '1979-01-01T00:00:00', 'success': True},
             name2: {'started': '1979-01-01T00:00:00'},
         }}}
@@ -69,7 +73,7 @@ async def test_2nd_step_finishes_the_handlers(
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        event={'type': event_type, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),

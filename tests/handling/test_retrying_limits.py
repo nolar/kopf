@@ -5,7 +5,7 @@ import freezegun
 import pytest
 
 import kopf
-from kopf.reactor.causation import HANDLER_REASONS
+from kopf.reactor.causation import HANDLER_REASONS, Reason
 from kopf.reactor.handling import resource_handler
 from kopf.structs.containers import ResourceMemories
 
@@ -22,6 +22,7 @@ async def test_timed_out_handler_fails(
     caplog.set_level(logging.DEBUG)
     name1 = f'{cause_type}_fn'
 
+    event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_type
     cause_mock.body.update({
         'status': {'kopf': {'progress': {
@@ -38,7 +39,7 @@ async def test_timed_out_handler_fails(
             registry=registry,
             resource=resource,
             memories=ResourceMemories(),
-            event={'type': 'irrelevant', 'object': cause_mock.body},
+            event={'type': event_type, 'object': cause_mock.body},
             freeze=asyncio.Event(),
             replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
@@ -71,6 +72,7 @@ async def test_retries_limited_handler_fails(
     caplog.set_level(logging.DEBUG)
     name1 = f'{cause_type}_fn'
 
+    event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_type
     cause_mock.body.update({
         'status': {'kopf': {'progress': {
@@ -86,7 +88,7 @@ async def test_retries_limited_handler_fails(
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        event={'type': event_type, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
