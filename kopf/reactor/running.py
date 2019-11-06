@@ -76,6 +76,7 @@ def login(
 
 
 def run(
+        *,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         registry: Optional[registries.OperatorRegistry] = None,
@@ -110,6 +111,7 @@ def run(
 
 
 async def operator(
+        *,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         registry: Optional[registries.OperatorRegistry] = None,
         standalone: bool = False,
@@ -144,6 +146,7 @@ async def operator(
 
 
 async def spawn_tasks(
+        *,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         registry: Optional[registries.OperatorRegistry] = None,
         standalone: bool = False,
