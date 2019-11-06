@@ -163,8 +163,13 @@ async def spawn_tasks(
 
     # On Ctrl+C or pod termination, cancel all tasks gracefully.
     if threading.current_thread() is threading.main_thread():
-        loop.add_signal_handler(signal.SIGINT, signal_flag.set_result, signal.SIGINT)
-        loop.add_signal_handler(signal.SIGTERM, signal_flag.set_result, signal.SIGTERM)
+        # Handle NotImplementedError when ran on Windows since asyncio only supports Unix signals
+        try:
+            loop.add_signal_handler(signal.SIGINT, signal_flag.set_result, signal.SIGINT)
+            loop.add_signal_handler(signal.SIGTERM, signal_flag.set_result, signal.SIGTERM)
+        except NotImplementedError:
+            logger.warning("OS signals are ignored: can't add signal handler in Windows.")
+
     else:
         logger.warning("OS signals are ignored: running not in the main thread.")
 
