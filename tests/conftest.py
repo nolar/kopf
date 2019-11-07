@@ -177,7 +177,8 @@ def resp_mocker(fake_vault, enforced_session, resource, aresponses):
 @pytest.fixture()
 def stream(fake_vault, resp_mocker, aresponses, hostname, resource):
     """ A mock for the stream of events as if returned by K8s client. """
-    def feed(*args):
+
+    def feed(*args, namespace=None):
         for arg in args:
 
             # Prepare the stream response pre-rendered (for simplicity, no actual streaming).
@@ -190,11 +191,11 @@ def stream(fake_vault, resp_mocker, aresponses, hostname, resource):
             # List is requested for every watch, so we simulate it empty.
             list_data = {'items': [], 'metadata': {'resourceVersion': '0'}}
             list_resp = aiohttp.web.json_response(list_data)
-            list_url = resource.get_url(namespace=None)
+            list_url = resource.get_url(namespace=namespace)
 
             # The stream is not empty, but is as fed.
             stream_query = {'watch': 'true', 'resourceVersion': '0'}
-            stream_url = resource.get_url(namespace=None, params=stream_query)
+            stream_url = resource.get_url(namespace=namespace, params=stream_query)
 
             # Note: `aresponses` excludes a response once it is matched (side-effect-like).
             # So we just accumulate them there, as many as needed.

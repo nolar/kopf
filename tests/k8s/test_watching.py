@@ -40,21 +40,29 @@ class SampleException(Exception):
     pass
 
 
-async def test_empty_stream_yields_nothing(resource, stream):
-    stream.feed([])
+@pytest.fixture(params=[
+    pytest.param('something', id='namespace'),
+    pytest.param(None, id='cluster'),
+])
+def namespace(request):
+    return request.param
+
+
+async def test_empty_stream_yields_nothing(resource, stream, namespace):
+    stream.feed([], namespace=namespace)
 
     events = []
-    async for event in streaming_watch(resource=resource, namespace=None):
+    async for event in streaming_watch(resource=resource, namespace=namespace):
         events.append(event)
 
     assert len(events) == 0
 
 
-async def test_event_stream_yields_everything(resource, stream):
-    stream.feed(STREAM_WITH_NORMAL_EVENTS)
+async def test_event_stream_yields_everything(resource, stream, namespace):
+    stream.feed(STREAM_WITH_NORMAL_EVENTS, namespace=namespace)
 
     events = []
-    async for event in streaming_watch(resource=resource, namespace=None):
+    async for event in streaming_watch(resource=resource, namespace=namespace):
         events.append(event)
 
     assert len(events) == 2
@@ -62,12 +70,12 @@ async def test_event_stream_yields_everything(resource, stream):
     assert events[1]['object']['spec'] == 'b'
 
 
-async def test_unknown_event_type_ignored(resource, stream, caplog):
+async def test_unknown_event_type_ignored(resource, stream, namespace, caplog):
     caplog.set_level(logging.DEBUG)
-    stream.feed(STREAM_WITH_UNKNOWN_EVENT)
+    stream.feed(STREAM_WITH_UNKNOWN_EVENT, namespace=namespace)
 
     events = []
-    async for event in streaming_watch(resource=resource, namespace=None):
+    async for event in streaming_watch(resource=resource, namespace=namespace):
         events.append(event)
 
     assert len(events) == 2
@@ -77,12 +85,12 @@ async def test_unknown_event_type_ignored(resource, stream, caplog):
     assert "UNKNOWN" in caplog.text
 
 
-async def test_error_410gone_exits_normally(resource, stream, caplog):
+async def test_error_410gone_exits_normally(resource, stream, namespace, caplog):
     caplog.set_level(logging.DEBUG)
-    stream.feed(STREAM_WITH_ERROR_410GONE)
+    stream.feed(STREAM_WITH_ERROR_410GONE, namespace=namespace)
 
     events = []
-    async for event in streaming_watch(resource=resource, namespace=None):
+    async for event in streaming_watch(resource=resource, namespace=namespace):
         events.append(event)
 
     assert len(events) == 1
@@ -90,12 +98,12 @@ async def test_error_410gone_exits_normally(resource, stream, caplog):
     assert "Restarting the watch-stream" in caplog.text
 
 
-async def test_unknown_error_raises_exception(resource, stream):
-    stream.feed(STREAM_WITH_ERROR_CODE)
+async def test_unknown_error_raises_exception(resource, stream, namespace):
+    stream.feed(STREAM_WITH_ERROR_CODE, namespace=namespace)
 
     events = []
     with pytest.raises(WatchingError) as e:
-        async for event in streaming_watch(resource=resource, namespace=None):
+        async for event in streaming_watch(resource=resource, namespace=namespace):
             events.append(event)
 
     assert len(events) == 1
@@ -103,29 +111,30 @@ async def test_unknown_error_raises_exception(resource, stream):
     assert '666' in str(e.value)
 
 
-async def test_exception_escalates(resource, stream, enforced_session, mocker):
+async def test_exception_escalates(resource, stream, namespace, enforced_session, mocker):
     enforced_session.get = mocker.Mock(side_effect=SampleException())
-    stream.feed([])
+    stream.feed([], namespace=namespace)
 
     events = []
     with pytest.raises(SampleException):
-        async for event in streaming_watch(resource=resource, namespace=None):
+        async for event in streaming_watch(resource=resource, namespace=namespace):
             events.append(event)
 
     assert len(events) == 0
 
 
-async def test_infinite_watch_never_exits_normally(resource, stream, aresponses):
+async def test_infinite_watch_never_exits_normally(resource, stream, namespace, aresponses):
     error = aresponses.Response(status=555, reason='stop-infinite-cycle')
     stream.feed(
         STREAM_WITH_ERROR_410GONE,          # watching restarted
         STREAM_WITH_UNKNOWN_EVENT,          # event ignored
         error,                              # to finally exit it somehow
+        namespace=namespace,
     )
 
     events = []
     with pytest.raises(aiohttp.ClientResponseError) as e:
-        async for event in infinite_watch(resource=resource, namespace=None):
+        async for event in infinite_watch(resource=resource, namespace=namespace):
             events.append(event)
 
     assert e.value.status == 555
