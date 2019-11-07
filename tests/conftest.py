@@ -202,7 +202,16 @@ def stream(fake_vault, resp_mocker, aresponses, hostname, resource):
             aresponses.add(hostname, stream_url, 'get', stream_resp, match_querystring=True)
             aresponses.add(hostname, list_url, 'get', list_resp, match_querystring=True)
 
-    return Mock(spec_set=['feed'], feed=feed)
+    # TODO: One day, find a better way to terminate a ``while-true`` reconnection cycle.
+    def close(*, namespace=None):
+        """
+        A way to stop `streaming_watch` from reconnecting: say it the resource version is gone
+        (we know a priori that it stops on this condition, and escalates to `infinite_stream`).
+        """
+        feed([{'type': 'ERROR', 'object': {'code': 410}}], namespace=namespace)
+
+    return Mock(spec_set=['feed', 'close'], feed=feed, close=close)
+
 
 #
 # Mocks for login & checks. Used in specifialised login tests,

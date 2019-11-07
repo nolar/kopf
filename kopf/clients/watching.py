@@ -80,32 +80,40 @@ async def streaming_watch(
     for item in items:
         yield {'type': None, 'object': item}
 
-    # Then, watch the resources starting from the list's resource version.
-    stream = watch_objs(
-        resource=resource, namespace=namespace,
-        timeout=config.WatchersConfig.default_stream_timeout,
-        since=resource_version,
-    )
-    async for event in stream:
+    # Repeat through disconnects of the watch as long as the resource version is valid (no errors).
+    # The individual watching API calls are disconnected by timeout even if the stream is fine.
+    while True:
 
-        # "410 Gone" is for the "resource version too old" error, we must restart watching.
-        # The resource versions are lost by k8s after few minutes (as per the official doc).
-        # The error occurs when there is nothing happening for few minutes. This is normal.
-        if event['type'] == 'ERROR' and cast(bodies.Error, event['object'])['code'] == 410:
-            logger.debug("Restarting the watch-stream for %r", resource)
-            break  # out of for-cycle, to the while-true-cycle.
+        # Then, watch the resources starting from the list's resource version.
+        stream = watch_objs(
+            resource=resource, namespace=namespace,
+            timeout=config.WatchersConfig.default_stream_timeout,
+            since=resource_version,
+        )
+        async for event in stream:
 
-        # Other watch errors should be fatal for the operator.
-        if event['type'] == 'ERROR':
-            raise WatchingError(f"Error in the watch-stream: {event['object']}")
+            # "410 Gone" is for the "resource version too old" error, we must restart watching.
+            # The resource versions are lost by k8s after few minutes (5, as per the official doc).
+            # The error occurs when there is nothing happening for few minutes. This is normal.
+            if event['type'] == 'ERROR' and cast(bodies.Error, event['object'])['code'] == 410:
+                logger.debug("Restarting the watch-stream for %r", resource)
+                return  # out of regular stream, to the infinite stream.
 
-        # Ensure that the event is something we understand and can handle.
-        if event['type'] not in ['ADDED', 'MODIFIED', 'DELETED']:
-            logger.warning("Ignoring an unsupported event type: %r", event)
-            continue
+            # Other watch errors should be fatal for the operator.
+            if event['type'] == 'ERROR':
+                raise WatchingError(f"Error in the watch-stream: {event['object']}")
 
-        # Yield normal events to the consumer. Errors are already filtered out.
-        yield cast(bodies.Event, event)
+            # Ensure that the event is something we understand and can handle.
+            if event['type'] not in ['ADDED', 'MODIFIED', 'DELETED']:
+                logger.warning("Ignoring an unsupported event type: %r", event)
+                continue
+
+            # Keep the latest seen resource version for continuation of the stream on disconnects.
+            body = cast(bodies.Body, event['object'])
+            resource_version = body.get('metadata', {}).get('resourceVersion', resource_version)
+
+            # Yield normal events to the consumer. Errors are already filtered out.
+            yield cast(bodies.Event, event)
 
 
 @auth.reauthenticated_stream

@@ -50,6 +50,7 @@ def namespace(request):
 
 async def test_empty_stream_yields_nothing(resource, stream, namespace):
     stream.feed([], namespace=namespace)
+    stream.close(namespace=namespace)
 
     events = []
     async for event in streaming_watch(resource=resource, namespace=namespace):
@@ -60,6 +61,7 @@ async def test_empty_stream_yields_nothing(resource, stream, namespace):
 
 async def test_event_stream_yields_everything(resource, stream, namespace):
     stream.feed(STREAM_WITH_NORMAL_EVENTS, namespace=namespace)
+    stream.close(namespace=namespace)
 
     events = []
     async for event in streaming_watch(resource=resource, namespace=namespace):
@@ -73,6 +75,7 @@ async def test_event_stream_yields_everything(resource, stream, namespace):
 async def test_unknown_event_type_ignored(resource, stream, namespace, caplog):
     caplog.set_level(logging.DEBUG)
     stream.feed(STREAM_WITH_UNKNOWN_EVENT, namespace=namespace)
+    stream.close(namespace=namespace)
 
     events = []
     async for event in streaming_watch(resource=resource, namespace=namespace):
@@ -88,6 +91,7 @@ async def test_unknown_event_type_ignored(resource, stream, namespace, caplog):
 async def test_error_410gone_exits_normally(resource, stream, namespace, caplog):
     caplog.set_level(logging.DEBUG)
     stream.feed(STREAM_WITH_ERROR_410GONE, namespace=namespace)
+    stream.close(namespace=namespace)
 
     events = []
     async for event in streaming_watch(resource=resource, namespace=namespace):
@@ -100,6 +104,7 @@ async def test_error_410gone_exits_normally(resource, stream, namespace, caplog)
 
 async def test_unknown_error_raises_exception(resource, stream, namespace):
     stream.feed(STREAM_WITH_ERROR_CODE, namespace=namespace)
+    stream.close(namespace=namespace)
 
     events = []
     with pytest.raises(WatchingError) as e:
@@ -114,6 +119,7 @@ async def test_unknown_error_raises_exception(resource, stream, namespace):
 async def test_exception_escalates(resource, stream, namespace, enforced_session, mocker):
     enforced_session.get = mocker.Mock(side_effect=SampleException())
     stream.feed([], namespace=namespace)
+    stream.close(namespace=namespace)
 
     events = []
     with pytest.raises(SampleException):
@@ -131,6 +137,7 @@ async def test_infinite_watch_never_exits_normally(resource, stream, namespace, 
         error,                              # to finally exit it somehow
         namespace=namespace,
     )
+    stream.close(namespace=namespace)
 
     events = []
     with pytest.raises(aiohttp.ClientResponseError) as e:
