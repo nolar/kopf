@@ -1,17 +1,24 @@
+import asyncio
+import functools
 from typing import Type
 
 import pykube
 
+from kopf import config
 from kopf.clients import auth
 from kopf.structs import resources
 
 
-def _make_cls(
+async def _make_cls(
         resource: resources.Resource,
 ) -> Type[pykube.objects.APIObject]:
 
+    loop = asyncio.get_running_loop()
     api = auth.get_pykube_api()
-    api_resources = api.resource_list(resource.api_version)['resources']
+    fn = functools.partial(api.resource_list, resource.api_version)
+    rsp = await loop.run_in_executor(config.WorkersConfig.get_syn_executor(), fn)
+
+    api_resources = rsp['resources']
     resource_kind = next((r['kind'] for r in api_resources if r['name'] == resource.plural), None)
     is_namespaced = next((r['namespaced'] for r in api_resources if r['name'] == resource.plural), None)
     if not resource_kind:

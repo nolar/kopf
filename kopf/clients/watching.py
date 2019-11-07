@@ -19,6 +19,7 @@ They would not be needed if the client library were natively asynchronous.
 """
 
 import asyncio
+import collections
 import concurrent.futures
 import logging
 from typing import Optional, Iterator, AsyncIterator, cast
@@ -34,6 +35,9 @@ from kopf.structs import resources
 
 logger = logging.getLogger(__name__)
 
+# Pykube declares it inside of a function, not importable from the package/module.
+PykubeWatchEvent = collections.namedtuple("WatchEvent", "type object")
+
 
 class WatchingError(Exception):
     """
@@ -48,7 +52,7 @@ class StopStreaming(RuntimeError):
     """
 
 
-def streaming_next(__src: Iterator[bodies.RawEvent]) -> bodies.RawEvent:
+def streaming_next(__src: Iterator[PykubeWatchEvent]) -> PykubeWatchEvent:
     """
     Same as `next`, but replaces the `StopIteration` with `StopStreaming`.
     """
@@ -59,11 +63,11 @@ def streaming_next(__src: Iterator[bodies.RawEvent]) -> bodies.RawEvent:
 
 
 async def streaming_aiter(
-        __src: Iterator[bodies.RawEvent],
+        __src: Iterator[PykubeWatchEvent],
         *,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         executor: Optional[concurrent.futures.Executor] = None,
-) -> AsyncIterator[bodies.RawEvent]:
+) -> AsyncIterator[PykubeWatchEvent]:
     """
     Same as `iter`, but asynchronous and stops on `StopStreaming`, not on `StopIteration`.
     """
@@ -107,16 +111,17 @@ async def streaming_watch(
 
     # First, list the resources regularly, and get the list's resource version.
     # Simulate the events with type "None" event - used in detection of causes.
-    items, resource_version = fetching.list_objs_rv(resource=resource, namespace=namespace)
+    items, resource_version = await fetching.list_objs_rv(resource=resource, namespace=namespace)
     for item in items:
         yield {'type': None, 'object': item}
 
     # Then, watch the resources starting from the list's resource version.
-    loop = asyncio.get_event_loop()
-    stream = watch_objs(resource=resource, namespace=namespace,
-                        timeout=config.WatchersConfig.default_stream_timeout,
-                        since=resource_version)
-    async for event in streaming_aiter(stream, loop=loop):
+    stream = watch_objs(
+        resource=resource, namespace=namespace,
+        timeout=config.WatchersConfig.default_stream_timeout,
+        since=resource_version,
+    )
+    async for event in stream:
 
         # "410 Gone" is for the "resource version too old" error, we must restart watching.
         # The resource versions are lost by k8s after few minutes (as per the official doc).
@@ -138,13 +143,13 @@ async def streaming_watch(
         yield cast(bodies.Event, event)
 
 
-def watch_objs(
+async def watch_objs(
         *,
         resource: resources.Resource,
         namespace: Optional[str] = None,
         timeout: Optional[float] = None,
         since: Optional[str] = None,
-) -> Iterator[bodies.RawEvent]:
+) -> AsyncIterator[bodies.RawEvent]:
     """
     Watch objects of a specific resource type.
 
@@ -157,17 +162,19 @@ def watch_objs(
 
     * The resource is namespace-scoped AND operator is namespaced-restricted.
     """
+    src: Iterator[PykubeWatchEvent]
 
     params = {}
     if timeout is not None:
         params['timeoutSeconds'] = timeout
 
     api = auth.get_pykube_api(timeout=None)
-    cls = classes._make_cls(resource=resource)
+    cls = await classes._make_cls(resource=resource)
     namespace = namespace if issubclass(cls, pykube.objects.NamespacedAPIObject) else None
     lst = cls.objects(api, namespace=pykube.all if namespace is None else namespace)
     src = lst.watch(since=since, params=params)
-    return iter(cast(bodies.RawEvent, {
-        'type': event.type,
-        'object': event.object.obj,
-    }) for event in src)
+    async for event in streaming_aiter(iter(src)):
+        yield cast(bodies.RawEvent, {
+            'type': event.type,
+            'object': event.object.obj,
+        })

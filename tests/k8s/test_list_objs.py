@@ -4,11 +4,11 @@ import requests
 from kopf.clients.fetching import list_objs_rv
 
 
-def test_when_successful_clustered(req_mock, resource):
+async def test_when_successful_clustered(req_mock, resource):
     result = {'items': [{}, {}]}
     req_mock.get.return_value.json.return_value = result
 
-    items, resource_version = list_objs_rv(resource=resource, namespace=None)
+    items, resource_version = await list_objs_rv(resource=resource, namespace=None)
     assert items == result['items']
 
     assert req_mock.get.called
@@ -19,11 +19,11 @@ def test_when_successful_clustered(req_mock, resource):
     assert 'namespaces/' not in url
 
 
-def test_when_successful_namespaced(req_mock, resource):
+async def test_when_successful_namespaced(req_mock, resource):
     result = {'items': [{}, {}]}
     req_mock.get.return_value.json.return_value = result
 
-    items, resource_version = list_objs_rv(resource=resource, namespace='ns1')
+    items, resource_version = await list_objs_rv(resource=resource, namespace='ns1')
     assert items == result['items']
 
     assert req_mock.get.called
@@ -35,12 +35,12 @@ def test_when_successful_namespaced(req_mock, resource):
 
 @pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['without-namespace', 'with-namespace'])
 @pytest.mark.parametrize('status', [400, 401, 403, 500, 666])
-def test_raises_api_error(req_mock, resource, namespace, status):
+async def test_raises_api_error(req_mock, resource, namespace, status):
     response = requests.Response()
     response.status_code = status
     error = requests.exceptions.HTTPError("boo!", response=response)
     req_mock.get.side_effect = error
 
     with pytest.raises(requests.exceptions.HTTPError) as e:
-        list_objs_rv(resource=resource, namespace=namespace)
+        await list_objs_rv(resource=resource, namespace=namespace)
     assert e.value.response.status_code == status
