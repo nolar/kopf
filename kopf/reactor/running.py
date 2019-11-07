@@ -219,6 +219,7 @@ async def spawn_tasks(
             loop.create_task(_root_task_checker(
                 name="health reporter", ready_flag=ready_flag,
                 coro=probing.health_reporter(
+                    registry=registry,
                     endpoint=liveness_endpoint))),
         ])
 

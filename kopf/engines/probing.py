@@ -1,9 +1,15 @@
 import asyncio
+import datetime
 import logging
 import urllib.parse
-from typing import Optional, Tuple
+from typing import Optional, Tuple, MutableMapping
 
 import aiohttp.web
+
+from kopf.reactor import causation
+from kopf.reactor import handling
+from kopf.reactor import lifecycles
+from kopf.reactor import registries
 
 logger = logging.getLogger(__name__)
 
@@ -13,17 +19,10 @@ HTTP_PORT: int = 80
 _Key = Tuple[str, int]  # hostname, port
 
 
-async def get_health(
-        request: aiohttp.web.Request,
-) -> aiohttp.web.Response:
-    return aiohttp.web.json_response({
-        'status': 'OK',
-    })
-
-
 async def health_reporter(
         endpoint: str,
         *,
+        registry: registries.OperatorRegistry,
         ready_flag: Optional[asyncio.Event] = None,  # used for testing
 ) -> None:
     """
@@ -33,6 +32,34 @@ async def health_reporter(
     is cancelled or failed). Once it will stop responding for any reason,
     Kubernetes will assume the pod is not alive anymore, and will restart it.
     """
+    probing_container: MutableMapping[registries.HandlerId, registries.HandlerResult] = {}
+    probing_timestamp: Optional[datetime.datetime] = None
+    probing_max_age = datetime.timedelta(seconds=10.0)
+    probing_lock = asyncio.Lock()
+
+    async def get_health(
+            request: aiohttp.web.Request,
+    ) -> aiohttp.web.Response:
+        nonlocal probing_timestamp
+
+        # Recollect the data on-demand, and only if is is older that a reasonable caching period.
+        # Protect against multiple parallel requests performing the same heavy activity.
+        now = datetime.datetime.utcnow()
+        if probing_timestamp is None or now - probing_timestamp >= probing_max_age:
+            async with probing_lock:
+                now = datetime.datetime.utcnow()
+                if probing_timestamp is None or now - probing_timestamp >= probing_max_age:
+
+                    activity_results = await handling.activity_trigger(
+                        lifecycle=lifecycles.all_at_once,
+                        registry=registry,
+                        activity=causation.Activity.PROBE,
+                    )
+                    probing_container.clear()
+                    probing_container.update(activity_results)
+                    probing_timestamp = datetime.datetime.utcnow()
+
+        return aiohttp.web.json_response(probing_container)
 
     parts = urllib.parse.urlsplit(endpoint)
     if parts.scheme == 'http':
