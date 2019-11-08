@@ -85,9 +85,9 @@ async def test_retry_error_delays_handler(
 
     patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
     assert patch['status']['kopf']['progress'] is not None
-    assert 'failure' not in patch['status']['kopf']['progress'][name1]
-    assert 'success' not in patch['status']['kopf']['progress'][name1]
-    assert 'delayed' in patch['status']['kopf']['progress'][name1]
+    assert patch['status']['kopf']['progress'][name1]['failure'] is False
+    assert patch['status']['kopf']['progress'][name1]['success'] is False
+    assert patch['status']['kopf']['progress'][name1]['delayed']
 
     assert_logs([
         "Handler .+ failed temporarily: oops",
@@ -128,9 +128,9 @@ async def test_arbitrary_error_delays_handler(
 
     patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
     assert patch['status']['kopf']['progress'] is not None
-    assert 'failure' not in patch['status']['kopf']['progress'][name1]
-    assert 'success' not in patch['status']['kopf']['progress'][name1]
-    assert 'delayed' in patch['status']['kopf']['progress'][name1]
+    assert patch['status']['kopf']['progress'][name1]['failure'] is False
+    assert patch['status']['kopf']['progress'][name1]['success'] is False
+    assert patch['status']['kopf']['progress'][name1]['delayed']
 
     assert_logs([
         "Handler .+ failed with an exception. Will retry.",

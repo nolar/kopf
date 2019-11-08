@@ -5,6 +5,7 @@ import pytest
 import kopf
 from kopf.reactor.causation import ResourceChangingCause, Reason
 from kopf.reactor.invocation import invoke
+from kopf.reactor.states import State
 from kopf.structs.bodies import Body
 from kopf.structs.patches import Patch
 
@@ -22,6 +23,7 @@ async def test_protocol_invocation(lifecycle, resource):
     Especially when the new kwargs are added or an invocation protocol changed.
     """
     # The values are irrelevant, they can be anything.
+    state = State.from_scratch(handlers=[])
     cause = ResourceChangingCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
         resource=resource,
@@ -31,6 +33,6 @@ async def test_protocol_invocation(lifecycle, resource):
         reason=Reason.NOOP,
     )
     handlers = []
-    selected = await invoke(lifecycle, handlers, cause=cause)
+    selected = await invoke(lifecycle, handlers, cause=cause, state=state)
     assert isinstance(selected, (tuple, list))
     assert len(selected) == 0

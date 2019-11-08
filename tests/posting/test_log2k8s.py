@@ -3,7 +3,7 @@ import logging
 import pytest
 
 from kopf.config import EventsConfig
-from kopf.engines.logging import ObjectLogger
+from kopf.engines.logging import ObjectLogger, LocalObjectLogger
 
 OBJ1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
         'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1'}}
@@ -101,11 +101,10 @@ async def test_skipping_below_config(caplog, logstream, logfn, event_queue, even
     'critical',
 ])
 async def test_skipping_when_local_with_all_levels(caplog, logstream, logfn, event_queue, event_queue_loop):
-    logger = ObjectLogger(body=OBJ1)
+    logger = LocalObjectLogger(body=OBJ1)
     logger_fn = getattr(logger, logfn)
 
-    logger_fn("hello %s", "world", local=True)
-    logger.info("must be here")
+    logger_fn("hello %s", "world")
 
-    assert event_queue.qsize() == 1  # not 2!
-    assert caplog.messages == ["hello world", "must be here"]
+    assert event_queue.qsize() == 0
+    assert caplog.messages == ["hello world"]

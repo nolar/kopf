@@ -17,8 +17,9 @@ and therefore do not trigger the user-defined handlers.
 import asyncio
 import collections.abc
 import datetime
+import logging
 from contextvars import ContextVar
-from typing import Optional, Iterable, Collection, Any
+from typing import Optional, Union, Iterable, Collection, Mapping, MutableMapping, Any
 
 from kopf.clients import patching
 from kopf.engines import logging as logging_engine
@@ -28,7 +29,7 @@ from kopf.reactor import causation
 from kopf.reactor import invocation
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
-from kopf.reactor import state
+from kopf.reactor import states
 from kopf.structs import bodies
 from kopf.structs import dicts
 from kopf.structs import diffs
@@ -151,9 +152,11 @@ async def resource_handler(
 
     # Sleep strictly after patching, never before -- to keep the status proper.
     # The patching above, if done, interrupts the sleep instantly, so we skip it at all.
-    if delay and not patch:
+    if delay and patch:
+        logger.debug(f"Sleeping was skipped because of the patch, {delay} seconds left.")
+    elif delay:
         logger.debug(f"Sleeping for {delay} seconds for the delayed handlers.")
-        unslept = await sleeping.sleep_or_wait(delay, replenished)
+        unslept = await sleeping.sleep_or_wait(min(delay, WAITING_KEEPALIVE_INTERVAL), replenished)
         if unslept is not None:
             logger.debug(f"Sleeping was interrupted by new changes, {unslept} seconds left.")
         else:
@@ -178,26 +181,17 @@ async def handle_resource_watching_cause(
     Note: K8s-event posting is skipped for `kopf.on.event` handlers,
     as they should be silent. Still, the messages are logged normally.
     """
-    logger = cause.logger
     handlers = registry.get_resource_watching_handlers(cause=cause)
-    for handler in handlers:
+    outcomes = await _execute_handlers(
+        lifecycle=lifecycle,
+        handlers=handlers,
+        cause=cause,
+        state=states.State.from_scratch(handlers=handlers),
+        ignore_errors=True,  # affects the log messages
+    )
 
-        # The exceptions are handled locally and are not re-raised, to keep the operator running.
-        try:
-            logger.debug(f"Invoking handler {handler.id!r}.")
-
-            result = await _call_handler(
-                handler,
-                cause=cause,
-                lifecycle=lifecycle,
-            )
-
-        except Exception:
-            logger.exception(f"Handler {handler.id!r} failed with an exception. Will ignore.", local=True)
-
-        else:
-            logger.info(f"Handler {handler.id!r} succeeded.", local=True)
-            state.store_result(patch=cause.patch, handler=handler, result=result)
+    # Store the results, but not the handlers' progress.
+    states.deliver_results(outcomes=outcomes, patch=cause.patch)
 
 
 async def handle_resource_changing_cause(
@@ -223,20 +217,24 @@ async def handle_resource_changing_cause(
             logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
 
         handlers = registry.get_resource_changing_handlers(cause=cause)
+        state = states.State.from_body(body=cause.body, handlers=handlers)
         if handlers:
-            try:
-                await _execute(
-                    lifecycle=lifecycle,
-                    handlers=handlers,
-                    cause=cause,
-                )
-            except HandlerChildrenRetry as e:
-                # on the top-level, no patches -- it is pre-patched.
-                delay = e.delay
-                done = False
-            else:
+            outcomes = await _execute_handlers(
+                lifecycle=lifecycle,
+                handlers=handlers,
+                cause=cause,
+                state=state,
+            )
+            state = state.with_outcomes(outcomes)
+            state.store(patch=cause.patch)
+            states.deliver_results(outcomes=outcomes, patch=cause.patch)
+
+            if state.done:
                 logger.info(f"All handlers succeeded for {title}.")
-                done = True
+                state.purge(patch=cause.patch)
+
+            done = state.done
+            delay = state.delay
         else:
             skip = True
 
@@ -244,8 +242,6 @@ async def handle_resource_changing_cause(
     if done or skip:
         extra_fields = registry.get_extra_fields(resource=cause.resource)
         lastseen.refresh_essence(body=body, patch=patch, extra_fields=extra_fields)
-        if done:
-            state.purge_progress(body=body, patch=patch)
         if cause.reason == causation.Reason.DELETE:
             logger.debug("Removing the finalizer, thus allowing the actual deletion.")
             finalizers.remove_finalizers(body=body, patch=patch)
@@ -349,128 +345,142 @@ async def execute(
                            "no practical use (there are no retries or state tracking).")
 
     # Execute the real handlers (all or few or one of them, as per the lifecycle).
-    # Raises `HandlerChildrenRetry` if the execute should be continued on the next iteration.
-    await _execute(
+    handlers = registry.get_handlers(cause=cause)
+    state = states.State.from_body(body=cause.body, handlers=handlers)
+    outcomes = await _execute_handlers(
         lifecycle=lifecycle,
-        handlers=registry.get_handlers(cause=cause),
+        handlers=handlers,
         cause=cause,
+        state=state,
     )
+    state = state.with_outcomes(outcomes)
+    state.store(patch=cause.patch)
+    states.deliver_results(outcomes=outcomes, patch=cause.patch)
+
+    # Escalate `HandlerChildrenRetry` if the execute should be continued on the next iteration.
+    if not state.done:
+        raise HandlerChildrenRetry(delay=state.delay)
 
 
-async def _execute(
+async def _execute_handlers(
         lifecycle: lifecycles.LifeCycleFn,
         handlers: Collection[registries.ResourceHandler],
         cause: causation.BaseCause,
+        state: states.State,
+        ignore_errors: bool = False,
         retry_on_errors: bool = True,
-) -> None:
+) -> Mapping[registries.HandlerId, states.HandlerOutcome]:
     """
     Call the next handler(s) from the chain of the handlers.
 
-    Keep the record on the progression of the handlers in the object's status,
+    Keep the record on the progression of the handlers in the object's state,
     and use it on the next invocation to determined which handler(s) to call.
 
     This routine is used both for the global handlers (via global registry),
     and for the sub-handlers (via a simple registry of the current handler).
-
-    Raises `HandlerChildrenRetry` if there are children handlers to be executed
-    on the next call, and implicitly provokes such a call by making the changes
-    to the status fields (on the handler progression and number of retries).
-
-    Exits normally if all handlers for this cause are fully done.
     """
-    logger = cause.logger
 
     # Filter and select the handlers to be executed right now, on this event reaction cycle.
-    handlers_done = [h for h in handlers if state.is_finished(body=cause.body, handler=h)]
-    handlers_wait = [h for h in handlers if state.is_sleeping(body=cause.body, handler=h)]
-    handlers_todo = [h for h in handlers if state.is_awakened(body=cause.body, handler=h)]
-    handlers_plan = [h for h in await invocation.invoke(lifecycle, handlers_todo, cause=cause)]
-    handlers_left = [h for h in handlers_todo if h.id not in {h.id for h in handlers_plan}]
-
-    # Set the timestamps -- even if not executed on this event, but just got registered.
-    for handler in handlers:
-        if not state.is_started(body=cause.body, handler=handler):
-            state.set_start_time(body=cause.body, patch=cause.patch, handler=handler)
+    handlers_todo = [h for h in handlers if state[h.id].awakened]
+    handlers_plan = await invocation.invoke(lifecycle, handlers_todo, cause=cause, state=state)
 
     # Execute all planned (selected) handlers in one event reaction cycle, even if there are few.
+    outcomes: MutableMapping[registries.HandlerId, states.HandlerOutcome] = {}
     for handler in handlers_plan:
+        outcome = await _execute_handler(
+            handler=handler,
+            state=state[handler.id],
+            cause=cause,
+            lifecycle=lifecycle,  # just a default for the sub-handlers, not used directly.
+            ignore_errors=ignore_errors,
+            retry_on_errors=retry_on_errors,
+        )
+        outcomes[handler.id] = outcome
 
-        # Restore the handler's progress status. It can be useful in the handlers.
-        retry = state.get_retry_count(body=cause.body, handler=handler)
-        started = state.get_start_time(body=cause.body, handler=handler, patch=cause.patch)
-        runtime = datetime.datetime.utcnow() - (started if started else datetime.datetime.utcnow())
+    return outcomes
 
-        # The exceptions are handled locally and are not re-raised, to keep the operator running.
-        try:
-            logger.debug(f"Invoking handler {handler.id!r}.")
 
-            if handler.timeout is not None and runtime.total_seconds() > handler.timeout:
-                raise HandlerTimeoutError(f"Handler {handler.id!r} has timed out after {runtime}.")
+async def _execute_handler(
+        handler: registries.ResourceHandler,
+        cause: causation.BaseCause,
+        state: states.HandlerState,
+        lifecycle: lifecycles.LifeCycleFn,
+        ignore_errors: bool = False,
+        retry_on_errors: bool = True,
+) -> states.HandlerOutcome:
+    """
+    Execute one and only one handler.
 
-            result = await _call_handler(
-                handler,
-                cause=cause,
-                retry=retry,
-                started=started,
-                runtime=runtime,
-                lifecycle=lifecycle,  # just a default for the sub-handlers, not used directly.
-            )
+    *Execution* means not just *calling* the handler in properly set context
+    (see `_call_handler`), but also interpreting its result and errors, and
+    wrapping them into am `HandlerOutcome` object -- to be stored in the state.
 
-        # Unfinished children cause the regular retry, but with less logging and event reporting.
-        except HandlerChildrenRetry as e:
-            logger.debug(f"Handler {handler.id!r} has unfinished sub-handlers. Will retry soon.")
-            state.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
-            handlers_left.append(handler)
+    This method is not supposed to raise any exceptions from the handlers:
+    exceptions mean the failure of execution itself.
+    """
 
-        # Definitely a temporary error, regardless of the error strictness.
-        except TemporaryError as e:
-            logger.error(f"Handler {handler.id!r} failed temporarily: %s", str(e) or repr(e))
-            state.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=e.delay)
-            handlers_left.append(handler)
+    # Prevent successes/failures from posting k8s-events for resource-watching causes.
+    logger: Union[logging.Logger, logging.LoggerAdapter]
+    if isinstance(cause, causation.ResourceWatchingCause):
+        logger = logging_engine.LocalObjectLogger(body=cause.body)
+    else:
+        logger = cause.logger
 
-        # Same as permanent errors below, but with better logging for our internal cases.
-        except HandlerTimeoutError as e:
-            logger.error(f"%s", str(e) or repr(e))  # already formatted
-            state.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
-            # TODO: report the handling failure somehow (beside logs/events). persistent status?
+    # The exceptions are handled locally and are not re-raised, to keep the operator running.
+    try:
+        logger.debug(f"Invoking handler {handler.id!r}.")
 
-        # Definitely a permanent error, regardless of the error strictness.
-        except PermanentError as e:
-            logger.error(f"Handler {handler.id!r} failed permanently: %s", str(e) or repr(e))
-            state.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
-            # TODO: report the handling failure somehow (beside logs/events). persistent status?
+        if handler.timeout is not None and state.runtime.total_seconds() > handler.timeout:
+            raise HandlerTimeoutError(f"Handler {handler.id!r} has timed out after {state.runtime}.")
 
-        # Regular errors behave as either temporary or permanent depending on the error strictness.
-        except Exception as e:
-            if retry_on_errors:
-                logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")
-                state.set_retry_time(body=cause.body, patch=cause.patch, handler=handler, delay=DEFAULT_RETRY_DELAY)
-                handlers_left.append(handler)
-            else:
-                logger.exception(f"Handler {handler.id!r} failed with an exception. Will stop.")
-                state.store_failure(body=cause.body, patch=cause.patch, handler=handler, exc=e)
-                # TODO: report the handling failure somehow (beside logs/events). persistent status?
+        result = await _call_handler(
+            handler,
+            cause=cause,
+            retry=state.retries,
+            started=state.started,
+            runtime=state.runtime,
+            lifecycle=lifecycle,  # just a default for the sub-handlers, not used directly.
+        )
 
-        # No errors means the handler should be excluded from future runs in this reaction cycle.
+    # Unfinished children cause the regular retry, but with less logging and event reporting.
+    except HandlerChildrenRetry as e:
+        logger.debug(f"Handler {handler.id!r} has unfinished sub-handlers. Will retry soon.")
+        return states.HandlerOutcome(final=False, exception=e, delay=e.delay)
+
+    # Definitely a temporary error, regardless of the error strictness.
+    except TemporaryError as e:
+        logger.error(f"Handler {handler.id!r} failed temporarily: %s", str(e) or repr(e))
+        return states.HandlerOutcome(final=False, exception=e, delay=e.delay)
+
+    # Same as permanent errors below, but with better logging for our internal cases.
+    except HandlerTimeoutError as e:
+        logger.error(f"%s", str(e) or repr(e))  # already formatted
+        return states.HandlerOutcome(final=True, exception=e)
+        # TODO: report the handling failure somehow (beside logs/events). persistent status?
+
+    # Definitely a permanent error, regardless of the error strictness.
+    except PermanentError as e:
+        logger.error(f"Handler {handler.id!r} failed permanently: %s", str(e) or repr(e))
+        return states.HandlerOutcome(final=True, exception=e)
+        # TODO: report the handling failure somehow (beside logs/events). persistent status?
+
+    # Regular errors behave as either temporary or permanent depending on the error strictness.
+    except Exception as e:
+        if ignore_errors:
+            logger.exception(f"Handler {handler.id!r} failed with an exception. Will ignore.")
+            return states.HandlerOutcome(final=True, exception=e)
+        elif retry_on_errors:
+            logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")
+            return states.HandlerOutcome(final=False, exception=e, delay=DEFAULT_RETRY_DELAY)
         else:
-            logger.info(f"Handler {handler.id!r} succeeded.")
-            state.store_success(body=cause.body, patch=cause.patch, handler=handler, result=result)
+            logger.exception(f"Handler {handler.id!r} failed with an exception. Will stop.")
+            return states.HandlerOutcome(final=True, exception=e)
+            # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
-    # Provoke the retry of the handling cycle if there were any unfinished handlers,
-    # either because they were not selected by the lifecycle, or failed and need a retry.
-    if handlers_left:
-        raise HandlerChildrenRetry(delay=None)
-
-    # If there are delayed handlers, block this object's cycle; but do keep-alives every few mins.
-    # Other (non-delayed) handlers will continue as normlally, due to raise few lines above.
-    # Other objects will continue as normally in their own handling asyncio tasks.
-    if handlers_wait:
-        now = datetime.datetime.utcnow()
-        limit = now + datetime.timedelta(seconds=WAITING_KEEPALIVE_INTERVAL)
-        times = [state.get_awake_time(body=cause.body, handler=h) for h in handlers_wait]
-        until = min([t for t in times if t is not None] + [limit])  # the soonest awake datetime.
-        delay = max(0, (until - now).total_seconds())
-        raise HandlerChildrenRetry(delay=delay)
+    # No errors means the handler should be excluded from future runs in this reaction cycle.
+    else:
+        logger.info(f"Handler {handler.id!r} succeeded.")
+        return states.HandlerOutcome(final=True, result=result)
 
 
 async def _call_handler(
@@ -479,7 +489,7 @@ async def _call_handler(
         cause: causation.BaseCause,
         lifecycle: lifecycles.LifeCycleFn,
         **kwargs: Any,
-) -> Any:
+) -> Optional[registries.HandlerResult]:
     """
     Invoke one handler only, according to the calling conventions.
 
@@ -519,4 +529,5 @@ async def _call_handler(
         if not subexecuted_var.get() and isinstance(cause, causation.ResourceChangingCause):
             await execute()
 
-        return result
+        # Since we know that we invoked the handler, we cast "any" result to a handler result.
+        return registries.HandlerResult(result)

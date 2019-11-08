@@ -34,6 +34,10 @@ from kopf.structs import resources as resources_
 # to prevent usage of some other strings (e.g. operator id) as the handlers ids.
 HandlerId = NewType('HandlerId', str)
 
+# A specialised type to highlight the purpose or origin of the data of type Any,
+# to not be mixed with other arbitrary Any values, where it is indeed "any".
+HandlerResult = NewType('HandlerResult', object)
+
 
 class ResourceHandlerFn(Protocol):
     def __call__(
@@ -54,7 +58,7 @@ class ResourceHandlerFn(Protocol):
             old: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
             new: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
             **kwargs: Any,
-    ) -> Any: ...
+    ) -> Optional[HandlerResult]: ...
 
 
 # A registered handler (function + event meta info).
