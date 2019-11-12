@@ -33,6 +33,11 @@ from kopf.structs import patches
 from kopf.structs import resources
 
 
+class Activity(str, enum.Enum):
+    STARTUP = 'startup'
+    CLEANUP = 'cleanup'
+
+
 # Constants for cause types, to prevent a direct usage of strings, and typos.
 # They are not exposed by the framework, but are used internally. See also: `kopf.on`.
 class Reason(str, enum.Enum):
@@ -79,13 +84,22 @@ TITLES = {
 @dataclasses.dataclass
 class BaseCause:
     logger: Union[logging.Logger, logging.LoggerAdapter]
+
+
+@dataclasses.dataclass
+class ActivityCause(BaseCause):
+    activity: Activity
+
+
+@dataclasses.dataclass
+class ResourceCause(BaseCause):
     resource: resources.Resource
     patch: patches.Patch
     body: bodies.Body
 
 
 @dataclasses.dataclass
-class ResourceWatchingCause(BaseCause):
+class ResourceWatchingCause(ResourceCause):
     """
     The raw event received from the API.
 
@@ -96,7 +110,7 @@ class ResourceWatchingCause(BaseCause):
 
 
 @dataclasses.dataclass
-class ResourceChangingCause(BaseCause):
+class ResourceChangingCause(ResourceCause):
     """
     The cause is what has caused the whole reaction as a chain of handlers.
 

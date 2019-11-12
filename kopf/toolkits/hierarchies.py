@@ -3,6 +3,7 @@ All the functions to properly build the object hierarchies.
 """
 from typing import Optional, Iterable, Iterator, cast, MutableMapping, Any, Union
 
+from kopf.reactor import causation
 from kopf.reactor import handling
 from kopf.structs import bodies
 from kopf.structs import dicts
@@ -152,7 +153,7 @@ def _guess_owner(
     except LookupError:
         pass
     else:
-        if cause is not None:
+        if cause is not None and isinstance(cause, causation.ResourceCause):
             return cause.body
 
     raise LookupError("Owner must be set explicitly, since running outside of a handler.")

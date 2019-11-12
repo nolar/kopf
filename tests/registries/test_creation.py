@@ -1,4 +1,10 @@
-from kopf import ResourceRegistry, OperatorRegistry
+from kopf import ActivityRegistry, ResourceRegistry, OperatorRegistry
+
+
+def test_activity_registry_with_no_prefix(activity_registry_cls):
+    registry = activity_registry_cls()
+    assert isinstance(registry, ActivityRegistry)
+    assert registry.prefix is None
 
 
 def test_resource_registry_with_no_prefix(resource_registry_cls):

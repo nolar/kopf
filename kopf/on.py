@@ -20,6 +20,45 @@ from kopf.reactor import registries
 from kopf.structs import bodies
 
 ResourceHandlerDecorator = Callable[[registries.ResourceHandlerFn], registries.ResourceHandlerFn]
+ActivityHandlerDecorator = Callable[[registries.ActivityHandlerFn], registries.ActivityHandlerFn]
+
+
+def startup(
+        *,
+        id: Optional[str] = None,
+        errors: Optional[registries.ErrorsMode] = None,
+        timeout: Optional[float] = None,
+        retries: Optional[int] = None,
+        cooldown: Optional[float] = None,
+        registry: Optional[registries.OperatorRegistry] = None,
+) -> ActivityHandlerDecorator:
+    actual_registry = registry if registry is not None else registries.get_default_registry()
+    def decorator(fn: registries.ActivityHandlerFn) -> registries.ActivityHandlerFn:
+        return actual_registry.register_activity_handler(
+            fn=fn, id=id,
+            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            activity=causation.Activity.STARTUP,
+        )
+    return decorator
+
+
+def cleanup(
+        *,
+        id: Optional[str] = None,
+        errors: Optional[registries.ErrorsMode] = None,
+        timeout: Optional[float] = None,
+        retries: Optional[int] = None,
+        cooldown: Optional[float] = None,
+        registry: Optional[registries.OperatorRegistry] = None,
+) -> ActivityHandlerDecorator:
+    actual_registry = registry if registry is not None else registries.get_default_registry()
+    def decorator(fn: registries.ActivityHandlerFn) -> registries.ActivityHandlerFn:
+        return actual_registry.register_activity_handler(
+            fn=fn, id=id,
+            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            activity=causation.Activity.CLEANUP,
+        )
+    return decorator
 
 
 def resume(

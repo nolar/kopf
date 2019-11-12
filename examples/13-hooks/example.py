@@ -1,0 +1,55 @@
+import asyncio
+import random
+from typing import Dict, NoReturn
+
+import kopf
+
+E2E_STARTUP_STOP_WORDS = ['Served by the background task.']
+E2E_CLEANUP_STOP_WORDS = ['Hung tasks', 'Root tasks']
+E2E_SUCCESS_COUNTS = {'startup_fn_simple': 1, 'startup_fn_retried': 1, 'cleanup_fn': 1}
+E2E_FAILURE_COUNTS = {}
+
+LOCK: asyncio.Lock  # requires a loop on creation
+STOPPERS: Dict[str, Dict[str, asyncio.Event]] = {}  # [namespace][name]
+
+
+@kopf.on.startup()
+async def startup_fn_simple(logger, **kwargs):
+    logger.info("Initialising the task-lock...")
+    global LOCK
+    LOCK = asyncio.Lock()  # in the current asyncio loop
+
+
+@kopf.on.startup()
+async def startup_fn_retried(retry, logger, **kwargs):
+    if retry < 3:
+        raise kopf.TemporaryError(f"Going to succeed in {3-retry}s", delay=1)
+    else:
+        logger.info("Starting retried...")
+        # raise kopf.PermanentError("Unable to start!")
+
+
+@kopf.on.cleanup()
+async def cleanup_fn(logger, **kwargs):
+    logger.info("Cleaning up...")
+    for namespace in STOPPERS.keys():
+        for name, flag in STOPPERS[namespace].items():
+            flag.set()
+    logger.info("All pod-tasks are requested to stop...")
+
+
+@kopf.on.event('', 'v1', 'pods')
+async def pod_task(namespace, name, logger, **_):
+    async with LOCK:
+        if namespace not in STOPPERS or name not in STOPPERS[namespace]:
+            flag = asyncio.Event()
+            STOPPERS.setdefault(namespace, {}).setdefault(name, flag)
+            asyncio.create_task(_task_fn(logger, shouldstop=flag))
+
+
+async def _task_fn(logger, shouldstop: asyncio.Event) -> NoReturn:
+    while not shouldstop.is_set():
+        await asyncio.sleep(random.randint(1, 10))
+        logger.info("Served by the background task.")
+    else:
+        logger.info("Serving is finished by request.")

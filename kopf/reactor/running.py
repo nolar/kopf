@@ -5,11 +5,12 @@ import logging
 import signal
 import threading
 import warnings
-from typing import (Optional, Collection, Union, Tuple, Set, Text, Any, Coroutine,
-                    cast, TYPE_CHECKING)
+from typing import (Optional, Collection, Union, Tuple, Set, Any, Coroutine,
+                    Sequence, MutableSequence, cast, TYPE_CHECKING)
 
 from kopf.engines import peering
 from kopf.engines import posting
+from kopf.reactor import causation
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
 from kopf.reactor import queueing
@@ -115,23 +116,29 @@ async def spawn_tasks(
     event_queue: posting.K8sEventQueue = asyncio.Queue(loop=loop)
     freeze_flag: asyncio.Event = asyncio.Event(loop=loop)
     signal_flag: asyncio_Future = asyncio.Future(loop=loop)
-    tasks = []
+    ready_flag = ready_flag if ready_flag is not None else asyncio.Event()
+    tasks: MutableSequence[asyncio_Task] = []
 
-    # A top-level task for external stopping by setting a stop-flag. Once set,
-    # this task will exit, and thus all other top-level tasks will be cancelled.
+    # Few common background forever-running infrastructural tasks (irregular root tasks).
     tasks.extend([
         loop.create_task(_stop_flag_checker(
             signal_flag=signal_flag,
-            ready_flag=ready_flag,
             stop_flag=stop_flag,
+        )),
+        loop.create_task(_startup_cleanup_activities(
+            root_tasks=tasks,  # used as a "live" view, populated later.
+            ready_flag=ready_flag,
+            registry=registry,
         )),
     ])
 
     # K8s-event posting. Events are queued in-memory and posted in the background.
     # NB: currently, it is a global task, but can be made per-resource or per-object.
     tasks.extend([
-        loop.create_task(_root_task_checker("poster of events", posting.poster(
-            event_queue=event_queue))),
+        loop.create_task(_root_task_checker(
+            name="poster of events", ready_flag=ready_flag,
+            coro=posting.poster(
+                event_queue=event_queue))),
     ])
 
     # Monitor the peers, unless explicitly disabled.
@@ -143,26 +150,30 @@ async def spawn_tasks(
         tasks.extend([
             loop.create_task(peering.peers_keepalive(
                 ourselves=ourselves)),
-            loop.create_task(_root_task_checker("watcher of peering", queueing.watcher(
-                namespace=namespace,
-                resource=ourselves.resource,
-                handler=functools.partial(peering.peers_handler,
-                                          ourselves=ourselves,
-                                          freeze=freeze_flag)))),  # freeze is set/cleared
+            loop.create_task(_root_task_checker(
+                name="watcher of peering", ready_flag=ready_flag,
+                coro=queueing.watcher(
+                    namespace=namespace,
+                    resource=ourselves.resource,
+                    handler=functools.partial(peering.peers_handler,
+                                              ourselves=ourselves,
+                                              freeze=freeze_flag)))),  # freeze is set/cleared
         ])
 
     # Resource event handling, only once for every known resource (de-duplicated).
     for resource in registry.resources:
         tasks.extend([
-            loop.create_task(_root_task_checker(f"watcher of {resource.name}", queueing.watcher(
-                namespace=namespace,
-                resource=resource,
-                handler=functools.partial(handling.resource_handler,
-                                          lifecycle=lifecycle,
-                                          registry=registry,
-                                          resource=resource,
-                                          event_queue=event_queue,
-                                          freeze=freeze_flag)))),  # freeze is only checked
+            loop.create_task(_root_task_checker(
+                name=f"watcher of {resource.name}", ready_flag=ready_flag,
+                coro=queueing.watcher(
+                    namespace=namespace,
+                    resource=resource,
+                    handler=functools.partial(handling.resource_handler,
+                                              lifecycle=lifecycle,
+                                              registry=registry,
+                                              resource=resource,
+                                              event_queue=event_queue,
+                                              freeze=freeze_flag)))),  # freeze is only checked
         ])
 
     # On Ctrl+C or pod termination, cancel all tasks gracefully.
@@ -301,9 +312,15 @@ async def _reraise(
 
 
 async def _root_task_checker(
-        name: Text,
+        name: str,
+        ready_flag: Flag,
         coro: Coroutine[Any, Any, Any],
 ) -> None:
+
+    # Wait until the startup activity succeeds. The wait will be cancelled if the startup failed.
+    await _wait_flag(ready_flag)
+
+    # Actually run the root task, and log the outcome.
     try:
         await coro
     except asyncio.CancelledError:
@@ -318,12 +335,12 @@ async def _root_task_checker(
 
 async def _stop_flag_checker(
         signal_flag: asyncio_Future,
-        ready_flag: Optional[Flag],
         stop_flag: Optional[Flag],
 ) -> None:
-    # TODO: collect the readiness of all root tasks instead, and set this one only when fully ready.
-    # Notify the caller that we are ready to be executed.
-    await _raise_flag(ready_flag)
+    """
+    A top-level task for external stopping by setting a stop-flag. Once set,
+    this task will exit, and thus all other top-level tasks will be cancelled.
+    """
 
     # Selects the flags to be awaited (if set).
     flags = []
@@ -346,6 +363,66 @@ async def _stop_flag_checker(
             logger.info("Signal %s is received. Operator is stopping.", result.name)
         else:
             logger.info("Stop-flag is set to %r. Operator is stopping.", result)
+
+
+async def _startup_cleanup_activities(
+        root_tasks: Sequence[asyncio_Task],  # mutated externally!
+        ready_flag: Optional[Flag],
+        registry: registries.OperatorRegistry,
+) -> None:
+    """
+    Startup and cleanup activities.
+
+    This task spends most of its time in forever sleep, only running
+    in the beginning and in the end.
+
+    The root tasks do not actually start until the ready-flag is set,
+    which happens after the startup handlers finished successfully.
+
+    Beside calling the startup/cleanup handlers, it performs few operator-scoped
+    cleanups too (those that cannot be handled by garbage collection).
+    """
+
+    # Execute the startup activity before any root task starts running (due to readiness flag).
+    try:
+        await handling.activity_trigger(
+            lifecycle=lifecycles.all_at_once,
+            registry=registry,
+            activity=causation.Activity.STARTUP,
+        )
+    except asyncio.CancelledError:
+        logger.warning("Startup activity is only partially executed due to cancellation.")
+        raise
+
+    # Notify the caller that we are ready to be executed. This unfreezes all the root tasks.
+    await _raise_flag(ready_flag)
+
+    # Sleep forever, or until cancelled, which happens when the operator begins its shutdown.
+    try:
+        await asyncio.Event().wait()
+    except asyncio.CancelledError:
+        pass
+
+    # Wait for all other root tasks to exit before cleaning up.
+    # Beware: on explicit operator cancellation, there is no graceful period at all.
+    try:
+        current_task = asyncio.current_task()
+        awaited_tasks = {task for task in root_tasks if task is not current_task}
+        await _wait(awaited_tasks)
+    except asyncio.CancelledError:
+        logger.warning("Cleanup activity is not executed at all due to cancellation.")
+        raise
+
+    # Execute the cleanup activity after all other root tasks are presumably done.
+    try:
+        await handling.activity_trigger(
+            lifecycle=lifecycles.all_at_once,
+            registry=registry,
+            activity=causation.Activity.CLEANUP,
+        )
+    except asyncio.CancelledError:
+        logger.warning("Cleanup activity is only partially executed due to cancellation.")
+        raise
 
 
 def create_tasks(

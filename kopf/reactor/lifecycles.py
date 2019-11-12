@@ -19,7 +19,7 @@ from kopf.reactor import states
 
 logger = logging.getLogger(__name__)
 
-Handlers = Sequence[registries.ResourceHandler]
+Handlers = Sequence[registries.BaseHandler]
 
 
 class LifeCycleFn(Protocol):
@@ -62,7 +62,7 @@ def shuffled(handlers: Handlers, **kwargs: Any) -> Handlers:
 def asap(handlers: Handlers, *, state: states.State, **kwargs: Any) -> Handlers:
     """ Execute one handler at a time, skip on failure, try the next one, retry after the full cycle. """
 
-    def keyfn(handler: registries.ResourceHandler) -> int:
+    def keyfn(handler: registries.BaseHandler) -> int:
         return state[handler.id].retries or 0
 
     return sorted(handlers, key=keyfn)[:1]

@@ -14,6 +14,10 @@ def test_all_examples_are_runnable(mocker, with_crd, exampledir, caplog):
     # If the example has its own opinion on the timing, try to respect it.
     # See e.g. /examples/99-all-at-once/example.py.
     example_py = exampledir / 'example.py'
+    e2e_startup_time_limit = _parse_e2e_value(str(example_py), 'E2E_STARTUP_TIME_LIMIT')
+    e2e_startup_stop_words = _parse_e2e_value(str(example_py), 'E2E_STARTUP_STOP_WORDS')
+    e2e_cleanup_time_limit = _parse_e2e_value(str(example_py), 'E2E_CLEANUP_TIME_LIMIT')
+    e2e_cleanup_stop_words = _parse_e2e_value(str(example_py), 'E2E_CLEANUP_STOP_WORDS')
     e2e_creation_time_limit = _parse_e2e_value(str(example_py), 'E2E_CREATION_TIME_LIMIT')
     e2e_creation_stop_words = _parse_e2e_value(str(example_py), 'E2E_CREATION_STOP_WORDS')
     e2e_deletion_time_limit = _parse_e2e_value(str(example_py), 'E2E_DELETION_TIME_LIMIT')
@@ -46,6 +50,11 @@ def test_all_examples_are_runnable(mocker, with_crd, exampledir, caplog):
     # Run an operator and simulate some activity with the operated resource.
     with KopfRunner(['run', '--standalone', '--verbose', str(example_py)], timeout=60) as runner:
 
+        # Give it some time to start.
+        _sleep_till_stopword(caplog=caplog,
+                             delay=e2e_startup_time_limit,
+                             patterns=e2e_startup_stop_words or ['Client is configured'])
+
         # Trigger the reaction. Give it some time to react and to sleep and to retry.
         subprocess.run("kubectl apply -f examples/obj.yaml", shell=True, check=True)
         _sleep_till_stopword(caplog=caplog,
@@ -57,6 +66,11 @@ def test_all_examples_are_runnable(mocker, with_crd, exampledir, caplog):
         _sleep_till_stopword(caplog=caplog,
                              delay=e2e_deletion_time_limit,
                              patterns=e2e_deletion_stop_words)
+
+    # Give it some time to finish.
+    _sleep_till_stopword(caplog=caplog,
+                         delay=e2e_cleanup_time_limit,
+                         patterns=e2e_cleanup_stop_words or ['Hung tasks', 'Root tasks'])
 
     # Verify that the operator did not die on start, or during the operation.
     assert runner.exception is None
