@@ -65,11 +65,11 @@ Regular errors
 
 Kopf assumes that any arbitrary errors
 (i.e. not `TemporaryError` and not `PermanentError`)
-are the environment issues and can self-resolve after some time.
+are environment issues and can self-resolve after some time.
 
 As such, as a default behaviour,
 Kopf retries the handlers with arbitrary errors
-infinitely until they either succeed or fail permanently.
+infinitely until the handlers either succeed or fail permanently.
 
 The reaction to the arbitrary errors can be configured::
 
