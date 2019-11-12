@@ -329,6 +329,20 @@ the loop-bound variables -- which is impossible in the module-level code::
 If any of the startup handlers fails, the operator fails to start
 without making any external API calls.
 
+.. note::
+
+    If the operator is running in a Kubernetes cluster, there can be
+    timeouts set for liveness/readiness checls of a pod.
+
+    If the startup takes too longer in total (e.g. due to retries),
+    the pod can be killed by Kubernetes as not responding to the probes.
+
+    Either design the startup activities to be as fast as possible,
+    or configure the liveness/readiness probes accordingly.
+
+    Kopf itself does not set any implicit timeouts for the startup activity,
+    and it can continue forever (unless explicitly limited).
+
 
 Cleanup handlers
 ================
@@ -349,3 +363,19 @@ too long -- due to a limited graceful period or non-graceful termination.
 
 Similarly, the cleanup handlers are not executed if the operator
 is force-killed with no possibility to react (e.g. by SIGKILL).
+
+.. note::
+
+    If the operator is running in a Kubernetes cluster, there can be
+    timeouts set for graceful termination of a pod
+    (``terminationGracePeriodSeconds``, the default is 30 seconds).
+
+    If the cleanup takes longer than that in total (e.g. due to retries),
+    the activity will not be finished in full,
+    as the pod will be SIGKILL'ed by Kubernetes.
+
+    Either design the cleanup activities to be as fast as possible,
+    or configure ``terminationGracePeriodSeconds`` accordingly.
+
+    Kopf itself does not set any implicit timeouts for the cleanup activity,
+    and it can continue forever (unless explicitly limited).
