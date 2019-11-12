@@ -13,7 +13,6 @@ thus provoking the low-level watch-events and additional queueing calls.
 But these internal changes are filtered out from the cause detection
 and therefore do not trigger the user-defined handlers.
 """
-
 import asyncio
 import collections.abc
 import datetime
@@ -62,6 +61,10 @@ class TemporaryError(Exception):
 
 class HandlerTimeoutError(PermanentError):
     """ An error for the handler's timeout (if set). """
+
+
+class HandlerRetriesError(PermanentError):
+    """ An error for the handler's retries exceeded (if set). """
 
 
 class HandlerChildrenRetry(TemporaryError):
@@ -187,7 +190,7 @@ async def handle_resource_watching_cause(
         handlers=handlers,
         cause=cause,
         state=states.State.from_scratch(handlers=handlers),
-        ignore_errors=True,  # affects the log messages
+        default_errors=registries.ErrorsMode.IGNORED,
     )
 
     # Store the results, but not the handlers' progress.
@@ -367,8 +370,7 @@ async def _execute_handlers(
         handlers: Collection[registries.ResourceHandler],
         cause: causation.BaseCause,
         state: states.State,
-        ignore_errors: bool = False,
-        retry_on_errors: bool = True,
+        default_errors: registries.ErrorsMode = registries.ErrorsMode.TEMPORARY,
 ) -> Mapping[registries.HandlerId, states.HandlerOutcome]:
     """
     Call the next handler(s) from the chain of the handlers.
@@ -392,8 +394,7 @@ async def _execute_handlers(
             state=state[handler.id],
             cause=cause,
             lifecycle=lifecycle,  # just a default for the sub-handlers, not used directly.
-            ignore_errors=ignore_errors,
-            retry_on_errors=retry_on_errors,
+            default_errors=default_errors,
         )
         outcomes[handler.id] = outcome
 
@@ -405,8 +406,7 @@ async def _execute_handler(
         cause: causation.BaseCause,
         state: states.HandlerState,
         lifecycle: lifecycles.LifeCycleFn,
-        ignore_errors: bool = False,
-        retry_on_errors: bool = True,
+        default_errors: registries.ErrorsMode = registries.ErrorsMode.TEMPORARY,
 ) -> states.HandlerOutcome:
     """
     Execute one and only one handler.
@@ -418,6 +418,8 @@ async def _execute_handler(
     This method is not supposed to raise any exceptions from the handlers:
     exceptions mean the failure of execution itself.
     """
+    errors = handler.errors if handler.errors is not None else default_errors
+    cooldown = handler.cooldown if handler.cooldown is not None else DEFAULT_RETRY_DELAY
 
     # Prevent successes/failures from posting k8s-events for resource-watching causes.
     logger: Union[logging.Logger, logging.LoggerAdapter]
@@ -430,8 +432,11 @@ async def _execute_handler(
     try:
         logger.debug(f"Invoking handler {handler.id!r}.")
 
-        if handler.timeout is not None and state.runtime.total_seconds() > handler.timeout:
+        if handler.timeout is not None and state.runtime.total_seconds() >= handler.timeout:
             raise HandlerTimeoutError(f"Handler {handler.id!r} has timed out after {state.runtime}.")
+
+        if handler.retries is not None and state.retries >= handler.retries:
+            raise HandlerRetriesError(f"Handler {handler.id!r} has exceeded {state.retries} retries.")
 
         result = await _call_handler(
             handler,
@@ -466,16 +471,18 @@ async def _execute_handler(
 
     # Regular errors behave as either temporary or permanent depending on the error strictness.
     except Exception as e:
-        if ignore_errors:
+        if errors == registries.ErrorsMode.IGNORED:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will ignore.")
             return states.HandlerOutcome(final=True, exception=e)
-        elif retry_on_errors:
+        elif errors == registries.ErrorsMode.TEMPORARY:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")
-            return states.HandlerOutcome(final=False, exception=e, delay=DEFAULT_RETRY_DELAY)
-        else:
+            return states.HandlerOutcome(final=False, exception=e, delay=cooldown)
+        elif errors == registries.ErrorsMode.PERMANENT:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will stop.")
             return states.HandlerOutcome(final=True, exception=e)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?
+        else:
+            raise RuntimeError(f"Unknown mode for errors: {errors!r}")
 
     # No errors means the handler should be excluded from future runs in this reaction cycle.
     else:

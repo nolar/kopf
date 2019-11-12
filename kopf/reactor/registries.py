@@ -13,6 +13,7 @@ of the handlers to be executed on each reaction cycle.
 """
 import abc
 import collections
+import enum
 import functools
 import logging
 import warnings
@@ -37,6 +38,13 @@ HandlerId = NewType('HandlerId', str)
 # A specialised type to highlight the purpose or origin of the data of type Any,
 # to not be mixed with other arbitrary Any values, where it is indeed "any".
 HandlerResult = NewType('HandlerResult', object)
+
+
+class ErrorsMode(enum.Enum):
+    """ How arbitrary (non-temporary/non-permanent) exceptions are treated. """
+    IGNORED = enum.auto()
+    TEMPORARY = enum.auto()
+    PERMANENT = enum.auto()
 
 
 class ResourceHandlerFn(Protocol):
@@ -67,7 +75,10 @@ class ResourceHandler(NamedTuple):
     id: HandlerId
     reason: Optional[causation.Reason]
     field: Optional[dicts.FieldPath]
+    errors: Optional[ErrorsMode] = None
     timeout: Optional[float] = None
+    retries: Optional[int] = None
+    cooldown: Optional[float] = None
     initial: Optional[bool] = None
     labels: Optional[bodies.Labels] = None
     annotations: Optional[bodies.Annotations] = None
@@ -106,7 +117,10 @@ class ResourceRegistry(Generic[CauseT]):
             reason: Optional[causation.Reason] = None,
             event: Optional[str] = None,  # deprecated, use `reason`
             field: Optional[dicts.FieldSpec] = None,
+            errors: Optional[ErrorsMode] = None,
             timeout: Optional[float] = None,
+            retries: Optional[int] = None,
+            cooldown: Optional[float] = None,
             initial: Optional[bool] = None,
             requires_finalizer: bool = False,
             labels: Optional[bodies.Labels] = None,
@@ -118,7 +132,8 @@ class ResourceRegistry(Generic[CauseT]):
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = generate_id(fn=fn, id=id, prefix=self.prefix, suffix=".".join(real_field or []))
         handler = ResourceHandler(
-            id=real_id, fn=fn, reason=reason, field=real_field, timeout=timeout,
+            id=real_id, fn=fn, reason=reason, field=real_field,
+            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
             initial=initial, requires_finalizer=requires_finalizer,
             labels=labels, annotations=annotations,
         )
@@ -236,7 +251,10 @@ class OperatorRegistry:
             reason: Optional[causation.Reason] = None,
             event: Optional[str] = None,  # deprecated, use `reason`
             field: Optional[dicts.FieldSpec] = None,
+            errors: Optional[ErrorsMode] = None,
             timeout: Optional[float] = None,
+            retries: Optional[int] = None,
+            cooldown: Optional[float] = None,
             initial: Optional[bool] = None,
             requires_finalizer: bool = False,
             labels: Optional[bodies.Labels] = None,
@@ -247,7 +265,8 @@ class OperatorRegistry:
         """
         resource = resources_.Resource(group, version, plural)
         return self._resource_changing_handlers[resource].register(
-            reason=reason, event=event, field=field, fn=fn, id=id, timeout=timeout,
+            reason=reason, event=event, field=field, fn=fn, id=id,
+            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
             initial=initial, requires_finalizer=requires_finalizer,
             labels=labels, annotations=annotations,
         )

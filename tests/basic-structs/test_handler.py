@@ -13,7 +13,10 @@ def test_all_args(mocker):
     id = mocker.Mock()
     reason = mocker.Mock()
     field = mocker.Mock()
+    errors = mocker.Mock()
     timeout = mocker.Mock()
+    retries = mocker.Mock()
+    cooldown = mocker.Mock()
     initial = mocker.Mock()
     labels = mocker.Mock()
     annotations = mocker.Mock()
@@ -23,7 +26,10 @@ def test_all_args(mocker):
         id=id,
         reason=reason,
         field=field,
+        errors=errors,
         timeout=timeout,
+        retries=retries,
+        cooldown=cooldown,
         initial=initial,
         labels=labels,
         annotations=annotations,
@@ -34,7 +40,10 @@ def test_all_args(mocker):
     assert handler.reason is reason
     assert handler.event is reason  # deprecated
     assert handler.field is field
+    assert handler.errors is errors
     assert handler.timeout is timeout
+    assert handler.retries is retries
+    assert handler.cooldown is cooldown
     assert handler.initial is initial
     assert handler.labels is labels
     assert handler.annotations is annotations

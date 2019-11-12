@@ -26,7 +26,10 @@ def resume(
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
+        errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
+        retries: Optional[int] = None,
+        cooldown: Optional[float] = None,
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
@@ -36,8 +39,10 @@ def resume(
     def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
-            reason=None, initial=True, id=id, timeout=timeout,
-            fn=fn, labels=labels, annotations=annotations)
+            reason=None, initial=True, id=id,
+            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            fn=fn, labels=labels, annotations=annotations,
+        )
     return decorator
 
 
@@ -45,7 +50,10 @@ def create(
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
+        errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
+        retries: Optional[int] = None,
+        cooldown: Optional[float] = None,
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
@@ -55,8 +63,10 @@ def create(
     def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
-            reason=causation.Reason.CREATE, id=id, timeout=timeout,
-            fn=fn, labels=labels, annotations=annotations)
+            reason=causation.Reason.CREATE, id=id,
+            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            fn=fn, labels=labels, annotations=annotations,
+        )
     return decorator
 
 
@@ -64,7 +74,10 @@ def update(
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
+        errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
+        retries: Optional[int] = None,
+        cooldown: Optional[float] = None,
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
@@ -74,8 +87,10 @@ def update(
     def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
-            reason=causation.Reason.UPDATE, id=id, timeout=timeout,
-            fn=fn, labels=labels, annotations=annotations)
+            reason=causation.Reason.UPDATE, id=id,
+            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            fn=fn, labels=labels, annotations=annotations,
+        )
     return decorator
 
 
@@ -83,7 +98,10 @@ def delete(
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
+        errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
+        retries: Optional[int] = None,
+        cooldown: Optional[float] = None,
         registry: Optional[registries.OperatorRegistry] = None,
         optional: Optional[bool] = None,
         labels: Optional[bodies.Labels] = None,
@@ -94,9 +112,11 @@ def delete(
     def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
-            reason=causation.Reason.DELETE, id=id, timeout=timeout,
+            reason=causation.Reason.DELETE, id=id,
+            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
             fn=fn, requires_finalizer=bool(not optional),
-            labels=labels, annotations=annotations)
+            labels=labels, annotations=annotations,
+        )
     return decorator
 
 
@@ -105,7 +125,10 @@ def field(
         field: Union[str, List[str], Tuple[str, ...]],
         *,
         id: Optional[str] = None,
+        errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
+        retries: Optional[int] = None,
+        cooldown: Optional[float] = None,
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
@@ -115,8 +138,10 @@ def field(
     def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
-            reason=None, field=field, id=id, timeout=timeout,
-            fn=fn, labels=labels, annotations=annotations)
+            reason=None, field=field, id=id,
+            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            fn=fn, labels=labels, annotations=annotations,
+        )
     return decorator
 
 
@@ -133,7 +158,8 @@ def event(
     def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
         return actual_registry.register_resource_watching_handler(
             group=group, version=version, plural=plural,
-            id=id, fn=fn, labels=labels, annotations=annotations)
+            id=id, fn=fn, labels=labels, annotations=annotations,
+        )
     return decorator
 
 
@@ -142,7 +168,10 @@ def event(
 def this(
         *,
         id: Optional[str] = None,
+        errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
+        retries: Optional[int] = None,
+        cooldown: Optional[float] = None,
         registry: Optional[registries.ResourceChangingRegistry] = None,
 ) -> ResourceHandlerDecorator:
     """
@@ -176,7 +205,10 @@ def this(
     """
     actual_registry = registry if registry is not None else handling.subregistry_var.get()
     def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
-        return actual_registry.register(id=id, fn=fn, timeout=timeout)
+        return actual_registry.register(
+            id=id, fn=fn,
+            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+        )
     return decorator
 
 
@@ -184,7 +216,10 @@ def register(
         fn: registries.ResourceHandlerFn,
         *,
         id: Optional[str] = None,
+        errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
+        retries: Optional[int] = None,
+        cooldown: Optional[float] = None,
         registry: Optional[registries.ResourceChangingRegistry] = None,
 ) -> registries.ResourceHandlerFn:
     """
@@ -211,4 +246,8 @@ def register(
                 def create_single_task(task=task, **_):
                     pass
     """
-    return this(id=id, timeout=timeout, registry=registry)(fn)
+    decorator = this(
+        id=id, registry=registry,
+        errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+    )
+    return decorator(fn)

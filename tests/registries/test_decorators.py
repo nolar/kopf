@@ -3,7 +3,7 @@ import pytest
 import kopf
 from kopf.reactor.causation import Reason
 from kopf.reactor.handling import subregistry_var
-from kopf.reactor.registries import ResourceRegistry, OperatorRegistry, ResourceChangingRegistry
+from kopf.reactor.registries import ErrorsMode, OperatorRegistry, ResourceChangingRegistry
 from kopf.structs.resources import Resource
 
 
@@ -21,7 +21,10 @@ def test_on_create_minimal(mocker):
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.CREATE
     assert handlers[0].field is None
+    assert handlers[0].errors is None
     assert handlers[0].timeout is None
+    assert handlers[0].retries is None
+    assert handlers[0].cooldown is None
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
 
@@ -40,7 +43,10 @@ def test_on_update_minimal(mocker):
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.UPDATE
     assert handlers[0].field is None
+    assert handlers[0].errors is None
     assert handlers[0].timeout is None
+    assert handlers[0].retries is None
+    assert handlers[0].cooldown is None
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
 
@@ -59,7 +65,10 @@ def test_on_delete_minimal(mocker):
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.DELETE
     assert handlers[0].field is None
+    assert handlers[0].errors is None
     assert handlers[0].timeout is None
+    assert handlers[0].retries is None
+    assert handlers[0].cooldown is None
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
 
@@ -79,7 +88,10 @@ def test_on_field_minimal(mocker):
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
     assert handlers[0].field == ('field', 'subfield')
+    assert handlers[0].errors is None
     assert handlers[0].timeout is None
+    assert handlers[0].retries is None
+    assert handlers[0].cooldown is None
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
 
@@ -98,7 +110,8 @@ def test_on_create_with_all_kwargs(mocker):
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
     @kopf.on.create('group', 'version', 'plural',
-                    id='id', timeout=123, registry=registry,
+                    id='id', registry=registry,
+                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, cooldown=78,
                     labels={'somelabel': 'somevalue'},
                     annotations={'someanno': 'somevalue'})
     def fn(**_):
@@ -110,7 +123,10 @@ def test_on_create_with_all_kwargs(mocker):
     assert handlers[0].reason == Reason.CREATE
     assert handlers[0].field is None
     assert handlers[0].id == 'id'
+    assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
+    assert handlers[0].retries == 456
+    assert handlers[0].cooldown == 78
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
 
@@ -122,7 +138,8 @@ def test_on_update_with_all_kwargs(mocker):
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
     @kopf.on.update('group', 'version', 'plural',
-                    id='id', timeout=123, registry=registry,
+                    id='id', registry=registry,
+                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, cooldown=78,
                     labels={'somelabel': 'somevalue'},
                     annotations={'someanno': 'somevalue'})
     def fn(**_):
@@ -134,7 +151,10 @@ def test_on_update_with_all_kwargs(mocker):
     assert handlers[0].reason == Reason.UPDATE
     assert handlers[0].field is None
     assert handlers[0].id == 'id'
+    assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
+    assert handlers[0].retries == 456
+    assert handlers[0].cooldown == 78
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
 
@@ -150,7 +170,9 @@ def test_on_delete_with_all_kwargs(mocker, optional):
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
     @kopf.on.delete('group', 'version', 'plural',
-                    id='id', timeout=123, registry=registry, optional=optional,
+                    id='id', registry=registry,
+                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, cooldown=78,
+                    optional=optional,
                     labels={'somelabel': 'somevalue'},
                     annotations={'someanno': 'somevalue'})
     def fn(**_):
@@ -162,7 +184,10 @@ def test_on_delete_with_all_kwargs(mocker, optional):
     assert handlers[0].reason == Reason.DELETE
     assert handlers[0].field is None
     assert handlers[0].id == 'id'
+    assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
+    assert handlers[0].retries == 456
+    assert handlers[0].cooldown == 78
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
 
@@ -175,7 +200,8 @@ def test_on_field_with_all_kwargs(mocker):
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
     @kopf.on.field('group', 'version', 'plural', 'field.subfield',
-                   id='id', timeout=123, registry=registry,
+                   id='id', registry=registry,
+                   errors=ErrorsMode.PERMANENT, timeout=123, retries=456, cooldown=78,
                    labels={'somelabel': 'somevalue'},
                    annotations={'someanno': 'somevalue'})
     def fn(**_):
@@ -187,7 +213,10 @@ def test_on_field_with_all_kwargs(mocker):
     assert handlers[0].reason is None
     assert handlers[0].field ==('field', 'subfield')
     assert handlers[0].id == 'id/field.subfield'
+    assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
+    assert handlers[0].retries == 456
+    assert handlers[0].cooldown == 78
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
 
