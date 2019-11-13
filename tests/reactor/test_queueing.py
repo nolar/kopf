@@ -141,12 +141,15 @@ async def test_watchevent_batching(mocker, resource, handler, timer, stream, eve
     assert handler.awaited
 
     # Was it called only once per uid? Only with the latest event?
+    # Note: the calls can be in arbitrary order, not as we expect then.
     assert handler.call_count == len(uids)
     assert handler.call_count == len(vals)
-    for uid, val, (args, kwargs) in zip(uids, vals, handler.call_args_list):
-        event = kwargs['event']
-        assert event['object']['metadata']['uid'] == uid
-        assert event['object']['spec'] == val
+    expected_uid_val_pairs = set(zip(uids, vals))
+    actual_uid_val_pairs = set((
+            kwargs['event']['object']['metadata']['uid'],
+            kwargs['event']['object']['spec'])
+            for args, kwargs in handler.call_args_list)
+    assert actual_uid_val_pairs == expected_uid_val_pairs
 
 
 @pytest.mark.parametrize('unique, events', [

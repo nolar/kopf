@@ -1,139 +1,147 @@
-import json
-
-import pykube.exceptions
+import aiohttp.web
 import pytest
-import requests
 
 from kopf.clients.patching import patch_obj
 
 
-@pytest.mark.resource_clustered  # see `req_mock`
-async def test_by_name_clustered(req_mock, resource):
+@pytest.mark.resource_clustered  # see `resp_mocker`
+async def test_by_name_clustered(
+        resp_mocker, aresponses, hostname, resource):
+
+    patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
+    aresponses.add(hostname, resource.get_url(namespace=None, name='name1'), 'patch', patch_mock)
+
     patch = {'x': 'y'}
-    res = await patch_obj(resource=resource, namespace=None, name='name1', patch=patch)
-    assert res is None  # never return any k8s-client specific things
+    await patch_obj(resource=resource, namespace=None, name='name1', patch=patch)
 
-    assert req_mock.patch.called
-    assert req_mock.patch.call_count == 1
+    assert patch_mock.called
+    assert patch_mock.call_count == 1
 
-    url = req_mock.patch.call_args_list[0][1]['url']
-    assert 'namespaces/' not in url
-    assert f'apis/{resource.api_version}/{resource.plural}/name1' in url
-
-    data = json.loads(req_mock.patch.call_args_list[0][1]['data'])
+    data = patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
     assert data == {'x': 'y'}
 
 
-async def test_by_name_namespaced(req_mock, resource):
+async def test_by_name_namespaced(
+        resp_mocker, aresponses, hostname, resource):
+
+    patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
+    aresponses.add(hostname, resource.get_url(namespace='ns1', name='name1'), 'patch', patch_mock)
+
     patch = {'x': 'y'}
-    res = await patch_obj(resource=resource, namespace='ns1', name='name1', patch=patch)
-    assert res is None  # never return any k8s-client specific things
+    await patch_obj(resource=resource, namespace='ns1', name='name1', patch=patch)
 
-    assert req_mock.patch.called
-    assert req_mock.patch.call_count == 1
+    assert patch_mock.called
+    assert patch_mock.call_count == 1
 
-    url = req_mock.patch.call_args_list[0][1]['url']
-    assert 'namespaces/' in url
-    assert f'apis/{resource.api_version}/namespaces/ns1/{resource.plural}/name1' in url
-
-    data = json.loads(req_mock.patch.call_args_list[0][1]['data'])
+    data = patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
     assert data == {'x': 'y'}
 
 
-@pytest.mark.resource_clustered  # see `req_mock`
-async def test_by_body_clustered(req_mock, resource):
+@pytest.mark.resource_clustered  # see `resp_mocker`
+async def test_by_body_clustered(
+        resp_mocker, aresponses, hostname, resource):
+
+    patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
+    aresponses.add(hostname, resource.get_url(namespace=None, name='name1'), 'patch', patch_mock)
+
     patch = {'x': 'y'}
     body = {'metadata': {'name': 'name1'}}
-    res = await patch_obj(resource=resource, body=body, patch=patch)
-    assert res is None  # never return any k8s-client specific things
+    await patch_obj(resource=resource, body=body, patch=patch)
 
-    assert req_mock.patch.called
-    assert req_mock.patch.call_count == 1
+    assert patch_mock.called
+    assert patch_mock.call_count == 1
 
-    url = req_mock.patch.call_args_list[0][1]['url']
-    assert 'namespaces/' not in url
-    assert f'apis/{resource.api_version}/{resource.plural}/name1' in url
-
-    data = json.loads(req_mock.patch.call_args_list[0][1]['data'])
+    data = patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
     assert data == {'x': 'y'}
 
 
-async def test_by_body_namespaced(req_mock, resource):
+async def test_by_body_namespaced(
+        resp_mocker, aresponses, hostname, resource):
+
+    patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
+    aresponses.add(hostname, resource.get_url(namespace='ns1', name='name1'), 'patch', patch_mock)
+
     patch = {'x': 'y'}
     body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
-    res = await patch_obj(resource=resource, body=body, patch=patch)
-    assert res is None  # never return any k8s-client specific things
+    await patch_obj(resource=resource, body=body, patch=patch)
 
-    assert req_mock.patch.called
-    assert req_mock.patch.call_count == 1
+    assert patch_mock.called
+    assert patch_mock.call_count == 1
 
-    url = req_mock.patch.call_args_list[0][1]['url']
-    assert 'namespaces/' in url
-    assert f'apis/{resource.api_version}/namespaces/ns1/{resource.plural}/name1' in url
-
-    data = json.loads(req_mock.patch.call_args_list[0][1]['data'])
+    data = patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
     assert data == {'x': 'y'}
 
 
-async def test_raises_when_body_conflicts_with_namespace(req_mock, resource):
+async def test_raises_when_body_conflicts_with_namespace(
+        resp_mocker, aresponses, hostname, resource):
+
+    patch_mock = resp_mocker(return_value=aiohttp.web.json_response())
+    aresponses.add(hostname, resource.get_url(namespace=None, name='name1'), 'patch', patch_mock)
+    aresponses.add(hostname, resource.get_url(namespace='ns1', name='name1'), 'patch', patch_mock)
+
     patch = {'x': 'y'}
     body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
     with pytest.raises(TypeError):
         await patch_obj(resource=resource, body=body, namespace='ns1', patch=patch)
 
-    assert not req_mock.patch.called
+    assert not patch_mock.called
 
 
-async def test_raises_when_body_conflicts_with_name(req_mock, resource):
+async def test_raises_when_body_conflicts_with_name(
+        resp_mocker, aresponses, hostname, resource):
+
+    patch_mock = resp_mocker(return_value=aiohttp.web.json_response())
+    aresponses.add(hostname, resource.get_url(namespace=None, name='name1'), 'patch', patch_mock)
+    aresponses.add(hostname, resource.get_url(namespace='ns1', name='name1'), 'patch', patch_mock)
+
     patch = {'x': 'y'}
     body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
     with pytest.raises(TypeError):
         await patch_obj(resource=resource, body=body, name='name1', patch=patch)
 
-    assert not req_mock.patch.called
+    assert not patch_mock.called
 
 
-async def test_raises_when_body_conflicts_with_ids(req_mock, resource):
+async def test_raises_when_body_conflicts_with_ids(
+        resp_mocker, aresponses, hostname, resource):
+
+    patch_mock = resp_mocker(return_value=aiohttp.web.json_response())
+    aresponses.add(hostname, resource.get_url(namespace=None, name='name1'), 'patch', patch_mock)
+    aresponses.add(hostname, resource.get_url(namespace='ns1', name='name1'), 'patch', patch_mock)
+
     patch = {'x': 'y'}
     body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
     with pytest.raises(TypeError):
         await patch_obj(resource=resource, body=body, namespace='ns1', name='name1', patch=patch)
 
-    assert not req_mock.patch.called
+    assert not patch_mock.called
 
 
+@pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['without-namespace', 'with-namespace'])
 @pytest.mark.parametrize('status', [404])
-async def test_ignores_absent_objects_with_requests_httperror(req_mock, resource, status):
-    response = requests.Response()
-    response.status_code = status
-    error = requests.exceptions.HTTPError("boo!", response=response)
-    req_mock.patch.side_effect = error
+async def test_ignores_absent_objects(
+        resp_mocker, aresponses, hostname, resource, namespace, status):
+
+    patch_mock = resp_mocker(return_value=aresponses.Response(status=status, reason="boo!"))
+    aresponses.add(hostname, resource.get_url(namespace=None, name='name1'), 'patch', patch_mock)
+    aresponses.add(hostname, resource.get_url(namespace='ns1', name='name1'), 'patch', patch_mock)
 
     patch = {'x': 'y'}
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
-    await patch_obj(resource=resource, body=body, patch=patch)
-
-
-@pytest.mark.parametrize('status', [404])
-async def test_ignores_absent_objects_with_pykube_httperror(req_mock, resource, status):
-    error = pykube.exceptions.HTTPError(status, "boo!")
-    req_mock.patch.side_effect = error
-
-    patch = {'x': 'y'}
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     await patch_obj(resource=resource, body=body, patch=patch)
 
 
 @pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['without-namespace', 'with-namespace'])
 @pytest.mark.parametrize('status', [400, 401, 403, 500, 666])
-async def test_raises_api_errors(req_mock, resource, namespace, status):
-    response = requests.Response()
-    response.status_code = status
-    error = requests.exceptions.HTTPError("boo!", response=response)
-    req_mock.patch.side_effect = error
+async def test_raises_api_errors(
+        resp_mocker, aresponses, hostname, resource, namespace, status):
+
+    patch_mock = resp_mocker(return_value=aresponses.Response(status=status, reason="boo!"))
+    aresponses.add(hostname, resource.get_url(namespace=None, name='name1'), 'patch', patch_mock)
+    aresponses.add(hostname, resource.get_url(namespace='ns1', name='name1'), 'patch', patch_mock)
 
     patch = {'x': 'y'}
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
-    with pytest.raises(requests.exceptions.HTTPError) as e:
+    body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
+    with pytest.raises(aiohttp.ClientResponseError) as e:
         await patch_obj(resource=resource, body=body, patch=patch)
-    assert e.value.response.status_code == status
+    assert e.value.status == status

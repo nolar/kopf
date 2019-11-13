@@ -9,11 +9,13 @@ import sys
 import time
 from unittest.mock import Mock
 
+import aiohttp
 import asynctest
 import pytest
 import pytest_mock
 
 import kopf
+from kopf.clients.auth import APISession
 from kopf.config import configure
 from kopf.engines.logging import ObjectPrefixingFormatter
 from kopf.structs.credentials import Vault, VaultKey, ConnectionInfo
@@ -107,31 +109,98 @@ def clear_default_registry():
 #
 
 @pytest.fixture()
-def req_mock(mocker, resource, request, fake_vault):
+async def enforced_session(fake_vault, mocker):
+    """
+    A patchable session for some selected tests, e.g. with local exceptions.
 
-    # Simulated list of cluster-defined CRDs: all of them at once. See: `resource` fixture(s).
-    # Simulate the resource as cluster-scoped is there is a marker on the test.
-    namespaced = not any(marker.name == 'resource_clustered' for marker in request.node.own_markers)
-    res_mock = mocker.patch('pykube.http.HTTPClient.resource_list')
-    res_mock.return_value = {'resources': [
-        {'name': 'kopfexamples', 'kind': 'KopfExample', 'namespaced': namespaced},
-    ]}
+    The local exceptions are supposed to simulate either the code issues,
+    or the connection issues. `aresponses` does not allow to raise arbitrary
+    exceptions on the client side, but only to return the erroneous responses.
 
-    # Prevent ANY outer requests, no matter what. These ones are usually asserted.
-    req_mock = mocker.patch('requests.Session').return_value
-    return req_mock
+    This test forces the reauthentication decorators to always use one specific
+    session for the duration of the test, so that the patches would have effect.
+    """
+    _, item = fake_vault.select()
+    session = APISession.from_connection_info(item.info)
+    mocker.patch.object(APISession, 'from_connection_info', return_value=session)
+    async with session:
+        yield session
+
+
+# Note: Unused `fake_vault` is to ensure that the client wrappers have the credentials.
+# Note: Unused `enforced_session` is to ensure that the session is closed for every test.
+@pytest.fixture()
+def resp_mocker(fake_vault, enforced_session, resource, aresponses):
+    """
+    A factory of server-side callbacks for `aresponses` with mocking/spying.
+
+    The value of the fixture is a function, which return a coroutine mock.
+    That coroutine mock should be passed to `aresponses.add` as a response
+    callback function. When called, it calls the mock defined by the function's
+    arguments (specifically, return_value or side_effects).
+
+    The difference from passing the responses directly to `aresponses.add`
+    is that it is possible to assert on whether the response was handled
+    by that callback at all (i.e. HTTP URL & method matched), especially
+    if there are multiple responses registered.
+
+    Sample usage::
+
+        def test_me(resp_mocker):
+            response = aiohttp.web.json_response({'a': 'b'})
+            callback = resp_mocker(return_value=response)
+            aresponses.add(hostname, '/path/', 'get', callback)
+            do_something()
+            assert callback.called
+            assert callback.call_count == 1
+    """
+    def resp_maker(*args, **kwargs):
+        actual_response = asynctest.MagicMock(*args, **kwargs)
+        async def resp_mock_effect(request):
+            nonlocal actual_response
+
+            # The request's content can be read inside of the handler only. We preserve
+            # the data into a conventional field, so that they could be asserted later.
+            try:
+                request.data = await request.json()
+            except json.JSONDecodeError:
+                request.data = await request.text()
+
+            # Get a response/error as it was intended (via return_value/side_effect).
+            response = actual_response()
+            return response
+
+        return asynctest.CoroutineMock(side_effect=resp_mock_effect)
+    return resp_maker
 
 
 @pytest.fixture()
-def stream(req_mock, fake_vault):
+def stream(fake_vault, resp_mocker, aresponses, hostname, resource):
     """ A mock for the stream of events as if returned by K8s client. """
     def feed(*args):
-        side_effect = []
         for arg in args:
+
+            # Prepare the stream response pre-rendered (for simplicity, no actual streaming).
             if isinstance(arg, (list, tuple)):
-                arg = iter(json.dumps(event).encode('utf-8') for event in arg)
-            side_effect.append(arg)
-        req_mock.get.return_value.iter_lines.side_effect = side_effect
+                stream_text = '\n'.join(json.dumps(event) for event in arg)
+                stream_resp = aresponses.Response(text=stream_text)
+            else:
+                stream_resp = arg
+
+            # List is requested for every watch, so we simulate it empty.
+            list_data = {'items': [], 'metadata': {'resourceVersion': '0'}}
+            list_resp = aiohttp.web.json_response(list_data)
+            list_url = resource.get_url(namespace=None)
+
+            # The stream is not empty, but is as fed.
+            stream_query = {'watch': 'true', 'resourceVersion': '0'}
+            stream_url = resource.get_url(namespace=None, params=stream_query)
+
+            # Note: `aresponses` excludes a response once it is matched (side-effect-like).
+            # So we just accumulate them there, as many as needed.
+            aresponses.add(hostname, stream_url, 'get', stream_resp, match_querystring=True)
+            aresponses.add(hostname, list_url, 'get', list_resp, match_querystring=True)
+
     return Mock(spec_set=['feed'], feed=feed)
 
 #

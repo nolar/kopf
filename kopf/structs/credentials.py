@@ -242,6 +242,7 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
         # But keep a short history of invalid items, so that they are not re-added.
         async with self._lock:
             if key in self._current:
+                await self._flush_caches(self._current[key])
                 self._invalid[key] = self._invalid[key][-2:] + [self._current[key]]
                 del self._current[key]
             need_reauth = not self._current  # i.e. nothing is left at all
@@ -282,6 +283,46 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
         # Those can be blocked in vault.invalidate() if there are no credentials left.
         self.emptiness.clear()      # => to prevent the next cycle of re-authentication
         self.readiness.set()        # => to wake up and to retry all the client wrappers
+
+    async def close(self) -> None:
+        """
+        Finalize all the cached objects when the operator is ending.
+        """
+        async with self._lock:
+            for key in self._current:
+                await self._flush_caches(self._current[key])
+
+    async def _flush_caches(
+            self,
+            item: VaultItem,
+    ) -> None:
+        """
+        Call the finalizers and garbage-collect the cached objects.
+
+        Mainly used to garbage-collect aiohttp sessions and its derivatives
+        when the connection info items are removed from the vault -- so that
+        the sessions/connectors would not complain that they were not close.
+
+        Built-in garbage-collection is not sufficient, as it is synchronous,
+        and cannot call the async coroutines like `aiohttp.ClientSession.close`.
+
+        .. note::
+            Currently, we assume the ``close()`` method only (both sync/async).
+            There is no need to generalise to customizable finalizer callbacks.
+            This can change in the future.
+        """
+
+        # Close the closable objects.
+        if item.caches:
+            for obj in item.caches.values():
+                if hasattr(obj, 'close'):
+                    if asyncio.iscoroutinefunction(getattr(obj, 'close')):
+                        await getattr(obj, 'close')()
+                    else:
+                        getattr(obj, 'close')()
+
+        # Garbage-collect other resources (e.g. files, memory, etc).
+        item.caches = None
 
     def _update_converted(
             self,
