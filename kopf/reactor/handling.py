@@ -30,6 +30,7 @@ from kopf.reactor import lifecycles
 from kopf.reactor import registries
 from kopf.reactor import states
 from kopf.structs import bodies
+from kopf.structs import containers
 from kopf.structs import dicts
 from kopf.structs import diffs
 from kopf.structs import finalizers
@@ -145,6 +146,7 @@ async def activity_trigger(
 async def resource_handler(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
+        memories: containers.ResourceMemories,
         resource: resources.Resource,
         event: bodies.Event,
         freeze: asyncio.Event,
@@ -174,6 +176,12 @@ async def resource_handler(
         logger.debug("Ignoring the events due to freeze.")
         return
 
+    # Recall what is stored about that object. Share it in little portions with the consumers.
+    # And immediately forget it if the object is deleted from the cluster (but keep in memory).
+    memory = await memories.recall(body, noticed_by_listing=event['type'] is None)
+    if event['type'] == 'DELETED':
+        await memories.forget(body)
+
     # Invoke all silent spies. No causation, no progress storage is performed.
     if registry.has_resource_watching_handlers(resource=resource):
         resource_watching_cause = causation.detect_resource_watching_cause(
@@ -185,6 +193,7 @@ async def resource_handler(
         await handle_resource_watching_cause(
             lifecycle=lifecycles.all_at_once,
             registry=registry,
+            memory=memory,
             cause=resource_watching_cause,
         )
 
@@ -201,11 +210,13 @@ async def resource_handler(
             old=old,
             new=new,
             diff=diff,
+            initial=memory.noticed_by_listing and not memory.fully_handled_once,
             requires_finalizer=registry.requires_finalizer(resource=resource, body=body),
         )
         delay = await handle_resource_changing_cause(
             lifecycle=lifecycle,
             registry=registry,
+            memory=memory,
             cause=resource_changing_cause,
         )
 
@@ -234,6 +245,7 @@ async def resource_handler(
 async def handle_resource_watching_cause(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
+        memory: containers.ResourceMemory,
         cause: causation.ResourceWatchingCause,
 ) -> None:
     """
@@ -262,6 +274,7 @@ async def handle_resource_watching_cause(
 async def handle_resource_changing_cause(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
+        memory: containers.ResourceMemory,
         cause: causation.ResourceChangingCause,
 ) -> Optional[float]:
     """
@@ -311,6 +324,10 @@ async def handle_resource_changing_cause(
             logger.debug("Removing the finalizer, thus allowing the actual deletion.")
             finalizers.remove_finalizers(body=body, patch=patch)
 
+        # Once all handlers have succeeded at least once for any reason, or if there were none,
+        # prevent further resume-handlers (which otherwise happens on each watch-stream re-listing).
+        memory.fully_handled_once = True
+
     # Informational causes just print the log lines.
     if cause.reason == causation.Reason.GONE:
         logger.debug("Deleted, really deleted, and we are notified.")
@@ -319,7 +336,7 @@ async def handle_resource_changing_cause(
         logger.debug("Deletion event, but we are done with it, and we do not care.")
 
     if cause.reason == causation.Reason.NOOP:
-        logger.debug("Something has changed, but we are not interested (state is the same).")
+        logger.debug("Something has changed, but we are not interested (the essence is the same).")
 
     # For the case of a newly created object, or one that doesn't have the correct
     # finalizers, lock it to this operator. Not all newly created objects will

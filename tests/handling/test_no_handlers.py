@@ -6,6 +6,7 @@ import pytest
 import kopf
 from kopf.reactor.causation import HANDLER_REASONS
 from kopf.reactor.handling import resource_handler
+from kopf.structs.containers import ResourceMemories
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
 
 
@@ -30,7 +31,8 @@ async def test_skipped_with_no_handlers(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        memories=ResourceMemories(),
+        event={'type': None, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),

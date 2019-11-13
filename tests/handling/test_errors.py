@@ -7,6 +7,7 @@ import kopf
 from kopf.reactor.causation import Reason, HANDLER_REASONS
 from kopf.reactor.handling import PermanentError, TemporaryError
 from kopf.reactor.handling import resource_handler
+from kopf.structs.containers import ResourceMemories
 
 
 # The extrahandlers are needed to prevent the cycle ending and status purging.
@@ -17,6 +18,7 @@ async def test_fatal_error_stops_handler(
     caplog.set_level(logging.DEBUG)
     name1 = f'{cause_type}_fn'
 
+    event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_type
     handlers.create_mock.side_effect = PermanentError("oops")
     handlers.update_mock.side_effect = PermanentError("oops")
@@ -27,7 +29,8 @@ async def test_fatal_error_stops_handler(
         lifecycle=kopf.lifecycles.one_by_one,
         registry=registry,
         resource=resource,
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        memories=ResourceMemories(),
+        event={'type': event_type, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
@@ -59,6 +62,7 @@ async def test_retry_error_delays_handler(
     caplog.set_level(logging.DEBUG)
     name1 = f'{cause_type}_fn'
 
+    event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_type
     handlers.create_mock.side_effect = TemporaryError("oops")
     handlers.update_mock.side_effect = TemporaryError("oops")
@@ -69,7 +73,8 @@ async def test_retry_error_delays_handler(
         lifecycle=kopf.lifecycles.one_by_one,
         registry=registry,
         resource=resource,
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        memories=ResourceMemories(),
+        event={'type': event_type, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
@@ -102,6 +107,7 @@ async def test_arbitrary_error_delays_handler(
     caplog.set_level(logging.DEBUG)
     name1 = f'{cause_type}_fn'
 
+    event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_type
     handlers.create_mock.side_effect = Exception("oops")
     handlers.update_mock.side_effect = Exception("oops")
@@ -112,7 +118,8 @@ async def test_arbitrary_error_delays_handler(
         lifecycle=kopf.lifecycles.one_by_one,
         registry=registry,
         resource=resource,
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        memories=ResourceMemories(),
+        event={'type': event_type, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),

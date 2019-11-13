@@ -1,9 +1,19 @@
 import kopf
 
 
+@kopf.on.resume('zalando.org', 'v1', 'kopfexamples')
+def resume_fn_1(cause, **kwargs):
+    print(f'RESUMED 1st')
+
+
 @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
 def create_fn_1(**kwargs):
     print('CREATED 1st')
+
+
+@kopf.on.resume('zalando.org', 'v1', 'kopfexamples')
+def resume_fn_2(cause, **kwargs):
+    print(f'RESUMED 2nd')
 
 
 @kopf.on.create('zalando.org', 'v1', 'kopfexamples')

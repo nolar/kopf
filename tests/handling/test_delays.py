@@ -11,6 +11,7 @@ from kopf.reactor.handling import TemporaryError
 from kopf.reactor.handling import WAITING_KEEPALIVE_INTERVAL
 from kopf.reactor.handling import resource_handler
 from kopf.reactor.states import HandlerState
+from kopf.structs.containers import ResourceMemories
 from kopf.structs.finalizers import FINALIZER
 
 
@@ -28,6 +29,7 @@ async def test_delayed_handlers_progress(
     handlers.delete_mock.side_effect = TemporaryError("oops", delay=delay)
     handlers.resume_mock.side_effect = TemporaryError("oops", delay=delay)
 
+    event_type = None if cause_reason == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_reason
 
     with freezegun.freeze_time(now):
@@ -35,7 +37,8 @@ async def test_delayed_handlers_progress(
             lifecycle=kopf.lifecycles.all_at_once,
             registry=registry,
             resource=resource,
-            event={'type': 'irrelevant', 'object': cause_mock.body},
+            memories=ResourceMemories(),
+            event={'type': event_type, 'object': cause_mock.body},
             freeze=asyncio.Event(),
             replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
@@ -72,6 +75,7 @@ async def test_delayed_handlers_sleep(
     # Simulate the original persisted state of the resource.
     started_dt = datetime.datetime.fromisoformat('2000-01-01T00:00:00')  # long time ago is fine.
     delayed_dt = datetime.datetime.fromisoformat(delayed_iso)
+    event_type = None if cause_reason == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_reason
     cause_mock.body.update({
         'status': {'kopf': {'progress': {
@@ -89,7 +93,8 @@ async def test_delayed_handlers_sleep(
             lifecycle=kopf.lifecycles.all_at_once,
             registry=registry,
             resource=resource,
-            event={'type': 'irrelevant', 'object': cause_mock.body},
+            memories=ResourceMemories(),
+            event={'type': event_type, 'object': cause_mock.body},
             freeze=asyncio.Event(),
             replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),

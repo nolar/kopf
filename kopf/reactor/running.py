@@ -17,6 +17,7 @@ from kopf.reactor import handling
 from kopf.reactor import lifecycles
 from kopf.reactor import queueing
 from kopf.reactor import registries
+from kopf.structs import containers
 from kopf.structs import credentials
 
 if TYPE_CHECKING:
@@ -76,9 +77,11 @@ def login(
 
 
 def run(
+        *,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         registry: Optional[registries.OperatorRegistry] = None,
+        memories: Optional[containers.ResourceMemories] = None,
         standalone: bool = False,
         priority: int = 0,
         peering_name: Optional[str] = None,
@@ -97,6 +100,7 @@ def run(
         loop.run_until_complete(operator(
             lifecycle=lifecycle,
             registry=registry,
+            memories=memories,
             standalone=standalone,
             namespace=namespace,
             priority=priority,
@@ -110,8 +114,10 @@ def run(
 
 
 async def operator(
+        *,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         registry: Optional[registries.OperatorRegistry] = None,
+        memories: Optional[containers.ResourceMemories] = None,
         standalone: bool = False,
         priority: int = 0,
         peering_name: Optional[str] = None,
@@ -132,6 +138,7 @@ async def operator(
     operator_tasks = await spawn_tasks(
         lifecycle=lifecycle,
         registry=registry,
+        memories=memories,
         standalone=standalone,
         namespace=namespace,
         priority=priority,
@@ -144,8 +151,10 @@ async def operator(
 
 
 async def spawn_tasks(
+        *,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         registry: Optional[registries.OperatorRegistry] = None,
+        memories: Optional[containers.ResourceMemories] = None,
         standalone: bool = False,
         priority: int = 0,
         peering_name: Optional[str] = None,
@@ -164,6 +173,7 @@ async def spawn_tasks(
     # The freezer and the registry are scoped to this whole task-set, to sync them all.
     lifecycle = lifecycle if lifecycle is not None else lifecycles.get_default_lifecycle()
     registry = registry if registry is not None else registries.get_default_registry()
+    memories = memories if memories is not None else containers.ResourceMemories()
     vault = vault if vault is not None else global_vault
     vault = vault if vault is not None else credentials.Vault()
     event_queue: posting.K8sEventQueue = asyncio.Queue(loop=loop)
@@ -237,6 +247,7 @@ async def spawn_tasks(
                     handler=functools.partial(handling.resource_handler,
                                               lifecycle=lifecycle,
                                               registry=registry,
+                                              memories=memories,
                                               resource=resource,
                                               event_queue=event_queue,
                                               freeze=freeze_flag)))),  # freeze is only checked

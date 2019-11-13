@@ -4,20 +4,23 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.causation import ALL_REASONS, HANDLER_REASONS
+from kopf.reactor.causation import ALL_REASONS, HANDLER_REASONS, Reason
 from kopf.reactor.handling import resource_handler
+from kopf.structs.containers import ResourceMemories
 
 
 @pytest.mark.parametrize('cause_type', ALL_REASONS)
 async def test_all_logs_are_prefixed(registry, resource, handlers,
                                      logstream, cause_type, cause_mock):
+    event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_type
 
     await resource_handler(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        memories=ResourceMemories(),
+        event={'type': event_type, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
@@ -37,6 +40,8 @@ async def test_all_logs_are_prefixed(registry, resource, handlers,
 async def test_diffs_logged_if_present(registry, resource, handlers, cause_type, cause_mock,
                                        caplog, assert_logs, diff):
     caplog.set_level(logging.DEBUG)
+
+    event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_type
     cause_mock.diff = diff
     cause_mock.new = object()  # checked for `not None`
@@ -46,7 +51,8 @@ async def test_diffs_logged_if_present(registry, resource, handlers, cause_type,
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        memories=ResourceMemories(),
+        event={'type': event_type, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
@@ -61,6 +67,8 @@ async def test_diffs_logged_if_present(registry, resource, handlers, cause_type,
 async def test_diffs_not_logged_if_absent(registry, resource, handlers, cause_type, cause_mock,
                                           caplog, assert_logs):
     caplog.set_level(logging.DEBUG)
+
+    event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_type
     cause_mock.diff = None  # same as the default, but for clarity
 
@@ -68,7 +76,8 @@ async def test_diffs_not_logged_if_absent(registry, resource, handlers, cause_ty
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
-        event={'type': 'irrelevant', 'object': cause_mock.body},
+        memories=ResourceMemories(),
+        event={'type': event_type, 'object': cause_mock.body},
         freeze=asyncio.Event(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
