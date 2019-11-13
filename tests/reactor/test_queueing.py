@@ -51,6 +51,7 @@ async def test_watchevent_demultiplexing(worker_mock, timer, resource, handler,
 
     # Inject the events of unique objects - to produce few streams/workers.
     stream.feed(events)
+    stream.close()
 
     # Run the watcher (near-instantly and test-blocking).
     with timer:
@@ -123,6 +124,7 @@ async def test_watchevent_batching(mocker, resource, handler, timer, stream, eve
 
     # Inject the events of unique objects - to produce few streams/workers.
     stream.feed(events)
+    stream.close()
 
     # Run the watcher (near-instantly and test-blocking).
     with timer:
@@ -177,6 +179,7 @@ async def test_garbage_collection_of_streams(mocker, stream, events, unique, wor
 
     # Inject the events of unique objects - to produce few streams/workers.
     stream.feed(events)
+    stream.close()
 
     # Give it a moment to populate the streams and spawn all the workers.
     # Intercept and remember _any_ seen dict of streams for further checks.
