@@ -41,11 +41,25 @@ If the operator does not respond for any reason, Kubernetes will restart it.
                port: 8080
 
 .. seealso::
-    :doc:`deployment` for deployment patterns.
 
     Kubernetes manual on `liveness and readiness probes`__.
 
 __ https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/
+
+.. seealso::
+
+    Please be aware of the readiness vs. liveness probing.
+    In case of operators, readiness probing makes no practical sense,
+    as operators do not serve traffic under the load balancing or with services.
+    Liveness probing can help in disastrous cases (e.g. the operator is stuck),
+    but will not help in case of partial failures (one of the API calls stuck).
+    You can read more here:
+    https://srcco.de/posts/kubernetes-liveness-probes-are-dangerous.html
+
+.. warning::
+
+    Make sure that one and only one pod of an operator is running at a time,
+    especially during the restarts --- see :doc:`deployment`.
 
 
 Probe handlers

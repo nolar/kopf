@@ -58,6 +58,10 @@ For this, create the deployment file:
 Please note that there is only one replica. Keep it so. If there will be
 two or more operators running in the cluster for the same objects,
 they will collide with each other and the consequences are unpredictable.
+In case of pod restarts, only one pod should be running at a time too:
+use ``.spec.strategy.type=Recreate`` (see the documentation_).
+
+.. _documentation: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#recreate-deployment
 
 Deploy it to the cluster:
 
