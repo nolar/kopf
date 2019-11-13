@@ -24,7 +24,7 @@ import pytest
     'opt-short-d', 'opt-long-debug', 'env-debug-true', 'env-debug-empty',
     'opt-short-v', 'opt-long-verbose', 'env-verbose-true', 'env-verbose-empty',
 ])
-def test_verbosity(invoke, caplog, options, envvars, expect_debug, expect_info, login, preload, real_run):
+def test_verbosity(invoke, caplog, options, envvars, expect_debug, expect_info, preload, real_run):
     result = invoke(['run'] + options, env=envvars)
     assert result.exit_code == 0
 
@@ -50,7 +50,7 @@ def test_verbosity(invoke, caplog, options, envvars, expect_debug, expect_info, 
     (['-v']),
     (['--verbose']),
 ], ids=['default', 'q', 'quiet', 'v', 'verbose'])
-def test_no_lowlevel_dumps_in_nondebug(invoke, caplog, options, login, preload, real_run):
+def test_no_lowlevel_dumps_in_nondebug(invoke, caplog, options, preload, real_run):
     kubernetes = pytest.importorskip('kubernetes')
 
     result = invoke(['run'] + options)
@@ -61,7 +61,8 @@ def test_no_lowlevel_dumps_in_nondebug(invoke, caplog, options, login, preload, 
     logging.getLogger('asyncio').error('boom!')
     logging.getLogger('urllib3').error('boom!')
 
-    assert len(caplog.records) == 0
+    alien_records = [m for m in caplog.records if not m.name.startswith('kopf')]
+    assert len(alien_records) == 0
     assert not asyncio.get_event_loop().get_debug()
     assert not kubernetes.client.configuration.Configuration().debug
 
@@ -70,7 +71,7 @@ def test_no_lowlevel_dumps_in_nondebug(invoke, caplog, options, login, preload, 
     (['-d']),
     (['--debug']),
 ], ids=['d', 'debug'])
-def test_lowlevel_dumps_in_debug_mode(invoke, caplog, options, login, preload, real_run):
+def test_lowlevel_dumps_in_debug_mode(invoke, caplog, options, preload, real_run):
     kubernetes = pytest.importorskip('kubernetes')
 
     result = invoke(['run'] + options)
@@ -80,6 +81,7 @@ def test_lowlevel_dumps_in_debug_mode(invoke, caplog, options, login, preload, r
     logging.getLogger('asyncio').debug('hello!')
     logging.getLogger('urllib3').debug('hello!')
 
-    assert len(caplog.records) == 3
+    alien_records = [m for m in caplog.records if not m.name.startswith('kopf')]
+    assert len(alien_records) == 3
     assert asyncio.get_event_loop().get_debug()
     assert kubernetes.client.configuration.Configuration().debug

@@ -6,26 +6,18 @@ from typing import Any, Optional, Callable, List
 import click
 
 from kopf import config
-from kopf.clients import auth
 from kopf.engines import peering
 from kopf.reactor import running
+from kopf.structs import credentials
 from kopf.utilities import loaders
 
 
 @dataclasses.dataclass()
 class CLIControls:
     """ `KopfRunner` controls, which are impossible to pass via CLI. """
-    stop_flag: Optional[running.Flag] = None
     ready_flag: Optional[running.Flag] = None
-
-
-def cli_login() -> None:
-    try:
-        auth.login(verify=True)
-    except auth.LoginError as e:
-        raise click.ClickException(str(e))
-    except auth.AccessError as e:
-        raise click.ClickException(str(e))
+    stop_flag: Optional[running.Flag] = None
+    vault: Optional[credentials.Vault] = None
 
 
 def logging_options(fn: Callable[..., Any]) -> Callable[..., Any]:
@@ -69,7 +61,6 @@ def run(
         namespace: Optional[str],
 ) -> None:
     """ Start an operator process and handle all the requests. """
-    cli_login()
     loaders.preload(
         paths=paths,
         modules=modules,
@@ -81,6 +72,7 @@ def run(
         peering_name=peering_name,
         stop_flag=__controls.stop_flag,
         ready_flag=__controls.ready_flag,
+        vault=__controls.vault,
     )
 
 
@@ -102,7 +94,6 @@ def freeze(
         priority: int,
 ) -> None:
     """ Freeze the resource handling in the cluster. """
-    cli_login()
     ourserlves = peering.Peer(
         id=id or peering.detect_own_id(),
         name=peering_name,
@@ -125,7 +116,6 @@ def resume(
         peering_name: str,
 ) -> None:
     """ Resume the resource handling in the cluster. """
-    cli_login()
     ourselves = peering.Peer(
         id=id or peering.detect_own_id(),
         name=peering_name,

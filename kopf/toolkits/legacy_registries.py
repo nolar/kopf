@@ -182,6 +182,10 @@ class GlobalRegistry(BaseRegistry, registries.OperatorRegistry):
         yield from self.iter_resource_changing_handlers(cause=cause)
 
 
+class SmartGlobalRegistry(registries.SmartOperatorRegistry, GlobalRegistry):
+    pass
+
+
 def _create_watching_cause(
         resource: resources_.Resource,
         event: bodies.Event,

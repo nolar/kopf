@@ -9,10 +9,6 @@ The main Kopf module for all the exported functions & classes.
 from kopf import (
     on,  # as a separate name on the public namespace
 )
-from kopf.clients.auth import (
-    login,
-    LoginError,
-)
 from kopf.config import (
     configure,
     LOGLEVEL_INFO,
@@ -60,11 +56,16 @@ from kopf.reactor.running import (
     run_tasks,
     operator,
     run,
+    login,  # deprecated
     create_tasks,  # deprecated
 )
 from kopf.structs.bodies import (
     build_object_reference,
     build_owner_reference,
+)
+from kopf.structs.credentials import (
+    LoginError,
+    ConnectionInfo,
 )
 from kopf.toolkits.hierarchies import (
     adopt,
@@ -79,6 +80,10 @@ from kopf.toolkits.legacy_registries import (
     SimpleRegistry,
     GlobalRegistry,
 )
+from kopf.utilities.piggybacking import (
+    login_via_pykube,
+    login_via_client,
+)
 
 HandlerFatalError = PermanentError  # a backward-compatibility alias
 HandlerRetryError = TemporaryError  # a backward-compatibility alias
@@ -86,7 +91,8 @@ HandlerRetryError = TemporaryError  # a backward-compatibility alias
 __all__ = [
     'on', 'lifecycles', 'register', 'execute',
     'configure',
-    'login', 'LoginError',
+    'login', 'LoginError', 'ConnectionInfo',
+    'login_via_pykube', 'login_via_client',
     'event', 'info', 'warn', 'exception',
     'spawn_tasks', 'run_tasks', 'operator', 'run', 'create_tasks',
     'adopt', 'label',

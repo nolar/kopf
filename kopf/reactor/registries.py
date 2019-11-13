@@ -31,6 +31,7 @@ from kopf.structs import dicts
 from kopf.structs import diffs
 from kopf.structs import patches
 from kopf.structs import resources as resources_
+from kopf.utilities import piggybacking
 
 # Strings are taken from the users, but then tainted as this type for stricter type-checking:
 # to prevent usage of some other strings (e.g. operator id) as the handlers ids.
@@ -97,6 +98,7 @@ class BaseHandler:
 class ActivityHandler(BaseHandler):
     fn: ActivityHandlerFn  # type clarification
     activity: Optional[causation.Activity] = None
+    _fallback: bool = False  # non-public!
 
 
 @dataclasses.dataclass
@@ -150,11 +152,13 @@ class ActivityRegistry(GenericRegistry[ActivityHandler, ActivityHandlerFn]):
             retries: Optional[int] = None,
             cooldown: Optional[float] = None,
             activity: Optional[causation.Activity] = None,
+            _fallback: bool = False,
     ) -> ActivityHandlerFn:
         real_id = generate_id(fn=fn, id=id, prefix=self.prefix)
         handler = ActivityHandler(
             id=real_id, fn=fn, activity=activity,
             errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            _fallback=_fallback,
         )
         self.append(handler)
         return fn
@@ -169,9 +173,19 @@ class ActivityRegistry(GenericRegistry[ActivityHandler, ActivityHandlerFn]):
             self,
             activity: causation.Activity,
     ) -> Iterator[ActivityHandler]:
+        found: bool = False
+
+        # Regular handlers go first.
         for handler in self._handlers:
-            if handler.activity is None or handler.activity == activity:
+            if handler.activity is None or handler.activity == activity and not handler._fallback:
                 yield handler
+                found = True
+
+        # Fallback handlers -- only if there were no matching regular handlers.
+        if not found:
+            for handler in self._handlers:
+                if handler.activity is None or handler.activity == activity and handler._fallback:
+                    yield handler
 
 
 class ResourceRegistry(GenericRegistry[ResourceHandler, ResourceHandlerFn], Generic[CauseT]):
@@ -304,10 +318,12 @@ class OperatorRegistry:
             retries: Optional[int] = None,
             cooldown: Optional[float] = None,
             activity: Optional[causation.Activity] = None,
+            _fallback: bool = False,
     ) -> ActivityHandlerFn:
         return self._activity_handlers.register(
             fn=fn, id=id, activity=activity,
             errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            _fallback=_fallback,
         )
 
     def register_resource_watching_handler(
@@ -449,6 +465,38 @@ class OperatorRegistry:
                 self._resource_changing_handlers[resource].requires_finalizer(body=body))
 
 
+class SmartOperatorRegistry(OperatorRegistry):
+
+    def __init__(self) -> None:
+        super().__init__()
+
+        try:
+            import pykube
+        except ImportError:
+            pass
+        else:
+            self.register_activity_handler(
+                id='login_via_pykube',
+                fn=cast(ActivityHandlerFn, piggybacking.login_via_pykube),
+                activity=causation.Activity.AUTHENTICATION,
+                errors=ErrorsMode.IGNORED,
+                _fallback=True,
+            )
+
+        try:
+            import kubernetes
+        except ImportError:
+            pass
+        else:
+            self.register_activity_handler(
+                id='login_via_client',
+                fn=cast(ActivityHandlerFn, piggybacking.login_via_client),
+                activity=causation.Activity.AUTHENTICATION,
+                errors=ErrorsMode.IGNORED,
+                _fallback=True,
+            )
+
+
 def generate_id(
         fn: ResourceHandlerFn,
         id: Optional[str],
@@ -581,8 +629,8 @@ def get_default_registry() -> OperatorRegistry:
     global _default_registry
     if _default_registry is None:
         # TODO: Deprecated registry to ensure backward-compatibility until removal:
-        from kopf.toolkits.legacy_registries import GlobalRegistry
-        _default_registry = GlobalRegistry()
+        from kopf.toolkits.legacy_registries import SmartGlobalRegistry
+        _default_registry = SmartGlobalRegistry()
     return _default_registry
 
 

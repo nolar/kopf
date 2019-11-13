@@ -23,8 +23,7 @@ def kopf_thread(
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    kopf.configure(verbose=True)    # log formatting
-    kopf.login()                    # tokens & certs
+    kopf.configure(verbose=True)  # log formatting
 
     loop.run_until_complete(kopf.operator(
         ready_flag=ready_flag,
@@ -33,7 +32,6 @@ def kopf_thread(
 
 
 def main(steps=3):
-    kopf.login()
 
     # Start the operator and let it initialise.
     print(f"Starting the main app.")

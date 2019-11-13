@@ -61,6 +61,26 @@ def cleanup(
     return decorator
 
 
+def login(
+        *,
+        id: Optional[str] = None,
+        errors: Optional[registries.ErrorsMode] = None,
+        timeout: Optional[float] = None,
+        retries: Optional[int] = None,
+        cooldown: Optional[float] = None,
+        registry: Optional[registries.OperatorRegistry] = None,
+) -> ActivityHandlerDecorator:
+    """ ``@kopf.on.login()`` handler for custom (re-)authentication. """
+    actual_registry = registry if registry is not None else registries.get_default_registry()
+    def decorator(fn: registries.ActivityHandlerFn) -> registries.ActivityHandlerFn:
+        return actual_registry.register_activity_handler(
+            fn=fn, id=id,
+            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            activity=causation.Activity.AUTHENTICATION,
+        )
+    return decorator
+
+
 def resume(
         group: str, version: str, plural: str,
         *,

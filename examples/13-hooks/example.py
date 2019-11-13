@@ -3,6 +3,7 @@ import random
 from typing import Dict, NoReturn
 
 import kopf
+import pykube
 
 E2E_STARTUP_STOP_WORDS = ['Served by the background task.']
 E2E_CLEANUP_STOP_WORDS = ['Hung tasks', 'Root tasks']
@@ -36,6 +37,30 @@ async def cleanup_fn(logger, **kwargs):
         for name, flag in STOPPERS[namespace].items():
             flag.set()
     logger.info("All pod-tasks are requested to stop...")
+
+
+@kopf.on.login(errors=kopf.ErrorsMode.PERMANENT)
+async def login_fn(**kwargs):
+    print('Logging in in 2s...')
+    await asyncio.sleep(2.0)
+
+    # An equivalent of kopf.login_via_pykube(), but shrinked for demo purposes.
+    config = pykube.KubeConfig.from_env()
+    ca = config.cluster.get('certificate-authority')
+    cert = config.user.get('client-certificate')
+    pkey = config.user.get('client-key')
+    return kopf.ConnectionInfo(
+        server=config.cluster.get('server'),
+        ca_path=ca.filename() if ca else None,  # can be a temporary file
+        insecure=config.cluster.get('insecure-skip-tls-verify'),
+        username=config.user.get('username'),
+        password=config.user.get('password'),
+        scheme='Bearer',
+        token=config.user.get('token'),
+        certificate_path=cert.filename() if cert else None,  # can be a temporary file
+        private_key_path=pkey.filename() if pkey else None,  # can be a temporary file
+        default_namespace=config.namespace,
+    )
 
 
 @kopf.on.event('', 'v1', 'pods')

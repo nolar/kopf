@@ -2,6 +2,7 @@ import asyncio
 import copy
 import datetime
 import logging
+from typing import Optional
 
 import pykube
 import requests
@@ -16,12 +17,14 @@ MAX_MESSAGE_LENGTH = 1024
 CUT_MESSAGE_INFIX = '...'
 
 
+@auth.reauthenticated_request
 async def post_event(
         *,
         ref: bodies.ObjectReference,
         type: str,
         reason: str,
         message: str = '',
+        api: Optional[pykube.HTTPClient] = None,  # injected by the decorator
 ) -> None:
     """
     Issue an event for the object.
@@ -31,10 +34,12 @@ async def post_event(
     be done by the client library, as it is done in the Go client.
     """
     now = datetime.datetime.utcnow()
+    if api is None:
+        raise RuntimeError("API instance is not injected by the decorator.")
 
     # See #164. For cluster-scoped objects, use the current namespace from the current context.
     # It could be "default", but in some systems, we are limited to one specific namespace only.
-    namespace: str = ref.get('namespace') or auth.get_pykube_cfg().namespace
+    namespace: str = ref.get('namespace') or api.config.namespace
     full_ref: bodies.ObjectReference = copy.copy(ref)
     full_ref['namespace'] = namespace
 
@@ -68,7 +73,6 @@ async def post_event(
     }
 
     try:
-        api = auth.get_pykube_api()
         obj = pykube.Event(api, body)
 
         loop = asyncio.get_running_loop()

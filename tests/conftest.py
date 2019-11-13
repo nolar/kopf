@@ -1,5 +1,6 @@
 import asyncio
 import dataclasses
+import importlib
 import io
 import json
 import logging
@@ -15,6 +16,7 @@ import pytest_mock
 import kopf
 from kopf.config import configure
 from kopf.engines.logging import ObjectPrefixingFormatter
+from kopf.structs.credentials import Vault, VaultKey, ConnectionInfo
 from kopf.structs.resources import Resource
 
 
@@ -105,14 +107,7 @@ def clear_default_registry():
 #
 
 @pytest.fixture()
-def req_mock(mocker, resource, request):
-
-    # Pykube config is needed to create a pykube's API instance.
-    # But we do not want and do not need to actually authenticate, so we mock.
-    # Some fields are used by pykube's objects: we have to know them ("leaky abstractions").
-    cfg_mock = mocker.patch('kopf.clients.auth.get_pykube_cfg').return_value
-    cfg_mock.cluster = {'server': 'localhost'}
-    cfg_mock.namespace = 'default'
+def req_mock(mocker, resource, request, fake_vault):
 
     # Simulated list of cluster-defined CRDs: all of them at once. See: `resource` fixture(s).
     # Simulate the resource as cluster-scoped is there is a marker on the test.
@@ -128,7 +123,7 @@ def req_mock(mocker, resource, request):
 
 
 @pytest.fixture()
-def stream(req_mock):
+def stream(req_mock, fake_vault):
     """ A mock for the stream of events as if returned by K8s client. """
     def feed(*args):
         side_effect = []
@@ -144,38 +139,42 @@ def stream(req_mock):
 # and in all CLI tests (since login is implicit with CLI commands).
 #
 
+@pytest.fixture()
+def hostname():
+    """ A fake hostname to be used in all aiohttp/aresponses tests. """
+    return 'fake-host'
+
+
 @dataclasses.dataclass(frozen=True, eq=False, order=False)
 class LoginMocks:
     pykube_in_cluster: Mock = None
     pykube_from_file: Mock = None
-    pykube_checker: Mock = None
     client_in_cluster: Mock = None
     client_from_file: Mock = None
-    client_checker: Mock = None
 
 
 @pytest.fixture()
 def login_mocks(mocker):
-
-    # Pykube config is needed to create a pykube's API instance.
-    # But we do not want and do not need to actually authenticate, so we mock.
-    # Some fields are used by pykube's objects: we have to know them ("leaky abstractions").
-    cfg_mock = mocker.patch('kopf.clients.auth.get_pykube_cfg').return_value
-    cfg_mock.cluster = {'server': 'localhost'}
-    cfg_mock.namespace = 'default'
-
-    # Make all client libraries potentially optional, but do not skip the tests:
-    # skipping the tests is the tests' decision, not this mocking fixture's one.
+    """
+    Make all client libraries potentially optional, but do not skip the tests:
+    skipping the tests is the tests' decision, not this mocking fixture's one.
+    """
     kwargs = {}
     try:
         import pykube
     except ImportError:
         pass
     else:
+        cfg = pykube.KubeConfig({
+            'current-context': 'self',
+            'clusters': [{'name': 'self',
+                          'cluster': {'server': 'localhost'}}],
+            'contexts': [{'name': 'self',
+                          'context': {'cluster': 'self', 'namespace': 'default'}}],
+        })
         kwargs.update(
-            pykube_in_cluster=mocker.patch.object(pykube.KubeConfig, 'from_service_account'),
-            pykube_from_file=mocker.patch.object(pykube.KubeConfig, 'from_file'),
-            pykube_checker=mocker.patch.object(pykube.http.HTTPClient, 'get'),
+            pykube_in_cluster=mocker.patch.object(pykube.KubeConfig, 'from_service_account', return_value=cfg),
+            pykube_from_file=mocker.patch.object(pykube.KubeConfig, 'from_file', return_value=cfg),
         )
     try:
         import kubernetes
@@ -185,41 +184,73 @@ def login_mocks(mocker):
         kwargs.update(
             client_in_cluster=mocker.patch.object(kubernetes.config, 'load_incluster_config'),
             client_from_file=mocker.patch.object(kubernetes.config, 'load_kube_config'),
-            client_checker=mocker.patch.object(kubernetes.client, 'CoreApi'),
         )
     return LoginMocks(**kwargs)
 
-#
-# Simulating that Kubernetes client library is not installed.
-#
 
-class ProhibitedImportFinder:
-    def find_spec(self, fullname, path, target=None):
-        if fullname == 'kubernetes' or fullname.startswith('kubernetes.'):
-            raise ImportError("Import is prohibited for tests.")
-
-
-@pytest.fixture()
-def _kubernetes():
-    # If kubernetes client is required, it should either be installed,
-    # or skip the test: we cannot simulate its presence (unlike its absence).
-    return pytest.importorskip('kubernetes')
-
-
-@pytest.fixture()
-def _no_kubernetes():
+@pytest.fixture(autouse=True)
+def clean_kubernetes_client():
     try:
-        import kubernetes as kubernetes_before
+        import kubernetes
+    except ImportError:
+        pass  # absent client is already "clean" (or not "dirty" at least).
+    else:
+        kubernetes.client.configuration.Configuration.set_default(None)
+
+
+@pytest.fixture()
+def fake_vault(event_loop, mocker, hostname):
+    """
+    Provide a freshly created and populated authentication vault for every test.
+
+    Most of the tests expect some credentials to be at least provided
+    (even if not used). So, we create and set the vault as if every coroutine
+    is invoked from the central `operator` method (where it is set normally).
+
+    Any blocking activities are mocked, so that the tests do not hang.
+    """
+    from kopf.clients import auth
+
+    key = VaultKey('fixture')
+    info = ConnectionInfo(server=f'https://{hostname}')
+    vault = Vault({key: info}, loop=event_loop)
+    token = auth.vault_var.set(vault)
+    mocker.patch.object(vault.readiness, 'wait')
+    mocker.patch.object(vault.emptiness, 'wait')
+    try:
+        yield vault
+    finally:
+        auth.vault_var.reset(token)
+
+#
+# Simulating that Kubernetes client libraries are not installed.
+#
+
+def _with_module_present(name: str):
+    # If the module is required, it should either be installed,
+    # or skip the test: we cannot simulate its presence (unlike its absence).
+    yield pytest.importorskip(name)
+
+
+def _with_module_absent(name: str):
+
+    class ProhibitedImportFinder:
+        def find_spec(self, fullname, path, target=None):
+            if fullname.split('.')[0] == name:
+                raise ImportError("Import is prohibited for tests.")
+
+    try:
+        mod_before = importlib.import_module(name)
     except ImportError:
         yield
         return  # nothing to patch & restore.
 
     # Remove any cached modules.
     preserved = {}
-    for name, mod in list(sys.modules.items()):
-        if name == 'kubernetes' or name.startswith('kubernetes.'):
-            preserved[name] = mod
-            del sys.modules[name]
+    for fullname, mod in list(sys.modules.items()):
+        if fullname.split('.')[0] == name:
+            preserved[fullname] = mod
+            del sys.modules[fullname]
 
     # Inject the prohibition for loading this module. And restore when done.
     finder = ProhibitedImportFinder()
@@ -231,26 +262,44 @@ def _no_kubernetes():
         sys.modules.update(preserved)
 
         # Verify if it works and that we didn't break the importing machinery.
-        import kubernetes as kubernetes_after
-        assert kubernetes_after is kubernetes_before
+        mod_after = importlib.import_module(name)
+        assert mod_after is mod_before
 
 
 @pytest.fixture(params=[True], ids=['with-client'])  # for hinting suffixes
-def kubernetes(request):
-    return request.getfixturevalue('_kubernetes')
+def kubernetes():
+    yield from _with_module_present('kubernetes')
 
 
 @pytest.fixture(params=[False], ids=['no-client'])  # for hinting suffixes
-def no_kubernetes(request):
-    return request.getfixturevalue('_no_kubernetes')
+def no_kubernetes():
+    yield from _with_module_absent('kubernetes')
 
 
 @pytest.fixture(params=[False, True], ids=['no-client', 'with-client'])
 def any_kubernetes(request):
     if request.param:
-        return request.getfixturevalue('_kubernetes')
+        yield from _with_module_present('kubernetes')
     else:
-        return request.getfixturevalue('_no_kubernetes')
+        yield from _with_module_absent('kubernetes')
+
+
+@pytest.fixture(params=[True], ids=['with-pykube'])  # for hinting suffixes
+def pykube():
+    yield from _with_module_present('pykube')
+
+
+@pytest.fixture(params=[False], ids=['no-pykube'])  # for hinting suffixes
+def no_pykube():
+    yield from _with_module_absent('pykube')
+
+
+@pytest.fixture(params=[False, True], ids=['no-pykube', 'with-pykube'])
+def any_pykube(request):
+    if request.param:
+        yield from _with_module_present('pykube')
+    else:
+        yield from _with_module_absent('pykube')
 
 #
 # Helpers for the timing checks.

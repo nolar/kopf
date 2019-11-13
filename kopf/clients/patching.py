@@ -12,6 +12,7 @@ from kopf.structs import patches
 from kopf.structs import resources
 
 
+@auth.reauthenticated_request
 async def patch_obj(
         *,
         resource: resources.Resource,
@@ -19,6 +20,7 @@ async def patch_obj(
         namespace: Optional[str] = None,
         name: Optional[str] = None,
         body: Optional[bodies.Body] = None,
+        api: Optional[pykube.HTTPClient] = None,  # injected by the decorator
 ) -> None:
     """
     Patch a resource of specific kind.
@@ -30,6 +32,8 @@ async def patch_obj(
     used for the namespaced resources, even if the operator serves
     the whole cluster (i.e. is not namespace-restricted).
     """
+    if api is None:
+        raise RuntimeError("API instance is not injected by the decorator.")
 
     if body is not None and (name is not None or namespace is not None):
         raise TypeError("Either body, or name+namespace can be specified. Got both.")
@@ -41,8 +45,7 @@ async def patch_obj(
         if namespace is not None:
             body['metadata']['namespace'] = namespace
 
-    api = auth.get_pykube_api()
-    cls = await classes._make_cls(resource=resource)
+    cls = await classes._make_cls(api=api, resource=resource)
     obj = cls(api, body)
 
     # The handler could delete its own object, so we have nothing to patch. It is okay, ignore.

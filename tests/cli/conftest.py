@@ -4,7 +4,6 @@ import sys
 import click.testing
 import pytest
 
-import kopf
 from kopf.cli import main
 
 SCRIPT1 = """
@@ -52,16 +51,6 @@ def clean_modules_cache():
             del sys.modules[key]
 
 
-@pytest.fixture(autouse=True)
-def clean_kubernetes_client():
-    try:
-        import kubernetes
-    except ImportError:
-        pass  # absent client is already "clean" (or not "dirty" at least).
-    else:
-        kubernetes.client.configuration.Configuration.set_default(None)
-
-
 @pytest.fixture()
 def runner():
     runner = click.testing.CliRunner()
@@ -71,14 +60,6 @@ def runner():
 @pytest.fixture()
 def invoke(runner):
     return functools.partial(runner.invoke, main)
-
-
-@pytest.fixture()
-def login(mocker):
-    mocker.patch('kopf.clients.auth.login_pykube')
-    mocker.patch('kopf.clients.auth.login_client')
-    mocker.patch('kopf.clients.auth.verify_pykube')
-    mocker.patch('kopf.clients.auth.verify_client')
 
 
 @pytest.fixture()

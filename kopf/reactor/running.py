@@ -8,13 +8,16 @@ import warnings
 from typing import (Optional, Collection, Union, Tuple, Set, Any, Coroutine,
                     Sequence, MutableSequence, cast, TYPE_CHECKING)
 
+from kopf.clients import auth
 from kopf.engines import peering
 from kopf.engines import posting
+from kopf.reactor import activities
 from kopf.reactor import causation
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
 from kopf.reactor import queueing
 from kopf.reactor import registries
+from kopf.structs import credentials
 
 if TYPE_CHECKING:
     asyncio_Task = asyncio.Task[None]
@@ -28,6 +31,49 @@ Tasks = Collection[asyncio_Task]
 
 logger = logging.getLogger(__name__)
 
+# An exchange point between login() and run()/operator().
+# DEPRECATED: As soon as login() is removed, this global variable is not needed.
+global_vault: Optional[credentials.Vault] = None
+
+
+def login(
+        verify: bool = False,  # DEPRECATED: kept for backward compatibility
+        *,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+) -> None:
+    """
+    Login to Kubernetes cluster, locally or remotely.
+
+    Keep the logged in state or config object in the global variable,
+    so that it is available for future operator runs.
+    """
+    warnings.warn("kopf.login() is deprecated; the operator now authenticates "
+                  "internally; cease using kopf.login().", DeprecationWarning)
+
+    # Remember the credentials store for later usage in the actual operator.
+    # Set the global vault for the legacy login()->run() scenario.
+    global global_vault
+    global_vault = credentials.Vault()
+
+    # Perform the initial one-time authentication in presumably the same loop.
+    loop = loop if loop is not None else asyncio.get_event_loop()
+    registry = registries.get_default_registry()
+    try:
+        loop.run_until_complete(activities.authenticate(
+            registry=registry,
+            vault=global_vault,
+        ))
+    except asyncio.CancelledError:
+        pass
+    except handling.ActivityError as e:
+        # Detect and re-raise the original LoginErrors, not the general activity error.
+        # This is only needed for the legacy one-shot login, not for a background job.
+        for outcome in e.outcomes.values():
+            if isinstance(outcome.exception, credentials.LoginError):
+                raise outcome.exception
+        else:
+            raise
+
 
 def run(
         loop: Optional[asyncio.AbstractEventLoop] = None,
@@ -39,6 +85,7 @@ def run(
         namespace: Optional[str] = None,
         stop_flag: Optional[Flag] = None,
         ready_flag: Optional[Flag] = None,
+        vault: Optional[credentials.Vault] = None,
 ) -> None:
     """
     Run the whole operator synchronously.
@@ -56,6 +103,7 @@ def run(
             peering_name=peering_name,
             stop_flag=stop_flag,
             ready_flag=ready_flag,
+            vault=vault,
         ))
     except asyncio.CancelledError:
         pass
@@ -70,6 +118,7 @@ async def operator(
         namespace: Optional[str] = None,
         stop_flag: Optional[Flag] = None,
         ready_flag: Optional[Flag] = None,
+        vault: Optional[credentials.Vault] = None,
 ) -> None:
     """
     Run the whole operator asynchronously.
@@ -89,6 +138,7 @@ async def operator(
         peering_name=peering_name,
         stop_flag=stop_flag,
         ready_flag=ready_flag,
+        vault=vault,
     )
     await run_tasks(operator_tasks, ignored=existing_tasks)
 
@@ -102,6 +152,7 @@ async def spawn_tasks(
         namespace: Optional[str] = None,
         stop_flag: Optional[Flag] = None,
         ready_flag: Optional[Flag] = None,
+        vault: Optional[credentials.Vault] = None,
 ) -> Tasks:
     """
     Spawn all the tasks needed to run the operator.
@@ -113,11 +164,16 @@ async def spawn_tasks(
     # The freezer and the registry are scoped to this whole task-set, to sync them all.
     lifecycle = lifecycle if lifecycle is not None else lifecycles.get_default_lifecycle()
     registry = registry if registry is not None else registries.get_default_registry()
+    vault = vault if vault is not None else global_vault
+    vault = vault if vault is not None else credentials.Vault()
     event_queue: posting.K8sEventQueue = asyncio.Queue(loop=loop)
     freeze_flag: asyncio.Event = asyncio.Event(loop=loop)
     signal_flag: asyncio_Future = asyncio.Future(loop=loop)
     ready_flag = ready_flag if ready_flag is not None else asyncio.Event()
     tasks: MutableSequence[asyncio_Task] = []
+
+    # Global credentials store for this operator, also for CRD-reading & peering mode detection.
+    auth.vault_var.set(vault)
 
     # Few common background forever-running infrastructural tasks (irregular root tasks).
     tasks.extend([
@@ -130,6 +186,15 @@ async def spawn_tasks(
             ready_flag=ready_flag,
             registry=registry,
         )),
+    ])
+
+    # Keeping the credentials fresh and valid via the authentication handlers on demand.
+    tasks.extend([
+        loop.create_task(_root_task_checker(
+            name="credentials retriever", ready_flag=ready_flag,
+            coro=activities.authenticator(
+                registry=registry,
+                vault=vault))),
     ])
 
     # K8s-event posting. Events are queued in-memory and posted in the background.

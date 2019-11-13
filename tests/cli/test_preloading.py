@@ -1,7 +1,7 @@
 import kopf
 
 
-def test_nothing(invoke, login, real_run):
+def test_nothing(invoke, real_run):
     result = invoke(['run'])
     assert result.exit_code == 0
 
@@ -9,7 +9,7 @@ def test_nothing(invoke, login, real_run):
     assert len(registry.resources) == 0
 
 
-def test_one_file(invoke, login, real_run):
+def test_one_file(invoke, real_run):
     result = invoke(['run', 'handler1.py'])
     assert result.exit_code == 0
 
@@ -21,7 +21,7 @@ def test_one_file(invoke, login, real_run):
     assert handlers[0].id == 'create_fn'
 
 
-def test_two_files(invoke, login, real_run):
+def test_two_files(invoke, real_run):
     result = invoke(['run', 'handler1.py', 'handler2.py'])
     assert result.exit_code == 0
 
@@ -34,7 +34,7 @@ def test_two_files(invoke, login, real_run):
     assert handlers[1].id == 'update_fn'
 
 
-def test_one_module(invoke, login, real_run):
+def test_one_module(invoke, real_run):
     result = invoke(['run', '-m', 'package.module_1'])
     assert result.exit_code == 0
 
@@ -46,7 +46,7 @@ def test_one_module(invoke, login, real_run):
     assert handlers[0].id == 'create_fn'
 
 
-def test_two_modules(invoke, login, real_run):
+def test_two_modules(invoke, real_run):
     result = invoke(['run', '-m', 'package.module_1', '-m', 'package.module_2'])
     assert result.exit_code == 0
 
@@ -59,7 +59,7 @@ def test_two_modules(invoke, login, real_run):
     assert handlers[1].id == 'update_fn'
 
 
-def test_mixed_sources(invoke, login, real_run):
+def test_mixed_sources(invoke, real_run):
     result = invoke(['run', 'handler1.py', '-m', 'package.module_2'])
     assert result.exit_code == 0
 
