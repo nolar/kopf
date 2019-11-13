@@ -37,6 +37,7 @@ class Activity(str, enum.Enum):
     STARTUP = 'startup'
     CLEANUP = 'cleanup'
     AUTHENTICATION = 'authentication'
+    PROBE = 'probe'
 
 
 # Constants for cause types, to prevent a direct usage of strings, and typos.

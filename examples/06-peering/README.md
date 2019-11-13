@@ -2,7 +2,7 @@
 
 When multiple operators start for the same cluster (in the cluster or outside),
 they become aware about each other, and exchange the basic information about
-their liveliness and the priorities, and cooperate to avoid the undesired
+their liveness and the priorities, and cooperate to avoid the undesired
 side-effects (e.g., duplicated children creation, infinite cross-changes).
 
 The main use-case for this is the development mode: when a developer starts
