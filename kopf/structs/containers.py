@@ -19,7 +19,7 @@ class ObjectDict(Dict[Any, Any]):
     def __setattr__(self, key: str, value: Any) -> None:
         self[key] = value
 
-    def __delitem__(self, key: str) -> None:
+    def __delattr__(self, key: str) -> None:
         try:
             del self[key]
         except KeyError as e:

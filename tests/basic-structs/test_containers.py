@@ -61,13 +61,39 @@ def test_object_dict_keys_are_fields():
     assert obj.xyz == 100
 
 
-def test_object_dict_raises_key_errors():
+def test_object_dict_keys_deleted():
+    obj = ObjectDict()
+    obj['xyz'] = 100
+    del obj['xyz']
+    assert obj == {}
+
+
+def test_object_dict_fields_deleted():
+    obj = ObjectDict()
+    obj.xyz = 100
+    del obj.xyz
+    assert obj == {}
+
+
+def test_object_dict_raises_key_errors_on_get():
     obj = ObjectDict()
     with pytest.raises(KeyError):
         obj['unexistent']
 
 
-def test_object_dict_raises_attribute_errors():
+def test_object_dict_raises_attribute_errors_on_get():
     obj = ObjectDict()
     with pytest.raises(AttributeError):
         obj.unexistent
+
+
+def test_object_dict_raises_key_errors_on_del():
+    obj = ObjectDict()
+    with pytest.raises(KeyError):
+        del obj['unexistent']
+
+
+def test_object_dict_raises_attribute_errors_on_del():
+    obj = ObjectDict()
+    with pytest.raises(AttributeError):
+        del obj.unexistent
