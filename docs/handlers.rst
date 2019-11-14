@@ -157,9 +157,12 @@ The following 3 core cause-handlers are available::
     actual deletion, i.e. the handler is optional, the optional argument
     ``optional=True`` can be passed to the delete cause decorator.
 
-An additional handler can be used for cases when the operator restarts
-and detects an object that existed before, but was not changed/deleted
-during downtime (which would trigger the update-/delete-handlers)::
+
+Resuming handlers
+=================
+
+An special kind of handlers can be used for cases when the operator restarts
+and detects an object that existed before::
 
     @kopf.on.resume('zalando.org', 'v1', 'kopfexamples')
     def my_handler(spec, **_):
@@ -170,17 +173,60 @@ a global state to keep it consistent with the actual state of the cluster.
 With the resuming handler in addition to creation/update/deletion handlers,
 no object will be left unattended even if it does not change over time.
 
-.. note::
-    Kopf does its best to call the resuming handler only once per object
-    for every running process of Kopf.
+The resuming handlers are guaranteed to execute only once per operator
+life time for each individual resource (except if errors are retried).
 
-    But due to the nature of Kubernetes watching, which needs the full reset
-    from time to time, there is no guarantee that the handler will not be called
-    few times over lifetime of a single operator process.
+Normally, the resume handlers are mixed-in to the creation and updating
+handling cycles, and are executed in the order they are declared.
 
-    It is the developer's responsibility to ensure that the threads/tasks
-    or other state are maintained properly for multiple resuming calls.
+It is a common pattern to declare both creation and resuming handler
+pointing to the same function, so that this function is called either
+when an object is created ("started) while the operator is alive ("exists"), or
+when the operator is started ("created") when the object is existent ("alive")::
 
+    @kopf.on.resume('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    def my_handler(spec, **_):
+        pass
+
+However, the resuming handlers are **not** called if the object has been deleted
+during the operator downtime or restart, and the deletion handlers are now
+being invoked.
+
+This is done intentionally to prevent the cases when the resuming handlers start
+threads/tasks or allocate the resources, and the deletion handlers stop/free
+them: it can happen so that the resuming handlers would be executed after
+the deletion handlers, thus starting threads/tasks and never stopping them.
+For example::
+
+    TASKS = {}
+
+    @kopf.on.delete('zalando.org', 'v1', 'kopfexamples')
+    async def my_handler(spec, name, **_):
+        if name in TASKS:
+            TASKS[name].cancel()
+
+    @kopf.on.resume('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    def my_handler(spec, **_):
+        if name not in TASKS:
+            TASKS[name] = asyncio.create_task(some_coroutine(spec))
+
+In this example, if the operator starts and notices an object that is marked
+for deletion, the deletion handler will be called, but the resuming handler
+is not called at all, despite the object was noticed to exist out there.
+Otherwise, there would be a resource (e.g. memory) leak.
+
+If the resume handlers are still desired during the deletion handling, they
+can be explicitly marked as compatible with the deleted state of the object
+with ``deleted=True`` option::
+
+    @kopf.on.resume('zalando.org', 'v1', 'kopfexamples', deleted=True)
+    def my_handler(spec, **_):
+        pass
+
+In that case, both the deletion and resuming handlers will be invoked. It is
+the developer's responsibility to ensure this does not lead to the memory leaks.
 
 
 Field handlers
