@@ -75,6 +75,7 @@ async def invoke(
     if isinstance(cause, causation.ResourceCause):
         kwargs.update(
             patch=cause.patch,
+            memo=cause.memo,
             body=cause.body,
             spec=dicts.DictView(cause.body, 'spec'),
             meta=dicts.DictView(cause.body, 'metadata'),

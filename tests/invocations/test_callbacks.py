@@ -173,6 +173,7 @@ async def test_special_kwargs_added(fn, resource):
         patch=Patch(),
         initial=False,
         reason=Reason.NOOP,
+        memo=object(),
         body=body,
         diff=object(),
         old=object(),

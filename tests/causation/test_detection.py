@@ -116,13 +116,16 @@ def kwargs():
         resource=object(),
         logger=object(),
         patch=object(),
+        memo=object(),
     )
+
 
 def check_kwargs(cause, kwargs):
     __traceback_hide__ = True
     assert cause.resource is kwargs['resource']
     assert cause.logger is kwargs['logger']
     assert cause.patch is kwargs['patch']
+    assert cause.memo is kwargs['memo']
 
 
 #

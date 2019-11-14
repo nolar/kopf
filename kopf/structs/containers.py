@@ -8,14 +8,38 @@ It is used internally to track allocated system resources for each Kubernetes
 object, even if that object does not show up in the event streams for long time.
 """
 import dataclasses
-from typing import MutableMapping
+from typing import MutableMapping, Dict, Any
 
 from kopf.structs import bodies
 
 
+class ObjectDict(Dict[Any, Any]):
+    """ A container to hold arbitrary keys-fields assigned by the users. """
+
+    def __setattr__(self, key: str, value: Any) -> None:
+        self[key] = value
+
+    def __delattr__(self, key: str) -> None:
+        try:
+            del self[key]
+        except KeyError as e:
+            raise AttributeError(str(e))
+
+    def __getattr__(self, key: str) -> Any:
+        try:
+            return self[key]
+        except KeyError as e:
+            raise AttributeError(str(e))
+
+
 @dataclasses.dataclass(frozen=False)
 class ResourceMemory:
-    """ A memo about a single resource/object. Usually stored in `Memories`. """
+    """ A system memo about a single resource/object. Usually stored in `Memories`. """
+
+    # For arbitrary user data to be stored in memory, passed as `memo` to all the handlers.
+    user_data: ObjectDict = dataclasses.field(default_factory=ObjectDict)
+
+    # For resuming handlers tracking and deciding on should they be called or not.
     noticed_by_listing: bool = False
     fully_handled_once: bool = False
 
