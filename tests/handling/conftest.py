@@ -178,11 +178,13 @@ def cause_mock(mocker, resource):
         # Avoid collision of our mocked values with the passed kwargs.
         original_event = kwargs.pop('event', None)
         original_reason = kwargs.pop('reason', None)
+        original_memo = kwargs.pop('memo', None)
         original_body = kwargs.pop('body', None)
         original_diff = kwargs.pop('diff', None)
         original_new = kwargs.pop('new', None)
         original_old = kwargs.pop('old', None)
         reason = mock.reason if mock.reason is not None else original_reason
+        memo = copy.deepcopy(mock.memo) if mock.memo is not None else original_memo
         body = copy.deepcopy(mock.body) if mock.body is not None else original_body
         diff = copy.deepcopy(mock.diff) if mock.diff is not None else original_diff
         new = copy.deepcopy(mock.new) if mock.new is not None else original_new
@@ -195,6 +197,7 @@ def cause_mock(mocker, resource):
         # I.e. everything except what we mock: reason & body.
         cause = ResourceChangingCause(
             reason=reason,
+            memo=memo,
             body=body,
             diff=diff,
             new=new,
@@ -214,8 +217,9 @@ def cause_mock(mocker, resource):
     mocker.patch('kopf.reactor.causation.detect_resource_changing_cause', new=new_detect_fn)
 
     # The mock object stores some values later used by the factory substitute.
-    mock = mocker.Mock(spec_set=['reason', 'body', 'diff', 'new', 'old'])
+    mock = mocker.Mock(spec_set=['reason', 'memo', 'body', 'diff', 'new', 'old'])
     mock.reason = None
+    mock.memo = None
     mock.body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
     mock.diff = None
     mock.new = None

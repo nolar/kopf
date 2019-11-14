@@ -56,6 +56,8 @@ Arguments
 The following keyword arguments are available to the handlers
 (though some handlers may have some of them empty):
 
+* ``memo`` for arbitrary in-memory runtime-only keys/fields and values stored
+  during the operator lifetime, per-object; they are lost on operator restarts.
 * ``body`` for the whole body of the handled objects.
 * ``spec`` as an alias for ``body['spec']``.
 * ``meta`` as an alias for ``body['metadata']``.

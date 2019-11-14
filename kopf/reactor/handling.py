@@ -189,6 +189,7 @@ async def resource_handler(
             resource=resource,
             logger=logger,
             patch=patch,
+            memo=memory.user_data,
         )
         await handle_resource_watching_cause(
             lifecycle=lifecycles.all_at_once,
@@ -210,6 +211,7 @@ async def resource_handler(
             old=old,
             new=new,
             diff=diff,
+            memo=memory.user_data,
             initial=memory.noticed_by_listing and not memory.fully_handled_once,
             requires_finalizer=registry.requires_finalizer(resource=resource, body=body),
         )

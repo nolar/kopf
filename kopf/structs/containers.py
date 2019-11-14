@@ -13,9 +13,33 @@ from typing import MutableMapping
 from kopf.structs import bodies
 
 
+class ObjectDict(dict):
+    """ A container to hold arbitrary keys-fields assigned by the users. """
+
+    def __setattr__(self, key, value):
+        self[key] = value
+
+    def __delitem__(self, key):
+        try:
+            del self[key]
+        except KeyError as e:
+            raise AttributeError(str(e))
+
+    def __getattr__(self, key):
+        try:
+            return self[key]
+        except KeyError as e:
+            raise AttributeError(str(e))
+
+
 @dataclasses.dataclass(frozen=False)
 class ResourceMemory:
-    """ A memo about a single resource/object. Usually stored in `Memories`. """
+    """ A system memo about a single resource/object. Usually stored in `Memories`. """
+
+    # For arbitrary user data to be stored in memory, passed as `memo` to all the handlers.
+    user_data: ObjectDict = dataclasses.field(default_factory=ObjectDict)
+
+    # For resuming handlers tracking and deciding on should they be called or not.
     noticed_by_listing: bool = False
     fully_handled_once: bool = False
 

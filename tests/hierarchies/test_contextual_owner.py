@@ -7,6 +7,7 @@ from kopf.reactor.causation import Reason, ResourceChangingCause, ResourceWatchi
 from kopf.reactor.handling import cause_var
 from kopf.reactor.invocation import context
 from kopf.structs.bodies import Body, Meta, Labels, Event
+from kopf.structs.containers import ObjectDict
 from kopf.structs.patches import Patch
 
 OWNER_API_VERSION = 'owner-api-version'
@@ -34,6 +35,7 @@ def owner(request, resource):
             logger=logging.getLogger('kopf.test.fake.logger'),
             resource=resource,
             patch=Patch(),
+            memo=ObjectDict(),
             body=OWNER,
             initial=False,
             reason=Reason.NOOP,
@@ -45,6 +47,7 @@ def owner(request, resource):
             logger=logging.getLogger('kopf.test.fake.logger'),
             resource=resource,
             patch=Patch(),
+            memo=ObjectDict(),
             body=OWNER,
             type='irrelevant',
             raw=Event(type='irrelevant', object=OWNER),

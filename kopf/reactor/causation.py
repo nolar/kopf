@@ -26,6 +26,7 @@ import warnings
 from typing import Any, Optional, Union, TypeVar
 
 from kopf.structs import bodies
+from kopf.structs import containers
 from kopf.structs import diffs
 from kopf.structs import finalizers
 from kopf.structs import lastseen
@@ -98,6 +99,7 @@ class ResourceCause(BaseCause):
     resource: resources.Resource
     patch: patches.Patch
     body: bodies.Body
+    memo: containers.ObjectDict
 
 
 @dataclasses.dataclass
