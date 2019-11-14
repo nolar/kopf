@@ -110,6 +110,7 @@ def resume(
         retries: Optional[int] = None,
         cooldown: Optional[float] = None,
         registry: Optional[registries.OperatorRegistry] = None,
+        deleted: Optional[bool] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
 ) -> ResourceHandlerDecorator:
@@ -118,7 +119,7 @@ def resume(
     def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
-            reason=None, initial=True, id=id,
+            reason=None, initial=True, deleted=deleted, id=id,
             errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
             fn=fn, labels=labels, annotations=annotations,
         )

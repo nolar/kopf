@@ -130,6 +130,11 @@ class ResourceChangingCause(ResourceCause):
         warnings.warn("`cause.event` is deprecated; use `cause.reason`.", DeprecationWarning)
         return self.reason
 
+    @property
+    def deleted(self) -> bool:
+        """ Used to conditionally skip/select the @on.resume handlers if the object is deleted. """
+        return finalizers.is_deleted(self.body)
+
 
 def detect_resource_watching_cause(
         event: bodies.Event,

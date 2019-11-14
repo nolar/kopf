@@ -1,7 +1,7 @@
 import pytest
 
 import kopf
-from kopf.reactor.causation import Reason, Activity
+from kopf.reactor.causation import Reason, Activity, HANDLER_REASONS
 from kopf.reactor.handling import subregistry_var
 from kopf.reactor.registries import ErrorsMode, OperatorRegistry, ResourceChangingRegistry
 from kopf.structs.resources import Resource
@@ -56,6 +56,30 @@ def test_on_probe_minimal():
     assert handlers[0].timeout is None
     assert handlers[0].retries is None
     assert handlers[0].cooldown is None
+
+
+# Resume handlers are mixed-in into all resource-changing reactions with initial listing.
+@pytest.mark.parametrize('reason', HANDLER_REASONS)
+def test_on_resume_minimal(mocker, reason):
+    registry = kopf.get_default_registry()
+    resource = Resource('group', 'version', 'plural')
+    cause = mocker.MagicMock(resource=resource, reason=reason, initial=True, deleted=False)
+
+    @kopf.on.resume('group', 'version', 'plural')
+    def fn(**_):
+        pass
+
+    handlers = registry.get_resource_changing_handlers(cause)
+    assert len(handlers) == 1
+    assert handlers[0].fn is fn
+    assert handlers[0].reason is None
+    assert handlers[0].field is None
+    assert handlers[0].errors is None
+    assert handlers[0].timeout is None
+    assert handlers[0].retries is None
+    assert handlers[0].cooldown is None
+    assert handlers[0].labels is None
+    assert handlers[0].annotations is None
 
 
 def test_on_create_minimal(mocker):
@@ -212,6 +236,38 @@ def test_on_probe_with_all_kwargs(mocker):
     assert handlers[0].timeout == 123
     assert handlers[0].retries == 456
     assert handlers[0].cooldown == 78
+
+
+# Resume handlers are mixed-in into all resource-changing reactions with initial listing.
+@pytest.mark.parametrize('reason', HANDLER_REASONS)
+def test_on_resume_with_all_kwargs(mocker, reason):
+    registry = OperatorRegistry()
+    resource = Resource('group', 'version', 'plural')
+    cause = mocker.MagicMock(resource=resource, reason=reason, initial=True, deleted=False)
+    mocker.patch('kopf.reactor.registries.match', return_value=True)
+
+    @kopf.on.resume('group', 'version', 'plural',
+                    id='id', registry=registry,
+                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, cooldown=78,
+                    deleted=True,
+                    labels={'somelabel': 'somevalue'},
+                    annotations={'someanno': 'somevalue'})
+    def fn(**_):
+        pass
+
+    handlers = registry.get_resource_changing_handlers(cause)
+    assert len(handlers) == 1
+    assert handlers[0].fn is fn
+    assert handlers[0].reason is None
+    assert handlers[0].field is None
+    assert handlers[0].id == 'id'
+    assert handlers[0].errors == ErrorsMode.PERMANENT
+    assert handlers[0].timeout == 123
+    assert handlers[0].retries == 456
+    assert handlers[0].cooldown == 78
+    assert handlers[0].deleted == True
+    assert handlers[0].labels == {'somelabel': 'somevalue'}
+    assert handlers[0].annotations == {'someanno': 'somevalue'}
 
 
 def test_on_create_with_all_kwargs(mocker):

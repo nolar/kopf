@@ -107,6 +107,7 @@ class ResourceHandler(BaseHandler):
     reason: Optional[causation.Reason]
     field: Optional[dicts.FieldPath]
     initial: Optional[bool] = None
+    deleted: Optional[bool] = None  # used for mixed-in (initial==True) @on.resume handlers only.
     labels: Optional[bodies.Labels] = None
     annotations: Optional[bodies.Annotations] = None
     requires_finalizer: Optional[bool] = None
@@ -204,6 +205,7 @@ class ResourceRegistry(GenericRegistry[ResourceHandler, ResourceHandlerFn], Gene
             retries: Optional[int] = None,
             cooldown: Optional[float] = None,
             initial: Optional[bool] = None,
+            deleted: Optional[bool] = None,
             requires_finalizer: bool = False,
             labels: Optional[bodies.Labels] = None,
             annotations: Optional[bodies.Annotations] = None,
@@ -216,7 +218,7 @@ class ResourceRegistry(GenericRegistry[ResourceHandler, ResourceHandlerFn], Gene
         handler = ResourceHandler(
             id=real_id, fn=fn, reason=reason, field=real_field,
             errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
-            initial=initial, requires_finalizer=requires_finalizer,
+            initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
             labels=labels, annotations=annotations,
         )
 
@@ -282,6 +284,8 @@ class ResourceChangingRegistry(ResourceRegistry[causation.ResourceChangingCause]
             if handler.reason is None or handler.reason == cause.reason:
                 if handler.initial and not cause.initial:
                     pass  # ignore initial handlers in non-initial causes.
+                elif handler.initial and cause.deleted and not handler.deleted:
+                    pass  # ignore initial handlers on deletion, unless explicitly marked as usable.
                 elif match(handler=handler, body=cause.body, changed_fields=changed_fields):
                     yield handler
 
@@ -360,6 +364,7 @@ class OperatorRegistry:
             retries: Optional[int] = None,
             cooldown: Optional[float] = None,
             initial: Optional[bool] = None,
+            deleted: Optional[bool] = None,
             requires_finalizer: bool = False,
             labels: Optional[bodies.Labels] = None,
             annotations: Optional[bodies.Annotations] = None,
@@ -371,7 +376,7 @@ class OperatorRegistry:
         return self._resource_changing_handlers[resource].register(
             reason=reason, event=event, field=field, fn=fn, id=id,
             errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
-            initial=initial, requires_finalizer=requires_finalizer,
+            initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
             labels=labels, annotations=annotations,
         )
 
