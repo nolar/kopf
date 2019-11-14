@@ -8,24 +8,24 @@ It is used internally to track allocated system resources for each Kubernetes
 object, even if that object does not show up in the event streams for long time.
 """
 import dataclasses
-from typing import MutableMapping
+from typing import MutableMapping, Dict, Any
 
 from kopf.structs import bodies
 
 
-class ObjectDict(dict):
+class ObjectDict(Dict[Any, Any]):
     """ A container to hold arbitrary keys-fields assigned by the users. """
 
-    def __setattr__(self, key, value):
+    def __setattr__(self, key: str, value: Any) -> None:
         self[key] = value
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str) -> None:
         try:
             del self[key]
         except KeyError as e:
             raise AttributeError(str(e))
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         try:
             return self[key]
         except KeyError as e:
