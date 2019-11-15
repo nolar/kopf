@@ -83,10 +83,7 @@ async def test_create(registry, handlers, resource, cause_mock, event_type,
     assert 'metadata' in patch
     assert 'annotations' in patch['metadata']
     assert LAST_SEEN_ANNOTATION in patch['metadata']['annotations']
-    assert 'status' in patch
-    assert 'kopf' in patch['status']
-    assert 'progress' in patch['status']['kopf']
-    assert patch['status']['kopf']['progress'] is None  # 1 out of 1 handlers done
+    assert 'status' not in patch  # because only 1 handler, nothing to purge
 
     assert_logs([
         "Creation event:",
@@ -128,10 +125,7 @@ async def test_update(registry, handlers, resource, cause_mock, event_type,
     assert 'metadata' in patch
     assert 'annotations' in patch['metadata']
     assert LAST_SEEN_ANNOTATION in patch['metadata']['annotations']
-    assert 'status' in patch
-    assert 'kopf' in patch['status']
-    assert 'progress' in patch['status']['kopf']
-    assert patch['status']['kopf']['progress'] is None  # 1 out of 1 handlers done
+    assert 'status' not in patch  # because only 1 handler, nothing to purge
 
     assert_logs([
         "Update event:",
@@ -170,10 +164,7 @@ async def test_delete(registry, handlers, resource, cause_mock, event_type,
     assert not event_queue.empty()
 
     patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
-    assert 'status' in patch
-    assert 'kopf' in patch['status']
-    assert 'progress' in patch['status']['kopf']
-    assert patch['status']['kopf']['progress'] is None  # 1 out of 1 handlers done
+    assert 'status' not in patch  # because only 1 handler, nothing to purge
 
     assert_logs([
         "Deletion event",

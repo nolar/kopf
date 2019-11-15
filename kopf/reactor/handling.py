@@ -311,7 +311,7 @@ async def handle_resource_changing_cause(
 
             if state.done:
                 logger.info(f"All handlers succeeded for {title}.")
-                state.purge(patch=cause.patch)
+                state.purge(patch=cause.patch, body=cause.body)
 
             done = state.done
             delay = state.delay

@@ -291,14 +291,31 @@ def test_store_result(handler, expected_patch, result):
     assert patch == expected_patch
 
 
-@pytest.mark.parametrize('body', [
-    ({}),
-    ({'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}),
-])
-def test_purge_progress(handler, body):
-    origbody = copy.deepcopy(body)
+def test_purge_progress_when_exists_in_body(handler):
+    body = {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}
     patch = {}
+    origbody = copy.deepcopy(body)
     state = State.from_body(body=body, handlers=[handler])
-    state.purge(patch=patch)
+    state.purge(patch=patch, body=body)
     assert patch == {'status': {'kopf': {'progress': None}}}
+    assert body == origbody  # not modified
+
+
+def test_purge_progress_when_already_empty_in_body_and_patch(handler):
+    body = {}
+    patch = {}
+    origbody = copy.deepcopy(body)
+    state = State.from_body(body=body, handlers=[handler])
+    state.purge(patch=patch, body=body)
+    assert not patch
+    assert body == origbody  # not modified
+
+
+def test_purge_progress_when_already_empty_in_body_but_not_in__patch(handler):
+    body = {}
+    patch = {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}
+    origbody = copy.deepcopy(body)
+    state = State.from_body(body=body, handlers=[handler])
+    state.purge(patch=patch, body=body)
+    assert not patch
     assert body == origbody  # not modified
