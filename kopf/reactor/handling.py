@@ -293,7 +293,7 @@ async def handle_resource_changing_cause(
     if cause.reason in causation.HANDLER_REASONS:
         title = causation.TITLES.get(cause.reason, repr(cause.reason))
         logger.debug(f"{title.capitalize()} event: %r", body)
-        if cause.diff is not None and cause.old is not None and cause.new is not None:
+        if cause.diff and cause.old is not None and cause.new is not None:
             logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
 
         handlers = registry.get_resource_changing_handlers(cause=cause)
@@ -311,7 +311,7 @@ async def handle_resource_changing_cause(
 
             if state.done:
                 logger.info(f"All handlers succeeded for {title}.")
-                state.purge(patch=cause.patch)
+                state.purge(patch=cause.patch, body=cause.body)
 
             done = state.done
             delay = state.delay

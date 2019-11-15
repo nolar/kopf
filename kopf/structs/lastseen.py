@@ -1,7 +1,7 @@
 """
-All the functions to keep track of the last seen state.
+All the functions to keep track of the last handled state of the object.
 
-The "state" is a snapshot of meaningful fields, which must be tracked
+The "essence" is a snapshot of meaningful fields, which must be tracked
 to identify the actual changes on the object (or absence of such).
 
 Used in the handling routines to check if there were significant changes at all
@@ -43,8 +43,7 @@ def get_essence(
     while the rest of the status stenza is removed.
     """
 
-    # Always use a copy, so that future changes do not affect the extracted state.
-    # TODO: is it possible to declare state as a Body, to ensure the proper keys are used?
+    # Always use a copy, so that future changes do not affect the extracted essence.
     essence = cast(Dict[Any, Any], copy.deepcopy(body))
 
     # The top-level identifying fields never change, so there is not need to track them.
@@ -76,7 +75,7 @@ def get_essence(
     # Restore all explicitly whitelisted extra-fields from the original body.
     dicts.cherrypick(src=body, dst=essence, fields=extra_fields, picker=copy.deepcopy)
 
-    # Cleanup the parent structs if they have become empty, for consistent state comparison.
+    # Cleanup the parent structs if they have become empty, for consistent essence comparison.
     if 'annotations' in essence.get('metadata', {}) and not essence['metadata']['annotations']:
         del essence['metadata']['annotations']
     if 'metadata' in essence and not essence['metadata']:
@@ -108,9 +107,9 @@ def retrieve_essence(
 ) -> Optional[bodies.BodyEssence]:
     if not has_essence_stored(body):
         return None
-    state_str: str = body['metadata']['annotations'][LAST_SEEN_ANNOTATION]
-    state_obj: bodies.BodyEssence = json.loads(state_str)
-    return state_obj
+    essence_str: str = body['metadata']['annotations'][LAST_SEEN_ANNOTATION]
+    essence_obj: bodies.BodyEssence = json.loads(essence_str)
+    return essence_obj
 
 
 def refresh_essence(
@@ -119,5 +118,8 @@ def refresh_essence(
         patch: patches.Patch,
         extra_fields: Optional[Iterable[dicts.FieldSpec]] = None,
 ) -> None:
-    state = get_essence(body, extra_fields=extra_fields)
-    patch.setdefault('metadata', {}).setdefault('annotations', {})[LAST_SEEN_ANNOTATION] = json.dumps(state)
+    old_essence = retrieve_essence(body=body)
+    new_essence = get_essence(body, extra_fields=extra_fields)
+    if new_essence != old_essence:
+        annotations = patch.setdefault('metadata', {}).setdefault('annotations', {})
+        annotations[LAST_SEEN_ANNOTATION] = json.dumps(new_essence)
