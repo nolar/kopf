@@ -33,8 +33,6 @@ async def test_all_logs_are_prefixed(registry, resource, handlers,
 
 @pytest.mark.parametrize('diff', [
     pytest.param((('op', ('field',), 'old', 'new'),), id='realistic-diff'),
-    pytest.param((), id='empty-tuple-diff'),
-    pytest.param([], id='empty-list-diff'),
 ])
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_diffs_logged_if_present(registry, resource, handlers, cause_type, cause_mock,
@@ -64,13 +62,18 @@ async def test_diffs_logged_if_present(registry, resource, handlers, cause_type,
 
 
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
+@pytest.mark.parametrize('diff', [
+    pytest.param(None, id='none-diff'),  # same as the default, but for clarity
+    pytest.param([], id='empty-list-diff'),
+    pytest.param((), id='empty-tuple-diff'),
+])
 async def test_diffs_not_logged_if_absent(registry, resource, handlers, cause_type, cause_mock,
-                                          caplog, assert_logs):
+                                          caplog, assert_logs, diff):
     caplog.set_level(logging.DEBUG)
 
     event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_type
-    cause_mock.diff = None  # same as the default, but for clarity
+    cause_mock.diff = diff
 
     await resource_handler(
         lifecycle=kopf.lifecycles.all_at_once,
