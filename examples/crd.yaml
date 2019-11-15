@@ -17,6 +17,8 @@ spec:
     shortNames:
       - kopfexes
       - kopfex
+      - kexes
+      - kex
   additionalPrinterColumns:
     - name: Duration
       type: string
