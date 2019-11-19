@@ -1,5 +1,7 @@
+import base64
 import functools
 import ssl
+import tempfile
 import warnings
 from contextvars import ContextVar
 from typing import Optional, Callable, Any, TypeVar, Dict, cast
@@ -90,19 +92,60 @@ class APISession(aiohttp.ClientSession):
             info: credentials.ConnectionInfo,
     ) -> "APISession":
 
+        # Some SSL data are not accepted directly, so we have to use temp files.
+        ca_path: Optional[str]
+        certificate_path: Optional[str]
+        private_key_path: Optional[str]
+
+        if info.ca_path and info.ca_data:
+            raise credentials.LoginError("Both CA path & data are set. Need only one.")
+        elif info.ca_path:
+            ca_path = info.ca_path
+        elif info.ca_data:
+            ca_data = base64.b64decode(info.ca_data)
+            with tempfile.NamedTemporaryFile(delete=False) as f:
+                f.write(ca_data)
+            ca_path = f.name
+        else:
+            ca_path = None
+
+        if info.certificate_path and info.certificate_data:
+            raise credentials.LoginError("Both certificate path & data are set. Need only one.")
+        elif info.certificate_path:
+            certificate_path = info.certificate_path
+        elif info.certificate_data:
+            certificate_data = base64.b64decode(info.certificate_data)
+            with tempfile.NamedTemporaryFile(delete=False) as f:
+                f.write(certificate_data)
+            certificate_path = f.name
+        else:
+            certificate_path = None
+
+        if info.private_key_path and info.private_key_data:
+            raise credentials.LoginError("Both private key path & data are set. Need only one.")
+        elif info.private_key_path:
+            private_key_path = info.private_key_path
+        elif info.private_key_data:
+            private_key_data = base64.b64decode(info.private_key_data)
+            with tempfile.NamedTemporaryFile(delete=False) as f:
+                f.write(private_key_data)
+            private_key_path = f.name
+        else:
+            private_key_path = None
+
         # The SSL part (both client certificate auth and CA verification).
-        # TODO:2: also use cert/pkey/ca binary data
         context: ssl.SSLContext
-        if info.certificate_path and info.private_key_path:
+        if certificate_path and private_key_path:
             context = ssl.create_default_context(
-                cafile=info.ca_path,
-                purpose=ssl.Purpose.CLIENT_AUTH)
+                purpose=ssl.Purpose.CLIENT_AUTH,
+                cafile=ca_path)
             context.load_cert_chain(
-                certfile=info.certificate_path,
-                keyfile=info.private_key_path)
+                certfile=certificate_path,
+                keyfile=private_key_path)
         else:
             context = ssl.create_default_context(
-                cafile=info.ca_path)
+                cafile=ca_path)
+
         if info.insecure:
             context.verify_mode = ssl.CERT_NONE
             context.check_hostname = False
