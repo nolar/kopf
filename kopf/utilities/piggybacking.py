@@ -120,7 +120,6 @@ def login_via_pykube(
         insecure=config.cluster.get('insecure-skip-tls-verify'),
         username=config.user.get('username'),
         password=config.user.get('password'),
-        scheme='Bearer',
         token=config.user.get('token') or provider_token,
         certificate_path=cert.filename() if cert else None,  # can be a temporary file
         private_key_path=pkey.filename() if pkey else None,  # can be a temporary file
