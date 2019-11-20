@@ -554,7 +554,7 @@ async def _execute_handler(
     except Exception as e:
         if errors == registries.ErrorsMode.IGNORED:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will ignore.")
-            return states.HandlerOutcome(final=True, exception=e)
+            return states.HandlerOutcome(final=True)
         elif errors == registries.ErrorsMode.TEMPORARY:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")
             return states.HandlerOutcome(final=False, exception=e, delay=cooldown)

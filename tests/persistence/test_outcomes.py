@@ -2,6 +2,14 @@ from kopf.reactor.registries import HandlerResult
 from kopf.reactor.states import HandlerOutcome
 
 
+def test_creation_for_ignored_handlers():
+    outcome = HandlerOutcome(final=True)
+    assert outcome.final
+    assert outcome.delay is None
+    assert outcome.result is None
+    assert outcome.exception is None
+
+
 def test_creation_for_results():
     result = HandlerResult(object())
     outcome = HandlerOutcome(final=True, result=result)
