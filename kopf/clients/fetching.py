@@ -4,6 +4,7 @@ from typing import TypeVar, Optional, Union, Collection, List, Tuple, cast
 import aiohttp
 
 from kopf.clients import auth
+from kopf.clients import discovery
 from kopf.structs import bodies
 from kopf.structs import resources
 
@@ -25,6 +26,7 @@ async def read_crd(
 ) -> Union[bodies.Body, _T]:
     if session is None:
         raise RuntimeError("API instance is not injected by the decorator.")
+
     try:
         response = await session.get(
             url=CRD_CRD.get_url(server=session.server, name=resource.name),
@@ -51,8 +53,10 @@ async def read_obj(
     if session is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 
+    is_namespaced = await discovery.is_namespaced(resource=resource, session=session)
+    namespace = namespace if is_namespaced else None
+
     try:
-        # TODO: also add cluster-wide resource when --namespace is set?
         response = await session.get(
             url=resource.get_url(server=session.server, namespace=namespace, name=name),
         )
@@ -88,7 +92,9 @@ async def list_objs_rv(
     if session is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 
-    # TODO: also add cluster-wide resource when --namespace is set?
+    is_namespaced = await discovery.is_namespaced(resource=resource, session=session)
+    namespace = namespace if is_namespaced else None
+
     response = await session.get(
         url=resource.get_url(server=session.server, namespace=namespace),
     )
