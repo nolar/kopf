@@ -1,10 +1,11 @@
 import base64
 import functools
+import os
 import ssl
 import tempfile
 import warnings
 from contextvars import ContextVar
-from typing import Optional, Callable, Any, TypeVar, Dict, cast
+from typing import Optional, Callable, Any, TypeVar, Dict, Iterator, Mapping, cast
 
 import aiohttp
 
@@ -85,6 +86,7 @@ class APISession(aiohttp.ClientSession):
     """
     server: str
     default_namespace: Optional[str] = None
+    _tempfiles: "_TempFiles"
 
     @classmethod
     def from_connection_info(
@@ -93,6 +95,7 @@ class APISession(aiohttp.ClientSession):
     ) -> "APISession":
 
         # Some SSL data are not accepted directly, so we have to use temp files.
+        tempfiles = _TempFiles()
         ca_path: Optional[str]
         certificate_path: Optional[str]
         private_key_path: Optional[str]
@@ -102,10 +105,7 @@ class APISession(aiohttp.ClientSession):
         elif info.ca_path:
             ca_path = info.ca_path
         elif info.ca_data:
-            ca_data = base64.b64decode(info.ca_data)
-            with tempfile.NamedTemporaryFile(delete=False) as f:
-                f.write(ca_data)
-            ca_path = f.name
+            ca_path = tempfiles[base64.b64decode(info.ca_data)]
         else:
             ca_path = None
 
@@ -114,10 +114,7 @@ class APISession(aiohttp.ClientSession):
         elif info.certificate_path:
             certificate_path = info.certificate_path
         elif info.certificate_data:
-            certificate_data = base64.b64decode(info.certificate_data)
-            with tempfile.NamedTemporaryFile(delete=False) as f:
-                f.write(certificate_data)
-            certificate_path = f.name
+            certificate_path = tempfiles[base64.b64decode(info.certificate_data)]
         else:
             certificate_path = None
 
@@ -126,10 +123,7 @@ class APISession(aiohttp.ClientSession):
         elif info.private_key_path:
             private_key_path = info.private_key_path
         elif info.private_key_data:
-            private_key_data = base64.b64decode(info.private_key_data)
-            with tempfile.NamedTemporaryFile(delete=False) as f:
-                f.write(private_key_data)
-            private_key_path = f.name
+            private_key_path = tempfiles[base64.b64decode(info.private_key_data)]
         else:
             private_key_path = None
 
@@ -182,8 +176,43 @@ class APISession(aiohttp.ClientSession):
         # Add the extra payload information. We avoid overriding the constructor.
         session.server = info.server
         session.default_namespace = info.default_namespace
+        session._tempfiles = tempfiles  # for purging on garbage collection
 
         return session
+
+
+class _TempFiles(Mapping[bytes, str]):
+    """
+    A container for the temporary files, which are purged on garbage collection.
+
+    The files are purged when the container is garbage-collected. The container
+    is garbage-collected when its parent `APISession` is garbage-collected.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._paths: Dict[bytes, str] = {}
+
+    def __len__(self) -> int:
+        return len(self._paths)
+
+    def __iter__(self) -> Iterator[bytes]:
+        return iter(self._paths)
+
+    def __getitem__(self, item: bytes) -> str:
+        if item not in self._paths:
+            with tempfile.NamedTemporaryFile(delete=False) as f:
+                f.write(item)
+            self._paths[item] = f.name
+        return self._paths[item]
+
+    def __del__(self) -> None:
+        for _, path in self._paths.items():
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+        self._paths.clear()
 
 
 # DEPRECATED: Should be removed with login()/get_pykube_cfg()/get_pykube_api().
