@@ -141,8 +141,8 @@ class APISession(aiohttp.ClientSession):
                 cafile=ca_path)
 
         if info.insecure:
-            context.verify_mode = ssl.CERT_NONE
             context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
 
         # The token auth part.
         headers: Dict[str, str] = {}
