@@ -25,7 +25,7 @@ class Resource(NamedTuple):
             name: Optional[str] = None,
             params: Optional[Mapping[str, str]] = None,
     ) -> str:
-        parts: List[Optional[str]] = [
+        return self._build_url(server, params, [
             '/api' if self.group == '' and self.version == 'v1' else '/apis',
             self.group,
             self.version,
@@ -33,7 +33,26 @@ class Resource(NamedTuple):
             namespace,
             self.plural,
             name,
-        ]
+        ])
+
+    def get_version_url(
+            self,
+            *,
+            server: Optional[str] = None,
+            params: Optional[Mapping[str, str]] = None,
+    ) -> str:
+        return self._build_url(server, params, [
+            '/api' if self.group == '' and self.version == 'v1' else '/apis',
+            self.group,
+            self.version,
+        ])
+
+    def _build_url(
+            self,
+            server: Optional[str],
+            params: Optional[Mapping[str, str]],
+            parts: List[Optional[str]],
+    ) -> str:
         query = urllib.parse.urlencode(params, encoding='utf-8') if params else ''
         path = '/'.join([part for part in parts if part])
         url = path + ('?' if query else '') + query

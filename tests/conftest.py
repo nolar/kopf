@@ -9,7 +9,7 @@ import sys
 import time
 from unittest.mock import Mock
 
-import aiohttp
+import aiohttp.web
 import asynctest
 import pytest
 import pytest_mock
@@ -175,7 +175,17 @@ def resp_mocker(fake_vault, enforced_session, resource, aresponses):
 
 
 @pytest.fixture()
-def stream(fake_vault, resp_mocker, aresponses, hostname, resource):
+def version_api(resp_mocker, aresponses, hostname, resource):
+    result = {'resources': [{
+        'name': resource.plural,
+        'namespaced': True,
+    }]}
+    list_mock = resp_mocker(return_value=aiohttp.web.json_response(result))
+    aresponses.add(hostname, resource.get_version_url(), 'get', list_mock)
+
+
+@pytest.fixture()
+def stream(fake_vault, resp_mocker, aresponses, hostname, resource, version_api):
     """ A mock for the stream of events as if returned by K8s client. """
 
     def feed(*args, namespace=None):

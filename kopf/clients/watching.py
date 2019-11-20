@@ -28,6 +28,7 @@ import aiohttp
 
 from kopf import config
 from kopf.clients import auth
+from kopf.clients import discovery
 from kopf.clients import fetching
 from kopf.structs import bodies
 from kopf.structs import resources
@@ -140,6 +141,9 @@ async def watch_objs(
     if session is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 
+    is_namespaced = await discovery.is_namespaced(resource=resource, session=session)
+    namespace = namespace if is_namespaced else None
+
     params: Dict[str, str] = {}
     params['watch'] = 'true'
     if since is not None:
@@ -147,7 +151,6 @@ async def watch_objs(
     if timeout is not None:
         params['timeoutSeconds'] = str(timeout)
 
-    # TODO: also add cluster-wide resource when --namespace is set?
     response = await session.get(
         url=resource.get_url(server=session.server, namespace=namespace, params=params),
         timeout=aiohttp.ClientTimeout(total=None),

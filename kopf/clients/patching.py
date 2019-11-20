@@ -3,6 +3,7 @@ from typing import Optional, cast
 import aiohttp
 
 from kopf.clients import auth
+from kopf.clients import discovery
 from kopf.structs import bodies
 from kopf.structs import patches
 from kopf.structs import resources
@@ -36,6 +37,10 @@ async def patch_obj(
 
     namespace = body.get('metadata', {}).get('namespace') if body is not None else namespace
     name = body.get('metadata', {}).get('name') if body is not None else name
+
+    is_namespaced = await discovery.is_namespaced(resource=resource, session=session)
+    namespace = namespace if is_namespaced else None
+
     if body is None:
         body = cast(bodies.Body, {'metadata': {'name': name}})
         if namespace is not None:

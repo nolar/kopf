@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import functools
 import os
@@ -10,6 +11,7 @@ from typing import Optional, Callable, Any, TypeVar, Dict, Iterator, Mapping, ca
 import aiohttp
 
 from kopf.structs import credentials
+from kopf.structs import resources
 
 # Per-operator storage and exchange point for authentication methods.
 # Used by the client wrappers to retrieve the credentials and report the failures.
@@ -85,8 +87,10 @@ class APISession(aiohttp.ClientSession):
     performed inside of those threads: everything is in the main thread/loop.
     """
     server: str
-    default_namespace: Optional[str] = None
+    default_namespace: Optional[str]
     _tempfiles: "_TempFiles"
+    _discovery_lock: asyncio.Lock
+    _discovered_resources: Dict[resources.Resource, Dict[str, object]]
 
     @classmethod
     def from_connection_info(
@@ -177,6 +181,8 @@ class APISession(aiohttp.ClientSession):
         session.server = info.server
         session.default_namespace = info.default_namespace
         session._tempfiles = tempfiles  # for purging on garbage collection
+        session._discovery_lock = asyncio.Lock()
+        session._discovered_resources = {}
 
         return session
 
