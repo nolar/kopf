@@ -106,7 +106,7 @@ class APISession(aiohttp.ClientSession):
     default_namespace: Optional[str]
     _tempfiles: "_TempFiles"
     _discovery_lock: asyncio.Lock
-    _discovered_resources: Dict[resources.Resource, Dict[str, object]]
+    _discovered_resources: Dict[str, Dict[resources.Resource, Dict[str, object]]]
 
     @classmethod
     def from_connection_info(

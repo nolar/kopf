@@ -15,9 +15,10 @@ async def discover(
     if session is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 
-    if resource not in session._discovered_resources:
+    if resource.api_version not in session._discovered_resources:
         async with session._discovery_lock:
-            if resource not in session._discovered_resources:
+            if resource.api_version not in session._discovered_resources:
+                session._discovered_resources[resource.api_version] = {}
 
                 try:
                     response = await session.get(
@@ -26,18 +27,18 @@ async def discover(
                     response.raise_for_status()
                     respdata = await response.json()
 
-                    session._discovered_resources.update({
+                    session._discovered_resources[resource.api_version].update({
                         resources.Resource(resource.group, resource.version, info['name']): info
                         for info in respdata['resources']
                     })
 
                 except aiohttp.ClientResponseError as e:
                     if e.status in [403, 404]:
-                        session._discovered_resources[resource] = None
+                        pass
                     else:
                         raise
 
-    return session._discovered_resources.get(resource, None)
+    return session._discovered_resources[resource.api_version].get(resource, None)
 
 
 @auth.reauthenticated_request

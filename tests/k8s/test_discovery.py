@@ -65,7 +65,7 @@ async def test_discovery_is_cached_per_session(
 
     resource = Resource('some-group.org', 'someversion', 'someresources2')
     info = await discover(resource=resource)
-    assert info == res2info
+    assert info is None  # cached as absent on the 1st call.
 
     resource = Resource('some-group.org', 'someversion', 'someresources1')
     info = await discover(resource=resource)
