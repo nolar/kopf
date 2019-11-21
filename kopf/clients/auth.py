@@ -33,6 +33,13 @@ def reauthenticated_request(fn: _F) -> _F:
     """
     @functools.wraps(fn)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
+
+        # If a session is explicitly passed, make it a simple call without re-auth.
+        # Exceptions are escalated to a caller, which is probably wrapped itself.
+        if 'session' in kwargs:
+            return await fn(*args, **kwargs)
+
+        # Otherwise, attempt the execution with the vault credentials and re-authenticate on 401s.
         vault: credentials.Vault = vault_var.get()
         async for key, info, session in vault.extended(APISession.from_connection_info, 'sessions'):
             try:
@@ -58,6 +65,15 @@ def reauthenticated_stream(fn: _F) -> _F:
     """
     @functools.wraps(fn)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
+
+        # If a session is explicitly passed, make it a simple call without re-auth.
+        # Exceptions are escalated to a caller, which is probably wrapped itself.
+        if 'session' in kwargs:
+            async for item in fn(*args, **kwargs):
+                yield item
+            return
+
+        # Otherwise, attempt the execution with the vault credentials and re-authenticate on 401s.
         vault: credentials.Vault = vault_var.get()
         async for key, info, session in vault.extended(APISession.from_connection_info, 'sessions'):
             try:
