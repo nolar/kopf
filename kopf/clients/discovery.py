@@ -1,5 +1,7 @@
 from typing import Dict, Optional, cast
 
+import aiohttp
+
 from kopf.clients import auth
 from kopf.structs import resources
 
@@ -17,16 +19,24 @@ async def discover(
         async with session._discovery_lock:
             if resource not in session._discovered_resources:
 
-                response = await session.get(
-                    url=resource.get_version_url(server=session.server),
-                )
-                response.raise_for_status()
-                respdata = await response.json()
+                try:
+                    response = await session.get(
+                        url=resource.get_version_url(server=session.server),
+                    )
+                    response.raise_for_status()
+                    respdata = await response.json()
 
-                session._discovered_resources.update({
-                    resources.Resource(resource.group, resource.version, info['name']): info
-                    for info in respdata['resources']
-                })
+                    session._discovered_resources.update({
+                        resources.Resource(resource.group, resource.version, info['name']): info
+                        for info in respdata['resources']
+                    })
+
+                except aiohttp.ClientResponseError as e:
+                    if e.status in [403, 404]:
+                        session._discovered_resources[resource] = None
+                    else:
+                        raise
+
     return session._discovered_resources.get(resource, None)
 
 
