@@ -182,7 +182,7 @@ async def spawn_tasks(
     vault = vault if vault is not None else global_vault
     vault = vault if vault is not None else credentials.Vault()
     event_queue: posting.K8sEventQueue = asyncio.Queue(loop=loop)
-    freeze_flag: asyncio.Event = asyncio.Event(loop=loop)
+    freeze_mode: primitives.Toggle = primitives.Toggle(loop=loop)
     signal_flag: asyncio_Future = asyncio.Future(loop=loop)
     ready_flag = ready_flag if ready_flag is not None else asyncio.Event()
     tasks: MutableSequence[asyncio_Task] = []
@@ -248,7 +248,7 @@ async def spawn_tasks(
                     resource=ourselves.resource,
                     handler=functools.partial(peering.peers_handler,
                                               ourselves=ourselves,
-                                              freeze=freeze_flag)))),  # freeze is set/cleared
+                                              freeze_mode=freeze_mode)))),
         ])
 
     # Resource event handling, only once for every known resource (de-duplicated).
@@ -265,7 +265,7 @@ async def spawn_tasks(
                                               memories=memories,
                                               resource=resource,
                                               event_queue=event_queue,
-                                              freeze=freeze_flag)))),  # freeze is only checked
+                                              freeze_mode=freeze_mode)))),
         ])
 
     # On Ctrl+C or pod termination, cancel all tasks gracefully.

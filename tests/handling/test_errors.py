@@ -8,6 +8,7 @@ from kopf.reactor.causation import Reason, HANDLER_REASONS
 from kopf.reactor.handling import PermanentError, TemporaryError
 from kopf.reactor.handling import resource_handler
 from kopf.structs.containers import ResourceMemories
+from kopf.structs.primitives import Toggle
 
 
 # The extrahandlers are needed to prevent the cycle ending and status purging.
@@ -31,7 +32,7 @@ async def test_fatal_error_stops_handler(
         resource=resource,
         memories=ResourceMemories(),
         event={'type': event_type, 'object': cause_mock.body},
-        freeze=asyncio.Event(),
+        freeze_mode=Toggle(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
@@ -75,7 +76,7 @@ async def test_retry_error_delays_handler(
         resource=resource,
         memories=ResourceMemories(),
         event={'type': event_type, 'object': cause_mock.body},
-        freeze=asyncio.Event(),
+        freeze_mode=Toggle(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
@@ -120,7 +121,7 @@ async def test_arbitrary_error_delays_handler(
         resource=resource,
         memories=ResourceMemories(),
         event={'type': event_type, 'object': cause_mock.body},
-        freeze=asyncio.Event(),
+        freeze_mode=Toggle(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )

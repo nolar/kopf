@@ -8,6 +8,7 @@ from kopf.reactor.causation import HANDLER_REASONS
 from kopf.reactor.handling import resource_handler
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
+from kopf.structs.primitives import Toggle
 
 
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
@@ -33,7 +34,7 @@ async def test_skipped_with_no_handlers(
         resource=resource,
         memories=ResourceMemories(),
         event={'type': None, 'object': cause_mock.body},
-        freeze=asyncio.Event(),
+        freeze_mode=Toggle(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )

@@ -44,6 +44,7 @@ from kopf.clients import fetching
 from kopf.clients import patching
 from kopf.structs import bodies
 from kopf.structs import patches
+from kopf.structs import primitives
 from kopf.structs import resources
 
 logger = logging.getLogger(__name__)
@@ -202,7 +203,7 @@ async def apply_peers(
 async def peers_handler(
         *,
         event: bodies.Event,
-        freeze: asyncio.Event,
+        freeze_mode: primitives.Toggle,
         ourselves: Peer,
         autoclean: bool = True,
         replenished: asyncio.Event,
@@ -237,17 +238,18 @@ async def peers_handler(
         await apply_peers(dead_peers, name=ourselves.name, namespace=ourselves.namespace, legacy=ourselves.legacy)
 
     if prio_peers:
-        if not freeze.is_set():
+        if freeze_mode.is_off():
             logger.info(f"Freezing operations in favour of {prio_peers}.")
-            freeze.set()
+            await freeze_mode.turn_on()
     
     elif same_peers:
         logger.warning(f"Possibly conflicting operators with the same priority: {same_peers}.")
-        logger.warning(f"Freezed all Operators: {peers}")
-        freeze.set()
-    elif freeze.is_set():
-        logger.info(f"Resuming operations after the freeze. Conflicting operators with the same priority are gone")
-        freeze.clear()
+        logger.warning(f"Freezing all operators, including self: {peers}")
+        await freeze_mode.turn_on()
+
+    elif freeze_mode.is_on():
+        logger.info(f"Resuming operations after the freeze. Conflicting operators with the same priority are gone.")
+        await freeze_mode.turn_off()
 
 
 async def peers_keepalive(
