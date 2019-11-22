@@ -30,6 +30,8 @@ import random
 from typing import (Optional, AsyncIterable, AsyncIterator, Tuple,
                     NewType, Dict, List, Mapping, Callable, TypeVar, cast)
 
+from kopf.structs import primitives
+
 
 class LoginError(Exception):
     """ Raised when the operator cannot login to the API. """
@@ -117,15 +119,13 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
         self._current = {}
         self._invalid = collections.defaultdict(list)
         self._lock = asyncio.Lock(loop=loop)
-        self.readiness = asyncio.Event(loop=loop)
-        self.emptiness = asyncio.Event(loop=loop)
 
         if __src is not None:
             self._update_converted(__src)
-        if self:
-            self.readiness.set()  # to be usable instantly
-        else:
-            self.emptiness.set()  # to trigger the initial authentication
+
+        # Mark a pre-populated vault to be usable instantly,
+        # or trigger the initial authentication for an empty vault.
+        self._ready = primitives.Toggle(bool(self), loop=loop)
 
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__}: {self._current!r}>'
@@ -184,7 +184,7 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
 
             # Whether on the 1st run, or during the active re-authentication,
             # ensure that the items are ready before yielding them.
-            await self.readiness.wait()
+            await self._ready.wait_for_on()
 
             # Select the items to yield and let it (i.e. a consumer) work.
             async with self._lock:
@@ -247,11 +247,10 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
                 del self._current[key]
             need_reauth = not self._current  # i.e. nothing is left at all
 
-        # Initiate the re-authentication activity, and block until it is finished.
+        # Initiate a re-authentication activity, and block until it is finished.
         if need_reauth:
-            self.readiness.clear()      # => to prevent our own immediate success
-            self.emptiness.set()        # => authenticator starts the activity
-        await self.readiness.wait()     # => new items are added in the background
+            await self._ready.turn_off()
+            await self._ready.wait_for_on()
 
         # If the re-auth has failed, re-raise the original exception in the current stack.
         # If the original exception is unknown, raise normally on the next iteration's yield.
@@ -279,10 +278,15 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
         async with self._lock:
             self._update_converted(__src)
 
-        # Notify the consuming tasks that the new credentials are ready to be used.
-        # Those can be blocked in vault.invalidate() if there are no credentials left.
-        self.emptiness.clear()      # => to prevent the next cycle of re-authentication
-        self.readiness.set()        # => to wake up and to retry all the client wrappers
+        # Notify the consuming tasks (client wrappers) that new credentials are ready to be used.
+        # Those tasks can be blocked in `vault.invalidate()` if there are no credentials left.
+        await self._ready.turn_on()
+
+    async def wait_for_readiness(self) -> None:
+        await self._ready.wait_for_on()
+
+    async def wait_for_emptiness(self) -> None:
+        await self._ready.wait_for_off()
 
     async def close(self) -> None:
         """

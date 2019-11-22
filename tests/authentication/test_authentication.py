@@ -15,9 +15,6 @@ async def test_empty_registry_produces_no_credentials():
         vault=vault,
     )
 
-    assert vault.readiness.is_set()
-    assert not vault.emptiness.is_set()
-
     assert not vault
     with pytest.raises(LoginError):
         async for _, _ in vault:
@@ -41,9 +38,6 @@ async def test_noreturn_handler_produces_no_credentials():
         registry=registry,
         vault=vault,
     )
-
-    assert vault.readiness.is_set()
-    assert not vault.emptiness.is_set()
 
     assert not vault
     with pytest.raises(LoginError):
@@ -69,9 +63,6 @@ async def test_single_credentials_provided_to_vault():
         registry=registry,
         vault=vault,
     )
-
-    assert vault.readiness.is_set()
-    assert not vault.emptiness.is_set()
 
     assert vault
 

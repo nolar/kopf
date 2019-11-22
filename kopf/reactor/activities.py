@@ -53,7 +53,7 @@ async def authenticate(
     """ Retrieve the credentials once, successfully or not, and exit. """
 
     # Sleep most of the time waiting for a signal to re-auth.
-    await vault.emptiness.wait()
+    await vault.wait_for_emptiness()
 
     # Log initial and re-authentications differently, for readability.
     logger.info(f"{_activity_title} has been initiated.")
