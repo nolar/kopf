@@ -150,7 +150,6 @@ async def resource_handler(
         memories: containers.ResourceMemories,
         resource: resources.Resource,
         event: bodies.Event,
-        freeze_mode: primitives.Toggle,
         replenished: asyncio.Event,
         event_queue: posting.K8sEventQueue,
 ) -> None:
@@ -171,11 +170,6 @@ async def resource_handler(
     logger = logging_engine.ObjectLogger(body=body)
     posting.event_queue_loop_var.set(asyncio.get_running_loop())
     posting.event_queue_var.set(event_queue)  # till the end of this object's task.
-
-    # If the global freeze is set for the processing (i.e. other operator overrides), do nothing.
-    if freeze_mode.is_on():
-        logger.debug("Ignoring the events due to freeze.")
-        return
 
     # Recall what is stored about that object. Share it in little portions with the consumers.
     # And immediately forget it if the object is deleted from the cluster (but keep in memory).

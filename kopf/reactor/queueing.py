@@ -27,7 +27,7 @@ import asyncio
 import enum
 import logging
 import time
-from typing import Tuple, Union, MutableMapping, NewType, NamedTuple, TYPE_CHECKING, cast
+from typing import Tuple, Union, MutableMapping, NewType, NamedTuple, TYPE_CHECKING, cast, Optional
 
 import aiojobs
 from typing_extensions import Protocol
@@ -35,6 +35,7 @@ from typing_extensions import Protocol
 from kopf import config
 from kopf.clients import watching
 from kopf.structs import bodies
+from kopf.structs import primitives
 from kopf.structs import resources
 
 logger = logging.getLogger(__name__)
@@ -77,6 +78,7 @@ async def watcher(
         namespace: Union[None, str],
         resource: resources.Resource,
         handler: WatcherCallback,
+        freeze_mode: Optional[primitives.Toggle] = None,
 ) -> None:
     """
     The watchers watches for the resource events via the API, and spawns the handlers for every object.
@@ -98,7 +100,11 @@ async def watcher(
     try:
         # Either use the existing object's queue, or create a new one together with the per-object job.
         # "Fire-and-forget": we do not wait for the result; the job destroys itself when it is fully done.
-        async for event in watching.infinite_watch(resource=resource, namespace=namespace):
+        stream = watching.infinite_watch(
+            resource=resource, namespace=namespace,
+            freeze_mode=freeze_mode,
+        )
+        async for event in stream:
             key = cast(ObjectRef, (resource, event['object']['metadata']['uid']))
             try:
                 streams[key].replenished.set()  # interrupt current sleeps, if any.

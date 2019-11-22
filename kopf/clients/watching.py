@@ -19,10 +19,10 @@ They would not be needed if the client library were natively asynchronous.
 """
 
 import asyncio
-import collections
+import contextlib
 import json
 import logging
-from typing import Optional, Dict, AsyncIterator, cast
+from typing import Optional, Dict, AsyncIterator, Any, cast, TYPE_CHECKING
 
 import aiohttp
 
@@ -31,12 +31,15 @@ from kopf.clients import auth
 from kopf.clients import discovery
 from kopf.clients import fetching
 from kopf.structs import bodies
+from kopf.structs import primitives
 from kopf.structs import resources
 
 logger = logging.getLogger(__name__)
 
-# Pykube declares it inside of a function, not importable from the package/module.
-PykubeWatchEvent = collections.namedtuple("WatchEvent", "type object")
+if TYPE_CHECKING:
+    asyncio_Future = asyncio.Future[Any]
+else:
+    asyncio_Future = asyncio.Future
 
 
 class WatchingError(Exception):
@@ -49,6 +52,7 @@ async def infinite_watch(
         *,
         resource: resources.Resource,
         namespace: Optional[str],
+        freeze_mode: Optional[primitives.Toggle] = None,
 ) -> AsyncIterator[bodies.Event]:
     """
     Stream the watch-events infinitely.
@@ -61,7 +65,12 @@ async def infinite_watch(
     It only exits with unrecoverable exceptions.
     """
     while True:
-        async for event in streaming_watch(resource=resource, namespace=namespace):
+        stream = streaming_watch(
+            resource=resource,
+            namespace=namespace,
+            freeze_mode=freeze_mode,
+        )
+        async for event in stream:
             yield event
         await asyncio.sleep(config.WatchersConfig.watcher_retry_delay)
 
@@ -70,10 +79,46 @@ async def streaming_watch(
         *,
         resource: resources.Resource,
         namespace: Optional[str],
+        freeze_mode: Optional[primitives.Toggle] = None,
 ) -> AsyncIterator[bodies.Event]:
-    """
-    Stream the watch-events from one single API watch-call.
-    """
+
+    # Prevent both watching and listing while the freeze mode is on, until it is off.
+    # Specifically, the watch-stream closes its connection once the freeze mode is on,
+    # so the while-true & for-event-in-stream cycles exit, and this coroutine is started
+    # again by the `infinite_stream()` (the watcher timeout is swallowed by the freeze time).
+    if freeze_mode is not None and freeze_mode.is_on():
+        logger.debug("Freezing the watch-stream for %r", resource)
+        await freeze_mode.wait_for_off()
+        logger.debug("Resuming the watch-stream for %r", resource)
+
+    # A stop-feature is a client-specific way of terminating the streaming HTTPS connection
+    # when a freeze-mode is turned on. The low-level API call attaches its `response.close()`
+    # to the future's callbacks, and a background task triggers it when the mode is turned on.
+    freeze_waiter: asyncio_Future
+    if freeze_mode is not None:
+        freeze_waiter = asyncio.create_task(freeze_mode.wait_for_on())
+    else:
+        freeze_waiter = asyncio.Future()  # a dummy just ot have it
+
+    try:
+        stream = continuous_watch(
+            resource=resource, namespace=namespace,
+            freeze_waiter=freeze_waiter,
+        )
+        async for event in stream:
+            yield event
+    finally:
+        with contextlib.suppress(asyncio.CancelledError):
+            freeze_waiter.cancel()
+            await freeze_waiter
+
+
+async def continuous_watch(
+        *,
+        resource: resources.Resource,
+        namespace: Optional[str],
+        freeze_waiter: asyncio_Future,
+) -> AsyncIterator[bodies.Event]:
 
     # First, list the resources regularly, and get the list's resource version.
     # Simulate the events with type "None" event - used in detection of causes.
@@ -83,13 +128,14 @@ async def streaming_watch(
 
     # Repeat through disconnects of the watch as long as the resource version is valid (no errors).
     # The individual watching API calls are disconnected by timeout even if the stream is fine.
-    while True:
+    while not freeze_waiter.done():
 
         # Then, watch the resources starting from the list's resource version.
         stream = watch_objs(
             resource=resource, namespace=namespace,
             timeout=config.WatchersConfig.default_stream_timeout,
             since=resource_version,
+            freeze_waiter=freeze_waiter,
         )
         async for event in stream:
 
@@ -98,7 +144,7 @@ async def streaming_watch(
             # The error occurs when there is nothing happening for few minutes. This is normal.
             if event['type'] == 'ERROR' and cast(bodies.Error, event['object'])['code'] == 410:
                 logger.debug("Restarting the watch-stream for %r", resource)
-                return  # out of regular stream, to the infinite stream.
+                return  # out of the regular stream, to the infinite stream.
 
             # Other watch errors should be fatal for the operator.
             if event['type'] == 'ERROR':
@@ -125,6 +171,7 @@ async def watch_objs(
         timeout: Optional[float] = None,
         since: Optional[str] = None,
         session: Optional[auth.APISession] = None,  # injected by the decorator
+        freeze_waiter: asyncio_Future,
 ) -> AsyncIterator[bodies.RawEvent]:
     """
     Watch objects of a specific resource type.
@@ -151,13 +198,23 @@ async def watch_objs(
     if timeout is not None:
         params['timeoutSeconds'] = str(timeout)
 
+    # Talk to the API and initiate a streaming response.
     response = await session.get(
         url=resource.get_url(server=session.server, namespace=namespace, params=params),
         timeout=aiohttp.ClientTimeout(total=None),
     )
     response.raise_for_status()
 
-    async with response:
-        async for line in response.content:
-            event = cast(bodies.RawEvent, json.loads(line.decode("utf-8")))
-            yield event
+    # Stream the parsed events from the response until it is closed server-side,
+    # or until it is closed client-side by the freeze-waiting future's callbacks.
+    response_close_callback = lambda _: response.close()
+    freeze_waiter.add_done_callback(response_close_callback)
+    try:
+        async with response:
+            async for line in response.content:
+                event = cast(bodies.RawEvent, json.loads(line.decode("utf-8")))
+                yield event
+    except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError):
+        pass
+    finally:
+        freeze_waiter.remove_done_callback(response_close_callback)
