@@ -1,11 +1,10 @@
 import asyncio
-import concurrent.futures
 import functools
 import logging
 import signal
 import threading
 import warnings
-from typing import (Optional, Collection, Union, Tuple, Set, Any, Coroutine,
+from typing import (Optional, Collection, Tuple, Set, Any, Coroutine,
                     Sequence, MutableSequence, cast, TYPE_CHECKING)
 
 from kopf.clients import auth
@@ -20,6 +19,7 @@ from kopf.reactor import queueing
 from kopf.reactor import registries
 from kopf.structs import containers
 from kopf.structs import credentials
+from kopf.structs import primitives
 
 if TYPE_CHECKING:
     asyncio_Task = asyncio.Task[None]
@@ -28,7 +28,6 @@ else:
     asyncio_Task = asyncio.Task
     asyncio_Future = asyncio.Future
 
-Flag = Union[asyncio_Future, asyncio.Event, concurrent.futures.Future, threading.Event]
 Tasks = Collection[asyncio_Task]
 
 logger = logging.getLogger(__name__)
@@ -88,8 +87,8 @@ def run(
         peering_name: Optional[str] = None,
         liveness_endpoint: Optional[str] = None,
         namespace: Optional[str] = None,
-        stop_flag: Optional[Flag] = None,
-        ready_flag: Optional[Flag] = None,
+        stop_flag: Optional[primitives.Flag] = None,
+        ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
 ) -> None:
     """
@@ -126,8 +125,8 @@ async def operator(
         peering_name: Optional[str] = None,
         liveness_endpoint: Optional[str] = None,
         namespace: Optional[str] = None,
-        stop_flag: Optional[Flag] = None,
-        ready_flag: Optional[Flag] = None,
+        stop_flag: Optional[primitives.Flag] = None,
+        ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
 ) -> None:
     """
@@ -165,8 +164,8 @@ async def spawn_tasks(
         peering_name: Optional[str] = None,
         liveness_endpoint: Optional[str] = None,
         namespace: Optional[str] = None,
-        stop_flag: Optional[Flag] = None,
-        ready_flag: Optional[Flag] = None,
+        stop_flag: Optional[primitives.Flag] = None,
+        ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
 ) -> Tasks:
     """
@@ -406,12 +405,12 @@ async def _reraise(
 
 async def _root_task_checker(
         name: str,
-        ready_flag: Flag,
+        ready_flag: primitives.Flag,
         coro: Coroutine[Any, Any, Any],
 ) -> None:
 
     # Wait until the startup activity succeeds. The wait will be cancelled if the startup failed.
-    await _wait_flag(ready_flag)
+    await primitives.wait_flag(ready_flag)
 
     # Actually run the root task, and log the outcome.
     try:
@@ -428,7 +427,7 @@ async def _root_task_checker(
 
 async def _stop_flag_checker(
         signal_flag: asyncio_Future,
-        stop_flag: Optional[Flag],
+        stop_flag: Optional[primitives.Flag],
 ) -> None:
     """
     A top-level task for external stopping by setting a stop-flag. Once set,
@@ -440,7 +439,7 @@ async def _stop_flag_checker(
     if signal_flag is not None:
         flags.append(signal_flag)
     if stop_flag is not None:
-        flags.append(asyncio.create_task(_wait_flag(stop_flag)))
+        flags.append(asyncio.create_task(primitives.wait_flag(stop_flag)))
 
     # Wait until one of the stoppers is set/raised.
     try:
@@ -460,7 +459,7 @@ async def _stop_flag_checker(
 
 async def _startup_cleanup_activities(
         root_tasks: Sequence[asyncio_Task],  # mutated externally!
-        ready_flag: Optional[Flag],
+        ready_flag: Optional[primitives.Flag],
         registry: registries.OperatorRegistry,
         vault: credentials.Vault,
 ) -> None:
@@ -489,7 +488,7 @@ async def _startup_cleanup_activities(
         raise
 
     # Notify the caller that we are ready to be executed. This unfreezes all the root tasks.
-    await _raise_flag(ready_flag)
+    await primitives.raise_flag(ready_flag)
 
     # Sleep forever, or until cancelled, which happens when the operator begins its shutdown.
     try:
@@ -535,51 +534,3 @@ def create_tasks(
                   "use kopf.spawn_tasks() or kopf.operator().",
                   DeprecationWarning)
     return loop.run_until_complete(spawn_tasks(*arg, **kwargs))
-
-
-async def _wait_flag(
-        flag: Optional[Flag],
-) -> Any:
-    """
-    Wait for a flag to be raised.
-
-    Non-asyncio primitives are generally not our worry,
-    but we support them for convenience.
-    """
-    if flag is None:
-        pass
-    elif isinstance(flag, asyncio.Future):
-        return await flag
-    elif isinstance(flag, asyncio.Event):
-        return await flag.wait()
-    elif isinstance(flag, concurrent.futures.Future):
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, flag.result)
-    elif isinstance(flag, threading.Event):
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, flag.wait)
-    else:
-        raise TypeError(f"Unsupported type of a flag: {flag!r}")
-
-
-async def _raise_flag(
-        flag: Optional[Flag],
-) -> None:
-    """
-    Raise a flag.
-
-    Non-asyncio primitives are generally not our worry,
-    but we support them for convenience.
-    """
-    if flag is None:
-        pass
-    elif isinstance(flag, asyncio.Future):
-        flag.set_result(None)
-    elif isinstance(flag, asyncio.Event):
-        flag.set()
-    elif isinstance(flag, concurrent.futures.Future):
-        flag.set_result(None)
-    elif isinstance(flag, threading.Event):
-        flag.set()
-    else:
-        raise TypeError(f"Unsupported type of a flag: {flag!r}")
