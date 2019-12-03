@@ -28,10 +28,10 @@ spec:
     - name: Children
       type: string
       priority: 0
-      JSONPath: .status.children
+      JSONPath: .status.create_fn.children
       description: The children pods created.
     - name: Message
       type: string
       priority: 0
-      JSONPath: .status.message
+      JSONPath: .status.create_fn.message
       description: As returned from the handler (sometimes).
