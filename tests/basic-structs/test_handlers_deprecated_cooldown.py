@@ -1,15 +1,8 @@
-import pytest
-
+# Original test-file: tests/basic-structs/test_handlers.py
 from kopf.reactor.registries import ActivityHandler, ResourceHandler
 
 
-@pytest.mark.parametrize('cls', [ActivityHandler, ResourceHandler])
-def test_handler_with_no_args(cls):
-    with pytest.raises(TypeError):
-        cls()
-
-
-def test_activity_handler_with_all_args(mocker):
+def test_activity_handler_with_deprecated_cooldown_instead_of_backoff(mocker):
     fn = mocker.Mock()
     id = mocker.Mock()
     errors = mocker.Mock()
@@ -23,8 +16,8 @@ def test_activity_handler_with_all_args(mocker):
         errors=errors,
         timeout=timeout,
         retries=retries,
-        backoff=backoff,
-        cooldown=None,  # deprecated, but still required
+        backoff=None,
+        cooldown=backoff,  # deprecated, but still required
         activity=activity,
     )
     assert handler.fn is fn
@@ -37,7 +30,7 @@ def test_activity_handler_with_all_args(mocker):
     assert handler.activity is activity
 
 
-def test_resource_handler_with_all_args(mocker):
+def test_resource_handler_with_deprecated_cooldown_instead_of_backoff(mocker):
     fn = mocker.Mock()
     id = mocker.Mock()
     reason = mocker.Mock()
@@ -58,8 +51,8 @@ def test_resource_handler_with_all_args(mocker):
         errors=errors,
         timeout=timeout,
         retries=retries,
-        backoff=backoff,
-        cooldown=None,  # deprecated, but still required
+        backoff=None,
+        cooldown=backoff,  # deprecated, but still required
         initial=initial,
         labels=labels,
         annotations=annotations,
