@@ -7,6 +7,7 @@ import kopf
 from kopf.reactor.causation import ALL_REASONS
 from kopf.reactor.handling import resource_handler
 from kopf.structs.containers import ResourceMemories
+from kopf.structs.primitives import Toggle
 
 
 @pytest.mark.parametrize('cause_type', ALL_REASONS)
@@ -22,7 +23,7 @@ async def test_handlers_called_always(
         resource=resource,
         memories=ResourceMemories(),
         event={'type': 'ev-type', 'object': cause_mock.body},
-        freeze=asyncio.Event(),
+        freeze_mode=Toggle(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
@@ -58,7 +59,7 @@ async def test_errors_are_ignored(
         resource=resource,
         memories=ResourceMemories(),
         event={'type': 'ev-type', 'object': cause_mock.body},
-        freeze=asyncio.Event(),
+        freeze_mode=Toggle(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )

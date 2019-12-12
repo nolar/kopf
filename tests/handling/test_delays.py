@@ -13,6 +13,7 @@ from kopf.reactor.handling import resource_handler
 from kopf.reactor.states import HandlerState
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.finalizers import FINALIZER
+from kopf.structs.primitives import Toggle
 
 
 @pytest.mark.parametrize('cause_reason', HANDLER_REASONS)
@@ -39,7 +40,7 @@ async def test_delayed_handlers_progress(
             resource=resource,
             memories=ResourceMemories(),
             event={'type': event_type, 'object': cause_mock.body},
-            freeze=asyncio.Event(),
+            freeze_mode=Toggle(),
             replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
@@ -95,7 +96,7 @@ async def test_delayed_handlers_sleep(
             resource=resource,
             memories=ResourceMemories(),
             event={'type': event_type, 'object': cause_mock.body},
-            freeze=asyncio.Event(),
+            freeze_mode=Toggle(),
             replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )

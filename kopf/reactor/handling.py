@@ -36,6 +36,7 @@ from kopf.structs import diffs
 from kopf.structs import finalizers
 from kopf.structs import lastseen
 from kopf.structs import patches
+from kopf.structs import primitives
 from kopf.structs import resources
 
 WAITING_KEEPALIVE_INTERVAL = 10 * 60
@@ -149,7 +150,7 @@ async def resource_handler(
         memories: containers.ResourceMemories,
         resource: resources.Resource,
         event: bodies.Event,
-        freeze: asyncio.Event,
+        freeze_mode: primitives.Toggle,
         replenished: asyncio.Event,
         event_queue: posting.K8sEventQueue,
 ) -> None:
@@ -172,7 +173,7 @@ async def resource_handler(
     posting.event_queue_var.set(event_queue)  # till the end of this object's task.
 
     # If the global freeze is set for the processing (i.e. other operator overrides), do nothing.
-    if freeze.is_set():
+    if freeze_mode.is_on():
         logger.debug("Ignoring the events due to freeze.")
         return
 
@@ -500,7 +501,7 @@ async def _execute_handler(
     exceptions mean the failure of execution itself.
     """
     errors = handler.errors if handler.errors is not None else default_errors
-    cooldown = handler.cooldown if handler.cooldown is not None else DEFAULT_RETRY_DELAY
+    backoff = handler.backoff if handler.backoff is not None else DEFAULT_RETRY_DELAY
 
     # Prevent successes/failures from posting k8s-events for resource-watching causes.
     logger: Union[logging.Logger, logging.LoggerAdapter]
@@ -557,7 +558,7 @@ async def _execute_handler(
             return states.HandlerOutcome(final=True)
         elif errors == registries.ErrorsMode.TEMPORARY:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")
-            return states.HandlerOutcome(final=False, exception=e, delay=cooldown)
+            return states.HandlerOutcome(final=False, exception=e, delay=backoff)
         elif errors == registries.ErrorsMode.PERMANENT:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will stop.")
             return states.HandlerOutcome(final=True, exception=e)

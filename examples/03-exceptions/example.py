@@ -21,11 +21,11 @@ def eventual_success_with_few_messages(retry, **kwargs):
         raise kopf.TemporaryError("Expected recoverable error.", delay=1.0)
 
 
-@kopf.on.create('zalando.org', 'v1', 'kopfexamples', retries=3, cooldown=1.0)
+@kopf.on.create('zalando.org', 'v1', 'kopfexamples', retries=3, backoff=1.0)
 def eventual_failure_with_tracebacks(**kwargs):
     raise MyException("An error that is supposed to be recoverable.")
 
 
-@kopf.on.create('zalando.org', 'v1', 'kopfexamples', errors=kopf.ErrorsMode.PERMANENT, cooldown=1.0)
+@kopf.on.create('zalando.org', 'v1', 'kopfexamples', errors=kopf.ErrorsMode.PERMANENT, backoff=1.0)
 def instant_failure_with_traceback(**kwargs):
     raise MyException("An error that is supposed to be recoverable.")

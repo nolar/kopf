@@ -91,7 +91,23 @@ class BaseHandler:
     errors: Optional[ErrorsMode]
     timeout: Optional[float]
     retries: Optional[int]
-    cooldown: Optional[float]
+    backoff: Optional[float]
+    cooldown: dataclasses.InitVar[Optional[float]]  # deprecated, use `backoff`
+
+    def __post_init__(self, cooldown: Optional[float]) -> None:
+        if self.backoff is not None and cooldown is not None:
+            raise TypeError("Either backoff or cooldown can be set, not both.")
+        elif cooldown is not None:
+            warnings.warn("cooldown=... is deprecated, use backoff=...", DeprecationWarning)
+            self.backoff = cooldown
+
+    # @property cannot be used due to a data field definition with the same name.
+    def __getattribute__(self, name: str) -> Any:
+        if name == 'cooldown':
+            warnings.warn("handler.cooldown is deprecated, use handler.backoff", DeprecationWarning)
+            return self.backoff
+        else:
+            return super().__getattribute__(name)
 
 
 @dataclasses.dataclass
@@ -151,14 +167,15 @@ class ActivityRegistry(GenericRegistry[ActivityHandler, ActivityHandlerFn]):
             errors: Optional[ErrorsMode] = None,
             timeout: Optional[float] = None,
             retries: Optional[int] = None,
-            cooldown: Optional[float] = None,
+            backoff: Optional[float] = None,
+            cooldown: Optional[float] = None,  # deprecated, use `backoff`
             activity: Optional[causation.Activity] = None,
             _fallback: bool = False,
     ) -> ActivityHandlerFn:
         real_id = generate_id(fn=fn, id=id, prefix=self.prefix)
         handler = ActivityHandler(
             id=real_id, fn=fn, activity=activity,
-            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             _fallback=_fallback,
         )
         self.append(handler)
@@ -203,7 +220,8 @@ class ResourceRegistry(GenericRegistry[ResourceHandler, ResourceHandlerFn], Gene
             errors: Optional[ErrorsMode] = None,
             timeout: Optional[float] = None,
             retries: Optional[int] = None,
-            cooldown: Optional[float] = None,
+            backoff: Optional[float] = None,
+            cooldown: Optional[float] = None,  # deprecated, use `backoff`
             initial: Optional[bool] = None,
             deleted: Optional[bool] = None,
             requires_finalizer: bool = False,
@@ -217,7 +235,7 @@ class ResourceRegistry(GenericRegistry[ResourceHandler, ResourceHandlerFn], Gene
         real_id = generate_id(fn=fn, id=id, prefix=self.prefix, suffix=".".join(real_field or []))
         handler = ResourceHandler(
             id=real_id, fn=fn, reason=reason, field=real_field,
-            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
             labels=labels, annotations=annotations,
         )
@@ -320,13 +338,14 @@ class OperatorRegistry:
             errors: Optional[ErrorsMode] = None,
             timeout: Optional[float] = None,
             retries: Optional[int] = None,
-            cooldown: Optional[float] = None,
+            backoff: Optional[float] = None,
+            cooldown: Optional[float] = None,  # deprecated, use `backoff`
             activity: Optional[causation.Activity] = None,
             _fallback: bool = False,
     ) -> ActivityHandlerFn:
         return self._activity_handlers.register(
             fn=fn, id=id, activity=activity,
-            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             _fallback=_fallback,
         )
 
@@ -362,7 +381,8 @@ class OperatorRegistry:
             errors: Optional[ErrorsMode] = None,
             timeout: Optional[float] = None,
             retries: Optional[int] = None,
-            cooldown: Optional[float] = None,
+            backoff: Optional[float] = None,
+            cooldown: Optional[float] = None,  # deprecated, use `backoff`
             initial: Optional[bool] = None,
             deleted: Optional[bool] = None,
             requires_finalizer: bool = False,
@@ -375,7 +395,7 @@ class OperatorRegistry:
         resource = resources_.Resource(group, version, plural)
         return self._resource_changing_handlers[resource].register(
             reason=reason, event=event, field=field, fn=fn, id=id,
-            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
             labels=labels, annotations=annotations,
         )

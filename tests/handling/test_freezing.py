@@ -5,6 +5,7 @@ import kopf
 from kopf.reactor.handling import resource_handler
 from kopf.reactor.registries import OperatorRegistry
 from kopf.structs.containers import ResourceMemories
+from kopf.structs.primitives import Toggle
 
 
 async def test_nothing_is_called_when_freeze_is_set(mocker, resource, caplog, assert_logs):
@@ -19,10 +20,6 @@ async def test_nothing_is_called_when_freeze_is_set(mocker, resource, caplog, as
     registry = OperatorRegistry()
     event = {'object': {'metadata': {'namespace': 'ns1', 'name': 'name1'}}}
 
-    # This is what makes it frozen.
-    freeze = asyncio.Event()
-    freeze.set()
-
     caplog.set_level(logging.DEBUG)
     await resource_handler(
         lifecycle=lifecycle,
@@ -30,7 +27,7 @@ async def test_nothing_is_called_when_freeze_is_set(mocker, resource, caplog, as
         resource=resource,
         memories=ResourceMemories(),
         event=event,
-        freeze=freeze,
+        freeze_mode=Toggle(True),  # make it frozen!
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )

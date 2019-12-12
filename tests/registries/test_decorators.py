@@ -21,7 +21,8 @@ def test_on_startup_minimal():
     assert handlers[0].errors is None
     assert handlers[0].timeout is None
     assert handlers[0].retries is None
-    assert handlers[0].cooldown is None
+    assert handlers[0].backoff is None
+    assert handlers[0].cooldown is None  # deprecated alias
 
 
 def test_on_cleanup_minimal():
@@ -38,7 +39,8 @@ def test_on_cleanup_minimal():
     assert handlers[0].errors is None
     assert handlers[0].timeout is None
     assert handlers[0].retries is None
-    assert handlers[0].cooldown is None
+    assert handlers[0].backoff is None
+    assert handlers[0].cooldown is None  # deprecated alias
 
 
 def test_on_probe_minimal():
@@ -55,7 +57,8 @@ def test_on_probe_minimal():
     assert handlers[0].errors is None
     assert handlers[0].timeout is None
     assert handlers[0].retries is None
-    assert handlers[0].cooldown is None
+    assert handlers[0].backoff is None
+    assert handlers[0].cooldown is None  # deprecated alias
 
 
 # Resume handlers are mixed-in into all resource-changing reactions with initial listing.
@@ -77,7 +80,8 @@ def test_on_resume_minimal(mocker, reason):
     assert handlers[0].errors is None
     assert handlers[0].timeout is None
     assert handlers[0].retries is None
-    assert handlers[0].cooldown is None
+    assert handlers[0].backoff is None
+    assert handlers[0].cooldown is None  # deprecated alias
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
 
@@ -99,7 +103,8 @@ def test_on_create_minimal(mocker):
     assert handlers[0].errors is None
     assert handlers[0].timeout is None
     assert handlers[0].retries is None
-    assert handlers[0].cooldown is None
+    assert handlers[0].backoff is None
+    assert handlers[0].cooldown is None  # deprecated alias
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
 
@@ -121,7 +126,8 @@ def test_on_update_minimal(mocker):
     assert handlers[0].errors is None
     assert handlers[0].timeout is None
     assert handlers[0].retries is None
-    assert handlers[0].cooldown is None
+    assert handlers[0].backoff is None
+    assert handlers[0].cooldown is None  # deprecated alias
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
 
@@ -143,7 +149,8 @@ def test_on_delete_minimal(mocker):
     assert handlers[0].errors is None
     assert handlers[0].timeout is None
     assert handlers[0].retries is None
-    assert handlers[0].cooldown is None
+    assert handlers[0].backoff is None
+    assert handlers[0].cooldown is None  # deprecated alias
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
 
@@ -166,7 +173,8 @@ def test_on_field_minimal(mocker):
     assert handlers[0].errors is None
     assert handlers[0].timeout is None
     assert handlers[0].retries is None
-    assert handlers[0].cooldown is None
+    assert handlers[0].backoff is None
+    assert handlers[0].cooldown is None  # deprecated alias
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
 
@@ -183,7 +191,7 @@ def test_on_startup_with_all_kwargs(mocker):
 
     @kopf.on.startup(
         id='id', registry=registry,
-        errors=ErrorsMode.PERMANENT, timeout=123, retries=456, cooldown=78)
+        errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78)
     def fn(**_):
         pass
 
@@ -195,7 +203,8 @@ def test_on_startup_with_all_kwargs(mocker):
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
     assert handlers[0].retries == 456
-    assert handlers[0].cooldown == 78
+    assert handlers[0].backoff == 78
+    assert handlers[0].cooldown == 78  # deprecated alias
 
 
 def test_on_cleanup_with_all_kwargs(mocker):
@@ -203,7 +212,7 @@ def test_on_cleanup_with_all_kwargs(mocker):
 
     @kopf.on.cleanup(
         id='id', registry=registry,
-        errors=ErrorsMode.PERMANENT, timeout=123, retries=456, cooldown=78)
+        errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78)
     def fn(**_):
         pass
 
@@ -215,7 +224,8 @@ def test_on_cleanup_with_all_kwargs(mocker):
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
     assert handlers[0].retries == 456
-    assert handlers[0].cooldown == 78
+    assert handlers[0].backoff == 78
+    assert handlers[0].cooldown == 78  # deprecated alias
 
 
 def test_on_probe_with_all_kwargs(mocker):
@@ -223,7 +233,7 @@ def test_on_probe_with_all_kwargs(mocker):
 
     @kopf.on.probe(
         id='id', registry=registry,
-        errors=ErrorsMode.PERMANENT, timeout=123, retries=456, cooldown=78)
+        errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78)
     def fn(**_):
         pass
 
@@ -235,7 +245,8 @@ def test_on_probe_with_all_kwargs(mocker):
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
     assert handlers[0].retries == 456
-    assert handlers[0].cooldown == 78
+    assert handlers[0].backoff == 78
+    assert handlers[0].cooldown == 78  # deprecated alias
 
 
 # Resume handlers are mixed-in into all resource-changing reactions with initial listing.
@@ -248,7 +259,7 @@ def test_on_resume_with_all_kwargs(mocker, reason):
 
     @kopf.on.resume('group', 'version', 'plural',
                     id='id', registry=registry,
-                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, cooldown=78,
+                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     deleted=True,
                     labels={'somelabel': 'somevalue'},
                     annotations={'someanno': 'somevalue'})
@@ -264,7 +275,8 @@ def test_on_resume_with_all_kwargs(mocker, reason):
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
     assert handlers[0].retries == 456
-    assert handlers[0].cooldown == 78
+    assert handlers[0].backoff == 78
+    assert handlers[0].cooldown == 78  # deprecated alias
     assert handlers[0].deleted == True
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
@@ -278,7 +290,7 @@ def test_on_create_with_all_kwargs(mocker):
 
     @kopf.on.create('group', 'version', 'plural',
                     id='id', registry=registry,
-                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, cooldown=78,
+                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     labels={'somelabel': 'somevalue'},
                     annotations={'someanno': 'somevalue'})
     def fn(**_):
@@ -293,7 +305,8 @@ def test_on_create_with_all_kwargs(mocker):
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
     assert handlers[0].retries == 456
-    assert handlers[0].cooldown == 78
+    assert handlers[0].backoff == 78
+    assert handlers[0].cooldown == 78  # deprecated alias
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
 
@@ -306,7 +319,7 @@ def test_on_update_with_all_kwargs(mocker):
 
     @kopf.on.update('group', 'version', 'plural',
                     id='id', registry=registry,
-                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, cooldown=78,
+                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     labels={'somelabel': 'somevalue'},
                     annotations={'someanno': 'somevalue'})
     def fn(**_):
@@ -321,7 +334,8 @@ def test_on_update_with_all_kwargs(mocker):
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
     assert handlers[0].retries == 456
-    assert handlers[0].cooldown == 78
+    assert handlers[0].backoff == 78
+    assert handlers[0].cooldown == 78  # deprecated alias
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
 
@@ -338,7 +352,7 @@ def test_on_delete_with_all_kwargs(mocker, optional):
 
     @kopf.on.delete('group', 'version', 'plural',
                     id='id', registry=registry,
-                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, cooldown=78,
+                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     optional=optional,
                     labels={'somelabel': 'somevalue'},
                     annotations={'someanno': 'somevalue'})
@@ -354,7 +368,8 @@ def test_on_delete_with_all_kwargs(mocker, optional):
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
     assert handlers[0].retries == 456
-    assert handlers[0].cooldown == 78
+    assert handlers[0].backoff == 78
+    assert handlers[0].cooldown == 78  # deprecated alias
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
 
@@ -368,7 +383,7 @@ def test_on_field_with_all_kwargs(mocker):
 
     @kopf.on.field('group', 'version', 'plural', 'field.subfield',
                    id='id', registry=registry,
-                   errors=ErrorsMode.PERMANENT, timeout=123, retries=456, cooldown=78,
+                   errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                    labels={'somelabel': 'somevalue'},
                    annotations={'someanno': 'somevalue'})
     def fn(**_):
@@ -383,7 +398,8 @@ def test_on_field_with_all_kwargs(mocker):
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
     assert handlers[0].retries == 456
-    assert handlers[0].cooldown == 78
+    assert handlers[0].backoff == 78
+    assert handlers[0].cooldown == 78  # deprecated alias
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
 
