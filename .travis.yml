@@ -18,12 +18,12 @@ env:
   matrix:
     - KUBERNETES_VERSION=latest CLIENT=yes  # only one "yes" is enough
     - KUBERNETES_VERSION=latest CLIENT=no
-    - KUBERNETES_VERSION=v1.17.0 CLIENT=no
-    - KUBERNETES_VERSION=v1.16.0 CLIENT=no  # starting from 1.16, use CRD API v1.
-    - KUBERNETES_VERSION=v1.16.0 CLIENT=no CRDAPI=v1beta1
-    - KUBERNETES_VERSION=v1.15.0 CLIENT=no CRDAPI=v1beta1
-    - KUBERNETES_VERSION=v1.14.0 CLIENT=no CRDAPI=v1beta1
-    - KUBERNETES_VERSION=v1.13.0 CLIENT=no CRDAPI=v1beta1
+    - KUBERNETES_VERSION=v1.17.11 CLIENT=no
+    - KUBERNETES_VERSION=v1.16.14 CLIENT=no  # starting from 1.16, use CRD API v1.
+    - KUBERNETES_VERSION=v1.16.14 CLIENT=no CRDAPI=v1beta1
+    - KUBERNETES_VERSION=v1.15.12 CLIENT=no CRDAPI=v1beta1
+    - KUBERNETES_VERSION=v1.14.10 CLIENT=no CRDAPI=v1beta1
+    - KUBERNETES_VERSION=v1.13.12 CLIENT=no CRDAPI=v1beta1
 
 # Only one Python version is tested with all supported K8s versions: to check for API compatibility.
 # Other Python versions are tested with only one K8s version: if it works for one, it works for all.
