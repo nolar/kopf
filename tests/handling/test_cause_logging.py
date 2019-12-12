@@ -7,6 +7,7 @@ import kopf
 from kopf.reactor.causation import ALL_REASONS, HANDLER_REASONS, Reason
 from kopf.reactor.handling import resource_handler
 from kopf.structs.containers import ResourceMemories
+from kopf.structs.primitives import Toggle
 
 
 @pytest.mark.parametrize('cause_type', ALL_REASONS)
@@ -21,7 +22,7 @@ async def test_all_logs_are_prefixed(registry, resource, handlers,
         resource=resource,
         memories=ResourceMemories(),
         event={'type': event_type, 'object': cause_mock.body},
-        freeze=asyncio.Event(),
+        freeze_mode=Toggle(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
@@ -51,7 +52,7 @@ async def test_diffs_logged_if_present(registry, resource, handlers, cause_type,
         resource=resource,
         memories=ResourceMemories(),
         event={'type': event_type, 'object': cause_mock.body},
-        freeze=asyncio.Event(),
+        freeze_mode=Toggle(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
@@ -81,7 +82,7 @@ async def test_diffs_not_logged_if_absent(registry, resource, handlers, cause_ty
         resource=resource,
         memories=ResourceMemories(),
         event={'type': event_type, 'object': cause_mock.body},
-        freeze=asyncio.Event(),
+        freeze_mode=Toggle(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )

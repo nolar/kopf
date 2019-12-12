@@ -9,6 +9,7 @@ from kopf.reactor.handling import resource_handler
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.finalizers import FINALIZER
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
+from kopf.structs.primitives import Toggle
 
 EVENT_TYPES = [None, 'ADDED', 'MODIFIED', 'DELETED']
 
@@ -27,7 +28,7 @@ async def test_acquire(registry, handlers, resource, cause_mock, event_type,
         resource=resource,
         memories=ResourceMemories(),
         event={'type': event_type, 'object': cause_mock.body},
-        freeze=asyncio.Event(),
+        freeze_mode=Toggle(),
         replenished=asyncio.Event(),
         event_queue=event_queue,
     )
@@ -65,7 +66,7 @@ async def test_create(registry, handlers, resource, cause_mock, event_type,
         resource=resource,
         memories=ResourceMemories(),
         event={'type': event_type, 'object': cause_mock.body},
-        freeze=asyncio.Event(),
+        freeze_mode=Toggle(),
         replenished=asyncio.Event(),
         event_queue=event_queue,
     )
@@ -107,7 +108,7 @@ async def test_update(registry, handlers, resource, cause_mock, event_type,
         resource=resource,
         memories=ResourceMemories(),
         event={'type': event_type, 'object': cause_mock.body},
-        freeze=asyncio.Event(),
+        freeze_mode=Toggle(),
         replenished=asyncio.Event(),
         event_queue=event_queue,
     )
@@ -149,7 +150,7 @@ async def test_delete(registry, handlers, resource, cause_mock, event_type,
         resource=resource,
         memories=ResourceMemories(),
         event={'type': event_type, 'object': cause_mock.body},
-        freeze=asyncio.Event(),
+        freeze_mode=Toggle(),
         replenished=asyncio.Event(),
         event_queue=event_queue,
     )
@@ -200,7 +201,7 @@ async def test_release(registry, resource, handlers, cause_mock, event_type,
         resource=resource,
         memories=ResourceMemories(),
         event={'type': event_type, 'object': cause_mock.body},
-        freeze=asyncio.Event(),
+        freeze_mode=Toggle(),
         replenished=asyncio.Event(),
         event_queue=event_queue,
     )
@@ -242,7 +243,7 @@ async def test_gone(registry, handlers, resource, cause_mock, event_type,
         resource=resource,
         memories=ResourceMemories(),
         event={'type': event_type, 'object': cause_mock.body},
-        freeze=asyncio.Event(),
+        freeze_mode=Toggle(),
         replenished=asyncio.Event(),
         event_queue=event_queue,
     )
@@ -274,7 +275,7 @@ async def test_free(registry, handlers, resource, cause_mock, event_type,
         resource=resource,
         memories=ResourceMemories(),
         event={'type': event_type, 'object': cause_mock.body},
-        freeze=asyncio.Event(),
+        freeze_mode=Toggle(),
         replenished=asyncio.Event(),
         event_queue=event_queue,
     )
@@ -306,7 +307,7 @@ async def test_noop(registry, handlers, resource, cause_mock, event_type,
         resource=resource,
         memories=ResourceMemories(),
         event={'type': event_type, 'object': cause_mock.body},
-        freeze=asyncio.Event(),
+        freeze_mode=Toggle(),
         replenished=asyncio.Event(),
         event_queue=event_queue,
     )

@@ -9,14 +9,15 @@ from kopf import config
 from kopf.engines import peering
 from kopf.reactor import running
 from kopf.structs import credentials
+from kopf.structs import primitives
 from kopf.utilities import loaders
 
 
 @dataclasses.dataclass()
 class CLIControls:
     """ `KopfRunner` controls, which are impossible to pass via CLI. """
-    ready_flag: Optional[running.Flag] = None
-    stop_flag: Optional[running.Flag] = None
+    ready_flag: Optional[primitives.Flag] = None
+    stop_flag: Optional[primitives.Flag] = None
     vault: Optional[credentials.Vault] = None
 
 
