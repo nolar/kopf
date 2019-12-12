@@ -29,14 +29,15 @@ def startup(
         errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
-        cooldown: Optional[float] = None,
+        backoff: Optional[float] = None,
+        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityHandlerDecorator:
     actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: registries.ActivityHandlerFn) -> registries.ActivityHandlerFn:
         return actual_registry.register_activity_handler(
             fn=fn, id=id,
-            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             activity=causation.Activity.STARTUP,
         )
     return decorator
@@ -48,14 +49,15 @@ def cleanup(
         errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
-        cooldown: Optional[float] = None,
+        backoff: Optional[float] = None,
+        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityHandlerDecorator:
     actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: registries.ActivityHandlerFn) -> registries.ActivityHandlerFn:
         return actual_registry.register_activity_handler(
             fn=fn, id=id,
-            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             activity=causation.Activity.CLEANUP,
         )
     return decorator
@@ -67,7 +69,8 @@ def login(
         errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
-        cooldown: Optional[float] = None,
+        backoff: Optional[float] = None,
+        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityHandlerDecorator:
     """ ``@kopf.on.login()`` handler for custom (re-)authentication. """
@@ -75,7 +78,7 @@ def login(
     def decorator(fn: registries.ActivityHandlerFn) -> registries.ActivityHandlerFn:
         return actual_registry.register_activity_handler(
             fn=fn, id=id,
-            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             activity=causation.Activity.AUTHENTICATION,
         )
     return decorator
@@ -87,7 +90,8 @@ def probe(
         errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
-        cooldown: Optional[float] = None,
+        backoff: Optional[float] = None,
+        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityHandlerDecorator:
     """ ``@kopf.on.probe()`` handler for arbitrary liveness metrics. """
@@ -95,7 +99,7 @@ def probe(
     def decorator(fn: registries.ActivityHandlerFn) -> registries.ActivityHandlerFn:
         return actual_registry.register_activity_handler(
             fn=fn, id=id,
-            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             activity=causation.Activity.PROBE,
         )
     return decorator
@@ -108,7 +112,8 @@ def resume(
         errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
-        cooldown: Optional[float] = None,
+        backoff: Optional[float] = None,
+        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
         deleted: Optional[bool] = None,
         labels: Optional[bodies.Labels] = None,
@@ -120,7 +125,7 @@ def resume(
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=None, initial=True, deleted=deleted, id=id,
-            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             fn=fn, labels=labels, annotations=annotations,
         )
     return decorator
@@ -133,7 +138,8 @@ def create(
         errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
-        cooldown: Optional[float] = None,
+        backoff: Optional[float] = None,
+        cooldown: Optional[float] = None,  # deprecated; use backoff.
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
@@ -144,7 +150,7 @@ def create(
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.CREATE, id=id,
-            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             fn=fn, labels=labels, annotations=annotations,
         )
     return decorator
@@ -157,7 +163,8 @@ def update(
         errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
-        cooldown: Optional[float] = None,
+        backoff: Optional[float] = None,
+        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
@@ -168,7 +175,7 @@ def update(
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.UPDATE, id=id,
-            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             fn=fn, labels=labels, annotations=annotations,
         )
     return decorator
@@ -181,7 +188,8 @@ def delete(
         errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
-        cooldown: Optional[float] = None,
+        backoff: Optional[float] = None,
+        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
         optional: Optional[bool] = None,
         labels: Optional[bodies.Labels] = None,
@@ -193,7 +201,7 @@ def delete(
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.DELETE, id=id,
-            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             fn=fn, requires_finalizer=bool(not optional),
             labels=labels, annotations=annotations,
         )
@@ -208,7 +216,8 @@ def field(
         errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
-        cooldown: Optional[float] = None,
+        backoff: Optional[float] = None,
+        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
@@ -219,7 +228,7 @@ def field(
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=None, field=field, id=id,
-            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             fn=fn, labels=labels, annotations=annotations,
         )
     return decorator
@@ -251,7 +260,8 @@ def this(
         errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
-        cooldown: Optional[float] = None,
+        backoff: Optional[float] = None,
+        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.ResourceChangingRegistry] = None,
 ) -> ResourceHandlerDecorator:
     """
@@ -287,7 +297,7 @@ def this(
     def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
         return actual_registry.register(
             id=id, fn=fn,
-            errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
         )
     return decorator
 
@@ -299,7 +309,8 @@ def register(
         errors: Optional[registries.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
-        cooldown: Optional[float] = None,
+        backoff: Optional[float] = None,
+        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.ResourceChangingRegistry] = None,
 ) -> registries.ResourceHandlerFn:
     """
@@ -328,6 +339,6 @@ def register(
     """
     decorator = this(
         id=id, registry=registry,
-        errors=errors, timeout=timeout, retries=retries, cooldown=cooldown,
+        errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
     )
     return decorator(fn)

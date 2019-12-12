@@ -123,8 +123,8 @@ Once the number of retries is reached, the handler fails permanently.
 By default, there is no limit, so the retries continue forever.
 
 
-Cool-down on errors
-===================
+Backoff
+=======
 
 The interval between retries on arbitrary errors, when an external environment
 is supposed to recover and be able to succeed the handler execution,
@@ -132,7 +132,7 @@ can be configured::
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', cooldown=30)
+    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', backoff=30)
     def create_fn(spec, **_):
         raise Exception()
 
