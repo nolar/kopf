@@ -23,7 +23,7 @@ touch $KUBECONFIG
 
 sudo minikube start \
     --vm-driver=none \
-    --extra-config=apiserver.authorization-mode=RBAC \
+    --extra-config=apiserver.authorization-mode=Node,RBAC \
     --extra-config=apiserver.runtime-config=events.k8s.io/v1beta1=false \
     --kubernetes-version="${KUBERNETES_VERSION}"
 
