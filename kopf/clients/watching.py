@@ -187,12 +187,25 @@ async def _iter_lines(
     .. seealso::
         https://github.com/zalando-incubator/kopf/issues/275
     """
-    buffer = b''
+
+    # Minimize the memory footprint by keeping at most 2 copies of a yielded line in memory
+    # (in the buffer and as a yielded value), and at most 1 copy of other lines (in the buffer).
+    buffer = None
     async for data, _ in content.iter_chunks():
-        buffer += data
-        parts = buffer.split(b'\n')
-        for line in parts[:-1]:
+        buffer = data if buffer is None else buffer + data
+        del data
+
+        start = 0
+        index = buffer.find(b'\n', start)
+        while index >= 0:
+            line = buffer[start:index]
             yield line
-        buffer = parts[-1]
-    if buffer:
+            del line
+            start = index + 1
+            index = buffer.find(b'\n', start)
+
+        if start > 0:
+            buffer = buffer[start:]
+
+    if buffer is not None:
         yield buffer
