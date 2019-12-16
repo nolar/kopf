@@ -158,12 +158,12 @@ async def watch_objs(
     response.raise_for_status()
 
     async with response:
-        async for line in _iter_lines(response.content):
+        async for line in _iter_jsonlines(response.content):
             event = cast(bodies.RawEvent, json.loads(line.decode("utf-8")))
             yield event
 
 
-async def _iter_lines(
+async def _iter_jsonlines(
         content: aiohttp.StreamReader,
         chunk_size: int = 1024 * 1024,
 ) -> AsyncIterator[bytes]:
@@ -196,17 +196,17 @@ async def _iter_lines(
 
     # Minimize the memory footprint by keeping at most 2 copies of a yielded line in memory
     # (in the buffer and as a yielded value), and at most 1 copy of other lines (in the buffer).
-    buffer = None
+    buffer = b''
     async for data in content.iter_chunked(chunk_size):
-
-        buffer = data if buffer is None else buffer + data
+        buffer += data
         del data
 
         start = 0
         index = buffer.find(b'\n', start)
         while index >= 0:
             line = buffer[start:index]
-            yield line
+            if line:
+                yield line
             del line
             start = index + 1
             index = buffer.find(b'\n', start)
@@ -214,5 +214,5 @@ async def _iter_lines(
         if start > 0:
             buffer = buffer[start:]
 
-    if buffer is not None:
+    if buffer:
         yield buffer
