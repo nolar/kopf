@@ -165,6 +165,7 @@ async def watch_objs(
 
 async def _iter_lines(
         content: aiohttp.StreamReader,
+        chunk_size: int = 1024 * 1024,
 ) -> AsyncIterator[bytes]:
     """
     Iterate line by line over the response's content.
@@ -184,6 +185,11 @@ async def _iter_lines(
     for the buffer's low-watermark, multiplied by 2 for the high-watermark).
     Kubernetes secrets and other fields can be much longer, up to MBs in length.
 
+    The chunk size of 1MB is an empirical guess for keeping the memory footprint
+    reasonably low on huge amount of small lines (limited to 1 MB in total),
+    while ensuring the near-instant reads of the huge lines (can be a problem
+    with a small chunk size due to too many iterations).
+
     .. seealso::
         https://github.com/zalando-incubator/kopf/issues/275
     """
@@ -191,7 +197,8 @@ async def _iter_lines(
     # Minimize the memory footprint by keeping at most 2 copies of a yielded line in memory
     # (in the buffer and as a yielded value), and at most 1 copy of other lines (in the buffer).
     buffer = None
-    async for data, _ in content.iter_chunks():
+    async for data in content.iter_chunked(chunk_size):
+
         buffer = data if buffer is None else buffer + data
         del data
 
