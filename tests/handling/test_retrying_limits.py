@@ -8,7 +8,6 @@ import kopf
 from kopf.reactor.causation import HANDLER_REASONS, Reason
 from kopf.reactor.handling import resource_handler
 from kopf.structs.containers import ResourceMemories
-from kopf.structs.primitives import Toggle
 
 
 # The timeout is hard-coded in conftest.py:handlers().
@@ -41,7 +40,6 @@ async def test_timed_out_handler_fails(
             resource=resource,
             memories=ResourceMemories(),
             event={'type': event_type, 'object': cause_mock.body},
-            freeze_mode=Toggle(),
             replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
@@ -90,7 +88,6 @@ async def test_retries_limited_handler_fails(
         resource=resource,
         memories=ResourceMemories(),
         event={'type': event_type, 'object': cause_mock.body},
-        freeze_mode=Toggle(),
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )

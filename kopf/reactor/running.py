@@ -259,13 +259,13 @@ async def spawn_tasks(
                 coro=queueing.watcher(
                     namespace=namespace,
                     resource=resource,
+                    freeze_mode=freeze_mode,
                     handler=functools.partial(handling.resource_handler,
                                               lifecycle=lifecycle,
                                               registry=registry,
                                               memories=memories,
                                               resource=resource,
-                                              event_queue=event_queue,
-                                              freeze_mode=freeze_mode)))),
+                                              event_queue=event_queue)))),
         ])
 
     # On Ctrl+C or pod termination, cancel all tasks gracefully.
