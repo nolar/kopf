@@ -151,3 +151,23 @@ async def test_infinite_watch_never_exits_normally(resource, stream, namespace, 
     assert events[0]['object']['spec'] == 'a'
     assert events[1]['object']['spec'] == 'a'
     assert events[2]['object']['spec'] == 'b'
+
+
+# See: See: https://github.com/zalando-incubator/kopf/issues/275
+async def test_long_line_parsing(resource, stream, namespace, aresponses):
+    content = [
+        {'type': 'ADDED', 'object': {'spec': {'field': 'x'}}},
+        {'type': 'ADDED', 'object': {'spec': {'field': 'y' * (2 * 1024 * 1024)}}},
+        {'type': 'ADDED', 'object': {'spec': {'field': 'z' * (4 * 1024 * 1024)}}},
+    ]
+    stream.feed(content, namespace=namespace)
+    stream.close(namespace=namespace)
+
+    events = []
+    async for event in streaming_watch(resource=resource, namespace=namespace):
+        events.append(event)
+
+    assert len(events) == 3
+    assert len(events[0]['object']['spec']['field']) == 1
+    assert len(events[1]['object']['spec']['field']) == 2 * 1024 * 1024
+    assert len(events[2]['object']['spec']['field']) == 4 * 1024 * 1024

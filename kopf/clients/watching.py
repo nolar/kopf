@@ -158,6 +158,61 @@ async def watch_objs(
     response.raise_for_status()
 
     async with response:
-        async for line in response.content:
+        async for line in _iter_jsonlines(response.content):
             event = cast(bodies.RawEvent, json.loads(line.decode("utf-8")))
             yield event
+
+
+async def _iter_jsonlines(
+        content: aiohttp.StreamReader,
+        chunk_size: int = 1024 * 1024,
+) -> AsyncIterator[bytes]:
+    """
+    Iterate line by line over the response's content.
+
+    Usage::
+
+        async for line in _iter_lines(response.content):
+            pass
+
+    This is an equivalent of::
+
+        async for line in response.content:
+            pass
+
+    Except that the aiohttp's line iteration fails if the accumulated buffer
+    length is above 2**17 bytes, i.e. 128 KB (`aiohttp.streams.DEFAULT_LIMIT`
+    for the buffer's low-watermark, multiplied by 2 for the high-watermark).
+    Kubernetes secrets and other fields can be much longer, up to MBs in length.
+
+    The chunk size of 1MB is an empirical guess for keeping the memory footprint
+    reasonably low on huge amount of small lines (limited to 1 MB in total),
+    while ensuring the near-instant reads of the huge lines (can be a problem
+    with a small chunk size due to too many iterations).
+
+    .. seealso::
+        https://github.com/zalando-incubator/kopf/issues/275
+    """
+
+    # Minimize the memory footprint by keeping at most 2 copies of a yielded line in memory
+    # (in the buffer and as a yielded value), and at most 1 copy of other lines (in the buffer).
+    buffer = b''
+    async for data in content.iter_chunked(chunk_size):
+        buffer += data
+        del data
+
+        start = 0
+        index = buffer.find(b'\n', start)
+        while index >= 0:
+            line = buffer[start:index]
+            if line:
+                yield line
+            del line
+            start = index + 1
+            index = buffer.find(b'\n', start)
+
+        if start > 0:
+            buffer = buffer[start:]
+
+    if buffer:
+        yield buffer
