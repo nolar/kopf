@@ -15,7 +15,7 @@ import pytest
 import pytest_mock
 
 import kopf
-from kopf.clients.auth import APISession
+from kopf.clients.auth import APIContext
 from kopf.config import configure
 from kopf.engines.logging import ObjectPrefixingFormatter
 from kopf.structs.credentials import Vault, VaultKey, ConnectionInfo
@@ -109,22 +109,27 @@ def clear_default_registry():
 #
 
 @pytest.fixture()
-async def enforced_session(fake_vault, mocker):
+async def enforced_context(fake_vault, mocker):
     """
-    A patchable session for some selected tests, e.g. with local exceptions.
+    Patchable context/session for some tests, e.g. with local exceptions.
 
     The local exceptions are supposed to simulate either the code issues,
     or the connection issues. `aresponses` does not allow to raise arbitrary
     exceptions on the client side, but only to return the erroneous responses.
 
-    This test forces the reauthentication decorators to always use one specific
+    This test forces the re-authenticating decorators to always use one specific
     session for the duration of the test, so that the patches would have effect.
     """
     _, item = fake_vault.select()
-    session = APISession.from_connection_info(item.info)
-    mocker.patch.object(APISession, 'from_connection_info', return_value=session)
-    async with session:
-        yield session
+    context = APIContext(item.info)
+    mocker.patch(f'{APIContext.__module__}.{APIContext.__name__}', return_value=context)
+    async with context.session:
+        yield context
+
+
+@pytest.fixture()
+async def enforced_session(enforced_context: APIContext):
+    yield enforced_context.session
 
 
 # Note: Unused `fake_vault` is to ensure that the client wrappers have the credentials.
