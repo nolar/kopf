@@ -1,21 +1,9 @@
-## Expected Behavior
+## Long story short
+
+<!-- Please describe the issue in 1-3 sentences. -->
 
 
-## Actual Behavior
+## Description
 
-
-## Steps to Reproduce the Problem
-
-  1.
-  1.
-  1.
-
-## Specifications
-
-  - Platform:
-  - Kubernetes version: *(use `kubectl version`)*
-  - Python version: *(use `python --version`)*
-  - Python packages installed: *(use `pip freeze --all`)*
-
-```
-```
+<!-- Please provide as much information as possible. 
+     Lack of information may result in a delayed response. Thank you! -->

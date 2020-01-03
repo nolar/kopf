@@ -1,27 +1,50 @@
-# One-line summary
+## What do these changes do?
 
-> Issue : #1234 (only if appropriate)
+<!-- Please give a short brief about these changes (1-3 sentences). -->
+
 
 ## Description
-A few sentences describing the overall goals of the pull request's
-commits.
 
-## Types of Changes
-_What types of changes does your code introduce? Keep the ones that apply:_
+<!-- What was the previous behaviour before the PR is merged? -->
+
+<!-- What will be the new behaviour after the PR is merged? -->
+
+<!-- A code snippet showing the new features added (if any)? -->
+
+<!-- Does the change affect the end users or is it internal? -->
+
+<!-- Why have you decided to solve the problem this way? What were the trade-offs? (If appropriate.) -->
+
+<!-- Are there any breaking or risky changes? -->
+
+
+## Issues/PRs
+
+<!-- Cross-referencing is highly useful in hindsight. Put the main issue, and all the related/affected/causing/preceding issues and PRs related to this change. --> 
+
+> Issues: 
+
+> Related:
+
+
+## Type of changes
+
+<!-- Remove the irrelevant items. Keep only those that reflect the main purpose of the change. -->
 
 - New feature (non-breaking change which adds functionality)
 - Bug fix (non-breaking change which fixes an issue)
-- Configuration change
-- Refactor/improvements
-- Documentation / non-code
+- Refactoring (non-breaking change which does not alter the behaviour)
+- Mostly documentation and examples (no code changes)
+- Mostly CI/CD automation, contribution experience
 
-## Tasks
-_List of tasks you will do to complete the PR_
-  - [ ] Task 1
-  - [ ] Task 2
-  - [ ] Task 3
 
-## Review
-_List of tasks the reviewer must do to review the PR_
-- [ ] Tests
-- [ ] Documentation
+## Checklist
+
+- [ ] The code addresses only the mentioned problem, and this problem only
+- [ ] I think the code is well written
+- [ ] Unit tests for the changes exist
+- [ ] Documentation reflects the changes
+- [ ] If you provide code modification, please add yourself to `CONTRIBUTORS.txt`
+
+<!-- Are there any questions or uncertainties left? 
+     Any tasks that have to be done to complete the PR? -->
