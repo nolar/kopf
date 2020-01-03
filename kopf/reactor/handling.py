@@ -227,6 +227,8 @@ async def resource_handler(
     # The patching above, if done, interrupts the sleep instantly, so we skip it at all.
     if delay and patch:
         logger.debug(f"Sleeping was skipped because of the patch, {delay} seconds left.")
+    elif not delay and not patch:
+        logger.debug(f"Handling cycle is finished, waiting for new changes since now.")
     elif delay:
         logger.debug(f"Sleeping for {delay} seconds for the delayed handlers.")
         unslept = await sleeping.sleep_or_wait(min(delay, WAITING_KEEPALIVE_INTERVAL), replenished)
