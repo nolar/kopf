@@ -80,6 +80,7 @@ Get a list of the existing objects of this kind with one of the commands:
 
     kubectl get EphemeralVolumeClaim
     kubectl get ephemeralvolumeclaims
+    kubectl get ephemeralvolumeclaim
     kubectl get evcs
     kubectl get evc
 
