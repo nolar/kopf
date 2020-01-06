@@ -210,6 +210,7 @@ def cause_mock(mocker, resource):
         body.setdefault('metadata', {}).setdefault('namespace', 'some-namespace')
         body.setdefault('metadata', {}).setdefault('name', 'some-name')
         body.setdefault('metadata', {}).setdefault('uid', 'some-uid')
+        body.setdefault('metadata', {}).setdefault('finalizers', ['kopf.zalando.org/KopfFinalizerMarker'])
 
         return cause
 

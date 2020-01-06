@@ -14,44 +14,6 @@ EVENT_TYPES = [None, 'ADDED', 'MODIFIED', 'DELETED']
 
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES)
-async def test_acquire(registry, handlers, resource, cause_mock, event_type,
-                   caplog, assert_logs, k8s_mocked):
-    caplog.set_level(logging.DEBUG)
-
-    cause_mock.reason = Reason.ACQUIRE
-
-    event_queue = asyncio.Queue()
-    await resource_handler(
-        lifecycle=kopf.lifecycles.all_at_once,
-        registry=registry,
-        resource=resource,
-        memories=ResourceMemories(),
-        event={'type': event_type, 'object': cause_mock.body},
-        replenished=asyncio.Event(),
-        event_queue=event_queue,
-    )
-
-    assert not handlers.create_mock.called
-    assert not handlers.update_mock.called
-    assert not handlers.delete_mock.called
-
-    assert k8s_mocked.asyncio_sleep.call_count == 0
-    assert k8s_mocked.sleep_or_wait.call_count == 0
-    assert k8s_mocked.patch_obj.call_count == 1
-    assert event_queue.empty()
-
-    patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
-    assert 'metadata' in patch
-    assert 'finalizers' in patch['metadata']
-    assert FINALIZER in patch['metadata']['finalizers']
-
-    assert_logs([
-        "Adding the finalizer",
-        "Patching with",
-    ])
-
-
-@pytest.mark.parametrize('event_type', EVENT_TYPES)
 async def test_create(registry, handlers, resource, cause_mock, event_type,
                       caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
@@ -167,54 +129,6 @@ async def test_delete(registry, handlers, resource, cause_mock, event_type,
         "Invoking handler 'delete_fn'",
         "Handler 'delete_fn' succeeded",
         "All handlers succeeded",
-        "Removing the finalizer",
-        "Patching with",
-    ])
-
-
-@pytest.mark.parametrize('event_type', EVENT_TYPES)
-async def test_release(registry, resource, handlers, cause_mock, event_type,
-                       caplog, k8s_mocked, assert_logs):
-    caplog.set_level(logging.DEBUG)
-    cause_mock.reason = Reason.RELEASE
-    cause_mock.body.setdefault('metadata', {})['finalizers'] = [FINALIZER]
-
-    # register handlers (no deletion handlers)
-    registry.register_resource_changing_handler(
-        group=resource.group,
-        version=resource.version,
-        plural=resource.plural,
-        reason=Reason.RESUME,
-        fn=lambda **_: None,
-        requires_finalizer=False,
-    )
-
-    event_queue = asyncio.Queue()
-    await resource_handler(
-        lifecycle=kopf.lifecycles.all_at_once,
-        registry=registry,
-        resource=resource,
-        memories=ResourceMemories(),
-        event={'type': event_type, 'object': cause_mock.body},
-        replenished=asyncio.Event(),
-        event_queue=event_queue,
-    )
-
-    assert not handlers.create_mock.called
-    assert not handlers.update_mock.called
-    assert not handlers.delete_mock.called
-
-    assert k8s_mocked.asyncio_sleep.call_count == 0
-    assert k8s_mocked.sleep_or_wait.call_count == 0
-    assert k8s_mocked.patch_obj.call_count == 1
-    assert event_queue.empty()
-
-    patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
-    assert 'metadata' in patch
-    assert 'finalizers' in patch['metadata']
-    assert [] == patch['metadata']['finalizers']
-
-    assert_logs([
         "Removing the finalizer",
         "Patching with",
     ])
