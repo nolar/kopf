@@ -97,8 +97,9 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[AnyCause]):
         warnings.warn("SimpleRegistry.iter_event_handlers() is deprecated; use "
                       "ResourceWatchingRegistry.iter_handlers().", DeprecationWarning)
 
+        cause = _create_watching_cause(resource, event)
         for handler in self._handlers:
-            if registries.match(handler=handler, body=event['object'], ignore_fields=True):
+            if registries.match(handler=handler, cause=cause, ignore_fields=True):
                 yield handler
 
     def iter_cause_handlers(
@@ -113,7 +114,7 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[AnyCause]):
             if handler.reason is None or handler.reason == cause.reason:
                 if handler.initial and not cause.initial:
                     pass  # ignore initial handlers in non-initial causes.
-                elif registries.match(handler=handler, body=cause.body,
+                elif registries.match(handler=handler, cause=cause,
                                       changed_fields=changed_fields):
                     yield handler
 

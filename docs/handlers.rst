@@ -353,6 +353,12 @@ The following filters are available for all event, cause, and field handlers:
     def my_handler(spec, **_):
         pass
 
+* Check on any field on the body with a when callback. The filter callback takes the same args as a handler::
+
+    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', when=lambda body, **_: body.get('spec', {}).get('myfield', '') == 'somevalue')
+    def my_handler(spec, **_):
+        pass
+
 
 Startup handlers
 ================

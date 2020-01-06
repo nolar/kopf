@@ -51,3 +51,5 @@ def test_handler_filtering(mocker):
     assert '[default/kopf-example-1] Annotation satisfied.' in runner.stdout
     assert '[default/kopf-example-1] Annotation exists.' in runner.stdout
     assert '[default/kopf-example-1] Annotation not satisfied.' not in runner.stdout
+    assert '[default/kopf-example-1] Filter satisfied.' in runner.stdout
+    assert '[default/kopf-example-1] Filter not satisfied.' not in runner.stdout

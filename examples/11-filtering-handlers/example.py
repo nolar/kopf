@@ -29,3 +29,13 @@ def create_with_annotations_exist(logger, **kwargs):
 @kopf.on.create('zalando.org', 'v1', 'kopfexamples', annotations={'someannotation': 'othervalue'})
 def create_with_annotations_not_satisfied(logger, **kwargs):
     logger.info("Annotation not satisfied.")
+
+
+@kopf.on.create('zalando.org', 'v1', 'kopfexamples', when=lambda body, **_: True)
+def create_with_filter_satisfied(logger, **kwargs):
+    logger.info("Filter satisfied.")
+
+
+@kopf.on.create('zalando.org', 'v1', 'kopfexamples', when=lambda body, **_: False)
+def create_with_filter_not_satisfied(logger, **kwargs):
+    logger.info("Filter not satisfied.")

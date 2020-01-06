@@ -84,6 +84,7 @@ def test_on_resume_minimal(mocker, reason):
     assert handlers[0].cooldown is None  # deprecated alias
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
+    assert handlers[0].when is None
 
 
 def test_on_create_minimal(mocker):
@@ -107,6 +108,7 @@ def test_on_create_minimal(mocker):
     assert handlers[0].cooldown is None  # deprecated alias
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
+    assert handlers[0].when is None
 
 
 def test_on_update_minimal(mocker):
@@ -130,6 +132,7 @@ def test_on_update_minimal(mocker):
     assert handlers[0].cooldown is None  # deprecated alias
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
+    assert handlers[0].when is None
 
 
 def test_on_delete_minimal(mocker):
@@ -153,6 +156,7 @@ def test_on_delete_minimal(mocker):
     assert handlers[0].cooldown is None  # deprecated alias
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
+    assert handlers[0].when is None
 
 
 def test_on_field_minimal(mocker):
@@ -177,6 +181,7 @@ def test_on_field_minimal(mocker):
     assert handlers[0].cooldown is None  # deprecated alias
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
+    assert handlers[0].when is None
 
 
 def test_on_field_fails_without_field():
@@ -257,12 +262,15 @@ def test_on_resume_with_all_kwargs(mocker, reason):
     cause = mocker.MagicMock(resource=resource, reason=reason, initial=True, deleted=False)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
+    when = lambda body: False
+
     @kopf.on.resume('group', 'version', 'plural',
                     id='id', registry=registry,
                     errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     deleted=True,
                     labels={'somelabel': 'somevalue'},
-                    annotations={'someanno': 'somevalue'})
+                    annotations={'someanno': 'somevalue'},
+                    when=when)
     def fn(**_):
         pass
 
@@ -280,6 +288,7 @@ def test_on_resume_with_all_kwargs(mocker, reason):
     assert handlers[0].deleted == True
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
+    assert handlers[0].when == when
 
 
 def test_on_create_with_all_kwargs(mocker):
@@ -288,11 +297,14 @@ def test_on_create_with_all_kwargs(mocker):
     cause = mocker.MagicMock(resource=resource, reason=Reason.CREATE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
+    when = lambda body: False
+
     @kopf.on.create('group', 'version', 'plural',
                     id='id', registry=registry,
                     errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     labels={'somelabel': 'somevalue'},
-                    annotations={'someanno': 'somevalue'})
+                    annotations={'someanno': 'somevalue'},
+                    when=when)
     def fn(**_):
         pass
 
@@ -309,6 +321,7 @@ def test_on_create_with_all_kwargs(mocker):
     assert handlers[0].cooldown == 78  # deprecated alias
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
+    assert handlers[0].when == when
 
 
 def test_on_update_with_all_kwargs(mocker):
@@ -317,11 +330,14 @@ def test_on_update_with_all_kwargs(mocker):
     cause = mocker.MagicMock(resource=resource, reason=Reason.UPDATE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
+    when = lambda body: False
+
     @kopf.on.update('group', 'version', 'plural',
                     id='id', registry=registry,
                     errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     labels={'somelabel': 'somevalue'},
-                    annotations={'someanno': 'somevalue'})
+                    annotations={'someanno': 'somevalue'},
+                    when=when)
     def fn(**_):
         pass
 
@@ -338,6 +354,7 @@ def test_on_update_with_all_kwargs(mocker):
     assert handlers[0].cooldown == 78  # deprecated alias
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
+    assert handlers[0].when == when
 
 
 @pytest.mark.parametrize('optional', [
@@ -350,12 +367,15 @@ def test_on_delete_with_all_kwargs(mocker, optional):
     cause = mocker.MagicMock(resource=resource, reason=Reason.DELETE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
+    when = lambda body: False
+
     @kopf.on.delete('group', 'version', 'plural',
                     id='id', registry=registry,
                     errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     optional=optional,
                     labels={'somelabel': 'somevalue'},
-                    annotations={'someanno': 'somevalue'})
+                    annotations={'someanno': 'somevalue'},
+                    when=when)
     def fn(**_):
         pass
 
@@ -372,6 +392,7 @@ def test_on_delete_with_all_kwargs(mocker, optional):
     assert handlers[0].cooldown == 78  # deprecated alias
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
+    assert handlers[0].when == when
 
 
 def test_on_field_with_all_kwargs(mocker):
@@ -381,11 +402,14 @@ def test_on_field_with_all_kwargs(mocker):
     cause = mocker.MagicMock(resource=resource, reason=Reason.UPDATE, diff=diff)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
+    when = lambda body: False
+
     @kopf.on.field('group', 'version', 'plural', 'field.subfield',
                    id='id', registry=registry,
                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                    labels={'somelabel': 'somevalue'},
-                   annotations={'someanno': 'somevalue'})
+                   annotations={'someanno': 'somevalue'},
+                   when=when)
     def fn(**_):
         pass
 
@@ -402,6 +426,7 @@ def test_on_field_with_all_kwargs(mocker):
     assert handlers[0].cooldown == 78  # deprecated alias
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
+    assert handlers[0].when == when
 
 
 def test_subhandler_declaratively(mocker):
