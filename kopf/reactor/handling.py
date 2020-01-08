@@ -36,7 +36,6 @@ from kopf.structs import diffs
 from kopf.structs import finalizers
 from kopf.structs import lastseen
 from kopf.structs import patches
-from kopf.structs import primitives
 from kopf.structs import resources
 
 WAITING_KEEPALIVE_INTERVAL = 10 * 60
@@ -44,19 +43,6 @@ WAITING_KEEPALIVE_INTERVAL = 10 * 60
 
 DEFAULT_RETRY_DELAY = 1 * 60
 """ The default delay duration for the regular exception in retry-mode. """
-
-
-class ActivityError(Exception):
-    """ An error in the activity, as caused by mandatory handlers' failures. """
-
-    def __init__(
-            self,
-            msg: str,
-            *,
-            outcomes: Mapping[registries.HandlerId, states.HandlerOutcome],
-    ) -> None:
-        super().__init__(msg)
-        self.outcomes = outcomes
 
 
 class PermanentError(Exception):
@@ -93,45 +79,6 @@ subregistry_var: ContextVar[registries.ResourceChangingRegistry] = ContextVar('s
 subexecuted_var: ContextVar[bool] = ContextVar('subexecuted_var')
 handler_var: ContextVar[registries.BaseHandler] = ContextVar('handler_var')
 cause_var: ContextVar[causation.BaseCause] = ContextVar('cause_var')
-
-
-async def run_activity(
-        *,
-        lifecycle: lifecycles.LifeCycleFn,
-        registry: registries.OperatorRegistry,
-        activity: causation.Activity,
-) -> Mapping[registries.HandlerId, registries.HandlerResult]:
-    """
-    Execute a handling cycle until succeeded or permanently failed.
-
-    This mimics the behaviour of patching-watching in Kubernetes, but in-memory.
-    """
-    logger = logging.getLogger(f'kopf.activities.{activity.value}')
-
-    # For the activity handlers, we have neither bodies, nor patches, just the state.
-    cause = causation.ActivityCause(logger=logger, activity=activity)
-    handlers = registry.get_activity_handlers(activity=activity)
-    outcomes = await run_handlers_until_done(
-        cause=cause,
-        handlers=handlers,
-        lifecycle=lifecycle,
-    )
-
-    # Activities assume that all handlers must eventually succeed.
-    # We raise from the 1st exception only: just to have something real in the tracebacks.
-    # For multiple handlers' errors, the logs should be investigated instead.
-    exceptions = [outcome.exception
-                  for outcome in outcomes.values()
-                  if outcome.exception is not None]
-    if exceptions:
-        raise ActivityError("One or more handlers failed.", outcomes=outcomes) from exceptions[0]
-
-    # If nothing has failed, we return identifiable results. The outcomes/states are internal.
-    # The order of results is not guaranteed (the handlers can succeed on one of the retries).
-    results = {handler_id: outcome.result
-               for handler_id, outcome in outcomes.items()
-               if outcome.result is not None}
-    return results
 
 
 async def process_resource_event(

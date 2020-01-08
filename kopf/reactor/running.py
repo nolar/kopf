@@ -66,7 +66,7 @@ def login(
         ))
     except asyncio.CancelledError:
         pass
-    except handling.ActivityError as e:
+    except activities.ActivityError as e:
         # Detect and re-raise the original LoginErrors, not the general activity error.
         # This is only needed for the legacy one-shot login, not for a background job.
         for outcome in e.outcomes.values():
@@ -478,7 +478,7 @@ async def _startup_cleanup_activities(
 
     # Execute the startup activity before any root task starts running (due to readiness flag).
     try:
-        await handling.run_activity(
+        await activities.run_activity(
             lifecycle=lifecycles.all_at_once,
             registry=registry,
             activity=causation.Activity.STARTUP,
@@ -508,7 +508,7 @@ async def _startup_cleanup_activities(
 
     # Execute the cleanup activity after all other root tasks are presumably done.
     try:
-        await handling.run_activity(
+        await activities.run_activity(
             lifecycle=lifecycles.all_at_once,
             registry=registry,
             activity=causation.Activity.CLEANUP,
