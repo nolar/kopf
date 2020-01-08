@@ -41,7 +41,7 @@ from kopf.structs import resources
 logger = logging.getLogger(__name__)
 
 
-class WatcherCallback(Protocol):
+class WatchStreamProcessor(Protocol):
     async def __call__(
             self,
             *,
@@ -77,11 +77,11 @@ Streams = MutableMapping[ObjectRef, Stream]
 async def watcher(
         namespace: Union[None, str],
         resource: resources.Resource,
-        handler: WatcherCallback,
+        processor: WatchStreamProcessor,
         freeze_mode: Optional[primitives.Toggle] = None,
 ) -> None:
     """
-    The watchers watches for the resource events via the API, and spawns the handlers for every object.
+    The watchers watches for the resource events via the API, and spawns the workers for every object.
 
     All resources and objects are done in parallel, but one single object is handled sequentially
     (otherwise, concurrent handling of multiple events of the same object could cause data damage).
@@ -113,7 +113,7 @@ async def watcher(
                 streams[key] = Stream(watchevents=asyncio.Queue(), replenished=asyncio.Event())
                 streams[key].replenished.set()  # interrupt current sleeps, if any.
                 await streams[key].watchevents.put(event)
-                await scheduler.spawn(worker(handler=handler, streams=streams, key=key))
+                await scheduler.spawn(worker(processor=processor, streams=streams, key=key))
     finally:
         # Allow the existing workers to finish gracefully before killing them.
         await _wait_for_depletion(scheduler=scheduler, streams=streams)
@@ -123,16 +123,16 @@ async def watcher(
 
 
 async def worker(
-        handler: WatcherCallback,
+        processor: WatchStreamProcessor,
         streams: Streams,
         key: ObjectRef,
 ) -> None:
     """
-    The per-object workers consume the object's events and invoke the handler.
+    The per-object workers consume the object's events and invoke the processors/handlers.
 
-    The handler is expected to be an async coroutine, always the one from the framework.
-    In fact, it is either a peering handler, which monitors the peer operators,
-    or a generic resource handler, which internally calls the registered synchronous handlers.
+    The processor is expected to be an async coroutine, always the one from the framework.
+    In fact, it is either a peering processor, which monitors the peer operators,
+    or a generic resource processor, which internally calls the registered synchronous processors.
 
     The per-object worker is a time-limited task, which ends as soon as all the object's events
     have been handled. The watcher will spawn a new job when and if the new events arrive.
@@ -173,13 +173,13 @@ async def worker(
             if isinstance(event, EOS):
                 break
 
-            # Try the handler. In case of errors, show the error, but continue the queue processing.
+            # Try the processor. In case of errors, show the error, but continue the processing.
             replenished.clear()
             try:
-                await handler(event=event, replenished=replenished)
+                await processor(event=event, replenished=replenished)
             except Exception as e:
-                # TODO: handler is a functools.partial. make the prints a bit nicer by removing it.
-                logger.exception(f"{handler} failed with an exception. Ignoring the event.")
+                # TODO: processor is a functools.partial. make the prints a bit nicer by removing it.
+                logger.exception(f"{processor} failed with an exception. Ignoring the event.")
                 # raise
 
     finally:

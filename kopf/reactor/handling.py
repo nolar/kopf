@@ -144,7 +144,7 @@ async def activity_trigger(
     return results
 
 
-async def resource_handler(
+async def process_resource_event(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
         memories: containers.ResourceMemories,
@@ -186,7 +186,7 @@ async def resource_handler(
             patch=patch,
             memo=memory.user_data,
         )
-        await handle_resource_watching_cause(
+        await process_resource_watching_cause(
             lifecycle=lifecycles.all_at_once,
             registry=registry,
             memory=memory,
@@ -209,7 +209,7 @@ async def resource_handler(
             memo=memory.user_data,
             initial=memory.noticed_by_listing and not memory.fully_handled_once,
         )
-        delay = await handle_resource_changing_cause(
+        delay = await process_resource_changing_cause(
             lifecycle=lifecycle,
             registry=registry,
             memory=memory,
@@ -247,7 +247,7 @@ async def resource_handler(
             await patching.patch_obj(resource=resource, patch=dummy_patch, body=body)
 
 
-async def handle_resource_watching_cause(
+async def process_resource_watching_cause(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
         memory: containers.ResourceMemory,
@@ -276,7 +276,7 @@ async def handle_resource_watching_cause(
     states.deliver_results(outcomes=outcomes, patch=cause.patch)
 
 
-async def handle_resource_changing_cause(
+async def process_resource_changing_cause(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
         memory: containers.ResourceMemory,

@@ -5,7 +5,7 @@ import pytest
 
 import kopf
 from kopf.reactor.causation import Reason
-from kopf.reactor.handling import resource_handler
+from kopf.reactor.handling import process_resource_event
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.finalizers import FINALIZER
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
@@ -20,7 +20,7 @@ async def test_create(registry, handlers, resource, cause_mock, event_type,
     cause_mock.reason = Reason.CREATE
 
     event_queue = asyncio.Queue()
-    await resource_handler(
+    await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
@@ -61,7 +61,7 @@ async def test_update(registry, handlers, resource, cause_mock, event_type,
     cause_mock.reason = Reason.UPDATE
 
     event_queue = asyncio.Queue()
-    await resource_handler(
+    await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
@@ -102,7 +102,7 @@ async def test_delete(registry, handlers, resource, cause_mock, event_type,
     cause_mock.reason = Reason.DELETE
 
     event_queue = asyncio.Queue()
-    await resource_handler(
+    await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
@@ -145,7 +145,7 @@ async def test_gone(registry, handlers, resource, cause_mock, event_type,
     cause_mock.reason = Reason.GONE
 
     event_queue = asyncio.Queue()
-    await resource_handler(
+    await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
@@ -176,7 +176,7 @@ async def test_free(registry, handlers, resource, cause_mock, event_type,
     cause_mock.reason = Reason.FREE
 
     event_queue = asyncio.Queue()
-    await resource_handler(
+    await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
@@ -207,7 +207,7 @@ async def test_noop(registry, handlers, resource, cause_mock, event_type,
     cause_mock.reason = Reason.NOOP
 
     event_queue = asyncio.Queue()
-    await resource_handler(
+    await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,

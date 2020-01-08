@@ -246,9 +246,9 @@ async def spawn_tasks(
                 coro=queueing.watcher(
                     namespace=namespace,
                     resource=ourselves.resource,
-                    handler=functools.partial(peering.peers_handler,
-                                              ourselves=ourselves,
-                                              freeze_mode=freeze_mode)))),
+                    processor=functools.partial(peering.process_peering_event,
+                                                ourselves=ourselves,
+                                                freeze_mode=freeze_mode)))),
         ])
 
     # Resource event handling, only once for every known resource (de-duplicated).
@@ -260,12 +260,12 @@ async def spawn_tasks(
                     namespace=namespace,
                     resource=resource,
                     freeze_mode=freeze_mode,
-                    handler=functools.partial(handling.resource_handler,
-                                              lifecycle=lifecycle,
-                                              registry=registry,
-                                              memories=memories,
-                                              resource=resource,
-                                              event_queue=event_queue)))),
+                    processor=functools.partial(handling.process_resource_event,
+                                                lifecycle=lifecycle,
+                                                registry=registry,
+                                                memories=memories,
+                                                resource=resource,
+                                                event_queue=event_queue)))),
         ])
 
     # On Ctrl+C or pod termination, cancel all tasks gracefully.
