@@ -520,7 +520,7 @@ async def _execute_handler(
         if handler.retries is not None and state.retries >= handler.retries:
             raise HandlerRetriesError(f"Handler {handler.id!r} has exceeded {state.retries} retries.")
 
-        result = await _call_handler(
+        result = await invoke_handler(
             handler,
             cause=cause,
             retry=state.retries,
@@ -572,7 +572,7 @@ async def _execute_handler(
         return states.HandlerOutcome(final=True, result=result)
 
 
-async def _call_handler(
+async def invoke_handler(
         handler: registries.BaseHandler,
         *args: Any,
         cause: causation.BaseCause,
