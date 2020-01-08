@@ -6,7 +6,7 @@ import pytest
 
 import kopf
 from kopf.reactor.causation import HANDLER_REASONS, Reason
-from kopf.reactor.handling import process_resource_event
+from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 
 

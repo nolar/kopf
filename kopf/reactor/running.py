@@ -13,8 +13,8 @@ from kopf.engines import posting
 from kopf.engines import probing
 from kopf.reactor import activities
 from kopf.reactor import causation
-from kopf.reactor import handling
 from kopf.reactor import lifecycles
+from kopf.reactor import processing
 from kopf.reactor import queueing
 from kopf.reactor import registries
 from kopf.structs import containers
@@ -260,7 +260,7 @@ async def spawn_tasks(
                     namespace=namespace,
                     resource=resource,
                     freeze_mode=freeze_mode,
-                    processor=functools.partial(handling.process_resource_event,
+                    processor=functools.partial(processing.process_resource_event,
                                                 lifecycle=lifecycle,
                                                 registry=registry,
                                                 memories=memories,
