@@ -114,7 +114,7 @@ async def run_activity(
     state = states.State.from_scratch(handlers=handlers)
     latest_outcomes: MutableMapping[registries.HandlerId, states.HandlerOutcome] = {}
     while not state.done:
-        outcomes = await _execute_handlers(
+        outcomes = await execute_handlers_once(
             lifecycle=lifecycle,
             handlers=handlers,
             cause=cause,
@@ -264,7 +264,7 @@ async def process_resource_watching_cause(
     as they should be silent. Still, the messages are logged normally.
     """
     handlers = registry.get_resource_watching_handlers(cause=cause)
-    outcomes = await _execute_handlers(
+    outcomes = await execute_handlers_once(
         lifecycle=lifecycle,
         handlers=handlers,
         cause=cause,
@@ -315,7 +315,7 @@ async def process_resource_changing_cause(
         handlers = registry.get_resource_changing_handlers(cause=cause)
         state = states.State.from_body(body=cause.body, handlers=handlers)
         if handlers:
-            outcomes = await _execute_handlers(
+            outcomes = await execute_handlers_once(
                 lifecycle=lifecycle,
                 handlers=handlers,
                 cause=cause,
@@ -432,7 +432,7 @@ async def execute(
     # Execute the real handlers (all or few or one of them, as per the lifecycle).
     handlers = registry.get_handlers(cause=cause)
     state = states.State.from_body(body=cause.body, handlers=handlers)
-    outcomes = await _execute_handlers(
+    outcomes = await execute_handlers_once(
         lifecycle=lifecycle,
         handlers=handlers,
         cause=cause,
@@ -447,7 +447,7 @@ async def execute(
         raise HandlerChildrenRetry(delay=state.delay)
 
 
-async def _execute_handlers(
+async def execute_handlers_once(
         lifecycle: lifecycles.LifeCycleFn,
         handlers: Collection[registries.BaseHandler],
         cause: causation.BaseCause,
@@ -471,7 +471,7 @@ async def _execute_handlers(
     # Execute all planned (selected) handlers in one event reaction cycle, even if there are few.
     outcomes: MutableMapping[registries.HandlerId, states.HandlerOutcome] = {}
     for handler in handlers_plan:
-        outcome = await _execute_handler(
+        outcome = await execute_handler_once(
             handler=handler,
             state=state[handler.id],
             cause=cause,
@@ -483,7 +483,7 @@ async def _execute_handlers(
     return outcomes
 
 
-async def _execute_handler(
+async def execute_handler_once(
         handler: registries.BaseHandler,
         cause: causation.BaseCause,
         state: states.HandlerState,
