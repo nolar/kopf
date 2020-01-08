@@ -111,35 +111,25 @@ async def run_activity(
     # For the activity handlers, we have neither bodies, nor patches, just the state.
     cause = causation.ActivityCause(logger=logger, activity=activity)
     handlers = registry.get_activity_handlers(activity=activity)
-    state = states.State.from_scratch(handlers=handlers)
-    latest_outcomes: MutableMapping[registries.HandlerId, states.HandlerOutcome] = {}
-    while not state.done:
-        outcomes = await execute_handlers_once(
-            lifecycle=lifecycle,
-            handlers=handlers,
-            cause=cause,
-            state=state,
-        )
-        latest_outcomes.update(outcomes)
-        state = state.with_outcomes(outcomes)
-        delay = state.delay
-        if delay:
-            await sleeping.sleep_or_wait(min(delay, WAITING_KEEPALIVE_INTERVAL), asyncio.Event())
+    outcomes = await run_handlers_until_done(
+        cause=cause,
+        handlers=handlers,
+        lifecycle=lifecycle,
+    )
 
     # Activities assume that all handlers must eventually succeed.
     # We raise from the 1st exception only: just to have something real in the tracebacks.
     # For multiple handlers' errors, the logs should be investigated instead.
     exceptions = [outcome.exception
-                  for outcome in latest_outcomes.values()
+                  for outcome in outcomes.values()
                   if outcome.exception is not None]
     if exceptions:
-        raise ActivityError("One or more handlers failed.", outcomes=latest_outcomes) \
-            from exceptions[0]
+        raise ActivityError("One or more handlers failed.", outcomes=outcomes) from exceptions[0]
 
     # If nothing has failed, we return identifiable results. The outcomes/states are internal.
     # The order of results is not guaranteed (the handlers can succeed on one of the retries).
     results = {handler_id: outcome.result
-               for handler_id, outcome in latest_outcomes.items()
+               for handler_id, outcome in outcomes.items()
                if outcome.result is not None}
     return results
 
@@ -445,6 +435,42 @@ async def execute(
     # Escalate `HandlerChildrenRetry` if the execute should be continued on the next iteration.
     if not state.done:
         raise HandlerChildrenRetry(delay=state.delay)
+
+
+async def run_handlers_until_done(
+        cause: causation.BaseCause,
+        handlers: Collection[registries.BaseHandler],
+        lifecycle: lifecycles.LifeCycleFn,
+        default_errors: registries.ErrorsMode = registries.ErrorsMode.TEMPORARY,
+) -> Mapping[registries.HandlerId, states.HandlerOutcome]:
+    """
+    Run the full cycle until all the handlers are done.
+
+    This function simulates the Kubernetes-based event-driven reaction cycle,
+    but completely in memory.
+
+    It can be used for handler execution when there is no underlying object
+    or patching-watching is not desired.
+    """
+
+    # For the activity handlers, we have neither bodies, nor patches, just the state.
+    state = states.State.from_scratch(handlers=handlers)
+    latest_outcomes: MutableMapping[registries.HandlerId, states.HandlerOutcome] = {}
+    while not state.done:
+        outcomes = await execute_handlers_once(
+            lifecycle=lifecycle,
+            handlers=handlers,
+            cause=cause,
+            state=state,
+            default_errors=default_errors,
+        )
+        latest_outcomes.update(outcomes)
+        state = state.with_outcomes(outcomes)
+        delay = state.delay
+        if delay:
+            limited_delay = min(delay, WAITING_KEEPALIVE_INTERVAL)
+            await sleeping.sleep_or_wait(limited_delay, asyncio.Event())
+    return latest_outcomes
 
 
 async def execute_handlers_once(

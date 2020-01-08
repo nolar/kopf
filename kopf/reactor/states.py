@@ -53,7 +53,7 @@ import collections.abc
 import copy
 import dataclasses
 import datetime
-from typing import Any, Optional, Mapping, Dict, Sequence, Iterator, cast, overload
+from typing import Any, Optional, Mapping, Dict, Collection, Iterator, cast, overload
 
 from kopf.reactor import registries
 from kopf.structs import bodies
@@ -190,7 +190,7 @@ class State(Mapping[registries.HandlerId, HandlerState]):
     def from_scratch(
             cls,
             *,
-            handlers: Sequence[registries.BaseHandler],
+            handlers: Collection[registries.BaseHandler],
     ) -> "State":
         return cls.from_body(cast(bodies.Body, {}), handlers=handlers)
 
@@ -199,7 +199,7 @@ class State(Mapping[registries.HandlerId, HandlerState]):
             cls,
             body: bodies.Body,
             *,
-            handlers: Sequence[registries.BaseHandler],
+            handlers: Collection[registries.BaseHandler],
     ) -> "State":
         storage = body.get('status', {}).get('kopf', {})
         progress = storage.get('progress', {})
