@@ -58,7 +58,7 @@ async def authenticate(
     # Log initial and re-authentications differently, for readability.
     logger.info(f"{_activity_title} has been initiated.")
 
-    activity_results = await handling.activity_trigger(
+    activity_results = await handling.run_activity(
         lifecycle=lifecycles.all_at_once,
         registry=registry,
         activity=causation.Activity.AUTHENTICATION,

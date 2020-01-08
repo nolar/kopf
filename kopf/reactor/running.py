@@ -478,7 +478,7 @@ async def _startup_cleanup_activities(
 
     # Execute the startup activity before any root task starts running (due to readiness flag).
     try:
-        await handling.activity_trigger(
+        await handling.run_activity(
             lifecycle=lifecycles.all_at_once,
             registry=registry,
             activity=causation.Activity.STARTUP,
@@ -508,7 +508,7 @@ async def _startup_cleanup_activities(
 
     # Execute the cleanup activity after all other root tasks are presumably done.
     try:
-        await handling.activity_trigger(
+        await handling.run_activity(
             lifecycle=lifecycles.all_at_once,
             registry=registry,
             activity=causation.Activity.CLEANUP,

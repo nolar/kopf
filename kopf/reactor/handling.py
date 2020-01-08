@@ -95,7 +95,7 @@ handler_var: ContextVar[registries.BaseHandler] = ContextVar('handler_var')
 cause_var: ContextVar[causation.BaseCause] = ContextVar('cause_var')
 
 
-async def activity_trigger(
+async def run_activity(
         *,
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
