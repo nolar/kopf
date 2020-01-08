@@ -262,16 +262,16 @@ class State(Mapping[registries.HandlerId, HandlerState]):
         return all(handler_state.finished for handler_state in self._states.values())
 
     @property
-    def delay(self) -> float:
+    def delay(self) -> Optional[float]:
         now = datetime.datetime.utcnow()
         state_times = [handler_state.delayed for handler_state in self._states.values()]
         clean_times = [t for t in state_times if t is not None]
         if clean_times:
             until = min(clean_times)  # the soonest awake datetime.
             delay = (until - now).total_seconds()
+            return max(0, delay)
         else:
-            delay = 0
-        return max(0, delay)
+            return None
 
 
 def deliver_results(

@@ -225,18 +225,27 @@ async def resource_handler(
 
     # Sleep strictly after patching, never before -- to keep the status proper.
     # The patching above, if done, interrupts the sleep instantly, so we skip it at all.
+    # Note: a zero-second or negative sleep is still a sleep, it will trigger a dummy patch.
     if delay and patch:
         logger.debug(f"Sleeping was skipped because of the patch, {delay} seconds left.")
-    elif delay:
-        logger.debug(f"Sleeping for {delay} seconds for the delayed handlers.")
-        unslept = await sleeping.sleep_or_wait(min(delay, WAITING_KEEPALIVE_INTERVAL), replenished)
-        if unslept is not None:
-            logger.debug(f"Sleeping was interrupted by new changes, {unslept} seconds left.")
+    elif delay is None and not patch:
+        logger.debug(f"Handling cycle is finished, waiting for new changes since now.")
+    elif delay is not None:
+        if delay > 0:
+            logger.debug(f"Sleeping for {delay} seconds for the delayed handlers.")
+            limited_delay = min(delay, WAITING_KEEPALIVE_INTERVAL)
+            unslept_delay = await sleeping.sleep_or_wait(limited_delay, replenished)
         else:
-            now = datetime.datetime.utcnow()
-            dummy = patches.Patch({'status': {'kopf': {'dummy': now.isoformat()}}})
-            logger.debug("Provoking reaction with: %r", dummy)
-            await patching.patch_obj(resource=resource, patch=dummy, body=body)
+            unslept_delay = None  # no need to sleep? means: slept in full.
+
+        if unslept_delay is not None:
+            logger.debug(f"Sleeping was interrupted by new changes, {unslept_delay} seconds left.")
+        else:
+            # Any unique always-changing value will work; not necessary a timestamp.
+            dummy_value = datetime.datetime.utcnow().isoformat()
+            dummy_patch = patches.Patch({'status': {'kopf': {'dummy': dummy_value}}})
+            logger.debug("Provoking reaction with: %r", dummy_patch)
+            await patching.patch_obj(resource=resource, patch=dummy_patch, body=body)
 
 
 async def handle_resource_watching_cause(
