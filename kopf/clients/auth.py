@@ -34,16 +34,16 @@ def reauthenticated_request(fn: _F) -> _F:
     @functools.wraps(fn)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
 
-        # If a session is explicitly passed, make it a simple call without re-auth.
+        # If a context is explicitly passed, make it a simple call without re-auth.
         # Exceptions are escalated to a caller, which is probably wrapped itself.
-        if 'session' in kwargs:
+        if 'context' in kwargs:
             return await fn(*args, **kwargs)
 
         # Otherwise, attempt the execution with the vault credentials and re-authenticate on 401s.
         vault: credentials.Vault = vault_var.get()
-        async for key, info, session in vault.extended(APISession.from_connection_info, 'sessions'):
+        async for key, info, context in vault.extended(APIContext, 'contexts'):
             try:
-                return await fn(*args, **kwargs, session=session)
+                return await fn(*args, **kwargs, context=context)
             except aiohttp.ClientResponseError as e:
                 if e.status == 401:
                     await vault.invalidate(key, exc=e)
@@ -66,18 +66,18 @@ def reauthenticated_stream(fn: _F) -> _F:
     @functools.wraps(fn)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
 
-        # If a session is explicitly passed, make it a simple call without re-auth.
+        # If a context is explicitly passed, make it a simple call without re-auth.
         # Exceptions are escalated to a caller, which is probably wrapped itself.
-        if 'session' in kwargs:
+        if 'context' in kwargs:
             async for item in fn(*args, **kwargs):
                 yield item
             return
 
         # Otherwise, attempt the execution with the vault credentials and re-authenticate on 401s.
         vault: credentials.Vault = vault_var.get()
-        async for key, info, session in vault.extended(APISession.from_connection_info, 'sessions'):
+        async for key, info, context in vault.extended(APIContext, 'contexts'):
             try:
-                async for item in fn(*args, **kwargs, session=session):
+                async for item in fn(*args, **kwargs, context=context):
                     yield item
                 break  # out of credentials cycle (instead of `return`)
             except aiohttp.ClientResponseError as e:
@@ -90,29 +90,36 @@ def reauthenticated_stream(fn: _F) -> _F:
     return cast(_F, wrapper)
 
 
-class APISession(aiohttp.ClientSession):
+class APIContext:
     """
-    An extended aiohttp session, with k8s scopes for server & namespace scopes.
+    A container for an aiohttp session and the caches of the environment info.
 
-    It is constructed once per every `ConnectionInfo`, and then cached
-    for later re-use (see `Vault.extended`).
+    The container is constructed only once for every `ConnectionInfo`,
+    and then cached for later re-use (see `Vault.extended`).
 
     We assume that the whole operator runs in the same event loop, so there is
     no need to split the sessions for multiple loops. Synchronous handlers are
     threaded with other event loops per thread, but no operator's requests are
     performed inside of those threads: everything is in the main thread/loop.
     """
+
+    # The main contained object used by the API methods.
+    session: aiohttp.ClientSession
+
+    # Contextual information for URL building.
     server: str
     default_namespace: Optional[str]
+
+    # Temporary caches of the information retrieved for and from the environment.
     _tempfiles: "_TempFiles"
     _discovery_lock: asyncio.Lock
     _discovered_resources: Dict[str, Dict[resources.Resource, Dict[str, object]]]
 
-    @classmethod
-    def from_connection_info(
-            cls,
+    def __init__(
+            self,
             info: credentials.ConnectionInfo,
-    ) -> "APISession":
+    ) -> None:
+        super().__init__()
 
         # Some SSL data are not accepted directly, so we have to use temp files.
         tempfiles = _TempFiles()
@@ -184,7 +191,7 @@ class APISession(aiohttp.ClientSession):
         headers['User-Agent'] = f'kopf/unknown'  # TODO: add version someday
 
         # Generic aiohttp session based on the constructed credentials.
-        session = cls(
+        self.session = aiohttp.ClientSession(
             connector=aiohttp.TCPConnector(
                 limit=0,
                 ssl=context,
@@ -194,13 +201,22 @@ class APISession(aiohttp.ClientSession):
         )
 
         # Add the extra payload information. We avoid overriding the constructor.
-        session.server = info.server
-        session.default_namespace = info.default_namespace
-        session._tempfiles = tempfiles  # for purging on garbage collection
-        session._discovery_lock = asyncio.Lock()
-        session._discovered_resources = {}
+        self.server = info.server
+        self.default_namespace = info.default_namespace
 
-        return session
+        # For purging on garbage collection.
+        self._tempfiles = tempfiles
+        self._discovery_lock = asyncio.Lock()
+        self._discovered_resources = {}
+
+    async def close(self) -> None:
+
+        # Closing is triggered by `Vault._flush_caches()` -- forward it to the actual session.
+        await self.session.close()
+
+        # Additionally, explicitly remove any temporary files we have created.
+        # They will be purged on garbage collection anyway, but it is better to make it sooner.
+        self._tempfiles.purge()
 
 
 class _TempFiles(Mapping[bytes, str]):
@@ -208,12 +224,16 @@ class _TempFiles(Mapping[bytes, str]):
     A container for the temporary files, which are purged on garbage collection.
 
     The files are purged when the container is garbage-collected. The container
-    is garbage-collected when its parent `APISession` is garbage-collected.
+    is garbage-collected when its parent `APISession` is garbage-collected or
+    explicitly closed (by `Vault` on removal of corresponding credentials).
     """
 
     def __init__(self) -> None:
         super().__init__()
         self._paths: Dict[bytes, str] = {}
+
+    def __del__(self) -> None:
+        self.purge()
 
     def __len__(self) -> int:
         return len(self._paths)
@@ -228,7 +248,7 @@ class _TempFiles(Mapping[bytes, str]):
             self._paths[item] = f.name
         return self._paths[item]
 
-    def __del__(self) -> None:
+    def purge(self) -> None:
         for _, path in self._paths.items():
             try:
                 os.remove(path)

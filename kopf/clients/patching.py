@@ -17,7 +17,7 @@ async def patch_obj(
         namespace: Optional[str] = None,
         name: Optional[str] = None,
         body: Optional[bodies.Body] = None,
-        session: Optional[auth.APISession] = None,  # injected by the decorator
+        context: Optional[auth.APIContext] = None,  # injected by the decorator
 ) -> None:
     """
     Patch a resource of specific kind.
@@ -29,7 +29,7 @@ async def patch_obj(
     used for the namespaced resources, even if the operator serves
     the whole cluster (i.e. is not namespace-restricted).
     """
-    if session is None:
+    if context is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 
     if body is not None and (name is not None or namespace is not None):
@@ -38,7 +38,7 @@ async def patch_obj(
     namespace = body.get('metadata', {}).get('namespace') if body is not None else namespace
     name = body.get('metadata', {}).get('name') if body is not None else name
 
-    is_namespaced = await discovery.is_namespaced(resource=resource, session=session)
+    is_namespaced = await discovery.is_namespaced(resource=resource, context=context)
     namespace = namespace if is_namespaced else None
 
     if body is None:
@@ -47,8 +47,8 @@ async def patch_obj(
             body['metadata']['namespace'] = namespace
 
     try:
-        await session.patch(
-            url=resource.get_url(server=session.server, namespace=namespace, name=name),
+        await context.session.patch(
+            url=resource.get_url(server=context.server, namespace=namespace, name=name),
             headers={'Content-Type': 'application/merge-patch+json'},
             json=patch,
             raise_for_status=True,

@@ -43,7 +43,7 @@ setup(
         'typing_extensions',
         'click',
         'iso8601',
-        'aiohttp',
+        'aiohttp<4.0.0',
         'aiojobs',
         'pykube-ng>=0.27',  # used only for config parsing
     ],

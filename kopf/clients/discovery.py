@@ -10,24 +10,24 @@ from kopf.structs import resources
 async def discover(
         *,
         resource: resources.Resource,
-        session: Optional[auth.APISession] = None,  # injected by the decorator
+        context: Optional[auth.APIContext] = None,  # injected by the decorator
 ) -> Optional[Dict[str, object]]:
-    if session is None:
+    if context is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 
-    if resource.api_version not in session._discovered_resources:
-        async with session._discovery_lock:
-            if resource.api_version not in session._discovered_resources:
-                session._discovered_resources[resource.api_version] = {}
+    if resource.api_version not in context._discovered_resources:
+        async with context._discovery_lock:
+            if resource.api_version not in context._discovered_resources:
+                context._discovered_resources[resource.api_version] = {}
 
                 try:
-                    response = await session.get(
-                        url=resource.get_version_url(server=session.server),
+                    response = await context.session.get(
+                        url=resource.get_version_url(server=context.server),
                     )
                     response.raise_for_status()
                     respdata = await response.json()
 
-                    session._discovered_resources[resource.api_version].update({
+                    context._discovered_resources[resource.api_version].update({
                         resources.Resource(resource.group, resource.version, info['name']): info
                         for info in respdata['resources']
                     })
@@ -38,17 +38,17 @@ async def discover(
                     else:
                         raise
 
-    return session._discovered_resources[resource.api_version].get(resource, None)
+    return context._discovered_resources[resource.api_version].get(resource, None)
 
 
 @auth.reauthenticated_request
 async def is_namespaced(
         *,
         resource: resources.Resource,
-        session: Optional[auth.APISession] = None,  # injected by the decorator
+        context: Optional[auth.APIContext] = None,  # injected by the decorator
 ) -> bool:
-    if session is None:
+    if context is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 
-    info = await discover(resource=resource, session=session)
+    info = await discover(resource=resource, context=context)
     return cast(bool, info['namespaced']) if info is not None else True  # assume namespaced

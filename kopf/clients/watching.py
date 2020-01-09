@@ -170,7 +170,7 @@ async def watch_objs(
         namespace: Optional[str] = None,
         timeout: Optional[float] = None,
         since: Optional[str] = None,
-        session: Optional[auth.APISession] = None,  # injected by the decorator
+        context: Optional[auth.APIContext] = None,  # injected by the decorator
         freeze_waiter: asyncio_Future,
 ) -> AsyncIterator[bodies.RawEvent]:
     """
@@ -185,10 +185,10 @@ async def watch_objs(
 
     * The resource is namespace-scoped AND operator is namespaced-restricted.
     """
-    if session is None:
+    if context is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 
-    is_namespaced = await discovery.is_namespaced(resource=resource, session=session)
+    is_namespaced = await discovery.is_namespaced(resource=resource, context=context)
     namespace = namespace if is_namespaced else None
 
     params: Dict[str, str] = {}
@@ -199,8 +199,8 @@ async def watch_objs(
         params['timeoutSeconds'] = str(timeout)
 
     # Talk to the API and initiate a streaming response.
-    response = await session.get(
-        url=resource.get_url(server=session.server, namespace=namespace, params=params),
+    response = await context.session.get(
+        url=resource.get_url(server=context.server, namespace=namespace, params=params),
         timeout=aiohttp.ClientTimeout(total=None),
     )
     response.raise_for_status()

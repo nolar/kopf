@@ -25,7 +25,7 @@ async def post_event(
         type: str,
         reason: str,
         message: str = '',
-        session: Optional[auth.APISession] = None,  # injected by the decorator
+        context: Optional[auth.APIContext] = None,  # injected by the decorator
 ) -> None:
     """
     Issue an event for the object.
@@ -34,12 +34,12 @@ async def post_event(
     and where the rate-limits should be maintained. It can (and should)
     be done by the client library, as it is done in the Go client.
     """
-    if session is None:
+    if context is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 
     # See #164. For cluster-scoped objects, use the current namespace from the current context.
     # It could be "default", but in some systems, we are limited to one specific namespace only.
-    namespace: str = ref.get('namespace') or session.default_namespace or 'default'
+    namespace: str = ref.get('namespace') or context.default_namespace or 'default'
     full_ref: bodies.ObjectReference = copy.copy(ref)
     full_ref['namespace'] = namespace
 
@@ -74,8 +74,8 @@ async def post_event(
     }
 
     try:
-        response = await session.post(
-            url=EVENTS_CORE_V1_CRD.get_url(server=session.server, namespace=namespace),
+        response = await context.session.post(
+            url=EVENTS_CORE_V1_CRD.get_url(server=context.server, namespace=namespace),
             headers={'Content-Type': 'application/json'},
             json=body,
         )

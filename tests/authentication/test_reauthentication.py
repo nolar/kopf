@@ -1,25 +1,27 @@
-import aiohttp.web
 from typing import Optional, AsyncIterator, Tuple
 
-from kopf.clients.auth import APISession, reauthenticated_request, reauthenticated_stream
+import aiohttp.web
+
+from kopf.clients.auth import APIContext, reauthenticated_request, reauthenticated_stream
+from kopf.structs.credentials import ConnectionInfo
 
 
 @reauthenticated_request
 async def request_fn(
         x: int,
         *,
-        session: Optional[APISession],
-) -> Tuple[APISession, int]:
-    return session, x + 100
+        context: Optional[APIContext],
+) -> Tuple[APIContext, int]:
+    return context, x + 100
 
 
 @reauthenticated_stream
 async def stream_fn(
         x: int,
         *,
-        session: Optional[APISession],
-) -> AsyncIterator[Tuple[APISession, int]]:
-    yield session, x + 100
+        context: Optional[APIContext],
+) -> AsyncIterator[Tuple[APIContext, int]]:
+    yield context, x + 100
 
 
 async def test_session_is_injected_to_request(
@@ -29,9 +31,9 @@ async def test_session_is_injected_to_request(
     get_mock = resp_mocker(return_value=aiohttp.web.json_response(result))
     aresponses.add(hostname, resource.get_url(namespace=None, name='xyz'), 'get', get_mock)
 
-    session, result = await request_fn(1)
+    context, result = await request_fn(1)
 
-    assert session is not None
+    assert context is not None
     assert result == 101
 
 
@@ -42,11 +44,12 @@ async def test_session_is_injected_to_stream(
     get_mock = resp_mocker(return_value=aiohttp.web.json_response(result))
     aresponses.add(hostname, resource.get_url(namespace=None, name='xyz'), 'get', get_mock)
 
+    context = None
     counter = 0
-    async for session, result in stream_fn(1):
+    async for context, result in stream_fn(1):
         counter += 1
 
-    assert session is not None
+    assert context is not None
     assert result == 101
     assert counter == 1
 
@@ -58,10 +61,10 @@ async def test_session_is_passed_through_to_request(
     get_mock = resp_mocker(return_value=aiohttp.web.json_response(result))
     aresponses.add(hostname, resource.get_url(namespace=None, name='xyz'), 'get', get_mock)
 
-    explicit_session = APISession()
-    session, result = await request_fn(1, session=explicit_session)
+    explicit_context = APIContext(ConnectionInfo(server='http://irrelevant/'))
+    context, result = await request_fn(1, context=explicit_context)
 
-    assert session is explicit_session
+    assert context is explicit_context
     assert result == 101
 
 
@@ -72,11 +75,11 @@ async def test_session_is_passed_through_to_stream(
     get_mock = resp_mocker(return_value=aiohttp.web.json_response(result))
     aresponses.add(hostname, resource.get_url(namespace=None, name='xyz'), 'get', get_mock)
 
-    explicit_session = APISession()
+    explicit_context = APIContext(ConnectionInfo(server='http://irrelevant/'))
     counter = 0
-    async for session, result in stream_fn(1, session=explicit_session):
+    async for context, result in stream_fn(1, context=explicit_context):
         counter += 1
 
-    assert session is explicit_session
+    assert context is explicit_context
     assert result == 101
     assert counter == 1

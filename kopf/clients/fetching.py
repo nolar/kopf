@@ -22,14 +22,14 @@ async def read_crd(
         *,
         resource: resources.Resource,
         default: Union[_T, _UNSET] = _UNSET.token,
-        session: Optional[auth.APISession] = None,  # injected by the decorator
+        context: Optional[auth.APIContext] = None,  # injected by the decorator
 ) -> Union[bodies.Body, _T]:
-    if session is None:
+    if context is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 
     try:
-        response = await session.get(
-            url=CRD_CRD.get_url(server=session.server, name=resource.name),
+        response = await context.session.get(
+            url=CRD_CRD.get_url(server=context.server, name=resource.name),
         )
         response.raise_for_status()
         respdata = await response.json()
@@ -48,17 +48,17 @@ async def read_obj(
         namespace: Optional[str] = None,
         name: Optional[str] = None,
         default: Union[_T, _UNSET] = _UNSET.token,
-        session: Optional[auth.APISession] = None,  # injected by the decorator
+        context: Optional[auth.APIContext] = None,  # injected by the decorator
 ) -> Union[bodies.Body, _T]:
-    if session is None:
+    if context is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 
-    is_namespaced = await discovery.is_namespaced(resource=resource, session=session)
+    is_namespaced = await discovery.is_namespaced(resource=resource, context=context)
     namespace = namespace if is_namespaced else None
 
     try:
-        response = await session.get(
-            url=resource.get_url(server=session.server, namespace=namespace, name=name),
+        response = await context.session.get(
+            url=resource.get_url(server=context.server, namespace=namespace, name=name),
         )
         response.raise_for_status()
         respdata = await response.json()
@@ -75,7 +75,7 @@ async def list_objs_rv(
         *,
         resource: resources.Resource,
         namespace: Optional[str] = None,
-        session: Optional[auth.APISession] = None,  # injected by the decorator
+        context: Optional[auth.APIContext] = None,  # injected by the decorator
 ) -> Tuple[Collection[bodies.Body], str]:
     """
     List the objects of specific resource type.
@@ -89,14 +89,14 @@ async def list_objs_rv(
 
     * The resource is namespace-scoped AND operator is namespaced-restricted.
     """
-    if session is None:
+    if context is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 
-    is_namespaced = await discovery.is_namespaced(resource=resource, session=session)
+    is_namespaced = await discovery.is_namespaced(resource=resource, context=context)
     namespace = namespace if is_namespaced else None
 
-    response = await session.get(
-        url=resource.get_url(server=session.server, namespace=namespace),
+    response = await context.session.get(
+        url=resource.get_url(server=context.server, namespace=namespace),
     )
     response.raise_for_status()
     rsp = await response.json()
