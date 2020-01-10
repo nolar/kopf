@@ -304,8 +304,11 @@ def this(  # lgtm[py/similar-function]
     """
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
         actual_registry = registry if registry is not None else handling.subregistry_var.get()
+        parent_handler = handling.handler_var.get()
+        real_id = registries.generate_id(fn=fn, id=id,
+                                         prefix=parent_handler.id if parent_handler else None)
         return actual_registry.register(
-            id=id, fn=fn,
+            id=real_id, fn=fn,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
         )
     return decorator

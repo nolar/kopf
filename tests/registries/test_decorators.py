@@ -3,7 +3,7 @@ import pytest
 import kopf
 from kopf.reactor.causation import Reason, Activity, HANDLER_REASONS
 from kopf.reactor.errors import ErrorsMode
-from kopf.reactor.handling import subregistry_var
+from kopf.reactor.handling import subregistry_var, handler_var
 from kopf.reactor.registries import OperatorRegistry, ResourceChangingRegistry
 from kopf.structs.resources import Resource
 
@@ -414,11 +414,12 @@ def test_on_field_with_all_kwargs(mocker):
     assert handlers[0].when == when
 
 
-def test_subhandler_declaratively(mocker):
+def test_subhandler_declaratively(mocker, parent_handler):
     cause = mocker.MagicMock(reason=Reason.UPDATE, diff=None)
 
     registry = ResourceChangingRegistry()
     subregistry_var.set(registry)
+    handler_var.set(parent_handler)
 
     @kopf.on.this()
     def fn(**_):
@@ -429,11 +430,12 @@ def test_subhandler_declaratively(mocker):
     assert handlers[0].fn is fn
 
 
-def test_subhandler_imperatively(mocker):
+def test_subhandler_imperatively(mocker, parent_handler):
     cause = mocker.MagicMock(reason=Reason.UPDATE, diff=None)
 
     registry = ResourceChangingRegistry()
     subregistry_var.set(registry)
+    handler_var.set(parent_handler)
 
     def fn(**_):
         pass

@@ -38,9 +38,8 @@ class GenericRegistry(Generic[HandlerT, HandlerFnT]):
     """ A generic base class of a simple registry (with no handler getters). """
     _handlers: List[HandlerT]
 
-    def __init__(self, prefix: Optional[str] = None) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.prefix = prefix
         self._handlers = []
 
     def __bool__(self) -> bool:
@@ -66,7 +65,7 @@ class ActivityRegistry(GenericRegistry[handlers.ActivityHandler, callbacks.Activ
             activity: Optional[causation.Activity] = None,
             _fallback: bool = False,
     ) -> callbacks.ActivityHandlerFn:
-        real_id = generate_id(fn=fn, id=id, prefix=self.prefix)
+        real_id = generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
             id=real_id, fn=fn, activity=activity,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
@@ -127,7 +126,7 @@ class ResourceRegistry(GenericRegistry[handlers.ResourceHandler, callbacks.Resou
             reason = causation.Reason(event)
 
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
-        real_id = generate_id(fn=fn, id=id, prefix=self.prefix, suffix=".".join(real_field or []))
+        real_id = generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         handler = handlers.ResourceHandler(
             id=real_id, fn=fn, reason=reason, field=real_field,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
