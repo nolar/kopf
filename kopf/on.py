@@ -12,13 +12,14 @@ This module is a part of the framework's public interface.
 
 # TODO: add cluster=True support (different API methods)
 
-from typing import Optional, Callable, Union, Tuple, List
+from typing import Optional, Callable
 
 from kopf.reactor import callbacks
 from kopf.reactor import causation
 from kopf.reactor import handling
 from kopf.reactor import registries
 from kopf.structs import bodies
+from kopf.structs import dicts
 
 ResourceHandlerDecorator = Callable[[callbacks.ResourceHandlerFn], callbacks.ResourceHandlerFn]
 ActivityHandlerDecorator = Callable[[callbacks.ActivityHandlerFn], callbacks.ActivityHandlerFn]
@@ -215,7 +216,7 @@ def delete(
 
 def field(
         group: str, version: str, plural: str,
-        field: Union[str, List[str], Tuple[str, ...]],
+        field: dicts.FieldSpec,
         *,
         id: Optional[str] = None,
         errors: Optional[registries.ErrorsMode] = None,
