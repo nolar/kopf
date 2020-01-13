@@ -16,6 +16,7 @@ async def test_skipped_with_no_handlers(
         caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = cause_type
+    cause_mock.body['metadata']['finalizers'] = []
 
     assert not registry.has_resource_changing_handlers(resource=resource)  # prerequisite
     registry.register_resource_changing_handler(

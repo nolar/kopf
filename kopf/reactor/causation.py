@@ -51,8 +51,6 @@ class Reason(str, enum.Enum):
     NOOP = 'noop'
     FREE = 'free'
     GONE = 'gone'
-    ACQUIRE = 'acquire'
-    RELEASE = 'release'
 
     def __str__(self) -> str:
         return str(self.value)
@@ -70,8 +68,6 @@ REACTOR_REASONS = (
     Reason.NOOP,
     Reason.FREE,
     Reason.GONE,
-    Reason.ACQUIRE,
-    Reason.RELEASE,
 )
 ALL_REASONS = HANDLER_REASONS + REACTOR_REASONS
 
@@ -153,7 +149,6 @@ def detect_resource_changing_cause(
         *,
         event: bodies.Event,
         diff: Optional[diffs.Diff] = None,
-        requires_finalizer: bool = True,
         initial: bool = False,
         **kwargs: Any,
 ) -> ResourceChangingCause:
@@ -182,19 +177,6 @@ def detect_resource_changing_cause(
 
     if finalizers.is_deleted(body):
         return ResourceChangingCause(reason=Reason.DELETE, **kwargs)
-
-    # For a fresh new object, first block it from accidental deletions without our permission.
-    # The actual handler will be called on the next call.
-    # Only return this cause if the resource requires finalizers to be added.
-    if requires_finalizer and not finalizers.has_finalizers(body):
-        return ResourceChangingCause(reason=Reason.ACQUIRE, **kwargs)
-
-    # Check whether or not the resource has finalizers, but doesn't require them. If this is
-    # the case, then a resource may not be able to be deleted completely as finalizers may
-    # not be removed by the operator under normal operation. We remove the finalizers first,
-    # and any handler that should be called will be done on the next call.
-    if not requires_finalizer and finalizers.has_finalizers(body):
-        return ResourceChangingCause(reason=Reason.RELEASE, **kwargs)
 
     # For an object seen for the first time (i.e. just-created), call the creation handlers,
     # then mark the state as if it was seen when the creation has finished.

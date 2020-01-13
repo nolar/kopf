@@ -208,7 +208,6 @@ async def resource_handler(
             diff=diff,
             memo=memory.user_data,
             initial=memory.noticed_by_listing and not memory.fully_handled_once,
-            requires_finalizer=registry.requires_finalizer(resource=resource, body=body),
         )
         delay = await handle_resource_changing_cause(
             lifecycle=lifecycle,
@@ -293,6 +292,19 @@ async def handle_resource_changing_cause(
     done = None
     skip = None
 
+    requires_finalizer = registry.requires_finalizer(resource=cause.resource, body=cause.body)
+    has_finalizer = finalizers.has_finalizers(body=cause.body)
+
+    if requires_finalizer and not has_finalizer:
+        logger.debug("Adding the finalizer, thus preventing the actual deletion.")
+        finalizers.append_finalizers(body=body, patch=patch)
+        return None
+
+    if not requires_finalizer and has_finalizer:
+        logger.debug("Removing the finalizer, as there are no handlers requiring it.")
+        finalizers.remove_finalizers(body=body, patch=patch)
+        return None
+
     # Regular causes invoke the handlers.
     if cause.reason in causation.HANDLER_REASONS:
         title = causation.TITLES.get(cause.reason, repr(cause.reason))
@@ -343,21 +355,6 @@ async def handle_resource_changing_cause(
 
     if cause.reason == causation.Reason.NOOP:
         logger.debug("Something has changed, but we are not interested (the essence is the same).")
-
-    # For the case of a newly created object, or one that doesn't have the correct
-    # finalizers, lock it to this operator. Not all newly created objects will
-    # produce an 'ACQUIRE' causation event. This only happens when there are
-    # mandatory deletion handlers registered for the given object, i.e. if finalizers
-    # are required.
-    if cause.reason == causation.Reason.ACQUIRE:
-        logger.debug("Adding the finalizer, thus preventing the actual deletion.")
-        finalizers.append_finalizers(body=body, patch=patch)
-
-    # Remove finalizers from an object, since the object currently has finalizers, but
-    # shouldn't, thus releasing the locking of the object to this operator.
-    if cause.reason == causation.Reason.RELEASE:
-        logger.debug("Removing the finalizer, as there are no handlers requiring it.")
-        finalizers.remove_finalizers(body=body, patch=patch)
 
     # The delay is then consumed by the main handling routine (in different ways).
     return delay
