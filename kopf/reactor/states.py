@@ -55,6 +55,7 @@ import dataclasses
 import datetime
 from typing import Any, Optional, Mapping, Dict, Collection, Iterator, cast, overload
 
+from kopf.reactor import callbacks
 from kopf.reactor import registries
 from kopf.structs import bodies
 from kopf.structs import patches
@@ -75,7 +76,7 @@ class HandlerOutcome:
     """
     final: bool
     delay: Optional[float] = None
-    result: Optional[registries.HandlerResult] = None
+    result: Optional[callbacks.HandlerResult] = None
     exception: Optional[Exception] = None
 
 

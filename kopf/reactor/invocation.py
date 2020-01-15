@@ -12,15 +12,15 @@ import functools
 from typing import Optional, Any, Union, List, Iterable, Iterator, Tuple, Dict
 
 from kopf import config
+from kopf.reactor import callbacks
 from kopf.reactor import causation
 from kopf.reactor import lifecycles
-from kopf.reactor import registries
 from kopf.structs import dicts
 
 Invokable = Union[
     lifecycles.LifeCycleFn,
-    registries.ActivityHandlerFn,
-    registries.ResourceHandlerFn,
+    callbacks.ActivityHandlerFn,
+    callbacks.ResourceHandlerFn,
 ]
 
 

@@ -19,6 +19,7 @@ The process is intentionally split into multiple packages:
 import logging
 from typing import NoReturn, Mapping
 
+from kopf.reactor import callbacks
 from kopf.reactor import causation
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
@@ -93,7 +94,7 @@ async def run_activity(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
         activity: causation.Activity,
-) -> Mapping[registries.HandlerId, registries.HandlerResult]:
+) -> Mapping[registries.HandlerId, callbacks.HandlerResult]:
     logger = logging.getLogger(f'kopf.activities.{activity.value}')
 
     # For the activity handlers, we have neither bodies, nor patches, just the state.

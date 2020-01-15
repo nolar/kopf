@@ -1,4 +1,4 @@
-from kopf.reactor.registries import HandlerResult
+from kopf.reactor.callbacks import HandlerResult
 from kopf.reactor.states import HandlerOutcome
 
 

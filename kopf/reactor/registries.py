@@ -16,30 +16,22 @@ import collections
 import dataclasses
 import enum
 import functools
-import logging
 import warnings
 from types import FunctionType, MethodType
 from typing import (Any, MutableMapping, Optional, Sequence, Collection, Iterable, Iterator,
-                    Union, List, Set, FrozenSet, Mapping, NewType, Callable, cast,
-                    Generic, TypeVar)
+                    List, Set, FrozenSet, Mapping, NewType, Callable, cast, Generic, TypeVar)
 
-from typing_extensions import Protocol
-
-from kopf.reactor import causation, invocation
+from kopf.reactor import callbacks
+from kopf.reactor import causation
+from kopf.reactor import invocation
 from kopf.structs import bodies
 from kopf.structs import dicts
-from kopf.structs import diffs
-from kopf.structs import patches
 from kopf.structs import resources as resources_
 from kopf.utilities import piggybacking
 
 # Strings are taken from the users, but then tainted as this type for stricter type-checking:
 # to prevent usage of some other strings (e.g. operator id) as the handlers ids.
 HandlerId = NewType('HandlerId', str)
-
-# A specialised type to highlight the purpose or origin of the data of type Any,
-# to not be mixed with other arbitrary Any values, where it is indeed "any".
-HandlerResult = NewType('HandlerResult', object)
 
 
 class ErrorsMode(enum.Enum):
@@ -49,58 +41,6 @@ class ErrorsMode(enum.Enum):
     PERMANENT = enum.auto()
 
 
-class ActivityHandlerFn(Protocol):
-    def __call__(
-            self,
-            *args: Any,
-            logger: Union[logging.Logger, logging.LoggerAdapter],
-            **kwargs: Any,
-    ) -> Optional[HandlerResult]: ...
-
-
-class ResourceHandlerFn(Protocol):
-    def __call__(
-            self,
-            *args: Any,
-            type: str,
-            event: Union[str, bodies.Event],
-            body: bodies.Body,
-            meta: bodies.Meta,
-            spec: bodies.Spec,
-            status: bodies.Status,
-            uid: str,
-            name: str,
-            namespace: Optional[str],
-            patch: patches.Patch,
-            logger: Union[logging.Logger, logging.LoggerAdapter],
-            diff: diffs.Diff,
-            old: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
-            new: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
-            **kwargs: Any,
-    ) -> Optional[HandlerResult]: ...
-
-class WhenHandlerFn(Protocol):
-    def __call__(
-            self,
-            *args: Any,
-            type: str,
-            event: Union[str, bodies.Event],
-            body: bodies.Body,
-            meta: bodies.Meta,
-            spec: bodies.Spec,
-            status: bodies.Status,
-            uid: str,
-            name: str,
-            namespace: Optional[str],
-            patch: patches.Patch,
-            logger: Union[logging.Logger, logging.LoggerAdapter],
-            diff: diffs.Diff,
-            old: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
-            new: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
-            **kwargs: Any,
-    ) -> bool: ...
-
-
 # A registered handler (function + meta info).
 # FIXME: Must be frozen, but mypy fails in _call_handler() with a cryptic error:
 # FIXME:    Argument 1 to "invoke" has incompatible type "Optional[HandlerResult]";
@@ -108,7 +48,7 @@ class WhenHandlerFn(Protocol):
 @dataclasses.dataclass
 class BaseHandler:
     id: HandlerId
-    fn: Callable[..., Optional[HandlerResult]]
+    fn: Callable[..., Optional[callbacks.HandlerResult]]
     errors: Optional[ErrorsMode]
     timeout: Optional[float]
     retries: Optional[int]
@@ -133,21 +73,21 @@ class BaseHandler:
 
 @dataclasses.dataclass
 class ActivityHandler(BaseHandler):
-    fn: ActivityHandlerFn  # type clarification
+    fn: callbacks.ActivityHandlerFn  # type clarification
     activity: Optional[causation.Activity] = None
     _fallback: bool = False  # non-public!
 
 
 @dataclasses.dataclass
 class ResourceHandler(BaseHandler):
-    fn: ResourceHandlerFn  # type clarification
+    fn: callbacks.ResourceHandlerFn  # type clarification
     reason: Optional[causation.Reason]
     field: Optional[dicts.FieldPath]
     initial: Optional[bool] = None
     deleted: Optional[bool] = None  # used for mixed-in (initial==True) @on.resume handlers only.
     labels: Optional[bodies.Labels] = None
     annotations: Optional[bodies.Annotations] = None
-    when: Optional[WhenHandlerFn] = None
+    when: Optional[callbacks.WhenHandlerFn] = None
     requires_finalizer: Optional[bool] = None
 
     @property
@@ -157,7 +97,7 @@ class ResourceHandler(BaseHandler):
 
 
 # We only type-check for known classes of handlers/callbacks, and ignore any custom subclasses.
-HandlerFnT = TypeVar('HandlerFnT', ActivityHandlerFn, ResourceHandlerFn)
+HandlerFnT = TypeVar('HandlerFnT', callbacks.ActivityHandlerFn, callbacks.ResourceHandlerFn)
 HandlerT = TypeVar('HandlerT', ActivityHandler, ResourceHandler)
 CauseT = TypeVar('CauseT', bound=causation.BaseCause)
 
@@ -178,12 +118,12 @@ class GenericRegistry(Generic[HandlerT, HandlerFnT]):
         self._handlers.append(handler)
 
 
-class ActivityRegistry(GenericRegistry[ActivityHandler, ActivityHandlerFn]):
+class ActivityRegistry(GenericRegistry[ActivityHandler, callbacks.ActivityHandlerFn]):
     """ An actual registry of activity handlers. """
 
     def register(
             self,
-            fn: ActivityHandlerFn,
+            fn: callbacks.ActivityHandlerFn,
             *,
             id: Optional[str] = None,
             errors: Optional[ErrorsMode] = None,
@@ -193,7 +133,7 @@ class ActivityRegistry(GenericRegistry[ActivityHandler, ActivityHandlerFn]):
             cooldown: Optional[float] = None,  # deprecated, use `backoff`
             activity: Optional[causation.Activity] = None,
             _fallback: bool = False,
-    ) -> ActivityHandlerFn:
+    ) -> callbacks.ActivityHandlerFn:
         real_id = generate_id(fn=fn, id=id, prefix=self.prefix)
         handler = ActivityHandler(
             id=real_id, fn=fn, activity=activity,
@@ -228,12 +168,12 @@ class ActivityRegistry(GenericRegistry[ActivityHandler, ActivityHandlerFn]):
                     yield handler
 
 
-class ResourceRegistry(GenericRegistry[ResourceHandler, ResourceHandlerFn], Generic[CauseT]):
+class ResourceRegistry(GenericRegistry[ResourceHandler, callbacks.ResourceHandlerFn], Generic[CauseT]):
     """ An actual registry of resource handlers. """
 
     def register(
             self,
-            fn: ResourceHandlerFn,
+            fn: callbacks.ResourceHandlerFn,
             *,
             id: Optional[str] = None,
             reason: Optional[causation.Reason] = None,
@@ -249,8 +189,8 @@ class ResourceRegistry(GenericRegistry[ResourceHandler, ResourceHandlerFn], Gene
             requires_finalizer: bool = False,
             labels: Optional[bodies.Labels] = None,
             annotations: Optional[bodies.Annotations] = None,
-            when: Optional[WhenHandlerFn] = None,
-    ) -> ResourceHandlerFn:
+            when: Optional[callbacks.WhenHandlerFn] = None,
+    ) -> callbacks.ResourceHandlerFn:
         if reason is None and event is not None:
             reason = causation.Reason(event)
 
@@ -355,7 +295,7 @@ class OperatorRegistry:
 
     def register_activity_handler(
             self,
-            fn: ActivityHandlerFn,
+            fn: callbacks.ActivityHandlerFn,
             *,
             id: Optional[str] = None,
             errors: Optional[ErrorsMode] = None,
@@ -365,7 +305,7 @@ class OperatorRegistry:
             cooldown: Optional[float] = None,  # deprecated, use `backoff`
             activity: Optional[causation.Activity] = None,
             _fallback: bool = False,
-    ) -> ActivityHandlerFn:
+    ) -> callbacks.ActivityHandlerFn:
         return self._activity_handlers.register(
             fn=fn, id=id, activity=activity,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
@@ -377,12 +317,12 @@ class OperatorRegistry:
             group: str,
             version: str,
             plural: str,
-            fn: ResourceHandlerFn,
+            fn: callbacks.ResourceHandlerFn,
             id: Optional[str] = None,
             labels: Optional[bodies.Labels] = None,
             annotations: Optional[bodies.Annotations] = None,
-            when: Optional[WhenHandlerFn] = None,
-    ) -> ResourceHandlerFn:
+            when: Optional[callbacks.WhenHandlerFn] = None,
+    ) -> callbacks.ResourceHandlerFn:
         """
         Register an additional handler function for low-level events.
         """
@@ -397,7 +337,7 @@ class OperatorRegistry:
             group: str,
             version: str,
             plural: str,
-            fn: ResourceHandlerFn,
+            fn: callbacks.ResourceHandlerFn,
             id: Optional[str] = None,
             reason: Optional[causation.Reason] = None,
             event: Optional[str] = None,  # deprecated, use `reason`
@@ -412,8 +352,8 @@ class OperatorRegistry:
             requires_finalizer: bool = False,
             labels: Optional[bodies.Labels] = None,
             annotations: Optional[bodies.Annotations] = None,
-            when: Optional[WhenHandlerFn] = None,
-    ) -> ResourceHandlerFn:
+            when: Optional[callbacks.WhenHandlerFn] = None,
+    ) -> callbacks.ResourceHandlerFn:
         """
         Register an additional handler function for the specific resource and specific reason.
         """
@@ -527,7 +467,7 @@ class SmartOperatorRegistry(OperatorRegistry):
         else:
             self.register_activity_handler(
                 id='login_via_pykube',
-                fn=cast(ActivityHandlerFn, piggybacking.login_via_pykube),
+                fn=cast(callbacks.ActivityHandlerFn, piggybacking.login_via_pykube),
                 activity=causation.Activity.AUTHENTICATION,
                 errors=ErrorsMode.IGNORED,
                 _fallback=True,
@@ -540,7 +480,7 @@ class SmartOperatorRegistry(OperatorRegistry):
         else:
             self.register_activity_handler(
                 id='login_via_client',
-                fn=cast(ActivityHandlerFn, piggybacking.login_via_client),
+                fn=cast(callbacks.ActivityHandlerFn, piggybacking.login_via_client),
                 activity=causation.Activity.AUTHENTICATION,
                 errors=ErrorsMode.IGNORED,
                 _fallback=True,
@@ -548,7 +488,7 @@ class SmartOperatorRegistry(OperatorRegistry):
 
 
 def generate_id(
-        fn: ResourceHandlerFn,
+        fn: Callable[..., Any],
         id: Optional[str],
         prefix: Optional[str] = None,
         suffix: Optional[str] = None,
@@ -560,7 +500,7 @@ def generate_id(
     return cast(HandlerId, real_id)
 
 
-def get_callable_id(c: Optional[Callable[..., Any]]) -> str:
+def get_callable_id(c: Callable[..., Any]) -> str:
     """ Get an reasonably good id of any commonly used callable. """
     if c is None:
         raise ValueError("Cannot build a persistent id of None.")
