@@ -189,7 +189,7 @@ def test_on_field_with_all_kwargs(mocker):
     cause = mocker.MagicMock(resource=resource, reason=Reason.UPDATE, diff=diff)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
-    when = lambda body: False
+    when = lambda **_: False
 
     @kopf.on.field('group', 'version', 'plural', 'field.subfield',
                    id='id', timeout=123, registry=registry,

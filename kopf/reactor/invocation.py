@@ -41,7 +41,11 @@ def context(
         for var, token in reversed(tokens):
             var.reset(token)
 
-def get_invoke_arguments(*args: Any, cause: Optional[causation.BaseCause] = None, **kwargs: Any) -> Dict[str, Any]:
+def get_invoke_arguments(
+    *args: Any,
+    cause: Optional[causation.BaseCause] = None,
+    **kwargs: Any
+) -> Dict[str, Any]:
     """
     Expand kwargs dict with fields from the causation.
     """
