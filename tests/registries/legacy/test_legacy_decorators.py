@@ -24,6 +24,7 @@ def test_on_create_minimal(mocker):
     assert handlers[0].timeout is None
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
+    assert handlers[0].when is None
 
 
 def test_on_update_minimal(mocker):
@@ -43,6 +44,7 @@ def test_on_update_minimal(mocker):
     assert handlers[0].timeout is None
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
+    assert handlers[0].when is None
 
 
 def test_on_delete_minimal(mocker):
@@ -62,6 +64,7 @@ def test_on_delete_minimal(mocker):
     assert handlers[0].timeout is None
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
+    assert handlers[0].when is None
 
 
 def test_on_field_minimal(mocker):
@@ -82,6 +85,7 @@ def test_on_field_minimal(mocker):
     assert handlers[0].timeout is None
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
+    assert handlers[0].when is None
 
 
 def test_on_field_fails_without_field():
@@ -97,10 +101,13 @@ def test_on_create_with_all_kwargs(mocker):
     cause = mocker.MagicMock(resource=resource, reason=Reason.CREATE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
+    when = lambda **_: False
+
     @kopf.on.create('group', 'version', 'plural',
                     id='id', timeout=123, registry=registry,
                     labels={'somelabel': 'somevalue'},
-                    annotations={'someanno': 'somevalue'})
+                    annotations={'someanno': 'somevalue'},
+                    when=when)
     def fn(**_):
         pass
 
@@ -113,7 +120,7 @@ def test_on_create_with_all_kwargs(mocker):
     assert handlers[0].timeout == 123
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
-
+    assert handlers[0].when == when
 
 def test_on_update_with_all_kwargs(mocker):
     registry = GlobalRegistry()
@@ -121,10 +128,13 @@ def test_on_update_with_all_kwargs(mocker):
     cause = mocker.MagicMock(resource=resource, reason=Reason.UPDATE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
+    when = lambda **_: False
+
     @kopf.on.update('group', 'version', 'plural',
                     id='id', timeout=123, registry=registry,
                     labels={'somelabel': 'somevalue'},
-                    annotations={'someanno': 'somevalue'})
+                    annotations={'someanno': 'somevalue'},
+                    when=when)
     def fn(**_):
         pass
 
@@ -137,6 +147,7 @@ def test_on_update_with_all_kwargs(mocker):
     assert handlers[0].timeout == 123
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
+    assert handlers[0].when == when
 
 
 @pytest.mark.parametrize('optional', [
@@ -149,10 +160,13 @@ def test_on_delete_with_all_kwargs(mocker, optional):
     cause = mocker.MagicMock(resource=resource, reason=Reason.DELETE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
+    when = lambda **_: False
+
     @kopf.on.delete('group', 'version', 'plural',
                     id='id', timeout=123, registry=registry, optional=optional,
                     labels={'somelabel': 'somevalue'},
-                    annotations={'someanno': 'somevalue'})
+                    annotations={'someanno': 'somevalue'},
+                    when=when)
     def fn(**_):
         pass
 
@@ -165,6 +179,7 @@ def test_on_delete_with_all_kwargs(mocker, optional):
     assert handlers[0].timeout == 123
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
+    assert handlers[0].when == when
 
 
 def test_on_field_with_all_kwargs(mocker):
@@ -174,10 +189,13 @@ def test_on_field_with_all_kwargs(mocker):
     cause = mocker.MagicMock(resource=resource, reason=Reason.UPDATE, diff=diff)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
+    when = lambda **_: False
+
     @kopf.on.field('group', 'version', 'plural', 'field.subfield',
                    id='id', timeout=123, registry=registry,
                    labels={'somelabel': 'somevalue'},
-                   annotations={'someanno': 'somevalue'})
+                   annotations={'someanno': 'somevalue'},
+                   when=when)
     def fn(**_):
         pass
 
@@ -190,6 +208,7 @@ def test_on_field_with_all_kwargs(mocker):
     assert handlers[0].timeout == 123
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
+    assert handlers[0].when == when
 
 
 def test_subhandler_declaratively(mocker):

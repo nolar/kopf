@@ -25,7 +25,7 @@ from typing import (Any, MutableMapping, Optional, Sequence, Collection, Iterabl
 
 from typing_extensions import Protocol
 
-from kopf.reactor import causation
+from kopf.reactor import causation, invocation
 from kopf.structs import bodies
 from kopf.structs import dicts
 from kopf.structs import diffs
@@ -79,6 +79,27 @@ class ResourceHandlerFn(Protocol):
             **kwargs: Any,
     ) -> Optional[HandlerResult]: ...
 
+class WhenHandlerFn(Protocol):
+    def __call__(
+            self,
+            *args: Any,
+            type: str,
+            event: Union[str, bodies.Event],
+            body: bodies.Body,
+            meta: bodies.Meta,
+            spec: bodies.Spec,
+            status: bodies.Status,
+            uid: str,
+            name: str,
+            namespace: Optional[str],
+            patch: patches.Patch,
+            logger: Union[logging.Logger, logging.LoggerAdapter],
+            diff: diffs.Diff,
+            old: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
+            new: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
+            **kwargs: Any,
+    ) -> bool: ...
+
 
 # A registered handler (function + meta info).
 # FIXME: Must be frozen, but mypy fails in _call_handler() with a cryptic error:
@@ -126,6 +147,7 @@ class ResourceHandler(BaseHandler):
     deleted: Optional[bool] = None  # used for mixed-in (initial==True) @on.resume handlers only.
     labels: Optional[bodies.Labels] = None
     annotations: Optional[bodies.Annotations] = None
+    when: Optional[WhenHandlerFn] = None
     requires_finalizer: Optional[bool] = None
 
     @property
@@ -227,6 +249,7 @@ class ResourceRegistry(GenericRegistry[ResourceHandler, ResourceHandlerFn], Gene
             requires_finalizer: bool = False,
             labels: Optional[bodies.Labels] = None,
             annotations: Optional[bodies.Annotations] = None,
+            when: Optional[WhenHandlerFn] = None,
     ) -> ResourceHandlerFn:
         if reason is None and event is not None:
             reason = causation.Reason(event)
@@ -237,7 +260,7 @@ class ResourceRegistry(GenericRegistry[ResourceHandler, ResourceHandlerFn], Gene
             id=real_id, fn=fn, reason=reason, field=real_field,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
-            labels=labels, annotations=annotations,
+            labels=labels, annotations=annotations, when=when,
         )
 
         self.append(handler)
@@ -270,11 +293,11 @@ class ResourceRegistry(GenericRegistry[ResourceHandler, ResourceHandlerFn], Gene
 
     def requires_finalizer(
             self,
-            body: bodies.Body,
+            cause: causation.ResourceCause,
     ) -> bool:
         # check whether the body matches a deletion handler
         for handler in self._handlers:
-            if handler.requires_finalizer and match(handler=handler, body=body):
+            if handler.requires_finalizer and match(handler=handler, cause=cause):
                 return True
 
         return False
@@ -287,7 +310,7 @@ class ResourceWatchingRegistry(ResourceRegistry[causation.ResourceWatchingCause]
             cause: causation.ResourceWatchingCause,
     ) -> Iterator[ResourceHandler]:
         for handler in self._handlers:
-            if match(handler=handler, body=cause.body, ignore_fields=True):
+            if match(handler=handler, cause=cause, ignore_fields=True):
                 yield handler
 
 
@@ -304,7 +327,7 @@ class ResourceChangingRegistry(ResourceRegistry[causation.ResourceChangingCause]
                     pass  # ignore initial handlers in non-initial causes.
                 elif handler.initial and cause.deleted and not handler.deleted:
                     pass  # ignore initial handlers on deletion, unless explicitly marked as usable.
-                elif match(handler=handler, body=cause.body, changed_fields=changed_fields):
+                elif match(handler=handler, cause=cause, changed_fields=changed_fields):
                     yield handler
 
 
@@ -358,6 +381,7 @@ class OperatorRegistry:
             id: Optional[str] = None,
             labels: Optional[bodies.Labels] = None,
             annotations: Optional[bodies.Annotations] = None,
+            when: Optional[WhenHandlerFn] = None,
     ) -> ResourceHandlerFn:
         """
         Register an additional handler function for low-level events.
@@ -365,7 +389,7 @@ class OperatorRegistry:
         resource = resources_.Resource(group, version, plural)
         return self._resource_watching_handlers[resource].register(
             fn=fn, id=id,
-            labels=labels, annotations=annotations,
+            labels=labels, annotations=annotations, when=when,
         )
 
     def register_resource_changing_handler(
@@ -388,6 +412,7 @@ class OperatorRegistry:
             requires_finalizer: bool = False,
             labels: Optional[bodies.Labels] = None,
             annotations: Optional[bodies.Annotations] = None,
+            when: Optional[WhenHandlerFn] = None,
     ) -> ResourceHandlerFn:
         """
         Register an additional handler function for the specific resource and specific reason.
@@ -397,7 +422,7 @@ class OperatorRegistry:
             reason=reason, event=event, field=field, fn=fn, id=id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
-            labels=labels, annotations=annotations,
+            labels=labels, annotations=annotations, when=when,
         )
 
     def has_activity_handlers(
@@ -481,13 +506,13 @@ class OperatorRegistry:
     def requires_finalizer(
             self,
             resource: resources_.Resource,
-            body: bodies.Body,
+            cause: causation.ResourceCause,
     ) -> bool:
         """
         Check whether a finalizer should be added to the given resource or not.
         """
         return (resource in self._resource_changing_handlers and
-                self._resource_changing_handlers[resource].requires_finalizer(body=body))
+                self._resource_changing_handlers[resource].requires_finalizer(cause=cause))
 
 
 class SmartOperatorRegistry(OperatorRegistry):
@@ -589,14 +614,15 @@ def _deduplicated(
 
 def match(
         handler: ResourceHandler,
-        body: bodies.Body,
+        cause: causation.ResourceCause,
         changed_fields: Collection[dicts.FieldPath] = frozenset(),
         ignore_fields: bool = False,
 ) -> bool:
     return all([
         _matches_field(handler, changed_fields or {}, ignore_fields),
-        _matches_labels(handler, body),
-        _matches_annotations(handler, body),
+        _matches_labels(handler, cause.body),
+        _matches_annotations(handler, cause.body),
+        _matches_filter_callback(handler, cause),
     ])
 
 
@@ -641,6 +667,15 @@ def _matches_metadata(
         else:
             continue
     return True
+
+
+def _matches_filter_callback(
+        handler: ResourceHandler,
+        cause: causation.ResourceCause,
+) -> bool:
+    if not handler.when:
+        return True
+    return handler.when(**invocation.get_invoke_arguments(cause=cause))
 
 
 _default_registry: Optional[OperatorRegistry] = None

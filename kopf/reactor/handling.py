@@ -292,7 +292,7 @@ async def handle_resource_changing_cause(
     done = None
     skip = None
 
-    requires_finalizer = registry.requires_finalizer(resource=cause.resource, body=cause.body)
+    requires_finalizer = registry.requires_finalizer(resource=cause.resource, cause=cause)
     has_finalizer = finalizers.has_finalizers(body=cause.body)
 
     if requires_finalizer and not has_finalizer:

@@ -4,6 +4,7 @@ from unittest.mock import Mock
 import pytest
 
 from kopf import ResourceRegistry, OperatorRegistry
+from kopf.reactor.causation import ResourceChangingCause
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.
@@ -223,6 +224,47 @@ def test_catchall_handlers_with_labels_and_annotations_not_satisfied(registry, r
     assert not handlers
 
 
+@pytest.mark.parametrize('when', [
+    pytest.param(None, id='without-when'),
+    pytest.param(lambda body=None, **_: body['spec']['name'] == 'test', id='with-when'),
+    pytest.param(lambda **_: True, id='with-other-when'),
+])
+def test_catchall_handlers_with_when_match(registry, register_fn, resource, when):
+    cause = ResourceChangingCause(
+        resource=resource,
+        reason='some-reason',
+        diff=None,
+        body={'spec': {'name': 'test'}},
+        logger=None,
+        patch=None,
+        memo=None,
+        initial=None
+    )
+    register_fn(some_fn, reason=None, field=None, when=when)
+    handlers = registry.get_resource_changing_handlers(cause)
+    assert handlers
+
+
+@pytest.mark.parametrize('when', [
+    pytest.param(lambda body=None, **_: body['spec']['name'] != "test", id='with-when'),
+    pytest.param(lambda **_: False, id='with-other-when'),
+])
+def test_catchall_handlers_with_when_not_match(registry, register_fn, resource, when):
+    cause = ResourceChangingCause(
+        resource=resource,
+        reason='some-reason',
+        diff=None,
+        body={'spec': {'name': 'test'}},
+        logger=None,
+        patch=None,
+        memo=None,
+        initial=None
+    )
+    register_fn(some_fn, reason=None, field=None, when=when)
+    handlers = registry.get_resource_changing_handlers(cause)
+    assert not handlers
+
+
 #
 # Relevant handlers are those with event == 'some-reason' (but not 'another-reason').
 # In the per-field handlers, also with field == 'some-field' (not 'another-field').
@@ -272,6 +314,18 @@ def test_relevant_handlers_with_annotations_not_satisfied(cause_any_diff, regist
     assert not handlers
 
 
+def test_relevant_handlers_with_filter_satisfied(cause_any_diff, registry, register_fn):
+    register_fn(some_fn, reason='some-reason', when=lambda *_: True)
+    handlers = registry.get_resource_changing_handlers(cause_any_diff)
+    assert handlers
+
+
+def test_relevant_handlers_with_filter_not_satisfied(cause_any_diff, registry, register_fn):
+    register_fn(some_fn, reason='some-reason', when=lambda *_: False)
+    handlers = registry.get_resource_changing_handlers(cause_any_diff)
+    assert not handlers
+
+
 def test_irrelevant_handlers_without_field_ignored(cause_any_diff, registry, register_fn):
     register_fn(some_fn, reason='another-reason')
     handlers = registry.get_resource_changing_handlers(cause_any_diff)
@@ -306,6 +360,17 @@ def test_irrelevant_handlers_with_annotations_not_satisfied(cause_any_diff, regi
     handlers = registry.get_resource_changing_handlers(cause_any_diff)
     assert not handlers
 
+
+def test_irrelevant_handlers_with_when_satisfied(cause_any_diff, registry, register_fn):
+    register_fn(some_fn, reason='another-reason', when=lambda *_: True)
+    handlers = registry.get_resource_changing_handlers(cause_any_diff)
+    assert not handlers
+
+
+def test_irrelevant_handlers_with_when_not_satisfied(cause_any_diff, registry, register_fn):
+    register_fn(some_fn, reason='another-reason', when=lambda *_: False)
+    handlers = registry.get_resource_changing_handlers(cause_any_diff)
+    assert not handlers
 
 #
 # The handlers must be returned in order of registration,

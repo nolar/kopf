@@ -118,6 +118,7 @@ def resume(
         deleted: Optional[bool] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
+        when: Optional[registries.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.resume()`` handler for the object resuming on operator (re)start. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
@@ -126,7 +127,7 @@ def resume(
             group=group, version=version, plural=plural,
             reason=None, initial=True, deleted=deleted, id=id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            fn=fn, labels=labels, annotations=annotations,
+            fn=fn, labels=labels, annotations=annotations, when=when,
         )
     return decorator
 
@@ -143,6 +144,7 @@ def create(
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
+        when: Optional[registries.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.create()`` handler for the object creation. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
@@ -151,7 +153,7 @@ def create(
             group=group, version=version, plural=plural,
             reason=causation.Reason.CREATE, id=id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            fn=fn, labels=labels, annotations=annotations,
+            fn=fn, labels=labels, annotations=annotations, when=when,
         )
     return decorator
 
@@ -168,6 +170,7 @@ def update(
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
+        when: Optional[registries.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.update()`` handler for the object update or change. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
@@ -176,7 +179,7 @@ def update(
             group=group, version=version, plural=plural,
             reason=causation.Reason.UPDATE, id=id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            fn=fn, labels=labels, annotations=annotations,
+            fn=fn, labels=labels, annotations=annotations, when=when,
         )
     return decorator
 
@@ -194,6 +197,7 @@ def delete(
         optional: Optional[bool] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
+        when: Optional[registries.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.delete()`` handler for the object deletion. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
@@ -203,7 +207,7 @@ def delete(
             reason=causation.Reason.DELETE, id=id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             fn=fn, requires_finalizer=bool(not optional),
-            labels=labels, annotations=annotations,
+            labels=labels, annotations=annotations, when=when,
         )
     return decorator
 
@@ -221,6 +225,7 @@ def field(
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
+        when: Optional[registries.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.field()`` handler for the individual field changes. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
@@ -229,7 +234,7 @@ def field(
             group=group, version=version, plural=plural,
             reason=None, field=field, id=id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            fn=fn, labels=labels, annotations=annotations,
+            fn=fn, labels=labels, annotations=annotations, when=when,
         )
     return decorator
 
@@ -241,13 +246,14 @@ def event(
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[bodies.Labels] = None,
         annotations: Optional[bodies.Annotations] = None,
+        when: Optional[registries.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.event()`` handler for the silent spies on the events. """
     actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: registries.ResourceHandlerFn) -> registries.ResourceHandlerFn:
         return actual_registry.register_resource_watching_handler(
             group=group, version=version, plural=plural,
-            id=id, fn=fn, labels=labels, annotations=annotations,
+            id=id, fn=fn, labels=labels, annotations=annotations, when=when,
         )
     return decorator
 

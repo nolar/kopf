@@ -9,7 +9,7 @@ import asyncio
 import contextlib
 import contextvars
 import functools
-from typing import Optional, Any, Union, List, Iterable, Iterator, Tuple
+from typing import Optional, Any, Union, List, Iterable, Iterator, Tuple, Dict
 
 from kopf import config
 from kopf.reactor import causation
@@ -41,6 +41,55 @@ def context(
         for var, token in reversed(tokens):
             var.reset(token)
 
+def get_invoke_arguments(
+    *args: Any,
+    cause: Optional[causation.BaseCause] = None,
+    **kwargs: Any
+) -> Dict[str, Any]:
+    """
+    Expand kwargs dict with fields from the causation.
+    """
+    new_kwargs = {}
+    new_kwargs.update(kwargs)
+
+    # Add aliases for the kwargs, directly linked to the body, or to the assumed defaults.
+    if isinstance(cause, causation.BaseCause):
+        new_kwargs.update(
+            cause=cause,
+            logger=cause.logger,
+        )
+    if isinstance(cause, causation.ActivityCause):
+        new_kwargs.update(
+            activity=cause.activity,
+        )
+    if isinstance(cause, causation.ResourceCause):
+        new_kwargs.update(
+            patch=cause.patch,
+            memo=cause.memo,
+            body=cause.body,
+            spec=dicts.DictView(cause.body, 'spec'),
+            meta=dicts.DictView(cause.body, 'metadata'),
+            status=dicts.DictView(cause.body, 'status'),
+            uid=cause.body.get('metadata', {}).get('uid'),
+            name=cause.body.get('metadata', {}).get('name'),
+            namespace=cause.body.get('metadata', {}).get('namespace'),
+        )
+    if isinstance(cause, causation.ResourceWatchingCause):
+        new_kwargs.update(
+            event=cause.raw,
+            type=cause.type,
+        )
+    if isinstance(cause, causation.ResourceChangingCause):
+        new_kwargs.update(
+            event=cause.reason,  # deprecated; kept for backward-compatibility
+            reason=cause.reason,
+            diff=cause.diff,
+            old=cause.old,
+            new=cause.new,
+        )
+
+    return new_kwargs
+
 
 async def invoke(
         fn: Invokable,
@@ -62,41 +111,7 @@ async def invoke(
     See: https://pymotw.com/3/asyncio/executors.html
     """
 
-    # Add aliases for the kwargs, directly linked to the body, or to the assumed defaults.
-    if isinstance(cause, causation.BaseCause):
-        kwargs.update(
-            cause=cause,
-            logger=cause.logger,
-        )
-    if isinstance(cause, causation.ActivityCause):
-        kwargs.update(
-            activity=cause.activity,
-        )
-    if isinstance(cause, causation.ResourceCause):
-        kwargs.update(
-            patch=cause.patch,
-            memo=cause.memo,
-            body=cause.body,
-            spec=dicts.DictView(cause.body, 'spec'),
-            meta=dicts.DictView(cause.body, 'metadata'),
-            status=dicts.DictView(cause.body, 'status'),
-            uid=cause.body.get('metadata', {}).get('uid'),
-            name=cause.body.get('metadata', {}).get('name'),
-            namespace=cause.body.get('metadata', {}).get('namespace'),
-        )
-    if isinstance(cause, causation.ResourceWatchingCause):
-        kwargs.update(
-            event=cause.raw,
-            type=cause.type,
-        )
-    if isinstance(cause, causation.ResourceChangingCause):
-        kwargs.update(
-            event=cause.reason,  # deprecated; kept for backward-compatibility
-            reason=cause.reason,
-            diff=cause.diff,
-            old=cause.old,
-            new=cause.new,
-        )
+    kwargs = get_invoke_arguments(*args, cause=cause, **kwargs)
 
     if is_async_fn(fn):
         result = await fn(*args, **kwargs)  # type: ignore
