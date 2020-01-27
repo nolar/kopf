@@ -308,32 +308,34 @@ async def run_tasks(
         Only the tasks that existed before the operator startup are ignored
         (for example, those that spawned the operator itself).
     """
+
+    # Run the infinite tasks until one of them fails/exits (they never exit normally).
+    # If the operator is cancelled, propagate the cancellation to all the sub-tasks.
+    # There is no graceful period: cancel as soon as possible, but allow them to finish.
     try:
-        # Run the infinite tasks until one of them fails/exits (they never exit normally).
         root_done, root_pending = await _wait(root_tasks, return_when=asyncio.FIRST_COMPLETED)
     except asyncio.CancelledError:
-        # If the operator is cancelled, propagate the cancellation to all the sub-tasks.
-        # There is no graceful period: cancel as soon as possible, but allow them to finish.
-        root_cancelled, root_left = await _stop(root_tasks, title="Root", cancelled=True)
+        await _stop(root_tasks, title="Root", cancelled=True)
         hung_tasks = await _all_tasks(ignored=ignored)
-        hung_cancelled, hung_left = await _stop(hung_tasks, title="Hung", cancelled=True)
+        await _stop(hung_tasks, title="Hung", cancelled=True)
         raise
-    else:
-        # If the operator is intact, but one of the root tasks has exited (successfully or not),
-        # cancel all the remaining root tasks, and gracefully exit other spawned sub-tasks.
-        root_cancelled, root_left = await _stop(root_pending, title="Root", cancelled=False)
-        hung_tasks = await _all_tasks(ignored=ignored)
-        try:
-            # After the root tasks are all gone, cancel any spawned sub-tasks (e.g. handlers).
-            # TODO: assumption! the loop is not fully ours! find a way to cancel our spawned tasks.
-            hung_done, hung_pending = await _wait(hung_tasks, timeout=5.0)
-        except asyncio.CancelledError:
-            # If the operator is cancelled, propagate the cancellation to all the sub-tasks.
-            hung_cancelled, hung_left = await _stop(hung_tasks, title="Hung", cancelled=True)
-            raise
-        else:
-            # If the operator is intact, but the timeout is reached, forcely cancel the sub-tasks.
-            hung_cancelled, hung_left = await _stop(hung_pending, title="Hung", cancelled=False)
+
+    # If the operator is intact, but one of the root tasks has exited (successfully or not),
+    # cancel all the remaining root tasks, and gracefully exit other spawned sub-tasks.
+    root_cancelled, _ = await _stop(root_pending, title="Root", cancelled=False)
+
+    # After the root tasks are all gone, cancel any spawned sub-tasks (e.g. handlers).
+    # If the operator is cancelled, propagate the cancellation to all the sub-tasks.
+    # TODO: an assumption! the loop is not fully ours! find a way to cancel only our spawned tasks.
+    hung_tasks = await _all_tasks(ignored=ignored)
+    try:
+        hung_done, hung_pending = await _wait(hung_tasks, timeout=5.0)
+    except asyncio.CancelledError:
+        await _stop(hung_tasks, title="Hung", cancelled=True)
+        raise
+
+    # If the operator is intact, but the timeout is reached, forcely cancel the sub-tasks.
+    hung_cancelled, _ = await _stop(hung_pending, title="Hung", cancelled=False)
 
     # If succeeded or if cancellation is silenced, re-raise from failed tasks (if any).
     await _reraise(root_done | root_cancelled | hung_done | hung_cancelled)
