@@ -13,85 +13,24 @@ of the handlers to be executed on each reaction cycle.
 """
 import abc
 import collections
-import dataclasses
 import functools
-import warnings
 from types import FunctionType, MethodType
 from typing import (Any, MutableMapping, Optional, Sequence, Collection, Iterable, Iterator,
-                    List, Set, FrozenSet, Mapping, NewType, Callable, cast, Generic, TypeVar)
+                    List, Set, FrozenSet, Mapping, Callable, cast, Generic, TypeVar)
 
 from kopf.reactor import callbacks
 from kopf.reactor import causation
 from kopf.reactor import errors as errors_
+from kopf.reactor import handlers
 from kopf.reactor import invocation
 from kopf.structs import bodies
 from kopf.structs import dicts
 from kopf.structs import resources as resources_
 from kopf.utilities import piggybacking
 
-# Strings are taken from the users, but then tainted as this type for stricter type-checking:
-# to prevent usage of some other strings (e.g. operator id) as the handlers ids.
-HandlerId = NewType('HandlerId', str)
-
-
-# A registered handler (function + meta info).
-# FIXME: Must be frozen, but mypy fails in _call_handler() with a cryptic error:
-# FIXME:    Argument 1 to "invoke" has incompatible type "Optional[HandlerResult]";
-# FIXME:    expected "Union[LifeCycleFn, ActivityHandlerFn, ResourceHandlerFn]"
-@dataclasses.dataclass
-class BaseHandler:
-    id: HandlerId
-    fn: Callable[..., Optional[callbacks.HandlerResult]]
-    errors: Optional[errors_.ErrorsMode]
-    timeout: Optional[float]
-    retries: Optional[int]
-    backoff: Optional[float]
-    cooldown: dataclasses.InitVar[Optional[float]]  # deprecated, use `backoff`
-
-    def __post_init__(self, cooldown: Optional[float]) -> None:
-        if self.backoff is not None and cooldown is not None:
-            raise TypeError("Either backoff or cooldown can be set, not both.")
-        elif cooldown is not None:
-            warnings.warn("cooldown=... is deprecated, use backoff=...", DeprecationWarning)
-            self.backoff = cooldown
-
-    # @property cannot be used due to a data field definition with the same name.
-    def __getattribute__(self, name: str) -> Any:
-        if name == 'cooldown':
-            warnings.warn("handler.cooldown is deprecated, use handler.backoff", DeprecationWarning)
-            return self.backoff
-        else:
-            return super().__getattribute__(name)
-
-
-@dataclasses.dataclass
-class ActivityHandler(BaseHandler):
-    fn: callbacks.ActivityHandlerFn  # type clarification
-    activity: Optional[causation.Activity] = None
-    _fallback: bool = False  # non-public!
-
-
-@dataclasses.dataclass
-class ResourceHandler(BaseHandler):
-    fn: callbacks.ResourceHandlerFn  # type clarification
-    reason: Optional[causation.Reason]
-    field: Optional[dicts.FieldPath]
-    initial: Optional[bool] = None
-    deleted: Optional[bool] = None  # used for mixed-in (initial==True) @on.resume handlers only.
-    labels: Optional[bodies.Labels] = None
-    annotations: Optional[bodies.Annotations] = None
-    when: Optional[callbacks.WhenHandlerFn] = None
-    requires_finalizer: Optional[bool] = None
-
-    @property
-    def event(self) -> Optional[causation.Reason]:
-        warnings.warn("`handler.event` is deprecated; use `handler.reason`.", DeprecationWarning)
-        return self.reason
-
-
 # We only type-check for known classes of handlers/callbacks, and ignore any custom subclasses.
 HandlerFnT = TypeVar('HandlerFnT', callbacks.ActivityHandlerFn, callbacks.ResourceHandlerFn)
-HandlerT = TypeVar('HandlerT', ActivityHandler, ResourceHandler)
+HandlerT = TypeVar('HandlerT', handlers.ActivityHandler, handlers.ResourceHandler)
 CauseT = TypeVar('CauseT', bound=causation.BaseCause)
 
 
@@ -111,7 +50,7 @@ class GenericRegistry(Generic[HandlerT, HandlerFnT]):
         self._handlers.append(handler)
 
 
-class ActivityRegistry(GenericRegistry[ActivityHandler, callbacks.ActivityHandlerFn]):
+class ActivityRegistry(GenericRegistry[handlers.ActivityHandler, callbacks.ActivityHandlerFn]):
     """ An actual registry of activity handlers. """
 
     def register(
@@ -128,7 +67,7 @@ class ActivityRegistry(GenericRegistry[ActivityHandler, callbacks.ActivityHandle
             _fallback: bool = False,
     ) -> callbacks.ActivityHandlerFn:
         real_id = generate_id(fn=fn, id=id, prefix=self.prefix)
-        handler = ActivityHandler(
+        handler = handlers.ActivityHandler(
             id=real_id, fn=fn, activity=activity,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             _fallback=_fallback,
@@ -139,13 +78,13 @@ class ActivityRegistry(GenericRegistry[ActivityHandler, callbacks.ActivityHandle
     def get_handlers(
             self,
             activity: causation.Activity,
-    ) -> Sequence[ActivityHandler]:
+    ) -> Sequence[handlers.ActivityHandler]:
         return list(_deduplicated(self.iter_handlers(activity=activity)))
 
     def iter_handlers(
             self,
             activity: causation.Activity,
-    ) -> Iterator[ActivityHandler]:
+    ) -> Iterator[handlers.ActivityHandler]:
         found: bool = False
 
         # Regular handlers go first.
@@ -161,7 +100,7 @@ class ActivityRegistry(GenericRegistry[ActivityHandler, callbacks.ActivityHandle
                     yield handler
 
 
-class ResourceRegistry(GenericRegistry[ResourceHandler, callbacks.ResourceHandlerFn], Generic[CauseT]):
+class ResourceRegistry(GenericRegistry[handlers.ResourceHandler, callbacks.ResourceHandlerFn], Generic[CauseT]):
     """ An actual registry of resource handlers. """
 
     def register(
@@ -189,7 +128,7 @@ class ResourceRegistry(GenericRegistry[ResourceHandler, callbacks.ResourceHandle
 
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = generate_id(fn=fn, id=id, prefix=self.prefix, suffix=".".join(real_field or []))
-        handler = ResourceHandler(
+        handler = handlers.ResourceHandler(
             id=real_id, fn=fn, reason=reason, field=real_field,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
@@ -202,14 +141,14 @@ class ResourceRegistry(GenericRegistry[ResourceHandler, callbacks.ResourceHandle
     def get_handlers(
             self,
             cause: CauseT,
-    ) -> Sequence[ResourceHandler]:
+    ) -> Sequence[handlers.ResourceHandler]:
         return list(_deduplicated(self.iter_handlers(cause=cause)))
 
     @abc.abstractmethod
     def iter_handlers(
             self,
             cause: CauseT,
-    ) -> Iterator[ResourceHandler]:
+    ) -> Iterator[handlers.ResourceHandler]:
         raise NotImplementedError
 
     def get_extra_fields(
@@ -241,7 +180,7 @@ class ResourceWatchingRegistry(ResourceRegistry[causation.ResourceWatchingCause]
     def iter_handlers(
             self,
             cause: causation.ResourceWatchingCause,
-    ) -> Iterator[ResourceHandler]:
+    ) -> Iterator[handlers.ResourceHandler]:
         for handler in self._handlers:
             if match(handler=handler, cause=cause, ignore_fields=True):
                 yield handler
@@ -252,7 +191,7 @@ class ResourceChangingRegistry(ResourceRegistry[causation.ResourceChangingCause]
     def iter_handlers(
             self,
             cause: causation.ResourceChangingCause,
-    ) -> Iterator[ResourceHandler]:
+    ) -> Iterator[handlers.ResourceHandler]:
         changed_fields = frozenset(field for _, field, _, _ in cause.diff or [])
         for handler in self._handlers:
             if handler.reason is None or handler.reason == cause.reason:
@@ -381,32 +320,32 @@ class OperatorRegistry:
             self,
             *,
             activity: causation.Activity,
-    ) -> Sequence[ActivityHandler]:
+    ) -> Sequence[handlers.ActivityHandler]:
         return list(_deduplicated(self.iter_activity_handlers(activity=activity)))
 
     def get_resource_watching_handlers(
             self,
             cause: causation.ResourceWatchingCause,
-    ) -> Sequence[ResourceHandler]:
+    ) -> Sequence[handlers.ResourceHandler]:
         return list(_deduplicated(self.iter_resource_watching_handlers(cause=cause)))
 
     def get_resource_changing_handlers(
             self,
             cause: causation.ResourceChangingCause,
-    ) -> Sequence[ResourceHandler]:
+    ) -> Sequence[handlers.ResourceHandler]:
         return list(_deduplicated(self.iter_resource_changing_handlers(cause=cause)))
 
     def iter_activity_handlers(
             self,
             *,
             activity: causation.Activity,
-    ) -> Iterator[ActivityHandler]:
+    ) -> Iterator[handlers.ActivityHandler]:
         yield from self._activity_handlers.iter_handlers(activity=activity)
 
     def iter_resource_watching_handlers(
             self,
             cause: causation.ResourceWatchingCause,
-    ) -> Iterator[ResourceHandler]:
+    ) -> Iterator[handlers.ResourceHandler]:
         """
         Iterate all handlers for the low-level events.
         """
@@ -416,7 +355,7 @@ class OperatorRegistry:
     def iter_resource_changing_handlers(
             self,
             cause: causation.ResourceChangingCause,
-    ) -> Iterator[ResourceHandler]:
+    ) -> Iterator[handlers.ResourceHandler]:
         """
         Iterate all handlers that match this cause/event, in the order they were registered (even if mixed).
         """
@@ -485,12 +424,12 @@ def generate_id(
         id: Optional[str],
         prefix: Optional[str] = None,
         suffix: Optional[str] = None,
-) -> HandlerId:
+) -> handlers.HandlerId:
     real_id: str
     real_id = id if id is not None else get_callable_id(fn)
     real_id = real_id if not suffix else f'{real_id}/{suffix}'
     real_id = real_id if not prefix else f'{prefix}/{real_id}'
-    return cast(HandlerId, real_id)
+    return cast(handlers.HandlerId, real_id)
 
 
 def get_callable_id(c: Callable[..., Any]) -> str:
@@ -546,7 +485,7 @@ def _deduplicated(
 
 
 def match(
-        handler: ResourceHandler,
+        handler: handlers.ResourceHandler,
         cause: causation.ResourceCause,
         changed_fields: Collection[dicts.FieldPath] = frozenset(),
         ignore_fields: bool = False,
@@ -560,7 +499,7 @@ def match(
 
 
 def _matches_field(
-        handler: ResourceHandler,
+        handler: handlers.ResourceHandler,
         changed_fields: Collection[dicts.FieldPath] = frozenset(),
         ignore_fields: bool = False,
 ) -> bool:
@@ -570,7 +509,7 @@ def _matches_field(
 
 
 def _matches_labels(
-        handler: ResourceHandler,
+        handler: handlers.ResourceHandler,
         body: bodies.Body,
 ) -> bool:
     return (not handler.labels or
@@ -579,7 +518,7 @@ def _matches_labels(
 
 
 def _matches_annotations(
-        handler: ResourceHandler,
+        handler: handlers.ResourceHandler,
         body: bodies.Body,
 ) -> bool:
     return (not handler.annotations or
@@ -603,7 +542,7 @@ def _matches_metadata(
 
 
 def _matches_filter_callback(
-        handler: ResourceHandler,
+        handler: handlers.ResourceHandler,
         cause: causation.ResourceCause,
 ) -> bool:
     if not handler.when:

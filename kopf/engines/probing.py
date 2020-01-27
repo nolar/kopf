@@ -9,6 +9,7 @@ import aiohttp.web
 from kopf.reactor import activities
 from kopf.reactor import callbacks
 from kopf.reactor import causation
+from kopf.reactor import handlers
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
 
@@ -33,7 +34,7 @@ async def health_reporter(
     is cancelled or failed). Once it will stop responding for any reason,
     Kubernetes will assume the pod is not alive anymore, and will restart it.
     """
-    probing_container: MutableMapping[registries.HandlerId, callbacks.HandlerResult] = {}
+    probing_container: MutableMapping[handlers.HandlerId, callbacks.HandlerResult] = {}
     probing_timestamp: Optional[datetime.datetime] = None
     probing_max_age = datetime.timedelta(seconds=10.0)
     probing_lock = asyncio.Lock()

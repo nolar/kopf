@@ -18,6 +18,7 @@ from kopf.engines import sleeping
 from kopf.reactor import callbacks
 from kopf.reactor import causation
 from kopf.reactor import errors
+from kopf.reactor import handlers as handlers_
 from kopf.reactor import invocation
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
@@ -64,14 +65,14 @@ class HandlerChildrenRetry(TemporaryError):
 sublifecycle_var: ContextVar[lifecycles.LifeCycleFn] = ContextVar('sublifecycle_var')
 subregistry_var: ContextVar[registries.ResourceChangingRegistry] = ContextVar('subregistry_var')
 subexecuted_var: ContextVar[bool] = ContextVar('subexecuted_var')
-handler_var: ContextVar[registries.BaseHandler] = ContextVar('handler_var')
+handler_var: ContextVar[handlers_.BaseHandler] = ContextVar('handler_var')
 cause_var: ContextVar[causation.BaseCause] = ContextVar('cause_var')
 
 
 async def execute(
         *,
         fns: Optional[Iterable[invocation.Invokable]] = None,
-        handlers: Optional[Iterable[registries.ResourceHandler]] = None,
+        handlers: Optional[Iterable[handlers_.ResourceHandler]] = None,
         registry: Optional[registries.ResourceChangingRegistry] = None,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         cause: Optional[causation.BaseCause] = None,
@@ -95,33 +96,34 @@ async def execute(
     # Restore the current context as set in the handler execution cycle.
     lifecycle = lifecycle if lifecycle is not None else sublifecycle_var.get()
     cause = cause if cause is not None else cause_var.get()
-    handler: registries.BaseHandler = handler_var.get()
+    parent_handler: handlers_.BaseHandler = handler_var.get()
+    parent_prefix = parent_handler.id if parent_handler is not None else None
 
     # Validate the inputs; the function signatures cannot put these kind of restrictions, so we do.
     if len([v for v in [fns, handlers, registry] if v is not None]) > 1:
         raise TypeError("Only one of the fns, handlers, registry can be passed. Got more.")
 
     elif fns is not None and isinstance(fns, collections.abc.Mapping):
-        registry = registries.ResourceChangingRegistry(prefix=handler.id if handler else None)
+        subregistry = registries.ResourceChangingRegistry(prefix=parent_prefix)
         for id, fn in fns.items():
-            registry.register(fn=fn, id=id)
+            subregistry.register(fn=fn, id=id)
 
     elif fns is not None and isinstance(fns, collections.abc.Iterable):
-        registry = registries.ResourceChangingRegistry(prefix=handler.id if handler else None)
+        subregistry = registries.ResourceChangingRegistry(prefix=parent_prefix)
         for fn in fns:
-            registry.register(fn=fn)
+            subregistry.register(fn=fn)
 
     elif fns is not None:
         raise ValueError(f"fns must be a mapping or an iterable, got {fns.__class__}.")
 
     elif handlers is not None:
-        registry = registries.ResourceChangingRegistry(prefix=handler.id if handler else None)
+        subregistry = registries.ResourceChangingRegistry(prefix=parent_prefix)
         for handler in handlers:
-            registry.append(handler=handler)
+            subregistry.append(handler=handler)
 
     # Use the registry as is; assume that the caller knows what they do.
     elif registry is not None:
-        pass
+        subregistry = registry
 
     # Prevent double implicit execution.
     elif subexecuted_var.get():
@@ -130,7 +132,7 @@ async def execute(
     # If no explicit args were passed, implicitly use the accumulated handlers from `@kopf.on.this`.
     else:
         subexecuted_var.set(True)
-        registry = subregistry_var.get()
+        subregistry = subregistry_var.get()
 
     # The sub-handlers are only for upper-level causes, not for lower-level events.
     if not isinstance(cause, causation.ResourceChangingCause):
@@ -138,11 +140,11 @@ async def execute(
                            "no practical use (there are no retries or state tracking).")
 
     # Execute the real handlers (all or few or one of them, as per the lifecycle).
-    handlers = registry.get_handlers(cause=cause)
-    state = states.State.from_body(body=cause.body, handlers=handlers)
+    subhandlers = subregistry.get_handlers(cause=cause)
+    state = states.State.from_body(body=cause.body, handlers=subhandlers)
     outcomes = await execute_handlers_once(
         lifecycle=lifecycle,
-        handlers=handlers,
+        handlers=subhandlers,
         cause=cause,
         state=state,
     )
@@ -157,10 +159,10 @@ async def execute(
 
 async def run_handlers_until_done(
         cause: causation.BaseCause,
-        handlers: Collection[registries.BaseHandler],
+        handlers: Collection[handlers_.BaseHandler],
         lifecycle: lifecycles.LifeCycleFn,
         default_errors: errors.ErrorsMode = errors.ErrorsMode.TEMPORARY,
-) -> Mapping[registries.HandlerId, states.HandlerOutcome]:
+) -> Mapping[handlers_.HandlerId, states.HandlerOutcome]:
     """
     Run the full cycle until all the handlers are done.
 
@@ -173,7 +175,7 @@ async def run_handlers_until_done(
 
     # For the activity handlers, we have neither bodies, nor patches, just the state.
     state = states.State.from_scratch(handlers=handlers)
-    latest_outcomes: MutableMapping[registries.HandlerId, states.HandlerOutcome] = {}
+    latest_outcomes: MutableMapping[handlers_.HandlerId, states.HandlerOutcome] = {}
     while not state.done:
         outcomes = await execute_handlers_once(
             lifecycle=lifecycle,
@@ -193,11 +195,11 @@ async def run_handlers_until_done(
 
 async def execute_handlers_once(
         lifecycle: lifecycles.LifeCycleFn,
-        handlers: Collection[registries.BaseHandler],
+        handlers: Collection[handlers_.BaseHandler],
         cause: causation.BaseCause,
         state: states.State,
         default_errors: errors.ErrorsMode = errors.ErrorsMode.TEMPORARY,
-) -> Mapping[registries.HandlerId, states.HandlerOutcome]:
+) -> Mapping[handlers_.HandlerId, states.HandlerOutcome]:
     """
     Call the next handler(s) from the chain of the handlers.
 
@@ -213,7 +215,7 @@ async def execute_handlers_once(
     handlers_plan = await invocation.invoke(lifecycle, handlers_todo, cause=cause, state=state)
 
     # Execute all planned (selected) handlers in one event reaction cycle, even if there are few.
-    outcomes: MutableMapping[registries.HandlerId, states.HandlerOutcome] = {}
+    outcomes: MutableMapping[handlers_.HandlerId, states.HandlerOutcome] = {}
     for handler in handlers_plan:
         outcome = await execute_handler_once(
             handler=handler,
@@ -228,7 +230,7 @@ async def execute_handlers_once(
 
 
 async def execute_handler_once(
-        handler: registries.BaseHandler,
+        handler: handlers_.BaseHandler,
         cause: causation.BaseCause,
         state: states.HandlerState,
         lifecycle: lifecycles.LifeCycleFn,
@@ -317,7 +319,7 @@ async def execute_handler_once(
 
 
 async def invoke_handler(
-        handler: registries.BaseHandler,
+        handler: handlers_.BaseHandler,
         *args: Any,
         cause: causation.BaseCause,
         lifecycle: lifecycles.LifeCycleFn,
@@ -336,7 +338,7 @@ async def invoke_handler(
     # For the field-handlers, the old/new/diff values must match the field, not the whole object.
     if (True and  # for readable indenting
             isinstance(cause, causation.ResourceChangingCause) and
-            isinstance(handler, registries.ResourceHandler) and
+            isinstance(handler, handlers_.ResourceHandler) and
             handler.field is not None):
         old = dicts.resolve(cause.old, handler.field, None, assume_empty=True)
         new = dicts.resolve(cause.new, handler.field, None, assume_empty=True)
