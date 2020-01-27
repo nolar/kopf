@@ -36,8 +36,8 @@ def startup(
         cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityHandlerDecorator:
-    actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: callbacks.ActivityHandlerFn) -> callbacks.ActivityHandlerFn:
+        actual_registry = registry if registry is not None else registries.get_default_registry()
         return actual_registry.register_activity_handler(
             fn=fn, id=id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
@@ -56,8 +56,8 @@ def cleanup(
         cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityHandlerDecorator:
-    actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: callbacks.ActivityHandlerFn) -> callbacks.ActivityHandlerFn:
+        actual_registry = registry if registry is not None else registries.get_default_registry()
         return actual_registry.register_activity_handler(
             fn=fn, id=id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
@@ -77,8 +77,8 @@ def login(
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityHandlerDecorator:
     """ ``@kopf.on.login()`` handler for custom (re-)authentication. """
-    actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: callbacks.ActivityHandlerFn) -> callbacks.ActivityHandlerFn:
+        actual_registry = registry if registry is not None else registries.get_default_registry()
         return actual_registry.register_activity_handler(
             fn=fn, id=id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
@@ -98,8 +98,8 @@ def probe(
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityHandlerDecorator:
     """ ``@kopf.on.probe()`` handler for arbitrary liveness metrics. """
-    actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: callbacks.ActivityHandlerFn) -> callbacks.ActivityHandlerFn:
+        actual_registry = registry if registry is not None else registries.get_default_registry()
         return actual_registry.register_activity_handler(
             fn=fn, id=id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
@@ -124,8 +124,8 @@ def resume(
         when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.resume()`` handler for the object resuming on operator (re)start. """
-    actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        actual_registry = registry if registry is not None else registries.get_default_registry()
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=None, initial=True, deleted=deleted, id=id,
@@ -150,8 +150,8 @@ def create(
         when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.create()`` handler for the object creation. """
-    actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        actual_registry = registry if registry is not None else registries.get_default_registry()
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.CREATE, id=id,
@@ -176,8 +176,8 @@ def update(
         when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.update()`` handler for the object update or change. """
-    actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        actual_registry = registry if registry is not None else registries.get_default_registry()
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.UPDATE, id=id,
@@ -203,8 +203,8 @@ def delete(
         when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.delete()`` handler for the object deletion. """
-    actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        actual_registry = registry if registry is not None else registries.get_default_registry()
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.DELETE, id=id,
@@ -231,8 +231,8 @@ def field(
         when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.field()`` handler for the individual field changes. """
-    actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        actual_registry = registry if registry is not None else registries.get_default_registry()
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=None, field=field, id=id,
@@ -252,8 +252,8 @@ def event(
         when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.event()`` handler for the silent spies on the events. """
-    actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        actual_registry = registry if registry is not None else registries.get_default_registry()
         return actual_registry.register_resource_watching_handler(
             group=group, version=version, plural=plural,
             id=id, fn=fn, labels=labels, annotations=annotations, when=when,
@@ -302,8 +302,8 @@ def this(
     Note: ``task=task`` is needed to freeze the closure variable, so that every
     create function will have its own value, not the latest in the for-cycle.
     """
-    actual_registry = registry if registry is not None else handling.subregistry_var.get()
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        actual_registry = registry if registry is not None else handling.subregistry_var.get()
         return actual_registry.register(
             id=id, fn=fn,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
