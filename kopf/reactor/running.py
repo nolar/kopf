@@ -72,8 +72,7 @@ def login(
         for outcome in e.outcomes.values():
             if isinstance(outcome.exception, credentials.LoginError):
                 raise outcome.exception
-        else:
-            raise
+        raise
 
 
 def run(
