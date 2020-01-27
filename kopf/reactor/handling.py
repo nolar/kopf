@@ -17,6 +17,7 @@ from kopf.engines import logging as logging_engine
 from kopf.engines import sleeping
 from kopf.reactor import callbacks
 from kopf.reactor import causation
+from kopf.reactor import errors
 from kopf.reactor import invocation
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
@@ -158,7 +159,7 @@ async def run_handlers_until_done(
         cause: causation.BaseCause,
         handlers: Collection[registries.BaseHandler],
         lifecycle: lifecycles.LifeCycleFn,
-        default_errors: registries.ErrorsMode = registries.ErrorsMode.TEMPORARY,
+        default_errors: errors.ErrorsMode = errors.ErrorsMode.TEMPORARY,
 ) -> Mapping[registries.HandlerId, states.HandlerOutcome]:
     """
     Run the full cycle until all the handlers are done.
@@ -195,7 +196,7 @@ async def execute_handlers_once(
         handlers: Collection[registries.BaseHandler],
         cause: causation.BaseCause,
         state: states.State,
-        default_errors: registries.ErrorsMode = registries.ErrorsMode.TEMPORARY,
+        default_errors: errors.ErrorsMode = errors.ErrorsMode.TEMPORARY,
 ) -> Mapping[registries.HandlerId, states.HandlerOutcome]:
     """
     Call the next handler(s) from the chain of the handlers.
@@ -231,7 +232,7 @@ async def execute_handler_once(
         cause: causation.BaseCause,
         state: states.HandlerState,
         lifecycle: lifecycles.LifeCycleFn,
-        default_errors: registries.ErrorsMode = registries.ErrorsMode.TEMPORARY,
+        default_errors: errors.ErrorsMode = errors.ErrorsMode.TEMPORARY,
 ) -> states.HandlerOutcome:
     """
     Execute one and only one handler.
@@ -243,7 +244,7 @@ async def execute_handler_once(
     This method is not supposed to raise any exceptions from the handlers:
     exceptions mean the failure of execution itself.
     """
-    errors = handler.errors if handler.errors is not None else default_errors
+    errors_mode = handler.errors if handler.errors is not None else default_errors
     backoff = handler.backoff if handler.backoff is not None else DEFAULT_RETRY_DELAY
 
     # Prevent successes/failures from posting k8s-events for resource-watching causes.
@@ -296,18 +297,18 @@ async def execute_handler_once(
 
     # Regular errors behave as either temporary or permanent depending on the error strictness.
     except Exception as e:
-        if errors == registries.ErrorsMode.IGNORED:
+        if errors_mode == errors.ErrorsMode.IGNORED:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will ignore.")
             return states.HandlerOutcome(final=True)
-        elif errors == registries.ErrorsMode.TEMPORARY:
+        elif errors_mode == errors.ErrorsMode.TEMPORARY:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")
             return states.HandlerOutcome(final=False, exception=e, delay=backoff)
-        elif errors == registries.ErrorsMode.PERMANENT:
+        elif errors_mode == errors.ErrorsMode.PERMANENT:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will stop.")
             return states.HandlerOutcome(final=True, exception=e)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?
         else:
-            raise RuntimeError(f"Unknown mode for errors: {errors!r}")
+            raise RuntimeError(f"Unknown mode for errors: {errors_mode!r}")
 
     # No errors means the handler should be excluded from future runs in this reaction cycle.
     else:

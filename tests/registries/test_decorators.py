@@ -2,8 +2,9 @@ import pytest
 
 import kopf
 from kopf.reactor.causation import Reason, Activity, HANDLER_REASONS
+from kopf.reactor.errors import ErrorsMode
 from kopf.reactor.handling import subregistry_var
-from kopf.reactor.registries import ErrorsMode, OperatorRegistry, ResourceChangingRegistry
+from kopf.reactor.registries import OperatorRegistry, ResourceChangingRegistry
 from kopf.structs.resources import Resource
 
 

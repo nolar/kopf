@@ -30,6 +30,9 @@ from kopf.on import (
 from kopf.reactor import (
     lifecycles,  # as a separate name on the public namespace
 )
+from kopf.reactor.errors import (
+    ErrorsMode,
+)
 from kopf.reactor.handling import (
     TemporaryError,
     PermanentError,
@@ -42,7 +45,6 @@ from kopf.reactor.lifecycles import (
     set_default_lifecycle,
 )
 from kopf.reactor.registries import (
-    ErrorsMode,
     ActivityRegistry,
     ResourceRegistry,
     ResourceWatchingRegistry,

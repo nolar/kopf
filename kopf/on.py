@@ -16,6 +16,7 @@ from typing import Optional, Callable
 
 from kopf.reactor import callbacks
 from kopf.reactor import causation
+from kopf.reactor import errors as errors_
 from kopf.reactor import handling
 from kopf.reactor import registries
 from kopf.structs import bodies
@@ -28,7 +29,7 @@ ActivityHandlerDecorator = Callable[[callbacks.ActivityHandlerFn], callbacks.Act
 def startup(
         *,
         id: Optional[str] = None,
-        errors: Optional[registries.ErrorsMode] = None,
+        errors: Optional[errors_.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -48,7 +49,7 @@ def startup(
 def cleanup(
         *,
         id: Optional[str] = None,
-        errors: Optional[registries.ErrorsMode] = None,
+        errors: Optional[errors_.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -68,7 +69,7 @@ def cleanup(
 def login(
         *,
         id: Optional[str] = None,
-        errors: Optional[registries.ErrorsMode] = None,
+        errors: Optional[errors_.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -89,7 +90,7 @@ def login(
 def probe(
         *,
         id: Optional[str] = None,
-        errors: Optional[registries.ErrorsMode] = None,
+        errors: Optional[errors_.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -111,7 +112,7 @@ def resume(
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
-        errors: Optional[registries.ErrorsMode] = None,
+        errors: Optional[errors_.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -138,7 +139,7 @@ def create(
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
-        errors: Optional[registries.ErrorsMode] = None,
+        errors: Optional[errors_.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -164,7 +165,7 @@ def update(
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
-        errors: Optional[registries.ErrorsMode] = None,
+        errors: Optional[errors_.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -190,7 +191,7 @@ def delete(
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
-        errors: Optional[registries.ErrorsMode] = None,
+        errors: Optional[errors_.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -219,7 +220,7 @@ def field(
         field: dicts.FieldSpec,
         *,
         id: Optional[str] = None,
-        errors: Optional[registries.ErrorsMode] = None,
+        errors: Optional[errors_.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -265,7 +266,7 @@ def event(
 def this(
         *,
         id: Optional[str] = None,
-        errors: Optional[registries.ErrorsMode] = None,
+        errors: Optional[errors_.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -314,7 +315,7 @@ def register(
         fn: callbacks.ResourceHandlerFn,
         *,
         id: Optional[str] = None,
-        errors: Optional[registries.ErrorsMode] = None,
+        errors: Optional[errors_.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,

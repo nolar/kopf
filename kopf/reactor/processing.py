@@ -22,6 +22,7 @@ from kopf.engines import logging as logging_engine
 from kopf.engines import posting
 from kopf.engines import sleeping
 from kopf.reactor import causation
+from kopf.reactor import errors
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
@@ -159,7 +160,7 @@ async def process_resource_watching_cause(
         handlers=handlers,
         cause=cause,
         state=states.State.from_scratch(handlers=handlers),
-        default_errors=registries.ErrorsMode.IGNORED,
+        default_errors=errors.ErrorsMode.IGNORED,
     )
 
     # Store the results, but not the handlers' progress.

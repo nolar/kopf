@@ -14,7 +14,6 @@ of the handlers to be executed on each reaction cycle.
 import abc
 import collections
 import dataclasses
-import enum
 import functools
 import warnings
 from types import FunctionType, MethodType
@@ -23,6 +22,7 @@ from typing import (Any, MutableMapping, Optional, Sequence, Collection, Iterabl
 
 from kopf.reactor import callbacks
 from kopf.reactor import causation
+from kopf.reactor import errors as errors_
 from kopf.reactor import invocation
 from kopf.structs import bodies
 from kopf.structs import dicts
@@ -34,13 +34,6 @@ from kopf.utilities import piggybacking
 HandlerId = NewType('HandlerId', str)
 
 
-class ErrorsMode(enum.Enum):
-    """ How arbitrary (non-temporary/non-permanent) exceptions are treated. """
-    IGNORED = enum.auto()
-    TEMPORARY = enum.auto()
-    PERMANENT = enum.auto()
-
-
 # A registered handler (function + meta info).
 # FIXME: Must be frozen, but mypy fails in _call_handler() with a cryptic error:
 # FIXME:    Argument 1 to "invoke" has incompatible type "Optional[HandlerResult]";
@@ -49,7 +42,7 @@ class ErrorsMode(enum.Enum):
 class BaseHandler:
     id: HandlerId
     fn: Callable[..., Optional[callbacks.HandlerResult]]
-    errors: Optional[ErrorsMode]
+    errors: Optional[errors_.ErrorsMode]
     timeout: Optional[float]
     retries: Optional[int]
     backoff: Optional[float]
@@ -126,7 +119,7 @@ class ActivityRegistry(GenericRegistry[ActivityHandler, callbacks.ActivityHandle
             fn: callbacks.ActivityHandlerFn,
             *,
             id: Optional[str] = None,
-            errors: Optional[ErrorsMode] = None,
+            errors: Optional[errors_.ErrorsMode] = None,
             timeout: Optional[float] = None,
             retries: Optional[int] = None,
             backoff: Optional[float] = None,
@@ -179,7 +172,7 @@ class ResourceRegistry(GenericRegistry[ResourceHandler, callbacks.ResourceHandle
             reason: Optional[causation.Reason] = None,
             event: Optional[str] = None,  # deprecated, use `reason`
             field: Optional[dicts.FieldSpec] = None,
-            errors: Optional[ErrorsMode] = None,
+            errors: Optional[errors_.ErrorsMode] = None,
             timeout: Optional[float] = None,
             retries: Optional[int] = None,
             backoff: Optional[float] = None,
@@ -298,7 +291,7 @@ class OperatorRegistry:
             fn: callbacks.ActivityHandlerFn,
             *,
             id: Optional[str] = None,
-            errors: Optional[ErrorsMode] = None,
+            errors: Optional[errors_.ErrorsMode] = None,
             timeout: Optional[float] = None,
             retries: Optional[int] = None,
             backoff: Optional[float] = None,
@@ -342,7 +335,7 @@ class OperatorRegistry:
             reason: Optional[causation.Reason] = None,
             event: Optional[str] = None,  # deprecated, use `reason`
             field: Optional[dicts.FieldSpec] = None,
-            errors: Optional[ErrorsMode] = None,
+            errors: Optional[errors_.ErrorsMode] = None,
             timeout: Optional[float] = None,
             retries: Optional[int] = None,
             backoff: Optional[float] = None,
@@ -469,7 +462,7 @@ class SmartOperatorRegistry(OperatorRegistry):
                 id='login_via_pykube',
                 fn=cast(callbacks.ActivityHandlerFn, piggybacking.login_via_pykube),
                 activity=causation.Activity.AUTHENTICATION,
-                errors=ErrorsMode.IGNORED,
+                errors=errors_.ErrorsMode.IGNORED,
                 _fallback=True,
             )
 
@@ -482,7 +475,7 @@ class SmartOperatorRegistry(OperatorRegistry):
                 id='login_via_client',
                 fn=cast(callbacks.ActivityHandlerFn, piggybacking.login_via_client),
                 activity=causation.Activity.AUTHENTICATION,
-                errors=ErrorsMode.IGNORED,
+                errors=errors_.ErrorsMode.IGNORED,
                 _fallback=True,
             )
 
