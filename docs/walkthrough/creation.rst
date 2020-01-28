@@ -46,7 +46,7 @@ First, let's define a template of the persistent volume claim
 
 
 Let's extend our only handler.
-We will use the official Kubernetes client library:
+We will use the official Kubernetes client library (``pip install kubernetes``):
 
 .. code-block:: python
     :name: creation
