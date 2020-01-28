@@ -35,6 +35,7 @@ Let's extend the creation handler:
     :caption: ephemeral.py
     :emphasize-lines: 18
 
+    import os
     import kopf
     import kubernetes
     import yaml
