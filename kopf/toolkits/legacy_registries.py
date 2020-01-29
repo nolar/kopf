@@ -10,6 +10,7 @@ import warnings
 from typing import Any, Union, Sequence, Iterator
 
 from kopf.reactor import causation
+from kopf.reactor import handlers
 from kopf.reactor import registries
 from kopf.structs import bodies
 from kopf.structs import patches
@@ -30,14 +31,14 @@ class BaseRegistry(metaclass=abc.ABCMeta):
             self,
             resource: resources_.Resource,
             event: bodies.Event,
-    ) -> Sequence[registries.ResourceHandler]:
+    ) -> Sequence[handlers.ResourceHandler]:
         raise NotImplementedError
 
     @abc.abstractmethod
     def get_cause_handlers(
             self,
             cause: causation.ResourceChangingCause,
-    ) -> Sequence[registries.ResourceHandler]:
+    ) -> Sequence[handlers.ResourceHandler]:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -45,14 +46,14 @@ class BaseRegistry(metaclass=abc.ABCMeta):
             self,
             resource: resources_.Resource,
             event: bodies.Event,
-    ) -> Iterator[registries.ResourceHandler]:
+    ) -> Iterator[handlers.ResourceHandler]:
         raise NotImplementedError
 
     @abc.abstractmethod
     def iter_cause_handlers(
             self,
             cause: causation.ResourceChangingCause,
-    ) -> Iterator[registries.ResourceHandler]:
+    ) -> Iterator[handlers.ResourceHandler]:
         raise NotImplementedError
 
 
@@ -68,14 +69,14 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[AnyCause]):
     def iter_handlers(
             self,
             cause: AnyCause,
-    ) -> Iterator[registries.ResourceHandler]:
+    ) -> Iterator[handlers.ResourceHandler]:
         yield from self._handlers
 
     def get_event_handlers(
             self,
             resource: resources_.Resource,
             event: bodies.Event,
-    ) -> Sequence[registries.ResourceHandler]:
+    ) -> Sequence[handlers.ResourceHandler]:
         warnings.warn("SimpleRegistry.get_event_handlers() is deprecated; use "
                       "ResourceWatchingRegistry.get_handlers().", DeprecationWarning)
         return list(registries._deduplicated(self.iter_event_handlers(
@@ -84,7 +85,7 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[AnyCause]):
     def get_cause_handlers(
             self,
             cause: causation.ResourceChangingCause,
-    ) -> Sequence[registries.ResourceHandler]:
+    ) -> Sequence[handlers.ResourceHandler]:
         warnings.warn("SimpleRegistry.get_cause_handlers() is deprecated; use "
                       "ResourceChangingRegistry.get_handlers().", DeprecationWarning)
         return list(registries._deduplicated(self.iter_cause_handlers(cause=cause)))
@@ -93,7 +94,7 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[AnyCause]):
             self,
             resource: resources_.Resource,
             event: bodies.Event,
-    ) -> Iterator[registries.ResourceHandler]:
+    ) -> Iterator[handlers.ResourceHandler]:
         warnings.warn("SimpleRegistry.iter_event_handlers() is deprecated; use "
                       "ResourceWatchingRegistry.iter_handlers().", DeprecationWarning)
 
@@ -105,7 +106,7 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[AnyCause]):
     def iter_cause_handlers(
             self,
             cause: causation.ResourceChangingCause,
-    ) -> Iterator[registries.ResourceHandler]:
+    ) -> Iterator[handlers.ResourceHandler]:
         warnings.warn("SimpleRegistry.iter_cause_handlers() is deprecated; use "
                       "ResourceChangingRegistry.iter_handlers().", DeprecationWarning)
 
@@ -150,7 +151,7 @@ class GlobalRegistry(BaseRegistry, registries.OperatorRegistry):
             self,
             resource: resources_.Resource,
             event: bodies.Event,
-    ) -> Sequence[registries.ResourceHandler]:
+    ) -> Sequence[handlers.ResourceHandler]:
         warnings.warn("GlobalRegistry.get_event_handlers() is deprecated; use "
                       "OperatorRegistry.get_resource_watching_handlers().", DeprecationWarning)
         cause = _create_watching_cause(resource=resource, event=event)
@@ -159,7 +160,7 @@ class GlobalRegistry(BaseRegistry, registries.OperatorRegistry):
     def get_cause_handlers(
             self,
             cause: causation.ResourceChangingCause,
-    ) -> Sequence[registries.ResourceHandler]:
+    ) -> Sequence[handlers.ResourceHandler]:
         warnings.warn("GlobalRegistry.get_cause_handlers() is deprecated; use "
                       "OperatorRegistry.get_resource_changing_handlers().", DeprecationWarning)
         return self.get_resource_changing_handlers(cause=cause)
@@ -168,7 +169,7 @@ class GlobalRegistry(BaseRegistry, registries.OperatorRegistry):
             self,
             resource: resources_.Resource,
             event: bodies.Event,
-    ) -> Iterator[registries.ResourceHandler]:
+    ) -> Iterator[handlers.ResourceHandler]:
         warnings.warn("GlobalRegistry.iter_event_handlers() is deprecated; use "
                       "OperatorRegistry.iter_resource_watching_handlers().", DeprecationWarning)
         cause = _create_watching_cause(resource=resource, event=event)
@@ -177,7 +178,7 @@ class GlobalRegistry(BaseRegistry, registries.OperatorRegistry):
     def iter_cause_handlers(
             self,
             cause: causation.ResourceChangingCause,
-    ) -> Iterator[registries.ResourceHandler]:
+    ) -> Iterator[handlers.ResourceHandler]:
         warnings.warn("GlobalRegistry.iter_cause_handlers() is deprecated; use "
                       "OperatorRegistry.iter_resource_changing_handlers().", DeprecationWarning)
         yield from self.iter_resource_changing_handlers(cause=cause)

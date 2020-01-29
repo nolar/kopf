@@ -3,10 +3,12 @@ from typing import Mapping
 import freezegun
 import pytest
 
+from kopf.reactor.activities import ActivityError, run_activity
 from kopf.reactor.causation import Activity
-from kopf.reactor.handling import ActivityError, PermanentError, TemporaryError, activity_trigger
+from kopf.reactor.handlers import HandlerId
+from kopf.reactor.handling import PermanentError, TemporaryError
 from kopf.reactor.lifecycles import all_at_once
-from kopf.reactor.registries import HandlerId, OperatorRegistry
+from kopf.reactor.registries import OperatorRegistry
 from kopf.reactor.states import HandlerOutcome
 
 
@@ -32,7 +34,7 @@ async def test_results_are_returned_on_success(activity):
     registry.register_activity_handler(fn=sample_fn1, id='id1', activity=activity)
     registry.register_activity_handler(fn=sample_fn2, id='id2', activity=activity)
 
-    results = await activity_trigger(
+    results = await run_activity(
         registry=registry,
         activity=activity,
         lifecycle=all_at_once,
@@ -57,7 +59,7 @@ async def test_errors_are_raised_aggregated(activity):
     registry.register_activity_handler(fn=sample_fn2, id='id2', activity=activity)
 
     with pytest.raises(ActivityError) as e:
-        await activity_trigger(
+        await run_activity(
             registry=registry,
             activity=activity,
             lifecycle=all_at_once,
@@ -86,7 +88,7 @@ async def test_errors_are_cascaded_from_one_of_the_originals(activity):
     registry.register_activity_handler(fn=sample_fn, id='id', activity=activity)
 
     with pytest.raises(ActivityError) as e:
-        await activity_trigger(
+        await run_activity(
             registry=registry,
             activity=activity,
             lifecycle=all_at_once,
@@ -109,7 +111,7 @@ async def test_retries_are_simulated(activity, mocker):
     registry.register_activity_handler(fn=sample_fn, id='id', activity=activity, retries=3)
 
     with pytest.raises(ActivityError) as e:
-        await activity_trigger(
+        await run_activity(
             registry=registry,
             activity=activity,
             lifecycle=all_at_once,
@@ -137,7 +139,7 @@ async def test_delays_are_simulated(activity, mocker):
                                      wraps=sleep_or_wait_substitute)
 
         with pytest.raises(ActivityError) as e:
-            await activity_trigger(
+            await run_activity(
                 registry=registry,
                 activity=activity,
                 lifecycle=all_at_once,

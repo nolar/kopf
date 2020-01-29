@@ -13,8 +13,8 @@ from kopf.engines import posting
 from kopf.engines import probing
 from kopf.reactor import activities
 from kopf.reactor import causation
-from kopf.reactor import handling
 from kopf.reactor import lifecycles
+from kopf.reactor import processing
 from kopf.reactor import queueing
 from kopf.reactor import registries
 from kopf.structs import containers
@@ -66,7 +66,7 @@ def login(
         ))
     except asyncio.CancelledError:
         pass
-    except handling.ActivityError as e:
+    except activities.ActivityError as e:
         # Detect and re-raise the original LoginErrors, not the general activity error.
         # This is only needed for the legacy one-shot login, not for a background job.
         for outcome in e.outcomes.values():
@@ -246,9 +246,9 @@ async def spawn_tasks(
                 coro=queueing.watcher(
                     namespace=namespace,
                     resource=ourselves.resource,
-                    handler=functools.partial(peering.peers_handler,
-                                              ourselves=ourselves,
-                                              freeze_mode=freeze_mode)))),
+                    processor=functools.partial(peering.process_peering_event,
+                                                ourselves=ourselves,
+                                                freeze_mode=freeze_mode)))),
         ])
 
     # Resource event handling, only once for every known resource (de-duplicated).
@@ -260,12 +260,12 @@ async def spawn_tasks(
                     namespace=namespace,
                     resource=resource,
                     freeze_mode=freeze_mode,
-                    handler=functools.partial(handling.resource_handler,
-                                              lifecycle=lifecycle,
-                                              registry=registry,
-                                              memories=memories,
-                                              resource=resource,
-                                              event_queue=event_queue)))),
+                    processor=functools.partial(processing.process_resource_event,
+                                                lifecycle=lifecycle,
+                                                registry=registry,
+                                                memories=memories,
+                                                resource=resource,
+                                                event_queue=event_queue)))),
         ])
 
     # On Ctrl+C or pod termination, cancel all tasks gracefully.
@@ -478,7 +478,7 @@ async def _startup_cleanup_activities(
 
     # Execute the startup activity before any root task starts running (due to readiness flag).
     try:
-        await handling.activity_trigger(
+        await activities.run_activity(
             lifecycle=lifecycles.all_at_once,
             registry=registry,
             activity=causation.Activity.STARTUP,
@@ -508,7 +508,7 @@ async def _startup_cleanup_activities(
 
     # Execute the cleanup activity after all other root tasks are presumably done.
     try:
-        await handling.activity_trigger(
+        await activities.run_activity(
             lifecycle=lifecycles.all_at_once,
             registry=registry,
             activity=causation.Activity.CLEANUP,

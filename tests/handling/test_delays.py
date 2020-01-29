@@ -9,7 +9,7 @@ import kopf
 from kopf.reactor.causation import Reason, HANDLER_REASONS
 from kopf.reactor.handling import TemporaryError
 from kopf.reactor.handling import WAITING_KEEPALIVE_INTERVAL
-from kopf.reactor.handling import resource_handler
+from kopf.reactor.processing import process_resource_event
 from kopf.reactor.states import HandlerState
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.finalizers import FINALIZER
@@ -33,7 +33,7 @@ async def test_delayed_handlers_progress(
     cause_mock.reason = cause_reason
 
     with freezegun.freeze_time(now):
-        await resource_handler(
+        await process_resource_event(
             lifecycle=kopf.lifecycles.all_at_once,
             registry=registry,
             resource=resource,
@@ -88,7 +88,7 @@ async def test_delayed_handlers_sleep(
     cause_mock.body.setdefault('metadata', {})['finalizers'] = [FINALIZER]
 
     with freezegun.freeze_time(now):
-        await resource_handler(
+        await process_resource_event(
             lifecycle=kopf.lifecycles.all_at_once,
             registry=registry,
             resource=resource,

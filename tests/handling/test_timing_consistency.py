@@ -4,7 +4,7 @@ import datetime
 import freezegun
 
 import kopf
-from kopf.reactor.handling import resource_handler
+from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 
 
@@ -55,7 +55,7 @@ async def test_consistent_awakening(registry, resource, k8s_mocked, mocker):
     # Another way (same effect): handle_resource_changing_cause() and its result.
     with freezegun.freeze_time(tsA_triggered) as frozen_dt:
         assert datetime.datetime.utcnow() < ts0  # extra precaution
-        await resource_handler(
+        await process_resource_event(
             lifecycle=kopf.lifecycles.all_at_once,
             registry=registry,
             resource=resource,

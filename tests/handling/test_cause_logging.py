@@ -5,7 +5,7 @@ import pytest
 
 import kopf
 from kopf.reactor.causation import ALL_REASONS, HANDLER_REASONS, Reason
-from kopf.reactor.handling import resource_handler
+from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 
 
@@ -15,7 +15,7 @@ async def test_all_logs_are_prefixed(registry, resource, handlers,
     event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_type
 
-    await resource_handler(
+    await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
@@ -44,7 +44,7 @@ async def test_diffs_logged_if_present(registry, resource, handlers, cause_type,
     cause_mock.new = object()  # checked for `not None`
     cause_mock.old = object()  # checked for `not None`
 
-    await resource_handler(
+    await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
@@ -73,7 +73,7 @@ async def test_diffs_not_logged_if_absent(registry, resource, handlers, cause_ty
     cause_mock.reason = cause_type
     cause_mock.diff = diff
 
-    await resource_handler(
+    await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,

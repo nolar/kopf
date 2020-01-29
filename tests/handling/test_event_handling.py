@@ -5,7 +5,7 @@ import pytest
 
 import kopf
 from kopf.reactor.causation import ALL_REASONS
-from kopf.reactor.handling import resource_handler
+from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 
 
@@ -16,7 +16,7 @@ async def test_handlers_called_always(
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = cause_type
 
-    await resource_handler(
+    await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,
@@ -51,7 +51,7 @@ async def test_errors_are_ignored(
     cause_mock.reason = cause_type
     handlers.event_mock.side_effect = Exception("oops")
 
-    await resource_handler(
+    await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         resource=resource,

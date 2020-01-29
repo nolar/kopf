@@ -200,7 +200,7 @@ async def apply_peers(
     await patching.patch_obj(resource=resource, namespace=namespace, name=name, patch=patch)
 
 
-async def peers_handler(
+async def process_peering_event(
         *,
         event: bodies.Event,
         freeze_mode: primitives.Toggle,

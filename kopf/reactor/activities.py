@@ -17,15 +17,31 @@ The process is intentionally split into multiple packages:
   belong to neither the reactor, nor the engines, nor the client wrappers.
 """
 import logging
-from typing import NoReturn
+from typing import NoReturn, Mapping
 
+from kopf.reactor import callbacks
 from kopf.reactor import causation
+from kopf.reactor import handlers
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
+from kopf.reactor import states
 from kopf.structs import credentials
 
 logger = logging.getLogger(__name__)
+
+
+class ActivityError(Exception):
+    """ An error in the activity, as caused by mandatory handlers' failures. """
+
+    def __init__(
+            self,
+            msg: str,
+            *,
+            outcomes: Mapping[handlers.HandlerId, states.HandlerOutcome],
+    ) -> None:
+        super().__init__(msg)
+        self.outcomes = outcomes
 
 
 async def authenticator(
@@ -58,7 +74,7 @@ async def authenticate(
     # Log initial and re-authentications differently, for readability.
     logger.info(f"{_activity_title} has been initiated.")
 
-    activity_results = await handling.activity_trigger(
+    activity_results = await run_activity(
         lifecycle=lifecycles.all_at_once,
         registry=registry,
         activity=causation.Activity.AUTHENTICATION,
@@ -72,3 +88,37 @@ async def authenticate(
 
     # Feed the credentials into the vault, and unfreeze the re-authenticating clients.
     await vault.populate({str(handler_id): info for handler_id, info in activity_results.items()})
+
+
+async def run_activity(
+        *,
+        lifecycle: lifecycles.LifeCycleFn,
+        registry: registries.OperatorRegistry,
+        activity: causation.Activity,
+) -> Mapping[handlers.HandlerId, callbacks.HandlerResult]:
+    logger = logging.getLogger(f'kopf.activities.{activity.value}')
+
+    # For the activity handlers, we have neither bodies, nor patches, just the state.
+    cause = causation.ActivityCause(logger=logger, activity=activity)
+    handlers = registry.get_activity_handlers(activity=activity)
+    outcomes = await handling.run_handlers_until_done(
+        cause=cause,
+        handlers=handlers,
+        lifecycle=lifecycle,
+    )
+
+    # Activities assume that all handlers must eventually succeed.
+    # We raise from the 1st exception only: just to have something real in the tracebacks.
+    # For multiple handlers' errors, the logs should be investigated instead.
+    exceptions = [outcome.exception
+                  for outcome in outcomes.values()
+                  if outcome.exception is not None]
+    if exceptions:
+        raise ActivityError("One or more handlers failed.", outcomes=outcomes) from exceptions[0]
+
+    # If nothing has failed, we return identifiable results. The outcomes/states are internal.
+    # The order of results is not guaranteed (the handlers can succeed on one of the retries).
+    results = {handler_id: outcome.result
+               for handler_id, outcome in outcomes.items()
+               if outcome.result is not None}
+    return results

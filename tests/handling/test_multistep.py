@@ -4,7 +4,7 @@ import pytest
 
 import kopf
 from kopf.reactor.causation import Reason, HANDLER_REASONS
-from kopf.reactor.handling import resource_handler
+from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 
 
@@ -18,7 +18,7 @@ async def test_1st_step_stores_progress_by_patching(
     event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_type
 
-    await resource_handler(
+    await process_resource_event(
         lifecycle=kopf.lifecycles.asap,
         registry=registry,
         resource=resource,
@@ -67,7 +67,7 @@ async def test_2nd_step_finishes_the_handlers(caplog,
         }}}
     })
 
-    await resource_handler(
+    await process_resource_event(
         lifecycle=kopf.lifecycles.one_by_one,
         registry=registry,
         resource=resource,

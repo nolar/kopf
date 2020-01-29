@@ -45,7 +45,7 @@ CODE_OVERHEAD = 0.130
 
 ])
 @pytest.mark.usefixtures('watcher_limited')
-async def test_watchevent_demultiplexing(worker_mock, timer, resource, handler,
+async def test_watchevent_demultiplexing(worker_mock, timer, resource, processor,
                                          stream, events, uids, cnts):
     """ Verify that every unique uid goes into its own queue+worker, which are never shared. """
 
@@ -58,16 +58,16 @@ async def test_watchevent_demultiplexing(worker_mock, timer, resource, handler,
         await watcher(
             namespace=None,
             resource=resource,
-            handler=handler,
+            processor=processor,
         )
 
     # The streams are not cleared by the mocked worker, but the worker exits fast.
     assert timer.seconds < CODE_OVERHEAD
 
-    # The handler must not be called by the watcher, only by the worker.
+    # The processor must not be called by the watcher, only by the worker.
     # But the worker (even if mocked) must be called & awaited by the watcher.
-    assert not handler.awaited
-    assert not handler.called
+    assert not processor.awaited
+    assert not processor.called
     assert worker_mock.awaited
 
     # Are the worker-streams created by the watcher? Populated as expected?
@@ -77,7 +77,7 @@ async def test_watchevent_demultiplexing(worker_mock, timer, resource, handler,
     for uid, cnt, (args, kwargs) in zip(uids, cnts, worker_mock.call_args_list):
         key = kwargs['key']
         streams = kwargs['streams']
-        assert kwargs['handler'] is handler
+        assert kwargs['processor'] is processor
         assert key == (resource, uid)
         assert key in streams
 
@@ -114,7 +114,7 @@ async def test_watchevent_demultiplexing(worker_mock, timer, resource, handler,
 
 ])
 @pytest.mark.usefixtures('watcher_limited')
-async def test_watchevent_batching(mocker, resource, handler, timer, stream, events, uids, vals):
+async def test_watchevent_batching(mocker, resource, processor, timer, stream, events, uids, vals):
     """ Verify that only the last event per uid is actually handled. """
 
     # Override the default timeouts to make the tests faster.
@@ -131,7 +131,7 @@ async def test_watchevent_batching(mocker, resource, handler, timer, stream, eve
         await watcher(
             namespace=None,
             resource=resource,
-            handler=handler,
+            processor=processor,
         )
 
     # Significantly less than the queue getting timeout, but sufficient to run.
@@ -139,18 +139,18 @@ async def test_watchevent_batching(mocker, resource, handler, timer, stream, eve
     from kopf import config
     assert timer.seconds < config.WorkersConfig.worker_batch_window + CODE_OVERHEAD
 
-    # Was the handler called at all? Awaited as needed for async fns?
-    assert handler.awaited
+    # Was the processor called at all? Awaited as needed for async fns?
+    assert processor.awaited
 
     # Was it called only once per uid? Only with the latest event?
     # Note: the calls can be in arbitrary order, not as we expect then.
-    assert handler.call_count == len(uids)
-    assert handler.call_count == len(vals)
+    assert processor.call_count == len(uids)
+    assert processor.call_count == len(vals)
     expected_uid_val_pairs = set(zip(uids, vals))
     actual_uid_val_pairs = set((
             kwargs['event']['object']['metadata']['uid'],
             kwargs['event']['object']['spec'])
-            for args, kwargs in handler.call_args_list)
+            for args, kwargs in processor.call_args_list)
     assert actual_uid_val_pairs == expected_uid_val_pairs
 
 

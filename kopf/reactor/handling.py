@@ -1,62 +1,36 @@
 """
-Conversion of low-level events to high-level causes, and handling them.
+Execution of pre-selected handlers, in batches or individually.
 
-These functions are invoked from the queueing module `kopf.reactor.queueing`,
-which are the actual event loop of the operator process.
+These functions are invoked from the queueing module `kopf.reactor.processing`,
+where the raw watch-events are interpreted and wrapped into extended *causes*.
 
-The conversion of the low-level events to the high-level causes is done by
-checking the object's state and comparing it to the preserved last-seen state.
-
-The framework itself makes the necessary changes to the object, -- such as the
-finalizers attachment, last-seen state updates, and handler status tracking, --
-thus provoking the low-level watch-events and additional queueing calls.
-But these internal changes are filtered out from the cause detection
-and therefore do not trigger the user-defined handlers.
+The handler execution can also be used in other places, such as in-memory
+activities, when there is no underlying Kubernetes object to patch'n'watch.
 """
 import asyncio
 import collections.abc
-import datetime
 import logging
 from contextvars import ContextVar
 from typing import Optional, Union, Iterable, Collection, Mapping, MutableMapping, Any
 
-from kopf.clients import patching
 from kopf.engines import logging as logging_engine
-from kopf.engines import posting
 from kopf.engines import sleeping
+from kopf.reactor import callbacks
 from kopf.reactor import causation
+from kopf.reactor import errors
+from kopf.reactor import handlers as handlers_
 from kopf.reactor import invocation
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
 from kopf.reactor import states
-from kopf.structs import bodies
-from kopf.structs import containers
 from kopf.structs import dicts
 from kopf.structs import diffs
-from kopf.structs import finalizers
-from kopf.structs import lastseen
-from kopf.structs import patches
-from kopf.structs import primitives
-from kopf.structs import resources
 
 WAITING_KEEPALIVE_INTERVAL = 10 * 60
 """ How often to wake up from the long sleep, to show liveness in the logs. """
 
 DEFAULT_RETRY_DELAY = 1 * 60
 """ The default delay duration for the regular exception in retry-mode. """
-
-
-class ActivityError(Exception):
-    """ An error in the activity, as caused by mandatory handlers' failures. """
-
-    def __init__(
-            self,
-            msg: str,
-            *,
-            outcomes: Mapping[registries.HandlerId, states.HandlerOutcome],
-    ) -> None:
-        super().__init__(msg)
-        self.outcomes = outcomes
 
 
 class PermanentError(Exception):
@@ -91,279 +65,14 @@ class HandlerChildrenRetry(TemporaryError):
 sublifecycle_var: ContextVar[lifecycles.LifeCycleFn] = ContextVar('sublifecycle_var')
 subregistry_var: ContextVar[registries.ResourceChangingRegistry] = ContextVar('subregistry_var')
 subexecuted_var: ContextVar[bool] = ContextVar('subexecuted_var')
-handler_var: ContextVar[registries.BaseHandler] = ContextVar('handler_var')
+handler_var: ContextVar[handlers_.BaseHandler] = ContextVar('handler_var')
 cause_var: ContextVar[causation.BaseCause] = ContextVar('cause_var')
-
-
-async def activity_trigger(
-        *,
-        lifecycle: lifecycles.LifeCycleFn,
-        registry: registries.OperatorRegistry,
-        activity: causation.Activity,
-) -> Mapping[registries.HandlerId, registries.HandlerResult]:
-    """
-    Execute a handling cycle until succeeded or permanently failed.
-
-    This mimics the behaviour of patching-watching in Kubernetes, but in-memory.
-    """
-    logger = logging.getLogger(f'kopf.activities.{activity.value}')
-
-    # For the activity handlers, we have neither bodies, nor patches, just the state.
-    cause = causation.ActivityCause(logger=logger, activity=activity)
-    handlers = registry.get_activity_handlers(activity=activity)
-    state = states.State.from_scratch(handlers=handlers)
-    latest_outcomes: MutableMapping[registries.HandlerId, states.HandlerOutcome] = {}
-    while not state.done:
-        outcomes = await _execute_handlers(
-            lifecycle=lifecycle,
-            handlers=handlers,
-            cause=cause,
-            state=state,
-        )
-        latest_outcomes.update(outcomes)
-        state = state.with_outcomes(outcomes)
-        delay = state.delay
-        if delay:
-            await sleeping.sleep_or_wait(min(delay, WAITING_KEEPALIVE_INTERVAL), asyncio.Event())
-
-    # Activities assume that all handlers must eventually succeed.
-    # We raise from the 1st exception only: just to have something real in the tracebacks.
-    # For multiple handlers' errors, the logs should be investigated instead.
-    exceptions = [outcome.exception
-                  for outcome in latest_outcomes.values()
-                  if outcome.exception is not None]
-    if exceptions:
-        raise ActivityError("One or more handlers failed.", outcomes=latest_outcomes) \
-            from exceptions[0]
-
-    # If nothing has failed, we return identifiable results. The outcomes/states are internal.
-    # The order of results is not guaranteed (the handlers can succeed on one of the retries).
-    results = {handler_id: outcome.result
-               for handler_id, outcome in latest_outcomes.items()
-               if outcome.result is not None}
-    return results
-
-
-async def resource_handler(
-        lifecycle: lifecycles.LifeCycleFn,
-        registry: registries.OperatorRegistry,
-        memories: containers.ResourceMemories,
-        resource: resources.Resource,
-        event: bodies.Event,
-        replenished: asyncio.Event,
-        event_queue: posting.K8sEventQueue,
-) -> None:
-    """
-    Handle a single custom object low-level watch-event.
-
-    Convert the low-level events, as provided by the watching/queueing tasks,
-    to the high-level causes, and then call the cause-handling logic.
-
-    All the internally provoked changes are intercepted, do not create causes,
-    and therefore do not call the handling logic.
-    """
-    body: bodies.Body = event['object']
-    patch: patches.Patch = patches.Patch()
-    delay: Optional[float] = None
-
-    # Each object has its own prefixed logger, to distinguish parallel handling.
-    logger = logging_engine.ObjectLogger(body=body)
-    posting.event_queue_loop_var.set(asyncio.get_running_loop())
-    posting.event_queue_var.set(event_queue)  # till the end of this object's task.
-
-    # Recall what is stored about that object. Share it in little portions with the consumers.
-    # And immediately forget it if the object is deleted from the cluster (but keep in memory).
-    memory = await memories.recall(body, noticed_by_listing=event['type'] is None)
-    if event['type'] == 'DELETED':
-        await memories.forget(body)
-
-    # Invoke all silent spies. No causation, no progress storage is performed.
-    if registry.has_resource_watching_handlers(resource=resource):
-        resource_watching_cause = causation.detect_resource_watching_cause(
-            event=event,
-            resource=resource,
-            logger=logger,
-            patch=patch,
-            memo=memory.user_data,
-        )
-        await handle_resource_watching_cause(
-            lifecycle=lifecycles.all_at_once,
-            registry=registry,
-            memory=memory,
-            cause=resource_watching_cause,
-        )
-
-    # Object patch accumulator. Populated by the methods. Applied in the end of the handler.
-    # Detect the cause and handle it (or at least log this happened).
-    if registry.has_resource_changing_handlers(resource=resource):
-        extra_fields = registry.get_extra_fields(resource=resource)
-        old, new, diff = lastseen.get_essential_diffs(body=body, extra_fields=extra_fields)
-        resource_changing_cause = causation.detect_resource_changing_cause(
-            event=event,
-            resource=resource,
-            logger=logger,
-            patch=patch,
-            old=old,
-            new=new,
-            diff=diff,
-            memo=memory.user_data,
-            initial=memory.noticed_by_listing and not memory.fully_handled_once,
-        )
-        delay = await handle_resource_changing_cause(
-            lifecycle=lifecycle,
-            registry=registry,
-            memory=memory,
-            cause=resource_changing_cause,
-        )
-
-    # Whatever was done, apply the accumulated changes to the object.
-    # But only once, to reduce the number of API calls and the generated irrelevant events.
-    if patch:
-        logger.debug("Patching with: %r", patch)
-        await patching.patch_obj(resource=resource, patch=patch, body=body)
-
-    # Sleep strictly after patching, never before -- to keep the status proper.
-    # The patching above, if done, interrupts the sleep instantly, so we skip it at all.
-    # Note: a zero-second or negative sleep is still a sleep, it will trigger a dummy patch.
-    if delay and patch:
-        logger.debug(f"Sleeping was skipped because of the patch, {delay} seconds left.")
-    elif delay is None and not patch:
-        logger.debug(f"Handling cycle is finished, waiting for new changes since now.")
-    elif delay is not None:
-        if delay > 0:
-            logger.debug(f"Sleeping for {delay} seconds for the delayed handlers.")
-            limited_delay = min(delay, WAITING_KEEPALIVE_INTERVAL)
-            unslept_delay = await sleeping.sleep_or_wait(limited_delay, replenished)
-        else:
-            unslept_delay = None  # no need to sleep? means: slept in full.
-
-        if unslept_delay is not None:
-            logger.debug(f"Sleeping was interrupted by new changes, {unslept_delay} seconds left.")
-        else:
-            # Any unique always-changing value will work; not necessary a timestamp.
-            dummy_value = datetime.datetime.utcnow().isoformat()
-            dummy_patch = patches.Patch({'status': {'kopf': {'dummy': dummy_value}}})
-            logger.debug("Provoking reaction with: %r", dummy_patch)
-            await patching.patch_obj(resource=resource, patch=dummy_patch, body=body)
-
-
-async def handle_resource_watching_cause(
-        lifecycle: lifecycles.LifeCycleFn,
-        registry: registries.OperatorRegistry,
-        memory: containers.ResourceMemory,
-        cause: causation.ResourceWatchingCause,
-) -> None:
-    """
-    Handle a received event, log but ignore all errors.
-
-    This is a lightweight version of the cause handling, but for the raw events,
-    without any progress persistence. Multi-step calls are also not supported.
-    If the handler fails, it fails and is never retried.
-
-    Note: K8s-event posting is skipped for `kopf.on.event` handlers,
-    as they should be silent. Still, the messages are logged normally.
-    """
-    handlers = registry.get_resource_watching_handlers(cause=cause)
-    outcomes = await _execute_handlers(
-        lifecycle=lifecycle,
-        handlers=handlers,
-        cause=cause,
-        state=states.State.from_scratch(handlers=handlers),
-        default_errors=registries.ErrorsMode.IGNORED,
-    )
-
-    # Store the results, but not the handlers' progress.
-    states.deliver_results(outcomes=outcomes, patch=cause.patch)
-
-
-async def handle_resource_changing_cause(
-        lifecycle: lifecycles.LifeCycleFn,
-        registry: registries.OperatorRegistry,
-        memory: containers.ResourceMemory,
-        cause: causation.ResourceChangingCause,
-) -> Optional[float]:
-    """
-    Handle a detected cause, as part of the bigger handler routine.
-    """
-    logger = cause.logger
-    patch = cause.patch  # TODO get rid of this alias
-    body = cause.body  # TODO get rid of this alias
-    delay = None
-    done = None
-    skip = None
-
-    requires_finalizer = registry.requires_finalizer(resource=cause.resource, cause=cause)
-    has_finalizer = finalizers.has_finalizers(body=cause.body)
-
-    if requires_finalizer and not has_finalizer:
-        logger.debug("Adding the finalizer, thus preventing the actual deletion.")
-        finalizers.append_finalizers(body=body, patch=patch)
-        return None
-
-    if not requires_finalizer and has_finalizer:
-        logger.debug("Removing the finalizer, as there are no handlers requiring it.")
-        finalizers.remove_finalizers(body=body, patch=patch)
-        return None
-
-    # Regular causes invoke the handlers.
-    if cause.reason in causation.HANDLER_REASONS:
-        title = causation.TITLES.get(cause.reason, repr(cause.reason))
-        logger.debug(f"{title.capitalize()} event: %r", body)
-        if cause.diff and cause.old is not None and cause.new is not None:
-            logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
-
-        handlers = registry.get_resource_changing_handlers(cause=cause)
-        state = states.State.from_body(body=cause.body, handlers=handlers)
-        if handlers:
-            outcomes = await _execute_handlers(
-                lifecycle=lifecycle,
-                handlers=handlers,
-                cause=cause,
-                state=state,
-            )
-            state = state.with_outcomes(outcomes)
-            state.store(patch=cause.patch)
-            states.deliver_results(outcomes=outcomes, patch=cause.patch)
-
-            if state.done:
-                logger.info(f"All handlers succeeded for {title}.")
-                state.purge(patch=cause.patch, body=cause.body)
-
-            done = state.done
-            delay = state.delay
-        else:
-            skip = True
-
-    # Regular causes also do some implicit post-handling when all handlers are done.
-    if done or skip:
-        extra_fields = registry.get_extra_fields(resource=cause.resource)
-        lastseen.refresh_essence(body=body, patch=patch, extra_fields=extra_fields)
-        if cause.reason == causation.Reason.DELETE:
-            logger.debug("Removing the finalizer, thus allowing the actual deletion.")
-            finalizers.remove_finalizers(body=body, patch=patch)
-
-        # Once all handlers have succeeded at least once for any reason, or if there were none,
-        # prevent further resume-handlers (which otherwise happens on each watch-stream re-listing).
-        memory.fully_handled_once = True
-
-    # Informational causes just print the log lines.
-    if cause.reason == causation.Reason.GONE:
-        logger.debug("Deleted, really deleted, and we are notified.")
-
-    if cause.reason == causation.Reason.FREE:
-        logger.debug("Deletion event, but we are done with it, and we do not care.")
-
-    if cause.reason == causation.Reason.NOOP:
-        logger.debug("Something has changed, but we are not interested (the essence is the same).")
-
-    # The delay is then consumed by the main handling routine (in different ways).
-    return delay
 
 
 async def execute(
         *,
         fns: Optional[Iterable[invocation.Invokable]] = None,
-        handlers: Optional[Iterable[registries.ResourceHandler]] = None,
+        handlers: Optional[Iterable[handlers_.ResourceHandler]] = None,
         registry: Optional[registries.ResourceChangingRegistry] = None,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         cause: Optional[causation.BaseCause] = None,
@@ -387,33 +96,34 @@ async def execute(
     # Restore the current context as set in the handler execution cycle.
     lifecycle = lifecycle if lifecycle is not None else sublifecycle_var.get()
     cause = cause if cause is not None else cause_var.get()
-    handler: registries.BaseHandler = handler_var.get()
+    parent_handler: handlers_.BaseHandler = handler_var.get()
+    parent_prefix = parent_handler.id if parent_handler is not None else None
 
     # Validate the inputs; the function signatures cannot put these kind of restrictions, so we do.
     if len([v for v in [fns, handlers, registry] if v is not None]) > 1:
         raise TypeError("Only one of the fns, handlers, registry can be passed. Got more.")
 
     elif fns is not None and isinstance(fns, collections.abc.Mapping):
-        registry = registries.ResourceChangingRegistry(prefix=handler.id if handler else None)
+        subregistry = registries.ResourceChangingRegistry(prefix=parent_prefix)
         for id, fn in fns.items():
-            registry.register(fn=fn, id=id)
+            subregistry.register(fn=fn, id=id)
 
     elif fns is not None and isinstance(fns, collections.abc.Iterable):
-        registry = registries.ResourceChangingRegistry(prefix=handler.id if handler else None)
+        subregistry = registries.ResourceChangingRegistry(prefix=parent_prefix)
         for fn in fns:
-            registry.register(fn=fn)
+            subregistry.register(fn=fn)
 
     elif fns is not None:
         raise ValueError(f"fns must be a mapping or an iterable, got {fns.__class__}.")
 
     elif handlers is not None:
-        registry = registries.ResourceChangingRegistry(prefix=handler.id if handler else None)
+        subregistry = registries.ResourceChangingRegistry(prefix=parent_prefix)
         for handler in handlers:
-            registry.append(handler=handler)
+            subregistry.append(handler=handler)
 
     # Use the registry as is; assume that the caller knows what they do.
     elif registry is not None:
-        pass
+        subregistry = registry
 
     # Prevent double implicit execution.
     elif subexecuted_var.get():
@@ -422,7 +132,7 @@ async def execute(
     # If no explicit args were passed, implicitly use the accumulated handlers from `@kopf.on.this`.
     else:
         subexecuted_var.set(True)
-        registry = subregistry_var.get()
+        subregistry = subregistry_var.get()
 
     # The sub-handlers are only for upper-level causes, not for lower-level events.
     if not isinstance(cause, causation.ResourceChangingCause):
@@ -430,11 +140,11 @@ async def execute(
                            "no practical use (there are no retries or state tracking).")
 
     # Execute the real handlers (all or few or one of them, as per the lifecycle).
-    handlers = registry.get_handlers(cause=cause)
-    state = states.State.from_body(body=cause.body, handlers=handlers)
-    outcomes = await _execute_handlers(
+    subhandlers = subregistry.get_handlers(cause=cause)
+    state = states.State.from_body(body=cause.body, handlers=subhandlers)
+    outcomes = await execute_handlers_once(
         lifecycle=lifecycle,
-        handlers=handlers,
+        handlers=subhandlers,
         cause=cause,
         state=state,
     )
@@ -447,13 +157,49 @@ async def execute(
         raise HandlerChildrenRetry(delay=state.delay)
 
 
-async def _execute_handlers(
+async def run_handlers_until_done(
+        cause: causation.BaseCause,
+        handlers: Collection[handlers_.BaseHandler],
         lifecycle: lifecycles.LifeCycleFn,
-        handlers: Collection[registries.BaseHandler],
+        default_errors: errors.ErrorsMode = errors.ErrorsMode.TEMPORARY,
+) -> Mapping[handlers_.HandlerId, states.HandlerOutcome]:
+    """
+    Run the full cycle until all the handlers are done.
+
+    This function simulates the Kubernetes-based event-driven reaction cycle,
+    but completely in memory.
+
+    It can be used for handler execution when there is no underlying object
+    or patching-watching is not desired.
+    """
+
+    # For the activity handlers, we have neither bodies, nor patches, just the state.
+    state = states.State.from_scratch(handlers=handlers)
+    latest_outcomes: MutableMapping[handlers_.HandlerId, states.HandlerOutcome] = {}
+    while not state.done:
+        outcomes = await execute_handlers_once(
+            lifecycle=lifecycle,
+            handlers=handlers,
+            cause=cause,
+            state=state,
+            default_errors=default_errors,
+        )
+        latest_outcomes.update(outcomes)
+        state = state.with_outcomes(outcomes)
+        delay = state.delay
+        if delay:
+            limited_delay = min(delay, WAITING_KEEPALIVE_INTERVAL)
+            await sleeping.sleep_or_wait(limited_delay, asyncio.Event())
+    return latest_outcomes
+
+
+async def execute_handlers_once(
+        lifecycle: lifecycles.LifeCycleFn,
+        handlers: Collection[handlers_.BaseHandler],
         cause: causation.BaseCause,
         state: states.State,
-        default_errors: registries.ErrorsMode = registries.ErrorsMode.TEMPORARY,
-) -> Mapping[registries.HandlerId, states.HandlerOutcome]:
+        default_errors: errors.ErrorsMode = errors.ErrorsMode.TEMPORARY,
+) -> Mapping[handlers_.HandlerId, states.HandlerOutcome]:
     """
     Call the next handler(s) from the chain of the handlers.
 
@@ -469,9 +215,9 @@ async def _execute_handlers(
     handlers_plan = await invocation.invoke(lifecycle, handlers_todo, cause=cause, state=state)
 
     # Execute all planned (selected) handlers in one event reaction cycle, even if there are few.
-    outcomes: MutableMapping[registries.HandlerId, states.HandlerOutcome] = {}
+    outcomes: MutableMapping[handlers_.HandlerId, states.HandlerOutcome] = {}
     for handler in handlers_plan:
-        outcome = await _execute_handler(
+        outcome = await execute_handler_once(
             handler=handler,
             state=state[handler.id],
             cause=cause,
@@ -483,12 +229,12 @@ async def _execute_handlers(
     return outcomes
 
 
-async def _execute_handler(
-        handler: registries.BaseHandler,
+async def execute_handler_once(
+        handler: handlers_.BaseHandler,
         cause: causation.BaseCause,
         state: states.HandlerState,
         lifecycle: lifecycles.LifeCycleFn,
-        default_errors: registries.ErrorsMode = registries.ErrorsMode.TEMPORARY,
+        default_errors: errors.ErrorsMode = errors.ErrorsMode.TEMPORARY,
 ) -> states.HandlerOutcome:
     """
     Execute one and only one handler.
@@ -500,7 +246,7 @@ async def _execute_handler(
     This method is not supposed to raise any exceptions from the handlers:
     exceptions mean the failure of execution itself.
     """
-    errors = handler.errors if handler.errors is not None else default_errors
+    errors_mode = handler.errors if handler.errors is not None else default_errors
     backoff = handler.backoff if handler.backoff is not None else DEFAULT_RETRY_DELAY
 
     # Prevent successes/failures from posting k8s-events for resource-watching causes.
@@ -520,7 +266,7 @@ async def _execute_handler(
         if handler.retries is not None and state.retries >= handler.retries:
             raise HandlerRetriesError(f"Handler {handler.id!r} has exceeded {state.retries} retries.")
 
-        result = await _call_handler(
+        result = await invoke_handler(
             handler,
             cause=cause,
             retry=state.retries,
@@ -553,18 +299,18 @@ async def _execute_handler(
 
     # Regular errors behave as either temporary or permanent depending on the error strictness.
     except Exception as e:
-        if errors == registries.ErrorsMode.IGNORED:
+        if errors_mode == errors.ErrorsMode.IGNORED:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will ignore.")
             return states.HandlerOutcome(final=True)
-        elif errors == registries.ErrorsMode.TEMPORARY:
+        elif errors_mode == errors.ErrorsMode.TEMPORARY:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")
             return states.HandlerOutcome(final=False, exception=e, delay=backoff)
-        elif errors == registries.ErrorsMode.PERMANENT:
+        elif errors_mode == errors.ErrorsMode.PERMANENT:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will stop.")
             return states.HandlerOutcome(final=True, exception=e)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?
         else:
-            raise RuntimeError(f"Unknown mode for errors: {errors!r}")
+            raise RuntimeError(f"Unknown mode for errors: {errors_mode!r}")
 
     # No errors means the handler should be excluded from future runs in this reaction cycle.
     else:
@@ -572,13 +318,13 @@ async def _execute_handler(
         return states.HandlerOutcome(final=True, result=result)
 
 
-async def _call_handler(
-        handler: registries.BaseHandler,
+async def invoke_handler(
+        handler: handlers_.BaseHandler,
         *args: Any,
         cause: causation.BaseCause,
         lifecycle: lifecycles.LifeCycleFn,
         **kwargs: Any,
-) -> Optional[registries.HandlerResult]:
+) -> Optional[callbacks.HandlerResult]:
     """
     Invoke one handler only, according to the calling conventions.
 
@@ -592,7 +338,7 @@ async def _call_handler(
     # For the field-handlers, the old/new/diff values must match the field, not the whole object.
     if (True and  # for readable indenting
             isinstance(cause, causation.ResourceChangingCause) and
-            isinstance(handler, registries.ResourceHandler) and
+            isinstance(handler, handlers_.ResourceHandler) and
             handler.field is not None):
         old = dicts.resolve(cause.old, handler.field, None, assume_empty=True)
         new = dicts.resolve(cause.new, handler.field, None, assume_empty=True)
@@ -622,4 +368,4 @@ async def _call_handler(
             await execute()
 
         # Since we know that we invoked the handler, we cast "any" result to a handler result.
-        return registries.HandlerResult(result)
+        return callbacks.HandlerResult(result)

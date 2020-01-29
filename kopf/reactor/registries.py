@@ -13,152 +13,24 @@ of the handlers to be executed on each reaction cycle.
 """
 import abc
 import collections
-import dataclasses
-import enum
 import functools
-import logging
-import warnings
 from types import FunctionType, MethodType
 from typing import (Any, MutableMapping, Optional, Sequence, Collection, Iterable, Iterator,
-                    Union, List, Set, FrozenSet, Mapping, NewType, Callable, cast,
-                    Generic, TypeVar)
+                    List, Set, FrozenSet, Mapping, Callable, cast, Generic, TypeVar)
 
-from typing_extensions import Protocol
-
-from kopf.reactor import causation, invocation
+from kopf.reactor import callbacks
+from kopf.reactor import causation
+from kopf.reactor import errors as errors_
+from kopf.reactor import handlers
+from kopf.reactor import invocation
 from kopf.structs import bodies
 from kopf.structs import dicts
-from kopf.structs import diffs
-from kopf.structs import patches
 from kopf.structs import resources as resources_
 from kopf.utilities import piggybacking
 
-# Strings are taken from the users, but then tainted as this type for stricter type-checking:
-# to prevent usage of some other strings (e.g. operator id) as the handlers ids.
-HandlerId = NewType('HandlerId', str)
-
-# A specialised type to highlight the purpose or origin of the data of type Any,
-# to not be mixed with other arbitrary Any values, where it is indeed "any".
-HandlerResult = NewType('HandlerResult', object)
-
-
-class ErrorsMode(enum.Enum):
-    """ How arbitrary (non-temporary/non-permanent) exceptions are treated. """
-    IGNORED = enum.auto()
-    TEMPORARY = enum.auto()
-    PERMANENT = enum.auto()
-
-
-class ActivityHandlerFn(Protocol):
-    def __call__(
-            self,
-            *args: Any,
-            logger: Union[logging.Logger, logging.LoggerAdapter],
-            **kwargs: Any,
-    ) -> Optional[HandlerResult]: ...
-
-
-class ResourceHandlerFn(Protocol):
-    def __call__(
-            self,
-            *args: Any,
-            type: str,
-            event: Union[str, bodies.Event],
-            body: bodies.Body,
-            meta: bodies.Meta,
-            spec: bodies.Spec,
-            status: bodies.Status,
-            uid: str,
-            name: str,
-            namespace: Optional[str],
-            patch: patches.Patch,
-            logger: Union[logging.Logger, logging.LoggerAdapter],
-            diff: diffs.Diff,
-            old: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
-            new: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
-            **kwargs: Any,
-    ) -> Optional[HandlerResult]: ...
-
-class WhenHandlerFn(Protocol):
-    def __call__(
-            self,
-            *args: Any,
-            type: str,
-            event: Union[str, bodies.Event],
-            body: bodies.Body,
-            meta: bodies.Meta,
-            spec: bodies.Spec,
-            status: bodies.Status,
-            uid: str,
-            name: str,
-            namespace: Optional[str],
-            patch: patches.Patch,
-            logger: Union[logging.Logger, logging.LoggerAdapter],
-            diff: diffs.Diff,
-            old: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
-            new: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
-            **kwargs: Any,
-    ) -> bool: ...
-
-
-# A registered handler (function + meta info).
-# FIXME: Must be frozen, but mypy fails in _call_handler() with a cryptic error:
-# FIXME:    Argument 1 to "invoke" has incompatible type "Optional[HandlerResult]";
-# FIXME:    expected "Union[LifeCycleFn, ActivityHandlerFn, ResourceHandlerFn]"
-@dataclasses.dataclass
-class BaseHandler:
-    id: HandlerId
-    fn: Callable[..., Optional[HandlerResult]]
-    errors: Optional[ErrorsMode]
-    timeout: Optional[float]
-    retries: Optional[int]
-    backoff: Optional[float]
-    cooldown: dataclasses.InitVar[Optional[float]]  # deprecated, use `backoff`
-
-    def __post_init__(self, cooldown: Optional[float]) -> None:
-        if self.backoff is not None and cooldown is not None:
-            raise TypeError("Either backoff or cooldown can be set, not both.")
-        elif cooldown is not None:
-            warnings.warn("cooldown=... is deprecated, use backoff=...", DeprecationWarning)
-            self.backoff = cooldown
-
-    # @property cannot be used due to a data field definition with the same name.
-    def __getattribute__(self, name: str) -> Any:
-        if name == 'cooldown':
-            warnings.warn("handler.cooldown is deprecated, use handler.backoff", DeprecationWarning)
-            return self.backoff
-        else:
-            return super().__getattribute__(name)
-
-
-@dataclasses.dataclass
-class ActivityHandler(BaseHandler):
-    fn: ActivityHandlerFn  # type clarification
-    activity: Optional[causation.Activity] = None
-    _fallback: bool = False  # non-public!
-
-
-@dataclasses.dataclass
-class ResourceHandler(BaseHandler):
-    fn: ResourceHandlerFn  # type clarification
-    reason: Optional[causation.Reason]
-    field: Optional[dicts.FieldPath]
-    initial: Optional[bool] = None
-    deleted: Optional[bool] = None  # used for mixed-in (initial==True) @on.resume handlers only.
-    labels: Optional[bodies.Labels] = None
-    annotations: Optional[bodies.Annotations] = None
-    when: Optional[WhenHandlerFn] = None
-    requires_finalizer: Optional[bool] = None
-
-    @property
-    def event(self) -> Optional[causation.Reason]:
-        warnings.warn("`handler.event` is deprecated; use `handler.reason`.", DeprecationWarning)
-        return self.reason
-
-
 # We only type-check for known classes of handlers/callbacks, and ignore any custom subclasses.
-HandlerFnT = TypeVar('HandlerFnT', ActivityHandlerFn, ResourceHandlerFn)
-HandlerT = TypeVar('HandlerT', ActivityHandler, ResourceHandler)
+HandlerFnT = TypeVar('HandlerFnT', callbacks.ActivityHandlerFn, callbacks.ResourceHandlerFn)
+HandlerT = TypeVar('HandlerT', handlers.ActivityHandler, handlers.ResourceHandler)
 CauseT = TypeVar('CauseT', bound=causation.BaseCause)
 
 
@@ -178,24 +50,24 @@ class GenericRegistry(Generic[HandlerT, HandlerFnT]):
         self._handlers.append(handler)
 
 
-class ActivityRegistry(GenericRegistry[ActivityHandler, ActivityHandlerFn]):
+class ActivityRegistry(GenericRegistry[handlers.ActivityHandler, callbacks.ActivityHandlerFn]):
     """ An actual registry of activity handlers. """
 
     def register(
             self,
-            fn: ActivityHandlerFn,
+            fn: callbacks.ActivityHandlerFn,
             *,
             id: Optional[str] = None,
-            errors: Optional[ErrorsMode] = None,
+            errors: Optional[errors_.ErrorsMode] = None,
             timeout: Optional[float] = None,
             retries: Optional[int] = None,
             backoff: Optional[float] = None,
             cooldown: Optional[float] = None,  # deprecated, use `backoff`
             activity: Optional[causation.Activity] = None,
             _fallback: bool = False,
-    ) -> ActivityHandlerFn:
+    ) -> callbacks.ActivityHandlerFn:
         real_id = generate_id(fn=fn, id=id, prefix=self.prefix)
-        handler = ActivityHandler(
+        handler = handlers.ActivityHandler(
             id=real_id, fn=fn, activity=activity,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             _fallback=_fallback,
@@ -206,13 +78,13 @@ class ActivityRegistry(GenericRegistry[ActivityHandler, ActivityHandlerFn]):
     def get_handlers(
             self,
             activity: causation.Activity,
-    ) -> Sequence[ActivityHandler]:
+    ) -> Sequence[handlers.ActivityHandler]:
         return list(_deduplicated(self.iter_handlers(activity=activity)))
 
     def iter_handlers(
             self,
             activity: causation.Activity,
-    ) -> Iterator[ActivityHandler]:
+    ) -> Iterator[handlers.ActivityHandler]:
         found: bool = False
 
         # Regular handlers go first.
@@ -228,18 +100,18 @@ class ActivityRegistry(GenericRegistry[ActivityHandler, ActivityHandlerFn]):
                     yield handler
 
 
-class ResourceRegistry(GenericRegistry[ResourceHandler, ResourceHandlerFn], Generic[CauseT]):
+class ResourceRegistry(GenericRegistry[handlers.ResourceHandler, callbacks.ResourceHandlerFn], Generic[CauseT]):
     """ An actual registry of resource handlers. """
 
     def register(
             self,
-            fn: ResourceHandlerFn,
+            fn: callbacks.ResourceHandlerFn,
             *,
             id: Optional[str] = None,
             reason: Optional[causation.Reason] = None,
             event: Optional[str] = None,  # deprecated, use `reason`
             field: Optional[dicts.FieldSpec] = None,
-            errors: Optional[ErrorsMode] = None,
+            errors: Optional[errors_.ErrorsMode] = None,
             timeout: Optional[float] = None,
             retries: Optional[int] = None,
             backoff: Optional[float] = None,
@@ -249,14 +121,14 @@ class ResourceRegistry(GenericRegistry[ResourceHandler, ResourceHandlerFn], Gene
             requires_finalizer: bool = False,
             labels: Optional[bodies.Labels] = None,
             annotations: Optional[bodies.Annotations] = None,
-            when: Optional[WhenHandlerFn] = None,
-    ) -> ResourceHandlerFn:
+            when: Optional[callbacks.WhenHandlerFn] = None,
+    ) -> callbacks.ResourceHandlerFn:
         if reason is None and event is not None:
             reason = causation.Reason(event)
 
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = generate_id(fn=fn, id=id, prefix=self.prefix, suffix=".".join(real_field or []))
-        handler = ResourceHandler(
+        handler = handlers.ResourceHandler(
             id=real_id, fn=fn, reason=reason, field=real_field,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
@@ -269,14 +141,14 @@ class ResourceRegistry(GenericRegistry[ResourceHandler, ResourceHandlerFn], Gene
     def get_handlers(
             self,
             cause: CauseT,
-    ) -> Sequence[ResourceHandler]:
+    ) -> Sequence[handlers.ResourceHandler]:
         return list(_deduplicated(self.iter_handlers(cause=cause)))
 
     @abc.abstractmethod
     def iter_handlers(
             self,
             cause: CauseT,
-    ) -> Iterator[ResourceHandler]:
+    ) -> Iterator[handlers.ResourceHandler]:
         raise NotImplementedError
 
     def get_extra_fields(
@@ -308,7 +180,7 @@ class ResourceWatchingRegistry(ResourceRegistry[causation.ResourceWatchingCause]
     def iter_handlers(
             self,
             cause: causation.ResourceWatchingCause,
-    ) -> Iterator[ResourceHandler]:
+    ) -> Iterator[handlers.ResourceHandler]:
         for handler in self._handlers:
             if match(handler=handler, cause=cause, ignore_fields=True):
                 yield handler
@@ -319,7 +191,7 @@ class ResourceChangingRegistry(ResourceRegistry[causation.ResourceChangingCause]
     def iter_handlers(
             self,
             cause: causation.ResourceChangingCause,
-    ) -> Iterator[ResourceHandler]:
+    ) -> Iterator[handlers.ResourceHandler]:
         changed_fields = frozenset(field for _, field, _, _ in cause.diff or [])
         for handler in self._handlers:
             if handler.reason is None or handler.reason == cause.reason:
@@ -355,17 +227,17 @@ class OperatorRegistry:
 
     def register_activity_handler(
             self,
-            fn: ActivityHandlerFn,
+            fn: callbacks.ActivityHandlerFn,
             *,
             id: Optional[str] = None,
-            errors: Optional[ErrorsMode] = None,
+            errors: Optional[errors_.ErrorsMode] = None,
             timeout: Optional[float] = None,
             retries: Optional[int] = None,
             backoff: Optional[float] = None,
             cooldown: Optional[float] = None,  # deprecated, use `backoff`
             activity: Optional[causation.Activity] = None,
             _fallback: bool = False,
-    ) -> ActivityHandlerFn:
+    ) -> callbacks.ActivityHandlerFn:
         return self._activity_handlers.register(
             fn=fn, id=id, activity=activity,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
@@ -377,12 +249,12 @@ class OperatorRegistry:
             group: str,
             version: str,
             plural: str,
-            fn: ResourceHandlerFn,
+            fn: callbacks.ResourceHandlerFn,
             id: Optional[str] = None,
             labels: Optional[bodies.Labels] = None,
             annotations: Optional[bodies.Annotations] = None,
-            when: Optional[WhenHandlerFn] = None,
-    ) -> ResourceHandlerFn:
+            when: Optional[callbacks.WhenHandlerFn] = None,
+    ) -> callbacks.ResourceHandlerFn:
         """
         Register an additional handler function for low-level events.
         """
@@ -397,12 +269,12 @@ class OperatorRegistry:
             group: str,
             version: str,
             plural: str,
-            fn: ResourceHandlerFn,
+            fn: callbacks.ResourceHandlerFn,
             id: Optional[str] = None,
             reason: Optional[causation.Reason] = None,
             event: Optional[str] = None,  # deprecated, use `reason`
             field: Optional[dicts.FieldSpec] = None,
-            errors: Optional[ErrorsMode] = None,
+            errors: Optional[errors_.ErrorsMode] = None,
             timeout: Optional[float] = None,
             retries: Optional[int] = None,
             backoff: Optional[float] = None,
@@ -412,8 +284,8 @@ class OperatorRegistry:
             requires_finalizer: bool = False,
             labels: Optional[bodies.Labels] = None,
             annotations: Optional[bodies.Annotations] = None,
-            when: Optional[WhenHandlerFn] = None,
-    ) -> ResourceHandlerFn:
+            when: Optional[callbacks.WhenHandlerFn] = None,
+    ) -> callbacks.ResourceHandlerFn:
         """
         Register an additional handler function for the specific resource and specific reason.
         """
@@ -448,32 +320,32 @@ class OperatorRegistry:
             self,
             *,
             activity: causation.Activity,
-    ) -> Sequence[ActivityHandler]:
+    ) -> Sequence[handlers.ActivityHandler]:
         return list(_deduplicated(self.iter_activity_handlers(activity=activity)))
 
     def get_resource_watching_handlers(
             self,
             cause: causation.ResourceWatchingCause,
-    ) -> Sequence[ResourceHandler]:
+    ) -> Sequence[handlers.ResourceHandler]:
         return list(_deduplicated(self.iter_resource_watching_handlers(cause=cause)))
 
     def get_resource_changing_handlers(
             self,
             cause: causation.ResourceChangingCause,
-    ) -> Sequence[ResourceHandler]:
+    ) -> Sequence[handlers.ResourceHandler]:
         return list(_deduplicated(self.iter_resource_changing_handlers(cause=cause)))
 
     def iter_activity_handlers(
             self,
             *,
             activity: causation.Activity,
-    ) -> Iterator[ActivityHandler]:
+    ) -> Iterator[handlers.ActivityHandler]:
         yield from self._activity_handlers.iter_handlers(activity=activity)
 
     def iter_resource_watching_handlers(
             self,
             cause: causation.ResourceWatchingCause,
-    ) -> Iterator[ResourceHandler]:
+    ) -> Iterator[handlers.ResourceHandler]:
         """
         Iterate all handlers for the low-level events.
         """
@@ -483,7 +355,7 @@ class OperatorRegistry:
     def iter_resource_changing_handlers(
             self,
             cause: causation.ResourceChangingCause,
-    ) -> Iterator[ResourceHandler]:
+    ) -> Iterator[handlers.ResourceHandler]:
         """
         Iterate all handlers that match this cause/event, in the order they were registered (even if mixed).
         """
@@ -527,9 +399,9 @@ class SmartOperatorRegistry(OperatorRegistry):
         else:
             self.register_activity_handler(
                 id='login_via_pykube',
-                fn=cast(ActivityHandlerFn, piggybacking.login_via_pykube),
+                fn=cast(callbacks.ActivityHandlerFn, piggybacking.login_via_pykube),
                 activity=causation.Activity.AUTHENTICATION,
-                errors=ErrorsMode.IGNORED,
+                errors=errors_.ErrorsMode.IGNORED,
                 _fallback=True,
             )
 
@@ -540,27 +412,27 @@ class SmartOperatorRegistry(OperatorRegistry):
         else:
             self.register_activity_handler(
                 id='login_via_client',
-                fn=cast(ActivityHandlerFn, piggybacking.login_via_client),
+                fn=cast(callbacks.ActivityHandlerFn, piggybacking.login_via_client),
                 activity=causation.Activity.AUTHENTICATION,
-                errors=ErrorsMode.IGNORED,
+                errors=errors_.ErrorsMode.IGNORED,
                 _fallback=True,
             )
 
 
 def generate_id(
-        fn: ResourceHandlerFn,
+        fn: Callable[..., Any],
         id: Optional[str],
         prefix: Optional[str] = None,
         suffix: Optional[str] = None,
-) -> HandlerId:
+) -> handlers.HandlerId:
     real_id: str
     real_id = id if id is not None else get_callable_id(fn)
     real_id = real_id if not suffix else f'{real_id}/{suffix}'
     real_id = real_id if not prefix else f'{prefix}/{real_id}'
-    return cast(HandlerId, real_id)
+    return cast(handlers.HandlerId, real_id)
 
 
-def get_callable_id(c: Optional[Callable[..., Any]]) -> str:
+def get_callable_id(c: Callable[..., Any]) -> str:
     """ Get an reasonably good id of any commonly used callable. """
     if c is None:
         raise ValueError("Cannot build a persistent id of None.")
@@ -613,7 +485,7 @@ def _deduplicated(
 
 
 def match(
-        handler: ResourceHandler,
+        handler: handlers.ResourceHandler,
         cause: causation.ResourceCause,
         changed_fields: Collection[dicts.FieldPath] = frozenset(),
         ignore_fields: bool = False,
@@ -627,7 +499,7 @@ def match(
 
 
 def _matches_field(
-        handler: ResourceHandler,
+        handler: handlers.ResourceHandler,
         changed_fields: Collection[dicts.FieldPath] = frozenset(),
         ignore_fields: bool = False,
 ) -> bool:
@@ -637,7 +509,7 @@ def _matches_field(
 
 
 def _matches_labels(
-        handler: ResourceHandler,
+        handler: handlers.ResourceHandler,
         body: bodies.Body,
 ) -> bool:
     return (not handler.labels or
@@ -646,7 +518,7 @@ def _matches_labels(
 
 
 def _matches_annotations(
-        handler: ResourceHandler,
+        handler: handlers.ResourceHandler,
         body: bodies.Body,
 ) -> bool:
     return (not handler.annotations or
@@ -670,7 +542,7 @@ def _matches_metadata(
 
 
 def _matches_filter_callback(
-        handler: ResourceHandler,
+        handler: handlers.ResourceHandler,
         cause: causation.ResourceCause,
 ) -> bool:
     if not handler.when:

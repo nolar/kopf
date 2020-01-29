@@ -6,7 +6,7 @@ import pytest
 
 import kopf
 from kopf.reactor.causation import HANDLER_REASONS, Reason
-from kopf.reactor.handling import resource_handler
+from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 
 
@@ -34,7 +34,7 @@ async def test_timed_out_handler_fails(
     })
 
     with freezegun.freeze_time(now):
-        await resource_handler(
+        await process_resource_event(
             lifecycle=kopf.lifecycles.one_by_one,
             registry=registry,
             resource=resource,
@@ -82,7 +82,7 @@ async def test_retries_limited_handler_fails(
         }}}
     })
 
-    await resource_handler(
+    await process_resource_event(
         lifecycle=kopf.lifecycles.one_by_one,
         registry=registry,
         resource=resource,

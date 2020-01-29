@@ -14,8 +14,8 @@ def _autouse_resp_mocker(resp_mocker):
 
 
 @pytest.fixture()
-def handler():
-    """ A mock for handler -- to be checked if the handler has been called. """
+def processor():
+    """ A mock for processor -- to be checked if the handler has been called. """
     return CoroutineMock()
 
 
@@ -42,7 +42,7 @@ def watcher_limited(mocker):
 def watcher_in_background(resource, event_loop, worker_spy, stream):
 
     # Prevent remembering the streaming objects in the mocks.
-    async def no_op_handler(*args, **kwargs):
+    async def do_nothing(*args, **kwargs):
         pass
 
     # Prevent any real streaming for the very beginning, before it even starts.
@@ -52,7 +52,7 @@ def watcher_in_background(resource, event_loop, worker_spy, stream):
     coro = watcher(
         namespace=None,
         resource=resource,
-        handler=no_op_handler,
+        processor=do_nothing,
     )
     task = event_loop.create_task(coro)
 
