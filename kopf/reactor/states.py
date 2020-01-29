@@ -56,7 +56,7 @@ import datetime
 from typing import Any, Optional, Mapping, Dict, Collection, Iterator, cast, overload
 
 from kopf.reactor import callbacks
-from kopf.reactor import handlers
+from kopf.reactor import handlers as handlers_
 from kopf.structs import bodies
 from kopf.structs import patches
 
@@ -167,7 +167,7 @@ class HandlerState:
         return now - (self.started if self.started else now)
 
 
-class State(Mapping[handlers.HandlerId, HandlerState]):
+class State(Mapping[handlers_.HandlerId, HandlerState]):
     """
     A state of selected handlers, as persisted in the object's status.
 
@@ -178,11 +178,11 @@ class State(Mapping[handlers.HandlerId, HandlerState]):
     reflect the changes in the object's status. A new state is created every
     time some changes/outcomes are merged into the current state.
     """
-    _states: Mapping[handlers.HandlerId, HandlerState]
+    _states: Mapping[handlers_.HandlerId, HandlerState]
 
     def __init__(
             self,
-            __src: Mapping[handlers.HandlerId, HandlerState],
+            __src: Mapping[handlers_.HandlerId, HandlerState],
     ):
         super().__init__()
         self._states = dict(__src)
@@ -191,7 +191,7 @@ class State(Mapping[handlers.HandlerId, HandlerState]):
     def from_scratch(
             cls,
             *,
-            handlers: Collection[handlers.BaseHandler],
+            handlers: Collection[handlers_.BaseHandler],
     ) -> "State":
         return cls.from_body(cast(bodies.Body, {}), handlers=handlers)
 
@@ -200,7 +200,7 @@ class State(Mapping[handlers.HandlerId, HandlerState]):
             cls,
             body: bodies.Body,
             *,
-            handlers: Collection[handlers.BaseHandler],
+            handlers: Collection[handlers_.BaseHandler],
     ) -> "State":
         storage = body.get('status', {}).get('kopf', {})
         progress = storage.get('progress', {})
@@ -214,7 +214,7 @@ class State(Mapping[handlers.HandlerId, HandlerState]):
 
     def with_outcomes(
             self,
-            outcomes: Mapping[handlers.HandlerId, HandlerOutcome],
+            outcomes: Mapping[handlers_.HandlerId, HandlerOutcome],
     ) -> "State":
         unknown_ids = [handler_id for handler_id in outcomes if handler_id not in self]
         if unknown_ids:
@@ -251,10 +251,10 @@ class State(Mapping[handlers.HandlerId, HandlerState]):
     def __len__(self) -> int:
         return len(self._states)
 
-    def __iter__(self) -> Iterator[handlers.HandlerId]:
+    def __iter__(self) -> Iterator[handlers_.HandlerId]:
         return iter(self._states)
 
-    def __getitem__(self, item: handlers.HandlerId) -> HandlerState:
+    def __getitem__(self, item: handlers_.HandlerId) -> HandlerState:
         return self._states[item]
 
     @property
@@ -277,7 +277,7 @@ class State(Mapping[handlers.HandlerId, HandlerState]):
 
 def deliver_results(
         *,
-        outcomes: Mapping[handlers.HandlerId, HandlerOutcome],
+        outcomes: Mapping[handlers_.HandlerId, HandlerOutcome],
         patch: patches.Patch,
 ) -> None:
     """
