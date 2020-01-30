@@ -30,24 +30,25 @@ __ https://kubernetes.io/docs/concepts/workloads/controllers/garbage-collection/
 Let's extend the creation handler:
 
 .. code-block:: python
-   :name: adopting
-   :linenos:
-   :caption: ephemeral.py
-   :emphasize-lines: 18
+    :name: adopting
+    :linenos:
+    :caption: ephemeral.py
+    :emphasize-lines: 18
 
+    import os
     import kopf
     import kubernetes
     import yaml
 
     @kopf.on.create('zalando.org', 'v1', 'ephemeralvolumeclaims')
-    def create_fn(meta, spec, namespace, logger, **kwargs):
+    def create_fn(meta, spec, namespace, logger, body, **kwargs):
 
         name = meta.get('name')
         size = spec.get('size')
         if not size:
             raise kopf.PermanentError(f"Size must be set. Got {size!r}.")
 
-        path = os.path.join(os.path.dirname(__file__), 'pvc-tpl.yaml')
+        path = os.path.join(os.path.dirname(__file__), 'pvc.yaml')
         tmpl = open(path, 'rt').read()
         text = tmpl.format(name=name, size=size)
         data = yaml.safe_load(text)
@@ -62,7 +63,9 @@ Let's extend the creation handler:
 
         logger.info(f"PVC child is created: %s", obj)
 
-With this one line, `kopf.adopt` marks the PVC as child of EVC.
+        return {'pvc-name': obj.metadata.name}
+
+With this one line, `kopf.adopt` marks the PVC as a child of EVC.
 This includes: the name auto-generation (if absent), the label propagation,
 the namespace assignment to the parent's object namespace,
 and, finally, the owner referencing.

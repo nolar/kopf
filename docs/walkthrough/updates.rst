@@ -2,23 +2,18 @@
 Updating the objects
 ====================
 
+.. warning::
+    Unfortunately, Minikube cannot handle the PVC/PV resizing,
+    as it uses the HostPath provider internally.
+    You can either skip this step of the tutorial,
+    or you can use an external Kubernetes cluster
+    with real dynamically sized volumes.
+
 Previously (:doc:`creation`),
 we have implemented a handler for the creation of an ``EphemeralVolumeClaim`` (EVC),
 and created the corresponding ``PersistantVolumeClaim`` (PVC).
 
 What will happen if we change the size of the EVC when it already exists?
-E.g., with:
-
-.. code-block:: bash
-
-    kubectl edit evc my-claim
-
-Or by patching it:
-
-.. code-block:: bash
-
-    kubectl patch evc my-claim -p '{"spec": {"resources": {"requests": {"storage": "100G"}}}}'
-
 The PVC must be updated accordingly to match its parent EVC.
 
 First, we have to remember the name of the created PVC:
@@ -28,17 +23,17 @@ with one additional line:
 .. code-block:: python
     :linenos:
     :caption: ephemeral.py
-    :emphasize-lines: 23
+    :emphasize-lines: 24
 
     @kopf.on.create('zalando.org', 'v1', 'ephemeralvolumeclaims')
-    def create_fn(spec, meta, namespace, logger, **kwargs):
+    def create_fn(body, spec, meta, namespace, logger, **kwargs):
 
         name = meta.get('name')
         size = spec.get('size')
         if not size:
             raise kopf.PermanentError(f"Size must be set. Got {size!r}.")
 
-        path = os.path.join(os.path.dirname(__file__), 'pvc-tpl.yaml')
+        path = os.path.join(os.path.dirname(__file__), 'pvc.yaml')
         tmpl = open(path, 'rt').read()
         text = tmpl.format(size=size, name=name)
         data = yaml.safe_load(text)
@@ -61,11 +56,16 @@ We can see that with kubectl:
 
 .. code-block:: bash
 
-    kubectl describe evc my-claim
+    kubectl get -o yaml evc my-claim
 
-.. code-block:: none
+.. code-block:: yaml
 
-    TODO
+    spec:
+      size: 1G
+    status:
+      create_fn:
+        pvc-name: my-claim
+      kopf: {}
 
 Let's add a yet another handler, but for the "update" cause.
 This handler gets this stored PVC name from the creation handler,
@@ -74,11 +74,11 @@ and patches the PVC with the new size from the EVC::
     @kopf.on.update('zalando.org', 'v1', 'ephemeralvolumeclaims')
     def update_fn(spec, status, namespace, logger, **kwargs):
 
-        size = spec.get('create_fn', {}).get('size', None)
+        size = spec.get('size', None)
         if not size:
             raise kopf.PermanentError(f"Size must be set. Got {size!r}.")
 
-        pvc_name = status['pvc-name']
+        pvc_name = status['create_fn']['pvc-name']
         pvc_patch = {'spec': {'resources': {'requests': {'storage': size}}}}
 
         api = kubernetes.client.CoreV1Api()
@@ -89,3 +89,36 @@ and patches the PVC with the new size from the EVC::
         )
 
         logger.info(f"PVC child is updated: %s", obj)
+
+Now, let's change the EVC's size:
+
+.. code-block:: bash
+
+    kubectl edit evc my-claim
+
+Or by patching it:
+
+.. code-block:: bash
+
+    kubectl patch evc my-claim --type merge -p '{"spec": {"size": "2G"}}'
+
+Keep in mind the PVC size can only be increased, never decreased.
+
+Give the operator few seconds to handle the change.
+
+Check the size of the actual PV behind the PVC, which is now increased:
+
+.. code-block:: bash
+
+    kubectl get pv
+
+.. code-block:: none
+
+    NAME                                       CAPACITY   ACCESS MODES   ...
+    pvc-a37b65bd-8384-11e9-b857-42010a800265   2Gi        RWO            ...
+
+.. warning::
+    Kubernetes & ``kubectl`` improperly show the capacity of PVCs:
+    it remains the same (1G) event after the change.
+    The size of actual PV (Persistent Volume) of each PVC is important!
+    This issue is not related to Kopf, so we go around it.

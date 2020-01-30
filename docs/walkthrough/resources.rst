@@ -8,8 +8,8 @@ Custom Resource Definition
 Let us define a CRD (custom resource definition) for our object.
 
 .. code-block:: yaml
-   :caption: crd.yaml
-   :name: crd-yaml
+    :caption: crd.yaml
+    :name: crd-yaml
 
     apiVersion: apiextensions.k8s.io/v1beta1
     kind: CustomResourceDefinition
@@ -57,8 +57,8 @@ logic behind the objects yet.
 Let's make a sample object:
 
 .. code-block:: yaml
-   :caption: obj.yaml
-   :name: obj-yaml
+    :caption: obj.yaml
+    :name: obj-yaml
 
     apiVersion: zalando.org/v1
     kind: EphemeralVolumeClaim

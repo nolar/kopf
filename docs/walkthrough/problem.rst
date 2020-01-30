@@ -28,9 +28,9 @@ __ https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-co
         - name: main
           resources:
             requests:
-              ephemeral-storage: 10G
+              ephemeral-storage: 1G
             limits:
-              ephemeral-storage: 10G
+              ephemeral-storage: 1G
 
 There is a `PersistentVolumeClaim`__ resource kind, but it is persistent,
 i.e. not deleted after they are created (only manually deletable).
@@ -74,3 +74,11 @@ The lifecycle of an ``EphemeralVolumeClaim`` is this:
 
 * Deletes the ``PersistentVolumeClaim`` after either the pod is finished,
   or the wait time has elapsed.
+
+.. seealso::
+    This documentation only highlights the main patterns & tricks of Kopf,
+    but does not dive deep into the implementation of the operator's domain.
+    The fully functional solution for ``EphemeralVolumeClaim`` resources,
+    which is used for this documentation, is available at the following link:
+
+    * https://github.com/nolar/ephemeral-volume-claims

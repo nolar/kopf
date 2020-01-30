@@ -10,15 +10,15 @@ We want to create a real ``PersistentVolumeClaim`` object
 immediately when an ``EphemeralVolumeClaim`` is created this way:
 
 .. code-block:: yaml
-   :name: evc
-   :caption: evc.yaml
+    :name: evc
+    :caption: evc.yaml
 
     apiVersion: zalando.org/v1
     kind: EphemeralVolumeClaim
     metadata:
       name: my-claim
     spec:
-      size: 10G
+      size: 1G
 
 .. code-block:: bash
 
@@ -28,8 +28,8 @@ First, let's define a template of the persistent volume claim
 (with the Python template string, so that no extra template engines are needed):
 
 .. code-block:: yaml
-   :name: pvc
-   :caption: pvc.yaml
+    :name: pvc
+    :caption: pvc.yaml
 
     apiVersion: v1
     kind: PersistentVolumeClaim
@@ -46,13 +46,14 @@ First, let's define a template of the persistent volume claim
 
 
 Let's extend our only handler.
-We will use the official Kubernetes client library:
+We will use the official Kubernetes client library (``pip install kubernetes``):
 
 .. code-block:: python
     :name: creation
     :linenos:
     :caption: ephemeral.py
 
+    import os
     import kopf
     import kubernetes
     import yaml
@@ -91,6 +92,15 @@ Wait 1-2 seconds, and take a look:
     kubectl get pvc
 
 Now, the PVC can be attached to the pods by the same name, as EVC is named.
+
+.. note::
+    If you have to re-run the operator, and hit a HTTP 409 error saying
+    "persistentvolumeclaims "my-claim" already exists",
+    then remove it manually:
+
+    .. code-block:: bash
+
+        kubectl delete pvc my-claim
 
 .. seealso::
     See also :doc:`/handlers`, :doc:`/errors`, :doc:`/hierarchies`.
