@@ -16,5 +16,5 @@ def create_fn(body, **kwargs):
 
     try:
         raise RuntimeError("Exception text.")
-    except:
+    except Exception:
         kopf.exception(body, reason="SomeReason", message="Some exception:")

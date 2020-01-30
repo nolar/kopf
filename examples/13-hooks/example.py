@@ -86,5 +86,4 @@ async def _task_fn(logger, shouldstop: asyncio.Event) -> NoReturn:
     while not shouldstop.is_set():
         await asyncio.sleep(random.randint(1, 10))
         logger.info("Served by the background task.")
-    else:
-        logger.info("Serving is finished by request.")
+    logger.info("Serving is finished by request.")

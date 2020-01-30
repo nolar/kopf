@@ -26,7 +26,7 @@ ResourceHandlerDecorator = Callable[[callbacks.ResourceHandlerFn], callbacks.Res
 ActivityHandlerDecorator = Callable[[callbacks.ActivityHandlerFn], callbacks.ActivityHandlerFn]
 
 
-def startup(
+def startup(  # lgtm[py/similar-function]
         *,
         id: Optional[str] = None,
         errors: Optional[errors_.ErrorsMode] = None,
@@ -36,8 +36,8 @@ def startup(
         cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityHandlerDecorator:
-    actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: callbacks.ActivityHandlerFn) -> callbacks.ActivityHandlerFn:
+        actual_registry = registry if registry is not None else registries.get_default_registry()
         return actual_registry.register_activity_handler(
             fn=fn, id=id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
@@ -46,7 +46,7 @@ def startup(
     return decorator
 
 
-def cleanup(
+def cleanup(  # lgtm[py/similar-function]
         *,
         id: Optional[str] = None,
         errors: Optional[errors_.ErrorsMode] = None,
@@ -56,8 +56,8 @@ def cleanup(
         cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityHandlerDecorator:
-    actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: callbacks.ActivityHandlerFn) -> callbacks.ActivityHandlerFn:
+        actual_registry = registry if registry is not None else registries.get_default_registry()
         return actual_registry.register_activity_handler(
             fn=fn, id=id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
@@ -66,7 +66,7 @@ def cleanup(
     return decorator
 
 
-def login(
+def login(  # lgtm[py/similar-function]
         *,
         id: Optional[str] = None,
         errors: Optional[errors_.ErrorsMode] = None,
@@ -77,8 +77,8 @@ def login(
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityHandlerDecorator:
     """ ``@kopf.on.login()`` handler for custom (re-)authentication. """
-    actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: callbacks.ActivityHandlerFn) -> callbacks.ActivityHandlerFn:
+        actual_registry = registry if registry is not None else registries.get_default_registry()
         return actual_registry.register_activity_handler(
             fn=fn, id=id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
@@ -87,7 +87,7 @@ def login(
     return decorator
 
 
-def probe(
+def probe(  # lgtm[py/similar-function]
         *,
         id: Optional[str] = None,
         errors: Optional[errors_.ErrorsMode] = None,
@@ -98,8 +98,8 @@ def probe(
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityHandlerDecorator:
     """ ``@kopf.on.probe()`` handler for arbitrary liveness metrics. """
-    actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: callbacks.ActivityHandlerFn) -> callbacks.ActivityHandlerFn:
+        actual_registry = registry if registry is not None else registries.get_default_registry()
         return actual_registry.register_activity_handler(
             fn=fn, id=id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
@@ -108,7 +108,7 @@ def probe(
     return decorator
 
 
-def resume(
+def resume(  # lgtm[py/similar-function]
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
@@ -124,8 +124,8 @@ def resume(
         when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.resume()`` handler for the object resuming on operator (re)start. """
-    actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        actual_registry = registry if registry is not None else registries.get_default_registry()
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=None, initial=True, deleted=deleted, id=id,
@@ -135,7 +135,7 @@ def resume(
     return decorator
 
 
-def create(
+def create(  # lgtm[py/similar-function]
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
@@ -150,8 +150,8 @@ def create(
         when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.create()`` handler for the object creation. """
-    actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        actual_registry = registry if registry is not None else registries.get_default_registry()
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.CREATE, id=id,
@@ -161,7 +161,7 @@ def create(
     return decorator
 
 
-def update(
+def update(  # lgtm[py/similar-function]
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
@@ -176,8 +176,8 @@ def update(
         when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.update()`` handler for the object update or change. """
-    actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        actual_registry = registry if registry is not None else registries.get_default_registry()
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.UPDATE, id=id,
@@ -187,7 +187,7 @@ def update(
     return decorator
 
 
-def delete(
+def delete(  # lgtm[py/similar-function]
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
@@ -203,8 +203,8 @@ def delete(
         when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.delete()`` handler for the object deletion. """
-    actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        actual_registry = registry if registry is not None else registries.get_default_registry()
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=causation.Reason.DELETE, id=id,
@@ -215,7 +215,7 @@ def delete(
     return decorator
 
 
-def field(
+def field(  # lgtm[py/similar-function]
         group: str, version: str, plural: str,
         field: dicts.FieldSpec,
         *,
@@ -231,8 +231,8 @@ def field(
         when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.field()`` handler for the individual field changes. """
-    actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        actual_registry = registry if registry is not None else registries.get_default_registry()
         return actual_registry.register_resource_changing_handler(
             group=group, version=version, plural=plural,
             reason=None, field=field, id=id,
@@ -242,7 +242,7 @@ def field(
     return decorator
 
 
-def event(
+def event(  # lgtm[py/similar-function]
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
@@ -252,8 +252,8 @@ def event(
         when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.event()`` handler for the silent spies on the events. """
-    actual_registry = registry if registry is not None else registries.get_default_registry()
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        actual_registry = registry if registry is not None else registries.get_default_registry()
         return actual_registry.register_resource_watching_handler(
             group=group, version=version, plural=plural,
             id=id, fn=fn, labels=labels, annotations=annotations, when=when,
@@ -263,7 +263,7 @@ def event(
 
 # TODO: find a better name: `@kopf.on.this` is confusing and does not fully
 # TODO: match with the `@kopf.on.{cause}` pattern, where cause is create/update/delete.
-def this(
+def this(  # lgtm[py/similar-function]
         *,
         id: Optional[str] = None,
         errors: Optional[errors_.ErrorsMode] = None,
@@ -302,8 +302,8 @@ def this(
     Note: ``task=task`` is needed to freeze the closure variable, so that every
     create function will have its own value, not the latest in the for-cycle.
     """
-    actual_registry = registry if registry is not None else handling.subregistry_var.get()
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        actual_registry = registry if registry is not None else handling.subregistry_var.get()
         return actual_registry.register(
             id=id, fn=fn,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
@@ -311,7 +311,7 @@ def this(
     return decorator
 
 
-def register(
+def register(  # lgtm[py/similar-function]
         fn: callbacks.ResourceHandlerFn,
         *,
         id: Optional[str] = None,

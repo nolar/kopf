@@ -49,8 +49,7 @@ def reauthenticated_request(fn: _F) -> _F:
                     await vault.invalidate(key, exc=e)
                 else:
                     raise
-        else:
-            raise credentials.LoginError("Ran out of connection credentials.")
+        raise credentials.LoginError("Ran out of connection credentials.")
     return cast(_F, wrapper)
 
 
@@ -79,14 +78,13 @@ def reauthenticated_stream(fn: _F) -> _F:
             try:
                 async for item in fn(*args, **kwargs, context=context):
                     yield item
-                break  # out of credentials cycle (instead of `return`)
+                return
             except aiohttp.ClientResponseError as e:
                 if e.status == 401:
                     await vault.invalidate(key, exc=e)
                 else:
                     raise
-        else:
-            raise credentials.LoginError("Ran out of connection credentials.")
+        raise credentials.LoginError("Ran out of connection credentials.")
     return cast(_F, wrapper)
 
 
