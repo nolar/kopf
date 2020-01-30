@@ -26,7 +26,7 @@ ResourceHandlerDecorator = Callable[[callbacks.ResourceHandlerFn], callbacks.Res
 ActivityHandlerDecorator = Callable[[callbacks.ActivityHandlerFn], callbacks.ActivityHandlerFn]
 
 
-def startup(
+def startup(  # lgtm[py/similar-function]
         *,
         id: Optional[str] = None,
         errors: Optional[errors_.ErrorsMode] = None,
@@ -46,7 +46,7 @@ def startup(
     return decorator
 
 
-def cleanup(
+def cleanup(  # lgtm[py/similar-function]
         *,
         id: Optional[str] = None,
         errors: Optional[errors_.ErrorsMode] = None,
@@ -66,7 +66,7 @@ def cleanup(
     return decorator
 
 
-def login(
+def login(  # lgtm[py/similar-function]
         *,
         id: Optional[str] = None,
         errors: Optional[errors_.ErrorsMode] = None,
@@ -87,7 +87,7 @@ def login(
     return decorator
 
 
-def probe(
+def probe(  # lgtm[py/similar-function]
         *,
         id: Optional[str] = None,
         errors: Optional[errors_.ErrorsMode] = None,
@@ -108,7 +108,7 @@ def probe(
     return decorator
 
 
-def resume(
+def resume(  # lgtm[py/similar-function]
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
@@ -135,7 +135,7 @@ def resume(
     return decorator
 
 
-def create(
+def create(  # lgtm[py/similar-function]
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
@@ -161,7 +161,7 @@ def create(
     return decorator
 
 
-def update(
+def update(  # lgtm[py/similar-function]
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
@@ -187,7 +187,7 @@ def update(
     return decorator
 
 
-def delete(
+def delete(  # lgtm[py/similar-function]
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
@@ -215,7 +215,7 @@ def delete(
     return decorator
 
 
-def field(
+def field(  # lgtm[py/similar-function]
         group: str, version: str, plural: str,
         field: dicts.FieldSpec,
         *,
@@ -242,7 +242,7 @@ def field(
     return decorator
 
 
-def event(
+def event(  # lgtm[py/similar-function]
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
@@ -263,7 +263,7 @@ def event(
 
 # TODO: find a better name: `@kopf.on.this` is confusing and does not fully
 # TODO: match with the `@kopf.on.{cause}` pattern, where cause is create/update/delete.
-def this(
+def this(  # lgtm[py/similar-function]
         *,
         id: Optional[str] = None,
         errors: Optional[errors_.ErrorsMode] = None,
@@ -311,7 +311,7 @@ def this(
     return decorator
 
 
-def register(
+def register(  # lgtm[py/similar-function]
         fn: callbacks.ResourceHandlerFn,
         *,
         id: Optional[str] = None,
