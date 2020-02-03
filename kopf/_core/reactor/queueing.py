@@ -363,4 +363,4 @@ async def _wait_for_depletion(
 
     # The last check if the termination is going to be graceful or not.
     if streams:
-        logger.warning("Unprocessed streams left for %r.", list(streams.keys()))
+        logger.warning(f"Unprocessed streams left for {list(streams.keys())!r}.")

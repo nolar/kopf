@@ -406,9 +406,9 @@ async def process_changing_cause(
 
         # Inform on the current cause/event on every processing cycle. Even if there are
         # no handlers -- to show what has happened and why the diff-base is patched.
-        logger.debug(f"{title.capitalize()} is in progress: %r", body)
+        logger.debug(f"{title.capitalize()} is in progress: {body!r}")
         if cause.diff and cause.old is not None and cause.new is not None:
-            logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
+            logger.debug(f"{title.capitalize()} diff: {cause.diff!r}")
 
         if cause_handlers:
             outcomes = await execution.execute_handlers_once(

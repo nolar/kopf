@@ -436,9 +436,9 @@ async def _stop_flag_checker(
         if result is None:
             logger.info("Stop-flag is raised. Operator is stopping.")
         elif isinstance(result, signal.Signals):
-            logger.info("Signal %s is received. Operator is stopping.", result.name)
+            logger.info(f"Signal {result.name!s} is received. Operator is stopping.")
         else:
-            logger.info("Stop-flag is set to %r. Operator is stopping.", result)
+            logger.info(f"Stop-flag is set to {result!r}. Operator is stopping.")
 
 
 async def _ultimate_termination(

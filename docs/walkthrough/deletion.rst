@@ -60,7 +60,7 @@ Let's extend the creation handler:
             body=data,
         )
 
-        logger.info(f"PVC child is created: %s", obj)
+        logger.info(f"PVC child is created: {obj}")
 
         return {'pvc-name': obj.metadata.name}
 
