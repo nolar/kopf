@@ -116,3 +116,27 @@ async def test_message_is_cut_to_max_length(
     assert '...' in data['message']
     assert data['message'].startswith('start')
     assert data['message'].endswith('end')
+
+
+@pytest.mark.parametrize('status', [555, 500, 404, 403, 401])
+async def test_headers_are_not_leaked(
+        resp_mocker, aresponses, hostname, assert_logs, status):
+
+    post_mock = resp_mocker(return_value=aresponses.Response(status=status, reason='boo!'))
+    aresponses.add(hostname, EVENTS_CORE_V1_CRD.get_url(namespace='ns'), 'post', post_mock)
+
+    obj = {'apiVersion': 'group/version',
+           'kind': 'kind',
+           'metadata': {'namespace': 'ns',
+                        'name': 'name',
+                        'uid': 'uid'}}
+    ref = build_object_reference(obj)
+    await post_event(ref=ref, type='type', reason='reason', message='message')
+
+    assert_logs([
+        f"Failed to post an event. .* Status: {status}. Message: boo!",
+    ], prohibited=[
+        "ClientResponseError",
+        "RequestInfo",
+        "headers=",
+    ])
