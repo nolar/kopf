@@ -143,7 +143,7 @@ class HandlerState:
             success=bool(outcome.final and outcome.exception is None),
             failure=bool(outcome.final and outcome.exception is not None),
             retries=(self.retries if self.retries is not None else 0) + 1,
-            message=None if outcome.exception is None else f'{outcome.exception}',
+            message=None if outcome.exception is None else str(outcome.exception),
             _origin=self._origin,
         )
 

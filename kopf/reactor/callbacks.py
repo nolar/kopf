@@ -19,7 +19,7 @@ HandlerResult = NewType('HandlerResult', object)
 
 
 class ActivityHandlerFn(Protocol):
-    def __call__(
+    def __call__(  # lgtm[py/similar-function]
             self,
             *args: Any,
             logger: Union[logging.Logger, logging.LoggerAdapter],
@@ -28,7 +28,7 @@ class ActivityHandlerFn(Protocol):
 
 
 class ResourceHandlerFn(Protocol):
-    def __call__(
+    def __call__(  # lgtm[py/similar-function]
             self,
             *args: Any,
             type: str,
@@ -50,7 +50,7 @@ class ResourceHandlerFn(Protocol):
 
 
 class WhenHandlerFn(Protocol):
-    def __call__(
+    def __call__(  # lgtm[py/similar-function]
             self,
             *args: Any,
             type: str,
