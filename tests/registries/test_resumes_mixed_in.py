@@ -16,7 +16,7 @@ def test_resumes_ignored_for_non_initial_causes(mocker, reason, deleted):
     def fn(**_):
         pass
 
-    handlers = registry.get_resource_changing_handlers(cause)
+    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
     assert len(handlers) == 0
 
 
@@ -30,7 +30,7 @@ def test_resumes_selected_for_initial_non_deletions(mocker, reason):
     def fn(**_):
         pass
 
-    handlers = registry.get_resource_changing_handlers(cause)
+    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
 
@@ -45,7 +45,7 @@ def test_resumes_ignored_for_initial_deletions_by_default(mocker, reason):
     def fn(**_):
         pass
 
-    handlers = registry.get_resource_changing_handlers(cause)
+    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
     assert len(handlers) == 0
 
 
@@ -59,6 +59,6 @@ def test_resumes_selected_for_initial_deletions_when_explicitly_marked(mocker, r
     def fn(**_):
         pass
 
-    handlers = registry.get_resource_changing_handlers(cause)
+    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn

@@ -5,6 +5,7 @@ import pytest
 
 from kopf.engines.probing import health_reporter
 from kopf.reactor.causation import Activity
+from kopf.reactor.handlers import ActivityHandler
 from kopf.reactor.registries import OperatorRegistry
 
 
@@ -54,8 +55,14 @@ async def test_liveness_with_reporting(liveness_url, liveness_registry):
     def fn2(**kwargs):
         return {'y': '200'}
 
-    liveness_registry.register_activity_handler(fn=fn1, id='id1', activity=Activity.PROBE)
-    liveness_registry.register_activity_handler(fn=fn2, id='id2', activity=Activity.PROBE)
+    liveness_registry.activity_handlers.append(ActivityHandler(
+        fn=fn1, id='id1', activity=Activity.PROBE,
+        errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+    ))
+    liveness_registry.activity_handlers.append(ActivityHandler(
+        fn=fn2, id='id2', activity=Activity.PROBE,
+        errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+    ))
 
     async with aiohttp.ClientSession() as session:
         async with session.get(liveness_url) as response:
@@ -72,7 +79,10 @@ async def test_liveness_data_is_cached(liveness_url, liveness_registry):
         counter += 1
         return {'counter': counter}
 
-    liveness_registry.register_activity_handler(fn=fn1, id='id1', activity=Activity.PROBE)
+    liveness_registry.activity_handlers.append(ActivityHandler(
+        fn=fn1, id='id1', activity=Activity.PROBE,
+        errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+    ))
 
     async with aiohttp.ClientSession() as session:
         async with session.get(liveness_url) as response:

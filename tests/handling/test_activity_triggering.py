@@ -5,7 +5,7 @@ import pytest
 
 from kopf.reactor.activities import ActivityError, run_activity
 from kopf.reactor.causation import Activity
-from kopf.reactor.handlers import HandlerId
+from kopf.reactor.handlers import HandlerId, ActivityHandler
 from kopf.reactor.handling import PermanentError, TemporaryError
 from kopf.reactor.lifecycles import all_at_once
 from kopf.reactor.registries import OperatorRegistry
@@ -31,8 +31,14 @@ async def test_results_are_returned_on_success(activity):
         return 456
 
     registry = OperatorRegistry()
-    registry.register_activity_handler(fn=sample_fn1, id='id1', activity=activity)
-    registry.register_activity_handler(fn=sample_fn2, id='id2', activity=activity)
+    registry.activity_handlers.append(ActivityHandler(
+        fn=sample_fn1, id='id1', activity=activity,
+        errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+    ))
+    registry.activity_handlers.append(ActivityHandler(
+        fn=sample_fn2, id='id2', activity=activity,
+        errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+    ))
 
     results = await run_activity(
         registry=registry,
@@ -55,8 +61,14 @@ async def test_errors_are_raised_aggregated(activity):
         raise PermanentError("boo!456")
 
     registry = OperatorRegistry()
-    registry.register_activity_handler(fn=sample_fn1, id='id1', activity=activity)
-    registry.register_activity_handler(fn=sample_fn2, id='id2', activity=activity)
+    registry.activity_handlers.append(ActivityHandler(
+        fn=sample_fn1, id='id1', activity=activity,
+        errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+    ))
+    registry.activity_handlers.append(ActivityHandler(
+        fn=sample_fn2, id='id2', activity=activity,
+        errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+    ))
 
     with pytest.raises(ActivityError) as e:
         await run_activity(
@@ -85,7 +97,10 @@ async def test_errors_are_cascaded_from_one_of_the_originals(activity):
         raise PermanentError("boo!")
 
     registry = OperatorRegistry()
-    registry.register_activity_handler(fn=sample_fn, id='id', activity=activity)
+    registry.activity_handlers.append(ActivityHandler(
+        fn=sample_fn, id='id', activity=activity,
+        errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+    ))
 
     with pytest.raises(ActivityError) as e:
         await run_activity(
@@ -108,7 +123,10 @@ async def test_retries_are_simulated(activity, mocker):
         raise TemporaryError('to be retried', delay=0)
 
     registry = OperatorRegistry()
-    registry.register_activity_handler(fn=sample_fn, id='id', activity=activity, retries=3)
+    registry.activity_handlers.append(ActivityHandler(
+        fn=sample_fn, id='id', activity=activity,
+        errors=None, timeout=None, retries=3, backoff=None, cooldown=None,
+    ))
 
     with pytest.raises(ActivityError) as e:
         await run_activity(
@@ -128,7 +146,10 @@ async def test_delays_are_simulated(activity, mocker):
         raise TemporaryError('to be retried', delay=123)
 
     registry = OperatorRegistry()
-    registry.register_activity_handler(fn=sample_fn, id='id', activity=activity, retries=3)
+    registry.activity_handlers.append(ActivityHandler(
+        fn=sample_fn, id='id', activity=activity,
+        errors=None, timeout=None, retries=3, backoff=None, cooldown=None,
+    ))
 
     with freezegun.freeze_time() as frozen:
 
