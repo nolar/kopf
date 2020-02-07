@@ -47,8 +47,10 @@ def test_resource_handler_with_deprecated_cooldown_instead_of_backoff(mocker):
     retries = mocker.Mock()
     backoff = mocker.Mock()
     initial = mocker.Mock()
+    deleted = mocker.Mock()
     labels = mocker.Mock()
     annotations = mocker.Mock()
+    when = mocker.Mock()
     requires_finalizer = mocker.Mock()
 
     with pytest.deprecated_call(match=r"use backoff="):
@@ -63,8 +65,10 @@ def test_resource_handler_with_deprecated_cooldown_instead_of_backoff(mocker):
             backoff=None,
             cooldown=backoff,  # deprecated, but still required
             initial=initial,
+            deleted=deleted,
             labels=labels,
             annotations=annotations,
+            when=when,
             requires_finalizer=requires_finalizer,
         )
 
@@ -77,6 +81,8 @@ def test_resource_handler_with_deprecated_cooldown_instead_of_backoff(mocker):
     assert handler.retries is retries
     assert handler.backoff is backoff
     assert handler.initial is initial
+    assert handler.deleted is deleted
     assert handler.labels is labels
     assert handler.annotations is annotations
+    assert handler.when is when
     assert handler.requires_finalizer is requires_finalizer

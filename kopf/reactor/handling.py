@@ -110,6 +110,8 @@ async def execute(
             handler = handlers_.ResourceHandler(
                 fn=fn, id=real_id,
                 errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+                labels=None, annotations=None, when=None,
+                initial=None, deleted=None, requires_finalizer=None,
                 reason=None, field=None,
             )
             subregistry.append(handler)
@@ -121,6 +123,8 @@ async def execute(
             handler = handlers_.ResourceHandler(
                 fn=fn, id=real_id,
                 errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+                labels=None, annotations=None, when=None,
+                initial=None, deleted=None, requires_finalizer=None,
                 reason=None, field=None,
             )
             subregistry.append(handler)

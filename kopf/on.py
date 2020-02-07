@@ -146,7 +146,8 @@ def resume(  # lgtm[py/similar-function]
             fn=fn, id=real_id, field=None,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
-            reason=None, initial=True, deleted=deleted,
+            initial=True, deleted=deleted, requires_finalizer=None,
+            reason=None,
         )
         real_registry.resource_changing_handlers[real_resource].append(handler)
         return fn
@@ -176,6 +177,7 @@ def create(  # lgtm[py/similar-function]
             fn=fn, id=real_id, field=None,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
+            initial=None, deleted=None, requires_finalizer=None,
             reason=causation.Reason.CREATE,
         )
         real_registry.resource_changing_handlers[real_resource].append(handler)
@@ -206,6 +208,7 @@ def update(  # lgtm[py/similar-function]
             fn=fn, id=real_id, field=None,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
+            initial=None, deleted=None, requires_finalizer=None,
             reason=causation.Reason.UPDATE,
         )
         real_registry.resource_changing_handlers[real_resource].append(handler)
@@ -237,8 +240,8 @@ def delete(  # lgtm[py/similar-function]
             fn=fn, id=real_id, field=None,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
+            initial=None, deleted=None, requires_finalizer=bool(not optional),
             reason=causation.Reason.DELETE,
-            requires_finalizer=bool(not optional),
         )
         real_registry.resource_changing_handlers[real_resource].append(handler)
         return fn
@@ -270,6 +273,7 @@ def field(  # lgtm[py/similar-function]
             fn=fn, id=real_id, field=real_field,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
+            initial=None, deleted=None, requires_finalizer=None,
             reason=None,
         )
         real_registry.resource_changing_handlers[real_resource].append(handler)
@@ -295,6 +299,7 @@ def event(  # lgtm[py/similar-function]
             fn=fn, id=real_id, field=None,
             errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
             labels=labels, annotations=annotations, when=when,
+            initial=None, deleted=None, requires_finalizer=None,
             reason=None,
         )
         real_registry.resource_watching_handlers[real_resource].append(handler)
@@ -355,6 +360,7 @@ def this(  # lgtm[py/similar-function]
             fn=fn, id=real_id, field=None,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
+            initial=None, deleted=None, requires_finalizer=None,
             reason=None,
         )
         real_registry.append(handler)
