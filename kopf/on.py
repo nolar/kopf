@@ -313,6 +313,9 @@ def this(  # lgtm[py/similar-function]
         backoff: Optional[float] = None,
         cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.ResourceChangingRegistry] = None,
+        labels: Optional[bodies.Labels] = None,
+        annotations: Optional[bodies.Annotations] = None,
+        when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """
     ``@kopf.on.this()`` decorator for the dynamically generated sub-handlers.
@@ -351,6 +354,7 @@ def this(  # lgtm[py/similar-function]
         handler = handlers.ResourceHandler(
             fn=fn, id=real_id, field=None,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
+            labels=labels, annotations=annotations, when=when,
             reason=None,
         )
         real_registry.append(handler)
@@ -368,6 +372,9 @@ def register(  # lgtm[py/similar-function]
         backoff: Optional[float] = None,
         cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.ResourceChangingRegistry] = None,
+        labels: Optional[bodies.Labels] = None,
+        annotations: Optional[bodies.Annotations] = None,
+        when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> callbacks.ResourceHandlerFn:
     """
     Register a function as a sub-handler of the currently executed handler.
@@ -396,5 +403,6 @@ def register(  # lgtm[py/similar-function]
     decorator = this(
         id=id, registry=registry,
         errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
+        labels=labels, annotations=annotations, when=when,
     )
     return decorator(fn)
