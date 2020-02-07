@@ -43,7 +43,8 @@ def test_simple_registry_with_minimal_signature(mocker):
     cause = mocker.Mock(event=None, diff=None)
 
     registry = SimpleRegistry()
-    registry.register(some_fn)
+    with pytest.deprecated_call(match=r"registry.register\(\) is deprecated"):
+        registry.register(some_fn)
     with pytest.deprecated_call(match=r"use ResourceChangingRegistry.get_handlers\(\)"):
         handlers = registry.get_cause_handlers(cause)
 

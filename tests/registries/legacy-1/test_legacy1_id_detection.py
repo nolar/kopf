@@ -75,7 +75,8 @@ def test_with_no_hints(mocker):
     get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
 
     registry = SimpleRegistry()
-    registry.register(some_fn)
+    with pytest.deprecated_call(match=r"registry.register\(\) is deprecated"):
+        registry.register(some_fn)
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
         handlers = registry.get_cause_handlers(mocker.MagicMock())
 
@@ -91,7 +92,8 @@ def test_with_prefix(mocker):
     get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
 
     registry = SimpleRegistry()
-    registry.register(some_fn)
+    with pytest.deprecated_call(match=r"registry.register\(\) is deprecated"):
+        registry.register(some_fn)
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
         handlers = registry.get_cause_handlers(mocker.MagicMock())
 
@@ -107,7 +109,8 @@ def test_with_suffix(mocker, field):
     diff = [('add', ('some-field', 'sub-field'), 'old', 'new')]
 
     registry = SimpleRegistry()
-    registry.register(some_fn, field=field)
+    with pytest.deprecated_call(match=r"registry.register\(\) is deprecated"):
+        registry.register(some_fn, field=field)
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
         handlers = registry.get_cause_handlers(mocker.MagicMock(diff=diff))
 
@@ -124,7 +127,8 @@ def test_with_prefix_and_suffix(mocker, field):
     diff = [('add', ('some-field', 'sub-field'), 'old', 'new')]
 
     registry = SimpleRegistry(prefix='some-prefix')
-    registry.register(some_fn, field=field)
+    with pytest.deprecated_call(match=r"registry.register\(\) is deprecated"):
+        registry.register(some_fn, field=field)
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
         handlers = registry.get_cause_handlers(mocker.MagicMock(diff=diff))
 
@@ -141,7 +145,8 @@ def test_with_explicit_id_and_prefix_and_suffix(mocker, field):
     diff = [('add', ('some-field', 'sub-field'), 'old', 'new')]
 
     registry = SimpleRegistry(prefix='some-prefix')
-    registry.register(some_fn, id='explicit-id', field=field)
+    with pytest.deprecated_call(match=r"registry.register\(\) is deprecated"):
+        registry.register(some_fn, id='explicit-id', field=field)
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
         handlers = registry.get_cause_handlers(mocker.MagicMock(diff=diff))
 

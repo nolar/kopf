@@ -22,7 +22,8 @@ def registry(request):
 @pytest.fixture()
 def register_fn(registry, resource):
     if isinstance(registry, SimpleRegistry):
-        yield registry.register
+        with pytest.deprecated_call(match=r"registry.register\(\) is deprecated"):
+            yield registry.register
     elif isinstance(registry, GlobalRegistry):
         with pytest.deprecated_call(match=r"GlobalRegistry.register_cause_handler\(\) is deprecated"):
             yield functools.partial(registry.register_cause_handler, resource.group, resource.version, resource.plural)

@@ -40,7 +40,8 @@ def test_requires_finalizer_deletion_handler(optional, expected):
     def fn(**_):
         pass
 
-    requires_finalizer = registry.requires_finalizer(resource=resource, cause=CAUSE)
+    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+        requires_finalizer = registry.requires_finalizer(resource=resource, cause=CAUSE)
     assert requires_finalizer == expected
 
 
@@ -62,7 +63,8 @@ def test_requires_finalizer_multiple_handlers(optional, expected):
     def fn2(**_):
         pass
 
-    requires_finalizer = registry.requires_finalizer(resource=resource, cause=CAUSE)
+    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+        requires_finalizer = registry.requires_finalizer(resource=resource, cause=CAUSE)
     assert requires_finalizer == expected
 
 
@@ -75,7 +77,8 @@ def test_requires_finalizer_no_deletion_handler():
     def fn1(**_):
         pass
 
-    requires_finalizer = registry.requires_finalizer(resource=resource, cause=CAUSE)
+    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+        requires_finalizer = registry.requires_finalizer(resource=resource, cause=CAUSE)
     assert requires_finalizer is False
 
 
@@ -97,7 +100,8 @@ def test_requires_finalizer_deletion_handler_matches_labels(labels, optional, ex
     def fn(**_):
         pass
 
-    requires_finalizer = registry.requires_finalizer(resource=resource, cause=CAUSE)
+    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+        requires_finalizer = registry.requires_finalizer(resource=resource, cause=CAUSE)
     assert requires_finalizer == expected
 
 
@@ -119,7 +123,8 @@ def test_requires_finalizer_deletion_handler_mismatches_labels(labels, optional,
     def fn(**_):
         pass
 
-    requires_finalizer = registry.requires_finalizer(resource=resource, cause=CAUSE)
+    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+        requires_finalizer = registry.requires_finalizer(resource=resource, cause=CAUSE)
     assert requires_finalizer == expected
 
 
@@ -141,7 +146,8 @@ def test_requires_finalizer_deletion_handler_matches_annotations(annotations, op
     def fn(**_):
         pass
 
-    requires_finalizer = registry.requires_finalizer(resource=resource, cause=CAUSE)
+    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+        requires_finalizer = registry.requires_finalizer(resource=resource, cause=CAUSE)
     assert requires_finalizer == expected
 
 
@@ -163,5 +169,6 @@ def test_requires_finalizer_deletion_handler_mismatches_annotations(annotations,
     def fn(**_):
         pass
 
-    requires_finalizer = registry.requires_finalizer(resource=resource, cause=CAUSE)
+    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+        requires_finalizer = registry.requires_finalizer(resource=resource, cause=CAUSE)
     assert requires_finalizer == expected

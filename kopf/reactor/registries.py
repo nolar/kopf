@@ -14,6 +14,7 @@ of the handlers to be executed on each reaction cycle.
 import abc
 import collections
 import functools
+import warnings
 from types import FunctionType, MethodType
 from typing import (Any, MutableMapping, Optional, Sequence, Collection, Iterable, Iterator,
                     List, Set, FrozenSet, Mapping, Callable, cast, Generic, TypeVar)
@@ -65,6 +66,9 @@ class ActivityRegistry(GenericRegistry[handlers.ActivityHandler, callbacks.Activ
             activity: Optional[causation.Activity] = None,
             _fallback: bool = False,
     ) -> callbacks.ActivityHandlerFn:
+        warnings.warn("registry.register() is deprecated; "
+                      "use @kopf.on... decorators with registry= kwarg.",
+                      DeprecationWarning)
         real_id = generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
             id=real_id, fn=fn, activity=activity,
@@ -122,6 +126,10 @@ class ResourceRegistry(GenericRegistry[handlers.ResourceHandler, callbacks.Resou
             annotations: Optional[bodies.Annotations] = None,
             when: Optional[callbacks.WhenHandlerFn] = None,
     ) -> callbacks.ResourceHandlerFn:
+        warnings.warn("registry.register() is deprecated; "
+                      "use @kopf.on... decorators with registry= kwarg.",
+                      DeprecationWarning)
+
         if reason is None and event is not None:
             reason = causation.Reason(event)
 
@@ -228,6 +236,10 @@ class OperatorRegistry:
         return (frozenset(self.resource_watching_handlers) |
                 frozenset(self.resource_changing_handlers))
 
+    #
+    # Everything below is deprecated and will be removed in the next major release.
+    #
+
     def register_activity_handler(
             self,
             fn: callbacks.ActivityHandlerFn,
@@ -241,6 +253,9 @@ class OperatorRegistry:
             activity: Optional[causation.Activity] = None,
             _fallback: bool = False,
     ) -> callbacks.ActivityHandlerFn:
+        warnings.warn("registry.register_activity_handler() is deprecated; "
+                      "use @kopf.on... decorators with registry= kwarg.",
+                      DeprecationWarning)
         return self.activity_handlers.register(
             fn=fn, id=id, activity=activity,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
@@ -261,6 +276,9 @@ class OperatorRegistry:
         """
         Register an additional handler function for low-level events.
         """
+        warnings.warn("registry.register_resource_watching_handler() is deprecated; "
+                      "use @kopf.on... decorators with registry= kwarg.",
+                      DeprecationWarning)
         resource = resources_.Resource(group, version, plural)
         return self.resource_watching_handlers[resource].register(
             fn=fn, id=id,
@@ -292,6 +310,9 @@ class OperatorRegistry:
         """
         Register an additional handler function for the specific resource and specific reason.
         """
+        warnings.warn("registry.register_resource_changing_handler() is deprecated; "
+                      "use @kopf.on... decorators with registry= kwarg.",
+                      DeprecationWarning)
         resource = resources_.Resource(group, version, plural)
         return self.resource_changing_handlers[resource].register(
             reason=reason, event=event, field=field, fn=fn, id=id,
@@ -303,18 +324,27 @@ class OperatorRegistry:
     def has_activity_handlers(
             self,
     ) -> bool:
+        warnings.warn("registry.has_activity_handlers() is deprecated; "
+                      "use registry.activity_handlers directly.",
+                      DeprecationWarning)
         return bool(self.activity_handlers)
 
     def has_resource_watching_handlers(
             self,
             resource: resources_.Resource,
     ) -> bool:
+        warnings.warn("registry.has_resource_watching_handlers() is deprecated; "
+                      "use registry.resource_watching_handlers[resource] directly.",
+                      DeprecationWarning)
         return bool(self.resource_watching_handlers[resource])
 
     def has_resource_changing_handlers(
             self,
             resource: resources_.Resource,
     ) -> bool:
+        warnings.warn("registry.has_resource_changing_handlers() is deprecated; "
+                      "use registry.resource_changing_handlers[resource] directly.",
+                      DeprecationWarning)
         return bool(self.resource_changing_handlers[resource])
 
     def get_activity_handlers(
@@ -322,18 +352,27 @@ class OperatorRegistry:
             *,
             activity: causation.Activity,
     ) -> Sequence[handlers.ActivityHandler]:
+        warnings.warn("registry.get_activity_handlers() is deprecated; "
+                      "use registry.activity_handlers.get_handlers().",
+                      DeprecationWarning)
         return self.activity_handlers.get_handlers(activity=activity)
 
     def get_resource_watching_handlers(
             self,
             cause: causation.ResourceWatchingCause,
     ) -> Sequence[handlers.ResourceHandler]:
+        warnings.warn("registry.get_resource_watching_handlers() is deprecated; "
+                      "use registry.resource_watching_handlers[resource].get_handlers().",
+                      DeprecationWarning)
         return self.resource_watching_handlers[cause.resource].get_handlers(cause=cause)
 
     def get_resource_changing_handlers(
             self,
             cause: causation.ResourceChangingCause,
     ) -> Sequence[handlers.ResourceHandler]:
+        warnings.warn("registry.get_resource_changing_handlers() is deprecated; "
+                      "use registry.resource_changing_handlers[resource].get_handlers().",
+                      DeprecationWarning)
         return self.resource_changing_handlers[cause.resource].get_handlers(cause=cause)
 
     def iter_activity_handlers(
@@ -341,6 +380,9 @@ class OperatorRegistry:
             *,
             activity: causation.Activity,
     ) -> Iterator[handlers.ActivityHandler]:
+        warnings.warn("registry.iter_activity_handlers() is deprecated; "
+                      "use registry.activity_handlers.iter_handlers().",
+                      DeprecationWarning)
         yield from self.activity_handlers.iter_handlers(activity=activity)
 
     def iter_resource_watching_handlers(
@@ -350,6 +392,9 @@ class OperatorRegistry:
         """
         Iterate all handlers for the low-level events.
         """
+        warnings.warn("registry.iter_resource_watching_handlers() is deprecated; "
+                      "use registry.resource_watching_handlers[resource].iter_handlers().",
+                      DeprecationWarning)
         yield from self.resource_watching_handlers[cause.resource].iter_handlers(cause=cause)
 
     def iter_resource_changing_handlers(
@@ -359,18 +404,27 @@ class OperatorRegistry:
         """
         Iterate all handlers that match this cause/event, in the order they were registered (even if mixed).
         """
+        warnings.warn("registry.iter_resource_changing_handlers() is deprecated; "
+                      "use registry.resource_changing_handlers[resource].iter_handlers().",
+                      DeprecationWarning)
         yield from self.resource_changing_handlers[cause.resource].iter_handlers(cause=cause)
 
     def get_extra_fields(
             self,
             resource: resources_.Resource,
     ) -> Set[dicts.FieldPath]:
+        warnings.warn("registry.get_extra_fields() is deprecated; "
+                      "use registry.resource_changing_handlers[resource].get_extra_fields().",
+                      DeprecationWarning)
         return self.resource_changing_handlers[resource].get_extra_fields()
 
     def iter_extra_fields(
             self,
             resource: resources_.Resource,
     ) -> Iterator[dicts.FieldPath]:
+        warnings.warn("registry.iter_extra_fields() is deprecated; "
+                      "use registry.resource_changing_handlers[resource].iter_extra_fields().",
+                      DeprecationWarning)
         yield from self.resource_changing_handlers[resource].iter_extra_fields()
 
     def requires_finalizer(
@@ -381,6 +435,9 @@ class OperatorRegistry:
         """
         Check whether a finalizer should be added to the given resource or not.
         """
+        warnings.warn("registry.requires_finalizer() is deprecated; "
+                      "use registry.resource_changing_handlers[resource].requires_finalizer().",
+                      DeprecationWarning)
         return self.resource_changing_handlers[resource].requires_finalizer(cause=cause)
 
 

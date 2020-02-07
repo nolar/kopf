@@ -1,5 +1,7 @@
 import collections
 
+import pytest
+
 from kopf.reactor.registries import OperatorRegistry
 from kopf.structs.resources import Resource
 
@@ -11,10 +13,15 @@ def some_fn():
 
 def test_resources():
     registry = OperatorRegistry()
-    registry.register_resource_watching_handler('group1', 'version1', 'plural1', some_fn)
-    registry.register_resource_changing_handler('group2', 'version2', 'plural2', some_fn)
-    registry.register_resource_watching_handler('group2', 'version2', 'plural2', some_fn)
-    registry.register_resource_changing_handler('group1', 'version1', 'plural1', some_fn)
+
+    with pytest.deprecated_call(match=r"use @kopf.on"):
+        registry.register_resource_watching_handler('group1', 'version1', 'plural1', some_fn)
+    with pytest.deprecated_call(match=r"use @kopf.on"):
+        registry.register_resource_changing_handler('group2', 'version2', 'plural2', some_fn)
+    with pytest.deprecated_call(match=r"use @kopf.on"):
+        registry.register_resource_watching_handler('group2', 'version2', 'plural2', some_fn)
+    with pytest.deprecated_call(match=r"use @kopf.on"):
+        registry.register_resource_changing_handler('group1', 'version1', 'plural1', some_fn)
 
     resources = registry.resources
 
