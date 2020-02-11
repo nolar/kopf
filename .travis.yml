@@ -39,10 +39,10 @@ before_script:
   - tools/kubernetes-client.sh
 
 script:
-  - pytest --cov=kopf --cov-branch
+  - pytest -Werror --cov=kopf --cov-branch
   - coveralls
   - codecov --flags unit
-  - pytest --only-e2e  # NB: after the coverage uploads!
+  - pytest -Werror --only-e2e  # NB: after the coverage uploads!
   - mypy kopf --strict --pretty
 
 deploy:
