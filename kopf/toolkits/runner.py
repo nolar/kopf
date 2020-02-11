@@ -90,6 +90,7 @@ class KopfRunner(_AbstractKopfRunner):
         # but instead wait for the thread+loop (CLI command) to finish.
         self._stop.set()
         self._thread.join(timeout=self.timeout)
+        self._loop.close()
 
         # If the thread is not finished, it is a bigger problem than exceptions.
         if self._thread.is_alive():
