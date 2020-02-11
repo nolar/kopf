@@ -52,7 +52,7 @@ OBJ1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
 def awakener(event_loop):
     handles = []
 
-    async def noop():
+    def noop():
         pass
 
     def awaken_fn(delay, fn=noop):
