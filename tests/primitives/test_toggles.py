@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 
 import pytest
 
@@ -13,8 +14,9 @@ async def test_creation_with_default_loop():
 
 async def test_creation_with_explicit_loop():
     loop = asyncio.new_event_loop()
-    toggle = Toggle(loop=loop)
-    assert toggle.loop is loop
+    with contextlib.closing(loop):
+        toggle = Toggle(loop=loop)
+        assert toggle.loop is loop
 
 
 async def test_created_as_off():
