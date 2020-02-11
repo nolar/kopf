@@ -69,7 +69,7 @@ async def process_resource_event(
         await memories.forget(body)
 
     # Invoke all silent spies. No causation, no progress storage is performed.
-    if registry.has_resource_watching_handlers(resource=resource):
+    if registry.resource_watching_handlers[resource]:
         resource_watching_cause = causation.detect_resource_watching_cause(
             event=event,
             resource=resource,
@@ -86,8 +86,8 @@ async def process_resource_event(
 
     # Object patch accumulator. Populated by the methods. Applied in the end of the handler.
     # Detect the cause and handle it (or at least log this happened).
-    if registry.has_resource_changing_handlers(resource=resource):
-        extra_fields = registry.get_extra_fields(resource=resource)
+    if registry.resource_changing_handlers[resource]:
+        extra_fields = registry.resource_changing_handlers[resource].get_extra_fields()
         old, new, diff = lastseen.get_essential_diffs(body=body, extra_fields=extra_fields)
         resource_changing_cause = causation.detect_resource_changing_cause(
             event=event,
@@ -154,7 +154,7 @@ async def process_resource_watching_cause(
     Note: K8s-event posting is skipped for `kopf.on.event` handlers,
     as they should be silent. Still, the messages are logged normally.
     """
-    handlers = registry.get_resource_watching_handlers(cause=cause)
+    handlers = registry.resource_watching_handlers[cause.resource].get_handlers(cause=cause)
     outcomes = await handling.execute_handlers_once(
         lifecycle=lifecycle,
         handlers=handlers,
@@ -183,7 +183,8 @@ async def process_resource_changing_cause(
     done = None
     skip = None
 
-    requires_finalizer = registry.requires_finalizer(resource=cause.resource, cause=cause)
+    resource_changing_handlers = registry.resource_changing_handlers[cause.resource]
+    requires_finalizer = resource_changing_handlers.requires_finalizer(cause=cause)
     has_finalizer = finalizers.has_finalizers(body=cause.body)
 
     if requires_finalizer and not has_finalizer:
@@ -203,7 +204,7 @@ async def process_resource_changing_cause(
         if cause.diff and cause.old is not None and cause.new is not None:
             logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
 
-        handlers = registry.get_resource_changing_handlers(cause=cause)
+        handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause=cause)
         state = states.State.from_body(body=cause.body, handlers=handlers)
         if handlers:
             outcomes = await handling.execute_handlers_once(
@@ -227,7 +228,7 @@ async def process_resource_changing_cause(
 
     # Regular causes also do some implicit post-handling when all handlers are done.
     if done or skip:
-        extra_fields = registry.get_extra_fields(resource=cause.resource)
+        extra_fields = registry.resource_changing_handlers[cause.resource].get_extra_fields()
         lastseen.refresh_essence(body=body, patch=patch, extra_fields=extra_fields)
         if cause.reason == causation.Reason.DELETE:
             logger.debug("Removing the finalizer, thus allowing the actual deletion.")

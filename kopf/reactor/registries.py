@@ -166,6 +166,9 @@ class ResourceRegistry(GenericRegistry[handlers.ResourceHandler, callbacks.Resou
             self,
             cause: causation.ResourceCause,
     ) -> bool:
+        """
+        Check whether a finalizer should be added to the given resource or not.
+        """
         # check whether the body matches a deletion handler
         for handler in self._handlers:
             if handler.requires_finalizer and match(handler=handler, cause=cause):
@@ -209,20 +212,21 @@ class OperatorRegistry:
     It is usually populated by the ``@kopf.on...`` decorators, but can also
     be explicitly created and used in the embedded operators.
     """
-    _activity_handlers: ActivityRegistry
-    _resource_watching_handlers: MutableMapping[resources_.Resource, ResourceWatchingRegistry]
-    _resource_changing_handlers: MutableMapping[resources_.Resource, ResourceChangingRegistry]
+    activity_handlers: ActivityRegistry
+    resource_watching_handlers: MutableMapping[resources_.Resource, ResourceWatchingRegistry]
+    resource_changing_handlers: MutableMapping[resources_.Resource, ResourceChangingRegistry]
 
     def __init__(self) -> None:
         super().__init__()
-        self._activity_handlers = ActivityRegistry()
-        self._resource_watching_handlers = collections.defaultdict(ResourceWatchingRegistry)
-        self._resource_changing_handlers = collections.defaultdict(ResourceChangingRegistry)
+        self.activity_handlers = ActivityRegistry()
+        self.resource_watching_handlers = collections.defaultdict(ResourceWatchingRegistry)
+        self.resource_changing_handlers = collections.defaultdict(ResourceChangingRegistry)
 
     @property
     def resources(self) -> FrozenSet[resources_.Resource]:
         """ All known resources in the registry. """
-        return frozenset(self._resource_watching_handlers) | frozenset(self._resource_changing_handlers)
+        return (frozenset(self.resource_watching_handlers) |
+                frozenset(self.resource_changing_handlers))
 
     def register_activity_handler(
             self,
@@ -237,7 +241,7 @@ class OperatorRegistry:
             activity: Optional[causation.Activity] = None,
             _fallback: bool = False,
     ) -> callbacks.ActivityHandlerFn:
-        return self._activity_handlers.register(
+        return self.activity_handlers.register(
             fn=fn, id=id, activity=activity,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             _fallback=_fallback,
@@ -258,7 +262,7 @@ class OperatorRegistry:
         Register an additional handler function for low-level events.
         """
         resource = resources_.Resource(group, version, plural)
-        return self._resource_watching_handlers[resource].register(
+        return self.resource_watching_handlers[resource].register(
             fn=fn, id=id,
             labels=labels, annotations=annotations, when=when,
         )
@@ -289,7 +293,7 @@ class OperatorRegistry:
         Register an additional handler function for the specific resource and specific reason.
         """
         resource = resources_.Resource(group, version, plural)
-        return self._resource_changing_handlers[resource].register(
+        return self.resource_changing_handlers[resource].register(
             reason=reason, event=event, field=field, fn=fn, id=id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
@@ -299,47 +303,45 @@ class OperatorRegistry:
     def has_activity_handlers(
             self,
     ) -> bool:
-        return bool(self._activity_handlers)
+        return bool(self.activity_handlers)
 
     def has_resource_watching_handlers(
             self,
             resource: resources_.Resource,
     ) -> bool:
-        return (resource in self._resource_watching_handlers and
-                bool(self._resource_watching_handlers[resource]))
+        return bool(self.resource_watching_handlers[resource])
 
     def has_resource_changing_handlers(
             self,
             resource: resources_.Resource,
     ) -> bool:
-        return (resource in self._resource_changing_handlers and
-                bool(self._resource_changing_handlers[resource]))
+        return bool(self.resource_changing_handlers[resource])
 
     def get_activity_handlers(
             self,
             *,
             activity: causation.Activity,
     ) -> Sequence[handlers.ActivityHandler]:
-        return list(_deduplicated(self.iter_activity_handlers(activity=activity)))
+        return self.activity_handlers.get_handlers(activity=activity)
 
     def get_resource_watching_handlers(
             self,
             cause: causation.ResourceWatchingCause,
     ) -> Sequence[handlers.ResourceHandler]:
-        return list(_deduplicated(self.iter_resource_watching_handlers(cause=cause)))
+        return self.resource_watching_handlers[cause.resource].get_handlers(cause=cause)
 
     def get_resource_changing_handlers(
             self,
             cause: causation.ResourceChangingCause,
     ) -> Sequence[handlers.ResourceHandler]:
-        return list(_deduplicated(self.iter_resource_changing_handlers(cause=cause)))
+        return self.resource_changing_handlers[cause.resource].get_handlers(cause=cause)
 
     def iter_activity_handlers(
             self,
             *,
             activity: causation.Activity,
     ) -> Iterator[handlers.ActivityHandler]:
-        yield from self._activity_handlers.iter_handlers(activity=activity)
+        yield from self.activity_handlers.iter_handlers(activity=activity)
 
     def iter_resource_watching_handlers(
             self,
@@ -348,8 +350,7 @@ class OperatorRegistry:
         """
         Iterate all handlers for the low-level events.
         """
-        if cause.resource in self._resource_watching_handlers:
-            yield from self._resource_watching_handlers[cause.resource].iter_handlers(cause=cause)
+        yield from self.resource_watching_handlers[cause.resource].iter_handlers(cause=cause)
 
     def iter_resource_changing_handlers(
             self,
@@ -358,21 +359,19 @@ class OperatorRegistry:
         """
         Iterate all handlers that match this cause/event, in the order they were registered (even if mixed).
         """
-        if cause.resource in self._resource_changing_handlers:
-            yield from self._resource_changing_handlers[cause.resource].iter_handlers(cause=cause)
+        yield from self.resource_changing_handlers[cause.resource].iter_handlers(cause=cause)
 
     def get_extra_fields(
             self,
             resource: resources_.Resource,
     ) -> Set[dicts.FieldPath]:
-        return set(self.iter_extra_fields(resource=resource))
+        return self.resource_changing_handlers[resource].get_extra_fields()
 
     def iter_extra_fields(
             self,
             resource: resources_.Resource,
     ) -> Iterator[dicts.FieldPath]:
-        if resource in self._resource_changing_handlers:
-            yield from self._resource_changing_handlers[resource].iter_extra_fields()
+        yield from self.resource_changing_handlers[resource].iter_extra_fields()
 
     def requires_finalizer(
             self,
@@ -382,8 +381,7 @@ class OperatorRegistry:
         """
         Check whether a finalizer should be added to the given resource or not.
         """
-        return (resource in self._resource_changing_handlers and
-                self._resource_changing_handlers[resource].requires_finalizer(cause=cause))
+        return self.resource_changing_handlers[resource].requires_finalizer(cause=cause)
 
 
 class SmartOperatorRegistry(OperatorRegistry):
@@ -396,26 +394,27 @@ class SmartOperatorRegistry(OperatorRegistry):
         except ImportError:
             pass
         else:
-            self.register_activity_handler(
-                id='login_via_pykube',
+            self.activity_handlers.append(handlers.ActivityHandler(
+                id=handlers.HandlerId('login_via_pykube'),
                 fn=cast(callbacks.ActivityHandlerFn, piggybacking.login_via_pykube),
                 activity=causation.Activity.AUTHENTICATION,
                 errors=errors_.ErrorsMode.IGNORED,
+                timeout=None, retries=None, backoff=None, cooldown=None,
                 _fallback=True,
-            )
-
+            ))
         try:
             import kubernetes
         except ImportError:
             pass
         else:
-            self.register_activity_handler(
-                id='login_via_client',
+            self.activity_handlers.append(handlers.ActivityHandler(
+                id=handlers.HandlerId('login_via_client'),
                 fn=cast(callbacks.ActivityHandlerFn, piggybacking.login_via_client),
                 activity=causation.Activity.AUTHENTICATION,
                 errors=errors_.ErrorsMode.IGNORED,
+                timeout=None, retries=None, backoff=None, cooldown=None,
                 _fallback=True,
-            )
+            ))
 
 
 def generate_id(

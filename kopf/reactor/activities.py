@@ -100,7 +100,7 @@ async def run_activity(
 
     # For the activity handlers, we have neither bodies, nor patches, just the state.
     cause = causation.ActivityCause(logger=logger, activity=activity)
-    handlers = registry.get_activity_handlers(activity=activity)
+    handlers = registry.activity_handlers.get_handlers(activity=activity)
     outcomes = await handling.run_handlers_until_done(
         cause=cause,
         handlers=handlers,

@@ -107,13 +107,23 @@ async def execute(
         subregistry = registries.ResourceChangingRegistry()
         for id, fn in fns.items():
             real_id = registries.generate_id(fn=fn, id=id, prefix=parent_prefix)
-            subregistry.register(fn=fn, id=real_id)
+            handler = handlers_.ResourceHandler(
+                fn=fn, id=real_id,
+                errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+                reason=None, field=None,
+            )
+            subregistry.append(handler)
 
     elif fns is not None and isinstance(fns, collections.abc.Iterable):
         subregistry = registries.ResourceChangingRegistry()
         for fn in fns:
             real_id = registries.generate_id(fn=fn, id=None, prefix=parent_prefix)
-            subregistry.register(fn=fn, id=real_id)
+            handler = handlers_.ResourceHandler(
+                fn=fn, id=real_id,
+                errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+                reason=None, field=None,
+            )
+            subregistry.append(handler)
 
     elif fns is not None:
         raise ValueError(f"fns must be a mapping or an iterable, got {fns.__class__}.")
@@ -121,7 +131,7 @@ async def execute(
     elif handlers is not None:
         subregistry = registries.ResourceChangingRegistry()
         for handler in handlers:
-            subregistry.append(handler=handler)
+            subregistry.append(handler)
 
     # Use the registry as is; assume that the caller knows what they do.
     elif registry is not None:
