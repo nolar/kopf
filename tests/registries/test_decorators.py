@@ -4,6 +4,7 @@ import kopf
 from kopf.reactor.causation import Reason, Activity, HANDLER_REASONS
 from kopf.reactor.errors import ErrorsMode
 from kopf.reactor.handling import subregistry_var, handler_var
+from kopf.reactor.invocation import context
 from kopf.reactor.registries import OperatorRegistry, ResourceChangingRegistry
 from kopf.structs.resources import Resource
 
@@ -414,16 +415,32 @@ def test_on_field_with_all_kwargs(mocker):
     assert handlers[0].when == when
 
 
+def test_subhandler_fails_with_no_parent_handler():
+
+    registry = ResourceChangingRegistry()
+    subregistry_var.set(registry)
+
+    # Check if the contextvar is indeed not set (as a prerequisite).
+    with pytest.raises(LookupError):
+        handler_var.get()
+
+    # Check the actual behaviour of the decorator.
+    with pytest.raises(LookupError):
+        @kopf.on.this()
+        def fn(**_):
+            pass
+
+
 def test_subhandler_declaratively(mocker, parent_handler):
     cause = mocker.MagicMock(reason=Reason.UPDATE, diff=None)
 
     registry = ResourceChangingRegistry()
     subregistry_var.set(registry)
-    handler_var.set(parent_handler)
 
-    @kopf.on.this()
-    def fn(**_):
-        pass
+    with context([(handler_var, parent_handler)]):
+        @kopf.on.this()
+        def fn(**_):
+            pass
 
     handlers = registry.get_handlers(cause)
     assert len(handlers) == 1
@@ -435,11 +452,12 @@ def test_subhandler_imperatively(mocker, parent_handler):
 
     registry = ResourceChangingRegistry()
     subregistry_var.set(registry)
-    handler_var.set(parent_handler)
 
     def fn(**_):
         pass
-    kopf.register(fn)
+
+    with context([(handler_var, parent_handler)]):
+        kopf.register(fn)
 
     handlers = registry.get_handlers(cause)
     assert len(handlers) == 1
