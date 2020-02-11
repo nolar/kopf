@@ -482,14 +482,21 @@ def logstream(caplog):
     logger = logging.getLogger()
     handlers = list(logger.handlers)
 
+    # Setup all log levels of sub-libraries. A sife-effect: the handlers are also added.
     configure(verbose=True)
 
+    # Remove any stream handlers added in the step above. But keep the caplog's handlers.
+    for handler in list(logger.handlers):
+        if isinstance(handler, logging.StreamHandler) and handler.stream is sys.stderr:
+            logger.removeHandler(handler)
+
+    # Inject our stream-intercepting handler.
     stream = io.StringIO()
     handler = logging.StreamHandler(stream)
     formatter = ObjectPrefixingFormatter('prefix %(message)s')
     handler.setFormatter(formatter)
-
     logger.addHandler(handler)
+
     try:
         with caplog.at_level(logging.DEBUG):
             yield stream
