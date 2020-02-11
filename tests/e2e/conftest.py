@@ -18,19 +18,23 @@ def exampledir(request):
 
 @pytest.fixture()
 def with_crd():
-    subprocess.run("kubectl apply -f examples/crd.yaml", shell=True, check=True)
+    subprocess.run("kubectl apply -f examples/crd.yaml",
+                   shell=True, check=True, timeout=10, capture_output=True)
 
 
 @pytest.fixture()
 def with_peering():
-    subprocess.run("kubectl apply -f peering.yaml", shell=True, check=True)
+    subprocess.run("kubectl apply -f peering.yaml",
+                   shell=True, check=True, timeout=10, capture_output=True)
 
 
 @pytest.fixture()
 def no_crd():
-    subprocess.run("kubectl delete customresourcedefinition kopfexamples.zalando.org", shell=True, check=True)
+    subprocess.run("kubectl delete customresourcedefinition kopfexamples.zalando.org",
+                   shell=True, check=True, timeout=10, capture_output=True)
 
 
 @pytest.fixture()
 def no_peering():
-    subprocess.run("kubectl delete customresourcedefinition kopfpeerings.zalando.org", shell=True, check=True)
+    subprocess.run("kubectl delete customresourcedefinition kopfpeerings.zalando.org",
+                   shell=True, check=True, timeout=10, capture_output=True)
