@@ -125,7 +125,7 @@ class ResourceChangingCause(ResourceCause):
 
     @property
     def event(self) -> Reason:
-        warnings.warn("`cause.event` is deprecated; use `cause.reason`.", DeprecationWarning)
+        warnings.warn("cause.event is deprecated; use cause.reason.", DeprecationWarning)
         return self.reason
 
     @property

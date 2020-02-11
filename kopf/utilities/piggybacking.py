@@ -11,6 +11,7 @@ in them, and extracts the basic credentials for its own use.
     :mod:`credentials` and :func:`authentication`.
 """
 import logging
+import warnings
 from typing import Any, Union, Optional, Sequence
 
 from kopf.clients import auth
@@ -89,7 +90,9 @@ def login_via_pykube(
     # to inject custom authentication methods. Support these hacks if possible.
     config: pykube.KubeConfig
     try:
-        config = auth.get_pykube_cfg()
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', DeprecationWarning)
+            config = auth.get_pykube_cfg()
         logger.debug("Pykube is configured via monkey-patched get_pykube_cfg().")
     except NotImplementedError:
         try:

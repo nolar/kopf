@@ -72,7 +72,6 @@ def test_resource_changing_cause_with_all_args(mocker):
     assert cause.resource is resource
     assert cause.logger is logger
     assert cause.reason is reason
-    assert cause.event is reason  # deprecated
     assert cause.initial is initial
     assert cause.body is body
     assert cause.patch is patch
@@ -80,6 +79,9 @@ def test_resource_changing_cause_with_all_args(mocker):
     assert cause.diff is diff
     assert cause.old is old
     assert cause.new is new
+
+    with pytest.deprecated_call(match=r"use cause.reason"):
+        assert cause.event is reason
 
 
 def test_resource_changing_cause_with_only_required_args(mocker):
@@ -102,7 +104,6 @@ def test_resource_changing_cause_with_only_required_args(mocker):
     assert cause.resource is resource
     assert cause.logger is logger
     assert cause.reason is reason
-    assert cause.event is reason  # deprecated
     assert cause.initial is initial
     assert cause.body is body
     assert cause.patch is patch
@@ -111,3 +112,6 @@ def test_resource_changing_cause_with_only_required_args(mocker):
     assert not cause.diff
     assert cause.old is None
     assert cause.new is None
+
+    with pytest.deprecated_call(match=r"use cause.reason"):
+        assert cause.event is reason
