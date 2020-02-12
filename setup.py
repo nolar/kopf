@@ -2,8 +2,10 @@ import os.path
 
 from setuptools import setup, find_packages
 
-LONG_DESCRIPTION = open(os.path.join(os.path.dirname(__file__), 'README.md')).read()
-DESCRIPTION = LONG_DESCRIPTION.splitlines()[0].lstrip('#').strip()
+with open(os.path.join(os.path.dirname(__file__), 'README.md')) as f:
+    LONG_DESCRIPTION = f.read()
+    DESCRIPTION = LONG_DESCRIPTION.splitlines()[0].lstrip('#').strip()
+
 PROJECT_URLS = {
     'Documentation': 'https://kopf.readthedocs.io',
     'Bug Tracker': 'https://github.com/zalando-incubator/kopf/issues',
