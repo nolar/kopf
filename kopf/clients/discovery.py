@@ -28,7 +28,7 @@ async def discover(
                     respdata = await response.json()
 
                     context._discovered_resources[resource.api_version].update({
-                        resources.Resource(resource.group, resource.version, info['name']): info
+                        info['name']: info
                         for info in respdata['resources']
                     })
 
@@ -38,7 +38,7 @@ async def discover(
                     else:
                         raise
 
-    return context._discovered_resources[resource.api_version].get(resource, None)
+    return context._discovered_resources[resource.api_version].get(resource.plural, None)
 
 
 @auth.reauthenticated_request
