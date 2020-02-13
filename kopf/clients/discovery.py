@@ -10,6 +10,7 @@ from kopf.structs import resources
 async def discover(
         *,
         resource: resources.Resource,
+        subresource: Optional[str] = None,
         context: Optional[auth.APIContext] = None,  # injected by the decorator
 ) -> Optional[Dict[str, object]]:
     if context is None:
@@ -38,7 +39,8 @@ async def discover(
                     else:
                         raise
 
-    return context._discovered_resources[resource.api_version].get(resource.plural, None)
+    name = resource.plural if subresource is None else f'{resource.plural}/{subresource}'
+    return context._discovered_resources[resource.api_version].get(name, None)
 
 
 @auth.reauthenticated_request
@@ -52,3 +54,16 @@ async def is_namespaced(
 
     info = await discover(resource=resource, context=context)
     return cast(bool, info['namespaced']) if info is not None else True  # assume namespaced
+
+
+@auth.reauthenticated_request
+async def is_status_subresource(
+        *,
+        resource: resources.Resource,
+        context: Optional[auth.APIContext] = None,  # injected by the decorator
+) -> bool:
+    if context is None:
+        raise RuntimeError("API instance is not injected by the decorator.")
+
+    info = await discover(resource=resource, subresource='status', context=context)
+    return info is not None
