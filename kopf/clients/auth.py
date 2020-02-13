@@ -11,7 +11,6 @@ from typing import Optional, Callable, Any, TypeVar, Dict, Iterator, Mapping, ca
 import aiohttp
 
 from kopf.structs import credentials
-from kopf.structs import resources
 
 # Per-operator storage and exchange point for authentication methods.
 # Used by the client wrappers to retrieve the credentials and report the failures.
