@@ -190,6 +190,24 @@ def version_api(resp_mocker, aresponses, hostname, resource):
 
 
 @pytest.fixture()
+def version_api_with_substatus(resp_mocker, aresponses, hostname, resource, version_api):
+
+    # TODO: stop auto-using `version_api` in all /k8s/ tests, then such purging will not be needed.
+    # TODO: but it is so convenient for all other /k8s/ tests, that removing it is undesired.
+    aresponses._responses[:] = []
+
+    result = {'resources': [{
+        'name': resource.plural,
+        'namespaced': True,
+    }, {
+        'name': f'{resource.plural}/status',
+        'namespaced': True,
+    }]}
+    list_mock = resp_mocker(return_value=aiohttp.web.json_response(result))
+    aresponses.add(hostname, resource.get_version_url(), 'get', list_mock)
+
+
+@pytest.fixture()
 def stream(fake_vault, resp_mocker, aresponses, hostname, resource, version_api):
     """ A mock for the stream of events as if returned by K8s client. """
 
