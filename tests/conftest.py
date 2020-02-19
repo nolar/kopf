@@ -314,7 +314,7 @@ def clean_kubernetes_client():
 
 
 @pytest.fixture()
-def fake_vault(event_loop, mocker, hostname):
+def fake_vault(mocker, hostname):
     """
     Provide a freshly created and populated authentication vault for every test.
 
@@ -328,7 +328,7 @@ def fake_vault(event_loop, mocker, hostname):
 
     key = VaultKey('fixture')
     info = ConnectionInfo(server=f'https://{hostname}')
-    vault = Vault({key: info}, loop=event_loop)
+    vault = Vault({key: info})
     token = auth.vault_var.set(vault)
     mocker.patch.object(vault._ready, 'wait_for_on')
     mocker.patch.object(vault._ready, 'wait_for_off')

@@ -112,20 +112,18 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
     def __init__(
             self,
             __src: Optional[Mapping[str, object]] = None,
-            *,
-            loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
         super().__init__()
         self._current = {}
         self._invalid = collections.defaultdict(list)
-        self._lock = asyncio.Lock(loop=loop)
+        self._lock = asyncio.Lock()
 
         if __src is not None:
             self._update_converted(__src)
 
         # Mark a pre-populated vault to be usable instantly,
         # or trigger the initial authentication for an empty vault.
-        self._ready = primitives.Toggle(bool(self), loop=loop)
+        self._ready = primitives.Toggle(bool(self))
 
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__}: {self._current!r}>'

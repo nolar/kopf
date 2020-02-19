@@ -1,22 +1,8 @@
 import asyncio
-import contextlib
 
 import pytest
 
 from kopf.structs.primitives import Toggle
-
-
-async def test_creation_with_default_loop():
-    loop = asyncio.get_running_loop()
-    toggle = Toggle()
-    assert toggle.loop is loop
-
-
-async def test_creation_with_explicit_loop():
-    loop = asyncio.new_event_loop()
-    with contextlib.closing(loop):
-        toggle = Toggle(loop=loop)
-        assert toggle.loop is loop
 
 
 async def test_created_as_off():
