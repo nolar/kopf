@@ -26,6 +26,9 @@ def pytest_configure(config):
     config.addinivalue_line('markers', "e2e: end-to-end tests with real operators.")
     config.addinivalue_line('markers', "resource_clustered: (internal parameterizatiom mark).")
 
+    # Unexpected warnings should fail the tests. Use `-Wignore` to explicitly disable it.
+    config.addinivalue_line('filterwarnings', 'error')
+
 
 def pytest_addoption(parser):
     parser.addoption("--only-e2e", action="store_true", help="Execute end-to-end tests only.")
