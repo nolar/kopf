@@ -26,13 +26,20 @@ env:
 #    - KUBERNETES_VERSION=v1.11.10  # Minikube fails on CRI preflight checks
 #    - KUBERNETES_VERSION=v1.10.13  # CRDs require spec.version, which fails on 1.14
 
+# Only one Python version is tested with all supported K8s versions: to check for API compatibility.
+# Other Python versions are tested with only one K8s version: if it works for one, it works for all.
+# One look-ahead Python dev version is tested for preview, but is optional.
 python:
-  - "3.7"
+  - "3.8"
 matrix:
   include:
-    - python: "3.8-dev"
+    - python: "3.7"
+      env: KUBERNETES_VERSION=latest CLIENT=yes
+    - python: "3.7"
+      env: KUBERNETES_VERSION=latest CLIENT=no
+    - python: "3.9-dev"
   allow_failures:
-    - python: "3.8-dev"
+    - python: "3.9-dev"
 
 before_script:
   - tools/minikube-for-travis.sh
