@@ -1,7 +1,7 @@
 import aiohttp.web
 import pytest
 
-from kopf.clients.discovery import discover, is_namespaced
+from kopf.clients.discovery import discover, is_namespaced, is_status_subresource
 from kopf.structs.resources import Resource
 
 
@@ -85,3 +85,34 @@ async def test_is_namespaced(
     result = await is_namespaced(resource=resource)
 
     assert result == namespaced
+
+
+@pytest.mark.parametrize('namespaced', [True, False])
+async def test_is_status_subresource_when_not_a_subresource(
+        resp_mocker, aresponses, hostname, namespaced):
+
+    res1info = {'name': 'someresources', 'namespaced': namespaced}
+    result = {'resources': [res1info]}
+    list_mock = resp_mocker(return_value=aiohttp.web.json_response(result))
+    aresponses.add(hostname, '/apis/some-group.org/someversion', 'get', list_mock)
+
+    resource = Resource('some-group.org', 'someversion', 'someresources')
+    result = await is_status_subresource(resource=resource)
+
+    assert result is False  # an extra type-check
+
+
+@pytest.mark.parametrize('namespaced', [True, False])
+async def test_is_status_subresource_when_is_a_subresource(
+        resp_mocker, aresponses, hostname, namespaced):
+
+    res1info = {'name': 'someresources', 'namespaced': namespaced}
+    res1status = {'name': 'someresources/status', 'namespaced': namespaced}
+    result = {'resources': [res1info, res1status]}
+    list_mock = resp_mocker(return_value=aiohttp.web.json_response(result))
+    aresponses.add(hostname, '/apis/some-group.org/someversion', 'get', list_mock)
+
+    resource = Resource('some-group.org', 'someversion', 'someresources')
+    result = await is_status_subresource(resource=resource)
+
+    assert result is True  # an extra type-check

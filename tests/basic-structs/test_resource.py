@@ -106,3 +106,51 @@ def test_url_with_arbitrary_params():
     resource = Resource('group', 'version', 'plural')
     url = resource.get_url(params=dict(watch='true', resourceVersion='abc%def xyz'))
     assert url == '/apis/group/version/plural?watch=true&resourceVersion=abc%25def+xyz'
+
+
+def test_url_of_custom_resource_list_cluster_scoped_with_subresource():
+    resource = Resource('group', 'version', 'plural')
+    with pytest.raises(ValueError):
+        resource.get_url(subresource='status')
+
+
+def test_url_of_custom_resource_list_namespaced_with_subresource():
+    resource = Resource('group', 'version', 'plural')
+    with pytest.raises(ValueError):
+        resource.get_url(namespace='ns-a.b', subresource='status')
+
+
+def test_url_of_custom_resource_item_cluster_scoped_with_subresource():
+    resource = Resource('group', 'version', 'plural')
+    url = resource.get_url(name='name-a.b', subresource='status')
+    assert url == '/apis/group/version/plural/name-a.b/status'
+
+
+def test_url_of_custom_resource_item_namespaced_with_subresource():
+    resource = Resource('group', 'version', 'plural')
+    url = resource.get_url(name='name-a.b', namespace='ns-a.b', subresource='status')
+    assert url == '/apis/group/version/namespaces/ns-a.b/plural/name-a.b/status'
+
+
+def test_url_of_builtin_resource_list_cluster_scoped_with_subresource():
+    resource = Resource('', 'v1', 'plural')
+    with pytest.raises(ValueError):
+        resource.get_url(subresource='status')
+
+
+def test_url_of_builtin_resource_list_namespaced_with_subresource():
+    resource = Resource('', 'v1', 'plural')
+    with pytest.raises(ValueError):
+        resource.get_url(namespace='ns-a.b', subresource='status')
+
+
+def test_url_of_builtin_resource_item_cluster_scoped_with_subresource():
+    resource = Resource('', 'v1', 'plural')
+    url = resource.get_url(name='name-a.b', subresource='status')
+    assert url == '/api/v1/plural/name-a.b/status'
+
+
+def test_url_of_builtin_resource_item_namespaced_with_subresource():
+    resource = Resource('', 'v1', 'plural')
+    url = resource.get_url(name='name-a.b', namespace='ns-a.b', subresource='status')
+    assert url == '/api/v1/namespaces/ns-a.b/plural/name-a.b/status'

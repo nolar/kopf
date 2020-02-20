@@ -23,8 +23,12 @@ class Resource(NamedTuple):
             server: Optional[str] = None,
             namespace: Optional[str] = None,
             name: Optional[str] = None,
+            subresource: Optional[str] = None,
             params: Optional[Mapping[str, str]] = None,
     ) -> str:
+        if subresource is not None and name is None:
+            raise ValueError("Subresources can be used only with specific resources by their name.")
+
         return self._build_url(server, params, [
             '/api' if self.group == '' and self.version == 'v1' else '/apis',
             self.group,
@@ -33,6 +37,7 @@ class Resource(NamedTuple):
             namespace,
             self.plural,
             name,
+            subresource,
         ])
 
     def get_version_url(

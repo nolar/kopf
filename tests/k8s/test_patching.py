@@ -72,6 +72,97 @@ async def test_by_body_namespaced(
     assert data == {'x': 'y'}
 
 
+async def test_status_as_subresource_with_combined_payload(
+        resp_mocker, aresponses, hostname, resource, version_api_with_substatus):
+
+    object_url = resource.get_url(namespace='ns1', name='name1')
+    status_url = resource.get_url(namespace='ns1', name='name1', subresource='status')
+    object_patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
+    status_patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
+    aresponses.add(hostname, object_url, 'patch', object_patch_mock)
+    aresponses.add(hostname, status_url, 'patch', status_patch_mock)
+
+    patch = {'spec': {'x': 'y'}, 'status': {'s': 't'}}
+    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    await patch_obj(resource=resource, body=body, patch=patch)
+
+    assert object_patch_mock.called
+    assert object_patch_mock.call_count == 1
+    assert status_patch_mock.called
+    assert status_patch_mock.call_count == 1
+
+    data = object_patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
+    assert data == {'spec': {'x': 'y'}}
+    data = status_patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
+    assert data == {'status': {'s': 't'}}
+
+
+async def test_status_as_subresource_with_fields_only(
+        resp_mocker, aresponses, hostname, resource, version_api_with_substatus):
+
+    object_url = resource.get_url(namespace='ns1', name='name1')
+    status_url = resource.get_url(namespace='ns1', name='name1', subresource='status')
+    object_patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
+    status_patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
+    aresponses.add(hostname, object_url, 'patch', object_patch_mock)
+    aresponses.add(hostname, status_url, 'patch', status_patch_mock)
+
+    patch = {'spec': {'x': 'y'}}
+    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    await patch_obj(resource=resource, body=body, patch=patch)
+
+    assert object_patch_mock.called
+    assert object_patch_mock.call_count == 1
+    assert not status_patch_mock.called
+
+    data = object_patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
+    assert data == {'spec': {'x': 'y'}}
+
+
+async def test_status_as_subresource_with_status_only(
+        resp_mocker, aresponses, hostname, resource, version_api_with_substatus):
+
+    object_url = resource.get_url(namespace='ns1', name='name1')
+    status_url = resource.get_url(namespace='ns1', name='name1', subresource='status')
+    object_patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
+    status_patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
+    aresponses.add(hostname, object_url, 'patch', object_patch_mock)
+    aresponses.add(hostname, status_url, 'patch', status_patch_mock)
+
+    patch = {'status': {'s': 't'}}
+    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    await patch_obj(resource=resource, body=body, patch=patch)
+
+    assert not object_patch_mock.called
+    assert status_patch_mock.called
+    assert status_patch_mock.call_count == 1
+
+    data = status_patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
+    assert data == {'status': {'s': 't'}}
+
+
+async def test_status_as_body_field(
+        resp_mocker, aresponses, hostname, resource):
+
+    object_url = resource.get_url(namespace='ns1', name='name1')
+    status_url = resource.get_url(namespace='ns1', name='name1', subresource='status')
+    object_patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
+    status_patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
+    aresponses.add(hostname, object_url, 'patch', object_patch_mock)
+    aresponses.add(hostname, status_url, 'patch', status_patch_mock)
+
+    patch = {'spec': {'x': 'y'}, 'status': {'s': 't'}}
+    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    await patch_obj(resource=resource, body=body, patch=patch)
+
+    assert object_patch_mock.called
+    assert object_patch_mock.call_count == 1
+    assert not status_patch_mock.called
+
+    data = object_patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
+    assert data == {'spec': {'x': 'y'}, 'status': {'s': 't'}}
+
+
 async def test_raises_when_body_conflicts_with_namespace(
         resp_mocker, aresponses, hostname, resource):
 

@@ -46,13 +46,26 @@ async def patch_obj(
         if namespace is not None:
             body['metadata']['namespace'] = namespace
 
+    as_subresource = await discovery.is_status_subresource(resource=resource, context=context)
+    body_patch = dict(patch)  # shallow: for mutation of the top-level keys below.
+    status_patch = body_patch.pop('status', None) if as_subresource else None
+
     try:
-        await context.session.patch(
-            url=resource.get_url(server=context.server, namespace=namespace, name=name),
-            headers={'Content-Type': 'application/merge-patch+json'},
-            json=patch,
-            raise_for_status=True,
-        )
+        if body_patch:
+            await context.session.patch(
+                url=resource.get_url(server=context.server, namespace=namespace, name=name),
+                headers={'Content-Type': 'application/merge-patch+json'},
+                json=body_patch,
+                raise_for_status=True,
+            )
+        if status_patch:
+            await context.session.patch(
+                url=resource.get_url(server=context.server, namespace=namespace, name=name,
+                                     subresource='status' if as_subresource else None),
+                headers={'Content-Type': 'application/merge-patch+json'},
+                json={'status': status_patch},
+                raise_for_status=True,
+            )
     except aiohttp.ClientResponseError as e:
         if e.status == 404:
             pass
