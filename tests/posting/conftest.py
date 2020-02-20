@@ -15,8 +15,8 @@ def event_queue_loop(event_loop):
 
 
 @pytest.fixture()
-def event_queue(event_loop):
-    queue = asyncio.Queue(loop=event_loop)
+def event_queue():
+    queue = asyncio.Queue()
     token = event_queue_var.set(queue)
     try:
         yield queue

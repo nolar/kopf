@@ -71,16 +71,10 @@ class Toggle:
     def __init__(
             self,
             __val: bool = False,
-            *,
-            loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
         super().__init__()
-        self._condition = asyncio.Condition(loop=loop)
+        self._condition = asyncio.Condition()
         self._state: bool = bool(__val)
-
-    @property
-    def loop(self) -> asyncio.AbstractEventLoop:
-        return self._condition._loop
 
     def __bool__(self) -> bool:
         """

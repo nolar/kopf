@@ -29,6 +29,12 @@ def pytest_configure(config):
     # Unexpected warnings should fail the tests. Use `-Wignore` to explicitly disable it.
     config.addinivalue_line('filterwarnings', 'error')
 
+    # Warnings from the testing tools out of our control should not fail the tests.
+    config.addinivalue_line('filterwarnings', 'ignore:"@coroutine":DeprecationWarning:asynctest.mock')
+    config.addinivalue_line('filterwarnings', 'ignore:The loop argument:DeprecationWarning:aiohttp')
+    config.addinivalue_line('filterwarnings', 'ignore:The loop argument:DeprecationWarning:aiojobs')
+    config.addinivalue_line('filterwarnings', 'ignore:The loop argument:DeprecationWarning:asyncio.queues')  # aiojobs
+
 
 def pytest_addoption(parser):
     parser.addoption("--only-e2e", action="store_true", help="Execute end-to-end tests only.")
@@ -314,7 +320,7 @@ def clean_kubernetes_client():
 
 
 @pytest.fixture()
-def fake_vault(event_loop, mocker, hostname):
+def fake_vault(mocker, hostname):
     """
     Provide a freshly created and populated authentication vault for every test.
 
@@ -328,7 +334,7 @@ def fake_vault(event_loop, mocker, hostname):
 
     key = VaultKey('fixture')
     info = ConnectionInfo(server=f'https://{hostname}')
-    vault = Vault({key: info}, loop=event_loop)
+    vault = Vault({key: info})
     token = auth.vault_var.set(vault)
     mocker.patch.object(vault._ready, 'wait_for_on')
     mocker.patch.object(vault._ready, 'wait_for_off')

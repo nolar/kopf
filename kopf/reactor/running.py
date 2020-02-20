@@ -180,9 +180,9 @@ async def spawn_tasks(
     memories = memories if memories is not None else containers.ResourceMemories()
     vault = vault if vault is not None else global_vault
     vault = vault if vault is not None else credentials.Vault()
-    event_queue: posting.K8sEventQueue = asyncio.Queue(loop=loop)
-    freeze_mode: primitives.Toggle = primitives.Toggle(loop=loop)
-    signal_flag: asyncio_Future = asyncio.Future(loop=loop)
+    event_queue: posting.K8sEventQueue = asyncio.Queue()
+    freeze_mode: primitives.Toggle = primitives.Toggle()
+    signal_flag: asyncio_Future = asyncio.Future()
     ready_flag = ready_flag if ready_flag is not None else asyncio.Event()
     tasks: MutableSequence[asyncio_Task] = []
 
