@@ -64,5 +64,5 @@ class ResourceHandler(BaseHandler):
 
     @property
     def event(self) -> Optional[causation.Reason]:
-        warnings.warn("`handler.event` is deprecated; use `handler.reason`.", DeprecationWarning)
+        warnings.warn("handler.event is deprecated; use handler.reason.", DeprecationWarning)
         return self.reason

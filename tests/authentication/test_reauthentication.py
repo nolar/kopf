@@ -33,8 +33,9 @@ async def test_session_is_injected_to_request(
 
     context, result = await request_fn(1)
 
-    assert context is not None
-    assert result == 101
+    async with context.session:
+        assert context is not None
+        assert result == 101
 
 
 async def test_session_is_injected_to_stream(
@@ -49,9 +50,10 @@ async def test_session_is_injected_to_stream(
     async for context, result in stream_fn(1):
         counter += 1
 
-    assert context is not None
-    assert result == 101
-    assert counter == 1
+    async with context.session:
+        assert context is not None
+        assert result == 101
+        assert counter == 1
 
 
 async def test_session_is_passed_through_to_request(
@@ -64,8 +66,9 @@ async def test_session_is_passed_through_to_request(
     explicit_context = APIContext(ConnectionInfo(server='http://irrelevant/'))
     context, result = await request_fn(1, context=explicit_context)
 
-    assert context is explicit_context
-    assert result == 101
+    async with context.session:
+        assert context is explicit_context
+        assert result == 101
 
 
 async def test_session_is_passed_through_to_stream(
@@ -80,6 +83,7 @@ async def test_session_is_passed_through_to_stream(
     async for context, result in stream_fn(1, context=explicit_context):
         counter += 1
 
-    assert context is explicit_context
-    assert result == 101
-    assert counter == 1
+    async with context.session:
+        assert context is explicit_context
+        assert result == 101
+        assert counter == 1

@@ -33,7 +33,6 @@ def test_activity_handler_with_all_args(mocker):
     assert handler.timeout is timeout
     assert handler.retries is retries
     assert handler.backoff is backoff
-    assert handler.cooldown is backoff  # deprecated alias
     assert handler.activity is activity
 
 
@@ -68,14 +67,18 @@ def test_resource_handler_with_all_args(mocker):
     assert handler.fn is fn
     assert handler.id is id
     assert handler.reason is reason
-    assert handler.event is reason  # deprecated
     assert handler.field is field
     assert handler.errors is errors
     assert handler.timeout is timeout
     assert handler.retries is retries
     assert handler.backoff is backoff
-    assert handler.cooldown is backoff  # deprecated alias
     assert handler.initial is initial
     assert handler.labels is labels
     assert handler.annotations is annotations
     assert handler.requires_finalizer is requires_finalizer
+
+    with pytest.deprecated_call(match=r"use handler.reason"):
+        assert handler.event is reason
+
+    with pytest.deprecated_call(match=r"use handler.backoff"):
+        assert handler.cooldown is backoff

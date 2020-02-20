@@ -35,9 +35,11 @@ def test_resource_lifecycle(mocker):
 
     # Run an operator and simulate some activity with the operated resource.
     with kopf.testing.KopfRunner(['run', '--verbose', '--standalone', example_py], timeout=60) as runner:
-        subprocess.run(f"kubectl create -f {obj_yaml}", shell=True, check=True)
+        subprocess.run(f"kubectl create -f {obj_yaml}",
+                       shell=True, check=True, timeout=10, capture_output=True)
         time.sleep(5)  # give it some time to react
-        subprocess.run(f"kubectl delete -f {obj_yaml}", shell=True, check=True)
+        subprocess.run(f"kubectl delete -f {obj_yaml}",
+                       shell=True, check=True, timeout=10, capture_output=True)
         time.sleep(1)  # give it some time to react
 
     # Ensure that the operator did not die on start, or during the operation.

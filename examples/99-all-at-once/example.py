@@ -18,12 +18,6 @@ E2E_SUCCESS_COUNTS = {'create_1': 1, 'create_2': 1, 'create_pod': 1, 'delete': 1
 E2E_FAILURE_COUNTS = {}
 E2E_TRACEBACKS = True
 
-try:
-    cfg = pykube.KubeConfig.from_service_account()
-except FileNotFoundError:
-    cfg = pykube.KubeConfig.from_file()
-api = pykube.HTTPClient(cfg)
-
 
 @kopf.on.startup()
 async def startup_fn_simple(logger, **kwargs):
@@ -112,8 +106,10 @@ def create_pod(**kwargs):
     kopf.label(pod_data, {'application': 'kopf-example-10'})
 
     # Actually create an object by requesting the Kubernetes API.
+    api = pykube.HTTPClient(pykube.KubeConfig.from_env())
     pod = pykube.Pod(api, pod_data)
     pod.create()
+    api.session.close()
 
 
 @kopf.on.event('', 'v1', 'pods', labels={'application': 'kopf-example-10'})

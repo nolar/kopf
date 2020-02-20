@@ -1,5 +1,7 @@
 import collections.abc
 
+import pytest
+
 from kopf import SimpleRegistry, GlobalRegistry
 
 
@@ -19,7 +21,8 @@ def test_simple_registry_via_iter(mocker):
     assert not isinstance(iterator, collections.abc.Container)
     assert not isinstance(iterator, (list, tuple))
 
-    handlers = list(iterator)
+    with pytest.deprecated_call(match=r"use ResourceChangingRegistry.iter_handlers\(\)"):
+        handlers = list(iterator)
     assert not handlers
 
 
@@ -27,7 +30,8 @@ def test_simple_registry_via_list(mocker):
     cause = mocker.Mock(event=None, diff=None)
 
     registry = SimpleRegistry()
-    handlers = registry.get_cause_handlers(cause)
+    with pytest.deprecated_call(match=r"use ResourceChangingRegistry.get_handlers\(\)"):
+        handlers = registry.get_cause_handlers(cause)
 
     assert isinstance(handlers, collections.abc.Iterable)
     assert isinstance(handlers, collections.abc.Container)
@@ -40,7 +44,8 @@ def test_simple_registry_with_minimal_signature(mocker):
 
     registry = SimpleRegistry()
     registry.register(some_fn)
-    handlers = registry.get_cause_handlers(cause)
+    with pytest.deprecated_call(match=r"use ResourceChangingRegistry.get_handlers\(\)"):
+        handlers = registry.get_cause_handlers(cause)
 
     assert len(handlers) == 1
     assert handlers[0].fn is some_fn
@@ -57,7 +62,8 @@ def test_global_registry_via_iter(mocker, resource):
     assert not isinstance(iterator, collections.abc.Container)
     assert not isinstance(iterator, (list, tuple))
 
-    handlers = list(iterator)
+    with pytest.deprecated_call(match=r"use OperatorRegistry.iter_resource_changing_handlers\(\)"):
+        handlers = list(iterator)
     assert not handlers
 
 
@@ -65,7 +71,8 @@ def test_global_registry_via_list(mocker, resource):
     cause = mocker.Mock(resource=resource, event=None, diff=None)
 
     registry = GlobalRegistry()
-    handlers = registry.get_cause_handlers(cause)
+    with pytest.deprecated_call(match=r"use OperatorRegistry.get_resource_changing_handlers\(\)"):
+        handlers = registry.get_cause_handlers(cause)
 
     assert isinstance(handlers, collections.abc.Iterable)
     assert isinstance(handlers, collections.abc.Container)
@@ -77,8 +84,10 @@ def test_global_registry_with_minimal_signature(mocker, resource):
     cause = mocker.Mock(resource=resource, event=None, diff=None)
 
     registry = GlobalRegistry()
-    registry.register_cause_handler(resource.group, resource.version, resource.plural, some_fn)
-    handlers = registry.get_cause_handlers(cause)
+    with pytest.deprecated_call(match=r"use OperatorRegistry.register_resource_changing_handler\(\)"):
+        registry.register_cause_handler(resource.group, resource.version, resource.plural, some_fn)
+    with pytest.deprecated_call(match=r"use OperatorRegistry.get_resource_changing_handlers\(\)"):
+        handlers = registry.get_cause_handlers(cause)
 
     assert len(handlers) == 1
     assert handlers[0].fn is some_fn

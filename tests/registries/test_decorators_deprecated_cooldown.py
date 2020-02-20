@@ -8,43 +8,52 @@ from kopf.structs.resources import Resource
 def test_on_startup_with_cooldown():
     registry = kopf.get_default_registry()
 
-    @kopf.on.startup(cooldown=78)
-    def fn(**_):
-        pass
+    with pytest.deprecated_call(match=r"use backoff="):
+        @kopf.on.startup(cooldown=78)
+        def fn(**_):
+            pass
 
     handlers = registry.get_activity_handlers(activity=Activity.STARTUP)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].backoff == 78
-    assert handlers[0].cooldown == 78  # deprecated alias
+
+    with pytest.deprecated_call(match=r"use handler.backoff"):
+        assert handlers[0].cooldown == 78
 
 
 def test_on_cleanup_with_cooldown():
     registry = kopf.get_default_registry()
 
-    @kopf.on.cleanup(cooldown=78)
-    def fn(**_):
-        pass
+    with pytest.deprecated_call(match=r"use backoff="):
+        @kopf.on.cleanup(cooldown=78)
+        def fn(**_):
+            pass
 
     handlers = registry.get_activity_handlers(activity=Activity.CLEANUP)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].backoff == 78
-    assert handlers[0].cooldown == 78  # deprecated alias
+
+    with pytest.deprecated_call(match=r"use handler.backoff"):
+        assert handlers[0].cooldown == 78
 
 
 def test_on_probe_with_cooldown():
     registry = kopf.get_default_registry()
 
-    @kopf.on.probe(cooldown=78)
-    def fn(**_):
-        pass
+    with pytest.deprecated_call(match=r"use backoff="):
+        @kopf.on.probe(cooldown=78)
+        def fn(**_):
+            pass
 
     handlers = registry.get_activity_handlers(activity=Activity.PROBE)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].backoff == 78
-    assert handlers[0].cooldown == 78  # deprecated alias
+
+    with pytest.deprecated_call(match=r"use handler.backoff"):
+        assert handlers[0].cooldown == 78
 
 
 # Resume handlers are mixed-in into all resource-changing reactions with initial listing.
@@ -55,15 +64,18 @@ def test_on_resume_with_cooldown(mocker, reason):
     cause = mocker.MagicMock(resource=resource, reason=reason, initial=True, deleted=False)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
-    @kopf.on.resume('group', 'version', 'plural', cooldown=78)
-    def fn(**_):
-        pass
+    with pytest.deprecated_call(match=r"use backoff="):
+        @kopf.on.resume('group', 'version', 'plural', cooldown=78)
+        def fn(**_):
+            pass
 
     handlers = registry.get_resource_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].backoff == 78
-    assert handlers[0].cooldown == 78  # deprecated alias
+
+    with pytest.deprecated_call(match=r"use handler.backoff"):
+        assert handlers[0].cooldown == 78
 
 
 def test_on_create_with_cooldown(mocker):
@@ -72,15 +84,18 @@ def test_on_create_with_cooldown(mocker):
     cause = mocker.MagicMock(resource=resource, reason=Reason.CREATE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
-    @kopf.on.create('group', 'version', 'plural', cooldown=78)
-    def fn(**_):
-        pass
+    with pytest.deprecated_call(match=r"use backoff="):
+        @kopf.on.create('group', 'version', 'plural', cooldown=78)
+        def fn(**_):
+            pass
 
     handlers = registry.get_resource_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].backoff == 78
-    assert handlers[0].cooldown == 78  # deprecated alias
+
+    with pytest.deprecated_call(match=r"use handler.backoff"):
+        assert handlers[0].cooldown == 78
 
 
 def test_on_update_with_cooldown(mocker):
@@ -89,15 +104,18 @@ def test_on_update_with_cooldown(mocker):
     cause = mocker.MagicMock(resource=resource, reason=Reason.UPDATE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
-    @kopf.on.update('group', 'version', 'plural', cooldown=78)
-    def fn(**_):
-        pass
+    with pytest.deprecated_call(match=r"use backoff="):
+        @kopf.on.update('group', 'version', 'plural', cooldown=78)
+        def fn(**_):
+            pass
 
     handlers = registry.get_resource_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].backoff == 78
-    assert handlers[0].cooldown == 78  # deprecated alias
+
+    with pytest.deprecated_call(match=r"use handler.backoff"):
+        assert handlers[0].cooldown == 78
 
 
 @pytest.mark.parametrize('optional', [
@@ -110,15 +128,18 @@ def test_on_delete_with_cooldown(mocker, optional):
     cause = mocker.MagicMock(resource=resource, reason=Reason.DELETE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
-    @kopf.on.delete('group', 'version', 'plural', cooldown=78)
-    def fn(**_):
-        pass
+    with pytest.deprecated_call(match=r"use backoff="):
+        @kopf.on.delete('group', 'version', 'plural', cooldown=78)
+        def fn(**_):
+            pass
 
     handlers = registry.get_resource_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].backoff == 78
-    assert handlers[0].cooldown == 78  # deprecated alias
+
+    with pytest.deprecated_call(match=r"use handler.backoff"):
+        assert handlers[0].cooldown == 78
 
 
 def test_on_field_with_cooldown(mocker):
@@ -128,12 +149,15 @@ def test_on_field_with_cooldown(mocker):
     cause = mocker.MagicMock(resource=resource, reason=Reason.UPDATE, diff=diff)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
-    @kopf.on.field('group', 'version', 'plural', 'field.subfield', cooldown=78)
-    def fn(**_):
-        pass
+    with pytest.deprecated_call(match=r"use backoff="):
+        @kopf.on.field('group', 'version', 'plural', 'field.subfield', cooldown=78)
+        def fn(**_):
+            pass
 
     handlers = registry.get_resource_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].backoff == 78
-    assert handlers[0].cooldown == 78  # deprecated alias
+
+    with pytest.deprecated_call(match=r"use handler.backoff"):
+        assert handlers[0].cooldown == 78

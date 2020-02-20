@@ -56,13 +56,15 @@ def test_all_examples_are_runnable(mocker, with_crd, exampledir, caplog):
                              patterns=e2e_startup_stop_words or ['Client is configured'])
 
         # Trigger the reaction. Give it some time to react and to sleep and to retry.
-        subprocess.run("kubectl apply -f examples/obj.yaml", shell=True, check=True)
+        subprocess.run("kubectl apply -f examples/obj.yaml",
+                       shell=True, check=True, timeout=10, capture_output=True)
         _sleep_till_stopword(caplog=caplog,
                              delay=e2e_creation_time_limit,
                              patterns=e2e_creation_stop_words)
 
         # Trigger the reaction. Give it some time to react.
-        subprocess.run("kubectl delete -f examples/obj.yaml", shell=True, check=True)
+        subprocess.run("kubectl delete -f examples/obj.yaml",
+                       shell=True, check=True, timeout=10, capture_output=True)
         _sleep_till_stopword(caplog=caplog,
                              delay=e2e_deletion_time_limit,
                              patterns=e2e_deletion_stop_words)

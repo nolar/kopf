@@ -26,6 +26,9 @@ def pytest_configure(config):
     config.addinivalue_line('markers', "e2e: end-to-end tests with real operators.")
     config.addinivalue_line('markers', "resource_clustered: (internal parameterizatiom mark).")
 
+    # Unexpected warnings should fail the tests. Use `-Wignore` to explicitly disable it.
+    config.addinivalue_line('filterwarnings', 'error')
+
 
 def pytest_addoption(parser):
     parser.addoption("--only-e2e", action="store_true", help="Execute end-to-end tests only.")
@@ -482,14 +485,21 @@ def logstream(caplog):
     logger = logging.getLogger()
     handlers = list(logger.handlers)
 
+    # Setup all log levels of sub-libraries. A sife-effect: the handlers are also added.
     configure(verbose=True)
 
+    # Remove any stream handlers added in the step above. But keep the caplog's handlers.
+    for handler in list(logger.handlers):
+        if isinstance(handler, logging.StreamHandler) and handler.stream is sys.stderr:
+            logger.removeHandler(handler)
+
+    # Inject our stream-intercepting handler.
     stream = io.StringIO()
     handler = logging.StreamHandler(stream)
     formatter = ObjectPrefixingFormatter('prefix %(message)s')
     handler.setFormatter(formatter)
-
     logger.addHandler(handler)
+
     try:
         with caplog.at_level(logging.DEBUG):
             yield stream

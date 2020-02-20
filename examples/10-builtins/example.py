@@ -5,12 +5,6 @@ import pykube
 
 tasks = {}  # dict{namespace: dict{name: asyncio.Task}}
 
-try:
-    cfg = pykube.KubeConfig.from_service_account()
-except FileNotFoundError:
-    cfg = pykube.KubeConfig.from_file()
-api = pykube.HTTPClient(cfg)
-
 
 @kopf.on.resume('', 'v1', 'pods')
 @kopf.on.create('', 'v1', 'pods')
@@ -36,8 +30,10 @@ async def pod_killer(namespace, name, logger, timeout=30):
         await asyncio.sleep(timeout)
         logger.info(f"=== Pod killing happens NOW!")
 
+        api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         pod = pykube.Pod.objects(api, namespace=namespace).get_by_name(name)
         pod.delete()
+        api.session.close()
 
     except asyncio.CancelledError:
         logger.info(f"=== Pod killing is cancelled!")

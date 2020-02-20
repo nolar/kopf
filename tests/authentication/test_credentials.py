@@ -141,9 +141,10 @@ async def test_basic_auth(vault):
     })
     session = await fn()
 
-    assert session._default_auth.login == 'username'
-    assert session._default_auth.password == 'password'
-    assert 'Authorization' not in session._default_headers
+    async with session:
+        assert session._default_auth.login == 'username'
+        assert session._default_auth.password == 'password'
+        assert 'Authorization' not in session._default_headers
 
 
 async def test_header_with_token_only(vault):
@@ -155,8 +156,9 @@ async def test_header_with_token_only(vault):
     })
     session = await fn()
 
-    assert session._default_auth is None
-    assert session._default_headers['Authorization'] == 'Bearer token'
+    async with session:
+        assert session._default_auth is None
+        assert session._default_headers['Authorization'] == 'Bearer token'
 
 
 async def test_header_with_schema_only(vault):
@@ -168,8 +170,9 @@ async def test_header_with_schema_only(vault):
     })
     session = await fn()
 
-    assert session._default_auth is None
-    assert session._default_headers['Authorization'] == 'Digest xyz'
+    async with session:
+        assert session._default_auth is None
+        assert session._default_headers['Authorization'] == 'Digest xyz'
 
 
 async def test_header_with_schema_and_token(vault):
@@ -182,8 +185,9 @@ async def test_header_with_schema_and_token(vault):
     })
     session = await fn()
 
-    assert session._default_auth is None
-    assert session._default_headers['Authorization'] == 'Digest xyz'
+    async with session:
+        assert session._default_auth is None
+        assert session._default_headers['Authorization'] == 'Digest xyz'
 
 
 async def test_ca_insecure(vault, cafile):
@@ -195,8 +199,9 @@ async def test_ca_insecure(vault, cafile):
     })
     session = await fn()
 
-    ctx = session.connector._ssl
-    assert ctx.verify_mode == ssl.CERT_NONE
+    async with session:
+        ctx = session.connector._ssl
+        assert ctx.verify_mode == ssl.CERT_NONE
 
 
 async def test_ca_as_path(vault, cafile):
@@ -208,10 +213,11 @@ async def test_ca_as_path(vault, cafile):
     })
     session = await fn()
 
-    ctx = session.connector._ssl
-    assert len(ctx.get_ca_certs()) == 1
-    assert ctx.cert_store_stats()['x509'] == 1
-    assert ctx.cert_store_stats()['x509_ca'] == 1
+    async with session:
+        ctx = session.connector._ssl
+        assert len(ctx.get_ca_certs()) == 1
+        assert ctx.cert_store_stats()['x509'] == 1
+        assert ctx.cert_store_stats()['x509_ca'] == 1
 
 
 async def test_ca_as_data(vault, cabase64):
@@ -223,10 +229,11 @@ async def test_ca_as_data(vault, cabase64):
     })
     session = await fn()
 
-    ctx = session.connector._ssl
-    assert len(ctx.get_ca_certs()) == 1
-    assert ctx.cert_store_stats()['x509'] == 1
-    assert ctx.cert_store_stats()['x509_ca'] == 1
+    async with session:
+        ctx = session.connector._ssl
+        assert len(ctx.get_ca_certs()) == 1
+        assert ctx.cert_store_stats()['x509'] == 1
+        assert ctx.cert_store_stats()['x509_ca'] == 1
 
 
 # TODO: find a way to test that the client certificates/pkeys are indeed loaded.
@@ -240,7 +247,10 @@ async def test_clientcert_as_path(vault, cafile, certfile, pkeyfile):
             private_key_path=pkeyfile,
         ),
     })
-    await fn()
+    session = await fn()
+
+    async with session:
+        pass
 
 
 async def test_clientcert_as_data(vault, cafile, certbase64, pkeybase64):
@@ -252,4 +262,7 @@ async def test_clientcert_as_data(vault, cafile, certbase64, pkeybase64):
             private_key_data=pkeybase64,
         ),
     })
-    await fn()
+    session = await fn()
+
+    async with session:
+        pass

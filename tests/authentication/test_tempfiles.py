@@ -8,7 +8,8 @@ def test_created():
     tempfiles = _TempFiles()
     path = tempfiles[b'hello']
     assert os.path.isfile(path)
-    assert open(path, 'rb').read() == b'hello'
+    with open(path, 'rb') as f:
+        assert f.read() == b'hello'
 
 
 def test_reused():

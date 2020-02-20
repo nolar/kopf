@@ -48,9 +48,12 @@ def configure(
         del logger.handlers[1:]  # everything except the default NullHandler
 
     # Prevent the low-level logging unless in the debug verbosity mode. Keep only the operator's messages.
-    logging.getLogger('urllib3').propagate = bool(debug)
-    logging.getLogger('asyncio').propagate = bool(debug)
-    logging.getLogger('kubernetes').propagate = bool(debug)
+    # For no-propagation loggers, add a dummy null handler to prevent printing the messages.
+    for name in ['urllib3', 'asyncio', 'kubernetes']:
+        logger = logging.getLogger(name)
+        logger.propagate = bool(debug)
+        if not debug:
+            logger.handlers[:] = [logging.NullHandler()]
 
     loop = asyncio.get_event_loop()
     loop.set_debug(bool(debug))

@@ -1,5 +1,5 @@
 import kopf
-import kubernetes.client
+import pykube
 import yaml
 
 
@@ -28,8 +28,10 @@ def create_fn(spec, **kwargs):
     kopf.adopt(doc)
 
     # Actually create an object by requesting the Kubernetes API.
-    api = kubernetes.client.CoreV1Api()
-    pod = api.create_namespaced_pod(namespace=doc['metadata']['namespace'], body=doc)
+    api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+    pod = pykube.Pod(api, doc)
+    pod.create()
+    api.session.close()
 
     # Update the parent's status.
-    return {'children': [pod.metadata.uid]}
+    return {'children': [pod.metadata['uid']]}
