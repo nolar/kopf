@@ -1,10 +1,12 @@
-import functools
 from unittest.mock import Mock
 
 import pytest
 
-from kopf import ResourceRegistry, OperatorRegistry
-from kopf.reactor.causation import ResourceChangingCause
+import kopf
+from kopf import OperatorRegistry
+from kopf.reactor.causation import ResourceChangingCause, Reason, ALL_REASONS
+from kopf.reactor.handlers import ResourceHandler
+from kopf.structs.dicts import parse_field
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.
@@ -12,21 +14,54 @@ def some_fn(x=None):
     pass
 
 
-@pytest.fixture(params=[
-    # pytest.param(ResourceRegistry, id='in-simple-registry'),
-    pytest.param(OperatorRegistry, id='in-global-registry'),
+def _never(**_):
+    return False
+
+
+def _always(**_):
+    return True
+
+
+matching_reason_and_decorator = pytest.mark.parametrize('reason, decorator', [
+    (Reason.CREATE, kopf.on.create),
+    (Reason.UPDATE, kopf.on.update),
+    (Reason.DELETE, kopf.on.delete),
 ])
-def registry(request):
-    return request.param()
+
+matching_reason_and_decorator_with_field = pytest.mark.parametrize('reason, decorator', [
+    (Reason.CREATE, kopf.on.field),
+    (Reason.UPDATE, kopf.on.field),
+    (Reason.DELETE, kopf.on.field),
+])
+
+mismatching_reason_and_decorator = pytest.mark.parametrize('reason, decorator', [
+    (Reason.CREATE, kopf.on.update),
+    (Reason.CREATE, kopf.on.delete),
+    (Reason.UPDATE, kopf.on.create),
+    (Reason.UPDATE, kopf.on.delete),
+    (Reason.DELETE, kopf.on.create),
+    (Reason.DELETE, kopf.on.update),
+])
 
 
 @pytest.fixture()
-def register_fn(registry, resource):
-    # if isinstance(registry, ResourceRegistry):
-    #     return registry.register
-    if isinstance(registry, OperatorRegistry):
-        return functools.partial(registry.register_resource_changing_handler, resource.group, resource.version, resource.plural)
-    raise Exception(f"Unsupported registry type: {registry}")
+def registry():
+    return OperatorRegistry()
+
+
+@pytest.fixture()
+def handler_factory(registry, resource):
+    def factory(**kwargs):
+        handler = ResourceHandler(**dict(dict(
+            fn=some_fn, id='a',
+            errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+            initial=None, deleted=None, requires_finalizer=None,
+            annotations=None, labels=None, when=None, field=None,
+            reason=None,
+        ), **kwargs))
+        registry.resource_changing_handlers[resource].append(handler)
+        return handler
+    return factory
 
 
 @pytest.fixture(params=[
@@ -61,21 +96,27 @@ def cause_any_diff(resource, request):
 # "Catch-all" handlers are those with event == None.
 #
 
-def test_catchall_handlers_without_field_found(cause_any_diff, registry, register_fn):
-    register_fn(some_fn, reason=None, field=None)
-    handlers = registry.get_resource_changing_handlers(cause_any_diff)
+def test_catchall_handlers_without_field_found(
+        cause_any_diff, registry, handler_factory):
+    cause = cause_any_diff
+    handler_factory(reason=None, field=None)
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert handlers
 
 
-def test_catchall_handlers_with_field_found(cause_with_diff, registry, register_fn):
-    register_fn(some_fn, reason=None, field='some-field')
-    handlers = registry.get_resource_changing_handlers(cause_with_diff)
+def test_catchall_handlers_with_field_found(
+        cause_with_diff, registry, handler_factory):
+    cause = cause_with_diff
+    handler_factory(reason=None, field=parse_field('some-field'))
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert handlers
 
 
-def test_catchall_handlers_with_field_ignored(cause_no_diff, registry, register_fn):
-    register_fn(some_fn, reason=None, field='some-field')
-    handlers = registry.get_resource_changing_handlers(cause_no_diff)
+def test_catchall_handlers_with_field_ignored(
+        cause_no_diff, registry, handler_factory):
+    cause = cause_no_diff
+    handler_factory(reason=None, field=parse_field('some-field'))
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert not handlers
 
 
@@ -83,10 +124,11 @@ def test_catchall_handlers_with_field_ignored(cause_no_diff, registry, register_
     pytest.param({'somelabel': 'somevalue'}, id='with-label'),
     pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, id='with-extra-label'),
 ])
-def test_catchall_handlers_with_labels_satisfied(registry, register_fn, resource, labels):
+def test_catchall_handlers_with_labels_satisfied(
+        registry, handler_factory, resource, labels):
     cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'labels': labels}})
-    register_fn(some_fn, reason=None, field=None, labels={'somelabel': 'somevalue'})
-    handlers = registry.get_resource_changing_handlers(cause)
+    handler_factory(reason=None, labels={'somelabel': 'somevalue'})
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert handlers
 
 
@@ -95,10 +137,11 @@ def test_catchall_handlers_with_labels_satisfied(registry, register_fn, resource
     pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
     pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
 ])
-def test_catchall_handlers_with_labels_not_satisfied(registry, register_fn, resource, labels):
+def test_catchall_handlers_with_labels_not_satisfied(
+        registry, handler_factory, resource, labels):
     cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'labels': labels}})
-    register_fn(some_fn, reason=None, field=None, labels={'somelabel': 'somevalue'})
-    handlers = registry.get_resource_changing_handlers(cause)
+    handler_factory(reason=None, labels={'somelabel': 'somevalue'})
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert not handlers
 
 
@@ -106,10 +149,11 @@ def test_catchall_handlers_with_labels_not_satisfied(registry, register_fn, reso
     pytest.param({'somelabel': 'somevalue'}, id='with-label'),
     pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
 ])
-def test_catchall_handlers_with_labels_exist(registry, register_fn, resource, labels):
+def test_catchall_handlers_with_labels_exist(
+        registry, handler_factory, resource, labels):
     cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'labels': labels}})
-    register_fn(some_fn, reason=None, field=None, labels={'somelabel': None})
-    handlers = registry.get_resource_changing_handlers(cause)
+    handler_factory(reason=None, labels={'somelabel': None})
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert handlers
 
 
@@ -117,10 +161,11 @@ def test_catchall_handlers_with_labels_exist(registry, register_fn, resource, la
     pytest.param({}, id='without-label'),
     pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
 ])
-def test_catchall_handlers_with_labels_not_exist(registry, register_fn, resource, labels):
+def test_catchall_handlers_with_labels_not_exist(
+        registry, handler_factory, resource, labels):
     cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'labels': labels}})
-    register_fn(some_fn, reason=None, field=None, labels={'somelabel': None})
-    handlers = registry.get_resource_changing_handlers(cause)
+    handler_factory(reason=None, labels={'somelabel': None})
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert not handlers
 
 
@@ -131,10 +176,11 @@ def test_catchall_handlers_with_labels_not_exist(registry, register_fn, resource
     pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
     pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, id='with-extra-label'),
 ])
-def test_catchall_handlers_without_labels(registry, register_fn, resource, labels):
+def test_catchall_handlers_without_labels(
+        registry, handler_factory, resource, labels):
     cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'labels': labels}})
-    register_fn(some_fn, reason=None, field=None, labels=None)
-    handlers = registry.get_resource_changing_handlers(cause)
+    handler_factory(reason=None, labels=None)
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert handlers
 
 
@@ -142,10 +188,11 @@ def test_catchall_handlers_without_labels(registry, register_fn, resource, label
     pytest.param({'someannotation': 'somevalue'}, id='with-annotation'),
     pytest.param({'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-extra-annotation'),
 ])
-def test_catchall_handlers_with_annotations_satisfied(registry, register_fn, resource, annotations):
+def test_catchall_handlers_with_annotations_satisfied(
+        registry, handler_factory, resource, annotations):
     cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'annotations': annotations}})
-    register_fn(some_fn, reason=None, field=None, annotations={'someannotation': 'somevalue'})
-    handlers = registry.get_resource_changing_handlers(cause)
+    handler_factory(reason=None, annotations={'someannotation': 'somevalue'})
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert handlers
 
 
@@ -154,10 +201,11 @@ def test_catchall_handlers_with_annotations_satisfied(registry, register_fn, res
     pytest.param({'someannotation': 'othervalue'}, id='with-other-value'),
     pytest.param({'otherannotation': 'othervalue'}, id='with-other-annotation'),
 ])
-def test_catchall_handlers_with_annotations_not_satisfied(registry, register_fn, resource, annotations):
+def test_catchall_handlers_with_annotations_not_satisfied(
+        registry, handler_factory, resource, annotations):
     cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'annotations': annotations}})
-    register_fn(some_fn, reason=None, field=None, annotations={'someannotation': 'somevalue'})
-    handlers = registry.get_resource_changing_handlers(cause)
+    handler_factory(reason=None, annotations={'someannotation': 'somevalue'})
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert not handlers
 
 
@@ -165,10 +213,11 @@ def test_catchall_handlers_with_annotations_not_satisfied(registry, register_fn,
     pytest.param({'someannotation': 'somevalue'}, id='with-annotation'),
     pytest.param({'someannotation': 'othervalue'}, id='with-other-value'),
 ])
-def test_catchall_handlers_with_annotations_exist(registry, register_fn, resource, annotations):
+def test_catchall_handlers_with_annotations_exist(
+        registry, handler_factory, resource, annotations):
     cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'annotations': annotations}})
-    register_fn(some_fn, reason=None, field=None, annotations={'someannotation': None})
-    handlers = registry.get_resource_changing_handlers(cause)
+    handler_factory(reason=None, annotations={'someannotation': None})
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert handlers
 
 
@@ -176,10 +225,11 @@ def test_catchall_handlers_with_annotations_exist(registry, register_fn, resourc
     pytest.param({}, id='without-annotation'),
     pytest.param({'otherannotation': 'othervalue'}, id='with-other-annotation'),
 ])
-def test_catchall_handlers_with_annotations_not_exist(registry, register_fn, resource, annotations):
+def test_catchall_handlers_with_annotations_not_exist(
+        registry, handler_factory, resource, annotations):
     cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'annotations': annotations}})
-    register_fn(some_fn, reason=None, field=None, annotations={'someannotation': None})
-    handlers = registry.get_resource_changing_handlers(cause)
+    handler_factory(reason=None, annotations={'someannotation': None})
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert not handlers
 
 
@@ -190,10 +240,11 @@ def test_catchall_handlers_with_annotations_not_exist(registry, register_fn, res
     pytest.param({'otherannotation': 'othervalue'}, id='with-other-annotation'),
     pytest.param({'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-extra-annotation'),
 ])
-def test_catchall_handlers_without_annotations(registry, register_fn, resource, annotations):
+def test_catchall_handlers_without_annotations(
+        registry, handler_factory, resource, annotations):
     cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'annotations': annotations}})
-    register_fn(some_fn, reason=None, field=None, annotations=None)
-    handlers = registry.get_resource_changing_handlers(cause)
+    handler_factory(reason=None)
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert handlers
 
 
@@ -203,10 +254,11 @@ def test_catchall_handlers_without_annotations(registry, register_fn, resource, 
     pytest.param({'somelabel': 'somevalue'}, {'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-label-extra-annotation'),
     pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, {'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-extra-label-extra-annotation'),
 ])
-def test_catchall_handlers_with_labels_and_annotations_satisfied(registry, register_fn, resource, labels, annotations):
+def test_catchall_handlers_with_labels_and_annotations_satisfied(
+        registry, handler_factory, resource, labels, annotations):
     cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'labels': labels, 'annotations': annotations}})
-    register_fn(some_fn, reason=None, field=None, labels={'somelabel': 'somevalue'}, annotations={'someannotation': 'somevalue'})
-    handlers = registry.get_resource_changing_handlers(cause)
+    handler_factory(reason=None, labels={'somelabel': 'somevalue'}, annotations={'someannotation': 'somevalue'})
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert handlers
 
 
@@ -217,19 +269,22 @@ def test_catchall_handlers_with_labels_and_annotations_satisfied(registry, regis
     pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
     pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, id='with-extra-label'),
 ])
-def test_catchall_handlers_with_labels_and_annotations_not_satisfied(registry, register_fn, resource, labels):
+def test_catchall_handlers_with_labels_and_annotations_not_satisfied(
+        registry, handler_factory, resource, labels):
     cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'labels': labels}})
-    register_fn(some_fn, reason=None, field=None, labels={'somelabel': 'somevalue'}, annotations={'someannotation': 'somevalue'})
-    handlers = registry.get_resource_changing_handlers(cause)
+    handler_factory(reason=None, labels={'somelabel': 'somevalue'}, annotations={'someannotation': 'somevalue'})
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert not handlers
 
 
+@pytest.mark.parametrize('reason', ALL_REASONS)
 @pytest.mark.parametrize('when', [
     pytest.param(None, id='without-when'),
     pytest.param(lambda body=None, **_: body['spec']['name'] == 'test', id='with-when'),
     pytest.param(lambda **_: True, id='with-other-when'),
 ])
-def test_catchall_handlers_with_when_match(registry, register_fn, resource, when):
+def test_catchall_handlers_with_when_match(
+        registry, handler_factory, resource, reason, when):
     cause = ResourceChangingCause(
         resource=resource,
         reason='some-reason',
@@ -240,8 +295,8 @@ def test_catchall_handlers_with_when_match(registry, register_fn, resource, when
         memo=None,
         initial=None
     )
-    register_fn(some_fn, reason=None, field=None, when=when)
-    handlers = registry.get_resource_changing_handlers(cause)
+    handler_factory(reason=None, when=when)
+    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
     assert handlers
 
 
@@ -249,7 +304,8 @@ def test_catchall_handlers_with_when_match(registry, register_fn, resource, when
     pytest.param(lambda body=None, **_: body['spec']['name'] != "test", id='with-when'),
     pytest.param(lambda **_: False, id='with-other-when'),
 ])
-def test_catchall_handlers_with_when_not_match(registry, register_fn, resource, when):
+def test_catchall_handlers_with_when_not_match(
+        registry, handler_factory, resource, when):
     cause = ResourceChangingCause(
         resource=resource,
         reason='some-reason',
@@ -260,116 +316,253 @@ def test_catchall_handlers_with_when_not_match(registry, register_fn, resource, 
         memo=None,
         initial=None
     )
-    register_fn(some_fn, reason=None, field=None, when=when)
-    handlers = registry.get_resource_changing_handlers(cause)
+    handler_factory(reason=None, when=when)
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert not handlers
 
 
 #
-# Relevant handlers are those with event == 'some-reason' (but not 'another-reason').
+# Relevant handlers are those with reason matching the cause's reason.
 # In the per-field handlers, also with field == 'some-field' (not 'another-field').
 # In the label filtered handlers, the relevant handlers are those that ask for 'somelabel'.
 # In the annotation filtered handlers, the relevant handlers are those that ask for 'someannotation'.
 #
 
-def test_relevant_handlers_without_field_found(cause_any_diff, registry, register_fn):
-    register_fn(some_fn, reason='some-reason')
-    handlers = registry.get_resource_changing_handlers(cause_any_diff)
+
+@matching_reason_and_decorator_with_field
+def test_relevant_handlers_without_field_found(
+        cause_any_diff, registry, resource, reason, decorator):
+
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+               field=None)
+    def some_fn(**_): ...
+
+    cause = cause_any_diff
+    cause.reason = reason
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert handlers
 
 
-def test_relevant_handlers_with_field_found(cause_with_diff, registry, register_fn):
-    register_fn(some_fn, reason='some-reason', field='some-field')
-    handlers = registry.get_resource_changing_handlers(cause_with_diff)
+@matching_reason_and_decorator_with_field
+def test_relevant_handlers_with_field_found(
+        cause_with_diff, registry, resource, reason, decorator):
+
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+               field='some-field')
+    def some_fn(**_): ...
+
+    cause = cause_with_diff
+    cause.reason = reason
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert handlers
 
 
-def test_relevant_handlers_with_field_ignored(cause_no_diff, registry, register_fn):
-    register_fn(some_fn, reason='some-reason', field='some-field')
-    handlers = registry.get_resource_changing_handlers(cause_no_diff)
+@matching_reason_and_decorator_with_field
+def test_relevant_handlers_with_field_ignored(
+        cause_no_diff, registry, resource, reason, decorator):
+
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+               field='some-field')
+    def some_fn(**_): ...
+
+    cause = cause_no_diff
+    cause.reason = reason
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert not handlers
 
 
-def test_relevant_handlers_with_labels_satisfied(cause_any_diff, registry, register_fn):
-    register_fn(some_fn, reason='some-reason', labels={'somelabel': None})
-    handlers = registry.get_resource_changing_handlers(cause_any_diff)
+@matching_reason_and_decorator
+def test_relevant_handlers_with_labels_satisfied(
+        cause_any_diff, registry, resource, reason, decorator):
+
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+               labels={'somelabel': None})
+    def some_fn(**_): ...
+
+    cause = cause_any_diff
+    cause.reason = reason
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert handlers
 
 
-def test_relevant_handlers_with_labels_not_satisfied(cause_any_diff, registry, register_fn):
-    register_fn(some_fn, reason='some-reason', labels={'otherlabel': None})
-    handlers = registry.get_resource_changing_handlers(cause_any_diff)
+@matching_reason_and_decorator
+def test_relevant_handlers_with_labels_not_satisfied(
+        cause_any_diff, registry, resource, reason, decorator):
+
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+               labels={'otherlabel': None})
+    def some_fn(**_): ...
+
+    cause = cause_any_diff
+    cause.reason = reason
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert not handlers
 
 
-def test_relevant_handlers_with_annotations_satisfied(cause_any_diff, registry, register_fn):
-    register_fn(some_fn, reason='some-reason', annotations={'someannotation': None})
-    handlers = registry.get_resource_changing_handlers(cause_any_diff)
+@matching_reason_and_decorator
+def test_relevant_handlers_with_annotations_satisfied(
+        cause_any_diff, registry, resource, reason, decorator):
+
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+               annotations={'someannotation': None})
+    def some_fn(**_): ...
+
+    cause = cause_any_diff
+    cause.reason = reason
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert handlers
 
 
-def test_relevant_handlers_with_annotations_not_satisfied(cause_any_diff, registry, register_fn):
-    register_fn(some_fn, reason='some-reason', annotations={'otherannotation': None})
-    handlers = registry.get_resource_changing_handlers(cause_any_diff)
+@matching_reason_and_decorator
+def test_relevant_handlers_with_annotations_not_satisfied(
+        cause_any_diff, registry, resource, reason, decorator):
+
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+               annotations={'otherannotation': None})
+    def some_fn(**_): ...
+
+    cause = cause_any_diff
+    cause.reason = reason
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert not handlers
 
 
-def test_relevant_handlers_with_filter_satisfied(cause_any_diff, registry, register_fn):
-    register_fn(some_fn, reason='some-reason', when=lambda *_: True)
-    handlers = registry.get_resource_changing_handlers(cause_any_diff)
+@matching_reason_and_decorator
+def test_relevant_handlers_with_filter_satisfied(
+        cause_any_diff, registry, resource, reason, decorator):
+
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+               when=_always)
+    def some_fn(**_): ...
+
+    cause = cause_any_diff
+    cause.reason = reason
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert handlers
 
 
-def test_relevant_handlers_with_filter_not_satisfied(cause_any_diff, registry, register_fn):
-    register_fn(some_fn, reason='some-reason', when=lambda *_: False)
-    handlers = registry.get_resource_changing_handlers(cause_any_diff)
+@matching_reason_and_decorator
+def test_relevant_handlers_with_filter_not_satisfied(
+        cause_any_diff, registry, resource, reason, decorator):
+
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+               when=_never)
+    def some_fn(**_): ...
+
+    cause = cause_any_diff
+    cause.reason = reason
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert not handlers
 
 
-def test_irrelevant_handlers_without_field_ignored(cause_any_diff, registry, register_fn):
-    register_fn(some_fn, reason='another-reason')
-    handlers = registry.get_resource_changing_handlers(cause_any_diff)
+@mismatching_reason_and_decorator
+def test_irrelevant_handlers_without_field_ignored(
+        cause_any_diff, registry, resource, reason, decorator):
+
+    @decorator(resource.group, resource.version, resource.plural, registry=registry)
+    def some_fn(**_): ...
+
+    cause = cause_any_diff
+    cause.reason = reason
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert not handlers
 
 
-def test_irrelevant_handlers_with_field_ignored(cause_any_diff, registry, register_fn):
-    register_fn(some_fn, reason='another-reason', field='another-field')
-    handlers = registry.get_resource_changing_handlers(cause_any_diff)
-    assert not handlers
+@matching_reason_and_decorator_with_field
+def test_irrelevant_handlers_with_field_ignored(
+        cause_any_diff, registry, resource, reason, decorator):
 
-def test_irrelevant_handlers_with_labels_satisfied(cause_any_diff, registry, register_fn):
-    register_fn(some_fn, reason='another-reason', labels={'somelabel': None})
-    handlers = registry.get_resource_changing_handlers(cause_any_diff)
-    assert not handlers
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+               field='another-field')
+    def some_fn(**_): ...
 
-
-def test_irrelevant_handlers_with_labels_not_satisfied(cause_any_diff, registry, register_fn):
-    register_fn(some_fn, reason='another-reason', labels={'otherlabel': None})
-    handlers = registry.get_resource_changing_handlers(cause_any_diff)
+    cause = cause_any_diff
+    cause.reason = reason
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert not handlers
 
 
-def test_irrelevant_handlers_with_annotations_satisfied(cause_any_diff, registry, register_fn):
-    register_fn(some_fn, reason='another-reason', annotations={'someannotation': None})
-    handlers = registry.get_resource_changing_handlers(cause_any_diff)
+@mismatching_reason_and_decorator
+def test_irrelevant_handlers_with_labels_satisfied(
+        cause_any_diff, registry, resource, reason, decorator):
+
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+               labels={'somelabel': None})
+    def some_fn(**_): ...
+
+    cause = cause_any_diff
+    cause.reason = reason
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert not handlers
 
 
-def test_irrelevant_handlers_with_annotations_not_satisfied(cause_any_diff, registry, register_fn):
-    register_fn(some_fn, reason='another-reason', annotations={'otherannotation': None})
-    handlers = registry.get_resource_changing_handlers(cause_any_diff)
+@mismatching_reason_and_decorator
+def test_irrelevant_handlers_with_labels_not_satisfied(
+        cause_any_diff, registry, resource, reason, decorator):
+
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+               labels={'otherlabel': None})
+    def some_fn(**_): ...
+
+    cause = cause_any_diff
+    cause.reason = reason
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert not handlers
 
 
-def test_irrelevant_handlers_with_when_satisfied(cause_any_diff, registry, register_fn):
-    register_fn(some_fn, reason='another-reason', when=lambda *_: True)
-    handlers = registry.get_resource_changing_handlers(cause_any_diff)
+@mismatching_reason_and_decorator
+def test_irrelevant_handlers_with_annotations_satisfied(
+        cause_any_diff, registry, resource, reason, decorator):
+
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+               annotations={'someannotation': None})
+    def some_fn(**_): ...
+
+    cause = cause_any_diff
+    cause.reason = reason
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert not handlers
 
 
-def test_irrelevant_handlers_with_when_not_satisfied(cause_any_diff, registry, register_fn):
-    register_fn(some_fn, reason='another-reason', when=lambda *_: False)
-    handlers = registry.get_resource_changing_handlers(cause_any_diff)
+@mismatching_reason_and_decorator
+def test_irrelevant_handlers_with_annotations_not_satisfied(
+        cause_any_diff, registry, resource, reason, decorator):
+
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+               annotations={'otherannotation': None})
+    def some_fn(**_): ...
+
+    cause = cause_any_diff
+    cause.reason = reason
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
+    assert not handlers
+
+
+@mismatching_reason_and_decorator
+def test_irrelevant_handlers_with_when_satisfied(
+        cause_any_diff, registry, resource, reason, decorator):
+
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+               when=_always)
+    def some_fn(**_): ...
+
+    cause = cause_any_diff
+    cause.reason = reason
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
+    assert not handlers
+
+
+@mismatching_reason_and_decorator
+def test_irrelevant_handlers_with_when_not_satisfied(
+        cause_any_diff, registry, resource, reason, decorator):
+
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+               when=_never)
+    def some_fn(**_): ...
+
+    cause = cause_any_diff
+    cause.reason = reason
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert not handlers
 
 #
@@ -377,53 +570,81 @@ def test_irrelevant_handlers_with_when_not_satisfied(cause_any_diff, registry, r
 # even if they are mixed with-/without- * -event/-field handlers.
 #
 
-def test_order_persisted_a(cause_with_diff, registry, register_fn):
-    register_fn(functools.partial(some_fn, 1), reason=None)
-    register_fn(functools.partial(some_fn, 2), reason='some-reason')
-    register_fn(functools.partial(some_fn, 3), reason='filtered-out-reason')
-    register_fn(functools.partial(some_fn, 4), reason=None, field='filtered-out-reason')
-    register_fn(functools.partial(some_fn, 5), reason=None, field='some-field')
+def test_order_persisted_a(cause_with_diff, registry, resource):
 
-    handlers = registry.get_resource_changing_handlers(cause_with_diff)
+    @kopf.on.create(resource.group, resource.version, resource.plural, registry=registry)
+    def some_fn_1(**_): ...  # used
 
-    # Order must be preserved -- same as registered.
-    assert len(handlers) == 3
-    assert handlers[0].reason is None
-    assert handlers[0].field is None
-    assert handlers[1].reason == 'some-reason'
-    assert handlers[1].field is None
-    assert handlers[2].reason is None
-    assert handlers[2].field == ('some-field',)
+    @kopf.on.update(resource.group, resource.version, resource.plural, registry=registry)
+    def some_fn_2(**_): ...  # filtered out
 
+    @kopf.on.create(resource.group, resource.version, resource.plural, registry=registry)
+    def some_fn_3(**_): ...  # used
 
-def test_order_persisted_b(cause_with_diff, registry, register_fn):
-    register_fn(functools.partial(some_fn, 1), reason=None, field='some-field')
-    register_fn(functools.partial(some_fn, 2), reason=None, field='filtered-out-field')
-    register_fn(functools.partial(some_fn, 3), reason='filtered-out-reason')
-    register_fn(functools.partial(some_fn, 4), reason='some-reason')
-    register_fn(functools.partial(some_fn, 5), reason=None)
+    @kopf.on.field(resource.group, resource.version, resource.plural, registry=registry, field='filtered-out-field')
+    def some_fn_4(**_): ...  # filtered out
 
-    handlers = registry.get_resource_changing_handlers(cause_with_diff)
+    @kopf.on.field(resource.group, resource.version, resource.plural, registry=registry, field='some-field')
+    def some_fn_5(**_): ...  # used
+
+    cause = cause_with_diff
+    cause.reason = Reason.CREATE
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
 
     # Order must be preserved -- same as registered.
     assert len(handlers) == 3
-    assert handlers[0].reason is None
-    assert handlers[0].field == ('some-field',)
-    assert handlers[1].reason == 'some-reason'
-    assert handlers[1].field is None
-    assert handlers[2].reason is None
-    assert handlers[2].field is None
+    assert handlers[0].fn is some_fn_1
+    assert handlers[1].fn is some_fn_3
+    assert handlers[2].fn is some_fn_5
+
+
+def test_order_persisted_b(cause_with_diff, registry, resource):
+
+    # TODO: add registering by just `resource` or `resource.name`
+    # TODO: remake it to `registry.on.field(...)`, and make `kopf.on` decorators as aliases for a default registry.
+    # @registry.on.field(resource.group, resource.version, resource.plural, field='some-field')
+    @kopf.on.field(resource.group, resource.version, resource.plural, registry=registry, field='some-field')
+    def some_fn_1(**_): ...  # used
+
+    @kopf.on.field(resource.group, resource.version, resource.plural, registry=registry, field='filtered-out-field')
+    def some_fn_2(**_): ...  # filtered out
+
+    @kopf.on.create(resource.group, resource.version, resource.plural, registry=registry)
+    def some_fn_3(**_): ...  # used
+
+    @kopf.on.update(resource.group, resource.version, resource.plural, registry=registry)
+    def some_fn_4(**_): ...  # filtered out
+
+    @kopf.on.create(resource.group, resource.version, resource.plural, registry=registry)
+    def some_fn_5(**_): ...  # used
+
+    cause = cause_with_diff
+    cause.reason = Reason.CREATE
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
+
+    # Order must be preserved -- same as registered.
+    assert len(handlers) == 3
+    assert handlers[0].fn is some_fn_1
+    assert handlers[1].fn is some_fn_3
+    assert handlers[2].fn is some_fn_5
 
 #
 # Same function should not be returned twice for the same event/cause.
 # Only actual for the cases when the event/cause can match multiple handlers.
 #
 
-def test_deduplicated(cause_with_diff, registry, register_fn):
-    register_fn(some_fn, reason=None, id='a')
-    register_fn(some_fn, reason=None, id='b')
+@matching_reason_and_decorator
+def test_deduplicated(
+        cause_with_diff, registry, resource, reason, decorator):
 
-    handlers = registry.get_resource_changing_handlers(cause_with_diff)
+    # Note: the decorators are applied bottom-up -- hence, the order of ids:
+    @decorator(resource.group, resource.version, resource.plural, registry=registry, id='b')
+    @decorator(resource.group, resource.version, resource.plural, registry=registry, id='a')
+    def some_fn(**_): ...
+
+    cause = cause_with_diff
+    cause.reason = reason
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
 
     assert len(handlers) == 1
     assert handlers[0].id == 'a'  # the first found one is returned

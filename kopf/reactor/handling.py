@@ -104,22 +104,38 @@ async def execute(
         raise TypeError("Only one of the fns, handlers, registry can be passed. Got more.")
 
     elif fns is not None and isinstance(fns, collections.abc.Mapping):
-        subregistry = registries.ResourceChangingRegistry(prefix=parent_prefix)
+        subregistry = registries.ResourceChangingRegistry()
         for id, fn in fns.items():
-            subregistry.register(fn=fn, id=id)
+            real_id = registries.generate_id(fn=fn, id=id, prefix=parent_prefix)
+            handler = handlers_.ResourceHandler(
+                fn=fn, id=real_id,
+                errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+                labels=None, annotations=None, when=None,
+                initial=None, deleted=None, requires_finalizer=None,
+                reason=None, field=None,
+            )
+            subregistry.append(handler)
 
     elif fns is not None and isinstance(fns, collections.abc.Iterable):
-        subregistry = registries.ResourceChangingRegistry(prefix=parent_prefix)
+        subregistry = registries.ResourceChangingRegistry()
         for fn in fns:
-            subregistry.register(fn=fn)
+            real_id = registries.generate_id(fn=fn, id=None, prefix=parent_prefix)
+            handler = handlers_.ResourceHandler(
+                fn=fn, id=real_id,
+                errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+                labels=None, annotations=None, when=None,
+                initial=None, deleted=None, requires_finalizer=None,
+                reason=None, field=None,
+            )
+            subregistry.append(handler)
 
     elif fns is not None:
         raise ValueError(f"fns must be a mapping or an iterable, got {fns.__class__}.")
 
     elif handlers is not None:
-        subregistry = registries.ResourceChangingRegistry(prefix=parent_prefix)
+        subregistry = registries.ResourceChangingRegistry()
         for handler in handlers:
-            subregistry.append(handler=handler)
+            subregistry.append(handler)
 
     # Use the registry as is; assume that the caller knows what they do.
     elif registry is not None:
@@ -350,7 +366,7 @@ async def invoke_handler(
     # This replaces the multiple kwargs passing through the whole call stack (easy to forget).
     with invocation.context([
         (sublifecycle_var, lifecycle),
-        (subregistry_var, registries.ResourceChangingRegistry(prefix=handler.id)),
+        (subregistry_var, registries.ResourceChangingRegistry()),
         (subexecuted_var, False),
         (handler_var, handler),
         (cause_var, cause),

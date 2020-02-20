@@ -1,7 +1,8 @@
 import pytest
 
-from kopf.reactor.causation import Activity
 from kopf.reactor.activities import authenticate
+from kopf.reactor.causation import Activity
+from kopf.reactor.handlers import ActivityHandler
 from kopf.reactor.registries import OperatorRegistry
 from kopf.structs.credentials import Vault, ConnectionInfo, LoginError
 
@@ -28,11 +29,11 @@ async def test_noreturn_handler_produces_no_credentials():
     def login_fn(**_):
         pass
 
-    registry.register_activity_handler(
-        fn=login_fn,
-        id='login_fn',  # auto-detection does not work, as it is local to the test function.
-        activity=Activity.AUTHENTICATION,
-    )
+    # NB: id auto-detection does not work, as it is local to the test function.
+    registry.activity_handlers.append(ActivityHandler(
+        fn=login_fn, id='login_fn', activity=Activity.AUTHENTICATION,
+        errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+    ))
 
     await authenticate(
         registry=registry,
@@ -53,11 +54,11 @@ async def test_single_credentials_provided_to_vault():
     def login_fn(**_):
         return info
 
-    registry.register_activity_handler(
-        fn=login_fn,
-        id='login_fn',  # auto-detection does not work, as it is local to the test function.
-        activity=Activity.AUTHENTICATION,
-    )
+    # NB: id auto-detection does not work, as it is local to the test function.
+    registry.activity_handlers.append(ActivityHandler(
+        fn=login_fn, id='login_fn', activity=Activity.AUTHENTICATION,
+        errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+    ))
 
     await authenticate(
         registry=registry,

@@ -46,8 +46,10 @@ def test_resource_handler_with_all_args(mocker):
     retries = mocker.Mock()
     backoff = mocker.Mock()
     initial = mocker.Mock()
+    deleted = mocker.Mock()
     labels = mocker.Mock()
     annotations = mocker.Mock()
+    when = mocker.Mock()
     requires_finalizer = mocker.Mock()
     handler = ResourceHandler(
         fn=fn,
@@ -60,8 +62,10 @@ def test_resource_handler_with_all_args(mocker):
         backoff=backoff,
         cooldown=None,  # deprecated, but still required
         initial=initial,
+        deleted=deleted,
         labels=labels,
         annotations=annotations,
+        when=when,
         requires_finalizer=requires_finalizer,
     )
     assert handler.fn is fn
@@ -73,8 +77,10 @@ def test_resource_handler_with_all_args(mocker):
     assert handler.retries is retries
     assert handler.backoff is backoff
     assert handler.initial is initial
+    assert handler.deleted is deleted
     assert handler.labels is labels
     assert handler.annotations is annotations
+    assert handler.when is when
     assert handler.requires_finalizer is requires_finalizer
 
     with pytest.deprecated_call(match=r"use handler.reason"):

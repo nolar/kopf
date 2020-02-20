@@ -16,7 +16,9 @@ def test_on_startup_minimal():
     def fn(**_):
         pass
 
-    handlers = registry.activity_handlers.get_handlers(activity=Activity.STARTUP)
+    with pytest.deprecated_call(match=r"use registry.activity_handlers"):
+        handlers = registry.get_activity_handlers(activity=Activity.STARTUP)
+
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].activity == Activity.STARTUP
@@ -33,7 +35,9 @@ def test_on_cleanup_minimal():
     def fn(**_):
         pass
 
-    handlers = registry.activity_handlers.get_handlers(activity=Activity.CLEANUP)
+    with pytest.deprecated_call(match=r"use registry.activity_handlers"):
+        handlers = registry.get_activity_handlers(activity=Activity.CLEANUP)
+
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].activity == Activity.CLEANUP
@@ -50,7 +54,9 @@ def test_on_probe_minimal():
     def fn(**_):
         pass
 
-    handlers = registry.activity_handlers.get_handlers(activity=Activity.PROBE)
+    with pytest.deprecated_call(match=r"use registry.activity_handlers"):
+        handlers = registry.get_activity_handlers(activity=Activity.PROBE)
+
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].activity == Activity.PROBE
@@ -71,7 +77,9 @@ def test_on_resume_minimal(mocker, reason):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+        handlers = registry.get_resource_changing_handlers(cause)
+
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
@@ -94,7 +102,9 @@ def test_on_create_minimal(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+        handlers = registry.get_resource_changing_handlers(cause)
+
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.CREATE
@@ -117,7 +127,9 @@ def test_on_update_minimal(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+        handlers = registry.get_resource_changing_handlers(cause)
+
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.UPDATE
@@ -140,7 +152,9 @@ def test_on_delete_minimal(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+        handlers = registry.get_resource_changing_handlers(cause)
+
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.DELETE
@@ -164,7 +178,9 @@ def test_on_field_minimal(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+        handlers = registry.get_resource_changing_handlers(cause)
+
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
@@ -194,7 +210,9 @@ def test_on_startup_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.activity_handlers.get_handlers(activity=Activity.STARTUP)
+    with pytest.deprecated_call(match=r"use registry.activity_handlers"):
+        handlers = registry.get_activity_handlers(activity=Activity.STARTUP)
+
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].activity == Activity.STARTUP
@@ -214,7 +232,9 @@ def test_on_cleanup_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.activity_handlers.get_handlers(activity=Activity.CLEANUP)
+    with pytest.deprecated_call(match=r"use registry.activity_handlers"):
+        handlers = registry.get_activity_handlers(activity=Activity.CLEANUP)
+
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].activity == Activity.CLEANUP
@@ -234,7 +254,9 @@ def test_on_probe_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.activity_handlers.get_handlers(activity=Activity.PROBE)
+    with pytest.deprecated_call(match=r"use registry.activity_handlers"):
+        handlers = registry.get_activity_handlers(activity=Activity.PROBE)
+
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].activity == Activity.PROBE
@@ -265,7 +287,9 @@ def test_on_resume_with_all_kwargs(mocker, reason):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+        handlers = registry.get_resource_changing_handlers(cause)
+
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
@@ -298,7 +322,9 @@ def test_on_create_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+        handlers = registry.get_resource_changing_handlers(cause)
+
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.CREATE
@@ -330,7 +356,9 @@ def test_on_update_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+        handlers = registry.get_resource_changing_handlers(cause)
+
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.UPDATE
@@ -367,7 +395,9 @@ def test_on_delete_with_all_kwargs(mocker, optional):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+        handlers = registry.get_resource_changing_handlers(cause)
+
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.DELETE
@@ -400,7 +430,9 @@ def test_on_field_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+        handlers = registry.get_resource_changing_handlers(cause)
+
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None

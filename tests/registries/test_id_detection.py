@@ -1,22 +1,11 @@
 import functools
 
-import pytest
-
 from kopf.reactor.registries import get_callable_id
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.
 def some_fn():
     pass
-
-
-@pytest.fixture(params=[
-    'some-field.sub-field',
-    ['some-field', 'sub-field'],
-    ('some-field', 'sub-field'),
-], ids=['str', 'list', 'tuple'])
-def field(request):
-    return request.param
 
 
 def test_id_of_simple_function():
@@ -68,86 +57,3 @@ def test_id_of_lambda():
 
     fn_id = get_callable_id(some_lambda)
     assert fn_id.startswith(f'lambda:{__file__}:')
-
-
-def test_with_no_hints(
-        mocker, resource_registry_cls):
-
-    get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
-
-    registry = resource_registry_cls()
-    registry.register(some_fn)
-    handlers = registry.get_handlers(mocker.MagicMock())
-
-    assert get_fn_id.called
-
-    assert len(handlers) == 1
-    assert handlers[0].fn is some_fn
-    assert handlers[0].id == 'some-id'
-
-
-def test_with_prefix(
-        mocker, resource_registry_cls):
-
-    get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
-
-    registry = resource_registry_cls(prefix='some-prefix')
-    registry.register(some_fn)
-    handlers = registry.get_handlers(mocker.MagicMock())
-
-    assert get_fn_id.called
-
-    assert len(handlers) == 1
-    assert handlers[0].fn is some_fn
-    assert handlers[0].id == 'some-prefix/some-id'
-
-
-def test_with_suffix(
-        mocker, field, resource_registry_cls):
-
-    get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
-    diff = [('add', ('some-field', 'sub-field'), 'old', 'new')]
-
-    registry = resource_registry_cls()
-    registry.register(some_fn, field=field)
-    handlers = registry.get_handlers(mocker.MagicMock(diff=diff))
-
-    assert get_fn_id.called
-
-    assert len(handlers) == 1
-    assert handlers[0].fn is some_fn
-    assert handlers[0].id == 'some-id/some-field.sub-field'
-
-
-def test_with_prefix_and_suffix(
-        mocker, field, resource_registry_cls):
-
-    get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
-    diff = [('add', ('some-field', 'sub-field'), 'old', 'new')]
-
-    registry = resource_registry_cls(prefix='some-prefix')
-    registry.register(some_fn, field=field)
-    handlers = registry.get_handlers(mocker.MagicMock(diff=diff))
-
-    assert get_fn_id.called
-
-    assert len(handlers) == 1
-    assert handlers[0].fn is some_fn
-    assert handlers[0].id == 'some-prefix/some-id/some-field.sub-field'
-
-
-def test_with_explicit_id_and_prefix_and_suffix(
-        mocker, field, resource_registry_cls):
-
-    get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
-    diff = [('add', ('some-field', 'sub-field'), 'old', 'new')]
-
-    registry = resource_registry_cls(prefix='some-prefix')
-    registry.register(some_fn, id='explicit-id', field=field)
-    handlers = registry.get_handlers(mocker.MagicMock(diff=diff))
-
-    assert not get_fn_id.called
-
-    assert len(handlers) == 1
-    assert handlers[0].fn is some_fn
-    assert handlers[0].id == 'some-prefix/explicit-id/some-field.sub-field'
