@@ -50,8 +50,6 @@ from typing_extensions import TypedDict, Literal
 # All non-used payload falls into `Any`, and is not type-checked.
 #
 
-Labels = Mapping[str, str]
-Annotations = Mapping[str, str]
 Spec = Mapping[str, Any]
 Status = Mapping[str, Any]
 
@@ -60,8 +58,8 @@ class Meta(TypedDict, total=False):
     uid: str
     name: str
     namespace: str
-    labels: Labels
-    annotations: Annotations
+    labels: Mapping[str, str]
+    annotations: Mapping[str, str]
     finalizers: List[str]
     resourceVersion: str
     deletionTimestamp: str
@@ -85,8 +83,8 @@ class Body(TypedDict, total=False):
 
 
 class MetaEssence(TypedDict, total=False):
-    labels: Labels
-    annotations: Annotations
+    labels: Mapping[str, str]
+    annotations: Mapping[str, str]
 
 
 class BodyEssence(TypedDict, total=False):

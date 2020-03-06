@@ -6,7 +6,7 @@ import kopf
 from kopf.reactor.causation import Reason, ResourceChangingCause, ResourceWatchingCause
 from kopf.reactor.handling import cause_var
 from kopf.reactor.invocation import context
-from kopf.structs.bodies import Body, Meta, Labels, Event
+from kopf.structs.bodies import Body, Meta, Event
 from kopf.structs.containers import ObjectDict
 from kopf.structs.patches import Patch
 
@@ -15,7 +15,7 @@ OWNER_NAMESPACE = 'owner-namespace'
 OWNER_KIND = 'OwnerKind'
 OWNER_NAME = 'owner-name'
 OWNER_UID = 'owner-uid'
-OWNER_LABELS: Labels = {'label-1': 'value-1', 'label-2': 'value-2'}
+OWNER_LABELS = {'label-1': 'value-1', 'label-2': 'value-2'}
 OWNER = Body(
     apiVersion=OWNER_API_VERSION,
     kind=OWNER_KIND,
