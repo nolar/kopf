@@ -462,3 +462,37 @@ def test_subhandler_imperatively(mocker, parent_handler):
     handlers = registry.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
+
+
+@pytest.mark.parametrize('decorator, kwargs', [
+    (kopf.on.event, {}),
+    (kopf.on.resume, {}),
+    (kopf.on.create, {}),
+    (kopf.on.update, {}),
+    (kopf.on.delete, {}),
+    (kopf.on.field, dict(field='x')),
+])
+def test_labels_filter_with_nones(resource, decorator, kwargs):
+
+    with pytest.deprecated_call(match=r"`None` for label filters is deprecated"):
+        @decorator(resource.group, resource.version, resource.plural, **kwargs,
+                   labels={'x': None})
+        def fn(**_):
+            pass
+
+
+@pytest.mark.parametrize('decorator, kwargs', [
+    (kopf.on.event, {}),
+    (kopf.on.resume, {}),
+    (kopf.on.create, {}),
+    (kopf.on.update, {}),
+    (kopf.on.delete, {}),
+    (kopf.on.field, dict(field='f')),
+])
+def test_annotations_filter_with_nones(resource, decorator, kwargs):
+
+    with pytest.deprecated_call(match=r"`None` for annotation filters is deprecated"):
+        @decorator(resource.group, resource.version, resource.plural, **kwargs,
+                   annotations={'x': None})
+        def fn(**_):
+            pass

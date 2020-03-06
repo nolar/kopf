@@ -5,8 +5,8 @@ from typing import NewType, Callable, Optional, Any
 from kopf.reactor import callbacks
 from kopf.reactor import causation
 from kopf.reactor import errors as errors_
-from kopf.structs import bodies
 from kopf.structs import dicts
+from kopf.structs import filters
 
 # Strings are taken from the users, but then tainted as this type for stricter type-checking:
 # to prevent usage of some other strings (e.g. operator id) as the handlers ids.
@@ -57,8 +57,8 @@ class ResourceHandler(BaseHandler):
     field: Optional[dicts.FieldPath]
     initial: Optional[bool]
     deleted: Optional[bool]  # used for mixed-in (initial==True) @on.resume handlers only.
-    labels: Optional[bodies.Labels]
-    annotations: Optional[bodies.Annotations]
+    labels: Optional[filters.MetaFilter]
+    annotations: Optional[filters.MetaFilter]
     when: Optional[callbacks.WhenHandlerFn]
     requires_finalizer: Optional[bool]
 

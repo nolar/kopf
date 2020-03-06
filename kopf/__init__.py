@@ -69,6 +69,10 @@ from kopf.structs.credentials import (
     LoginError,
     ConnectionInfo,
 )
+from kopf.structs.filters import (
+    ABSENT,
+    PRESENT,
+)
 from kopf.toolkits.hierarchies import (
     adopt,
     label,
@@ -116,4 +120,5 @@ __all__ = [
     'OperatorRegistry',
     'get_default_registry',
     'set_default_registry',
+    'PRESENT', 'ABSENT',
 ]

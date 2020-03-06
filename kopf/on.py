@@ -11,6 +11,7 @@ This module is a part of the framework's public interface.
 """
 
 # TODO: add cluster=True support (different API methods)
+import warnings
 
 from typing import Optional, Callable
 
@@ -20,8 +21,8 @@ from kopf.reactor import errors as errors_
 from kopf.reactor import handlers
 from kopf.reactor import handling
 from kopf.reactor import registries
-from kopf.structs import bodies
 from kopf.structs import dicts
+from kopf.structs import filters
 from kopf.structs import resources
 
 ResourceHandlerDecorator = Callable[[callbacks.ResourceHandlerFn], callbacks.ResourceHandlerFn]
@@ -133,12 +134,13 @@ def resume(  # lgtm[py/similar-function]
         cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
         deleted: Optional[bool] = None,
-        labels: Optional[bodies.Labels] = None,
-        annotations: Optional[bodies.Annotations] = None,
+        labels: Optional[filters.MetaFilter] = None,
+        annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.resume()`` handler for the object resuming on operator (re)start. """
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
         real_id = registries.generate_id(fn=fn, id=id)
@@ -164,12 +166,13 @@ def create(  # lgtm[py/similar-function]
         backoff: Optional[float] = None,
         cooldown: Optional[float] = None,  # deprecated; use backoff.
         registry: Optional[registries.OperatorRegistry] = None,
-        labels: Optional[bodies.Labels] = None,
-        annotations: Optional[bodies.Annotations] = None,
+        labels: Optional[filters.MetaFilter] = None,
+        annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.create()`` handler for the object creation. """
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
         real_id = registries.generate_id(fn=fn, id=id)
@@ -195,12 +198,13 @@ def update(  # lgtm[py/similar-function]
         backoff: Optional[float] = None,
         cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
-        labels: Optional[bodies.Labels] = None,
-        annotations: Optional[bodies.Annotations] = None,
+        labels: Optional[filters.MetaFilter] = None,
+        annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.update()`` handler for the object update or change. """
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
         real_id = registries.generate_id(fn=fn, id=id)
@@ -227,12 +231,13 @@ def delete(  # lgtm[py/similar-function]
         cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
         optional: Optional[bool] = None,
-        labels: Optional[bodies.Labels] = None,
-        annotations: Optional[bodies.Annotations] = None,
+        labels: Optional[filters.MetaFilter] = None,
+        annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.delete()`` handler for the object deletion. """
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
         real_id = registries.generate_id(fn=fn, id=id)
@@ -259,12 +264,13 @@ def field(  # lgtm[py/similar-function]
         backoff: Optional[float] = None,
         cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
-        labels: Optional[bodies.Labels] = None,
-        annotations: Optional[bodies.Annotations] = None,
+        labels: Optional[filters.MetaFilter] = None,
+        annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.field()`` handler for the individual field changes. """
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
@@ -286,12 +292,13 @@ def event(  # lgtm[py/similar-function]
         *,
         id: Optional[str] = None,
         registry: Optional[registries.OperatorRegistry] = None,
-        labels: Optional[bodies.Labels] = None,
-        annotations: Optional[bodies.Annotations] = None,
+        labels: Optional[filters.MetaFilter] = None,
+        annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.event()`` handler for the silent spies on the events. """
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
         real_id = registries.generate_id(fn=fn, id=id)
@@ -318,8 +325,8 @@ def this(  # lgtm[py/similar-function]
         backoff: Optional[float] = None,
         cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.ResourceChangingRegistry] = None,
-        labels: Optional[bodies.Labels] = None,
-        annotations: Optional[bodies.Annotations] = None,
+        labels: Optional[filters.MetaFilter] = None,
+        annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> ResourceHandlerDecorator:
     """
@@ -352,6 +359,7 @@ def this(  # lgtm[py/similar-function]
     create function will have its own value, not the latest in the for-cycle.
     """
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+        _warn_deprecated_filters(labels, annotations)
         parent_handler = handling.handler_var.get()
         real_registry = registry if registry is not None else handling.subregistry_var.get()
         real_id = registries.generate_id(fn=fn, id=id,
@@ -378,8 +386,8 @@ def register(  # lgtm[py/similar-function]
         backoff: Optional[float] = None,
         cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.ResourceChangingRegistry] = None,
-        labels: Optional[bodies.Labels] = None,
-        annotations: Optional[bodies.Annotations] = None,
+        labels: Optional[filters.MetaFilter] = None,
+        annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenHandlerFn] = None,
 ) -> callbacks.ResourceHandlerFn:
     """
@@ -412,3 +420,21 @@ def register(  # lgtm[py/similar-function]
         labels=labels, annotations=annotations, when=when,
     )
     return decorator(fn)
+
+
+def _warn_deprecated_filters(
+        labels: Optional[filters.MetaFilter],
+        annotations: Optional[filters.MetaFilter],
+) -> None:
+    if labels is not None:
+        for key, val in labels.items():
+            if val is None:
+                warnings.warn(
+                    f"`None` for label filters is deprecated; use kopf.PRESENT.",
+                    DeprecationWarning, stacklevel=2)
+    if annotations is not None:
+        for key, val in annotations.items():
+            if val is None:
+                warnings.warn(
+                    f"`None` for annotation filters is deprecated; use kopf.PRESENT.",
+                    DeprecationWarning, stacklevel=2)
