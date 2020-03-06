@@ -3,7 +3,7 @@ import copy
 from unittest.mock import call, Mock
 
 import kopf
-from kopf.structs.bodies import Body, Meta
+from kopf.structs.bodies import RawBody, RawMeta
 
 OWNER_API_VERSION = 'owner-api-version'
 OWNER_NAMESPACE = 'owner-namespace'
@@ -11,10 +11,10 @@ OWNER_KIND = 'OwnerKind'
 OWNER_NAME = 'owner-name'
 OWNER_UID = 'owner-uid'
 OWNER_LABELS = {'label-1': 'value-1', 'label-2': 'value-2'}
-OWNER = Body(
+OWNER = RawBody(
     apiVersion=OWNER_API_VERSION,
     kind=OWNER_KIND,
-    metadata=Meta(
+    metadata=RawMeta(
         namespace=OWNER_NAMESPACE,
         name=OWNER_NAME,
         uid=OWNER_UID,

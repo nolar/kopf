@@ -60,7 +60,7 @@ async def test_consistent_awakening(registry, resource, k8s_mocked, mocker):
             registry=registry,
             resource=resource,
             memories=ResourceMemories(),
-            event={'type': 'ADDED', 'object': body},
+            raw_event={'type': 'ADDED', 'object': body},
             replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )

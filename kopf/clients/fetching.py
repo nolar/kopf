@@ -23,7 +23,7 @@ async def read_crd(
         resource: resources.Resource,
         default: Union[_T, _UNSET] = _UNSET.token,
         context: Optional[auth.APIContext] = None,  # injected by the decorator
-) -> Union[bodies.Body, _T]:
+) -> Union[bodies.RawBody, _T]:
     if context is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 
@@ -33,7 +33,7 @@ async def read_crd(
         )
         response.raise_for_status()
         respdata = await response.json()
-        return cast(bodies.Body, respdata)
+        return cast(bodies.RawBody, respdata)
 
     except aiohttp.ClientResponseError as e:
         if e.status in [403, 404] and not isinstance(default, _UNSET):
@@ -49,7 +49,7 @@ async def read_obj(
         name: Optional[str] = None,
         default: Union[_T, _UNSET] = _UNSET.token,
         context: Optional[auth.APIContext] = None,  # injected by the decorator
-) -> Union[bodies.Body, _T]:
+) -> Union[bodies.RawBody, _T]:
     if context is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 
@@ -62,7 +62,7 @@ async def read_obj(
         )
         response.raise_for_status()
         respdata = await response.json()
-        return cast(bodies.Body, respdata)
+        return cast(bodies.RawBody, respdata)
 
     except aiohttp.ClientResponseError as e:
         if e.status in [403, 404] and not isinstance(default, _UNSET):
@@ -76,7 +76,7 @@ async def list_objs_rv(
         resource: resources.Resource,
         namespace: Optional[str] = None,
         context: Optional[auth.APIContext] = None,  # injected by the decorator
-) -> Tuple[Collection[bodies.Body], str]:
+) -> Tuple[Collection[bodies.RawBody], str]:
     """
     List the objects of specific resource type.
 
@@ -101,7 +101,7 @@ async def list_objs_rv(
     response.raise_for_status()
     rsp = await response.json()
 
-    items: List[bodies.Body] = []
+    items: List[bodies.RawBody] = []
     resource_version = rsp.get('metadata', {}).get('resourceVersion', None)
     for item in rsp['items']:
         if 'kind' in rsp:

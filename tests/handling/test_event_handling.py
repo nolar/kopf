@@ -21,7 +21,7 @@ async def test_handlers_called_always(
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': 'ev-type', 'object': cause_mock.body},
+        raw_event={'type': 'ev-type', 'object': cause_mock.body},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
@@ -56,7 +56,7 @@ async def test_errors_are_ignored(
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': 'ev-type', 'object': cause_mock.body},
+        raw_event={'type': 'ev-type', 'object': cause_mock.body},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )

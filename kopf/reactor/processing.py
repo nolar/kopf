@@ -40,7 +40,7 @@ async def process_resource_event(
         registry: registries.OperatorRegistry,
         memories: containers.ResourceMemories,
         resource: resources.Resource,
-        event: bodies.Event,
+        raw_event: bodies.RawEvent,
         replenished: asyncio.Event,
         event_queue: posting.K8sEventQueue,
 ) -> None:
@@ -53,7 +53,7 @@ async def process_resource_event(
     All the internally provoked changes are intercepted, do not create causes,
     and therefore do not call the handling logic.
     """
-    body: bodies.Body = event['object']
+    body: bodies.Body = raw_event['object']
     patch: patches.Patch = patches.Patch()
     delay: Optional[float] = None
 
@@ -64,14 +64,14 @@ async def process_resource_event(
 
     # Recall what is stored about that object. Share it in little portions with the consumers.
     # And immediately forget it if the object is deleted from the cluster (but keep in memory).
-    memory = await memories.recall(body, noticed_by_listing=event['type'] is None)
-    if event['type'] == 'DELETED':
+    memory = await memories.recall(body, noticed_by_listing=raw_event['type'] is None)
+    if raw_event['type'] == 'DELETED':
         await memories.forget(body)
 
     # Invoke all silent spies. No causation, no progress storage is performed.
     if registry.resource_watching_handlers[resource]:
         resource_watching_cause = causation.detect_resource_watching_cause(
-            event=event,
+            raw_event=raw_event,
             resource=resource,
             logger=logger,
             patch=patch,
@@ -90,7 +90,7 @@ async def process_resource_event(
         extra_fields = registry.resource_changing_handlers[resource].get_extra_fields()
         old, new, diff = lastseen.get_essential_diffs(body=body, extra_fields=extra_fields)
         resource_changing_cause = causation.detect_resource_changing_cause(
-            event=event,
+            raw_event=raw_event,
             resource=resource,
             logger=logger,
             patch=patch,

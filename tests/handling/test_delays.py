@@ -38,7 +38,7 @@ async def test_delayed_handlers_progress(
             registry=registry,
             resource=resource,
             memories=ResourceMemories(),
-            event={'type': event_type, 'object': cause_mock.body},
+            raw_event={'type': event_type, 'object': cause_mock.body},
             replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
@@ -93,7 +93,7 @@ async def test_delayed_handlers_sleep(
             registry=registry,
             resource=resource,
             memories=ResourceMemories(),
-            event={'type': event_type, 'object': cause_mock.body},
+            raw_event={'type': event_type, 'object': cause_mock.body},
             replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )

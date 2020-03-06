@@ -141,7 +141,7 @@ def test_for_gone(kwargs, event, finalizers, deletion_ts, requires_finalizer):
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
     cause = detect_resource_changing_cause(
-        event=event,
+        raw_event=event,
         **kwargs)
     assert cause.reason == Reason.GONE
     check_kwargs(cause, kwargs)
@@ -156,7 +156,7 @@ def test_for_free(kwargs, event, finalizers, deletion_ts, requires_finalizer):
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
     cause = detect_resource_changing_cause(
-        event=event,
+        raw_event=event,
         **kwargs)
     assert cause.reason == Reason.FREE
     check_kwargs(cause, kwargs)
@@ -171,7 +171,7 @@ def test_for_delete(kwargs, event, finalizers, deletion_ts, requires_finalizer):
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
     cause = detect_resource_changing_cause(
-        event=event,
+        raw_event=event,
         **kwargs)
     assert cause.reason == Reason.DELETE
     check_kwargs(cause, kwargs)
@@ -189,7 +189,7 @@ def test_for_create(kwargs, event, finalizers, deletion_ts, annotations, content
     event['object']['metadata'].update(deletion_ts)
     event['object']['metadata'].update(annotations)
     cause = detect_resource_changing_cause(
-        event=event,
+        raw_event=event,
         **kwargs)
     assert cause.reason == Reason.CREATE
     check_kwargs(cause, kwargs)
@@ -204,7 +204,7 @@ def test_for_create_skip_acquire(kwargs, event, finalizers, deletion_ts, require
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
     cause = detect_resource_changing_cause(
-        event=event,
+        raw_event=event,
         **kwargs)
     assert cause.reason == Reason.CREATE
     check_kwargs(cause, kwargs)
@@ -222,7 +222,7 @@ def test_for_no_op(kwargs, event, finalizers, deletion_ts, annotations, content,
     event['object']['metadata'].update(deletion_ts)
     event['object']['metadata'].update(annotations)
     cause = detect_resource_changing_cause(
-        event=event,
+        raw_event=event,
         **kwargs)
     assert cause.reason == Reason.NOOP
     check_kwargs(cause, kwargs)
@@ -240,7 +240,7 @@ def test_for_update(kwargs, event, finalizers, deletion_ts, annotations, content
     event['object']['metadata'].update(deletion_ts)
     event['object']['metadata'].update(annotations)
     cause = detect_resource_changing_cause(
-        event=event,
+        raw_event=event,
         diff=True,
         **kwargs)
     assert cause.reason == Reason.UPDATE

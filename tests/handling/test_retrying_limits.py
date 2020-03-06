@@ -39,7 +39,7 @@ async def test_timed_out_handler_fails(
             registry=registry,
             resource=resource,
             memories=ResourceMemories(),
-            event={'type': event_type, 'object': cause_mock.body},
+            raw_event={'type': event_type, 'object': cause_mock.body},
             replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
@@ -87,7 +87,7 @@ async def test_retries_limited_handler_fails(
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': event_type, 'object': cause_mock.body},
+        raw_event={'type': event_type, 'object': cause_mock.body},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )

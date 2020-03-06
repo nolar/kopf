@@ -105,8 +105,8 @@ class ResourceWatchingCause(ResourceCause):
 
     It is a read-only mapping with some extra properties and methods.
     """
-    type: bodies.EventType
-    raw: bodies.Event
+    type: bodies.RawEventType
+    raw: bodies.RawEvent
 
 
 @dataclasses.dataclass
@@ -135,19 +135,19 @@ class ResourceChangingCause(ResourceCause):
 
 
 def detect_resource_watching_cause(
-        event: bodies.Event,
+        raw_event: bodies.RawEvent,
         **kwargs: Any,
 ) -> ResourceWatchingCause:
     return ResourceWatchingCause(
-        raw=event,
-        type=event['type'],
-        body=event['object'],
+        raw=raw_event,
+        type=raw_event['type'],
+        body=raw_event['object'],
         **kwargs)
 
 
 def detect_resource_changing_cause(
         *,
-        event: bodies.Event,
+        raw_event: bodies.RawEvent,
         diff: Optional[diffs.Diff] = None,
         initial: bool = False,
         **kwargs: Any,
@@ -162,13 +162,13 @@ def detect_resource_changing_cause(
     """
 
     # Put them back to the pass-through kwargs (to avoid code duplication).
-    body = event['object']
+    body = raw_event['object']
     kwargs.update(body=body, initial=initial)
     if diff is not None:
         kwargs.update(diff=diff)
 
     # The object was really deleted from the cluster. But we do not care anymore.
-    if event['type'] == 'DELETED':
+    if raw_event['type'] == 'DELETED':
         return ResourceChangingCause(reason=Reason.GONE, **kwargs)
 
     # The finalizer has been just removed. We are fully done.

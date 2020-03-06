@@ -23,7 +23,7 @@ async def test_1st_step_stores_progress_by_patching(
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': event_type, 'object': cause_mock.body},
+        raw_event={'type': event_type, 'object': cause_mock.body},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
@@ -72,7 +72,7 @@ async def test_2nd_step_finishes_the_handlers(caplog,
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': event_type, 'object': cause_mock.body},
+        raw_event={'type': event_type, 'object': cause_mock.body},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )

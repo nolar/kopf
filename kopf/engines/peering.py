@@ -202,7 +202,7 @@ async def apply_peers(
 
 async def process_peering_event(
         *,
-        event: bodies.Event,
+        raw_event: bodies.RawEvent,
         freeze_mode: primitives.Toggle,
         ourselves: Peer,
         autoclean: bool = True,
@@ -220,7 +220,7 @@ async def process_peering_event(
     """
 
     # Silently ignore the peering objects which are not ours to worry.
-    body = event['object']
+    body = raw_event['object']
     name = body.get('metadata', {}).get('name', None)
     namespace = body.get('metadata', {}).get('namespace', None)
     if namespace != ourselves.namespace or name != ourselves.name or name is None:

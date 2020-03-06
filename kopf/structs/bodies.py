@@ -54,7 +54,7 @@ Spec = Mapping[str, Any]
 Status = Mapping[str, Any]
 
 
-class Meta(TypedDict, total=False):
+class RawMeta(TypedDict, total=False):
     uid: str
     name: str
     namespace: str
@@ -67,12 +67,17 @@ class Meta(TypedDict, total=False):
     selfLink: str
 
 
-class Body(TypedDict, total=False):
+class RawBody(TypedDict, total=False):
     apiVersion: str
     kind: str
-    metadata: Meta
+    metadata: RawMeta
     spec: Spec
     status: Status
+
+
+# TODO: Should be gone when this PR is ready. For now, keep it as aliases.
+Meta = RawMeta
+Body = RawBody
 
 
 #
@@ -98,12 +103,12 @@ class BodyEssence(TypedDict, total=False):
 #
 
 # ``None`` is used for the listing, when the pseudo-watch-stream is simulated.
-RawEventType = Literal[None, 'ADDED', 'MODIFIED', 'DELETED', 'ERROR']
-EventType = Literal[None, 'ADDED', 'MODIFIED', 'DELETED']
+RawInputType = Literal[None, 'ADDED', 'MODIFIED', 'DELETED', 'ERROR']
+RawEventType = Literal[None, 'ADDED', 'MODIFIED', 'DELETED']
 
 
 # A special payload for type==ERROR (this is not a connection or client error).
-class Error(TypedDict, total=False):
+class RawError(TypedDict, total=False):
     apiVersion: str     # usually: Literal['v1']
     kind: str           # usually: Literal['Status']
     metadata: Mapping[Any, Any]
@@ -114,15 +119,15 @@ class Error(TypedDict, total=False):
 
 
 # As received from the stream before processing the errors and special cases.
-class RawEvent(TypedDict):
-    type: RawEventType
-    object: Union[Body, Error]
+class RawInput(TypedDict, total=True):
+    type: RawInputType
+    object: Union[RawBody, RawError]
 
 
 # As passed to the framework after processing the errors and special cases.
-class Event(TypedDict):
-    type: EventType
-    object: Body
+class RawEvent(TypedDict, total=True):
+    type: RawEventType
+    object: RawBody
 
 
 #

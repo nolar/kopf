@@ -30,7 +30,7 @@ class BaseRegistry(metaclass=abc.ABCMeta):
     def get_event_handlers(
             self,
             resource: resources_.Resource,
-            event: bodies.Event,
+            event: bodies.RawEvent,
     ) -> Sequence[handlers.ResourceHandler]:
         raise NotImplementedError
 
@@ -45,7 +45,7 @@ class BaseRegistry(metaclass=abc.ABCMeta):
     def iter_event_handlers(
             self,
             resource: resources_.Resource,
-            event: bodies.Event,
+            event: bodies.RawEvent,
     ) -> Iterator[handlers.ResourceHandler]:
         raise NotImplementedError
 
@@ -75,7 +75,7 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[AnyCause]):
     def get_event_handlers(
             self,
             resource: resources_.Resource,
-            event: bodies.Event,
+            event: bodies.RawEvent,
     ) -> Sequence[handlers.ResourceHandler]:
         warnings.warn("SimpleRegistry.get_event_handlers() is deprecated; use "
                       "ResourceWatchingRegistry.get_handlers().", DeprecationWarning)
@@ -93,7 +93,7 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[AnyCause]):
     def iter_event_handlers(
             self,
             resource: resources_.Resource,
-            event: bodies.Event,
+            event: bodies.RawEvent,
     ) -> Iterator[handlers.ResourceHandler]:
         warnings.warn("SimpleRegistry.iter_event_handlers() is deprecated; use "
                       "ResourceWatchingRegistry.iter_handlers().", DeprecationWarning)
@@ -150,7 +150,7 @@ class GlobalRegistry(BaseRegistry, registries.OperatorRegistry):
     def get_event_handlers(
             self,
             resource: resources_.Resource,
-            event: bodies.Event,
+            event: bodies.RawEvent,
     ) -> Sequence[handlers.ResourceHandler]:
         warnings.warn("GlobalRegistry.get_event_handlers() is deprecated; use "
                       "OperatorRegistry.get_resource_watching_handlers().", DeprecationWarning)
@@ -168,7 +168,7 @@ class GlobalRegistry(BaseRegistry, registries.OperatorRegistry):
     def iter_event_handlers(
             self,
             resource: resources_.Resource,
-            event: bodies.Event,
+            event: bodies.RawEvent,
     ) -> Iterator[handlers.ResourceHandler]:
         warnings.warn("GlobalRegistry.iter_event_handlers() is deprecated; use "
                       "OperatorRegistry.iter_resource_watching_handlers().", DeprecationWarning)
@@ -190,11 +190,11 @@ class SmartGlobalRegistry(registries.SmartOperatorRegistry, GlobalRegistry):
 
 def _create_watching_cause(
         resource: resources_.Resource,
-        event: bodies.Event,
+        event: bodies.RawEvent,
 ) -> causation.ResourceWatchingCause:
     return causation.detect_resource_watching_cause(
         resource=resource,
-        event=event,
+        raw_event=event,
         patch=patches.Patch(),  # unused
         type=event['type'],  # unused
         body=event['object'],  # unused
