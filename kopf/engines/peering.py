@@ -36,7 +36,7 @@ import logging
 import os
 import random
 import socket
-from typing import Any, Dict, Iterable, Optional, Union, NoReturn
+from typing import Any, Dict, Iterable, Optional, Union, NoReturn, Mapping, cast
 
 import iso8601
 
@@ -227,8 +227,8 @@ async def process_peering_event(
         return
 
     # Find if we are still the highest priority operator.
-    pairs = body.get('status', {}).items()
-    peers = [Peer(id=opid, name=name, **opinfo) for opid, opinfo in pairs]
+    pairs = cast(Mapping[str, Mapping[str, object]], body.get('status', {}))
+    peers = [Peer(id=opid, name=name, **opinfo) for opid, opinfo in pairs.items()]
     dead_peers = [peer for peer in peers if peer.is_dead]
     prio_peers = [peer for peer in peers if not peer.is_dead and peer.priority > ourselves.priority]
     same_peers = [peer for peer in peers if not peer.is_dead and peer.priority == ourselves.priority and peer.id != ourselves.id]
