@@ -23,15 +23,15 @@ async def test_timed_out_handler_fails(
     name1 = f'{cause_type}_fn'
 
     event_type = None if cause_type == Reason.RESUME else 'irrelevant'
-    cause_mock.reason = cause_type
-    cause_mock.body.update({
+    event_body = {
         'status': {'kopf': {'progress': {
             'create_fn': {'started': ts},
             'update_fn': {'started': ts},
             'delete_fn': {'started': ts},
             'resume_fn': {'started': ts},
         }}}
-    })
+    }
+    cause_mock.reason = cause_type
 
     with freezegun.freeze_time(now):
         await process_resource_event(
@@ -39,7 +39,7 @@ async def test_timed_out_handler_fails(
             registry=registry,
             resource=resource,
             memories=ResourceMemories(),
-            raw_event={'type': event_type, 'object': cause_mock.body},
+            raw_event={'type': event_type, 'object': event_body},
             replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
@@ -72,22 +72,22 @@ async def test_retries_limited_handler_fails(
     name1 = f'{cause_type}_fn'
 
     event_type = None if cause_type == Reason.RESUME else 'irrelevant'
-    cause_mock.reason = cause_type
-    cause_mock.body.update({
+    event_body = {
         'status': {'kopf': {'progress': {
             'create_fn': {'retries': 100},
             'update_fn': {'retries': 100},
             'delete_fn': {'retries': 100},
             'resume_fn': {'retries': 100},
         }}}
-    })
+    }
+    cause_mock.reason = cause_type
 
     await process_resource_event(
         lifecycle=kopf.lifecycles.one_by_one,
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        raw_event={'type': event_type, 'object': cause_mock.body},
+        raw_event={'type': event_type, 'object': event_body},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
