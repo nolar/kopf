@@ -6,6 +6,7 @@ import kopf
 from kopf import OperatorRegistry
 from kopf.reactor.causation import ResourceChangingCause, Reason, ALL_REASONS
 from kopf.reactor.handlers import ResourceHandler
+from kopf.structs.bodies import Body
 from kopf.structs.dicts import parse_field
 from kopf.structs.filters import MetaFilterToken
 
@@ -338,7 +339,7 @@ def test_catchall_handlers_with_when_match(
         resource=resource,
         reason='some-reason',
         diff=None,
-        body={'spec': {'name': 'test'}},
+        body=Body({'spec': {'name': 'test'}}),
         logger=None,
         patch=None,
         memo=None,
@@ -359,7 +360,7 @@ def test_catchall_handlers_with_when_not_match(
         resource=resource,
         reason='some-reason',
         diff=None,
-        body={'spec': {'name': 'test'}},
+        body=Body({'spec': {'name': 'test'}}),
         logger=None,
         patch=None,
         memo=None,

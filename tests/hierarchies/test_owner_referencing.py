@@ -3,7 +3,7 @@ import copy
 from unittest.mock import call, Mock
 
 import kopf
-from kopf.structs.bodies import RawBody, RawMeta
+from kopf.structs.bodies import RawBody, RawMeta, Body
 
 OWNER_API_VERSION = 'owner-api-version'
 OWNER_NAMESPACE = 'owner-namespace'
@@ -26,7 +26,7 @@ OWNER = RawBody(
 def test_appending_to_dict():
     obj = {}
 
-    kopf.append_owner_reference(obj, owner=OWNER)
+    kopf.append_owner_reference(obj, owner=Body(OWNER))
 
     assert 'metadata' in obj
     assert 'ownerReferences' in obj['metadata']
@@ -44,7 +44,7 @@ def test_appending_to_multiple_objects(multicls):
     obj2 = {}
     objs = multicls([obj1, obj2])
 
-    kopf.append_owner_reference(objs, owner=OWNER)
+    kopf.append_owner_reference(objs, owner=Body(OWNER))
 
     assert isinstance(obj1['metadata']['ownerReferences'], list)
     assert len(obj1['metadata']['ownerReferences']) == 1
@@ -80,9 +80,9 @@ def test_appending_deduplicates_by_uid():
     owner3['metadata']['uid'] = 'uid-0'
     obj = {}
 
-    kopf.append_owner_reference(obj, owner=owner1)
-    kopf.append_owner_reference(obj, owner=owner2)
-    kopf.append_owner_reference(obj, owner=owner3)
+    kopf.append_owner_reference(obj, owner=Body(owner1))
+    kopf.append_owner_reference(obj, owner=Body(owner2))
+    kopf.append_owner_reference(obj, owner=Body(owner3))
 
     assert len(obj['metadata']['ownerReferences']) == 1
     assert obj['metadata']['ownerReferences'][0]['uid'] == 'uid-0'
@@ -99,8 +99,8 @@ def test_appending_distinguishes_by_uid():
     owner2['metadata']['uid'] = 'uid-b'
     obj = {}
 
-    kopf.append_owner_reference(obj, owner=owner1)
-    kopf.append_owner_reference(obj, owner=owner2)
+    kopf.append_owner_reference(obj, owner=Body(owner1))
+    kopf.append_owner_reference(obj, owner=Body(owner2))
 
     uids = {ref['uid'] for ref in obj['metadata']['ownerReferences']}
     assert uids == {'uid-a', 'uid-b'}
@@ -109,8 +109,8 @@ def test_appending_distinguishes_by_uid():
 def test_removal_from_dict():
     obj = {}
 
-    kopf.append_owner_reference(obj, owner=OWNER)  # assumed to work, tested above
-    kopf.remove_owner_reference(obj, owner=OWNER)  # this one is being tested here
+    kopf.append_owner_reference(obj, owner=Body(OWNER))  # assumed to work, tested above
+    kopf.remove_owner_reference(obj, owner=Body(OWNER))  # this one is being tested here
 
     assert 'metadata' in obj
     assert 'ownerReferences' in obj['metadata']
@@ -123,8 +123,8 @@ def test_removal_from_multiple_objects(multicls):
     obj2 = {}
     objs = multicls([obj1, obj2])
 
-    kopf.append_owner_reference(objs, owner=OWNER)  # assumed to work, tested above
-    kopf.remove_owner_reference(objs, owner=OWNER)  # this one is being tested here
+    kopf.append_owner_reference(objs, owner=Body(OWNER))  # assumed to work, tested above
+    kopf.remove_owner_reference(objs, owner=Body(OWNER))  # this one is being tested here
 
     assert 'metadata' in obj1
     assert 'ownerReferences' in obj1['metadata']
@@ -154,10 +154,10 @@ def test_removal_identifies_by_uid():
 
     # Three different owners added, but all have the same uid.
     # One is removed and only once, all must be gone (due to same uids).
-    kopf.append_owner_reference(obj, owner=owner1)  # assumed to work, tested above
-    kopf.append_owner_reference(obj, owner=owner2)  # assumed to work, tested above
-    kopf.append_owner_reference(obj, owner=owner3)  # assumed to work, tested above
-    kopf.remove_owner_reference(obj, owner=owner1)  # this one is being tested here
+    kopf.append_owner_reference(obj, owner=Body(owner1))  # assumed to work, tested above
+    kopf.append_owner_reference(obj, owner=Body(owner2))  # assumed to work, tested above
+    kopf.append_owner_reference(obj, owner=Body(owner3))  # assumed to work, tested above
+    kopf.remove_owner_reference(obj, owner=Body(owner1))  # this one is being tested here
 
     assert len(obj['metadata']['ownerReferences']) == 0
 
@@ -173,10 +173,10 @@ def test_removal_distinguishes_by_uid():
 
     # Three very similar owners added, different only by uid.
     # One is removed, others must stay (even if kinds/names are the same).
-    kopf.append_owner_reference(obj, owner=owner1)  # assumed to work, tested above
-    kopf.append_owner_reference(obj, owner=owner2)  # assumed to work, tested above
-    kopf.append_owner_reference(obj, owner=owner3)  # assumed to work, tested above
-    kopf.remove_owner_reference(obj, owner=owner1)  # this one is being tested here
+    kopf.append_owner_reference(obj, owner=Body(owner1))  # assumed to work, tested above
+    kopf.append_owner_reference(obj, owner=Body(owner2))  # assumed to work, tested above
+    kopf.append_owner_reference(obj, owner=Body(owner3))  # assumed to work, tested above
+    kopf.remove_owner_reference(obj, owner=Body(owner1))  # this one is being tested here
 
     uids = {ref['uid'] for ref in obj['metadata']['ownerReferences']}
     assert uids == {'uid-b', 'uid-c'}
@@ -194,14 +194,14 @@ def test_adopting(mocker):
     label = mocker.patch('kopf.toolkits.hierarchies.label')
 
     obj = Mock()
-    kopf.adopt(obj, owner=OWNER, nested=['template'])
+    kopf.adopt(obj, owner=Body(OWNER), nested=['template'])
 
     assert append_owner_ref.called
     assert harmonize_naming.called
     assert adjust_namespace.called
     assert label.called
 
-    assert append_owner_ref.call_args_list == [call(obj, owner=OWNER)]
+    assert append_owner_ref.call_args_list == [call(obj, owner=Body(OWNER))]
     assert harmonize_naming.call_args_list == [call(obj, name=OWNER_NAME)]
     assert adjust_namespace.call_args_list == [call(obj, namespace=OWNER_NAMESPACE)]
     assert label.call_args_list == [call(obj, labels=OWNER_LABELS, nested=['template'])]

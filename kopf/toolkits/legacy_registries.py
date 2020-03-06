@@ -197,6 +197,6 @@ def _create_watching_cause(
         raw_event=event,
         patch=patches.Patch(),  # unused
         type=event['type'],  # unused
-        body=event['object'],  # unused
+        body=bodies.Body(event['object']),  # unused
         raw=event,  # unused
     )

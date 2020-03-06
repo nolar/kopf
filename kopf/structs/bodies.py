@@ -45,13 +45,18 @@ from typing import Any, Mapping, Union, List, Optional, cast
 
 from typing_extensions import TypedDict, Literal
 
+from kopf.structs import dicts
+
 #
-# The bodies and body parts, as specially used by the framework.
+# Everything marked "raw" is a plain unwrapped unprocessed data as JSON-decoded
+# from Kubernetes API, usually as retrieved in watching or fetching API calls.
+# "Input" is a parsed JSON as is, while "event" is an "input" without "errors".
 # All non-used payload falls into `Any`, and is not type-checked.
 #
 
-Spec = Mapping[str, Any]
-Status = Mapping[str, Any]
+# ``None`` is used for the listing, when the pseudo-watch-stream is simulated.
+RawInputType = Literal[None, 'ADDED', 'MODIFIED', 'DELETED', 'ERROR']
+RawEventType = Literal[None, 'ADDED', 'MODIFIED', 'DELETED']
 
 
 class RawMeta(TypedDict, total=False):
@@ -71,40 +76,8 @@ class RawBody(TypedDict, total=False):
     apiVersion: str
     kind: str
     metadata: RawMeta
-    spec: Spec
-    status: Status
-
-
-# TODO: Should be gone when this PR is ready. For now, keep it as aliases.
-Meta = RawMeta
-Body = RawBody
-
-
-#
-# Body/Meta essences only contain the fields relevant for object diff tracking.
-# They are presented to the user as part of the diff's `old`/`new` fields & kwargs.
-# Added for stricter type checking, to differentiate from the actual Body/Meta.
-#
-
-
-class MetaEssence(TypedDict, total=False):
-    labels: Mapping[str, str]
-    annotations: Mapping[str, str]
-
-
-class BodyEssence(TypedDict, total=False):
-    metadata: MetaEssence
-    spec: Spec
-
-
-#
-# Watch-events, as received from the watch-streams
-# and passed through the framework to the handlers.
-#
-
-# ``None`` is used for the listing, when the pseudo-watch-stream is simulated.
-RawInputType = Literal[None, 'ADDED', 'MODIFIED', 'DELETED', 'ERROR']
-RawEventType = Literal[None, 'ADDED', 'MODIFIED', 'DELETED']
+    spec: Mapping[str, Any]
+    status: Mapping[str, Any]
 
 
 # A special payload for type==ERROR (this is not a connection or client error).
@@ -128,6 +101,102 @@ class RawInput(TypedDict, total=True):
 class RawEvent(TypedDict, total=True):
     type: RawEventType
     object: RawBody
+
+
+#
+# Body/Meta essences only contain the fields relevant for object diff tracking.
+# They are presented to the user as part of the diff's `old`/`new` fields & kwargs.
+# Added for stricter type checking, to differentiate from the actual Body/Meta.
+#
+
+
+class MetaEssence(TypedDict, total=False):
+    labels: Mapping[str, str]
+    annotations: Mapping[str, str]
+
+
+class BodyEssence(TypedDict, total=False):
+    metadata: MetaEssence
+    spec: Mapping[str, Any]
+
+
+#
+# Enhanced dict-wrappers for easier typed access to well-known typed fields,
+# with live view of updates and changes in the root body (for daemon's)
+# Despite they are just MappingViews with no extensions, they are separated
+# for stricter typing of arguments.
+#
+
+
+class Meta(dicts.MappingView[str, Any]):
+
+    def __init__(self, __src: "Body") -> None:
+        super().__init__(__src, 'metadata')
+        self._labels: dicts.MappingView[str, str] = dicts.MappingView(self, 'labels')
+        self._annotations: dicts.MappingView[str, str] = dicts.MappingView(self, 'annotations')
+
+    @property
+    def labels(self) -> dicts.MappingView[str, str]:
+        return self._labels
+
+    @property
+    def annotations(self) -> dicts.MappingView[str, str]:
+        return self._annotations
+
+    @property
+    def uid(self) -> Optional[str]:
+        return cast(Optional[str], self.get('uid', None))
+
+    @property
+    def name(self) -> Optional[str]:
+        return cast(Optional[str], self.get('name', None))
+
+    @property
+    def namespace(self) -> Optional[str]:
+        return cast(Optional[str], self.get('namespace', None))
+
+    @property
+    def creation_timestamp(self) -> Optional[str]:
+        return cast(Optional[str], self.get('creationTimestamp', None))
+
+    @property
+    def deletion_timestamp(self) -> Optional[str]:
+        return cast(Optional[str], self.get('deletionTimestamp', None))
+
+
+class Spec(dicts.MappingView[str, Any]):
+    def __init__(self, __src: "Body") -> None:
+        super().__init__(__src, 'spec')
+
+
+class Status(dicts.MappingView[str, Any]):
+    def __init__(self, __src: "Body") -> None:
+        super().__init__(__src, 'status')
+
+
+class Body(dicts.ReplaceableMappingView[str, Any]):
+
+    def __init__(self, __src: Mapping[str, Any]) -> None:
+        super().__init__(__src)
+        self._meta = Meta(self)
+        self._spec = Spec(self)
+        self._status = Status(self)
+
+    @property
+    def metadata(self) -> Meta:
+        return self._meta
+
+    @property
+    def meta(self) -> Meta:
+        return self._meta
+
+    @property
+    def spec(self) -> Spec:
+        return self._spec
+
+    @property
+    def status(self) -> Status:
+        return self._status
 
 
 #

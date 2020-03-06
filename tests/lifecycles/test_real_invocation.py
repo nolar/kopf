@@ -30,7 +30,7 @@ async def test_protocol_invocation(lifecycle, resource):
         resource=resource,
         patch=Patch(),
         memo=ObjectDict(),
-        body=Body(),
+        body=Body({}),
         initial=False,
         reason=Reason.NOOP,
     )

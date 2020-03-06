@@ -136,18 +136,20 @@ class ResourceChangingCause(ResourceCause):
 
 def detect_resource_watching_cause(
         raw_event: bodies.RawEvent,
+        body: bodies.Body,
         **kwargs: Any,
 ) -> ResourceWatchingCause:
     return ResourceWatchingCause(
         raw=raw_event,
         type=raw_event['type'],
-        body=raw_event['object'],
+        body=body,
         **kwargs)
 
 
 def detect_resource_changing_cause(
         *,
         raw_event: bodies.RawEvent,
+        body: bodies.Body,
         diff: Optional[diffs.Diff] = None,
         initial: bool = False,
         **kwargs: Any,
@@ -162,7 +164,6 @@ def detect_resource_changing_cause(
     """
 
     # Put them back to the pass-through kwargs (to avoid code duplication).
-    body = raw_event['object']
     kwargs.update(body=body, initial=initial)
     if diff is not None:
         kwargs.update(diff=diff)

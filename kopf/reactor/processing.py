@@ -53,8 +53,14 @@ async def process_resource_event(
     All the internally provoked changes are intercepted, do not create causes,
     and therefore do not call the handling logic.
     """
-    body: bodies.Body = raw_event['object']
-    patch: patches.Patch = patches.Patch()
+
+    # Convert to a heavy mapping-view wrapper only now, when heavy processing begins.
+    # Raw-event streaming, queueing, and batching use regular lightweight dicts.
+    # Why here? 1. Before it splits into multiple causes & handlers for the same object's body;
+    # 2. After it is batched (queueing); 3. While the "raw" parsed JSON is still known;
+    # 4. Same as where a patch object of a similar wrapping semantics is created.
+    body = bodies.Body(raw_event['object'])
+    patch = patches.Patch()
     delay: Optional[float] = None
 
     # Each object has its own prefixed logger, to distinguish parallel handling.
@@ -75,6 +81,7 @@ async def process_resource_event(
             resource=resource,
             logger=logger,
             patch=patch,
+            body=body,
             memo=memory.user_data,
         )
         await process_resource_watching_cause(
@@ -94,6 +101,7 @@ async def process_resource_event(
             resource=resource,
             logger=logger,
             patch=patch,
+            body=body,
             old=old,
             new=new,
             diff=diff,
