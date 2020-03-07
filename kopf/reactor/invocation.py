@@ -75,6 +75,8 @@ def build_kwargs(
             uid=cause.body.metadata.uid,
             name=cause.body.metadata.name,
             namespace=cause.body.metadata.namespace,
+            labels=cause.body.metadata.labels,
+            annotations=cause.body.metadata.annotations,
         )
     if isinstance(cause, causation.ResourceWatchingCause):
         new_kwargs.update(
