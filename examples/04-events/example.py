@@ -7,7 +7,7 @@ import kopf
 @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
 def create_fn(body, **kwargs):
 
-    # The all-purpose function for the vent creation.
+    # The all-purpose function for the event creation.
     kopf.event(body, type="SomeType", reason="SomeReason", message="Some message")
 
     # The shortcuts for the conventional events and common cases.
