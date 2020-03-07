@@ -59,9 +59,8 @@ We will use the official Kubernetes client library (``pip install kubernetes``):
     import yaml
 
     @kopf.on.create('zalando.org', 'v1', 'ephemeralvolumeclaims')
-    def create_fn(meta, spec, namespace, logger, **kwargs):
+    def create_fn(spec, name, namespace, logger, **kwargs):
 
-        name = meta.get('name')
         size = spec.get('size')
         if not size:
             raise kopf.PermanentError(f"Size must be set. Got {size!r}.")
