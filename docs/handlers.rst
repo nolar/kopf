@@ -129,7 +129,7 @@ i.e. what actually happened to the object:
 
 .. note::
     Worth noting that Kopf stores the status of the handlers, such as their
-    progress or errors or retries, in the object itself (in its ``status``),
+    progress or errors or retries, in the object itself (``.status`` stanza),
     which triggers its own low-level events, but these events are not detected
     as separate causes, as there is nothing changed *essentially*.
 
@@ -386,9 +386,9 @@ without making any external API calls.
 .. note::
 
     If the operator is running in a Kubernetes cluster, there can be
-    timeouts set for liveness/readiness checls of a pod.
+    timeouts set for liveness/readiness checks of a pod.
 
-    If the startup takes too longer in total (e.g. due to retries),
+    If the startup takes too long in total (e.g. due to retries),
     the pod can be killed by Kubernetes as not responding to the probes.
 
     Either design the startup activities to be as fast as possible,
