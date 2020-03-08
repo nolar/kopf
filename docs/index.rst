@@ -29,6 +29,7 @@ Kopf: Kubernetes Operators Framework
    handlers
    async
    loading
+   filters
    results
    errors
    scopes
