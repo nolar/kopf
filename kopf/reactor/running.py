@@ -315,9 +315,9 @@ async def run_tasks(
     try:
         root_done, root_pending = await _wait(root_tasks, return_when=asyncio.FIRST_COMPLETED)
     except asyncio.CancelledError:
-        await _stop(root_tasks, title="Root", cancelled=True)
+        await _stop(root_tasks, title="Root", cancelled=True, interval=10)
         hung_tasks = await _all_tasks(ignored=ignored)
-        await _stop(hung_tasks, title="Hung", cancelled=True)
+        await _stop(hung_tasks, title="Hung", cancelled=True, interval=1)
         raise
 
     # If the operator is intact, but one of the root tasks has exited (successfully or not),
@@ -329,13 +329,13 @@ async def run_tasks(
     # TODO: an assumption! the loop is not fully ours! find a way to cancel only our spawned tasks.
     hung_tasks = await _all_tasks(ignored=ignored)
     try:
-        hung_done, hung_pending = await _wait(hung_tasks, timeout=5.0)
+        hung_done, hung_pending = await _wait(hung_tasks, timeout=5)
     except asyncio.CancelledError:
-        await _stop(hung_tasks, title="Hung", cancelled=True)
+        await _stop(hung_tasks, title="Hung", cancelled=True, interval=1)
         raise
 
     # If the operator is intact, but the timeout is reached, forcely cancel the sub-tasks.
-    hung_cancelled, _ = await _stop(hung_pending, title="Hung", cancelled=False)
+    hung_cancelled, _ = await _stop(hung_pending, title="Hung", cancelled=False, interval=1)
 
     # If succeeded or if cancellation is silenced, re-raise from failed tasks (if any).
     await _reraise(root_done | root_cancelled | hung_done | hung_cancelled)
@@ -365,6 +365,7 @@ async def _stop(
         tasks: Tasks,
         title: str,
         cancelled: bool,
+        interval: Optional[float] = None,
 ) -> Tuple[Set[asyncio_Task], Set[asyncio_Task]]:
     if not tasks:
         logger.debug(f"{title} tasks stopping is skipped: no tasks given.")
@@ -373,25 +374,30 @@ async def _stop(
     for task in tasks:
         task.cancel()
 
-    # If the waiting (current) task is cancelled before the wait is over,
-    # propagate the cancellation to all the awaited (sub-) tasks, and let them finish.
-    try:
-        done, pending = await asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
-    except asyncio.CancelledError:
-        # If the waiting (current) task is cancelled while propagating the cancellation
-        # (i.e. double-cancelled), let it fail without graceful cleanup. It is urgent, it seems.
-        pending = {task for task in tasks if not task.done()}
-        are = 'are' if not pending else 'are not'
-        why = 'double-cancelled at stopping' if cancelled else 'cancelled at stopping'
-        logger.debug(f"{title} tasks {are} stopped: {why}; tasks left: {pending!r}")
-        raise  # the repeated cancellation, handled specially.
-    else:
-        # If the cancellation is propagated normally and the awaited (sub-) tasks exited,
-        # consider it as a successful cleanup.
-        are = 'are' if not pending else 'are not'
-        why = 'cancelled normally' if cancelled else 'finished normally'
-        logger.debug(f"{title} tasks {are} stopped: {why}; tasks left: {pending!r}")
-        return cast(Set[asyncio_Task], done), cast(Set[asyncio_Task], pending)
+    done_ever: Set[asyncio_Task] = set()
+    pending: Set[asyncio_Task] = set(tasks)
+    while pending:
+        # If the waiting (current) task is cancelled before the wait is over,
+        # propagate the cancellation to all the awaited (sub-) tasks, and let them finish.
+        try:
+            done_now, pending = await _wait(pending, timeout=interval)
+        except asyncio.CancelledError:
+            # If the waiting (current) task is cancelled while propagating the cancellation
+            # (i.e. double-cancelled), let it fail without graceful cleanup. It is urgent, it seems.
+            pending = {task for task in tasks if not task.done()}
+            are = 'are' if not pending else 'are not'
+            why = 'double-cancelling at stopping' if cancelled else 'cancelling at stopping'
+            logger.debug(f"{title} tasks {are} stopped: {why}; tasks left: {pending!r}")
+            raise  # the repeated cancellation, handled specially.
+        else:
+            # If the cancellation is propagated normally and the awaited (sub-) tasks exited,
+            # consider it as a successful cleanup.
+            are = 'are' if not pending else 'are not'
+            why = 'cancelling normally' if cancelled else 'finishing normally'
+            logger.debug(f"{title} tasks {are} stopped: {why}; tasks left: {pending!r}")
+            done_ever |= done_now
+
+    return done_ever, pending
 
 
 async def _reraise(
