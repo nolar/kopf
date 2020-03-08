@@ -60,7 +60,8 @@ class BaseRegistry(metaclass=abc.ABCMeta):
 
 class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[
         AnyCause,
-        Union[callbacks.ResourceWatchingFn, callbacks.ResourceChangingFn]]):
+        Union[callbacks.ResourceWatchingFn, callbacks.ResourceChangingFn],
+        handlers.ResourceHandler]):
     """
     .. deprecated: 1.0
 

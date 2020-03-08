@@ -4,7 +4,7 @@ from kopf import ActivityRegistry
 from kopf import OperatorRegistry
 from kopf import ResourceWatchingRegistry, ResourceChangingRegistry
 from kopf import SimpleRegistry, GlobalRegistry  # deprecated, but tested
-from kopf.reactor.handlers import HandlerId, ResourceHandler
+from kopf.reactor.handlers import HandlerId, ResourceChangingHandler
 
 
 @pytest.fixture(params=[
@@ -47,7 +47,7 @@ def parent_handler():
     def parent_fn(**_):
         pass
 
-    return ResourceHandler(
+    return ResourceChangingHandler(
         fn=parent_fn, id=HandlerId('parent_fn'),
         errors=None, retries=None, timeout=None, backoff=None, cooldown=None,
         labels=None, annotations=None, when=None,

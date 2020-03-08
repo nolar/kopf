@@ -52,14 +52,23 @@ class ActivityHandler(BaseHandler):
 
 @dataclasses.dataclass
 class ResourceHandler(BaseHandler):
-    fn: Union[callbacks.ResourceWatchingFn, callbacks.ResourceChangingFn]  # type clarification
+    labels: Optional[filters.MetaFilter]
+    annotations: Optional[filters.MetaFilter]
+    when: Optional[callbacks.WhenFilterFn]
+
+
+@dataclasses.dataclass
+class ResourceWatchingHandler(ResourceHandler):
+    fn: callbacks.ResourceWatchingFn  # type clarification
+
+
+@dataclasses.dataclass
+class ResourceChangingHandler(ResourceHandler):
+    fn: callbacks.ResourceChangingFn  # type clarification
     reason: Optional[causation.Reason]
     field: Optional[dicts.FieldPath]
     initial: Optional[bool]
     deleted: Optional[bool]  # used for mixed-in (initial==True) @on.resume handlers only.
-    labels: Optional[filters.MetaFilter]
-    annotations: Optional[filters.MetaFilter]
-    when: Optional[callbacks.WhenFilterFn]
     requires_finalizer: Optional[bool]
 
     @property

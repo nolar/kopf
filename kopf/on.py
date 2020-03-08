@@ -145,7 +145,7 @@ def resume(  # lgtm[py/similar-function]
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
         real_id = registries.generate_id(fn=fn, id=id)
-        handler = handlers.ResourceHandler(
+        handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id, field=None,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
@@ -177,7 +177,7 @@ def create(  # lgtm[py/similar-function]
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
         real_id = registries.generate_id(fn=fn, id=id)
-        handler = handlers.ResourceHandler(
+        handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id, field=None,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
@@ -209,7 +209,7 @@ def update(  # lgtm[py/similar-function]
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
         real_id = registries.generate_id(fn=fn, id=id)
-        handler = handlers.ResourceHandler(
+        handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id, field=None,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
@@ -242,7 +242,7 @@ def delete(  # lgtm[py/similar-function]
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
         real_id = registries.generate_id(fn=fn, id=id)
-        handler = handlers.ResourceHandler(
+        handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id, field=None,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
@@ -276,7 +276,7 @@ def field(  # lgtm[py/similar-function]
         real_resource = resources.Resource(group, version, plural)
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
-        handler = handlers.ResourceHandler(
+        handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id, field=real_field,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
@@ -303,12 +303,10 @@ def event(  # lgtm[py/similar-function]
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
         real_id = registries.generate_id(fn=fn, id=id)
-        handler = handlers.ResourceHandler(
-            fn=fn, id=real_id, field=None,
+        handler = handlers.ResourceWatchingHandler(
+            fn=fn, id=real_id,
             errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
             labels=labels, annotations=annotations, when=when,
-            initial=None, deleted=None, requires_finalizer=None,
-            reason=None,
         )
         real_registry.resource_watching_handlers[real_resource].append(handler)
         return fn
@@ -365,7 +363,7 @@ def this(  # lgtm[py/similar-function]
         real_registry = registry if registry is not None else handling.subregistry_var.get()
         real_id = registries.generate_id(fn=fn, id=id,
                                          prefix=parent_handler.id if parent_handler else None)
-        handler = handlers.ResourceHandler(
+        handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id, field=None,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,

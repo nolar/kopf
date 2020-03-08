@@ -5,7 +5,7 @@ import pytest
 
 import kopf
 from kopf.reactor.causation import HANDLER_REASONS
-from kopf.reactor.handlers import ResourceHandler
+from kopf.reactor.handlers import ResourceChangingHandler
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
@@ -22,7 +22,7 @@ async def test_skipped_with_no_handlers(
     cause_mock.reason = cause_type
 
     assert not registry.resource_changing_handlers[resource]  # prerequisite
-    registry.resource_changing_handlers[resource].append(ResourceHandler(
+    registry.resource_changing_handlers[resource].append(ResourceChangingHandler(
         reason='a-non-existent-cause-type',
         fn=lambda **_: None, id='id',
         errors=None, timeout=None, retries=None, backoff=None, cooldown=None,

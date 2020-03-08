@@ -1,7 +1,7 @@
 # Original test-file: tests/basic-structs/test_handlers.py
 import pytest
 
-from kopf.reactor.handlers import ActivityHandler, ResourceHandler
+from kopf.reactor.handlers import ActivityHandler, ResourceChangingHandler
 
 
 def test_activity_handler_with_deprecated_cooldown_instead_of_backoff(mocker):
@@ -54,7 +54,7 @@ def test_resource_handler_with_deprecated_cooldown_instead_of_backoff(mocker):
     requires_finalizer = mocker.Mock()
 
     with pytest.deprecated_call(match=r"use backoff="):
-        handler = ResourceHandler(
+        handler = ResourceChangingHandler(
             fn=fn,
             id=id,
             reason=reason,
