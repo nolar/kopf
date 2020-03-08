@@ -23,7 +23,7 @@ Retrying and timing
 ===================
 
 Most (but not all) of the handlers -- such as resource change detection,
-and activity handlers -- are capable of retrying
+resource daemons and timers, and activity handlers -- are capable of retrying
 their execution in case of errors (see also: :doc:`errors`).
 They provide kwargs regarding the retrying process:
 
@@ -173,3 +173,24 @@ Diffing
 the detected changes. The new state usually corresponds to :kwarg:`body`.
 
 ``diff`` is a list of changes of the object between old & new states.
+
+
+Resource daemon kwargs
+======================
+
+
+.. kwarg:: stopped
+
+Stop-flag
+---------
+
+The daemons also have ``stopped``. It is a flag object for sync daemons
+to check if they should stop. See also: `DaemonStopperChecker`.
+
+To check, ``.is_set()`` method can be called, or the object itself can be used
+as a boolean expression: e.g. ``while not stopped: ...``.
+
+Its ``.wait()`` method can be used to replace ``time.sleep()``
+or ``asyncio.sleep()`` for faster (instant) termination on resource deletion.
+
+See more: :doc:`daemons`.

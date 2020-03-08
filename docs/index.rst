@@ -27,6 +27,8 @@ Kopf: Kubernetes Operators Framework
    :caption: Resource handling:
 
    handlers
+   daemons
+   timers
    kwargs
    async
    loading
