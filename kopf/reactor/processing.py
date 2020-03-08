@@ -127,9 +127,25 @@ async def process_resource_event(
             cause=resource_changing_cause,
         )
 
-    # Whatever was done, apply the accumulated changes to the object.
+    # Whatever was done, apply the accumulated changes to the object, or sleep-n-touch for delays.
     # But only once, to reduce the number of API calls and the generated irrelevant events.
+    await apply_reaction_outcomes(
+        resource=resource, body=body,
+        patch=patch, delays=delays,
+        logger=logger, replenished=replenished)
+
+
+async def apply_reaction_outcomes(
+        *,
+        resource: resources.Resource,
+        body: bodies.Body,
+        patch: patches.Patch,
+        delays: Collection[float],
+        logger: logging_engine.ObjectLogger,
+        replenished: asyncio.Event,
+) -> None:
     delay = min(delays) if delays else None
+
     if patch:
         logger.debug("Patching with: %r", patch)
         await patching.patch_obj(resource=resource, patch=patch, body=body)
