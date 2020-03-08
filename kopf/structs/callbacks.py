@@ -12,6 +12,7 @@ from typing_extensions import Protocol
 from kopf.structs import bodies
 from kopf.structs import diffs
 from kopf.structs import patches
+from kopf.structs import primitives
 
 # A specialised type to highlight the purpose or origin of the data of type Any,
 # to not be mixed with other arbitrary Any values, where it is indeed "any".
@@ -74,6 +75,62 @@ class ResourceChangingFn(Protocol):
             new: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
             **kwargs: Any,
     ) -> _SyncOrAsyncResult: ...
+
+
+class ResourceDaemonSyncFn(Protocol):
+    def __call__(  # lgtm[py/similar-function]  # << different mode
+            self,
+            *args: Any,
+            body: bodies.Body,
+            meta: bodies.Meta,
+            spec: bodies.Spec,
+            status: bodies.Status,
+            uid: str,
+            name: str,
+            namespace: Optional[str],
+            logger: Union[logging.Logger, logging.LoggerAdapter],
+            stopped: primitives.SyncDaemonStopperChecker,  # << different type
+            **kwargs: Any,
+    ) -> Optional[Result]: ...
+
+
+class ResourceDaemonAsyncFn(Protocol):
+    async def __call__(  # lgtm[py/similar-function]  # << different mode
+            self,
+            *args: Any,
+            body: bodies.Body,
+            meta: bodies.Meta,
+            spec: bodies.Spec,
+            status: bodies.Status,
+            uid: str,
+            name: str,
+            namespace: Optional[str],
+            logger: Union[logging.Logger, logging.LoggerAdapter],
+            stopped: primitives.AsyncDaemonStopperChecker,  # << different type
+            **kwargs: Any,
+    ) -> Optional[Result]: ...
+
+
+ResourceDaemonFn = Union[ResourceDaemonSyncFn, ResourceDaemonAsyncFn]
+
+
+class ResourceTimerFn(Protocol):
+    def __call__(  # lgtm[py/similar-function]
+            self,
+            *args: Any,
+            body: bodies.Body,
+            meta: bodies.Meta,
+            spec: bodies.Spec,
+            status: bodies.Status,
+            uid: str,
+            name: str,
+            namespace: Optional[str],
+            logger: Union[logging.Logger, logging.LoggerAdapter],
+            **kwargs: Any,
+    ) -> _SyncOrAsyncResult: ...
+
+
+ResourceSpawningFn = Union[ResourceDaemonFn, ResourceTimerFn]
 
 
 class WhenFilterFn(Protocol):

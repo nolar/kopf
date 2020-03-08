@@ -41,6 +41,7 @@ def context(
 
 def build_kwargs(
         cause: Optional[causation.BaseCause] = None,
+        _sync: Optional[bool] = None,
         **kwargs: Any
 ) -> Dict[str, Any]:
     """
@@ -90,7 +91,10 @@ def build_kwargs(
             old=cause.old,
             new=cause.new,
         )
-
+    if isinstance(cause, causation.DaemonCause) and _sync is not None:
+        new_kwargs.update(
+            stopped=cause.stopper.sync_checker if _sync else cause.stopper.async_checker,
+        )
     return new_kwargs
 
 
@@ -116,11 +120,11 @@ async def invoke(
     thus making it non-blocking for the main event loop of the operator.
     See: https://pymotw.com/3/asyncio/executors.html
     """
-    kwargs = build_kwargs(cause=cause, **kwargs)
-
     if is_async_fn(fn):
+        kwargs = build_kwargs(cause=cause, _sync=False, **kwargs)
         result = await fn(*args, **kwargs)  # type: ignore
     else:
+        kwargs = build_kwargs(cause=cause, _sync=True, **kwargs)
 
         # Not that we want to use functools, but for executors kwargs, it is officially recommended:
         # https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.run_in_executor

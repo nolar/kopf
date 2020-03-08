@@ -15,6 +15,7 @@ and therefore do not trigger the user-defined handlers.
 """
 import asyncio
 import datetime
+import time
 from typing import Collection, Optional
 
 from kopf.clients import patching
@@ -22,6 +23,7 @@ from kopf.engines import logging as logging_engine
 from kopf.engines import posting
 from kopf.engines import sleeping
 from kopf.reactor import causation
+from kopf.reactor import daemons
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
@@ -59,25 +61,27 @@ async def process_resource_event(
     and therefore do not call the handling logic.
     """
 
+    # Recall what is stored about that object. Share it in little portions with the consumers.
+    # And immediately forget it if the object is deleted from the cluster (but keep in memory).
+    raw_type, raw_body = raw_event['type'], raw_event['object']
+    memory = await memories.recall(raw_body, noticed_by_listing=raw_type is None)
+    if memory.live_fresh_body is not None:
+        memory.live_fresh_body._replace_with(raw_body)
+    if raw_type == 'DELETED':
+        await memories.forget(raw_body)
+
     # Convert to a heavy mapping-view wrapper only now, when heavy processing begins.
     # Raw-event streaming, queueing, and batching use regular lightweight dicts.
     # Why here? 1. Before it splits into multiple causes & handlers for the same object's body;
     # 2. After it is batched (queueing); 3. While the "raw" parsed JSON is still known;
     # 4. Same as where a patch object of a similar wrapping semantics is created.
-    body = bodies.Body(raw_event['object'])
+    body = memory.live_fresh_body if memory.live_fresh_body is not None else bodies.Body(raw_body)
     patch = patches.Patch()
-    delay: Optional[float] = None
 
     # Each object has its own prefixed logger, to distinguish parallel handling.
     logger = logging_engine.ObjectLogger(body=body, settings=settings)
     posting.event_queue_loop_var.set(asyncio.get_running_loop())
     posting.event_queue_var.set(event_queue)  # till the end of this object's task.
-
-    # Recall what is stored about that object. Share it in little portions with the consumers.
-    # And immediately forget it if the object is deleted from the cluster (but keep in memory).
-    memory = await memories.recall(body, noticed_by_listing=raw_event['type'] is None)
-    if raw_event['type'] == 'DELETED':
-        await memories.forget(body)
 
     extra_fields = registry.resource_changing_handlers[resource].get_extra_fields()
     old = settings.persistence.diffbase_storage.fetch(body=body)
@@ -95,6 +99,15 @@ async def process_resource_event(
         body=body,
         memo=memory.user_data,
     ) if registry.resource_watching_handlers[resource] else None
+
+    resource_spawning_cause = causation.detect_resource_spawning_cause(
+        resource=resource,
+        logger=logger,
+        patch=patch,
+        body=body,
+        memo=memory.user_data,
+        reset=bool(diff),  # only essential changes reset idling, not every event
+    ) if registry.resource_spawning_handlers[resource] else None
 
     resource_changing_cause = causation.detect_resource_changing_cause(
         raw_event=raw_event,
@@ -116,6 +129,9 @@ async def process_resource_event(
     deletion_is_ongoing = finalizers.is_deletion_ongoing(body=body)
     deletion_is_blocked = finalizers.is_deletion_blocked(body=body)
     deletion_must_be_blocked = (
+        (resource_spawning_cause is not None and
+         registry.resource_spawning_handlers[resource].requires_finalizer(resource_spawning_cause))
+        or
         (resource_changing_cause is not None and
          registry.resource_changing_handlers[resource].requires_finalizer(resource_changing_cause)))
 
@@ -130,6 +146,8 @@ async def process_resource_event(
         resource_changing_cause = None  # prevent further high-level processing this time
 
     # Invoke all the handlers that should or could be invoked at this processing cycle.
+    # The low-level spies go ASAP always. However, the daemons are spawned before the high-level
+    # handlers and killed after them: the daemons should live throughout the full object lifecycle.
     if resource_watching_cause is not None:
         await process_resource_watching_cause(
             lifecycle=lifecycles.all_at_once,
@@ -138,8 +156,15 @@ async def process_resource_event(
             cause=resource_watching_cause,
         )
 
-    # Object patch accumulator. Populated by the methods. Applied in the end of the handler.
-    # Detect the cause and handle it (or at least log this happened).
+    resource_spawning_delays: Collection[float] = []
+    if resource_spawning_cause is not None:
+        resource_spawning_delays = await process_resource_spawning_cause(
+            registry=registry,
+            settings=settings,
+            memory=memory,
+            cause=resource_spawning_cause,
+        )
+
     resource_changing_delays: Collection[float] = []
     if resource_changing_cause is not None:
         resource_changing_delays = await process_resource_changing_cause(
@@ -152,7 +177,9 @@ async def process_resource_event(
 
     # Release the object if everything is done, and it is marked for deletion.
     # But not when it has already gone.
-    if deletion_is_ongoing and deletion_is_blocked and not resource_changing_delays:
+    if deletion_is_ongoing and deletion_is_blocked \
+            and not resource_spawning_delays \
+            and not resource_changing_delays:
         logger.debug("Removing the finalizer, thus allowing the actual deletion.")
         finalizers.allow_deletion(body=body, patch=patch)
 
@@ -162,7 +189,7 @@ async def process_resource_event(
     if raw_event['type'] != 'DELETED':
         await apply_reaction_outcomes(
             resource=resource, body=body,
-            patch=patch, delays=resource_changing_delays,
+            patch=patch, delays=list(resource_spawning_delays) + list(resource_changing_delays),
             logger=logger, replenished=replenished)
 
 
@@ -237,6 +264,56 @@ async def process_resource_watching_cause(
 
     # Store the results, but not the handlers' progress.
     states.deliver_results(outcomes=outcomes, patch=cause.patch)
+
+
+async def process_resource_spawning_cause(
+        registry: registries.OperatorRegistry,
+        settings: configuration.OperatorSettings,
+        memory: containers.ResourceMemory,
+        cause: causation.ResourceSpawningCause,
+) -> Collection[float]:
+    """
+    Spawn/kill all the background tasks of a resource.
+
+    The spawning and killing happens in parallel with the resource-changing
+    handlers invocation (even if it takes few cycles). For this, the signal
+    to terminate is sent to the daemons immediately, but the actual check
+    of their shutdown is performed only when all the on-deletion handlers
+    are succeeded (or after they were invoked if they are optional;
+    or immediately if there were no on-deletion handlers to invoke at all).
+
+    The resource remains blocked by the finalizers until all the daemons exit
+    (except those marked as tolerating being orphaned).
+    """
+
+    # Refresh the up-to-date body & essential timestamp for all the daemons/timers.
+    if memory.live_fresh_body is None:
+        memory.live_fresh_body = cause.body
+    if cause.reset:
+        memory.idle_reset_time = time.monotonic()
+
+    if finalizers.is_deletion_ongoing(cause.body):
+        delays = await daemons.stop_resource_daemons(
+            settings=settings,
+            daemons=memory.daemons,
+        )
+        return delays
+
+    # Save a little bit of CPU on handlers selection if everything is spawned already.
+    elif not memory.fully_spawned:
+        handlers = registry.resource_spawning_handlers[cause.resource].get_handlers(cause=cause)
+        delays = await daemons.spawn_resource_daemons(
+            settings=settings,
+            daemons=memory.daemons,
+            cause=cause,
+            memory=memory,
+            handlers=handlers,
+        )
+        memory.fully_spawned = not delays
+        return delays
+
+    else:
+        return []
 
 
 async def process_resource_changing_cause(

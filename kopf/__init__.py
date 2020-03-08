@@ -27,6 +27,10 @@ from kopf.engines.posting import (
     exception,
 )
 from kopf.on import (
+    daemon,
+    timer,
+)
+from kopf.on import (
     register,
 )
 from kopf.reactor import (
@@ -91,6 +95,9 @@ from kopf.structs.filters import (
 from kopf.structs.handlers import (
     ErrorsMode,
 )
+from kopf.structs.primitives import (
+    DaemonStoppingReason,
+)
 from kopf.toolkits.hierarchies import (
     adopt,
     label,
@@ -113,7 +120,7 @@ HandlerFatalError = PermanentError  # a backward-compatibility alias
 HandlerRetryError = TemporaryError  # a backward-compatibility alias
 
 __all__ = [
-    'on', 'lifecycles', 'register', 'execute',
+    'on', 'lifecycles', 'register', 'execute', 'daemon', 'timer',
     'configure',
     'login', 'LoginError', 'ConnectionInfo',
     'login_via_pykube', 'login_via_client',
@@ -149,4 +156,5 @@ __all__ = [
     'StatusProgressStorage',
     'MultiProgressStorage',
     'SmartProgressStorage',
+    'DaemonStoppingReason',
 ]

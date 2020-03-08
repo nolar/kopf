@@ -27,6 +27,8 @@ from kopf.structs import resources
 ActivityDecorator = Callable[[callbacks.ActivityFn], callbacks.ActivityFn]
 ResourceWatchingDecorator = Callable[[callbacks.ResourceWatchingFn], callbacks.ResourceWatchingFn]
 ResourceChangingDecorator = Callable[[callbacks.ResourceChangingFn], callbacks.ResourceChangingFn]
+ResourceDaemonDecorator = Callable[[callbacks.ResourceDaemonFn], callbacks.ResourceDaemonFn]
+ResourceTimerDecorator = Callable[[callbacks.ResourceTimerFn], callbacks.ResourceTimerFn]
 
 
 def startup(  # lgtm[py/similar-function]
@@ -318,6 +320,82 @@ def event(  # lgtm[py/similar-function]
             labels=labels, annotations=annotations, when=when,
         )
         real_registry.resource_watching_handlers[real_resource].append(handler)
+        return fn
+    return decorator
+
+
+def daemon(  # lgtm[py/similar-function]
+        group: str, version: str, plural: str,
+        *,
+        id: Optional[str] = None,
+        errors: Optional[handlers.ErrorsMode] = None,
+        timeout: Optional[float] = None,
+        retries: Optional[int] = None,
+        backoff: Optional[float] = None,
+        cooldown: Optional[float] = None,  # deprecated, use `backoff`
+        registry: Optional[registries.OperatorRegistry] = None,
+        labels: Optional[filters.MetaFilter] = None,
+        annotations: Optional[filters.MetaFilter] = None,
+        when: Optional[callbacks.WhenFilterFn] = None,
+        initial_backoff: Optional[float] = None,
+        cancellation_backoff: Optional[float] = None,
+        cancellation_timeout: Optional[float] = None,
+        cancellation_polling: Optional[float] = None,
+) -> ResourceDaemonDecorator:
+    """ ``@kopf.daemon()`` decorator for the background threads/tasks. """
+    def decorator(fn: callbacks.ResourceDaemonFn) -> callbacks.ResourceDaemonFn:
+        _warn_deprecated_signatures(fn)
+        _warn_deprecated_filters(labels, annotations)
+        real_registry = registry if registry is not None else registries.get_default_registry()
+        real_resource = resources.Resource(group, version, plural)
+        real_id = registries.generate_id(fn=fn, id=id)
+        handler = handlers.ResourceDaemonHandler(
+            fn=fn, id=real_id,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
+            labels=labels, annotations=annotations, when=when,
+            initial_backoff=initial_backoff, requires_finalizer=True,  #TODO: requires_finalizer? "optional"?
+            cancellation_backoff=cancellation_backoff,
+            cancellation_timeout=cancellation_timeout,
+            cancellation_polling=cancellation_polling,
+        )
+        real_registry.resource_spawning_handlers[real_resource].append(handler)
+        return fn
+    return decorator
+
+
+def timer(  # lgtm[py/similar-function]
+        group: str, version: str, plural: str,
+        *,
+        id: Optional[str] = None,
+        errors: Optional[handlers.ErrorsMode] = None,
+        timeout: Optional[float] = None,
+        retries: Optional[int] = None,
+        backoff: Optional[float] = None,
+        cooldown: Optional[float] = None,  # deprecated, use `backoff`
+        registry: Optional[registries.OperatorRegistry] = None,
+        labels: Optional[filters.MetaFilter] = None,
+        annotations: Optional[filters.MetaFilter] = None,
+        when: Optional[callbacks.WhenFilterFn] = None,
+        initial_backoff: Optional[float] = None,
+        sharp: Optional[bool] = None,
+        idle: Optional[float] = None,
+        interval: Optional[float] = None,
+) -> ResourceTimerDecorator:
+    """ ``@kopf.timer()`` handler for the regular events. """
+    def decorator(fn: callbacks.ResourceTimerFn) -> callbacks.ResourceTimerFn:
+        _warn_deprecated_signatures(fn)
+        _warn_deprecated_filters(labels, annotations)
+        real_registry = registry if registry is not None else registries.get_default_registry()
+        real_resource = resources.Resource(group, version, plural)
+        real_id = registries.generate_id(fn=fn, id=id)
+        handler = handlers.ResourceTimerHandler(
+            fn=fn, id=real_id,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
+            labels=labels, annotations=annotations, when=when,
+            initial_backoff=initial_backoff, requires_finalizer=None,
+            sharp=sharp, idle=idle, interval=interval,
+        )
+        real_registry.resource_spawning_handlers[real_resource].append(handler)
         return fn
     return decorator
 

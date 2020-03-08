@@ -7,10 +7,33 @@ On the operator restart, all the memories are lost.
 It is used internally to track allocated system resources for each Kubernetes
 object, even if that object does not show up in the event streams for long time.
 """
+import asyncio
 import dataclasses
-from typing import MutableMapping, Dict, Any
+import logging
+import time
+from typing import MutableMapping, Dict, Any, Iterator, Optional, Union, NewType, TYPE_CHECKING
 
 from kopf.structs import bodies
+from kopf.structs import handlers
+from kopf.structs import primitives
+
+
+if TYPE_CHECKING:
+    asyncio_Task = asyncio.Task[None]
+    asyncio_Future = asyncio.Future[Any]
+else:
+    asyncio_Task = asyncio.Task
+    asyncio_Future = asyncio.Future
+
+DaemonId = NewType('DaemonId', str)
+
+
+@dataclasses.dataclass(frozen=True)
+class Daemon:
+    task: asyncio_Task  # a guarding task of the daemon.
+    logger: Union[logging.Logger, logging.LoggerAdapter]
+    handler: handlers.ResourceSpawningHandler
+    stopper: primitives.DaemonStopper  # a signaller for the termination and its reason.
 
 
 class ObjectDict(Dict[Any, Any]):
@@ -43,6 +66,12 @@ class ResourceMemory:
     noticed_by_listing: bool = False
     fully_handled_once: bool = False
 
+    # For background and timed threads/tasks (invoked with the kwargs of the last-seen body).
+    live_fresh_body: Optional[bodies.Body] = None
+    idle_reset_time: float = dataclasses.field(default_factory=time.monotonic)
+    daemons: Dict[DaemonId, Daemon] = dataclasses.field(default_factory=dict)
+    fully_spawned: bool = False
+
 
 class ResourceMemories:
     """
@@ -68,32 +97,41 @@ class ResourceMemories:
         super().__init__()
         self._items = {}
 
+    def iter_all_memories(self) -> Iterator[ResourceMemory]:
+        for memory in self._items.values():
+            yield memory
+
     async def recall(
             self,
-            body: bodies.Body,
+            raw_body: bodies.RawBody,
             *,
             noticed_by_listing: bool = False,
     ) -> ResourceMemory:
         """
         Either find a resource's memory, or create and remember a new one.
+
+        Keep the last-seen body up to date for all the handlers.
         """
-        key = self._build_key(body)
+        key = self._build_key(raw_body)
         if key not in self._items:
             memory = ResourceMemory(noticed_by_listing=noticed_by_listing)
             self._items[key] = memory
         return self._items[key]
 
-    async def forget(self, body: bodies.Body) -> None:
+    async def forget(
+            self,
+            raw_body: bodies.RawBody,
+    ) -> None:
         """
         Forget the resource's memory if it exists; or ignore if it does not.
         """
-        key = self._build_key(body)
+        key = self._build_key(raw_body)
         if key in self._items:
             del self._items[key]
 
     def _build_key(
             self,
-            body: bodies.Body,
+            raw_body: bodies.RawBody,
     ) -> str:
         """
         Construct an immutable persistent key of a resource.
@@ -104,4 +142,4 @@ class ResourceMemories:
 
         But it must be consistent within a single process lifetime.
         """
-        return body.get('metadata', {}).get('uid') or ''
+        return raw_body.get('metadata', {}).get('uid') or ''

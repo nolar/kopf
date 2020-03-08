@@ -7,6 +7,7 @@ where the raw watch-events are interpreted and wrapped into extended *causes*.
 The handler execution can also be used in other places, such as in-memory
 activities, when there is no underlying Kubernetes object to patch'n'watch.
 """
+import asyncio
 import collections.abc
 import logging
 from contextvars import ContextVar
@@ -58,7 +59,7 @@ class HandlerChildrenRetry(TemporaryError):
 
 # The task-local context; propagated down the stack instead of multiple kwargs.
 # Used in `@kopf.on.this` and `kopf.execute()` to add/get the sub-handlers.
-sublifecycle_var: ContextVar[lifecycles.LifeCycleFn] = ContextVar('sublifecycle_var')
+sublifecycle_var: ContextVar[Optional[lifecycles.LifeCycleFn]] = ContextVar('sublifecycle_var')
 subregistry_var: ContextVar[registries.ResourceChangingRegistry] = ContextVar('subregistry_var')
 subsettings_var: ContextVar[configuration.OperatorSettings] = ContextVar('subsettings_var')
 subexecuted_var: ContextVar[bool] = ContextVar('subexecuted_var')
@@ -92,6 +93,7 @@ async def execute(
 
     # Restore the current context as set in the handler execution cycle.
     lifecycle = lifecycle if lifecycle is not None else sublifecycle_var.get()
+    lifecycle = lifecycle if lifecycle is not None else lifecycles.get_default_lifecycle()
     cause = cause if cause is not None else cause_var.get()
     parent_handler: handlers_.BaseHandler = handler_var.get()
     parent_prefix = parent_handler.id if parent_handler is not None else None
@@ -216,15 +218,20 @@ async def execute_handler_once(
         handler: handlers_.BaseHandler,
         cause: causation.BaseCause,
         state: states.HandlerState,
-        lifecycle: lifecycles.LifeCycleFn,
+        lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         default_errors: handlers_.ErrorsMode = handlers_.ErrorsMode.TEMPORARY,
 ) -> states.HandlerOutcome:
     """
-    Execute one and only one handler.
+    Execute one and only one handler for one and only one time.
 
     *Execution* means not just *calling* the handler in properly set context
     (see `_call_handler`), but also interpreting its result and errors, and
     wrapping them into am `HandlerOutcome` object -- to be stored in the state.
+
+    The *execution* can be long -- depending on how the handler is implemented.
+    For daemons, it is normal to run for hours and days if needed.
+    This is different from the regular handlers, which are supposed
+    to be finished as soon as possible.
 
     This method is not supposed to raise any exceptions from the handlers:
     exceptions mean the failure of execution itself.
@@ -258,6 +265,11 @@ async def execute_handler_once(
             settings=settings,
             lifecycle=lifecycle,  # just a default for the sub-handlers, not used directly.
         )
+
+    # The cancellations are an excepted way of stopping the handler. Especially for daemons.
+    except asyncio.CancelledError:
+        logger.warning(f"{handler} is cancelled. Will escalate.")
+        raise
 
     # Unfinished children cause the regular retry, but with less logging and event reporting.
     except HandlerChildrenRetry as e:
@@ -307,7 +319,7 @@ async def invoke_handler(
         *args: Any,
         cause: causation.BaseCause,
         settings: configuration.OperatorSettings,
-        lifecycle: lifecycles.LifeCycleFn,
+        lifecycle: Optional[lifecycles.LifeCycleFn],
         **kwargs: Any,
 ) -> Optional[callbacks.Result]:
     """

@@ -12,6 +12,7 @@ from kopf.engines import peering
 from kopf.engines import posting
 from kopf.engines import probing
 from kopf.reactor import activities
+from kopf.reactor import daemons
 from kopf.reactor import lifecycles
 from kopf.reactor import processing
 from kopf.reactor import queueing
@@ -215,6 +216,15 @@ async def spawn_tasks(
             settings=settings,
             vault=vault,  # to purge & finalize the caches in the end.
         )),
+    ])
+
+    # Kill all the daemons gracefully when the operator exits (so that they are not "hung").
+    tasks.extend([
+        loop.create_task(_root_task_checker(
+            name="daemon killer", ready_flag=ready_flag,
+            coro=daemons.daemon_killer(
+                settings=settings,
+                memories=memories))),
     ])
 
     # Keeping the credentials fresh and valid via the authentication handlers on demand.

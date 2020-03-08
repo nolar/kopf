@@ -5,10 +5,12 @@ import asyncio
 import collections
 from typing import Optional, Collection, Union
 
+from kopf.structs import primitives
+
 
 async def sleep_or_wait(
         delays: Union[None, float, Collection[Union[None, float]]],
-        event: Optional[asyncio.Event] = None,
+        wakeup: Optional[Union[asyncio.Event, primitives.DaemonStopper]] = None,
 ) -> Optional[float]:
     """
     Measure the sleep time: either until the timeout, or until the event is set.
@@ -22,7 +24,10 @@ async def sleep_or_wait(
     actual_delays = [delay for delay in passed_delays if delay is not None]
     minimal_delay = min(actual_delays) if actual_delays else 0
 
-    awakening_event = event if event is not None else asyncio.Event()
+    awakening_event = (
+        wakeup.async_event if isinstance(wakeup, primitives.DaemonStopper) else
+        wakeup if wakeup is not None else
+        asyncio.Event())
 
     loop = asyncio.get_running_loop()
     try:
