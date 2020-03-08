@@ -18,7 +18,7 @@ from kopf.structs import patches
 Result = NewType('Result', object)
 
 
-class ActivityHandlerFn(Protocol):
+class ActivityFn(Protocol):
     def __call__(  # lgtm[py/similar-function]
             self,
             *args: Any,
@@ -27,12 +27,30 @@ class ActivityHandlerFn(Protocol):
     ) -> Optional[Result]: ...
 
 
-class ResourceHandlerFn(Protocol):
+class ResourceWatchingFn(Protocol):
     def __call__(  # lgtm[py/similar-function]
             self,
             *args: Any,
             type: str,
-            event: Union[str, bodies.RawEvent],
+            event: bodies.RawEvent,
+            body: bodies.Body,
+            meta: bodies.Meta,
+            spec: bodies.Spec,
+            status: bodies.Status,
+            uid: str,
+            name: str,
+            namespace: Optional[str],
+            patch: patches.Patch,
+            logger: Union[logging.Logger, logging.LoggerAdapter],
+            **kwargs: Any,
+    ) -> Optional[Result]: ...
+
+
+class ResourceChangingFn(Protocol):
+    def __call__(  # lgtm[py/similar-function]
+            self,
+            *args: Any,
+            event: str,  # DEPRECATED
             body: bodies.Body,
             meta: bodies.Meta,
             spec: bodies.Spec,

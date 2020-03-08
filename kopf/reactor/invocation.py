@@ -21,8 +21,9 @@ else:
     asyncio_Future = asyncio.Future
 
 Invokable = Union[
-    callbacks.ActivityHandlerFn,
-    callbacks.ResourceHandlerFn,
+    callbacks.ActivityFn,
+    callbacks.ResourceWatchingFn,
+    callbacks.ResourceChangingFn,
 ]
 
 

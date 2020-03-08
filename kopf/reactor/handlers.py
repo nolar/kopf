@@ -1,6 +1,6 @@
 import dataclasses
 import warnings
-from typing import NewType, Callable, Optional, Any
+from typing import NewType, Callable, Optional, Union, Any
 
 from kopf.reactor import causation
 from kopf.reactor import errors as errors_
@@ -45,14 +45,14 @@ class BaseHandler:
 
 @dataclasses.dataclass
 class ActivityHandler(BaseHandler):
-    fn: callbacks.ActivityHandlerFn  # type clarification
+    fn: callbacks.ActivityFn  # type clarification
     activity: Optional[causation.Activity]
     _fallback: bool = False  # non-public!
 
 
 @dataclasses.dataclass
 class ResourceHandler(BaseHandler):
-    fn: callbacks.ResourceHandlerFn  # type clarification
+    fn: Union[callbacks.ResourceWatchingFn, callbacks.ResourceChangingFn]  # type clarification
     reason: Optional[causation.Reason]
     field: Optional[dicts.FieldPath]
     initial: Optional[bool]

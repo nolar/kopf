@@ -13,6 +13,7 @@ from kopf.reactor import causation
 from kopf.reactor import handlers
 from kopf.reactor import registries
 from kopf.structs import bodies
+from kopf.structs import callbacks
 from kopf.structs import patches
 from kopf.structs import resources as resources_
 
@@ -57,7 +58,9 @@ class BaseRegistry(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
 
-class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[AnyCause]):
+class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[
+        AnyCause,
+        Union[callbacks.ResourceWatchingFn, callbacks.ResourceChangingFn]]):
     """
     .. deprecated: 1.0
 
