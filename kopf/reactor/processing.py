@@ -15,7 +15,7 @@ and therefore do not trigger the user-defined handlers.
 """
 import asyncio
 import datetime
-from typing import Optional
+from typing import Collection, Optional
 
 from kopf.clients import patching
 from kopf.engines import logging as logging_engine
@@ -99,6 +99,7 @@ async def process_resource_event(
 
     # Object patch accumulator. Populated by the methods. Applied in the end of the handler.
     # Detect the cause and handle it (or at least log this happened).
+    delays: Collection[float] = []
     if registry.resource_changing_handlers[resource]:
         extra_fields = registry.resource_changing_handlers[resource].get_extra_fields()
         old = settings.persistence.diffbase_storage.fetch(body=body)
@@ -118,7 +119,7 @@ async def process_resource_event(
             memo=memory.user_data,
             initial=memory.noticed_by_listing and not memory.fully_handled_once,
         )
-        delay = await process_resource_changing_cause(
+        delays = await process_resource_changing_cause(
             lifecycle=lifecycle,
             registry=registry,
             settings=settings,
@@ -128,6 +129,7 @@ async def process_resource_event(
 
     # Whatever was done, apply the accumulated changes to the object.
     # But only once, to reduce the number of API calls and the generated irrelevant events.
+    delay = min(delays) if delays else None
     if patch:
         logger.debug("Patching with: %r", patch)
         await patching.patch_obj(resource=resource, patch=patch, body=body)
@@ -197,16 +199,16 @@ async def process_resource_changing_cause(
         settings: configuration.OperatorSettings,
         memory: containers.ResourceMemory,
         cause: causation.ResourceChangingCause,
-) -> Optional[float]:
+) -> Collection[float]:
     """
     Handle a detected cause, as part of the bigger handler routine.
     """
     logger = cause.logger
     patch = cause.patch  # TODO get rid of this alias
     body = cause.body  # TODO get rid of this alias
-    delay = None
-    done = None
-    skip = None
+    delays: Collection[float] = []
+    done: Optional[bool] = None
+    skip: Optional[bool] = None
 
     resource_changing_handlers = registry.resource_changing_handlers[cause.resource]
     deletion_must_be_blocked = resource_changing_handlers.requires_finalizer(cause=cause)
@@ -215,12 +217,12 @@ async def process_resource_changing_cause(
     if deletion_must_be_blocked and not deletion_is_blocked:
         logger.debug("Adding the finalizer, thus preventing the actual deletion.")
         finalizers.block_deletion(body=body, patch=patch)
-        return None
+        return ()
 
     if not deletion_must_be_blocked and deletion_is_blocked:
         logger.debug("Removing the finalizer, as there are no handlers requiring it.")
         finalizers.allow_deletion(body=body, patch=patch)
-        return None
+        return ()
 
     # Regular causes invoke the handlers.
     if cause.reason in handlers_.HANDLER_REASONS:
@@ -249,7 +251,7 @@ async def process_resource_changing_cause(
                 state.purge(body=cause.body, patch=cause.patch, storage=storage)
 
             done = state.done
-            delay = state.delay
+            delays = state.delays
         else:
             skip = True
 
@@ -276,4 +278,4 @@ async def process_resource_changing_cause(
         logger.debug("Something has changed, but we are not interested (the essence is the same).")
 
     # The delay is then consumed by the main handling routine (in different ways).
-    return delay
+    return delays

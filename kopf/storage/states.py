@@ -230,15 +230,24 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
 
     @property
     def delay(self) -> Optional[float]:
+        delays = self.delays  # calculate only once, to save bit of CPU
+        return min(delays) if delays else None
+
+    @property
+    def delays(self) -> Collection[float]:
+        """
+        Resulting delays for the handlers (only the postponed ones).
+
+        The delays are then reduced to one single sleep in the top-level
+        processing routine, based on all delays of different origin:
+        e.g. postponed daemons, stopping daemons, temporarily failed handlers.
+        """
         now = datetime.datetime.utcnow()
-        state_times = [handler_state.delayed for handler_state in self._states.values()]
-        clean_times = [t for t in state_times if t is not None]
-        if clean_times:
-            until = min(clean_times)  # the soonest awake datetime.
-            delay = (until - now).total_seconds()
-            return max(0, delay)
-        else:
-            return None
+        return [
+            max(0, (handler_state.delayed - now).total_seconds())
+            for handler_state in self._states.values()
+            if handler_state.delayed
+        ]
 
 
 def deliver_results(
