@@ -79,47 +79,50 @@ async def process_resource_event(
     if raw_event['type'] == 'DELETED':
         await memories.forget(body)
 
-    # Invoke all silent spies. No causation, no progress storage is performed.
-    if registry.resource_watching_handlers[resource]:
-        resource_watching_cause = causation.detect_resource_watching_cause(
-            raw_event=raw_event,
-            resource=resource,
-            logger=logger,
-            patch=patch,
-            body=body,
-            memo=memory.user_data,
-        )
+    extra_fields = registry.resource_changing_handlers[resource].get_extra_fields()
+    old = settings.persistence.diffbase_storage.fetch(body=body)
+    new = settings.persistence.diffbase_storage.build(body=body, extra_fields=extra_fields)
+    old = settings.persistence.progress_storage.clear(essence=old) if old is not None else None
+    new = settings.persistence.progress_storage.clear(essence=new) if new is not None else None
+    diff = diffs.diff(old, new)
+
+    # Detect what are we going to do on this processing cycle.
+    resource_watching_cause = causation.detect_resource_watching_cause(
+        raw_event=raw_event,
+        resource=resource,
+        logger=logger,
+        patch=patch,
+        body=body,
+        memo=memory.user_data,
+    ) if registry.resource_watching_handlers[resource] else None
+
+    resource_changing_cause = causation.detect_resource_changing_cause(
+        raw_event=raw_event,
+        resource=resource,
+        logger=logger,
+        patch=patch,
+        body=body,
+        old=old,
+        new=new,
+        diff=diff,
+        memo=memory.user_data,
+        initial=memory.noticed_by_listing and not memory.fully_handled_once,
+    ) if registry.resource_changing_handlers[resource] else None
+
+    # Invoke all the handlers that should or could be invoked at this processing cycle.
+    if resource_watching_cause is not None:
         await process_resource_watching_cause(
             lifecycle=lifecycles.all_at_once,
             registry=registry,
             settings=settings,
-            memory=memory,
             cause=resource_watching_cause,
         )
 
     # Object patch accumulator. Populated by the methods. Applied in the end of the handler.
     # Detect the cause and handle it (or at least log this happened).
-    delays: Collection[float] = []
-    if registry.resource_changing_handlers[resource]:
-        extra_fields = registry.resource_changing_handlers[resource].get_extra_fields()
-        old = settings.persistence.diffbase_storage.fetch(body=body)
-        new = settings.persistence.diffbase_storage.build(body=body, extra_fields=extra_fields)
-        old = settings.persistence.progress_storage.clear(essence=old) if old is not None else None
-        new = settings.persistence.progress_storage.clear(essence=new) if new is not None else None
-        diff = diffs.diff(old, new)
-        resource_changing_cause = causation.detect_resource_changing_cause(
-            raw_event=raw_event,
-            resource=resource,
-            logger=logger,
-            patch=patch,
-            body=body,
-            old=old,
-            new=new,
-            diff=diff,
-            memo=memory.user_data,
-            initial=memory.noticed_by_listing and not memory.fully_handled_once,
-        )
-        delays = await process_resource_changing_cause(
+    resource_changing_delays: Collection[float] = []
+    if resource_changing_cause is not None:
+        resource_changing_delays = await process_resource_changing_cause(
             lifecycle=lifecycle,
             registry=registry,
             settings=settings,
@@ -133,7 +136,7 @@ async def process_resource_event(
     if raw_event['type'] != 'DELETED':
         await apply_reaction_outcomes(
             resource=resource, body=body,
-            patch=patch, delays=delays,
+            patch=patch, delays=resource_changing_delays,
             logger=logger, replenished=replenished)
 
 
@@ -184,7 +187,6 @@ async def process_resource_watching_cause(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
-        memory: containers.ResourceMemory,
         cause: causation.ResourceWatchingCause,
 ) -> None:
     """
