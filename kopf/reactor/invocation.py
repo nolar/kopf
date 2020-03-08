@@ -9,12 +9,17 @@ import asyncio
 import contextlib
 import contextvars
 import functools
-from typing import Optional, Any, Union, List, Iterable, Iterator, Tuple, Dict
+from typing import Optional, Any, Union, List, Iterable, Iterator, Tuple, Dict, cast, TYPE_CHECKING
 
 from kopf import config
 from kopf.reactor import callbacks
 from kopf.reactor import causation
 from kopf.structs import dicts
+
+if TYPE_CHECKING:
+    asyncio_Future = asyncio.Future[Any]
+else:
+    asyncio_Future = asyncio.Future
 
 Invokable = Union[
     callbacks.ActivityHandlerFn,
@@ -125,8 +130,23 @@ async def invoke(
         context = contextvars.copy_context()
         real_fn = functools.partial(context.run, real_fn)
 
+        # Prevent orphaned threads during daemon/handler cancellation. It is better to be stuck
+        # in the task than to have orphan threads which deplete the executor's pool capacity.
+        # Cancellation is postponed until the thread exits, but it happens anyway (for consistency).
+        # Note: the docs say the result is a future, but typesheds say it is a coroutine => cast()!
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(config.WorkersConfig.get_syn_executor(), real_fn)
+        executor = config.WorkersConfig.get_syn_executor()
+        future = cast(asyncio_Future, loop.run_in_executor(executor, real_fn))
+        cancellation: Optional[asyncio.CancelledError] = None
+        while not future.done():
+            try:
+                await asyncio.shield(future)  # slightly expensive: creates tasks
+            except asyncio.CancelledError as e:
+                cancellation = e
+        if cancellation is not None:
+            raise cancellation
+        result = future.result()
+
     return result
 
 
