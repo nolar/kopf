@@ -11,9 +11,10 @@ This module is a part of the framework's public interface.
 """
 
 # TODO: add cluster=True support (different API methods)
+import inspect
 import warnings
 
-from typing import Optional, Callable
+from typing import Optional, Callable, Any
 
 from kopf.reactor import handling
 from kopf.reactor import registries
@@ -39,6 +40,7 @@ def startup(  # lgtm[py/similar-function]
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityDecorator:
     def decorator(fn: callbacks.ActivityFn) -> callbacks.ActivityFn:
+        _warn_deprecated_signatures(fn)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
@@ -62,6 +64,7 @@ def cleanup(  # lgtm[py/similar-function]
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityDecorator:
     def decorator(fn: callbacks.ActivityFn) -> callbacks.ActivityFn:
+        _warn_deprecated_signatures(fn)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
@@ -86,6 +89,7 @@ def login(  # lgtm[py/similar-function]
 ) -> ActivityDecorator:
     """ ``@kopf.on.login()`` handler for custom (re-)authentication. """
     def decorator(fn: callbacks.ActivityFn) -> callbacks.ActivityFn:
+        _warn_deprecated_signatures(fn)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
@@ -110,6 +114,7 @@ def probe(  # lgtm[py/similar-function]
 ) -> ActivityDecorator:
     """ ``@kopf.on.probe()`` handler for arbitrary liveness metrics. """
     def decorator(fn: callbacks.ActivityFn) -> callbacks.ActivityFn:
+        _warn_deprecated_signatures(fn)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
@@ -139,6 +144,7 @@ def resume(  # lgtm[py/similar-function]
 ) -> ResourceChangingDecorator:
     """ ``@kopf.on.resume()`` handler for the object resuming on operator (re)start. """
     def decorator(fn: callbacks.ResourceChangingFn) -> callbacks.ResourceChangingFn:
+        _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
@@ -171,6 +177,7 @@ def create(  # lgtm[py/similar-function]
 ) -> ResourceChangingDecorator:
     """ ``@kopf.on.create()`` handler for the object creation. """
     def decorator(fn: callbacks.ResourceChangingFn) -> callbacks.ResourceChangingFn:
+        _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
@@ -203,6 +210,7 @@ def update(  # lgtm[py/similar-function]
 ) -> ResourceChangingDecorator:
     """ ``@kopf.on.update()`` handler for the object update or change. """
     def decorator(fn: callbacks.ResourceChangingFn) -> callbacks.ResourceChangingFn:
+        _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
@@ -236,6 +244,7 @@ def delete(  # lgtm[py/similar-function]
 ) -> ResourceChangingDecorator:
     """ ``@kopf.on.delete()`` handler for the object deletion. """
     def decorator(fn: callbacks.ResourceChangingFn) -> callbacks.ResourceChangingFn:
+        _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
@@ -269,6 +278,7 @@ def field(  # lgtm[py/similar-function]
 ) -> ResourceChangingDecorator:
     """ ``@kopf.on.field()`` handler for the individual field changes. """
     def decorator(fn: callbacks.ResourceChangingFn) -> callbacks.ResourceChangingFn:
+        _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
@@ -297,6 +307,7 @@ def event(  # lgtm[py/similar-function]
 ) -> ResourceWatchingDecorator:
     """ ``@kopf.on.event()`` handler for the silent spies on the events. """
     def decorator(fn: callbacks.ResourceWatchingFn) -> callbacks.ResourceWatchingFn:
+        _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
@@ -356,6 +367,7 @@ def this(  # lgtm[py/similar-function]
     create function will have its own value, not the latest in the for-cycle.
     """
     def decorator(fn: callbacks.ResourceChangingFn) -> callbacks.ResourceChangingFn:
+        _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         parent_handler = handling.handler_var.get()
         real_registry = registry if registry is not None else handling.subregistry_var.get()
@@ -417,6 +429,14 @@ def register(  # lgtm[py/similar-function]
         labels=labels, annotations=annotations, when=when,
     )
     return decorator(fn)
+
+
+def _warn_deprecated_signatures(
+        fn: Callable[..., Any],
+) -> None:
+    argspec = inspect.getfullargspec(fn)
+    if 'cause' in argspec.args or 'cause' in argspec.kwonlyargs:
+        warnings.warn("`cause` kwarg is deprecated; use kwargs directly.", DeprecationWarning)
 
 
 def _warn_deprecated_filters(

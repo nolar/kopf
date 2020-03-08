@@ -52,7 +52,7 @@ def build_kwargs(
     # Add aliases for the kwargs, directly linked to the body, or to the assumed defaults.
     if isinstance(cause, causation.BaseCause):
         new_kwargs.update(
-            cause=cause,
+            cause=cause,  # DEPRECATED: An internal container for kwargs - do not expose directly.
             logger=cause.logger,
         )
     if isinstance(cause, causation.ActivityCause):
