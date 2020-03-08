@@ -16,7 +16,6 @@ The process is intentionally split into multiple packages:
 * Specific authentication methods, such as the authentication piggybacking,
   belong to neither the reactor, nor the engines, nor the client wrappers.
 """
-import asyncio
 import logging
 from typing import NoReturn, Mapping, MutableMapping
 
@@ -121,10 +120,7 @@ async def run_activity(
         )
         outcomes.update(current_outcomes)
         state = state.with_outcomes(current_outcomes)
-        delay = state.delay
-        if delay:
-            limited_delay = min(delay, handling.WAITING_KEEPALIVE_INTERVAL)
-            await sleeping.sleep_or_wait(limited_delay, asyncio.Event())
+        await sleeping.sleep_or_wait(state.delay)
 
     # Activities assume that all handlers must eventually succeed.
     # We raise from the 1st exception only: just to have something real in the tracebacks.

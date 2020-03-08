@@ -24,8 +24,6 @@ from kopf.structs import dicts
 from kopf.structs import diffs
 from kopf.structs import handlers as handlers_
 
-WAITING_KEEPALIVE_INTERVAL = 10 * 60
-""" How often to wake up from the long sleep, to show liveness in the logs. """
 
 DEFAULT_RETRY_DELAY = 1 * 60
 """ The default delay duration for the regular exception in retry-mode. """

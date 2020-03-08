@@ -35,6 +35,9 @@ from kopf.structs import handlers as handlers_
 from kopf.structs import patches
 from kopf.structs import resources
 
+# How often to wake up from the long sleep, to show liveness in the logs.
+WAITING_KEEPALIVE_INTERVAL = 10 * 60
+
 
 async def process_resource_event(
         lifecycle: lifecycles.LifeCycleFn,
@@ -137,10 +140,13 @@ async def process_resource_event(
     elif delay is None and not patch:
         logger.debug(f"Handling cycle is finished, waiting for new changes since now.")
     elif delay is not None:
-        if delay > 0:
+        if delay > WAITING_KEEPALIVE_INTERVAL:
+            limit = WAITING_KEEPALIVE_INTERVAL
+            logger.debug(f"Sleeping for {delay} (capped {limit}) seconds for the delayed handlers.")
+            unslept_delay = await sleeping.sleep_or_wait(limit, replenished)
+        elif delay > 0:
             logger.debug(f"Sleeping for {delay} seconds for the delayed handlers.")
-            limited_delay = min(delay, handling.WAITING_KEEPALIVE_INTERVAL)
-            unslept_delay = await sleeping.sleep_or_wait(limited_delay, replenished)
+            unslept_delay = await sleeping.sleep_or_wait(delay, replenished)
         else:
             unslept_delay = None  # no need to sleep? means: slept in full.
 
