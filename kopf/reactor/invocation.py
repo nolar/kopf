@@ -14,11 +14,9 @@ from typing import Optional, Any, Union, List, Iterable, Iterator, Tuple, Dict
 from kopf import config
 from kopf.reactor import callbacks
 from kopf.reactor import causation
-from kopf.reactor import lifecycles
 from kopf.structs import dicts
 
 Invokable = Union[
-    lifecycles.LifeCycleFn,
     callbacks.ActivityHandlerFn,
     callbacks.ResourceHandlerFn,
 ]
@@ -41,10 +39,10 @@ def context(
         for var, token in reversed(tokens):
             var.reset(token)
 
-def get_invoke_arguments(
-    *args: Any,
-    cause: Optional[causation.BaseCause] = None,
-    **kwargs: Any
+
+def build_kwargs(
+        cause: Optional[causation.BaseCause] = None,
+        **kwargs: Any
 ) -> Dict[str, Any]:
     """
     Expand kwargs dict with fields from the causation.
@@ -100,7 +98,9 @@ async def invoke(
     """
     Invoke a single function, but safely for the main asyncio process.
 
-    Used both for the handler functions and for the lifecycle callbacks.
+    Used mostly for handler functions, and potentially slow & blocking code.
+    Other callbacks are called directly, and are expected to be synchronous
+    (such as handler-selecting (lifecycles) and resource-filtering (``when=``)).
 
     A full set of the arguments is provided, expanding the cause to some easily
     usable aliases. The function is expected to accept ``**kwargs`` for the args
@@ -110,8 +110,7 @@ async def invoke(
     thus making it non-blocking for the main event loop of the operator.
     See: https://pymotw.com/3/asyncio/executors.html
     """
-
-    kwargs = get_invoke_arguments(*args, cause=cause, **kwargs)
+    kwargs = build_kwargs(cause=cause, **kwargs)
 
     if is_async_fn(fn):
         result = await fn(*args, **kwargs)  # type: ignore
