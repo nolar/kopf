@@ -426,7 +426,7 @@ async def _root_task_checker(
         logger.debug(f"Root task {name!r} is cancelled.")
         raise
     except Exception as e:
-        logger.error(f"Root task {name!r} is failed: %s", e)
+        logger.exception(f"Root task {name!r} is failed: %s", e)
         raise  # fail the process and its exit status
     else:
         logger.warning(f"Root task {name!r} is finished unexpectedly.")
