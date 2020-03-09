@@ -64,6 +64,7 @@ Kopf: Kubernetes Operators Framework
    deployment
    continuity
    idempotence
+   reconciliation
    troubleshooting
 
 .. toctree::
