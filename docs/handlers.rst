@@ -247,6 +247,8 @@ such as create/update/delete, so the field-handler is efficient
 only when the object is updated.
 
 
+.. _subhandlers:
+
 Sub-handlers
 ============
 
