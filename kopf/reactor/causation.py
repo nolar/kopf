@@ -5,7 +5,7 @@ The low-level watch-events are highly limited in information on what
 caused them, and they only notify that the object was changed somehow:
 
 * ``ADDED`` for the newly created objects (or for the first-time listing).
-* ``MODIFIED`` for the changes of any field, be that metainfo, spec, or status.
+* ``MODIFIED`` for the changes of any field, be that metadata, spec, or status.
 * ``DELETED`` for the actual deletion of the object post-factum.
 
 The conversion of low-level *events* to high level *causes* is done by
@@ -13,7 +13,7 @@ checking the object's state and comparing it to the saved last-seen state.
 
 This allows to track which specific fields were changed, and if are those
 changes are important enough to call the handlers: e.g. the ``status`` changes
-are ignored, so as some selected system fields of the ``metainfo``.
+are ignored, so as some selected system fields of the ``metadata``.
 
 For deletion, the cause is detected when the object is just marked for deletion,
 not when it is actually deleted (as the events notify): so that the handlers
