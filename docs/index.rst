@@ -38,6 +38,8 @@ Kopf: Kubernetes Operators Framework
    :maxdepth: 2
    :caption: Operator handling:
 
+   startup
+   shutdown
    probing
    authentication
    configuring
