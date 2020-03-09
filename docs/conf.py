@@ -1,6 +1,7 @@
 # Configuration file for the Sphinx documentation builder.
 # http://www.sphinx-doc.org/en/master/config
 import os
+import docutils.nodes
 
 ###############################################################################
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -87,4 +88,5 @@ def run_apidoc(_):
 
 
 def setup(app):
+    app.add_crossref_type('kwarg', 'kwarg', "pair: %s; kwarg", docutils.nodes.literal)
     app.connect('builder-inited', run_apidoc)

@@ -50,42 +50,6 @@ To register a handler for an event, use the `kopf.on` decorator::
 All available decorators are described below.
 
 
-Arguments
-=========
-
-The following keyword arguments are available to the handlers
-(though some handlers may have some of them empty):
-
-* ``memo`` for arbitrary in-memory runtime-only keys/fields and values stored
-  during the operator lifetime, per-object; they are lost on operator restarts.
-* ``body`` for the whole body of the handled objects.
-* ``spec`` as an alias for ``body['spec']``.
-* ``meta`` as an alias for ``body['metadata']``.
-* ``status`` as an alias for ``body['status']``.
-* ``namespace``, ``name``, ``uid`` to identify the object being handled,
-  and are aliases for the respective fields in ``body['metadata']``.
-* ``logger`` is a per-object logger, with the messages prefixed with the object's namespace/name.
-* ``patch`` is a dict with the object changes to be applied after the handler.
-
-High-level cause-handlers have additional keyword arguments reflecting their status:
-
-* ``cause`` is the processed cause of the handler as detected by the framework (create/update/delete).
-* ``retry`` (``int``) is the sequential number of retry of this handler.
-* ``started`` (`datetime.datetime`) is the start time of the handler, in case of retries & errors.
-* ``runtime`` (`datetime.timedelta`) is the duration of the handler run, in case of retries & errors.
-* ``diff`` is a list of changes of the object (only for the update events).
-* ``old`` is the old state of the object or a field (only for the update events).
-* ``new`` is the new state of the object or a field (only for the update events).
-
-Low-level event-handlers have a slightly different set of keyword arguments:
-
-** ``event`` for the raw event received; it is a dict with ``['type']`` & ``['object']`` keys.
-
-``**kwargs`` (or ``**_`` to stop the linting warnings on the unused variables)
-is required for the forward compatibility: the framework can add new keywords
-in the future, and the existing handlers should accept them and not break.
-
-
 Event-watching handlers
 =======================
 
@@ -319,5 +283,5 @@ with the ids like ``create_fn/item1``, ``create_fn/item2``, etc.
     so that the parent handler also becomes finished.
 
     As such, the parent handler SHOULD NOT produce any side-effects
-    except as the read-only parsing of the inputs (e.g. ``spec``),
+    except as the read-only parsing of the inputs (e.g. :kwarg:`spec`),
     and generating the dynamic functions of the sub-handlers.
