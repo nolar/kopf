@@ -20,31 +20,41 @@ Kopf: Kubernetes Operators Framework
    walkthrough/updates
    walkthrough/diffs
    walkthrough/deletion
-   deployment
-   cleanup
+   walkthrough/cleanup
 
 .. toctree::
    :maxdepth: 2
-   :caption: Features:
+   :caption: Resource handling:
 
    handlers
-   hierarchies
    async
    loading
-   probing
-   peering
-   scopes
    errors
-   events
-   testing
+   scopes
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Operator handling:
+
+   probing
    authentication
    configuring
+   peering
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Toolkits:
+
+   events
+   hierarchies
+   testing
    embedding
 
 .. toctree::
    :maxdepth: 2
-   :caption: Maintenance:
+   :caption: Recipes:
 
+   deployment
    continuity
    idempotence
    troubleshooting
