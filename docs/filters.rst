@@ -71,3 +71,15 @@ By arbitrary callbacks
                     when=lambda spec, **_: spec.get('my-field') == 'somevalue')
     def my_handler(spec, **_):
         pass
+
+* Check on labels/annotations with an arbitrary callback for individual values
+  (the value comes as the first positional argument, plus usual :doc:`kwargs`)::
+
+    def check_value(value, spec, **_):
+        return value == 'some-value' and spec.get('field') is not None
+
+    @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
+                    labels={'some-label': check_value},
+                    annotations={'some-annotation': check_value})
+    def my_handler(spec, **_):
+        pass

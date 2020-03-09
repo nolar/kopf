@@ -69,3 +69,21 @@ class WhenFilterFn(Protocol):
             new: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
             **kwargs: Any,
     ) -> bool: ...
+
+
+class MetaFilterFn(Protocol):
+    def __call__(  # lgtm[py/similar-function]
+            self,
+            value: str,  # because it is either labels or annotations, nothing else.
+            *args: Any,
+            body: bodies.Body,
+            meta: bodies.Meta,
+            spec: bodies.Spec,
+            status: bodies.Status,
+            uid: str,
+            name: str,
+            namespace: Optional[str],
+            patch: patches.Patch,
+            logger: Union[logging.Logger, logging.LoggerAdapter],
+            **kwargs: Any,
+    ) -> bool: ...
