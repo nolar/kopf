@@ -150,7 +150,7 @@ def walk(
         yield objs  # NB: not a mapping, no nested sub-fields.
 
 
-class DictView(Mapping[Any, Any]):
+class MappingView(Mapping[Any, Any]):
     """
     A lazy resolver for the "on-demand" dict keys.
 
@@ -160,7 +160,7 @@ class DictView(Mapping[Any, Any]):
     which produces unwanted side-effects (actually adds this field).
 
     >>> body = {}
-    >>> spec = DictView(body, 'spec')
+    >>> spec = MappingView(body, 'spec')
 
     >>> spec.get('field', 'default')
     ... 'default'
