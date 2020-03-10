@@ -132,7 +132,7 @@ Causation
 ``cause`` is the processed cause of the handler as detected by the framework (create/update/delete).
 
 ``reason`` is a type of change detection (creation, update, deletion, resuming).
-It is generally reflected in the handler decorator used , but can be useful for
+It is generally reflected in the handler decorator used, but can be useful for
 the multi-purpose handlers pointing to the same function
 (e.g. for ``@kopf.on.create`` + ``@kopf.on.resume`` pairs).
 

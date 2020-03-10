@@ -2,7 +2,7 @@
 Results delivery
 ================
 
-All handlers can result arbitrary JSON-serializable values.
+All handlers can return arbitrary JSON-serializable values.
 These values are then put to the resource status under the name of the handler:
 
 .. code-block:: python
@@ -32,7 +32,7 @@ These results can be seen in the object's content:
         r1: 66
         r2: 666
 
-The returning results can be used to communicate between handlers through
+The function results can be used to communicate between handlers through
 resource itself, assuming that handlers do not know in which order they
 will be invoked (due to error handling and retrying), and to be able to
 restore in case of operator failures & restarts:
