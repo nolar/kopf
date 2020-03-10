@@ -125,7 +125,7 @@ class ResourceRegistry(GenericRegistry[handlers.ResourceHandler, callbacks.Resou
             requires_finalizer: bool = False,
             labels: Optional[filters.MetaFilter] = None,
             annotations: Optional[filters.MetaFilter] = None,
-            when: Optional[callbacks.WhenHandlerFn] = None,
+            when: Optional[callbacks.WhenFilterFn] = None,
     ) -> callbacks.ResourceHandlerFn:
         warnings.warn("registry.register() is deprecated; "
                       "use @kopf.on... decorators with registry= kwarg.",
@@ -272,7 +272,7 @@ class OperatorRegistry:
             id: Optional[str] = None,
             labels: Optional[filters.MetaFilter] = None,
             annotations: Optional[filters.MetaFilter] = None,
-            when: Optional[callbacks.WhenHandlerFn] = None,
+            when: Optional[callbacks.WhenFilterFn] = None,
     ) -> callbacks.ResourceHandlerFn:
         """
         Register an additional handler function for low-level events.
@@ -306,7 +306,7 @@ class OperatorRegistry:
             requires_finalizer: bool = False,
             labels: Optional[filters.MetaFilter] = None,
             annotations: Optional[filters.MetaFilter] = None,
-            when: Optional[callbacks.WhenHandlerFn] = None,
+            when: Optional[callbacks.WhenFilterFn] = None,
     ) -> callbacks.ResourceHandlerFn:
         """
         Register an additional handler function for the specific resource and specific reason.

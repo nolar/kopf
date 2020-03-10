@@ -49,7 +49,7 @@ class ResourceHandlerFn(Protocol):
     ) -> Optional[Result]: ...
 
 
-class WhenHandlerFn(Protocol):
+class WhenFilterFn(Protocol):
     def __call__(  # lgtm[py/similar-function]
             self,
             *args: Any,

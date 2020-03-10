@@ -59,7 +59,7 @@ class ResourceHandler(BaseHandler):
     deleted: Optional[bool]  # used for mixed-in (initial==True) @on.resume handlers only.
     labels: Optional[filters.MetaFilter]
     annotations: Optional[filters.MetaFilter]
-    when: Optional[callbacks.WhenHandlerFn]
+    when: Optional[callbacks.WhenFilterFn]
     requires_finalizer: Optional[bool]
 
     @property
