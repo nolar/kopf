@@ -95,7 +95,7 @@ async def run_activity(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
         activity: causation.Activity,
-) -> Mapping[handlers.HandlerId, callbacks.HandlerResult]:
+) -> Mapping[handlers.HandlerId, callbacks.Result]:
     logger = logging.getLogger(f'kopf.activities.{activity.value}')
 
     # For the activity handlers, we have neither bodies, nor patches, just the state.

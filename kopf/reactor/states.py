@@ -76,7 +76,7 @@ class HandlerOutcome:
     """
     final: bool
     delay: Optional[float] = None
-    result: Optional[callbacks.HandlerResult] = None
+    result: Optional[callbacks.Result] = None
     exception: Optional[Exception] = None
 
 

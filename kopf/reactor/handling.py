@@ -340,7 +340,7 @@ async def invoke_handler(
         cause: causation.BaseCause,
         lifecycle: lifecycles.LifeCycleFn,
         **kwargs: Any,
-) -> Optional[callbacks.HandlerResult]:
+) -> Optional[callbacks.Result]:
     """
     Invoke one handler only, according to the calling conventions.
 
@@ -384,4 +384,4 @@ async def invoke_handler(
             await execute()
 
         # Since we know that we invoked the handler, we cast "any" result to a handler result.
-        return callbacks.HandlerResult(result)
+        return callbacks.Result(result)

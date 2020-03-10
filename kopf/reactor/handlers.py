@@ -20,7 +20,7 @@ HandlerId = NewType('HandlerId', str)
 @dataclasses.dataclass
 class BaseHandler:
     id: HandlerId
-    fn: Callable[..., Optional[callbacks.HandlerResult]]
+    fn: Callable[..., Optional[callbacks.Result]]
     errors: Optional[errors_.ErrorsMode]
     timeout: Optional[float]
     retries: Optional[int]
