@@ -19,12 +19,12 @@ from types import FunctionType, MethodType
 from typing import (Any, MutableMapping, Optional, Sequence, Collection, Iterable, Iterator,
                     List, Set, FrozenSet, Mapping, Callable, cast, Generic, TypeVar)
 
-from kopf.reactor import callbacks
 from kopf.reactor import causation
 from kopf.reactor import errors as errors_
 from kopf.reactor import handlers
 from kopf.reactor import invocation
 from kopf.structs import bodies
+from kopf.structs import callbacks
 from kopf.structs import dicts
 from kopf.structs import filters
 from kopf.structs import resources as resources_

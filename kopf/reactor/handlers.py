@@ -2,9 +2,9 @@ import dataclasses
 import warnings
 from typing import NewType, Callable, Optional, Any
 
-from kopf.reactor import callbacks
 from kopf.reactor import causation
 from kopf.reactor import errors as errors_
+from kopf.structs import callbacks
 from kopf.structs import dicts
 from kopf.structs import filters
 

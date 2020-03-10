@@ -15,7 +15,6 @@ from typing import Optional, Union, Iterable, Collection, Mapping, MutableMappin
 
 from kopf.engines import logging as logging_engine
 from kopf.engines import sleeping
-from kopf.reactor import callbacks
 from kopf.reactor import causation
 from kopf.reactor import errors
 from kopf.reactor import handlers as handlers_
@@ -23,6 +22,7 @@ from kopf.reactor import invocation
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
 from kopf.reactor import states
+from kopf.structs import callbacks
 from kopf.structs import dicts
 from kopf.structs import diffs
 

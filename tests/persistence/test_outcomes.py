@@ -1,5 +1,5 @@
-from kopf.reactor.callbacks import HandlerResult
 from kopf.reactor.states import HandlerOutcome
+from kopf.structs.callbacks import HandlerResult
 
 
 def test_creation_for_ignored_handlers():
