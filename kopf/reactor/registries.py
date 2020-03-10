@@ -601,10 +601,10 @@ def _matches_metadata(
             continue
         elif value is None and key in content:  # deprecated; warned in @kopf.on
             continue
-        elif callable(value) and key in content:
+        elif callable(value):
             if not kwargs:
                 kwargs.update(invocation.build_kwargs(cause=cause))
-            if value(content[key], **kwargs):
+            if value(content.get(key, None), **kwargs):
                 continue
             else:
                 return False
