@@ -602,7 +602,7 @@ def _matches_filter_callback(
 ) -> bool:
     if not handler.when:
         return True
-    return handler.when(**invocation.get_invoke_arguments(cause=cause))
+    return handler.when(**invocation.build_kwargs(cause=cause))
 
 
 _default_registry: Optional[OperatorRegistry] = None

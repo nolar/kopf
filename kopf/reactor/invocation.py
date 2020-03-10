@@ -9,16 +9,19 @@ import asyncio
 import contextlib
 import contextvars
 import functools
-from typing import Optional, Any, Union, List, Iterable, Iterator, Tuple, Dict
+from typing import Optional, Any, Union, List, Iterable, Iterator, Tuple, Dict, cast, TYPE_CHECKING
 
 from kopf import config
 from kopf.reactor import callbacks
 from kopf.reactor import causation
-from kopf.reactor import lifecycles
 from kopf.structs import dicts
 
+if TYPE_CHECKING:
+    asyncio_Future = asyncio.Future[Any]
+else:
+    asyncio_Future = asyncio.Future
+
 Invokable = Union[
-    lifecycles.LifeCycleFn,
     callbacks.ActivityHandlerFn,
     callbacks.ResourceHandlerFn,
 ]
@@ -41,10 +44,10 @@ def context(
         for var, token in reversed(tokens):
             var.reset(token)
 
-def get_invoke_arguments(
-    *args: Any,
-    cause: Optional[causation.BaseCause] = None,
-    **kwargs: Any
+
+def build_kwargs(
+        cause: Optional[causation.BaseCause] = None,
+        **kwargs: Any
 ) -> Dict[str, Any]:
     """
     Expand kwargs dict with fields from the causation.
@@ -100,7 +103,9 @@ async def invoke(
     """
     Invoke a single function, but safely for the main asyncio process.
 
-    Used both for the handler functions and for the lifecycle callbacks.
+    Used mostly for handler functions, and potentially slow & blocking code.
+    Other callbacks are called directly, and are expected to be synchronous
+    (such as handler-selecting (lifecycles) and resource-filtering (``when=``)).
 
     A full set of the arguments is provided, expanding the cause to some easily
     usable aliases. The function is expected to accept ``**kwargs`` for the args
@@ -110,8 +115,7 @@ async def invoke(
     thus making it non-blocking for the main event loop of the operator.
     See: https://pymotw.com/3/asyncio/executors.html
     """
-
-    kwargs = get_invoke_arguments(*args, cause=cause, **kwargs)
+    kwargs = build_kwargs(cause=cause, **kwargs)
 
     if is_async_fn(fn):
         result = await fn(*args, **kwargs)  # type: ignore
@@ -126,8 +130,23 @@ async def invoke(
         context = contextvars.copy_context()
         real_fn = functools.partial(context.run, real_fn)
 
+        # Prevent orphaned threads during daemon/handler cancellation. It is better to be stuck
+        # in the task than to have orphan threads which deplete the executor's pool capacity.
+        # Cancellation is postponed until the thread exits, but it happens anyway (for consistency).
+        # Note: the docs say the result is a future, but typesheds say it is a coroutine => cast()!
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(config.WorkersConfig.get_syn_executor(), real_fn)
+        executor = config.WorkersConfig.get_syn_executor()
+        future = cast(asyncio_Future, loop.run_in_executor(executor, real_fn))
+        cancellation: Optional[asyncio.CancelledError] = None
+        while not future.done():
+            try:
+                await asyncio.shield(future)  # slightly expensive: creates tasks
+            except asyncio.CancelledError as e:
+                cancellation = e
+        if cancellation is not None:
+            raise cancellation
+        result = future.result()
+
     return result
 
 
