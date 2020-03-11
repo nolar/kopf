@@ -66,7 +66,7 @@ objects), the fields are ``None`` -- unlike accessing the same fields by key,
 when a ``KeyError`` is raised.
 
 ``labels`` and ``annotations`` are equivalents of ``body['metadata']['labels']``
-and ``body['metadata']['annotations']`` if they exits. If not, these two behave
+and ``body['metadata']['annotations']`` if they exist. If not, these two behave
 as empty dicts.
 
 
