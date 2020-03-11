@@ -154,7 +154,7 @@ class DictView(Mapping[Any, Any]):
     """
     A lazy resolver for the "on-demand" dict keys.
 
-    This is needed to have ``spec``, ``status``, and other special fields
+    This is needed to have :kwarg:`spec`, :kwarg:`status`, and other fields
     to be *assumed* as dicts, even if they are actually not present.
     And to prevent their implicit creation with ``.setdefault('spec', {})``,
     which produces unwanted side-effects (actually adds this field).

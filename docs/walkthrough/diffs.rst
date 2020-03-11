@@ -44,7 +44,7 @@ but we will use another feature of Kopf to track one specific field only:
             body=pvc_patch,
         )
 
-The ``old`` & ``new`` kwargs contain the old & new values of the field
+The :kwarg:`old` & :kwarg:`new` kwargs contain the old & new values of the field
 (or of the whole object for the object handlers).
 
 It will work as expected when the user adds new labels and changes the existing
@@ -58,15 +58,15 @@ in the patch object.
 So, we should know which fields were deleted from EVC.
 Natively, Kubernetes does not provide this information for the object events,
 since Kubernetes notifies the operators only with the newest state of the object
--- as seen in ``body``/``metadata`` kwargs.
+-- as seen in :kwarg:`body`/:kwarg:`meta` kwargs.
 
 
 Diffs
 =====
 
 Kopf tracks the state of the objects, and calculates the diffs.
-The diffs are provided as the ``diff`` kwarg; the old & new states
-of the object or field -- as the ``old`` & ``new`` kwargs.
+The diffs are provided as the :kwarg:`diff` kwarg; the old & new states
+of the object or field -- as the :kwarg:`old` & :kwarg:`new` kwargs.
 
 A diff-object has this structure (as an example)::
 

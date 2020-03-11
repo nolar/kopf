@@ -52,4 +52,4 @@ from double-execution, such as the children object creation with randomly
 generated names (e.g. Pods, Jobs, PersistentVolumeClaims, etc).
 
 .. seealso::
-    :doc:`persistence`, :ref:`Sub-handlers`.
+    :ref:`persistence`, :ref:`subhandlers`.
