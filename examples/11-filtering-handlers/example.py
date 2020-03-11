@@ -11,14 +11,9 @@ def create_with_labels_present(logger, **kwargs):
     logger.info("Label is present.")
 
 
-@kopf.on.create('zalando.org', 'v1', 'kopfexamples', labels={'unexistent': kopf.ABSENT})
+@kopf.on.create('zalando.org', 'v1', 'kopfexamples', labels={'nonexistent': kopf.ABSENT})
 def create_with_labels_absent(logger, **kwargs):
     logger.info("Label is absent.")
-
-
-@kopf.on.create('zalando.org', 'v1', 'kopfexamples', labels={'somelabel': 'othervalue'})
-def create_with_labels_mismatch(logger, **kwargs):
-    logger.info("Label mismatch.")
 
 
 @kopf.on.create('zalando.org', 'v1', 'kopfexamples', annotations={'someannotation': 'somevalue'})
@@ -31,14 +26,9 @@ def create_with_annotations_present(logger, **kwargs):
     logger.info("Annotation is present.")
 
 
-@kopf.on.create('zalando.org', 'v1', 'kopfexamples', annotations={'unexistent': kopf.ABSENT})
+@kopf.on.create('zalando.org', 'v1', 'kopfexamples', annotations={'nonexistent': kopf.ABSENT})
 def create_with_annotations_absent(logger, **kwargs):
     logger.info("Annotation is absent.")
-
-
-@kopf.on.create('zalando.org', 'v1', 'kopfexamples', annotations={'someannotation': 'othervalue'})
-def create_with_annotations_mismatch(logger, **kwargs):
-    logger.info("Annotation mismatch.")
 
 
 @kopf.on.create('zalando.org', 'v1', 'kopfexamples', when=lambda body, **_: True)
