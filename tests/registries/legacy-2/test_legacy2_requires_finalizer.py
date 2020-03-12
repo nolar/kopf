@@ -1,9 +1,10 @@
 import pytest
 
 import kopf
-from kopf.reactor.registries import OperatorRegistry
-from kopf.structs.resources import Resource
 from kopf.reactor.causation import ResourceCause
+from kopf.reactor.registries import OperatorRegistry
+from kopf.structs.filters import MetaFilterToken
+from kopf.structs.resources import Resource
 
 OBJECT_BODY = {
     'apiVersion': 'group/version',
@@ -88,7 +89,7 @@ def test_requires_finalizer_no_deletion_handler():
 ])
 @pytest.mark.parametrize('labels', [
     pytest.param({'key': 'value'}, id='value-matches'),
-    pytest.param({'key': None}, id='key-exists'),
+    pytest.param({'key': MetaFilterToken.PRESENT}, id='key-exists'),
 ])
 def test_requires_finalizer_deletion_handler_matches_labels(labels, optional, expected):
     registry = OperatorRegistry()
@@ -111,7 +112,7 @@ def test_requires_finalizer_deletion_handler_matches_labels(labels, optional, ex
 ])
 @pytest.mark.parametrize('labels', [
     pytest.param({'key': 'othervalue'}, id='value-mismatch'),
-    pytest.param({'otherkey': None}, id='key-doesnt-exist'),
+    pytest.param({'otherkey': MetaFilterToken.PRESENT}, id='key-doesnt-exist'),
 ])
 def test_requires_finalizer_deletion_handler_mismatches_labels(labels, optional, expected):
     registry = OperatorRegistry()
@@ -134,7 +135,7 @@ def test_requires_finalizer_deletion_handler_mismatches_labels(labels, optional,
 ])
 @pytest.mark.parametrize('annotations', [
     pytest.param({'key': 'value'}, id='value-matches'),
-    pytest.param({'key': None}, id='key-exists'),
+    pytest.param({'key': MetaFilterToken.PRESENT}, id='key-exists'),
 ])
 def test_requires_finalizer_deletion_handler_matches_annotations(annotations, optional, expected):
     registry = OperatorRegistry()
@@ -157,7 +158,7 @@ def test_requires_finalizer_deletion_handler_matches_annotations(annotations, op
 ])
 @pytest.mark.parametrize('annotations', [
     pytest.param({'key': 'othervalue'}, id='value-mismatch'),
-    pytest.param({'otherkey': None}, id='key-doesnt-exist'),
+    pytest.param({'otherkey': MetaFilterToken.PRESENT}, id='key-doesnt-exist'),
 ])
 def test_requires_finalizer_deletion_handler_mismatches_annotations(annotations, optional, expected):
     registry = OperatorRegistry()

@@ -4,12 +4,14 @@ Some basic dicts and field-in-a-dict manipulation helpers.
 import collections.abc
 import enum
 from typing import (TypeVar, Any, Union, MutableMapping, Mapping, Tuple, List,
-                    Iterable, Iterator, Callable, Optional)
+                    Iterable, Iterator, Callable, Optional, Generic)
 
 FieldPath = Tuple[str, ...]
 FieldSpec = Union[None, str, FieldPath, List[str]]
 
 _T = TypeVar('_T')
+_K = TypeVar('_K')
+_V = TypeVar('_V')
 
 
 class _UNSET(enum.Enum):
@@ -76,6 +78,8 @@ def ensure(
         d: MutableMapping[Any, Any],
         field: FieldSpec,
         value: Any,
+        *,
+        absent: bool = False,
 ) -> None:
     """
     Force-set a nested sub-field in a dict.
@@ -89,7 +93,10 @@ def ensure(
             result = result[key]
         except KeyError:
             result = result.setdefault(key, {})
-    result[path[-1]] = value
+    if absent:
+        del result[path[-1]]
+    else:
+        result[path[-1]] = value
 
 
 def cherrypick(
@@ -150,7 +157,7 @@ def walk(
         yield objs  # NB: not a mapping, no nested sub-fields.
 
 
-class DictView(Mapping[Any, Any]):
+class MappingView(Generic[_K, _V], Mapping[_K, _V]):
     """
     A lazy resolver for the "on-demand" dict keys.
 
@@ -160,19 +167,16 @@ class DictView(Mapping[Any, Any]):
     which produces unwanted side-effects (actually adds this field).
 
     >>> body = {}
-    >>> spec = DictView(body, 'spec')
-
+    >>> spec = MappingView(body, 'spec')
     >>> spec.get('field', 'default')
     ... 'default'
-
     >>> body['spec'] = {'field': 'value'}
-
     >>> spec.get('field', 'default')
     ... 'value'
-
     """
+    _src: Mapping[_K, _V]
 
-    def __init__(self, __src: Mapping[Any, Any], __path: FieldSpec = None):
+    def __init__(self, __src: Mapping[Any, Any], __path: FieldSpec = None) -> None:
         super().__init__()
         self._src = __src
         self._path = parse_field(__path)
@@ -186,5 +190,56 @@ class DictView(Mapping[Any, Any]):
     def __iter__(self) -> Iterator[Any]:
         return iter(resolve(self._src, self._path, {}, assume_empty=True))
 
-    def __getitem__(self, item: Any) -> Any:
+    def __getitem__(self, item: _K) -> _V:
         return resolve(self._src, self._path + (item,))
+
+
+class MutableMappingView(Generic[_K, _V], MappingView[_K, _V], MutableMapping[_K, _V]):
+    """
+    A mapping view with values stored and sub-dicts auto-created.
+
+    >>> patch = {}
+    >>> status = MutableMappingView(patch, 'status')
+    >>> status.get('field', 'default')
+    ... 'default'
+    >>> patch
+    ... {}
+    >>> status['field'] = 'value'
+    >>> patch
+    ... {'status': {'field': 'value'}}
+    >>> status.get('field', 'default')
+    ... 'value'
+    """
+    _src: MutableMapping[_K, _V]  # type clarification
+
+    def __delitem__(self, item: _K) -> None:
+        ensure(self._src, self._path + (item,), value=None, absent=True)
+
+    def __setitem__(self, item: _K, value: _V) -> None:
+        ensure(self._src, self._path + (item,), value)
+
+
+class ReplaceableMappingView(Generic[_K, _V], MappingView[_K, _V]):
+    """
+    A mapping view where the whole source can be replaced atomically.
+
+    All derived mapping views that use this mapping view as their source will
+    immediately notice the change.
+
+    The method names are intentionally long and multi-word -- to not have
+    potential collisions with regular expected attributes/properties.
+
+    >>> body = ReplaceableMappingView()
+    >>> spec = MappingView(body, 'spec')
+    >>> spec.get('field', 'default')
+    ... 'default'
+    >>> body._replace_with({'spec': {'field': 'value'}})
+    >>> spec.get('field', 'default')
+    ... 'value'
+    """
+
+    def _replace_from(self, __src: MappingView[_K, _V]) -> None:
+        self._src = __src._src
+
+    def _replace_with(self, __src: Mapping[_K, _V]) -> None:
+        self._src = __src

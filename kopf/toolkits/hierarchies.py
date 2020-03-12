@@ -1,7 +1,7 @@
 """
 All the functions to properly build the object hierarchies.
 """
-from typing import Optional, Iterable, Iterator, cast, MutableMapping, Any, Union
+from typing import Optional, Iterable, Iterator, cast, Mapping, MutableMapping, Any, Union
 
 from kopf.reactor import causation
 from kopf.reactor import handling
@@ -52,7 +52,7 @@ def remove_owner_reference(
 
 def label(
         objs: K8sObjects,
-        labels: bodies.Labels,
+        labels: Mapping[str, Union[None, str]],
         *,
         force: bool = False,
         nested: Optional[Iterable[dicts.FieldSpec]] = None,

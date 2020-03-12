@@ -6,7 +6,7 @@ import kopf
 from kopf.reactor.causation import Reason, ResourceChangingCause, ResourceWatchingCause
 from kopf.reactor.handling import cause_var
 from kopf.reactor.invocation import context
-from kopf.structs.bodies import Body, Meta, Labels, Event
+from kopf.structs.bodies import RawBody, RawMeta, RawEvent, Body
 from kopf.structs.containers import ObjectDict
 from kopf.structs.patches import Patch
 
@@ -15,11 +15,11 @@ OWNER_NAMESPACE = 'owner-namespace'
 OWNER_KIND = 'OwnerKind'
 OWNER_NAME = 'owner-name'
 OWNER_UID = 'owner-uid'
-OWNER_LABELS: Labels = {'label-1': 'value-1', 'label-2': 'value-2'}
-OWNER = Body(
+OWNER_LABELS = {'label-1': 'value-1', 'label-2': 'value-2'}
+OWNER = RawBody(
     apiVersion=OWNER_API_VERSION,
     kind=OWNER_KIND,
-    metadata=Meta(
+    metadata=RawMeta(
         namespace=OWNER_NAMESPACE,
         name=OWNER_NAME,
         uid=OWNER_UID,
@@ -36,7 +36,7 @@ def owner(request, resource):
             resource=resource,
             patch=Patch(),
             memo=ObjectDict(),
-            body=OWNER,
+            body=Body(OWNER),
             initial=False,
             reason=Reason.NOOP,
         )
@@ -48,9 +48,9 @@ def owner(request, resource):
             resource=resource,
             patch=Patch(),
             memo=ObjectDict(),
-            body=OWNER,
+            body=Body(OWNER),
             type='irrelevant',
-            raw=Event(type='irrelevant', object=OWNER),
+            raw=RawEvent(type='irrelevant', object=OWNER),
         )
         with context([(cause_var, cause)]):
             yield

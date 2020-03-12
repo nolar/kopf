@@ -45,7 +45,7 @@ class WatchStreamProcessor(Protocol):
     async def __call__(
             self,
             *,
-            event: bodies.Event,
+            raw_event: bodies.RawEvent,
             replenished: asyncio.Event,
     ) -> None: ...
 
@@ -57,7 +57,7 @@ class EOS(enum.Enum):
 
 
 if TYPE_CHECKING:
-    WatchEventQueue = asyncio.Queue[Union[bodies.Event, EOS]]
+    WatchEventQueue = asyncio.Queue[Union[bodies.RawEvent, EOS]]
 else:
     WatchEventQueue = asyncio.Queue
 
@@ -104,15 +104,15 @@ async def watcher(
             resource=resource, namespace=namespace,
             freeze_mode=freeze_mode,
         )
-        async for event in stream:
-            key = cast(ObjectRef, (resource, event['object']['metadata']['uid']))
+        async for raw_event in stream:
+            key = cast(ObjectRef, (resource, raw_event['object']['metadata']['uid']))
             try:
                 streams[key].replenished.set()  # interrupt current sleeps, if any.
-                await streams[key].watchevents.put(event)
+                await streams[key].watchevents.put(raw_event)
             except KeyError:
                 streams[key] = Stream(watchevents=asyncio.Queue(), replenished=asyncio.Event())
                 streams[key].replenished.set()  # interrupt current sleeps, if any.
-                await streams[key].watchevents.put(event)
+                await streams[key].watchevents.put(raw_event)
                 await scheduler.spawn(worker(processor=processor, streams=streams, key=key))
     finally:
         # Allow the existing workers to finish gracefully before killing them.
@@ -152,7 +152,7 @@ async def worker(
             # If the queue is filled, use the latest event only (within the short timeframe).
             # If an EOS marker is received, handle the last real event, then finish the worker ASAP.
             try:
-                event = await asyncio.wait_for(
+                raw_event = await asyncio.wait_for(
                     watchevents.get(),
                     timeout=config.WorkersConfig.worker_idle_timeout)
             except asyncio.TimeoutError:
@@ -160,23 +160,23 @@ async def worker(
             else:
                 try:
                     while True:
-                        prev_event = event
+                        prev_event = raw_event
                         next_event = await asyncio.wait_for(
                             watchevents.get(),
                             timeout=config.WorkersConfig.worker_batch_window)
                         shouldstop = shouldstop or isinstance(next_event, EOS)
-                        event = prev_event if isinstance(next_event, EOS) else next_event
+                        raw_event = prev_event if isinstance(next_event, EOS) else next_event
                 except asyncio.TimeoutError:
                     pass
 
             # Exit gracefully and immediately on the end-of-stream marker sent by the watcher.
-            if isinstance(event, EOS):
+            if isinstance(raw_event, EOS):
                 break
 
             # Try the processor. In case of errors, show the error, but continue the processing.
             replenished.clear()
             try:
-                await processor(event=event, replenished=replenished)
+                await processor(raw_event=raw_event, replenished=replenished)
             except Exception:
                 # TODO: processor is a functools.partial. make the prints a bit nicer by removing it.
                 logger.exception(f"{processor} failed with an exception. Ignoring the event.")

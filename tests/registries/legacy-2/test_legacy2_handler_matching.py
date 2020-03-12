@@ -5,6 +5,7 @@ import pytest
 
 from kopf import OperatorRegistry
 from kopf.reactor.causation import ResourceChangingCause
+from kopf.structs.bodies import Body
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.
@@ -248,7 +249,7 @@ def test_catchall_handlers_with_when_match(registry, register_fn, resource, when
         resource=resource,
         reason='some-reason',
         diff=None,
-        body={'spec': {'name': 'test'}},
+        body=Body({'spec': {'name': 'test'}}),
         logger=None,
         patch=None,
         memo=None,
@@ -269,7 +270,7 @@ def test_catchall_handlers_with_when_not_match(registry, register_fn, resource, 
         resource=resource,
         reason='some-reason',
         diff=None,
-        body={'spec': {'name': 'test'}},
+        body=Body({'spec': {'name': 'test'}}),
         logger=None,
         patch=None,
         memo=None,

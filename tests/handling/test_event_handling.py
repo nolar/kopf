@@ -21,7 +21,7 @@ async def test_handlers_called_always(
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': 'ev-type', 'object': cause_mock.body},
+        raw_event={'type': 'ev-type', 'object': {'field': 'value'}},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
@@ -30,10 +30,9 @@ async def test_handlers_called_always(
     assert extrahandlers.event_mock.call_count == 1
 
     event = handlers.event_mock.call_args_list[0][1]['event']
+    assert 'field' in event['object']
+    assert event['object']['field'] == 'value'
     assert event['type'] == 'ev-type'
-    assert event['object'] is cause_mock.body
-    assert event['type'] == 'ev-type'
-    assert event['object'] is cause_mock.body
 
     assert_logs([
         "Invoking handler 'event_fn'.",
@@ -56,7 +55,7 @@ async def test_errors_are_ignored(
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': 'ev-type', 'object': cause_mock.body},
+        raw_event={'type': 'ev-type', 'object': {}},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )

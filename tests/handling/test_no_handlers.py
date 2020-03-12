@@ -16,8 +16,10 @@ async def test_skipped_with_no_handlers(
         registry, resource, cause_mock, cause_type,
         caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
+
+    event_type = None
+    event_body = {'metadata': {'finalizers': []}}
     cause_mock.reason = cause_type
-    cause_mock.body['metadata']['finalizers'] = []
 
     assert not registry.resource_changing_handlers[resource]  # prerequisite
     registry.resource_changing_handlers[resource].append(ResourceHandler(
@@ -33,7 +35,7 @@ async def test_skipped_with_no_handlers(
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': None, 'object': cause_mock.body},
+        raw_event={'type': event_type, 'object': event_body},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )

@@ -13,6 +13,7 @@ from kopf.structs.containers import ResourceMemories
 async def test_all_logs_are_prefixed(registry, resource, handlers,
                                      logstream, cause_type, cause_mock):
     event_type = None if cause_type == Reason.RESUME else 'irrelevant'
+    event_body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
     cause_mock.reason = cause_type
 
     await process_resource_event(
@@ -20,7 +21,7 @@ async def test_all_logs_are_prefixed(registry, resource, handlers,
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': event_type, 'object': cause_mock.body},
+        raw_event={'type': event_type, 'object': event_body},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
@@ -49,7 +50,7 @@ async def test_diffs_logged_if_present(registry, resource, handlers, cause_type,
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': event_type, 'object': cause_mock.body},
+        raw_event={'type': event_type, 'object': {}},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
@@ -78,7 +79,7 @@ async def test_diffs_not_logged_if_absent(registry, resource, handlers, cause_ty
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': event_type, 'object': cause_mock.body},
+        raw_event={'type': event_type, 'object': {}},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )

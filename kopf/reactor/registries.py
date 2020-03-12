@@ -26,6 +26,7 @@ from kopf.reactor import handlers
 from kopf.reactor import invocation
 from kopf.structs import bodies
 from kopf.structs import dicts
+from kopf.structs import filters
 from kopf.structs import resources as resources_
 from kopf.utilities import piggybacking
 
@@ -122,8 +123,8 @@ class ResourceRegistry(GenericRegistry[handlers.ResourceHandler, callbacks.Resou
             initial: Optional[bool] = None,
             deleted: Optional[bool] = None,
             requires_finalizer: bool = False,
-            labels: Optional[bodies.Labels] = None,
-            annotations: Optional[bodies.Annotations] = None,
+            labels: Optional[filters.MetaFilter] = None,
+            annotations: Optional[filters.MetaFilter] = None,
             when: Optional[callbacks.WhenHandlerFn] = None,
     ) -> callbacks.ResourceHandlerFn:
         warnings.warn("registry.register() is deprecated; "
@@ -269,8 +270,8 @@ class OperatorRegistry:
             plural: str,
             fn: callbacks.ResourceHandlerFn,
             id: Optional[str] = None,
-            labels: Optional[bodies.Labels] = None,
-            annotations: Optional[bodies.Annotations] = None,
+            labels: Optional[filters.MetaFilter] = None,
+            annotations: Optional[filters.MetaFilter] = None,
             when: Optional[callbacks.WhenHandlerFn] = None,
     ) -> callbacks.ResourceHandlerFn:
         """
@@ -303,8 +304,8 @@ class OperatorRegistry:
             initial: Optional[bool] = None,
             deleted: Optional[bool] = None,
             requires_finalizer: bool = False,
-            labels: Optional[bodies.Labels] = None,
-            annotations: Optional[bodies.Annotations] = None,
+            labels: Optional[filters.MetaFilter] = None,
+            annotations: Optional[filters.MetaFilter] = None,
             when: Optional[callbacks.WhenHandlerFn] = None,
     ) -> callbacks.ResourceHandlerFn:
         """
@@ -583,13 +584,19 @@ def _matches_annotations(
 
 def _matches_metadata(
         *,
-        pattern: Mapping[str, str],  # from the handler
+        pattern: filters.MetaFilter,  # from the handler
         content: Mapping[str, str],  # from the body
 ) -> bool:
     for key, value in pattern.items():
-        if key not in content:
+        if value is filters.MetaFilterToken.ABSENT and key not in content:
+            continue
+        elif value is filters.MetaFilterToken.PRESENT and key in content:
+            continue
+        elif value is None and key in content:  # deprecated; warned in @kopf.on
+            continue
+        elif key not in content:
             return False
-        elif value is not None and value != content[key]:
+        elif value != content[key]:
             return False
         else:
             continue

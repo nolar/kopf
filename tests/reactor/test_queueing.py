@@ -148,8 +148,8 @@ async def test_watchevent_batching(mocker, resource, processor, timer, stream, e
     assert processor.call_count == len(vals)
     expected_uid_val_pairs = set(zip(uids, vals))
     actual_uid_val_pairs = set((
-            kwargs['event']['object']['metadata']['uid'],
-            kwargs['event']['object']['spec'])
+            kwargs['raw_event']['object']['metadata']['uid'],
+            kwargs['raw_event']['object']['spec'])
             for args, kwargs in processor.call_args_list)
     assert actual_uid_val_pairs == expected_uid_val_pairs
 

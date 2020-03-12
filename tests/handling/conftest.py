@@ -33,7 +33,6 @@ Some of these aspects are tested separately to be sure they indeed execute
 all possible cases properly. In the top-level event handling, we assume they do,
 and only check for the upper-level behaviour, not all of the input combinations.
 """
-import copy
 import dataclasses
 from typing import Callable
 from unittest.mock import Mock
@@ -41,7 +40,7 @@ from unittest.mock import Mock
 import pytest
 
 import kopf
-from kopf.reactor.causation import ResourceChangingCause, Reason
+from kopf.reactor.causation import ResourceChangingCause
 
 
 @dataclasses.dataclass(frozen=True, eq=False)
@@ -170,58 +169,45 @@ def extrahandlers(clear_default_registry, handlers):
 
 @pytest.fixture()
 def cause_mock(mocker, resource):
+    """
+    Mock the resulting _cause_ of the resource change detection logic.
+
+    The change detection is complex, depends on many fields and values, and it
+    is difficult to simulate by artificial event bodies, especially its reason.
+
+    Instead, we patch a method which detects the resource changing causes, and
+    return a cause with the mocked reason (also, diff, and some other fields).
+
+    The a value of this fixture, a mock is provided with few fields to mock.
+    The default is to no mock anything, unless defined in the test, and to use
+    the original arguments to the detection method.
+    """
 
     # Use everything from a mock, but use the passed `patch` dict as is.
     # The event handler passes its own accumulator, and checks/applies it later.
-    def new_detect_fn(**kwargs):
+    def new_detect_fn(*, diff, new, old, **kwargs):
 
-        # Avoid collision of our mocked values with the passed kwargs.
-        original_event = kwargs.pop('event', None)
-        original_reason = kwargs.pop('reason', None)
-        original_memo = kwargs.pop('memo', None)
-        original_body = kwargs.pop('body', None)
-        original_diff = kwargs.pop('diff', None)
-        original_new = kwargs.pop('new', None)
-        original_old = kwargs.pop('old', None)
-        reason = mock.reason if mock.reason is not None else original_reason
-        memo = copy.deepcopy(mock.memo) if mock.memo is not None else original_memo
-        body = copy.deepcopy(mock.body) if mock.body is not None else original_body
-        diff = copy.deepcopy(mock.diff) if mock.diff is not None else original_diff
-        new = copy.deepcopy(mock.new) if mock.new is not None else original_new
-        old = copy.deepcopy(mock.old) if mock.old is not None else original_old
-
-        # Remove requires_finalizer from kwargs as it shouldn't be passed to the cause.
-        kwargs.pop('requires_finalizer', None)
+        # For change detection, we ensure that there is no extra cycle of adding a finalizer.
+        raw_event = kwargs.pop('raw_event', None)
+        raw_body = raw_event['object']
+        raw_body.setdefault('metadata', {}).setdefault('finalizers', ['kopf.zalando.org/KopfFinalizerMarker'])
 
         # Pass through kwargs: resource, logger, patch, diff, old, new.
-        # I.e. everything except what we mock: reason & body.
-        cause = ResourceChangingCause(
-            reason=reason,
-            memo=memo,
-            body=body,
-            diff=diff,
-            new=new,
-            old=old,
+        # I.e. everything except what we mock -- for them, use the mocked values (if not None).
+        return ResourceChangingCause(
+            reason=mock.reason,
+            diff=mock.diff if mock.diff is not None else diff,
+            new=mock.new if mock.new is not None else new,
+            old=mock.old if mock.old is not None else old,
             **kwargs)
-
-        # Needed for the k8s-event creation, as they are attached to objects.
-        body.setdefault('apiVersion', f'{resource.group}/{resource.version}')
-        body.setdefault('kind', 'KopfExample')  # TODO: resource.???
-        body.setdefault('metadata', {}).setdefault('namespace', 'some-namespace')
-        body.setdefault('metadata', {}).setdefault('name', 'some-name')
-        body.setdefault('metadata', {}).setdefault('uid', 'some-uid')
-        body.setdefault('metadata', {}).setdefault('finalizers', ['kopf.zalando.org/KopfFinalizerMarker'])
-
-        return cause
 
     # Substitute the real cause detector with out own mock-based one.
     mocker.patch('kopf.reactor.causation.detect_resource_changing_cause', new=new_detect_fn)
 
     # The mock object stores some values later used by the factory substitute.
-    mock = mocker.Mock(spec_set=['reason', 'memo', 'body', 'diff', 'new', 'old'])
+    # Note: ONLY those fields we mock in the tests. Other kwargs should be passed through.
+    mock = mocker.Mock(spec_set=['reason', 'diff', 'new', 'old'])
     mock.reason = None
-    mock.memo = None
-    mock.body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
     mock.diff = None
     mock.new = None
     mock.old = None

@@ -30,7 +30,7 @@ async def test_fatal_error_stops_handler(
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': event_type, 'object': cause_mock.body},
+        raw_event={'type': event_type, 'object': {}},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
@@ -73,7 +73,7 @@ async def test_retry_error_delays_handler(
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': event_type, 'object': cause_mock.body},
+        raw_event={'type': event_type, 'object': {}},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
@@ -117,7 +117,7 @@ async def test_arbitrary_error_delays_handler(
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': event_type, 'object': cause_mock.body},
+        raw_event={'type': event_type, 'object': {}},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )

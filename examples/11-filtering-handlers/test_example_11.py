@@ -47,11 +47,11 @@ def test_handler_filtering(mocker):
     assert runner.exit_code == 0
 
     # Check for correct log lines (to indicate correct handlers were executed).
-    assert '[default/kopf-example-1] Label satisfied.' in runner.stdout
-    assert '[default/kopf-example-1] Label exists.' in runner.stdout
-    assert '[default/kopf-example-1] Label not satisfied.' not in runner.stdout
-    assert '[default/kopf-example-1] Annotation satisfied.' in runner.stdout
-    assert '[default/kopf-example-1] Annotation exists.' in runner.stdout
-    assert '[default/kopf-example-1] Annotation not satisfied.' not in runner.stdout
+    assert '[default/kopf-example-1] Label is matching.' in runner.stdout
+    assert '[default/kopf-example-1] Label is present.' in runner.stdout
+    assert '[default/kopf-example-1] Label is absent.' in runner.stdout
+    assert '[default/kopf-example-1] Annotation is matching.' in runner.stdout
+    assert '[default/kopf-example-1] Annotation is present.' in runner.stdout
+    assert '[default/kopf-example-1] Annotation is absent.' in runner.stdout
     assert '[default/kopf-example-1] Filter satisfied.' in runner.stdout
     assert '[default/kopf-example-1] Filter not satisfied.' not in runner.stdout

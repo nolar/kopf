@@ -23,7 +23,7 @@ async def test_1st_step_stores_progress_by_patching(
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': event_type, 'object': cause_mock.body},
+        raw_event={'type': event_type, 'object': {}},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
@@ -57,22 +57,22 @@ async def test_2nd_step_finishes_the_handlers(caplog,
     name2 = f'{cause_type}_fn2'
 
     event_type = None if cause_type == Reason.RESUME else 'irrelevant'
-    cause_mock.reason = cause_type
-    cause_mock.body.update({
+    event_body = {
         'status': {'kopf': {'progress': {
             'resume_fn':  {'started': '1979-01-01T00:00:00', 'success': True},
             'resume_fn2':  {'started': '1979-01-01T00:00:00', 'success': True},
             name1: {'started': '1979-01-01T00:00:00', 'success': True},
             name2: {'started': '1979-01-01T00:00:00'},
         }}}
-    })
+    }
+    cause_mock.reason = cause_type
 
     await process_resource_event(
         lifecycle=kopf.lifecycles.one_by_one,
         registry=registry,
         resource=resource,
         memories=ResourceMemories(),
-        event={'type': event_type, 'object': cause_mock.body},
+        raw_event={'type': event_type, 'object': event_body},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )

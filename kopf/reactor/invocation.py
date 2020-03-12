@@ -14,7 +14,6 @@ from typing import Optional, Any, Union, List, Iterable, Iterator, Tuple, Dict, 
 from kopf import config
 from kopf.reactor import callbacks
 from kopf.reactor import causation
-from kopf.structs import dicts
 
 if TYPE_CHECKING:
     asyncio_Future = asyncio.Future[Any]
@@ -70,12 +69,14 @@ def build_kwargs(
             patch=cause.patch,
             memo=cause.memo,
             body=cause.body,
-            spec=dicts.DictView(cause.body, 'spec'),
-            meta=dicts.DictView(cause.body, 'metadata'),
-            status=dicts.DictView(cause.body, 'status'),
-            uid=cause.body.get('metadata', {}).get('uid'),
-            name=cause.body.get('metadata', {}).get('name'),
-            namespace=cause.body.get('metadata', {}).get('namespace'),
+            spec=cause.body.spec,
+            meta=cause.body.metadata,
+            status=cause.body.status,
+            uid=cause.body.metadata.uid,
+            name=cause.body.metadata.name,
+            namespace=cause.body.metadata.namespace,
+            labels=cause.body.metadata.labels,
+            annotations=cause.body.metadata.annotations,
         )
     if isinstance(cause, causation.ResourceWatchingCause):
         new_kwargs.update(

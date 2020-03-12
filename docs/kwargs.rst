@@ -48,6 +48,8 @@ Resource-related kwargs
 .. kwarg:: uid
 .. kwarg:: name
 .. kwarg:: namespace
+.. kwarg:: labels
+.. kwarg:: annotations
 
 Body parts
 ----------
@@ -59,6 +61,13 @@ live-views into ``body['spec']``, ``body['metadata']``, ``body['status']``.
 
 ``namespace``, ``name``, ``uid`` can be used to identify the object being
 handled, and are aliases for the respective fields in ``body['metadata']``.
+If the values are not present for any reason (e.g. namespaced for cluster-scoped
+objects), the fields are ``None`` -- unlike accessing the same fields by key,
+when a ``KeyError`` is raised.
+
+``labels`` and ``annotations`` are equivalents of ``body['metadata']['labels']``
+and ``body['metadata']['annotations']`` if they exist. If not, these two behave
+as empty dicts.
 
 
 .. kwarg:: logger

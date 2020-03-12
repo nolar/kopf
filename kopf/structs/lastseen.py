@@ -44,7 +44,7 @@ def get_essence(
     """
 
     # Always use a copy, so that future changes do not affect the extracted essence.
-    essence = cast(Dict[Any, Any], copy.deepcopy(body))
+    essence = cast(Dict[Any, Any], copy.deepcopy(dict(body)))
 
     # The top-level identifying fields never change, so there is not need to track them.
     if 'apiVersion' in essence:

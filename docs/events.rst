@@ -79,13 +79,13 @@ at the moment (and not event the children)::
     import kubernetes
 
     @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
-    def create_fn(body, namespace, uid, **_):
+    def create_fn(name, namespace, uid, **_):
 
         pod = kubernetes.client.V1Pod()
         api = kubernetes.client.CoreV1Api()
         obj = api.create_namespaced_pod(namespace, pod)
 
-        msg = f"This pod is created by KopfExample {body['name']}"
+        msg = f"This pod is created by KopfExample {name}"
         kopf.info(obj.to_dict(), reason='SomeReason', message=msg)
 
 .. note::

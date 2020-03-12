@@ -27,7 +27,7 @@ To mark the created objects with labels::
 
 To mark it with the same labels as another (e.g. parent) object:
 
-    kopf.label(objs, labels=owner.get('metadata', {}).get('labels', {}))
+    kopf.label(objs, labels=owner.metadata.labels)
 
 Where ``obj`` or ``objs`` is either a dict of the object fields,
 or a list/tuple of dicts with multiple objects.

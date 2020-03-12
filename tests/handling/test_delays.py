@@ -38,7 +38,7 @@ async def test_delayed_handlers_progress(
             registry=registry,
             resource=resource,
             memories=ResourceMemories(),
-            event={'type': event_type, 'object': cause_mock.body},
+            raw_event={'type': event_type, 'object': {}},
             replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
@@ -72,20 +72,20 @@ async def test_delayed_handlers_sleep(
     caplog.set_level(logging.DEBUG)
 
     # Simulate the original persisted state of the resource.
+    # Make sure the finalizer is added since there are mandatory deletion handlers.
     started_dt = datetime.datetime.fromisoformat('2000-01-01T00:00:00')  # long time ago is fine.
     delayed_dt = datetime.datetime.fromisoformat(delayed_iso)
     event_type = None if cause_reason == Reason.RESUME else 'irrelevant'
-    cause_mock.reason = cause_reason
-    cause_mock.body.update({
+    event_body = {
+        'metadata': {'finalizers': [FINALIZER]},
         'status': {'kopf': {'progress': {
             'create_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_dict(),
             'update_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_dict(),
             'delete_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_dict(),
             'resume_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_dict(),
         }}}
-    })
-    # make sure the finalizer is added since there are mandatory deletion handlers
-    cause_mock.body.setdefault('metadata', {})['finalizers'] = [FINALIZER]
+    }
+    cause_mock.reason = cause_reason
 
     with freezegun.freeze_time(now):
         await process_resource_event(
@@ -93,7 +93,7 @@ async def test_delayed_handlers_sleep(
             registry=registry,
             resource=resource,
             memories=ResourceMemories(),
-            event={'type': event_type, 'object': cause_mock.body},
+            raw_event={'type': event_type, 'object': event_body},
             replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )

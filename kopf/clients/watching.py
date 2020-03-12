@@ -53,7 +53,7 @@ async def infinite_watch(
         resource: resources.Resource,
         namespace: Optional[str],
         freeze_mode: Optional[primitives.Toggle] = None,
-) -> AsyncIterator[bodies.Event]:
+) -> AsyncIterator[bodies.RawEvent]:
     """
     Stream the watch-events infinitely.
 
@@ -70,8 +70,8 @@ async def infinite_watch(
             namespace=namespace,
             freeze_mode=freeze_mode,
         )
-        async for event in stream:
-            yield event
+        async for raw_event in stream:
+            yield raw_event
         await asyncio.sleep(config.WatchersConfig.watcher_retry_delay)
 
 
@@ -80,7 +80,7 @@ async def streaming_watch(
         resource: resources.Resource,
         namespace: Optional[str],
         freeze_mode: Optional[primitives.Toggle] = None,
-) -> AsyncIterator[bodies.Event]:
+) -> AsyncIterator[bodies.RawEvent]:
 
     # Prevent both watching and listing while the freeze mode is on, until it is off.
     # Specifically, the watch-stream closes its connection once the freeze mode is on,
@@ -105,8 +105,8 @@ async def streaming_watch(
             resource=resource, namespace=namespace,
             freeze_waiter=freeze_waiter,
         )
-        async for event in stream:
-            yield event
+        async for raw_event in stream:
+            yield raw_event
     finally:
         with contextlib.suppress(asyncio.CancelledError):
             freeze_waiter.cancel()
@@ -118,7 +118,7 @@ async def continuous_watch(
         resource: resources.Resource,
         namespace: Optional[str],
         freeze_waiter: asyncio_Future,
-) -> AsyncIterator[bodies.Event]:
+) -> AsyncIterator[bodies.RawEvent]:
 
     # First, list the resources regularly, and get the list's resource version.
     # Simulate the events with type "None" event - used in detection of causes.
@@ -137,30 +137,32 @@ async def continuous_watch(
             since=resource_version,
             freeze_waiter=freeze_waiter,
         )
-        async for event in stream:
+        async for raw_input in stream:
+            raw_type = raw_input['type']
+            raw_object = raw_input['object']
 
             # "410 Gone" is for the "resource version too old" error, we must restart watching.
             # The resource versions are lost by k8s after few minutes (5, as per the official doc).
             # The error occurs when there is nothing happening for few minutes. This is normal.
-            if event['type'] == 'ERROR' and cast(bodies.Error, event['object'])['code'] == 410:
+            if raw_type == 'ERROR' and cast(bodies.RawError, raw_object)['code'] == 410:
                 logger.debug("Restarting the watch-stream for %r", resource)
                 return  # out of the regular stream, to the infinite stream.
 
             # Other watch errors should be fatal for the operator.
-            if event['type'] == 'ERROR':
-                raise WatchingError(f"Error in the watch-stream: {event['object']}")
+            if raw_type == 'ERROR':
+                raise WatchingError(f"Error in the watch-stream: {raw_object}")
 
             # Ensure that the event is something we understand and can handle.
-            if event['type'] not in ['ADDED', 'MODIFIED', 'DELETED']:
-                logger.warning("Ignoring an unsupported event type: %r", event)
+            if raw_type not in ['ADDED', 'MODIFIED', 'DELETED']:
+                logger.warning("Ignoring an unsupported event type: %r", raw_input)
                 continue
 
             # Keep the latest seen resource version for continuation of the stream on disconnects.
-            body = cast(bodies.Body, event['object'])
+            body = cast(bodies.RawBody, raw_object)
             resource_version = body.get('metadata', {}).get('resourceVersion', resource_version)
 
             # Yield normal events to the consumer. Errors are already filtered out.
-            yield cast(bodies.Event, event)
+            yield cast(bodies.RawEvent, raw_input)
 
 
 @auth.reauthenticated_stream
@@ -172,7 +174,7 @@ async def watch_objs(
         since: Optional[str] = None,
         context: Optional[auth.APIContext] = None,  # injected by the decorator
         freeze_waiter: asyncio_Future,
-) -> AsyncIterator[bodies.RawEvent]:
+) -> AsyncIterator[bodies.RawInput]:
     """
     Watch objects of a specific resource type.
 
@@ -212,8 +214,8 @@ async def watch_objs(
     try:
         async with response:
             async for line in _iter_jsonlines(response.content):
-                event = cast(bodies.RawEvent, json.loads(line.decode("utf-8")))
-                yield event
+                raw_input = cast(bodies.RawInput, json.loads(line.decode("utf-8")))
+                yield raw_input
     except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError):
         pass
     finally:
