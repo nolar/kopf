@@ -85,7 +85,7 @@ class ResourceChangingCause(ResourceCause):
     @property
     def deleted(self) -> bool:
         """ Used to conditionally skip/select the @on.resume handlers if the object is deleted. """
-        return finalizers.is_deleted(self.body)
+        return finalizers.is_deletion_ongoing(self.body)
 
 
 def detect_resource_watching_cause(
@@ -127,10 +127,10 @@ def detect_resource_changing_cause(
         return ResourceChangingCause(reason=handlers.Reason.GONE, **kwargs)
 
     # The finalizer has been just removed. We are fully done.
-    if finalizers.is_deleted(body) and not finalizers.has_finalizers(body):
+    if finalizers.is_deletion_ongoing(body) and not finalizers.is_deletion_blocked(body):
         return ResourceChangingCause(reason=handlers.Reason.FREE, **kwargs)
 
-    if finalizers.is_deleted(body):
+    if finalizers.is_deletion_ongoing(body):
         return ResourceChangingCause(reason=handlers.Reason.DELETE, **kwargs)
 
     # For an object seen for the first time (i.e. just-created), call the creation handlers,

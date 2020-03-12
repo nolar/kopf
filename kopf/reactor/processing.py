@@ -192,17 +192,17 @@ async def process_resource_changing_cause(
     skip = None
 
     resource_changing_handlers = registry.resource_changing_handlers[cause.resource]
-    requires_finalizer = resource_changing_handlers.requires_finalizer(cause=cause)
-    has_finalizer = finalizers.has_finalizers(body=cause.body)
+    deletion_must_be_blocked = resource_changing_handlers.requires_finalizer(cause=cause)
+    deletion_is_blocked = finalizers.is_deletion_blocked(body=cause.body)
 
-    if requires_finalizer and not has_finalizer:
+    if deletion_must_be_blocked and not deletion_is_blocked:
         logger.debug("Adding the finalizer, thus preventing the actual deletion.")
-        finalizers.append_finalizers(body=body, patch=patch)
+        finalizers.block_deletion(body=body, patch=patch)
         return None
 
-    if not requires_finalizer and has_finalizer:
+    if not deletion_must_be_blocked and deletion_is_blocked:
         logger.debug("Removing the finalizer, as there are no handlers requiring it.")
-        finalizers.remove_finalizers(body=body, patch=patch)
+        finalizers.allow_deletion(body=body, patch=patch)
         return None
 
     # Regular causes invoke the handlers.
@@ -240,7 +240,7 @@ async def process_resource_changing_cause(
         lastseen.refresh_essence(body=body, patch=patch, extra_fields=extra_fields)
         if cause.reason == handlers_.Reason.DELETE:
             logger.debug("Removing the finalizer, thus allowing the actual deletion.")
-            finalizers.remove_finalizers(body=body, patch=patch)
+            finalizers.allow_deletion(body=body, patch=patch)
 
         # Once all handlers have succeeded at least once for any reason, or if there were none,
         # prevent further resume-handlers (which otherwise happens on each watch-stream re-listing).

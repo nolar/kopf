@@ -1,8 +1,8 @@
 import pytest
 
 from kopf.structs.finalizers import FINALIZER, LEGACY_FINALIZER
-from kopf.structs.finalizers import append_finalizers, remove_finalizers
-from kopf.structs.finalizers import is_deleted, has_finalizers
+from kopf.structs.finalizers import block_deletion, allow_deletion
+from kopf.structs.finalizers import is_deletion_ongoing, is_deletion_blocked
 
 
 def test_finalizer_is_fqdn():
@@ -16,7 +16,7 @@ def test_finalizer_is_fqdn():
     pytest.param(False, {}, id='no-metadata'),
 ])
 def test_is_deleted(expected, body):
-    result = is_deleted(body=body)
+    result = is_deletion_ongoing(body=body)
     assert result == expected
 
 
@@ -30,28 +30,28 @@ def test_is_deleted(expected, body):
     pytest.param(True, {'metadata': {'finalizers': ['other', FINALIZER]}}, id='mixed'),
 ])
 def test_has_finalizers(expected, body):
-    result = has_finalizers(body=body)
+    result = is_deletion_blocked(body=body)
     assert result == expected
 
 
 def test_append_finalizers_to_others():
     body = {'metadata': {'finalizers': ['other1', 'other2']}}
     patch = {}
-    append_finalizers(body=body, patch=patch)
+    block_deletion(body=body, patch=patch)
     assert patch == {'metadata': {'finalizers': ['other1', 'other2', FINALIZER]}}
 
 
 def test_append_finalizers_to_empty():
     body = {}
     patch = {}
-    append_finalizers(body=body, patch=patch)
+    block_deletion(body=body, patch=patch)
     assert patch == {'metadata': {'finalizers': [FINALIZER]}}
 
 
 def test_append_finalizers_when_present():
     body = {'metadata': {'finalizers': ['other1', FINALIZER, 'other2']}}
     patch = {}
-    append_finalizers(body=body, patch=patch)
+    block_deletion(body=body, patch=patch)
     assert patch == {}
 
 
@@ -62,19 +62,19 @@ def test_append_finalizers_when_present():
 def test_remove_finalizers_keeps_others(finalizer):
     body = {'metadata': {'finalizers': ['other1', finalizer, 'other2']}}
     patch = {}
-    remove_finalizers(body=body, patch=patch)
+    allow_deletion(body=body, patch=patch)
     assert patch == {'metadata': {'finalizers': ['other1', 'other2']}}
 
 
 def test_remove_finalizers_when_absent():
     body = {'metadata': {'finalizers': ['other1', 'other2']}}
     patch = {}
-    remove_finalizers(body=body, patch=patch)
+    allow_deletion(body=body, patch=patch)
     assert patch == {}
 
 
 def test_remove_finalizers_when_empty():
     body = {}
     patch = {}
-    remove_finalizers(body=body, patch=patch)
+    allow_deletion(body=body, patch=patch)
     assert patch == {}
