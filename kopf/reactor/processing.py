@@ -129,10 +129,12 @@ async def process_resource_event(
 
     # Whatever was done, apply the accumulated changes to the object, or sleep-n-touch for delays.
     # But only once, to reduce the number of API calls and the generated irrelevant events.
-    await apply_reaction_outcomes(
-        resource=resource, body=body,
-        patch=patch, delays=delays,
-        logger=logger, replenished=replenished)
+    # And only of the object is at least supposed to exist (not "GONE"), even if actually does not.
+    if raw_event['type'] != 'DELETED':
+        await apply_reaction_outcomes(
+            resource=resource, body=body,
+            patch=patch, delays=delays,
+            logger=logger, replenished=replenished)
 
 
 async def apply_reaction_outcomes(
