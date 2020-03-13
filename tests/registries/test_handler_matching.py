@@ -16,11 +16,11 @@ def some_fn(x=None):
     pass
 
 
-def _never(**_):
+def _never(*_, **__):
     return False
 
 
-def _always(**_):
+def _always(*_, **__):
     return True
 
 
@@ -199,6 +199,32 @@ def test_catchall_handlers_with_undesired_labels_absent(
     pytest.param({}, id='without-label'),
     pytest.param({'somelabel': 'somevalue'}, id='with-label'),
     pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
+])
+def test_catchall_handlers_with_labels_callback_says_true(
+        registry, handler_factory, resource, labels):
+    cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'labels': labels}})
+    handler_factory(reason=None, labels={'somelabel': _always})
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
+    assert handlers
+
+
+@pytest.mark.parametrize('labels', [
+    pytest.param({}, id='without-label'),
+    pytest.param({'somelabel': 'somevalue'}, id='with-label'),
+    pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
+])
+def test_catchall_handlers_with_labels_callback_says_false(
+        registry, handler_factory, resource, labels):
+    cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'labels': labels}})
+    handler_factory(reason=None, labels={'somelabel': _never})
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
+    assert not handlers
+
+
+@pytest.mark.parametrize('labels', [
+    pytest.param({}, id='without-label'),
+    pytest.param({'somelabel': 'somevalue'}, id='with-label'),
+    pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
     pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
     pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, id='with-extra-label'),
 ])
@@ -287,6 +313,32 @@ def test_catchall_handlers_with_undesired_annotations_absent(
     pytest.param({}, id='without-annotation'),
     pytest.param({'someannotation': 'somevalue'}, id='with-annotation'),
     pytest.param({'someannotation': 'othervalue'}, id='with-other-value'),
+])
+def test_catchall_handlers_with_annotations_callback_says_true(
+        registry, handler_factory, resource, annotations):
+    cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'annotations': annotations}})
+    handler_factory(reason=None, annotations={'someannotation': _always})
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
+    assert handlers
+
+
+@pytest.mark.parametrize('annotations', [
+    pytest.param({}, id='without-annotation'),
+    pytest.param({'someannotation': 'somevalue'}, id='with-annotation'),
+    pytest.param({'someannotation': 'othervalue'}, id='with-other-value'),
+])
+def test_catchall_handlers_with_annotations_callback_says_false(
+        registry, handler_factory, resource, annotations):
+    cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'annotations': annotations}})
+    handler_factory(reason=None, annotations={'someannotation': _never})
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
+    assert not handlers
+
+
+@pytest.mark.parametrize('annotations', [
+    pytest.param({}, id='without-annotation'),
+    pytest.param({'someannotation': 'somevalue'}, id='with-annotation'),
+    pytest.param({'someannotation': 'othervalue'}, id='with-other-value'),
     pytest.param({'otherannotation': 'othervalue'}, id='with-other-annotation'),
     pytest.param({'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-extra-annotation'),
 ])
@@ -333,7 +385,7 @@ def test_catchall_handlers_with_labels_and_annotations_not_satisfied(
     pytest.param(lambda body=None, **_: body['spec']['name'] == 'test', id='with-when'),
     pytest.param(lambda **_: True, id='with-other-when'),
 ])
-def test_catchall_handlers_with_when_match(
+def test_catchall_handlers_with_when_callback_matching(
         registry, handler_factory, resource, reason, when):
     cause = ResourceChangingCause(
         resource=resource,
@@ -354,7 +406,7 @@ def test_catchall_handlers_with_when_match(
     pytest.param(lambda body=None, **_: body['spec']['name'] != "test", id='with-when'),
     pytest.param(lambda **_: False, id='with-other-when'),
 ])
-def test_catchall_handlers_with_when_not_match(
+def test_catchall_handlers_with_when_callback_mismatching(
         registry, handler_factory, resource, when):
     cause = ResourceChangingCause(
         resource=resource,
@@ -589,7 +641,7 @@ def test_irrelevant_handlers_with_annotations_not_satisfied(
 
 
 @mismatching_reason_and_decorator
-def test_irrelevant_handlers_with_when_satisfied(
+def test_irrelevant_handlers_with_when_callback_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(resource.group, resource.version, resource.plural, registry=registry,
@@ -603,7 +655,7 @@ def test_irrelevant_handlers_with_when_satisfied(
 
 
 @mismatching_reason_and_decorator
-def test_irrelevant_handlers_with_when_not_satisfied(
+def test_irrelevant_handlers_with_when_callback_not_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(resource.group, resource.version, resource.plural, registry=registry,

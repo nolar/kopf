@@ -15,7 +15,7 @@ from kopf.structs import patches
 
 # A specialised type to highlight the purpose or origin of the data of type Any,
 # to not be mixed with other arbitrary Any values, where it is indeed "any".
-HandlerResult = NewType('HandlerResult', object)
+Result = NewType('Result', object)
 
 
 class ActivityHandlerFn(Protocol):
@@ -24,7 +24,7 @@ class ActivityHandlerFn(Protocol):
             *args: Any,
             logger: Union[logging.Logger, logging.LoggerAdapter],
             **kwargs: Any,
-    ) -> Optional[HandlerResult]: ...
+    ) -> Optional[Result]: ...
 
 
 class ResourceHandlerFn(Protocol):
@@ -46,10 +46,10 @@ class ResourceHandlerFn(Protocol):
             old: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
             new: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
             **kwargs: Any,
-    ) -> Optional[HandlerResult]: ...
+    ) -> Optional[Result]: ...
 
 
-class WhenHandlerFn(Protocol):
+class WhenFilterFn(Protocol):
     def __call__(  # lgtm[py/similar-function]
             self,
             *args: Any,
@@ -67,5 +67,23 @@ class WhenHandlerFn(Protocol):
             diff: diffs.Diff,
             old: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
             new: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
+            **kwargs: Any,
+    ) -> bool: ...
+
+
+class MetaFilterFn(Protocol):
+    def __call__(  # lgtm[py/similar-function]
+            self,
+            value: Optional[str],  # because it is either labels or annotations, nothing else.
+            *args: Any,
+            body: bodies.Body,
+            meta: bodies.Meta,
+            spec: bodies.Spec,
+            status: bodies.Status,
+            uid: str,
+            name: str,
+            namespace: Optional[str],
+            patch: patches.Patch,
+            logger: Union[logging.Logger, logging.LoggerAdapter],
             **kwargs: Any,
     ) -> bool: ...

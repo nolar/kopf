@@ -19,12 +19,11 @@ from types import FunctionType, MethodType
 from typing import (Any, MutableMapping, Optional, Sequence, Collection, Iterable, Iterator,
                     List, Set, FrozenSet, Mapping, Callable, cast, Generic, TypeVar)
 
-from kopf.reactor import callbacks
 from kopf.reactor import causation
 from kopf.reactor import errors as errors_
 from kopf.reactor import handlers
 from kopf.reactor import invocation
-from kopf.structs import bodies
+from kopf.structs import callbacks
 from kopf.structs import dicts
 from kopf.structs import filters
 from kopf.structs import resources as resources_
@@ -125,7 +124,7 @@ class ResourceRegistry(GenericRegistry[handlers.ResourceHandler, callbacks.Resou
             requires_finalizer: bool = False,
             labels: Optional[filters.MetaFilter] = None,
             annotations: Optional[filters.MetaFilter] = None,
-            when: Optional[callbacks.WhenHandlerFn] = None,
+            when: Optional[callbacks.WhenFilterFn] = None,
     ) -> callbacks.ResourceHandlerFn:
         warnings.warn("registry.register() is deprecated; "
                       "use @kopf.on... decorators with registry= kwarg.",
@@ -272,7 +271,7 @@ class OperatorRegistry:
             id: Optional[str] = None,
             labels: Optional[filters.MetaFilter] = None,
             annotations: Optional[filters.MetaFilter] = None,
-            when: Optional[callbacks.WhenHandlerFn] = None,
+            when: Optional[callbacks.WhenFilterFn] = None,
     ) -> callbacks.ResourceHandlerFn:
         """
         Register an additional handler function for low-level events.
@@ -306,7 +305,7 @@ class OperatorRegistry:
             requires_finalizer: bool = False,
             labels: Optional[filters.MetaFilter] = None,
             annotations: Optional[filters.MetaFilter] = None,
-            when: Optional[callbacks.WhenHandlerFn] = None,
+            when: Optional[callbacks.WhenFilterFn] = None,
     ) -> callbacks.ResourceHandlerFn:
         """
         Register an additional handler function for the specific resource and specific reason.
@@ -546,11 +545,13 @@ def match(
         changed_fields: Collection[dicts.FieldPath] = frozenset(),
         ignore_fields: bool = False,
 ) -> bool:
+    # Kwargs are lazily evaluated on the first _actual_ use, and shared for all filters since then.
+    kwargs: MutableMapping[str, Any] = {}
     return all([
         _matches_field(handler, changed_fields or {}, ignore_fields),
-        _matches_labels(handler, cause.body),
-        _matches_annotations(handler, cause.body),
-        _matches_filter_callback(handler, cause),
+        _matches_labels(handler, cause, kwargs),
+        _matches_annotations(handler, cause, kwargs),
+        _matches_filter_callback(handler, cause, kwargs),
     ])
 
 
@@ -566,26 +567,32 @@ def _matches_field(
 
 def _matches_labels(
         handler: handlers.ResourceHandler,
-        body: bodies.Body,
+        cause: causation.ResourceCause,
+        kwargs: MutableMapping[str, Any],
 ) -> bool:
     return (not handler.labels or
             _matches_metadata(pattern=handler.labels,
-                              content=body.get('metadata', {}).get('labels', {})))
+                              content=cause.body.get('metadata', {}).get('labels', {}),
+                              kwargs=kwargs, cause=cause))
 
 
 def _matches_annotations(
         handler: handlers.ResourceHandler,
-        body: bodies.Body,
+        cause: causation.ResourceCause,
+        kwargs: MutableMapping[str, Any],
 ) -> bool:
     return (not handler.annotations or
             _matches_metadata(pattern=handler.annotations,
-                              content=body.get('metadata', {}).get('annotations', {})))
+                              content=cause.body.get('metadata', {}).get('annotations', {}),
+                              kwargs=kwargs, cause=cause))
 
 
 def _matches_metadata(
         *,
         pattern: filters.MetaFilter,  # from the handler
         content: Mapping[str, str],  # from the body
+        kwargs: MutableMapping[str, Any],
+        cause: causation.ResourceCause,
 ) -> bool:
     for key, value in pattern.items():
         if value is filters.MetaFilterToken.ABSENT and key not in content:
@@ -594,6 +601,13 @@ def _matches_metadata(
             continue
         elif value is None and key in content:  # deprecated; warned in @kopf.on
             continue
+        elif callable(value):
+            if not kwargs:
+                kwargs.update(invocation.build_kwargs(cause=cause))
+            if value(content.get(key, None), **kwargs):
+                continue
+            else:
+                return False
         elif key not in content:
             return False
         elif value != content[key]:
@@ -606,10 +620,13 @@ def _matches_metadata(
 def _matches_filter_callback(
         handler: handlers.ResourceHandler,
         cause: causation.ResourceCause,
+        kwargs: MutableMapping[str, Any],
 ) -> bool:
-    if not handler.when:
+    if handler.when is None:
         return True
-    return handler.when(**invocation.build_kwargs(cause=cause))
+    if not kwargs:
+        kwargs.update(invocation.build_kwargs(cause=cause))
+    return handler.when(**kwargs)
 
 
 _default_registry: Optional[OperatorRegistry] = None

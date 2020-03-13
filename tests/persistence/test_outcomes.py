@@ -1,5 +1,5 @@
-from kopf.reactor.callbacks import HandlerResult
 from kopf.reactor.states import HandlerOutcome
+from kopf.structs.callbacks import Result
 
 
 def test_creation_for_ignored_handlers():
@@ -11,7 +11,7 @@ def test_creation_for_ignored_handlers():
 
 
 def test_creation_for_results():
-    result = HandlerResult(object())
+    result = Result(object())
     outcome = HandlerOutcome(final=True, result=result)
     assert outcome.final
     assert outcome.delay is None

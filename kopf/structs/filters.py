@@ -1,6 +1,8 @@
 import enum
 from typing import Mapping, Union
 
+from kopf.structs import callbacks
+
 
 class MetaFilterToken(enum.Enum):
     """ Tokens for filtering by annotations/labels. """
@@ -13,4 +15,4 @@ ABSENT = MetaFilterToken.ABSENT
 PRESENT = MetaFilterToken.PRESENT
 
 # Filters for handler specifications (not the same as the object's values).
-MetaFilter = Mapping[str, Union[None, str, MetaFilterToken]]
+MetaFilter = Mapping[str, Union[None, str, MetaFilterToken, callbacks.MetaFilterFn]]

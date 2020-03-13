@@ -2,9 +2,9 @@ import dataclasses
 import warnings
 from typing import NewType, Callable, Optional, Any
 
-from kopf.reactor import callbacks
 from kopf.reactor import causation
 from kopf.reactor import errors as errors_
+from kopf.structs import callbacks
 from kopf.structs import dicts
 from kopf.structs import filters
 
@@ -20,7 +20,7 @@ HandlerId = NewType('HandlerId', str)
 @dataclasses.dataclass
 class BaseHandler:
     id: HandlerId
-    fn: Callable[..., Optional[callbacks.HandlerResult]]
+    fn: Callable[..., Optional[callbacks.Result]]
     errors: Optional[errors_.ErrorsMode]
     timeout: Optional[float]
     retries: Optional[int]
@@ -59,7 +59,7 @@ class ResourceHandler(BaseHandler):
     deleted: Optional[bool]  # used for mixed-in (initial==True) @on.resume handlers only.
     labels: Optional[filters.MetaFilter]
     annotations: Optional[filters.MetaFilter]
-    when: Optional[callbacks.WhenHandlerFn]
+    when: Optional[callbacks.WhenFilterFn]
     requires_finalizer: Optional[bool]
 
     @property

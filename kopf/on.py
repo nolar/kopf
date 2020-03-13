@@ -15,12 +15,12 @@ import warnings
 
 from typing import Optional, Callable
 
-from kopf.reactor import callbacks
 from kopf.reactor import causation
 from kopf.reactor import errors as errors_
 from kopf.reactor import handlers
 from kopf.reactor import handling
 from kopf.reactor import registries
+from kopf.structs import callbacks
 from kopf.structs import dicts
 from kopf.structs import filters
 from kopf.structs import resources
@@ -136,7 +136,7 @@ def resume(  # lgtm[py/similar-function]
         deleted: Optional[bool] = None,
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenHandlerFn] = None,
+        when: Optional[callbacks.WhenFilterFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.resume()`` handler for the object resuming on operator (re)start. """
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
@@ -168,7 +168,7 @@ def create(  # lgtm[py/similar-function]
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenHandlerFn] = None,
+        when: Optional[callbacks.WhenFilterFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.create()`` handler for the object creation. """
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
@@ -200,7 +200,7 @@ def update(  # lgtm[py/similar-function]
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenHandlerFn] = None,
+        when: Optional[callbacks.WhenFilterFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.update()`` handler for the object update or change. """
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
@@ -233,7 +233,7 @@ def delete(  # lgtm[py/similar-function]
         optional: Optional[bool] = None,
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenHandlerFn] = None,
+        when: Optional[callbacks.WhenFilterFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.delete()`` handler for the object deletion. """
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
@@ -266,7 +266,7 @@ def field(  # lgtm[py/similar-function]
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenHandlerFn] = None,
+        when: Optional[callbacks.WhenFilterFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.field()`` handler for the individual field changes. """
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
@@ -294,7 +294,7 @@ def event(  # lgtm[py/similar-function]
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenHandlerFn] = None,
+        when: Optional[callbacks.WhenFilterFn] = None,
 ) -> ResourceHandlerDecorator:
     """ ``@kopf.on.event()`` handler for the silent spies on the events. """
     def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
@@ -327,7 +327,7 @@ def this(  # lgtm[py/similar-function]
         registry: Optional[registries.ResourceChangingRegistry] = None,
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenHandlerFn] = None,
+        when: Optional[callbacks.WhenFilterFn] = None,
 ) -> ResourceHandlerDecorator:
     """
     ``@kopf.on.this()`` decorator for the dynamically generated sub-handlers.
@@ -388,7 +388,7 @@ def register(  # lgtm[py/similar-function]
         registry: Optional[registries.ResourceChangingRegistry] = None,
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenHandlerFn] = None,
+        when: Optional[callbacks.WhenFilterFn] = None,
 ) -> callbacks.ResourceHandlerFn:
     """
     Register a function as a sub-handler of the currently executed handler.

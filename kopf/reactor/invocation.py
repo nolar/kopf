@@ -12,8 +12,8 @@ import functools
 from typing import Optional, Any, Union, List, Iterable, Iterator, Tuple, Dict, cast, TYPE_CHECKING
 
 from kopf import config
-from kopf.reactor import callbacks
 from kopf.reactor import causation
+from kopf.structs import callbacks
 
 if TYPE_CHECKING:
     asyncio_Future = asyncio.Future[Any]
