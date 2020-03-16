@@ -20,13 +20,13 @@ import logging
 from typing import NoReturn, Mapping
 
 from kopf.reactor import causation
-from kopf.reactor import handlers as handlers_
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
 from kopf.reactor import states
 from kopf.structs import callbacks
 from kopf.structs import credentials
+from kopf.structs import handlers as handlers_
 
 logger = logging.getLogger(__name__)
 

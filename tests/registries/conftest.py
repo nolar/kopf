@@ -4,7 +4,7 @@ from kopf import ActivityRegistry
 from kopf import OperatorRegistry
 from kopf import ResourceWatchingRegistry, ResourceChangingRegistry
 from kopf import SimpleRegistry, GlobalRegistry  # deprecated, but tested
-from kopf.reactor.handlers import HandlerId, ResourceChangingHandler
+from kopf.structs.handlers import HandlerId, ResourceChangingHandler
 
 
 @pytest.fixture(params=[

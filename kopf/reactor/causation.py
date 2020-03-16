@@ -24,11 +24,11 @@ import logging
 import warnings
 from typing import Any, Optional, Union, TypeVar
 
-from kopf.reactor import handlers
 from kopf.structs import bodies
 from kopf.structs import containers
 from kopf.structs import diffs
 from kopf.structs import finalizers
+from kopf.structs import handlers
 from kopf.structs import lastseen
 from kopf.structs import patches
 from kopf.structs import resources

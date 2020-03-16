@@ -15,12 +15,12 @@ import warnings
 
 from typing import Optional, Callable
 
-from kopf.reactor import handlers
 from kopf.reactor import handling
 from kopf.reactor import registries
 from kopf.structs import callbacks
 from kopf.structs import dicts
 from kopf.structs import filters
+from kopf.structs import handlers
 from kopf.structs import resources
 
 ActivityDecorator = Callable[[callbacks.ActivityFn], callbacks.ActivityFn]

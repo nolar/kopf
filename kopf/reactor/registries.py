@@ -20,11 +20,11 @@ from typing import (Any, MutableMapping, Optional, Sequence, Collection, Iterabl
                     List, Set, FrozenSet, Mapping, Callable, cast, Generic, TypeVar, Union)
 
 from kopf.reactor import causation
-from kopf.reactor import handlers
 from kopf.reactor import invocation
 from kopf.structs import callbacks
 from kopf.structs import dicts
 from kopf.structs import filters
+from kopf.structs import handlers
 from kopf.structs import resources as resources_
 from kopf.utilities import piggybacking
 

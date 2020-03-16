@@ -7,10 +7,10 @@ from typing import Optional, Tuple, MutableMapping
 import aiohttp.web
 
 from kopf.reactor import activities
-from kopf.reactor import handlers
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
 from kopf.structs import callbacks
+from kopf.structs import handlers
 
 logger = logging.getLogger(__name__)
 

@@ -12,13 +12,13 @@ from kopf.engines import peering
 from kopf.engines import posting
 from kopf.engines import probing
 from kopf.reactor import activities
-from kopf.reactor import handlers
 from kopf.reactor import lifecycles
 from kopf.reactor import processing
 from kopf.reactor import queueing
 from kopf.reactor import registries
 from kopf.structs import containers
 from kopf.structs import credentials
+from kopf.structs import handlers
 from kopf.structs import primitives
 
 if TYPE_CHECKING:

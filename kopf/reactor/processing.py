@@ -22,7 +22,6 @@ from kopf.engines import logging as logging_engine
 from kopf.engines import posting
 from kopf.engines import sleeping
 from kopf.reactor import causation
-from kopf.reactor import handlers as handlers_
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
@@ -30,6 +29,7 @@ from kopf.reactor import states
 from kopf.structs import bodies
 from kopf.structs import containers
 from kopf.structs import finalizers
+from kopf.structs import handlers as handlers_
 from kopf.structs import lastseen
 from kopf.structs import patches
 from kopf.structs import resources

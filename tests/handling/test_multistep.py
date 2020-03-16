@@ -3,9 +3,9 @@ import asyncio
 import pytest
 
 import kopf
-from kopf.reactor.handlers import Reason, HANDLER_REASONS
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
+from kopf.structs.handlers import Reason, HANDLER_REASONS
 
 
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)

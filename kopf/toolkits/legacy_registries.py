@@ -10,12 +10,12 @@ import warnings
 from typing import Any, Union, Sequence, Iterator, Optional
 
 from kopf.reactor import causation
-from kopf.reactor import handlers
 from kopf.reactor import registries
 from kopf.structs import bodies
 from kopf.structs import callbacks
 from kopf.structs import dicts
 from kopf.structs import filters
+from kopf.structs import handlers
 from kopf.structs import patches
 from kopf.structs import resources as resources_
 

@@ -2,10 +2,10 @@ import pytest
 
 import kopf
 from kopf import SimpleRegistry, GlobalRegistry
-from kopf.reactor.handlers import Reason
 from kopf.reactor.handling import handler_var
 from kopf.reactor.handling import subregistry_var
 from kopf.reactor.invocation import context
+from kopf.structs.handlers import Reason
 from kopf.structs.resources import Resource
 
 

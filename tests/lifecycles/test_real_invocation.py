@@ -4,11 +4,11 @@ import pytest
 
 import kopf
 from kopf.reactor.causation import ResourceChangingCause
-from kopf.reactor.handlers import Reason
 from kopf.reactor.invocation import invoke
 from kopf.reactor.states import State
 from kopf.structs.bodies import Body
 from kopf.structs.containers import ObjectDict
+from kopf.structs.handlers import Reason
 from kopf.structs.patches import Patch
 
 

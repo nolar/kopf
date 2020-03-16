@@ -30,9 +30,6 @@ from kopf.on import (
 from kopf.reactor import (
     lifecycles,  # as a separate name on the public namespace
 )
-from kopf.reactor.handlers import (
-    ErrorsMode,
-)
 from kopf.reactor.handling import (
     TemporaryError,
     PermanentError,
@@ -72,6 +69,9 @@ from kopf.structs.credentials import (
 from kopf.structs.filters import (
     ABSENT,
     PRESENT,
+)
+from kopf.structs.handlers import (
+    ErrorsMode,
 )
 from kopf.toolkits.hierarchies import (
     adopt,

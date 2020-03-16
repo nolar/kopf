@@ -4,8 +4,8 @@ import aiohttp
 import pytest
 
 from kopf.engines.probing import health_reporter
-from kopf.reactor.handlers import ActivityHandler, Activity
 from kopf.reactor.registries import OperatorRegistry
+from kopf.structs.handlers import ActivityHandler, Activity
 
 
 @pytest.fixture()

@@ -5,10 +5,10 @@ import pytest
 import kopf
 from kopf import OperatorRegistry
 from kopf.reactor.causation import ResourceChangingCause
-from kopf.reactor.handlers import ResourceChangingHandler, Reason, ALL_REASONS
 from kopf.structs.bodies import Body
 from kopf.structs.dicts import parse_field
 from kopf.structs.filters import MetaFilterToken
+from kopf.structs.handlers import ResourceChangingHandler, Reason, ALL_REASONS
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.

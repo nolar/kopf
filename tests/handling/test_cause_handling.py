@@ -4,10 +4,10 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.handlers import Reason
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.finalizers import FINALIZER
+from kopf.structs.handlers import Reason
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
 
 EVENT_TYPES = [None, 'ADDED', 'MODIFIED', 'DELETED']

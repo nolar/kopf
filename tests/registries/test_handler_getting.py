@@ -2,7 +2,7 @@ import collections.abc
 
 import pytest
 
-from kopf.reactor.handlers import Activity
+from kopf.structs.handlers import Activity
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.
