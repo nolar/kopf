@@ -5,7 +5,7 @@ Since these signatures contain a lot of copy-pasted kwargs and are
 not so important for the codebase, they are moved to this separate module.
 """
 import logging
-from typing import NewType, Any, Union, Optional
+from typing import NewType, Any, Union, Optional, Callable, Coroutine
 
 from typing_extensions import Protocol
 
@@ -17,6 +17,15 @@ from kopf.structs import patches
 # to not be mixed with other arbitrary Any values, where it is indeed "any".
 Result = NewType('Result', object)
 
+# An internal typing hack to show that it can be a sync fn with the result,
+# or an async fn which returns a coroutine which returns the result.
+# Used in sync-and-async protocols only, and never exposed to other modules.
+_SyncOrAsyncResult = Union[Optional[Result], Coroutine[None, None, Optional[Result]]]
+
+# A generic sync-or-async callable with no args/kwargs checks (unlike in protocols).
+# Used for the BaseHandler and generic invocation methods (which do not care about protocols).
+BaseFn = Callable[..., _SyncOrAsyncResult]
+
 
 class ActivityFn(Protocol):
     def __call__(  # lgtm[py/similar-function]
@@ -24,7 +33,7 @@ class ActivityFn(Protocol):
             *args: Any,
             logger: Union[logging.Logger, logging.LoggerAdapter],
             **kwargs: Any,
-    ) -> Optional[Result]: ...
+    ) -> _SyncOrAsyncResult: ...
 
 
 class ResourceWatchingFn(Protocol):
@@ -43,7 +52,7 @@ class ResourceWatchingFn(Protocol):
             patch: patches.Patch,
             logger: Union[logging.Logger, logging.LoggerAdapter],
             **kwargs: Any,
-    ) -> Optional[Result]: ...
+    ) -> _SyncOrAsyncResult: ...
 
 
 class ResourceChangingFn(Protocol):
@@ -64,7 +73,7 @@ class ResourceChangingFn(Protocol):
             old: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
             new: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
             **kwargs: Any,
-    ) -> Optional[Result]: ...
+    ) -> _SyncOrAsyncResult: ...
 
 
 class WhenFilterFn(Protocol):

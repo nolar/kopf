@@ -1,6 +1,6 @@
 import dataclasses
 import warnings
-from typing import NewType, Callable, Optional, Union, Any
+from typing import NewType, Optional, Any
 
 from kopf.reactor import causation
 from kopf.reactor import errors as errors_
@@ -20,7 +20,7 @@ HandlerId = NewType('HandlerId', str)
 @dataclasses.dataclass
 class BaseHandler:
     id: HandlerId
-    fn: Callable[..., Optional[callbacks.Result]]
+    fn: callbacks.BaseFn
     errors: Optional[errors_.ErrorsMode]
     timeout: Optional[float]
     retries: Optional[int]
