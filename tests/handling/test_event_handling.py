@@ -36,9 +36,9 @@ async def test_handlers_called_always(
     assert event['type'] == 'ev-type'
 
     assert_logs([
-        "Invoking handler 'event_fn'.",
+        "Handler 'event_fn' is invoked.",
         "Handler 'event_fn' succeeded.",
-        "Invoking handler 'event_fn2'.",
+        "Handler 'event_fn2' is invoked.",
         "Handler 'event_fn2' succeeded.",
     ])
 
@@ -66,8 +66,8 @@ async def test_errors_are_ignored(
     assert extrahandlers.event_mock.called
 
     assert_logs([
-        "Invoking handler 'event_fn'.",
+        "Handler 'event_fn' is invoked.",
         "Handler 'event_fn' failed with an exception. Will ignore.",
-        "Invoking handler 'event_fn2'.",
+        "Handler 'event_fn2' is invoked.",
         "Handler 'event_fn2' succeeded.",
     ])

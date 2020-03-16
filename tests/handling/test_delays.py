@@ -56,7 +56,7 @@ async def test_delayed_handlers_progress(
     assert patch['status']['kopf']['progress'][fname]['delayed'] == delayed_iso
 
     assert_logs([
-        "Invoking handler .+",
+        "Handler .+ is invoked",
         "Handler .+ failed temporarily: oops",
     ])
 

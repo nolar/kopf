@@ -49,7 +49,7 @@ async def test_create(registry, settings, handlers, resource, cause_mock, event_
 
     assert_logs([
         "Creation event:",
-        "Invoking handler 'create_fn'",
+        "Handler 'create_fn' is invoked",
         "Handler 'create_fn' succeeded",
         "All handlers succeeded",
         "Patching with",
@@ -91,7 +91,7 @@ async def test_update(registry, settings, handlers, resource, cause_mock, event_
 
     assert_logs([
         "Update event:",
-        "Invoking handler 'update_fn'",
+        "Handler 'update_fn' is invoked",
         "Handler 'update_fn' succeeded",
         "All handlers succeeded",
         "Patching with",
@@ -131,7 +131,7 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
 
     assert_logs([
         "Deletion event",
-        "Invoking handler 'delete_fn'",
+        "Handler 'delete_fn' is invoked",
         "Handler 'delete_fn' succeeded",
         "All handlers succeeded",
         "Removing the finalizer",

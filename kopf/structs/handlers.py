@@ -94,12 +94,19 @@ class BaseHandler:
         else:
             return super().__getattribute__(name)
 
+    # Used in the logs. Overridden in some (but not all) handler types for better log messages.
+    def __str__(self) -> str:
+        return f"Handler {self.id!r}"
+
 
 @dataclasses.dataclass
 class ActivityHandler(BaseHandler):
     fn: callbacks.ActivityFn  # type clarification
     activity: Optional[Activity]
     _fallback: bool = False  # non-public!
+
+    def __str__(self) -> str:
+        return f"Activity {self.id!r}"
 
 
 @dataclasses.dataclass
