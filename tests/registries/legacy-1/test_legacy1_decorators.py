@@ -2,7 +2,7 @@ import pytest
 
 import kopf
 from kopf import SimpleRegistry, GlobalRegistry
-from kopf.reactor.causation import Reason
+from kopf.reactor.handlers import Reason
 from kopf.reactor.handling import handler_var
 from kopf.reactor.handling import subregistry_var
 from kopf.reactor.invocation import context

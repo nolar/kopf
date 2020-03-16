@@ -15,8 +15,6 @@ import warnings
 
 from typing import Optional, Callable
 
-from kopf.reactor import causation
-from kopf.reactor import errors as errors_
 from kopf.reactor import handlers
 from kopf.reactor import handling
 from kopf.reactor import registries
@@ -33,7 +31,7 @@ ResourceChangingDecorator = Callable[[callbacks.ResourceChangingFn], callbacks.R
 def startup(  # lgtm[py/similar-function]
         *,
         id: Optional[str] = None,
-        errors: Optional[errors_.ErrorsMode] = None,
+        errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -46,7 +44,7 @@ def startup(  # lgtm[py/similar-function]
         handler = handlers.ActivityHandler(
             fn=fn, id=real_id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            activity=causation.Activity.STARTUP,
+            activity=handlers.Activity.STARTUP,
         )
         real_registry.activity_handlers.append(handler)
         return fn
@@ -56,7 +54,7 @@ def startup(  # lgtm[py/similar-function]
 def cleanup(  # lgtm[py/similar-function]
         *,
         id: Optional[str] = None,
-        errors: Optional[errors_.ErrorsMode] = None,
+        errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -69,7 +67,7 @@ def cleanup(  # lgtm[py/similar-function]
         handler = handlers.ActivityHandler(
             fn=fn, id=real_id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            activity=causation.Activity.CLEANUP,
+            activity=handlers.Activity.CLEANUP,
         )
         real_registry.activity_handlers.append(handler)
         return fn
@@ -79,7 +77,7 @@ def cleanup(  # lgtm[py/similar-function]
 def login(  # lgtm[py/similar-function]
         *,
         id: Optional[str] = None,
-        errors: Optional[errors_.ErrorsMode] = None,
+        errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -93,7 +91,7 @@ def login(  # lgtm[py/similar-function]
         handler = handlers.ActivityHandler(
             fn=fn, id=real_id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            activity=causation.Activity.AUTHENTICATION,
+            activity=handlers.Activity.AUTHENTICATION,
         )
         real_registry.activity_handlers.append(handler)
         return fn
@@ -103,7 +101,7 @@ def login(  # lgtm[py/similar-function]
 def probe(  # lgtm[py/similar-function]
         *,
         id: Optional[str] = None,
-        errors: Optional[errors_.ErrorsMode] = None,
+        errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -117,7 +115,7 @@ def probe(  # lgtm[py/similar-function]
         handler = handlers.ActivityHandler(
             fn=fn, id=real_id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            activity=causation.Activity.PROBE,
+            activity=handlers.Activity.PROBE,
         )
         real_registry.activity_handlers.append(handler)
         return fn
@@ -128,7 +126,7 @@ def resume(  # lgtm[py/similar-function]
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
-        errors: Optional[errors_.ErrorsMode] = None,
+        errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -161,7 +159,7 @@ def create(  # lgtm[py/similar-function]
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
-        errors: Optional[errors_.ErrorsMode] = None,
+        errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -182,7 +180,7 @@ def create(  # lgtm[py/similar-function]
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
             initial=None, deleted=None, requires_finalizer=None,
-            reason=causation.Reason.CREATE,
+            reason=handlers.Reason.CREATE,
         )
         real_registry.resource_changing_handlers[real_resource].append(handler)
         return fn
@@ -193,7 +191,7 @@ def update(  # lgtm[py/similar-function]
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
-        errors: Optional[errors_.ErrorsMode] = None,
+        errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -214,7 +212,7 @@ def update(  # lgtm[py/similar-function]
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
             initial=None, deleted=None, requires_finalizer=None,
-            reason=causation.Reason.UPDATE,
+            reason=handlers.Reason.UPDATE,
         )
         real_registry.resource_changing_handlers[real_resource].append(handler)
         return fn
@@ -225,7 +223,7 @@ def delete(  # lgtm[py/similar-function]
         group: str, version: str, plural: str,
         *,
         id: Optional[str] = None,
-        errors: Optional[errors_.ErrorsMode] = None,
+        errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -247,7 +245,7 @@ def delete(  # lgtm[py/similar-function]
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
             initial=None, deleted=None, requires_finalizer=bool(not optional),
-            reason=causation.Reason.DELETE,
+            reason=handlers.Reason.DELETE,
         )
         real_registry.resource_changing_handlers[real_resource].append(handler)
         return fn
@@ -259,7 +257,7 @@ def field(  # lgtm[py/similar-function]
         field: dicts.FieldSpec,
         *,
         id: Optional[str] = None,
-        errors: Optional[errors_.ErrorsMode] = None,
+        errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -318,7 +316,7 @@ def event(  # lgtm[py/similar-function]
 def this(  # lgtm[py/similar-function]
         *,
         id: Optional[str] = None,
-        errors: Optional[errors_.ErrorsMode] = None,
+        errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -379,7 +377,7 @@ def register(  # lgtm[py/similar-function]
         fn: callbacks.ResourceChangingFn,
         *,
         id: Optional[str] = None,
-        errors: Optional[errors_.ErrorsMode] = None,
+        errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,

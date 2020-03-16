@@ -3,7 +3,7 @@ import asyncio
 import pytest
 
 import kopf
-from kopf.reactor.causation import Reason, HANDLER_REASONS
+from kopf.reactor.handlers import Reason, HANDLER_REASONS
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 

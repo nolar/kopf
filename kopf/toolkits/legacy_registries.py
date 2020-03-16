@@ -10,7 +10,6 @@ import warnings
 from typing import Any, Union, Sequence, Iterator, Optional
 
 from kopf.reactor import causation
-from kopf.reactor import errors as errors_
 from kopf.reactor import handlers
 from kopf.reactor import registries
 from kopf.structs import bodies
@@ -87,10 +86,10 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[
             fn: AnyHandlerFn,
             *,
             id: Optional[str] = None,
-            reason: Optional[causation.Reason] = None,
+            reason: Optional[handlers.Reason] = None,
             event: Optional[str] = None,  # deprecated, use `reason`
             field: Optional[dicts.FieldSpec] = None,
-            errors: Optional[errors_.ErrorsMode] = None,
+            errors: Optional[handlers.ErrorsMode] = None,
             timeout: Optional[float] = None,
             retries: Optional[int] = None,
             backoff: Optional[float] = None,
@@ -107,7 +106,7 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[
                       DeprecationWarning)
 
         if reason is None and event is not None:
-            reason = causation.Reason(event)
+            reason = handlers.Reason(event)
 
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))

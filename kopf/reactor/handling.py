@@ -16,7 +16,6 @@ from typing import Optional, Union, Iterable, Collection, Mapping, MutableMappin
 from kopf.engines import logging as logging_engine
 from kopf.engines import sleeping
 from kopf.reactor import causation
-from kopf.reactor import errors
 from kopf.reactor import handlers as handlers_
 from kopf.reactor import invocation
 from kopf.reactor import lifecycles
@@ -177,7 +176,7 @@ async def run_handlers_until_done(
         cause: causation.BaseCause,
         handlers: Collection[handlers_.BaseHandler],
         lifecycle: lifecycles.LifeCycleFn,
-        default_errors: errors.ErrorsMode = errors.ErrorsMode.TEMPORARY,
+        default_errors: handlers_.ErrorsMode = handlers_.ErrorsMode.TEMPORARY,
 ) -> Mapping[handlers_.HandlerId, states.HandlerOutcome]:
     """
     Run the full cycle until all the handlers are done.
@@ -214,7 +213,7 @@ async def execute_handlers_once(
         handlers: Collection[handlers_.BaseHandler],
         cause: causation.BaseCause,
         state: states.State,
-        default_errors: errors.ErrorsMode = errors.ErrorsMode.TEMPORARY,
+        default_errors: handlers_.ErrorsMode = handlers_.ErrorsMode.TEMPORARY,
 ) -> Mapping[handlers_.HandlerId, states.HandlerOutcome]:
     """
     Call the next handler(s) from the chain of the handlers.
@@ -250,7 +249,7 @@ async def execute_handler_once(
         cause: causation.BaseCause,
         state: states.HandlerState,
         lifecycle: lifecycles.LifeCycleFn,
-        default_errors: errors.ErrorsMode = errors.ErrorsMode.TEMPORARY,
+        default_errors: handlers_.ErrorsMode = handlers_.ErrorsMode.TEMPORARY,
 ) -> states.HandlerOutcome:
     """
     Execute one and only one handler.
@@ -315,13 +314,13 @@ async def execute_handler_once(
 
     # Regular errors behave as either temporary or permanent depending on the error strictness.
     except Exception as e:
-        if errors_mode == errors.ErrorsMode.IGNORED:
+        if errors_mode == handlers_.ErrorsMode.IGNORED:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will ignore.")
             return states.HandlerOutcome(final=True)
-        elif errors_mode == errors.ErrorsMode.TEMPORARY:
+        elif errors_mode == handlers_.ErrorsMode.TEMPORARY:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")
             return states.HandlerOutcome(final=False, exception=e, delay=backoff)
-        elif errors_mode == errors.ErrorsMode.PERMANENT:
+        elif errors_mode == handlers_.ErrorsMode.PERMANENT:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will stop.")
             return states.HandlerOutcome(final=True, exception=e)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?

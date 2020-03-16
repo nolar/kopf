@@ -1,8 +1,7 @@
 import pytest
 
 import kopf
-from kopf.reactor.causation import Reason, Activity, HANDLER_REASONS
-from kopf.reactor.errors import ErrorsMode
+from kopf.reactor.handlers import ErrorsMode, Activity, Reason, HANDLER_REASONS
 from kopf.reactor.handling import subregistry_var, handler_var
 from kopf.reactor.invocation import context
 from kopf.reactor.registries import OperatorRegistry, ResourceChangingRegistry

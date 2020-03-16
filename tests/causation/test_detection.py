@@ -3,7 +3,8 @@ import json
 
 import pytest
 
-from kopf.reactor.causation import Reason, detect_resource_changing_cause
+from kopf.reactor.causation import detect_resource_changing_cause
+from kopf.reactor.handlers import Reason
 from kopf.structs.bodies import Body
 from kopf.structs.finalizers import FINALIZER
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION

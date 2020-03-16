@@ -4,8 +4,7 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.causation import HANDLER_REASONS
-from kopf.reactor.handlers import ResourceChangingHandler
+from kopf.reactor.handlers import ResourceChangingHandler, HANDLER_REASONS
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION

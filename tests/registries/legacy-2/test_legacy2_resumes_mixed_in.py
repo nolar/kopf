@@ -1,7 +1,7 @@
 import pytest
 
 import kopf
-from kopf.reactor.causation import Reason, HANDLER_REASONS
+from kopf.reactor.handlers import Reason, HANDLER_REASONS
 from kopf.structs.resources import Resource
 
 

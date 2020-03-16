@@ -1,8 +1,7 @@
 import pytest
 
 from kopf.reactor.activities import authenticate
-from kopf.reactor.causation import Activity
-from kopf.reactor.handlers import ActivityHandler
+from kopf.reactor.handlers import ActivityHandler, Activity
 from kopf.reactor.registries import OperatorRegistry
 from kopf.structs.credentials import Vault, ConnectionInfo, LoginError
 

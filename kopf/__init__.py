@@ -30,7 +30,7 @@ from kopf.on import (
 from kopf.reactor import (
     lifecycles,  # as a separate name on the public namespace
 )
-from kopf.reactor.errors import (
+from kopf.reactor.handlers import (
     ErrorsMode,
 )
 from kopf.reactor.handling import (

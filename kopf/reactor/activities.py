@@ -20,7 +20,7 @@ import logging
 from typing import NoReturn, Mapping
 
 from kopf.reactor import causation
-from kopf.reactor import handlers
+from kopf.reactor import handlers as handlers_
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
@@ -38,7 +38,7 @@ class ActivityError(Exception):
             self,
             msg: str,
             *,
-            outcomes: Mapping[handlers.HandlerId, states.HandlerOutcome],
+            outcomes: Mapping[handlers_.HandlerId, states.HandlerOutcome],
     ) -> None:
         super().__init__(msg)
         self.outcomes = outcomes
@@ -77,7 +77,7 @@ async def authenticate(
     activity_results = await run_activity(
         lifecycle=lifecycles.all_at_once,
         registry=registry,
-        activity=causation.Activity.AUTHENTICATION,
+        activity=handlers_.Activity.AUTHENTICATION,
     )
 
     if activity_results:
@@ -94,8 +94,8 @@ async def run_activity(
         *,
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
-        activity: causation.Activity,
-) -> Mapping[handlers.HandlerId, callbacks.Result]:
+        activity: handlers_.Activity,
+) -> Mapping[handlers_.HandlerId, callbacks.Result]:
     logger = logging.getLogger(f'kopf.activities.{activity.value}')
 
     # For the activity handlers, we have neither bodies, nor patches, just the state.

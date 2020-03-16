@@ -4,8 +4,7 @@ import aiohttp
 import pytest
 
 from kopf.engines.probing import health_reporter
-from kopf.reactor.causation import Activity
-from kopf.reactor.handlers import ActivityHandler
+from kopf.reactor.handlers import ActivityHandler, Activity
 from kopf.reactor.registries import OperatorRegistry
 
 

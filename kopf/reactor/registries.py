@@ -20,7 +20,6 @@ from typing import (Any, MutableMapping, Optional, Sequence, Collection, Iterabl
                     List, Set, FrozenSet, Mapping, Callable, cast, Generic, TypeVar, Union)
 
 from kopf.reactor import causation
-from kopf.reactor import errors as errors_
 from kopf.reactor import handlers
 from kopf.reactor import invocation
 from kopf.structs import callbacks
@@ -64,12 +63,12 @@ class ActivityRegistry(GenericRegistry[
             fn: callbacks.ActivityFn,
             *,
             id: Optional[str] = None,
-            errors: Optional[errors_.ErrorsMode] = None,
+            errors: Optional[handlers.ErrorsMode] = None,
             timeout: Optional[float] = None,
             retries: Optional[int] = None,
             backoff: Optional[float] = None,
             cooldown: Optional[float] = None,  # deprecated, use `backoff`
-            activity: Optional[causation.Activity] = None,
+            activity: Optional[handlers.Activity] = None,
             _fallback: bool = False,
     ) -> callbacks.ActivityFn:
         warnings.warn("registry.register() is deprecated; "
@@ -86,13 +85,13 @@ class ActivityRegistry(GenericRegistry[
 
     def get_handlers(
             self,
-            activity: causation.Activity,
+            activity: handlers.Activity,
     ) -> Sequence[handlers.ActivityHandler]:
         return list(_deduplicated(self.iter_handlers(activity=activity)))
 
     def iter_handlers(
             self,
-            activity: causation.Activity,
+            activity: handlers.Activity,
     ) -> Iterator[handlers.ActivityHandler]:
         found: bool = False
 
@@ -163,7 +162,7 @@ class ResourceWatchingRegistry(ResourceRegistry[
             fn: callbacks.ResourceWatchingFn,
             *,
             id: Optional[str] = None,
-            errors: Optional[errors_.ErrorsMode] = None,
+            errors: Optional[handlers.ErrorsMode] = None,
             timeout: Optional[float] = None,
             retries: Optional[int] = None,
             backoff: Optional[float] = None,
@@ -204,10 +203,10 @@ class ResourceChangingRegistry(ResourceRegistry[
             fn: callbacks.ResourceChangingFn,
             *,
             id: Optional[str] = None,
-            reason: Optional[causation.Reason] = None,
+            reason: Optional[handlers.Reason] = None,
             event: Optional[str] = None,  # deprecated, use `reason`
             field: Optional[dicts.FieldSpec] = None,
-            errors: Optional[errors_.ErrorsMode] = None,
+            errors: Optional[handlers.ErrorsMode] = None,
             timeout: Optional[float] = None,
             retries: Optional[int] = None,
             backoff: Optional[float] = None,
@@ -224,7 +223,7 @@ class ResourceChangingRegistry(ResourceRegistry[
                       DeprecationWarning)
 
         if reason is None and event is not None:
-            reason = causation.Reason(event)
+            reason = handlers.Reason(event)
 
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
@@ -285,12 +284,12 @@ class OperatorRegistry:
             fn: callbacks.ActivityFn,
             *,
             id: Optional[str] = None,
-            errors: Optional[errors_.ErrorsMode] = None,
+            errors: Optional[handlers.ErrorsMode] = None,
             timeout: Optional[float] = None,
             retries: Optional[int] = None,
             backoff: Optional[float] = None,
             cooldown: Optional[float] = None,  # deprecated, use `backoff`
-            activity: Optional[causation.Activity] = None,
+            activity: Optional[handlers.Activity] = None,
             _fallback: bool = False,
     ) -> callbacks.ActivityFn:
         warnings.warn("registry.register_activity_handler() is deprecated; "
@@ -332,10 +331,10 @@ class OperatorRegistry:
             plural: str,
             fn: callbacks.ResourceChangingFn,
             id: Optional[str] = None,
-            reason: Optional[causation.Reason] = None,
+            reason: Optional[handlers.Reason] = None,
             event: Optional[str] = None,  # deprecated, use `reason`
             field: Optional[dicts.FieldSpec] = None,
-            errors: Optional[errors_.ErrorsMode] = None,
+            errors: Optional[handlers.ErrorsMode] = None,
             timeout: Optional[float] = None,
             retries: Optional[int] = None,
             backoff: Optional[float] = None,
@@ -390,7 +389,7 @@ class OperatorRegistry:
     def get_activity_handlers(
             self,
             *,
-            activity: causation.Activity,
+            activity: handlers.Activity,
     ) -> Sequence[handlers.ActivityHandler]:
         warnings.warn("registry.get_activity_handlers() is deprecated; "
                       "use registry.activity_handlers.get_handlers().",
@@ -418,7 +417,7 @@ class OperatorRegistry:
     def iter_activity_handlers(
             self,
             *,
-            activity: causation.Activity,
+            activity: handlers.Activity,
     ) -> Iterator[handlers.ActivityHandler]:
         warnings.warn("registry.iter_activity_handlers() is deprecated; "
                       "use registry.activity_handlers.iter_handlers().",
@@ -494,8 +493,8 @@ class SmartOperatorRegistry(OperatorRegistry):
             self.activity_handlers.append(handlers.ActivityHandler(
                 id=handlers.HandlerId('login_via_pykube'),
                 fn=cast(callbacks.ActivityFn, piggybacking.login_via_pykube),
-                activity=causation.Activity.AUTHENTICATION,
-                errors=errors_.ErrorsMode.IGNORED,
+                activity=handlers.Activity.AUTHENTICATION,
+                errors=handlers.ErrorsMode.IGNORED,
                 timeout=None, retries=None, backoff=None, cooldown=None,
                 _fallback=True,
             ))
@@ -507,8 +506,8 @@ class SmartOperatorRegistry(OperatorRegistry):
             self.activity_handlers.append(handlers.ActivityHandler(
                 id=handlers.HandlerId('login_via_client'),
                 fn=cast(callbacks.ActivityFn, piggybacking.login_via_client),
-                activity=causation.Activity.AUTHENTICATION,
-                errors=errors_.ErrorsMode.IGNORED,
+                activity=handlers.Activity.AUTHENTICATION,
+                errors=handlers.ErrorsMode.IGNORED,
                 timeout=None, retries=None, backoff=None, cooldown=None,
                 _fallback=True,
             ))

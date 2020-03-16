@@ -3,7 +3,8 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.causation import Reason, ResourceChangingCause, ResourceWatchingCause
+from kopf.reactor.causation import ResourceChangingCause, ResourceWatchingCause
+from kopf.reactor.handlers import Reason
 from kopf.reactor.handling import cause_var
 from kopf.reactor.invocation import context
 from kopf.structs.bodies import RawBody, RawMeta, RawEvent, Body

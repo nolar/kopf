@@ -12,7 +12,7 @@ from kopf.engines import peering
 from kopf.engines import posting
 from kopf.engines import probing
 from kopf.reactor import activities
-from kopf.reactor import causation
+from kopf.reactor import handlers
 from kopf.reactor import lifecycles
 from kopf.reactor import processing
 from kopf.reactor import queueing
@@ -488,7 +488,7 @@ async def _startup_cleanup_activities(
         await activities.run_activity(
             lifecycle=lifecycles.all_at_once,
             registry=registry,
-            activity=causation.Activity.STARTUP,
+            activity=handlers.Activity.STARTUP,
         )
     except asyncio.CancelledError:
         logger.warning("Startup activity is only partially executed due to cancellation.")
@@ -518,7 +518,7 @@ async def _startup_cleanup_activities(
         await activities.run_activity(
             lifecycle=lifecycles.all_at_once,
             registry=registry,
-            activity=causation.Activity.CLEANUP,
+            activity=handlers.Activity.CLEANUP,
         )
         await vault.close()
     except asyncio.CancelledError:

@@ -1,9 +1,8 @@
 import dataclasses
+import enum
 import warnings
 from typing import NewType, Optional, Any
 
-from kopf.reactor import causation
-from kopf.reactor import errors as errors_
 from kopf.structs import callbacks
 from kopf.structs import dicts
 from kopf.structs import filters
@@ -11,6 +10,59 @@ from kopf.structs import filters
 # Strings are taken from the users, but then tainted as this type for stricter type-checking:
 # to prevent usage of some other strings (e.g. operator id) as the handlers ids.
 HandlerId = NewType('HandlerId', str)
+
+
+class ErrorsMode(enum.Enum):
+    """ How arbitrary (non-temporary/non-permanent) exceptions are treated. """
+    IGNORED = enum.auto()
+    TEMPORARY = enum.auto()
+    PERMANENT = enum.auto()
+
+
+class Activity(str, enum.Enum):
+    STARTUP = 'startup'
+    CLEANUP = 'cleanup'
+    AUTHENTICATION = 'authentication'
+    PROBE = 'probe'
+
+
+# Constants for cause types, to prevent a direct usage of strings, and typos.
+# They are not exposed by the framework, but are used internally. See also: `kopf.on`.
+class Reason(str, enum.Enum):
+    CREATE = 'create'
+    UPDATE = 'update'
+    DELETE = 'delete'
+    RESUME = 'resume'
+    NOOP = 'noop'
+    FREE = 'free'
+    GONE = 'gone'
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+
+# These sets are checked in few places, so we keep them centralised:
+# the user-facing causes (for handlers) and internally facing (for the reactor).
+HANDLER_REASONS = (
+    Reason.CREATE,
+    Reason.UPDATE,
+    Reason.DELETE,
+    Reason.RESUME,
+)
+REACTOR_REASONS = (
+    Reason.NOOP,
+    Reason.FREE,
+    Reason.GONE,
+)
+ALL_REASONS = HANDLER_REASONS + REACTOR_REASONS
+
+# The human-readable names of these causes. Will be capitalised when needed.
+TITLES = {
+    Reason.CREATE: 'creation',
+    Reason.UPDATE: 'update',
+    Reason.DELETE: 'deletion',
+    Reason.RESUME: 'resuming',
+}
 
 
 # A registered handler (function + meta info).
@@ -21,7 +73,7 @@ HandlerId = NewType('HandlerId', str)
 class BaseHandler:
     id: HandlerId
     fn: callbacks.BaseFn
-    errors: Optional[errors_.ErrorsMode]
+    errors: Optional[ErrorsMode]
     timeout: Optional[float]
     retries: Optional[int]
     backoff: Optional[float]
@@ -46,7 +98,7 @@ class BaseHandler:
 @dataclasses.dataclass
 class ActivityHandler(BaseHandler):
     fn: callbacks.ActivityFn  # type clarification
-    activity: Optional[causation.Activity]
+    activity: Optional[Activity]
     _fallback: bool = False  # non-public!
 
 
@@ -65,13 +117,13 @@ class ResourceWatchingHandler(ResourceHandler):
 @dataclasses.dataclass
 class ResourceChangingHandler(ResourceHandler):
     fn: callbacks.ResourceChangingFn  # type clarification
-    reason: Optional[causation.Reason]
+    reason: Optional[Reason]
     field: Optional[dicts.FieldPath]
     initial: Optional[bool]
     deleted: Optional[bool]  # used for mixed-in (initial==True) @on.resume handlers only.
     requires_finalizer: Optional[bool]
 
     @property
-    def event(self) -> Optional[causation.Reason]:
+    def event(self) -> Optional[Reason]:
         warnings.warn("handler.event is deprecated; use handler.reason.", DeprecationWarning)
         return self.reason

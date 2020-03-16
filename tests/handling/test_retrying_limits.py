@@ -5,7 +5,7 @@ import freezegun
 import pytest
 
 import kopf
-from kopf.reactor.causation import HANDLER_REASONS, Reason
+from kopf.reactor.handlers import Reason, HANDLER_REASONS
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 

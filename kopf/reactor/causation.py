@@ -20,11 +20,11 @@ not when it is actually deleted (as the events notify): so that the handlers
 could execute on the yet-existing object (and its children, if created).
 """
 import dataclasses
-import enum
 import logging
 import warnings
 from typing import Any, Optional, Union, TypeVar
 
+from kopf.reactor import handlers
 from kopf.structs import bodies
 from kopf.structs import containers
 from kopf.structs import diffs
@@ -34,52 +34,6 @@ from kopf.structs import patches
 from kopf.structs import resources
 
 
-class Activity(str, enum.Enum):
-    STARTUP = 'startup'
-    CLEANUP = 'cleanup'
-    AUTHENTICATION = 'authentication'
-    PROBE = 'probe'
-
-
-# Constants for cause types, to prevent a direct usage of strings, and typos.
-# They are not exposed by the framework, but are used internally. See also: `kopf.on`.
-class Reason(str, enum.Enum):
-    CREATE = 'create'
-    UPDATE = 'update'
-    DELETE = 'delete'
-    RESUME = 'resume'
-    NOOP = 'noop'
-    FREE = 'free'
-    GONE = 'gone'
-
-    def __str__(self) -> str:
-        return str(self.value)
-
-
-# These sets are checked in few places, so we keep them centralised:
-# the user-facing causes (for handlers) and internally facing (for the reactor).
-HANDLER_REASONS = (
-    Reason.CREATE,
-    Reason.UPDATE,
-    Reason.DELETE,
-    Reason.RESUME,
-)
-REACTOR_REASONS = (
-    Reason.NOOP,
-    Reason.FREE,
-    Reason.GONE,
-)
-ALL_REASONS = HANDLER_REASONS + REACTOR_REASONS
-
-# The human-readable names of these causes. Will be capitalised when needed.
-TITLES = {
-    Reason.CREATE: 'creation',
-    Reason.UPDATE: 'update',
-    Reason.DELETE: 'deletion',
-    Reason.RESUME: 'resuming',
-}
-
-
 @dataclasses.dataclass
 class BaseCause:
     logger: Union[logging.Logger, logging.LoggerAdapter]
@@ -87,7 +41,7 @@ class BaseCause:
 
 @dataclasses.dataclass
 class ActivityCause(BaseCause):
-    activity: Activity
+    activity: handlers.Activity
 
 
 @dataclasses.dataclass
@@ -118,13 +72,13 @@ class ResourceChangingCause(ResourceCause):
     of actual field changes, including multi-handler changes.
     """
     initial: bool
-    reason: Reason
+    reason: handlers.Reason
     diff: diffs.Diff = diffs.EMPTY
     old: Optional[bodies.BodyEssence] = None
     new: Optional[bodies.BodyEssence] = None
 
     @property
-    def event(self) -> Reason:
+    def event(self) -> handlers.Reason:
         warnings.warn("cause.event is deprecated; use cause.reason.", DeprecationWarning)
         return self.reason
 
@@ -170,36 +124,36 @@ def detect_resource_changing_cause(
 
     # The object was really deleted from the cluster. But we do not care anymore.
     if raw_event['type'] == 'DELETED':
-        return ResourceChangingCause(reason=Reason.GONE, **kwargs)
+        return ResourceChangingCause(reason=handlers.Reason.GONE, **kwargs)
 
     # The finalizer has been just removed. We are fully done.
     if finalizers.is_deleted(body) and not finalizers.has_finalizers(body):
-        return ResourceChangingCause(reason=Reason.FREE, **kwargs)
+        return ResourceChangingCause(reason=handlers.Reason.FREE, **kwargs)
 
     if finalizers.is_deleted(body):
-        return ResourceChangingCause(reason=Reason.DELETE, **kwargs)
+        return ResourceChangingCause(reason=handlers.Reason.DELETE, **kwargs)
 
     # For an object seen for the first time (i.e. just-created), call the creation handlers,
     # then mark the state as if it was seen when the creation has finished.
     # Creation never mixes with resuming, even if an object is detected on startup (first listing).
     if not lastseen.has_essence_stored(body):
         kwargs['initial'] = False
-        return ResourceChangingCause(reason=Reason.CREATE, **kwargs)
+        return ResourceChangingCause(reason=handlers.Reason.CREATE, **kwargs)
 
     # Cases with no essence changes are usually ignored (NOOP). But for the not-yet-resumed objects,
     # we simulate a fake cause to invoke the resuming handlers. For cases with the essence changes,
     # the resuming handlers will be mixed-in to the regular cause handling ("cuckoo-style")
     # due to the ``initial=True`` flag on the cause, regardless of the reason.
     if not diff and initial:
-        return ResourceChangingCause(reason=Reason.RESUME, **kwargs)
+        return ResourceChangingCause(reason=handlers.Reason.RESUME, **kwargs)
 
     # The previous step triggers one more patch operation without actual changes. Ignore it.
     # Either the last-seen state or the status field has changed.
     if not diff:
-        return ResourceChangingCause(reason=Reason.NOOP, **kwargs)
+        return ResourceChangingCause(reason=handlers.Reason.NOOP, **kwargs)
 
     # And what is left, is the update operation on one of the useful fields of the existing object.
-    return ResourceChangingCause(reason=Reason.UPDATE, **kwargs)
+    return ResourceChangingCause(reason=handlers.Reason.UPDATE, **kwargs)
 
 
 _CT = TypeVar('_CT', bound=BaseCause)
