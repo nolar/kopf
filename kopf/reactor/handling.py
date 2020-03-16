@@ -7,14 +7,12 @@ where the raw watch-events are interpreted and wrapped into extended *causes*.
 The handler execution can also be used in other places, such as in-memory
 activities, when there is no underlying Kubernetes object to patch'n'watch.
 """
-import asyncio
 import collections.abc
 import logging
 from contextvars import ContextVar
 from typing import Optional, Union, Iterable, Collection, Mapping, MutableMapping, Any
 
 from kopf.engines import logging as logging_engine
-from kopf.engines import sleeping
 from kopf.reactor import causation
 from kopf.reactor import invocation
 from kopf.reactor import lifecycles
@@ -170,42 +168,6 @@ async def execute(
     # Escalate `HandlerChildrenRetry` if the execute should be continued on the next iteration.
     if not state.done:
         raise HandlerChildrenRetry(delay=state.delay)
-
-
-async def run_handlers_until_done(
-        cause: causation.BaseCause,
-        handlers: Collection[handlers_.BaseHandler],
-        lifecycle: lifecycles.LifeCycleFn,
-        default_errors: handlers_.ErrorsMode = handlers_.ErrorsMode.TEMPORARY,
-) -> Mapping[handlers_.HandlerId, states.HandlerOutcome]:
-    """
-    Run the full cycle until all the handlers are done.
-
-    This function simulates the Kubernetes-based event-driven reaction cycle,
-    but completely in memory.
-
-    It can be used for handler execution when there is no underlying object
-    or patching-watching is not desired.
-    """
-
-    # For the activity handlers, we have neither bodies, nor patches, just the state.
-    state = states.State.from_scratch(handlers=handlers)
-    latest_outcomes: MutableMapping[handlers_.HandlerId, states.HandlerOutcome] = {}
-    while not state.done:
-        outcomes = await execute_handlers_once(
-            lifecycle=lifecycle,
-            handlers=handlers,
-            cause=cause,
-            state=state,
-            default_errors=default_errors,
-        )
-        latest_outcomes.update(outcomes)
-        state = state.with_outcomes(outcomes)
-        delay = state.delay
-        if delay:
-            limited_delay = min(delay, WAITING_KEEPALIVE_INTERVAL)
-            await sleeping.sleep_or_wait(limited_delay, asyncio.Event())
-    return latest_outcomes
 
 
 async def execute_handlers_once(

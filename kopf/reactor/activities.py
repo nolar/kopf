@@ -16,9 +16,11 @@ The process is intentionally split into multiple packages:
 * Specific authentication methods, such as the authentication piggybacking,
   belong to neither the reactor, nor the engines, nor the client wrappers.
 """
+import asyncio
 import logging
-from typing import NoReturn, Mapping
+from typing import NoReturn, Mapping, MutableMapping
 
+from kopf.engines import sleeping
 from kopf.reactor import causation
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
@@ -101,11 +103,21 @@ async def run_activity(
     # For the activity handlers, we have neither bodies, nor patches, just the state.
     cause = causation.ActivityCause(logger=logger, activity=activity)
     handlers = registry.activity_handlers.get_handlers(activity=activity)
-    outcomes = await handling.run_handlers_until_done(
-        cause=cause,
-        handlers=handlers,
-        lifecycle=lifecycle,
-    )
+    state = states.State.from_scratch(handlers=handlers)
+    outcomes: MutableMapping[handlers_.HandlerId, states.HandlerOutcome] = {}
+    while not state.done:
+        current_outcomes = await handling.execute_handlers_once(
+            lifecycle=lifecycle,
+            handlers=handlers,
+            cause=cause,
+            state=state,
+        )
+        outcomes.update(current_outcomes)
+        state = state.with_outcomes(current_outcomes)
+        delay = state.delay
+        if delay:
+            limited_delay = min(delay, handling.WAITING_KEEPALIVE_INTERVAL)
+            await sleeping.sleep_or_wait(limited_delay, asyncio.Event())
 
     # Activities assume that all handlers must eventually succeed.
     # We raise from the 1st exception only: just to have something real in the tracebacks.
