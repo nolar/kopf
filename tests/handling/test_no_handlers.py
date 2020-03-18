@@ -40,7 +40,6 @@ async def test_skipped_with_no_handlers(
         event_queue=asyncio.Queue(),
     )
 
-    assert not k8s_mocked.asyncio_sleep.called
     assert not k8s_mocked.sleep_or_wait.called
     assert k8s_mocked.patch_obj.called
 

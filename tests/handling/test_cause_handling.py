@@ -36,7 +36,6 @@ async def test_create(registry, settings, handlers, resource, cause_mock, event_
     assert not handlers.update_mock.called
     assert not handlers.delete_mock.called
 
-    assert k8s_mocked.asyncio_sleep.call_count == 0
     assert k8s_mocked.sleep_or_wait.call_count == 0
     assert k8s_mocked.patch_obj.call_count == 1
     assert not event_queue.empty()
@@ -78,7 +77,6 @@ async def test_update(registry, settings, handlers, resource, cause_mock, event_
     assert handlers.update_mock.call_count == 1
     assert not handlers.delete_mock.called
 
-    assert k8s_mocked.asyncio_sleep.call_count == 0
     assert k8s_mocked.sleep_or_wait.call_count == 0
     assert k8s_mocked.patch_obj.call_count == 1
     assert not event_queue.empty()
@@ -121,7 +119,6 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
     assert not handlers.update_mock.called
     assert handlers.delete_mock.call_count == 1
 
-    assert k8s_mocked.asyncio_sleep.call_count == 0
     assert k8s_mocked.sleep_or_wait.call_count == 0
     assert k8s_mocked.patch_obj.call_count == 1
     assert not event_queue.empty()
@@ -165,8 +162,6 @@ async def test_gone(registry, settings, handlers, resource, cause_mock, event_ty
     assert not handlers.update_mock.called
     assert not handlers.delete_mock.called
 
-    assert not k8s_mocked.asyncio_sleep.called
-    assert not k8s_mocked.sleep_or_wait.called
     assert not k8s_mocked.patch_obj.called
     assert event_queue.empty()
 
@@ -197,7 +192,6 @@ async def test_free(registry, settings, handlers, resource, cause_mock, event_ty
     assert not handlers.update_mock.called
     assert not handlers.delete_mock.called
 
-    assert not k8s_mocked.asyncio_sleep.called
     assert not k8s_mocked.sleep_or_wait.called
     assert not k8s_mocked.patch_obj.called
     assert event_queue.empty()
@@ -229,7 +223,6 @@ async def test_noop(registry, settings, handlers, resource, cause_mock, event_ty
     assert not handlers.update_mock.called
     assert not handlers.delete_mock.called
 
-    assert not k8s_mocked.asyncio_sleep.called
     assert not k8s_mocked.sleep_or_wait.called
     assert not k8s_mocked.patch_obj.called
     assert event_queue.empty()

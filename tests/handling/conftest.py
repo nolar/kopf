@@ -47,7 +47,6 @@ from kopf.reactor.causation import ResourceChangingCause
 class K8sMocks:
     patch_obj: Mock
     post_event: Mock
-    asyncio_sleep: Mock
     sleep_or_wait: Mock
 
 
@@ -57,7 +56,6 @@ def k8s_mocked(mocker, resp_mocker):
     return K8sMocks(
         patch_obj=mocker.patch('kopf.clients.patching.patch_obj'),
         post_event=mocker.patch('kopf.clients.events.post_event'),
-        asyncio_sleep=mocker.patch('asyncio.sleep'),
         sleep_or_wait=mocker.patch('kopf.engines.sleeping.sleep_or_wait', return_value=None),
     )
 
