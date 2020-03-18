@@ -121,3 +121,6 @@ class WatchersConfig:
 
     watcher_retry_delay: float = 0.1
     """ How long should a pause be between watch requests (to prevent flooding). """
+
+    session_timeout: Optional[float] = None
+    """ The http session timeout to use in watch request. """
