@@ -71,8 +71,8 @@ cause_var: ContextVar[causation.BaseCause] = ContextVar('cause_var')
 
 async def execute(
         *,
-        fns: Optional[Iterable[invocation.Invokable]] = None,
-        handlers: Optional[Iterable[handlers_.ResourceHandler]] = None,
+        fns: Optional[Iterable[callbacks.ResourceChangingFn]] = None,
+        handlers: Optional[Iterable[handlers_.ResourceChangingHandler]] = None,
         registry: Optional[registries.ResourceChangingRegistry] = None,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         cause: Optional[causation.BaseCause] = None,
@@ -107,7 +107,7 @@ async def execute(
         subregistry = registries.ResourceChangingRegistry()
         for id, fn in fns.items():
             real_id = registries.generate_id(fn=fn, id=id, prefix=parent_prefix)
-            handler = handlers_.ResourceHandler(
+            handler = handlers_.ResourceChangingHandler(
                 fn=fn, id=real_id,
                 errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
                 labels=None, annotations=None, when=None,
@@ -120,7 +120,7 @@ async def execute(
         subregistry = registries.ResourceChangingRegistry()
         for fn in fns:
             real_id = registries.generate_id(fn=fn, id=None, prefix=parent_prefix)
-            handler = handlers_.ResourceHandler(
+            handler = handlers_.ResourceChangingHandler(
                 fn=fn, id=real_id,
                 errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
                 labels=None, annotations=None, when=None,

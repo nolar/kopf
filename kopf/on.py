@@ -25,8 +25,9 @@ from kopf.structs import dicts
 from kopf.structs import filters
 from kopf.structs import resources
 
-ResourceHandlerDecorator = Callable[[callbacks.ResourceHandlerFn], callbacks.ResourceHandlerFn]
-ActivityHandlerDecorator = Callable[[callbacks.ActivityHandlerFn], callbacks.ActivityHandlerFn]
+ActivityDecorator = Callable[[callbacks.ActivityFn], callbacks.ActivityFn]
+ResourceWatchingDecorator = Callable[[callbacks.ResourceWatchingFn], callbacks.ResourceWatchingFn]
+ResourceChangingDecorator = Callable[[callbacks.ResourceChangingFn], callbacks.ResourceChangingFn]
 
 
 def startup(  # lgtm[py/similar-function]
@@ -38,8 +39,8 @@ def startup(  # lgtm[py/similar-function]
         backoff: Optional[float] = None,
         cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
-) -> ActivityHandlerDecorator:
-    def decorator(fn: callbacks.ActivityHandlerFn) -> callbacks.ActivityHandlerFn:
+) -> ActivityDecorator:
+    def decorator(fn: callbacks.ActivityFn) -> callbacks.ActivityFn:
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
@@ -61,8 +62,8 @@ def cleanup(  # lgtm[py/similar-function]
         backoff: Optional[float] = None,
         cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
-) -> ActivityHandlerDecorator:
-    def decorator(fn: callbacks.ActivityHandlerFn) -> callbacks.ActivityHandlerFn:
+) -> ActivityDecorator:
+    def decorator(fn: callbacks.ActivityFn) -> callbacks.ActivityFn:
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
@@ -84,9 +85,9 @@ def login(  # lgtm[py/similar-function]
         backoff: Optional[float] = None,
         cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
-) -> ActivityHandlerDecorator:
+) -> ActivityDecorator:
     """ ``@kopf.on.login()`` handler for custom (re-)authentication. """
-    def decorator(fn: callbacks.ActivityHandlerFn) -> callbacks.ActivityHandlerFn:
+    def decorator(fn: callbacks.ActivityFn) -> callbacks.ActivityFn:
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
@@ -108,9 +109,9 @@ def probe(  # lgtm[py/similar-function]
         backoff: Optional[float] = None,
         cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
-) -> ActivityHandlerDecorator:
+) -> ActivityDecorator:
     """ ``@kopf.on.probe()`` handler for arbitrary liveness metrics. """
-    def decorator(fn: callbacks.ActivityHandlerFn) -> callbacks.ActivityHandlerFn:
+    def decorator(fn: callbacks.ActivityFn) -> callbacks.ActivityFn:
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
@@ -137,14 +138,14 @@ def resume(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
-) -> ResourceHandlerDecorator:
+) -> ResourceChangingDecorator:
     """ ``@kopf.on.resume()`` handler for the object resuming on operator (re)start. """
-    def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+    def decorator(fn: callbacks.ResourceChangingFn) -> callbacks.ResourceChangingFn:
         _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
         real_id = registries.generate_id(fn=fn, id=id)
-        handler = handlers.ResourceHandler(
+        handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id, field=None,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
@@ -169,14 +170,14 @@ def create(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
-) -> ResourceHandlerDecorator:
+) -> ResourceChangingDecorator:
     """ ``@kopf.on.create()`` handler for the object creation. """
-    def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+    def decorator(fn: callbacks.ResourceChangingFn) -> callbacks.ResourceChangingFn:
         _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
         real_id = registries.generate_id(fn=fn, id=id)
-        handler = handlers.ResourceHandler(
+        handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id, field=None,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
@@ -201,14 +202,14 @@ def update(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
-) -> ResourceHandlerDecorator:
+) -> ResourceChangingDecorator:
     """ ``@kopf.on.update()`` handler for the object update or change. """
-    def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+    def decorator(fn: callbacks.ResourceChangingFn) -> callbacks.ResourceChangingFn:
         _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
         real_id = registries.generate_id(fn=fn, id=id)
-        handler = handlers.ResourceHandler(
+        handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id, field=None,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
@@ -234,14 +235,14 @@ def delete(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
-) -> ResourceHandlerDecorator:
+) -> ResourceChangingDecorator:
     """ ``@kopf.on.delete()`` handler for the object deletion. """
-    def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+    def decorator(fn: callbacks.ResourceChangingFn) -> callbacks.ResourceChangingFn:
         _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
         real_id = registries.generate_id(fn=fn, id=id)
-        handler = handlers.ResourceHandler(
+        handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id, field=None,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
@@ -267,15 +268,15 @@ def field(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
-) -> ResourceHandlerDecorator:
+) -> ResourceChangingDecorator:
     """ ``@kopf.on.field()`` handler for the individual field changes. """
-    def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+    def decorator(fn: callbacks.ResourceChangingFn) -> callbacks.ResourceChangingFn:
         _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
-        handler = handlers.ResourceHandler(
+        handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id, field=real_field,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
@@ -295,19 +296,17 @@ def event(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
-) -> ResourceHandlerDecorator:
+) -> ResourceWatchingDecorator:
     """ ``@kopf.on.event()`` handler for the silent spies on the events. """
-    def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+    def decorator(fn: callbacks.ResourceWatchingFn) -> callbacks.ResourceWatchingFn:
         _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
         real_id = registries.generate_id(fn=fn, id=id)
-        handler = handlers.ResourceHandler(
-            fn=fn, id=real_id, field=None,
+        handler = handlers.ResourceWatchingHandler(
+            fn=fn, id=real_id,
             errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
             labels=labels, annotations=annotations, when=when,
-            initial=None, deleted=None, requires_finalizer=None,
-            reason=None,
         )
         real_registry.resource_watching_handlers[real_resource].append(handler)
         return fn
@@ -328,7 +327,7 @@ def this(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
-) -> ResourceHandlerDecorator:
+) -> ResourceChangingDecorator:
     """
     ``@kopf.on.this()`` decorator for the dynamically generated sub-handlers.
 
@@ -358,13 +357,13 @@ def this(  # lgtm[py/similar-function]
     Note: ``task=task`` is needed to freeze the closure variable, so that every
     create function will have its own value, not the latest in the for-cycle.
     """
-    def decorator(fn: callbacks.ResourceHandlerFn) -> callbacks.ResourceHandlerFn:
+    def decorator(fn: callbacks.ResourceChangingFn) -> callbacks.ResourceChangingFn:
         _warn_deprecated_filters(labels, annotations)
         parent_handler = handling.handler_var.get()
         real_registry = registry if registry is not None else handling.subregistry_var.get()
         real_id = registries.generate_id(fn=fn, id=id,
                                          prefix=parent_handler.id if parent_handler else None)
-        handler = handlers.ResourceHandler(
+        handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id, field=None,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
@@ -377,7 +376,7 @@ def this(  # lgtm[py/similar-function]
 
 
 def register(  # lgtm[py/similar-function]
-        fn: callbacks.ResourceHandlerFn,
+        fn: callbacks.ResourceChangingFn,
         *,
         id: Optional[str] = None,
         errors: Optional[errors_.ErrorsMode] = None,
@@ -389,7 +388,7 @@ def register(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
-) -> callbacks.ResourceHandlerFn:
+) -> callbacks.ResourceChangingFn:
     """
     Register a function as a sub-handler of the currently executed handler.
 

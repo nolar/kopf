@@ -17,7 +17,7 @@ import functools
 import warnings
 from types import FunctionType, MethodType
 from typing import (Any, MutableMapping, Optional, Sequence, Collection, Iterable, Iterator,
-                    List, Set, FrozenSet, Mapping, Callable, cast, Generic, TypeVar)
+                    List, Set, FrozenSet, Mapping, Callable, cast, Generic, TypeVar, Union)
 
 from kopf.reactor import causation
 from kopf.reactor import errors as errors_
@@ -30,12 +30,17 @@ from kopf.structs import resources as resources_
 from kopf.utilities import piggybacking
 
 # We only type-check for known classes of handlers/callbacks, and ignore any custom subclasses.
-HandlerFnT = TypeVar('HandlerFnT', callbacks.ActivityHandlerFn, callbacks.ResourceHandlerFn)
-HandlerT = TypeVar('HandlerT', handlers.ActivityHandler, handlers.ResourceHandler)
 CauseT = TypeVar('CauseT', bound=causation.BaseCause)
+HandlerT = TypeVar('HandlerT', bound=handlers.BaseHandler)
+ResourceHandlerT = TypeVar('ResourceHandlerT', bound=handlers.ResourceHandler)
+HandlerFnT = TypeVar('HandlerFnT',
+                     callbacks.ActivityFn,
+                     callbacks.ResourceWatchingFn,
+                     callbacks.ResourceChangingFn,
+                     Union[callbacks.ResourceWatchingFn, callbacks.ResourceChangingFn])  # DEPRECATED: for legacy_registries
 
 
-class GenericRegistry(Generic[HandlerT, HandlerFnT]):
+class GenericRegistry(Generic[HandlerFnT, HandlerT]):
     """ A generic base class of a simple registry (with no handler getters). """
     _handlers: List[HandlerT]
 
@@ -50,12 +55,13 @@ class GenericRegistry(Generic[HandlerT, HandlerFnT]):
         self._handlers.append(handler)
 
 
-class ActivityRegistry(GenericRegistry[handlers.ActivityHandler, callbacks.ActivityHandlerFn]):
-    """ An actual registry of activity handlers. """
+class ActivityRegistry(GenericRegistry[
+        callbacks.ActivityFn,
+        handlers.ActivityHandler]):
 
     def register(
             self,
-            fn: callbacks.ActivityHandlerFn,
+            fn: callbacks.ActivityFn,
             *,
             id: Optional[str] = None,
             errors: Optional[errors_.ErrorsMode] = None,
@@ -65,7 +71,7 @@ class ActivityRegistry(GenericRegistry[handlers.ActivityHandler, callbacks.Activ
             cooldown: Optional[float] = None,  # deprecated, use `backoff`
             activity: Optional[causation.Activity] = None,
             _fallback: bool = False,
-    ) -> callbacks.ActivityHandlerFn:
+    ) -> callbacks.ActivityFn:
         warnings.warn("registry.register() is deprecated; "
                       "use @kopf.on... decorators with registry= kwarg.",
                       DeprecationWarning)
@@ -103,59 +109,21 @@ class ActivityRegistry(GenericRegistry[handlers.ActivityHandler, callbacks.Activ
                     yield handler
 
 
-class ResourceRegistry(GenericRegistry[handlers.ResourceHandler, callbacks.ResourceHandlerFn], Generic[CauseT]):
-    """ An actual registry of resource handlers. """
-
-    def register(
-            self,
-            fn: callbacks.ResourceHandlerFn,
-            *,
-            id: Optional[str] = None,
-            reason: Optional[causation.Reason] = None,
-            event: Optional[str] = None,  # deprecated, use `reason`
-            field: Optional[dicts.FieldSpec] = None,
-            errors: Optional[errors_.ErrorsMode] = None,
-            timeout: Optional[float] = None,
-            retries: Optional[int] = None,
-            backoff: Optional[float] = None,
-            cooldown: Optional[float] = None,  # deprecated, use `backoff`
-            initial: Optional[bool] = None,
-            deleted: Optional[bool] = None,
-            requires_finalizer: bool = False,
-            labels: Optional[filters.MetaFilter] = None,
-            annotations: Optional[filters.MetaFilter] = None,
-            when: Optional[callbacks.WhenFilterFn] = None,
-    ) -> callbacks.ResourceHandlerFn:
-        warnings.warn("registry.register() is deprecated; "
-                      "use @kopf.on... decorators with registry= kwarg.",
-                      DeprecationWarning)
-
-        if reason is None and event is not None:
-            reason = causation.Reason(event)
-
-        real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
-        real_id = generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
-        handler = handlers.ResourceHandler(
-            id=real_id, fn=fn, reason=reason, field=real_field,
-            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
-            labels=labels, annotations=annotations, when=when,
-        )
-
-        self.append(handler)
-        return fn
+class ResourceRegistry(
+        Generic[CauseT, HandlerFnT, ResourceHandlerT],
+        GenericRegistry[HandlerFnT, ResourceHandlerT]):
 
     def get_handlers(
             self,
             cause: CauseT,
-    ) -> Sequence[handlers.ResourceHandler]:
+    ) -> Sequence[ResourceHandlerT]:
         return list(_deduplicated(self.iter_handlers(cause=cause)))
 
     @abc.abstractmethod
     def iter_handlers(
             self,
             cause: CauseT,
-    ) -> Iterator[handlers.ResourceHandler]:
+    ) -> Iterator[ResourceHandlerT]:
         raise NotImplementedError
 
     def get_extra_fields(
@@ -185,23 +153,95 @@ class ResourceRegistry(GenericRegistry[handlers.ResourceHandler, callbacks.Resou
         return False
 
 
-class ResourceWatchingRegistry(ResourceRegistry[causation.ResourceWatchingCause]):
+class ResourceWatchingRegistry(ResourceRegistry[
+        causation.ResourceWatchingCause,
+        callbacks.ResourceWatchingFn,
+        handlers.ResourceWatchingHandler]):
+
+    def register(
+            self,
+            fn: callbacks.ResourceWatchingFn,
+            *,
+            id: Optional[str] = None,
+            errors: Optional[errors_.ErrorsMode] = None,
+            timeout: Optional[float] = None,
+            retries: Optional[int] = None,
+            backoff: Optional[float] = None,
+            cooldown: Optional[float] = None,  # deprecated, use `backoff`
+            labels: Optional[filters.MetaFilter] = None,
+            annotations: Optional[filters.MetaFilter] = None,
+            when: Optional[callbacks.WhenFilterFn] = None,
+    ) -> callbacks.ResourceWatchingFn:
+        warnings.warn("registry.register() is deprecated; "
+                      "use @kopf.on... decorators with registry= kwarg.",
+                      DeprecationWarning)
+
+        real_id = generate_id(fn=fn, id=id)
+        handler = handlers.ResourceWatchingHandler(
+            id=real_id, fn=fn,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
+            labels=labels, annotations=annotations, when=when,
+        )
+        self.append(handler)
+        return fn
 
     def iter_handlers(
             self,
             cause: causation.ResourceWatchingCause,
-    ) -> Iterator[handlers.ResourceHandler]:
+    ) -> Iterator[handlers.ResourceWatchingHandler]:
         for handler in self._handlers:
             if match(handler=handler, cause=cause, ignore_fields=True):
                 yield handler
 
 
-class ResourceChangingRegistry(ResourceRegistry[causation.ResourceChangingCause]):
+class ResourceChangingRegistry(ResourceRegistry[
+        causation.ResourceChangingCause,
+        callbacks.ResourceChangingFn,
+        handlers.ResourceChangingHandler]):
+
+    def register(
+            self,
+            fn: callbacks.ResourceChangingFn,
+            *,
+            id: Optional[str] = None,
+            reason: Optional[causation.Reason] = None,
+            event: Optional[str] = None,  # deprecated, use `reason`
+            field: Optional[dicts.FieldSpec] = None,
+            errors: Optional[errors_.ErrorsMode] = None,
+            timeout: Optional[float] = None,
+            retries: Optional[int] = None,
+            backoff: Optional[float] = None,
+            cooldown: Optional[float] = None,  # deprecated, use `backoff`
+            initial: Optional[bool] = None,
+            deleted: Optional[bool] = None,
+            requires_finalizer: bool = False,
+            labels: Optional[filters.MetaFilter] = None,
+            annotations: Optional[filters.MetaFilter] = None,
+            when: Optional[callbacks.WhenFilterFn] = None,
+    ) -> callbacks.ResourceChangingFn:
+        warnings.warn("registry.register() is deprecated; "
+                      "use @kopf.on... decorators with registry= kwarg.",
+                      DeprecationWarning)
+
+        if reason is None and event is not None:
+            reason = causation.Reason(event)
+
+        real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
+        real_id = generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
+        handler = handlers.ResourceChangingHandler(
+            id=real_id, fn=fn, reason=reason, field=real_field,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
+            initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
+            labels=labels, annotations=annotations, when=when,
+        )
+
+        self.append(handler)
+        return fn
 
     def iter_handlers(
             self,
             cause: causation.ResourceChangingCause,
-    ) -> Iterator[handlers.ResourceHandler]:
+    ) -> Iterator[handlers.ResourceChangingHandler]:
         changed_fields = frozenset(field for _, field, _, _ in cause.diff or [])
         for handler in self._handlers:
             if handler.reason is None or handler.reason == cause.reason:
@@ -242,7 +282,7 @@ class OperatorRegistry:
 
     def register_activity_handler(
             self,
-            fn: callbacks.ActivityHandlerFn,
+            fn: callbacks.ActivityFn,
             *,
             id: Optional[str] = None,
             errors: Optional[errors_.ErrorsMode] = None,
@@ -252,7 +292,7 @@ class OperatorRegistry:
             cooldown: Optional[float] = None,  # deprecated, use `backoff`
             activity: Optional[causation.Activity] = None,
             _fallback: bool = False,
-    ) -> callbacks.ActivityHandlerFn:
+    ) -> callbacks.ActivityFn:
         warnings.warn("registry.register_activity_handler() is deprecated; "
                       "use @kopf.on... decorators with registry= kwarg.",
                       DeprecationWarning)
@@ -267,12 +307,12 @@ class OperatorRegistry:
             group: str,
             version: str,
             plural: str,
-            fn: callbacks.ResourceHandlerFn,
+            fn: callbacks.ResourceWatchingFn,
             id: Optional[str] = None,
             labels: Optional[filters.MetaFilter] = None,
             annotations: Optional[filters.MetaFilter] = None,
             when: Optional[callbacks.WhenFilterFn] = None,
-    ) -> callbacks.ResourceHandlerFn:
+    ) -> callbacks.ResourceWatchingFn:
         """
         Register an additional handler function for low-level events.
         """
@@ -290,7 +330,7 @@ class OperatorRegistry:
             group: str,
             version: str,
             plural: str,
-            fn: callbacks.ResourceHandlerFn,
+            fn: callbacks.ResourceChangingFn,
             id: Optional[str] = None,
             reason: Optional[causation.Reason] = None,
             event: Optional[str] = None,  # deprecated, use `reason`
@@ -306,7 +346,7 @@ class OperatorRegistry:
             labels: Optional[filters.MetaFilter] = None,
             annotations: Optional[filters.MetaFilter] = None,
             when: Optional[callbacks.WhenFilterFn] = None,
-    ) -> callbacks.ResourceHandlerFn:
+    ) -> callbacks.ResourceChangingFn:
         """
         Register an additional handler function for the specific resource and specific reason.
         """
@@ -360,7 +400,7 @@ class OperatorRegistry:
     def get_resource_watching_handlers(
             self,
             cause: causation.ResourceWatchingCause,
-    ) -> Sequence[handlers.ResourceHandler]:
+    ) -> Sequence[handlers.ResourceWatchingHandler]:
         warnings.warn("registry.get_resource_watching_handlers() is deprecated; "
                       "use registry.resource_watching_handlers[resource].get_handlers().",
                       DeprecationWarning)
@@ -369,7 +409,7 @@ class OperatorRegistry:
     def get_resource_changing_handlers(
             self,
             cause: causation.ResourceChangingCause,
-    ) -> Sequence[handlers.ResourceHandler]:
+    ) -> Sequence[handlers.ResourceChangingHandler]:
         warnings.warn("registry.get_resource_changing_handlers() is deprecated; "
                       "use registry.resource_changing_handlers[resource].get_handlers().",
                       DeprecationWarning)
@@ -388,7 +428,7 @@ class OperatorRegistry:
     def iter_resource_watching_handlers(
             self,
             cause: causation.ResourceWatchingCause,
-    ) -> Iterator[handlers.ResourceHandler]:
+    ) -> Iterator[handlers.ResourceWatchingHandler]:
         """
         Iterate all handlers for the low-level events.
         """
@@ -400,7 +440,7 @@ class OperatorRegistry:
     def iter_resource_changing_handlers(
             self,
             cause: causation.ResourceChangingCause,
-    ) -> Iterator[handlers.ResourceHandler]:
+    ) -> Iterator[handlers.ResourceChangingHandler]:
         """
         Iterate all handlers that match this cause/event, in the order they were registered (even if mixed).
         """
@@ -453,7 +493,7 @@ class SmartOperatorRegistry(OperatorRegistry):
         else:
             self.activity_handlers.append(handlers.ActivityHandler(
                 id=handlers.HandlerId('login_via_pykube'),
-                fn=cast(callbacks.ActivityHandlerFn, piggybacking.login_via_pykube),
+                fn=cast(callbacks.ActivityFn, piggybacking.login_via_pykube),
                 activity=causation.Activity.AUTHENTICATION,
                 errors=errors_.ErrorsMode.IGNORED,
                 timeout=None, retries=None, backoff=None, cooldown=None,
@@ -466,7 +506,7 @@ class SmartOperatorRegistry(OperatorRegistry):
         else:
             self.activity_handlers.append(handlers.ActivityHandler(
                 id=handlers.HandlerId('login_via_client'),
-                fn=cast(callbacks.ActivityHandlerFn, piggybacking.login_via_client),
+                fn=cast(callbacks.ActivityFn, piggybacking.login_via_client),
                 activity=causation.Activity.AUTHENTICATION,
                 errors=errors_.ErrorsMode.IGNORED,
                 timeout=None, retries=None, backoff=None, cooldown=None,
@@ -561,6 +601,7 @@ def _matches_field(
         ignore_fields: bool = False,
 ) -> bool:
     return (ignore_fields or
+            not isinstance(handler, handlers.ResourceChangingHandler) or
             not handler.field or
             any(field[:len(handler.field)] == handler.field for field in changed_fields))
 

@@ -9,7 +9,7 @@ import asyncio
 import contextlib
 import contextvars
 import functools
-from typing import Optional, Any, Union, List, Iterable, Iterator, Tuple, Dict, cast, TYPE_CHECKING
+from typing import Optional, Any, List, Iterable, Iterator, Tuple, Dict, cast, TYPE_CHECKING
 
 from kopf import config
 from kopf.reactor import causation
@@ -19,11 +19,6 @@ if TYPE_CHECKING:
     asyncio_Future = asyncio.Future[Any]
 else:
     asyncio_Future = asyncio.Future
-
-Invokable = Union[
-    callbacks.ActivityHandlerFn,
-    callbacks.ResourceHandlerFn,
-]
 
 
 @contextlib.contextmanager
@@ -96,7 +91,7 @@ def build_kwargs(
 
 
 async def invoke(
-        fn: Invokable,
+        fn: callbacks.BaseFn,
         *args: Any,
         cause: Optional[causation.BaseCause] = None,
         **kwargs: Any,
@@ -152,7 +147,7 @@ async def invoke(
 
 
 def is_async_fn(
-        fn: Optional[Invokable],
+        fn: Optional[callbacks.BaseFn],
 ) -> bool:
     if fn is None:
         return False

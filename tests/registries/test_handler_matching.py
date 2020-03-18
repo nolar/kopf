@@ -5,7 +5,7 @@ import pytest
 import kopf
 from kopf import OperatorRegistry
 from kopf.reactor.causation import ResourceChangingCause, Reason, ALL_REASONS
-from kopf.reactor.handlers import ResourceHandler
+from kopf.reactor.handlers import ResourceChangingHandler
 from kopf.structs.bodies import Body
 from kopf.structs.dicts import parse_field
 from kopf.structs.filters import MetaFilterToken
@@ -54,7 +54,7 @@ def registry():
 @pytest.fixture()
 def handler_factory(registry, resource):
     def factory(**kwargs):
-        handler = ResourceHandler(**dict(dict(
+        handler = ResourceChangingHandler(**dict(dict(
             fn=some_fn, id='a',
             errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
             initial=None, deleted=None, requires_finalizer=None,

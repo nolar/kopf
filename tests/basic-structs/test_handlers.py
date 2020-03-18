@@ -1,9 +1,9 @@
 import pytest
 
-from kopf.reactor.handlers import ActivityHandler, ResourceHandler
+from kopf.reactor.handlers import ActivityHandler, ResourceChangingHandler
 
 
-@pytest.mark.parametrize('cls', [ActivityHandler, ResourceHandler])
+@pytest.mark.parametrize('cls', [ActivityHandler, ResourceChangingHandler])
 def test_handler_with_no_args(cls):
     with pytest.raises(TypeError):
         cls()
@@ -51,7 +51,7 @@ def test_resource_handler_with_all_args(mocker):
     annotations = mocker.Mock()
     when = mocker.Mock()
     requires_finalizer = mocker.Mock()
-    handler = ResourceHandler(
+    handler = ResourceChangingHandler(
         fn=fn,
         id=id,
         reason=reason,

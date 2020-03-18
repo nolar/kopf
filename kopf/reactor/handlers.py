@@ -1,6 +1,6 @@
 import dataclasses
 import warnings
-from typing import NewType, Callable, Optional, Any
+from typing import NewType, Optional, Any
 
 from kopf.reactor import causation
 from kopf.reactor import errors as errors_
@@ -20,7 +20,7 @@ HandlerId = NewType('HandlerId', str)
 @dataclasses.dataclass
 class BaseHandler:
     id: HandlerId
-    fn: Callable[..., Optional[callbacks.Result]]
+    fn: callbacks.BaseFn
     errors: Optional[errors_.ErrorsMode]
     timeout: Optional[float]
     retries: Optional[int]
@@ -45,21 +45,30 @@ class BaseHandler:
 
 @dataclasses.dataclass
 class ActivityHandler(BaseHandler):
-    fn: callbacks.ActivityHandlerFn  # type clarification
+    fn: callbacks.ActivityFn  # type clarification
     activity: Optional[causation.Activity]
     _fallback: bool = False  # non-public!
 
 
 @dataclasses.dataclass
 class ResourceHandler(BaseHandler):
-    fn: callbacks.ResourceHandlerFn  # type clarification
+    labels: Optional[filters.MetaFilter]
+    annotations: Optional[filters.MetaFilter]
+    when: Optional[callbacks.WhenFilterFn]
+
+
+@dataclasses.dataclass
+class ResourceWatchingHandler(ResourceHandler):
+    fn: callbacks.ResourceWatchingFn  # type clarification
+
+
+@dataclasses.dataclass
+class ResourceChangingHandler(ResourceHandler):
+    fn: callbacks.ResourceChangingFn  # type clarification
     reason: Optional[causation.Reason]
     field: Optional[dicts.FieldPath]
     initial: Optional[bool]
     deleted: Optional[bool]  # used for mixed-in (initial==True) @on.resume handlers only.
-    labels: Optional[filters.MetaFilter]
-    annotations: Optional[filters.MetaFilter]
-    when: Optional[callbacks.WhenFilterFn]
     requires_finalizer: Optional[bool]
 
     @property
