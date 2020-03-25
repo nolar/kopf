@@ -77,7 +77,7 @@ and then ignored.
     the operator starts or restarts.
 
     It is the developer's responsibility to make the handlers idempotent
-    (re-executable with do duplicating side-effects).
+    (re-executable with no duplicating side-effects).
 
 
 State-changing handlers
