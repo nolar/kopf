@@ -26,6 +26,7 @@ the root object, while keeping the legacy names for backward compatibility.
     used interchangeably -- but so that it is understandable what is meant.
 """
 import dataclasses
+from typing import Optional
 
 from kopf import config  # for legacy defaults only
 
@@ -50,6 +51,30 @@ class PostingSettings:
 
 
 @dataclasses.dataclass
+class WatchingSettings:
+
+    session_timeout: Optional[float] = dataclasses.field(
+        default_factory=lambda: config.WatchersConfig.session_timeout)
+    """
+    An HTTP/HTTPS session timeout to use in watch requests.
+    """
+
+    stream_timeout: Optional[float] = dataclasses.field(
+        default_factory=lambda: config.WatchersConfig.default_stream_timeout)
+    """
+    The maximum duration of one streaming request. Patched in some tests.
+    If ``None``, then obey the server-side timeouts (they seem to be random).
+    """
+
+    retry_delay: float = dataclasses.field(
+        default_factory=lambda: config.WatchersConfig.watcher_retry_delay)
+    """
+    How long should a pause be between watch requests (to prevent API flooding).
+    """
+
+
+@dataclasses.dataclass
 class OperatorSettings:
     logging: LoggingSettings = dataclasses.field(default_factory=LoggingSettings)
     posting: PostingSettings = dataclasses.field(default_factory=PostingSettings)
+    watching: WatchingSettings = dataclasses.field(default_factory=WatchingSettings)

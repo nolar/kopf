@@ -26,7 +26,6 @@ from typing import Optional, Dict, AsyncIterator, Any, cast, TYPE_CHECKING
 
 import aiohttp
 
-from kopf import config
 from kopf.clients import auth
 from kopf.clients import discovery
 from kopf.clients import fetching
@@ -75,7 +74,7 @@ async def infinite_watch(
         )
         async for raw_event in stream:
             yield raw_event
-        await asyncio.sleep(config.WatchersConfig.watcher_retry_delay)
+        await asyncio.sleep(settings.watching.retry_delay)
 
 
 async def streaming_watch(
@@ -140,7 +139,7 @@ async def continuous_watch(
         stream = watch_objs(
             settings=settings,
             resource=resource, namespace=namespace,
-            timeout=config.WatchersConfig.default_stream_timeout,
+            timeout=settings.watching.stream_timeout,
             since=resource_version,
             freeze_waiter=freeze_waiter,
         )
@@ -211,7 +210,7 @@ async def watch_objs(
     # Talk to the API and initiate a streaming response.
     response = await context.session.get(
         url=resource.get_url(server=context.server, namespace=namespace, params=params),
-        timeout=aiohttp.ClientTimeout(total=config.WatchersConfig.session_timeout),
+        timeout=aiohttp.ClientTimeout(total=settings.watching.session_timeout),
     )
     response.raise_for_status()
 
