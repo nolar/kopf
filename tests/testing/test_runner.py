@@ -1,5 +1,7 @@
 import pytest
 
+from kopf.reactor.registries import OperatorRegistry
+from kopf.structs.configuration import OperatorSettings
 from kopf.testing import KopfRunner
 
 
@@ -20,6 +22,19 @@ def test_command_invocation_works():
     assert runner.stdout.startswith("Usage:")
     assert runner.stdout_bytes.startswith(b"Usage:")
     # Note: stderr is not captured, it is mixed with stdout.
+
+
+def test_registry_and_settings_are_propagated(mocker):
+    operator_mock = mocker.patch('kopf.reactor.running.operator')
+    registry = OperatorRegistry()
+    settings = OperatorSettings()
+    with KopfRunner(['run', '--standalone'], registry=registry, settings=settings) as runner:
+        pass
+    assert runner.exit_code == 0
+    assert runner.exception is None
+    assert operator_mock.called
+    assert operator_mock.call_args[1]['registry'] is registry
+    assert operator_mock.call_args[1]['settings'] is settings
 
 
 def test_exception_from_runner_suppressed_with_no_reraise():

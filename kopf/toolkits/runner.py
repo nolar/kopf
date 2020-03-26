@@ -9,6 +9,8 @@ import click.testing
 from typing_extensions import Literal
 
 from kopf import cli
+from kopf.reactor import registries
+from kopf.structs import configuration
 
 _ExcType = BaseException
 _ExcInfo = Tuple[Type[_ExcType], _ExcType, types.TracebackType]
@@ -60,6 +62,8 @@ class KopfRunner(_AbstractKopfRunner):
             *args: Any,
             reraise: bool = True,
             timeout: Optional[float] = None,
+            registry: Optional[registries.OperatorRegistry] = None,
+            settings: Optional[configuration.OperatorSettings] = None,
             **kwargs: Any,
     ):
         super().__init__()
@@ -67,6 +71,8 @@ class KopfRunner(_AbstractKopfRunner):
         self.kwargs = kwargs
         self.reraise = reraise
         self.timeout = timeout
+        self.registry = registry
+        self.settings = settings
         self._stop = threading.Event()
         self._ready = threading.Event()  # NB: not asyncio.Event!
         self._thread = threading.Thread(target=self._target)
@@ -119,7 +125,10 @@ class KopfRunner(_AbstractKopfRunner):
         # Execute the requested CLI command in the thread & thread's loop.
         # Remember the result & exception for re-raising in the parent thread.
         try:
-            ctxobj = cli.CLIControls(stop_flag=self._stop)
+            ctxobj = cli.CLIControls(
+                registry=self.registry,
+                settings=self.settings,
+                stop_flag=self._stop)
             runner = click.testing.CliRunner()
             result = runner.invoke(cli.main, *self.args, **self.kwargs, obj=ctxobj)
         except BaseException as e:
