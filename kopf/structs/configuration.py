@@ -25,6 +25,7 @@ the root object, while keeping the legacy names for backward compatibility.
     Regardless of the exact class and module names, all of these terms can be
     used interchangeably -- but so that it is understandable what is meant.
 """
+import concurrent.futures
 import dataclasses
 from typing import Optional
 
@@ -107,6 +108,44 @@ class BatchingSettings:
     """
 
 
+@dataclasses.dataclass
+class ExecutionSettings:
+    """
+    Settings for synchronous handlers execution (e.g. thread-/process-pools).
+    """
+
+    executor: concurrent.futures.Executor = dataclasses.field(
+        default_factory=concurrent.futures.ThreadPoolExecutor)
+    """
+    The executor to be used for synchronous handler invocation.
+
+    It can be changed at runtime (e.g. to reset the pool size). Already running
+    handlers (specific invocations) will continue with their original executors.
+    """
+
+    _max_workers: Optional[int] = dataclasses.field(
+        default_factory=lambda: config.WorkersConfig.synchronous_tasks_threadpool_limit)
+
+    @property
+    def max_workers(self) -> Optional[int]:
+        """
+        How many threads/processes is dedicated to handler execution.
+
+        It can be changed at runtime (the threads/processes are not terminated).
+        """
+        return self._max_workers
+
+    @max_workers.setter
+    def max_workers(self, value: int) -> None:
+        if value < 1:
+            raise ValueError("Can't set thread pool limit lower than 1.")
+        self._max_workers = value
+
+        if hasattr(self.executor, '_max_workers'):
+            self.executor._max_workers = value  # type: ignore
+        else:
+            raise TypeError("Current executor does not support `max_workers`.")
+
 
 @dataclasses.dataclass
 class OperatorSettings:
@@ -114,3 +153,4 @@ class OperatorSettings:
     posting: PostingSettings = dataclasses.field(default_factory=PostingSettings)
     watching: WatchingSettings = dataclasses.field(default_factory=WatchingSettings)
     batching: BatchingSettings = dataclasses.field(default_factory=BatchingSettings)
+    execution: ExecutionSettings = dataclasses.field(default_factory=ExecutionSettings)

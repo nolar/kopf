@@ -1,5 +1,4 @@
 import asyncio
-import concurrent.futures
 import logging
 from typing import Optional
 
@@ -73,8 +72,6 @@ class WorkersConfig:
     Used as single point of configuration for kopf.reactor.
     """
 
-    threadpool_executor: Optional[concurrent.futures.ThreadPoolExecutor] = None
-
     queue_workers_limit: Optional[int] = None  # if None, there is no limits to workers number
     """ How many workers can be running simultaneously on per-object event queue. """
 
@@ -91,14 +88,6 @@ class WorkersConfig:
     """ How long does a worker can work on watcher exit before being cancelled. """
 
     @staticmethod
-    def get_syn_executor() -> concurrent.futures.ThreadPoolExecutor:
-        if not WorkersConfig.threadpool_executor:
-            WorkersConfig.threadpool_executor = concurrent.futures.ThreadPoolExecutor(
-                max_workers=WorkersConfig.synchronous_tasks_threadpool_limit
-            )
-        return WorkersConfig.threadpool_executor
-
-    @staticmethod
     def set_synchronous_tasks_threadpool_limit(new_limit: int) -> None:
         """
         Call this static method at any time to change synchronous_tasks_threadpool_limit in runtime.
@@ -107,8 +96,17 @@ class WorkersConfig:
             raise ValueError('Can`t set threadpool limit lower than 1')
 
         WorkersConfig.synchronous_tasks_threadpool_limit = new_limit
-        if WorkersConfig.threadpool_executor:
-            WorkersConfig.threadpool_executor._max_workers = new_limit  # type: ignore
+
+        # Also apply to the current runtime settings, if we are at runtime (not load-time).
+        try:
+            # Wherever we can find it; ignore "nice" architecture (this class is deprecated anyway).
+            from kopf.engines import posting  # noqa
+            from kopf.structs import configuration  # noqa  # cyclic imports, for type annotations
+            settings: configuration.OperatorSettings = posting.settings_var.get()
+        except LookupError:
+            pass
+        else:
+            settings.execution.max_workers = new_limit
 
 
 class WatchersConfig:
