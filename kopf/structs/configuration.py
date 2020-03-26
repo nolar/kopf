@@ -27,7 +27,29 @@ the root object, while keeping the legacy names for backward compatibility.
 """
 import dataclasses
 
+from kopf import config  # for legacy defaults only
+
+
+@dataclasses.dataclass
+class LoggingSettings:
+    pass
+
+
+@dataclasses.dataclass
+class PostingSettings:
+
+    level: int = dataclasses.field(
+        default_factory=lambda: config.EventsConfig.events_loglevel)
+    """
+    A minimal level of logging events that will be posted as K8s Events.
+    The default is ``logging.INFO`` (i.e. all info, warning, errors are posted).
+
+    This also affects ``kopf.event()`` and similar functions
+    (``kopf.info()``, ``kopf.warn()``, ``kopf.exception()``).
+    """
+
 
 @dataclasses.dataclass
 class OperatorSettings:
-    pass
+    logging: LoggingSettings = dataclasses.field(default_factory=LoggingSettings)
+    posting: PostingSettings = dataclasses.field(default_factory=PostingSettings)

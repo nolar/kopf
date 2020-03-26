@@ -15,11 +15,11 @@ The k8s-events are queued in two ways:
 This also includes all logging messages posted by the framework itself.
 """
 import asyncio
+import logging
 import sys
 from contextvars import ContextVar
 from typing import NamedTuple, NoReturn, Optional, Union, Iterator, Iterable, cast, TYPE_CHECKING
 
-from kopf import config
 from kopf.clients import events
 from kopf.structs import bodies
 from kopf.structs import configuration
@@ -102,7 +102,8 @@ def info(
         reason: str,
         message: str = '',
 ) -> None:
-    if config.EventsConfig.events_loglevel <= config.LOGLEVEL_INFO:
+    settings: configuration.OperatorSettings = settings_var.get()
+    if settings.posting.level <= logging.INFO:
         event(obj, type='Normal', reason=reason, message=message)
 
 
@@ -112,7 +113,8 @@ def warn(
         reason: str,
         message: str = '',
 ) -> None:
-    if config.EventsConfig.events_loglevel <= config.LOGLEVEL_WARNING:
+    settings: configuration.OperatorSettings = settings_var.get()
+    if settings.posting.level <= logging.WARNING:
         event(obj, type='Warning', reason=reason, message=message)
 
 
@@ -127,7 +129,8 @@ def exception(
         _, exc, _ = sys.exc_info()
     reason = reason if reason else type(exc).__name__
     message = f'{message} {exc}' if message and exc else f'{exc}' if exc else f'{message}'
-    if config.EventsConfig.events_loglevel <= config.LOGLEVEL_ERROR:
+    settings: configuration.OperatorSettings = settings_var.get()
+    if settings.posting.level <= logging.ERROR:
         event(obj, type='Error', reason=reason, message=message)
 
 

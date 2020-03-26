@@ -12,7 +12,6 @@ import copy
 import logging
 from typing import Tuple, MutableMapping, Any, Optional
 
-from kopf import config
 from kopf.engines import posting
 from kopf.structs import bodies
 from kopf.structs import configuration
@@ -45,7 +44,7 @@ class K8sPoster(logging.Handler):
         # Otherwise, we have nothing to post, and nothing to do.
         settings: Optional[configuration.OperatorSettings]
         settings = getattr(record, 'settings', None)
-        level_ok = record.levelno >= config.EventsConfig.events_loglevel
+        level_ok = settings is not None and record.levelno >= settings.posting.level
         has_ref = hasattr(record, 'k8s_ref')
         skipped = hasattr(record, 'k8s_skip') and getattr(record, 'k8s_skip')
         return level_ok and has_ref and not skipped and super().filter(record)
