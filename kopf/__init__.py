@@ -62,6 +62,9 @@ from kopf.structs.bodies import (
     build_object_reference,
     build_owner_reference,
 )
+from kopf.structs.configuration import (
+    OperatorSettings,
+)
 from kopf.structs.credentials import (
     LoginError,
     ConnectionInfo,
@@ -121,4 +124,5 @@ __all__ = [
     'get_default_registry',
     'set_default_registry',
     'PRESENT', 'ABSENT',
+    'OperatorSettings',
 ]

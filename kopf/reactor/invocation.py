@@ -14,6 +14,7 @@ from typing import Optional, Any, List, Iterable, Iterator, Tuple, Dict, cast, T
 from kopf import config
 from kopf.reactor import causation
 from kopf.structs import callbacks
+from kopf.structs import configuration
 
 if TYPE_CHECKING:
     asyncio_Future = asyncio.Future[Any]
@@ -59,6 +60,10 @@ def build_kwargs(
         new_kwargs.update(
             activity=cause.activity,
         )
+    if isinstance(cause, causation.ActivityCause) and cause.activity == cause.activity.STARTUP:
+        new_kwargs.update(
+            settings=cause.settings,
+        )
     if isinstance(cause, causation.ResourceCause):
         new_kwargs.update(
             patch=cause.patch,
@@ -93,6 +98,7 @@ def build_kwargs(
 async def invoke(
         fn: callbacks.BaseFn,
         *args: Any,
+        settings: Optional[configuration.OperatorSettings] = None,
         cause: Optional[causation.BaseCause] = None,
         **kwargs: Any,
 ) -> Any:

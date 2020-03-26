@@ -10,6 +10,7 @@ from kopf.reactor import activities
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
 from kopf.structs import callbacks
+from kopf.structs import configuration
 from kopf.structs import handlers
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ async def health_reporter(
         endpoint: str,
         *,
         registry: registries.OperatorRegistry,
+        settings: configuration.OperatorSettings,
         ready_flag: Optional[asyncio.Event] = None,  # used for testing
 ) -> None:
     """
@@ -54,6 +56,7 @@ async def health_reporter(
                     activity_results = await activities.run_activity(
                         lifecycle=lifecycles.all_at_once,
                         registry=registry,
+                        settings=settings,
                         activity=handlers.Activity.PROBE,
                     )
                     probing_container.clear()

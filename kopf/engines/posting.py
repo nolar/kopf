@@ -22,6 +22,7 @@ from typing import NamedTuple, NoReturn, Optional, Union, Iterator, Iterable, ca
 from kopf import config
 from kopf.clients import events
 from kopf.structs import bodies
+from kopf.structs import configuration
 from kopf.structs import dicts
 
 if TYPE_CHECKING:
@@ -34,6 +35,11 @@ else:
 # thread-safe coro calls both from inside that event-loop and from outside.
 event_queue_loop_var: ContextVar[asyncio.AbstractEventLoop] = ContextVar('event_queue_loop_var')
 event_queue_var: ContextVar[K8sEventQueue] = ContextVar('event_queue_var')
+
+# Per-operator container for settings. We only need a log level from there.
+# This variable is dedicated to a posting engine, as the call chain is interrupted
+# by user-side handlers (no pass-through `settings` arg).
+settings_var: ContextVar[configuration.OperatorSettings] = ContextVar('settings_var')
 
 
 class K8sEvent(NamedTuple):

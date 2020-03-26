@@ -35,6 +35,7 @@ from typing_extensions import Protocol
 from kopf import config
 from kopf.clients import watching
 from kopf.structs import bodies
+from kopf.structs import configuration
 from kopf.structs import primitives
 from kopf.structs import resources
 
@@ -76,6 +77,7 @@ Streams = MutableMapping[ObjectRef, Stream]
 # TODO: add the label_selector support for the dev-mode?
 async def watcher(
         namespace: Union[None, str],
+        settings: configuration.OperatorSettings,
         resource: resources.Resource,
         processor: WatchStreamProcessor,
         freeze_mode: Optional[primitives.Toggle] = None,
@@ -101,6 +103,7 @@ async def watcher(
         # Either use the existing object's queue, or create a new one together with the per-object job.
         # "Fire-and-forget": we do not wait for the result; the job destroys itself when it is fully done.
         stream = watching.infinite_watch(
+            settings=settings,
             resource=resource, namespace=namespace,
             freeze_mode=freeze_mode,
         )
@@ -113,10 +116,15 @@ async def watcher(
                 streams[key] = Stream(watchevents=asyncio.Queue(), replenished=asyncio.Event())
                 streams[key].replenished.set()  # interrupt current sleeps, if any.
                 await streams[key].watchevents.put(raw_event)
-                await scheduler.spawn(worker(processor=processor, streams=streams, key=key))
+                await scheduler.spawn(worker(
+                    processor=processor,
+                    settings=settings,
+                    streams=streams,
+                    key=key,
+                ))
     finally:
         # Allow the existing workers to finish gracefully before killing them.
-        await _wait_for_depletion(scheduler=scheduler, streams=streams)
+        await _wait_for_depletion(scheduler=scheduler, streams=streams, settings=settings)
 
         # Forcedly terminate all the fire-and-forget per-object jobs, of they are still running.
         await asyncio.shield(scheduler.close())
@@ -124,6 +132,7 @@ async def watcher(
 
 async def worker(
         processor: WatchStreamProcessor,
+        settings: configuration.OperatorSettings,
         streams: Streams,
         key: ObjectRef,
 ) -> None:
@@ -194,6 +203,7 @@ async def worker(
 async def _wait_for_depletion(
         *,
         scheduler: aiojobs.Scheduler,
+        settings: configuration.OperatorSettings,
         streams: Streams,
 ) -> None:
 

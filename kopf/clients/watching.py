@@ -31,6 +31,7 @@ from kopf.clients import auth
 from kopf.clients import discovery
 from kopf.clients import fetching
 from kopf.structs import bodies
+from kopf.structs import configuration
 from kopf.structs import primitives
 from kopf.structs import resources
 
@@ -50,6 +51,7 @@ class WatchingError(Exception):
 
 async def infinite_watch(
         *,
+        settings: configuration.OperatorSettings,
         resource: resources.Resource,
         namespace: Optional[str],
         freeze_mode: Optional[primitives.Toggle] = None,
@@ -66,6 +68,7 @@ async def infinite_watch(
     """
     while True:
         stream = streaming_watch(
+            settings=settings,
             resource=resource,
             namespace=namespace,
             freeze_mode=freeze_mode,
@@ -77,6 +80,7 @@ async def infinite_watch(
 
 async def streaming_watch(
         *,
+        settings: configuration.OperatorSettings,
         resource: resources.Resource,
         namespace: Optional[str],
         freeze_mode: Optional[primitives.Toggle] = None,
@@ -102,6 +106,7 @@ async def streaming_watch(
 
     try:
         stream = continuous_watch(
+            settings=settings,
             resource=resource, namespace=namespace,
             freeze_waiter=freeze_waiter,
         )
@@ -115,6 +120,7 @@ async def streaming_watch(
 
 async def continuous_watch(
         *,
+        settings: configuration.OperatorSettings,
         resource: resources.Resource,
         namespace: Optional[str],
         freeze_waiter: asyncio_Future,
@@ -132,6 +138,7 @@ async def continuous_watch(
 
         # Then, watch the resources starting from the list's resource version.
         stream = watch_objs(
+            settings=settings,
             resource=resource, namespace=namespace,
             timeout=config.WatchersConfig.default_stream_timeout,
             since=resource_version,
@@ -168,6 +175,7 @@ async def continuous_watch(
 @auth.reauthenticated_stream
 async def watch_objs(
         *,
+        settings: configuration.OperatorSettings,
         resource: resources.Resource,
         namespace: Optional[str] = None,
         timeout: Optional[float] = None,

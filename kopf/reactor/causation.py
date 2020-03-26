@@ -25,6 +25,7 @@ import warnings
 from typing import Any, Optional, Union, TypeVar
 
 from kopf.structs import bodies
+from kopf.structs import configuration
 from kopf.structs import containers
 from kopf.structs import diffs
 from kopf.structs import finalizers
@@ -42,6 +43,7 @@ class BaseCause:
 @dataclasses.dataclass
 class ActivityCause(BaseCause):
     activity: handlers.Activity
+    settings: configuration.OperatorSettings
 
 
 @dataclasses.dataclass

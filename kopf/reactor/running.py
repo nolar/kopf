@@ -16,6 +16,7 @@ from kopf.reactor import lifecycles
 from kopf.reactor import processing
 from kopf.reactor import queueing
 from kopf.reactor import registries
+from kopf.structs import configuration
 from kopf.structs import containers
 from kopf.structs import credentials
 from kopf.structs import handlers
@@ -59,9 +60,11 @@ def login(
     # Perform the initial one-time authentication in presumably the same loop.
     loop = loop if loop is not None else asyncio.get_event_loop()
     registry = registries.get_default_registry()
+    settings = configuration.OperatorSettings()
     try:
         loop.run_until_complete(activities.authenticate(
             registry=registry,
+            settings=settings,
             vault=global_vault,
         ))
     except asyncio.CancelledError:
@@ -80,6 +83,7 @@ def run(
         loop: Optional[asyncio.AbstractEventLoop] = None,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         registry: Optional[registries.OperatorRegistry] = None,
+        settings: Optional[configuration.OperatorSettings] = None,
         memories: Optional[containers.ResourceMemories] = None,
         standalone: bool = False,
         priority: int = 0,
@@ -100,6 +104,7 @@ def run(
         loop.run_until_complete(operator(
             lifecycle=lifecycle,
             registry=registry,
+            settings=settings,
             memories=memories,
             standalone=standalone,
             namespace=namespace,
@@ -118,6 +123,7 @@ async def operator(
         *,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         registry: Optional[registries.OperatorRegistry] = None,
+        settings: Optional[configuration.OperatorSettings] = None,
         memories: Optional[containers.ResourceMemories] = None,
         standalone: bool = False,
         priority: int = 0,
@@ -140,6 +146,7 @@ async def operator(
     operator_tasks = await spawn_tasks(
         lifecycle=lifecycle,
         registry=registry,
+        settings=settings,
         memories=memories,
         standalone=standalone,
         namespace=namespace,
@@ -157,6 +164,7 @@ async def spawn_tasks(
         *,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         registry: Optional[registries.OperatorRegistry] = None,
+        settings: Optional[configuration.OperatorSettings] = None,
         memories: Optional[containers.ResourceMemories] = None,
         standalone: bool = False,
         priority: int = 0,
@@ -177,6 +185,7 @@ async def spawn_tasks(
     # The freezer and the registry are scoped to this whole task-set, to sync them all.
     lifecycle = lifecycle if lifecycle is not None else lifecycles.get_default_lifecycle()
     registry = registry if registry is not None else registries.get_default_registry()
+    settings = settings if settings is not None else configuration.OperatorSettings()
     memories = memories if memories is not None else containers.ResourceMemories()
     vault = vault if vault is not None else global_vault
     vault = vault if vault is not None else credentials.Vault()
@@ -189,6 +198,10 @@ async def spawn_tasks(
     # Global credentials store for this operator, also for CRD-reading & peering mode detection.
     auth.vault_var.set(vault)
 
+    # Special case: pass the settings container through the user-side handlers (no explicit args).
+    # Toolkits have to keep the original operator context somehow, and the only way is contextvars.
+    posting.settings_var.set(settings)
+
     # Few common background forever-running infrastructural tasks (irregular root tasks).
     tasks.extend([
         loop.create_task(_stop_flag_checker(
@@ -199,6 +212,7 @@ async def spawn_tasks(
             root_tasks=tasks,  # used as a "live" view, populated later.
             ready_flag=ready_flag,
             registry=registry,
+            settings=settings,
             vault=vault,  # to purge & finalize the caches in the end.
         )),
     ])
@@ -209,6 +223,7 @@ async def spawn_tasks(
             name="credentials retriever", ready_flag=ready_flag,
             coro=activities.authenticator(
                 registry=registry,
+                settings=settings,
                 vault=vault))),
     ])
 
@@ -228,6 +243,7 @@ async def spawn_tasks(
                 name="health reporter", ready_flag=ready_flag,
                 coro=probing.health_reporter(
                     registry=registry,
+                    settings=settings,
                     endpoint=liveness_endpoint))),
         ])
 
@@ -244,6 +260,7 @@ async def spawn_tasks(
                 name="watcher of peering", ready_flag=ready_flag,
                 coro=queueing.watcher(
                     namespace=namespace,
+                    settings=settings,
                     resource=ourselves.resource,
                     processor=functools.partial(peering.process_peering_event,
                                                 ourselves=ourselves,
@@ -257,11 +274,13 @@ async def spawn_tasks(
                 name=f"watcher of {resource.name}", ready_flag=ready_flag,
                 coro=queueing.watcher(
                     namespace=namespace,
+                    settings=settings,
                     resource=resource,
                     freeze_mode=freeze_mode,
                     processor=functools.partial(processing.process_resource_event,
                                                 lifecycle=lifecycle,
                                                 registry=registry,
+                                                settings=settings,
                                                 memories=memories,
                                                 resource=resource,
                                                 event_queue=event_queue)))),
@@ -468,6 +487,7 @@ async def _startup_cleanup_activities(
         root_tasks: Sequence[asyncio_Task],  # mutated externally!
         ready_flag: Optional[primitives.Flag],
         registry: registries.OperatorRegistry,
+        settings: configuration.OperatorSettings,
         vault: credentials.Vault,
 ) -> None:
     """
@@ -488,6 +508,7 @@ async def _startup_cleanup_activities(
         await activities.run_activity(
             lifecycle=lifecycles.all_at_once,
             registry=registry,
+            settings=settings,
             activity=handlers.Activity.STARTUP,
         )
     except asyncio.CancelledError:
@@ -518,6 +539,7 @@ async def _startup_cleanup_activities(
         await activities.run_activity(
             lifecycle=lifecycles.all_at_once,
             registry=registry,
+            settings=settings,
             activity=handlers.Activity.CLEANUP,
         )
         await vault.close()

@@ -19,6 +19,7 @@ from kopf.reactor import lifecycles
 from kopf.reactor import registries
 from kopf.reactor import states
 from kopf.structs import callbacks
+from kopf.structs import configuration
 from kopf.structs import dicts
 from kopf.structs import diffs
 from kopf.structs import handlers as handlers_
@@ -61,6 +62,7 @@ class HandlerChildrenRetry(TemporaryError):
 # Used in `@kopf.on.this` and `kopf.execute()` to add/get the sub-handlers.
 sublifecycle_var: ContextVar[lifecycles.LifeCycleFn] = ContextVar('sublifecycle_var')
 subregistry_var: ContextVar[registries.ResourceChangingRegistry] = ContextVar('subregistry_var')
+subsettings_var: ContextVar[configuration.OperatorSettings] = ContextVar('subsettings_var')
 subexecuted_var: ContextVar[bool] = ContextVar('subexecuted_var')
 handler_var: ContextVar[handlers_.BaseHandler] = ContextVar('handler_var')
 cause_var: ContextVar[causation.BaseCause] = ContextVar('cause_var')
@@ -153,10 +155,12 @@ async def execute(
                            "no practical use (there are no retries or state tracking).")
 
     # Execute the real handlers (all or few or one of them, as per the lifecycle).
+    subsettings = subsettings_var.get()
     subhandlers = subregistry.get_handlers(cause=cause)
     state = states.State.from_body(body=cause.body, handlers=subhandlers)
     outcomes = await execute_handlers_once(
         lifecycle=lifecycle,
+        settings=subsettings,
         handlers=subhandlers,
         cause=cause,
         state=state,
@@ -172,6 +176,7 @@ async def execute(
 
 async def execute_handlers_once(
         lifecycle: lifecycles.LifeCycleFn,
+        settings: configuration.OperatorSettings,
         handlers: Collection[handlers_.BaseHandler],
         cause: causation.BaseCause,
         state: states.State,
@@ -195,6 +200,7 @@ async def execute_handlers_once(
     outcomes: MutableMapping[handlers_.HandlerId, states.HandlerOutcome] = {}
     for handler in handlers_plan:
         outcome = await execute_handler_once(
+            settings=settings,
             handler=handler,
             state=state[handler.id],
             cause=cause,
@@ -207,6 +213,7 @@ async def execute_handlers_once(
 
 
 async def execute_handler_once(
+        settings: configuration.OperatorSettings,
         handler: handlers_.BaseHandler,
         cause: causation.BaseCause,
         state: states.HandlerState,
@@ -229,7 +236,7 @@ async def execute_handler_once(
     # Prevent successes/failures from posting k8s-events for resource-watching causes.
     logger: Union[logging.Logger, logging.LoggerAdapter]
     if isinstance(cause, causation.ResourceWatchingCause):
-        logger = logging_engine.LocalObjectLogger(body=cause.body)
+        logger = logging_engine.LocalObjectLogger(body=cause.body, settings=settings)
     else:
         logger = cause.logger
 
@@ -249,6 +256,7 @@ async def execute_handler_once(
             retry=state.retries,
             started=state.started,
             runtime=state.runtime,
+            settings=settings,
             lifecycle=lifecycle,  # just a default for the sub-handlers, not used directly.
         )
 
@@ -299,6 +307,7 @@ async def invoke_handler(
         handler: handlers_.BaseHandler,
         *args: Any,
         cause: causation.BaseCause,
+        settings: configuration.OperatorSettings,
         lifecycle: lifecycles.LifeCycleFn,
         **kwargs: Any,
 ) -> Optional[callbacks.Result]:
@@ -328,6 +337,7 @@ async def invoke_handler(
     with invocation.context([
         (sublifecycle_var, lifecycle),
         (subregistry_var, registries.ResourceChangingRegistry()),
+        (subsettings_var, settings),
         (subexecuted_var, False),
         (handler_var, handler),
         (cause_var, cause),
@@ -337,6 +347,7 @@ async def invoke_handler(
         result = await invocation.invoke(
             handler.fn,
             *args,
+            settings=settings,
             cause=cause,
             **kwargs,
         )

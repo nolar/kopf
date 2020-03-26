@@ -10,11 +10,12 @@ the operators' code, and can lead to information loss or mismatch
 """
 import copy
 import logging
-from typing import Tuple, MutableMapping, Any
+from typing import Tuple, MutableMapping, Any, Optional
 
 from kopf import config
 from kopf.engines import posting
 from kopf.structs import bodies
+from kopf.structs import configuration
 
 
 class ObjectPrefixingFormatter(logging.Formatter):
@@ -42,6 +43,8 @@ class K8sPoster(logging.Handler):
     def filter(self, record: logging.LogRecord) -> bool:
         # Only those which have a k8s object referred (see: `ObjectLogger`).
         # Otherwise, we have nothing to post, and nothing to do.
+        settings: Optional[configuration.OperatorSettings]
+        settings = getattr(record, 'settings', None)
         level_ok = record.levelno >= config.EventsConfig.events_loglevel
         has_ref = hasattr(record, 'k8s_ref')
         skipped = hasattr(record, 'k8s_skip') and getattr(record, 'k8s_skip')
@@ -85,8 +88,9 @@ class ObjectLogger(logging.LoggerAdapter):
     (e.g. in case of background posting via the queue; see `K8sPoster`).
     """
 
-    def __init__(self, *, body: bodies.Body):
+    def __init__(self, *, body: bodies.Body, settings: configuration.OperatorSettings) -> None:
         super().__init__(logger, dict(
+            settings=settings,
             k8s_skip=False,
             k8s_ref=dict(
                 apiVersion=body.get('apiVersion'),
