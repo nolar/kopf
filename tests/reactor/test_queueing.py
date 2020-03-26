@@ -46,7 +46,7 @@ CODE_OVERHEAD = 0.130
 ])
 @pytest.mark.usefixtures('watcher_limited')
 async def test_watchevent_demultiplexing(worker_mock, timer, resource, processor,
-                                         stream, events, uids, cnts):
+                                         settings, stream, events, uids, cnts):
     """ Verify that every unique uid goes into its own queue+worker, which are never shared. """
 
     # Inject the events of unique objects - to produce few streams/workers.
@@ -58,6 +58,7 @@ async def test_watchevent_demultiplexing(worker_mock, timer, resource, processor
         await watcher(
             namespace=None,
             resource=resource,
+            settings=settings,
             processor=processor,
         )
 
@@ -114,13 +115,14 @@ async def test_watchevent_demultiplexing(worker_mock, timer, resource, processor
 
 ])
 @pytest.mark.usefixtures('watcher_limited')
-async def test_watchevent_batching(mocker, resource, processor, timer, stream, events, uids, vals):
+async def test_watchevent_batching(settings, resource, processor, timer,
+                                   stream, events, uids, vals):
     """ Verify that only the last event per uid is actually handled. """
 
     # Override the default timeouts to make the tests faster.
-    mocker.patch('kopf.config.WorkersConfig.worker_idle_timeout', 0.5)
-    mocker.patch('kopf.config.WorkersConfig.worker_batch_window', 0.1)
-    mocker.patch('kopf.config.WorkersConfig.worker_exit_timeout', 0.5)
+    settings.batching.idle_timeout = 0.5
+    settings.batching.batch_window = 0.1
+    settings.batching.exit_timeout = 0.5
 
     # Inject the events of unique objects - to produce few streams/workers.
     stream.feed(events)
@@ -131,13 +133,13 @@ async def test_watchevent_batching(mocker, resource, processor, timer, stream, e
         await watcher(
             namespace=None,
             resource=resource,
+            settings=settings,
             processor=processor,
         )
 
     # Significantly less than the queue getting timeout, but sufficient to run.
     # 2 <= 1 pull for the event chain + 1 pull for EOS. TODO: 1x must be enough.
-    from kopf import config
-    assert timer.seconds < config.WorkersConfig.worker_batch_window + CODE_OVERHEAD
+    assert timer.seconds < settings.batching.batch_window + CODE_OVERHEAD
 
     # Was the processor called at all? Awaited as needed for async fns?
     assert processor.awaited
@@ -169,13 +171,13 @@ async def test_watchevent_batching(mocker, resource, processor, timer, stream, e
 
 ])
 @pytest.mark.usefixtures('watcher_in_background')
-async def test_garbage_collection_of_streams(mocker, stream, events, unique, worker_spy):
+async def test_garbage_collection_of_streams(settings, stream, events, unique, worker_spy):
 
     # Override the default timeouts to make the tests faster.
-    mocker.patch('kopf.config.WorkersConfig.worker_idle_timeout', 0.5)
-    mocker.patch('kopf.config.WorkersConfig.worker_batch_window', 0.1)
-    mocker.patch('kopf.config.WorkersConfig.worker_exit_timeout', 0.5)
-    mocker.patch('kopf.config.WatchersConfig.watcher_retry_delay', 1.0)  # to prevent src depletion
+    settings.batching.idle_timeout = 0.5
+    settings.batching.batch_window = 0.1
+    settings.batching.exit_timeout = 0.5
+    settings.watching.retry_delay = 1.0  # to prevent src depletion
 
     # Inject the events of unique objects - to produce few streams/workers.
     stream.feed(events)
@@ -197,9 +199,8 @@ async def test_garbage_collection_of_streams(mocker, stream, events, unique, wor
 
     # Give the workers some time to finish waiting for the events.
     # Once the idle timeout, they will exit and gc their individual streams.
-    from kopf import config
-    await asyncio.sleep(config.WorkersConfig.worker_batch_window)  # depleting the queues.
-    await asyncio.sleep(config.WorkersConfig.worker_idle_timeout)  # idling on empty queues.
+    await asyncio.sleep(settings.batching.batch_window)  # depleting the queues.
+    await asyncio.sleep(settings.batching.idle_timeout)  # idling on empty queues.
     await asyncio.sleep(CODE_OVERHEAD)
 
     # The mutable(!) streams dict is now empty, i.e. garbage-collected.

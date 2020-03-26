@@ -13,7 +13,7 @@ from kopf.structs.handlers import Reason, HANDLER_REASONS
 # The extrahandlers are needed to prevent the cycle ending and status purging.
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_fatal_error_stops_handler(
-        registry, handlers, extrahandlers, resource, cause_mock, cause_type,
+        registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,
         caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     name1 = f'{cause_type}_fn'
@@ -28,6 +28,7 @@ async def test_fatal_error_stops_handler(
     await process_resource_event(
         lifecycle=kopf.lifecycles.one_by_one,
         registry=registry,
+        settings=settings,
         resource=resource,
         memories=ResourceMemories(),
         raw_event={'type': event_type, 'object': {}},
@@ -56,7 +57,7 @@ async def test_fatal_error_stops_handler(
 # The extrahandlers are needed to prevent the cycle ending and status purging.
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_retry_error_delays_handler(
-        registry, handlers, extrahandlers, resource, cause_mock, cause_type,
+        registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,
         caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     name1 = f'{cause_type}_fn'
@@ -71,6 +72,7 @@ async def test_retry_error_delays_handler(
     await process_resource_event(
         lifecycle=kopf.lifecycles.one_by_one,
         registry=registry,
+        settings=settings,
         resource=resource,
         memories=ResourceMemories(),
         raw_event={'type': event_type, 'object': {}},
@@ -100,7 +102,7 @@ async def test_retry_error_delays_handler(
 # The extrahandlers are needed to prevent the cycle ending and status purging.
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_arbitrary_error_delays_handler(
-        registry, handlers, extrahandlers, resource, cause_mock, cause_type,
+        registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,
         caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     name1 = f'{cause_type}_fn'
@@ -115,6 +117,7 @@ async def test_arbitrary_error_delays_handler(
     await process_resource_event(
         lifecycle=kopf.lifecycles.one_by_one,
         registry=registry,
+        settings=settings,
         resource=resource,
         memories=ResourceMemories(),
         raw_event={'type': event_type, 'object': {}},

@@ -6,12 +6,13 @@ from kopf.structs.credentials import Vault, ConnectionInfo, LoginError
 from kopf.structs.handlers import ActivityHandler, Activity
 
 
-async def test_empty_registry_produces_no_credentials():
+async def test_empty_registry_produces_no_credentials(settings):
     vault = Vault()
     registry = OperatorRegistry()
 
     await authenticate(
         registry=registry,
+        settings=settings,
         vault=vault,
     )
 
@@ -21,7 +22,7 @@ async def test_empty_registry_produces_no_credentials():
             pass
 
 
-async def test_noreturn_handler_produces_no_credentials():
+async def test_noreturn_handler_produces_no_credentials(settings):
     vault = Vault()
     registry = OperatorRegistry()
 
@@ -36,6 +37,7 @@ async def test_noreturn_handler_produces_no_credentials():
 
     await authenticate(
         registry=registry,
+        settings=settings,
         vault=vault,
     )
 
@@ -45,7 +47,7 @@ async def test_noreturn_handler_produces_no_credentials():
             pass
 
 
-async def test_single_credentials_provided_to_vault():
+async def test_single_credentials_provided_to_vault(settings):
     info = ConnectionInfo(server='https://expected/')
     vault = Vault()
     registry = OperatorRegistry()
@@ -61,6 +63,7 @@ async def test_single_credentials_provided_to_vault():
 
     await authenticate(
         registry=registry,
+        settings=settings,
         vault=vault,
     )
 

@@ -50,23 +50,30 @@ def namespace(request):
     return request.param
 
 
-async def test_empty_stream_yields_nothing(resource, stream, namespace):
+async def test_empty_stream_yields_nothing(settings, resource, stream, namespace):
+    
     stream.feed([], namespace=namespace)
     stream.close(namespace=namespace)
 
     events = []
-    async for event in streaming_watch(resource=resource, namespace=namespace):
+    async for event in streaming_watch(settings=settings,
+                                       resource=resource,
+                                       namespace=namespace):
         events.append(event)
 
     assert len(events) == 0
 
 
-async def test_event_stream_yields_everything(resource, stream, namespace):
+async def test_event_stream_yields_everything(
+        settings, resource, stream, namespace):
+
     stream.feed(STREAM_WITH_NORMAL_EVENTS, namespace=namespace)
     stream.close(namespace=namespace)
 
     events = []
-    async for event in streaming_watch(resource=resource, namespace=namespace):
+    async for event in streaming_watch(settings=settings,
+                                       resource=resource,
+                                       namespace=namespace):
         events.append(event)
 
     assert len(events) == 2
@@ -74,13 +81,17 @@ async def test_event_stream_yields_everything(resource, stream, namespace):
     assert events[1]['object']['spec'] == 'b'
 
 
-async def test_unknown_event_type_ignored(resource, stream, namespace, caplog):
+async def test_unknown_event_type_ignored(
+        settings, resource, stream, namespace, caplog):
+
     caplog.set_level(logging.DEBUG)
     stream.feed(STREAM_WITH_UNKNOWN_EVENT, namespace=namespace)
     stream.close(namespace=namespace)
 
     events = []
-    async for event in streaming_watch(resource=resource, namespace=namespace):
+    async for event in streaming_watch(settings=settings,
+                                       resource=resource,
+                                       namespace=namespace):
         events.append(event)
 
     assert len(events) == 2
@@ -90,13 +101,17 @@ async def test_unknown_event_type_ignored(resource, stream, namespace, caplog):
     assert "UNKNOWN" in caplog.text
 
 
-async def test_error_410gone_exits_normally(resource, stream, namespace, caplog):
+async def test_error_410gone_exits_normally(
+        settings, resource, stream, namespace, caplog):
+
     caplog.set_level(logging.DEBUG)
     stream.feed(STREAM_WITH_ERROR_410GONE, namespace=namespace)
     stream.close(namespace=namespace)
 
     events = []
-    async for event in streaming_watch(resource=resource, namespace=namespace):
+    async for event in streaming_watch(settings=settings,
+                                       resource=resource,
+                                       namespace=namespace):
         events.append(event)
 
     assert len(events) == 1
@@ -104,13 +119,17 @@ async def test_error_410gone_exits_normally(resource, stream, namespace, caplog)
     assert "Restarting the watch-stream" in caplog.text
 
 
-async def test_unknown_error_raises_exception(resource, stream, namespace):
+async def test_unknown_error_raises_exception(
+        settings, resource, stream, namespace):
+
     stream.feed(STREAM_WITH_ERROR_CODE, namespace=namespace)
     stream.close(namespace=namespace)
 
     events = []
     with pytest.raises(WatchingError) as e:
-        async for event in streaming_watch(resource=resource, namespace=namespace):
+        async for event in streaming_watch(settings=settings,
+                                           resource=resource,
+                                           namespace=namespace):
             events.append(event)
 
     assert len(events) == 1
@@ -118,21 +137,26 @@ async def test_unknown_error_raises_exception(resource, stream, namespace):
     assert '666' in str(e.value)
 
 
-async def test_exception_escalates(resource, stream, namespace, enforced_session, mocker):
+async def test_exception_escalates(
+        settings, resource, stream, namespace, enforced_session, mocker):
+
     enforced_session.get = mocker.Mock(side_effect=SampleException())
     stream.feed([], namespace=namespace)
     stream.close(namespace=namespace)
 
     events = []
     with pytest.raises(SampleException):
-        async for event in streaming_watch(resource=resource, namespace=namespace):
+        async for event in streaming_watch(settings=settings,
+                                           resource=resource,
+                                           namespace=namespace):
             events.append(event)
 
     assert len(events) == 0
 
 
 async def test_freezing_is_ignored_if_turned_off(
-        resource, stream, namespace, timer, caplog, assert_logs):
+        settings, resource, stream, namespace, timer, caplog, assert_logs):
+
     stream.feed(STREAM_WITH_NORMAL_EVENTS, namespace=namespace)
     stream.close(namespace=namespace)
 
@@ -140,7 +164,9 @@ async def test_freezing_is_ignored_if_turned_off(
     events = []
 
     async def read_stream():
-        async for event in streaming_watch(resource=resource, namespace=namespace,
+        async for event in streaming_watch(settings=settings,
+                                           resource=resource,
+                                           namespace=namespace,
                                            freeze_mode=freeze_mode):
             events.append(event)
 
@@ -157,7 +183,8 @@ async def test_freezing_is_ignored_if_turned_off(
 
 
 async def test_freezing_waits_forever_if_not_resumed(
-        resource, stream, namespace, timer, caplog, assert_logs):
+        settings, resource, stream, namespace, timer, caplog, assert_logs):
+
     stream.feed(STREAM_WITH_NORMAL_EVENTS, namespace=namespace)
     stream.close(namespace=namespace)
 
@@ -165,7 +192,9 @@ async def test_freezing_waits_forever_if_not_resumed(
     events = []
 
     async def read_stream():
-        async for event in streaming_watch(resource=resource, namespace=namespace,
+        async for event in streaming_watch(settings=settings,
+                                           resource=resource,
+                                           namespace=namespace,
                                            freeze_mode=freeze_mode):
             events.append(event)
 
@@ -184,7 +213,8 @@ async def test_freezing_waits_forever_if_not_resumed(
 
 
 async def test_freezing_waits_until_resumed(
-        resource, stream, namespace, timer, caplog, assert_logs):
+        settings, resource, stream, namespace, timer, caplog, assert_logs):
+
     stream.feed(STREAM_WITH_NORMAL_EVENTS, namespace=namespace)
     stream.close(namespace=namespace)
 
@@ -196,7 +226,9 @@ async def test_freezing_waits_until_resumed(
         await freeze_mode.turn_off()
 
     async def read_stream():
-        async for event in streaming_watch(resource=resource, namespace=namespace,
+        async for event in streaming_watch(settings=settings,
+                                           resource=resource,
+                                           namespace=namespace,
                                            freeze_mode=freeze_mode):
             events.append(event)
 
@@ -214,7 +246,9 @@ async def test_freezing_waits_until_resumed(
     ])
 
 
-async def test_infinite_watch_never_exits_normally(resource, stream, namespace, aresponses):
+async def test_infinite_watch_never_exits_normally(
+        settings, resource, stream, namespace, aresponses):
+
     error = aresponses.Response(status=555, reason='stop-infinite-cycle')
     stream.feed(
         STREAM_WITH_ERROR_410GONE,          # watching restarted
@@ -226,7 +260,9 @@ async def test_infinite_watch_never_exits_normally(resource, stream, namespace, 
 
     events = []
     with pytest.raises(aiohttp.ClientResponseError) as e:
-        async for event in infinite_watch(resource=resource, namespace=namespace):
+        async for event in infinite_watch(settings=settings,
+                                          resource=resource,
+                                          namespace=namespace):
             events.append(event)
 
     assert e.value.status == 555
@@ -239,7 +275,9 @@ async def test_infinite_watch_never_exits_normally(resource, stream, namespace, 
 
 
 # See: See: https://github.com/zalando-incubator/kopf/issues/275
-async def test_long_line_parsing(resource, stream, namespace, aresponses):
+async def test_long_line_parsing(
+        settings, resource, stream, namespace, aresponses):
+
     content = [
         {'type': 'ADDED', 'object': {'spec': {'field': 'x'}}},
         {'type': 'ADDED', 'object': {'spec': {'field': 'y' * (2 * 1024 * 1024)}}},
@@ -249,7 +287,9 @@ async def test_long_line_parsing(resource, stream, namespace, aresponses):
     stream.close(namespace=namespace)
 
     events = []
-    async for event in streaming_watch(resource=resource, namespace=namespace):
+    async for event in streaming_watch(settings=settings,
+                                       resource=resource,
+                                       namespace=namespace):
         events.append(event)
 
     assert len(events) == 3

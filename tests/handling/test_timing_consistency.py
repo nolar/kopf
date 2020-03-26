@@ -8,7 +8,7 @@ from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 
 
-async def test_consistent_awakening(registry, resource, k8s_mocked, mocker):
+async def test_consistent_awakening(registry, settings, resource, k8s_mocked, mocker):
     """
     A special case to ensure that "now" is consistent during the handling.
 
@@ -58,6 +58,7 @@ async def test_consistent_awakening(registry, resource, k8s_mocked, mocker):
         await process_resource_event(
             lifecycle=kopf.lifecycles.all_at_once,
             registry=registry,
+            settings=settings,
             resource=resource,
             memories=ResourceMemories(),
             raw_event={'type': 'ADDED', 'object': body},

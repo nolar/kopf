@@ -17,7 +17,7 @@ from kopf.structs.handlers import Reason, HANDLER_REASONS
     ['2099-12-31T23:59:59', '2020-01-01T00:00:00'],
 ], ids=['slow'])
 async def test_timed_out_handler_fails(
-        registry, handlers, extrahandlers, resource, cause_mock, cause_type,
+        registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,
         caplog, assert_logs, k8s_mocked, now, ts):
     caplog.set_level(logging.DEBUG)
     name1 = f'{cause_type}_fn'
@@ -37,6 +37,7 @@ async def test_timed_out_handler_fails(
         await process_resource_event(
             lifecycle=kopf.lifecycles.one_by_one,
             registry=registry,
+            settings=settings,
             resource=resource,
             memories=ResourceMemories(),
             raw_event={'type': event_type, 'object': event_body},
@@ -66,7 +67,7 @@ async def test_timed_out_handler_fails(
 # The extrahandlers are needed to prevent the cycle ending and status purging.
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_retries_limited_handler_fails(
-        registry, handlers, extrahandlers, resource, cause_mock, cause_type,
+        registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,
         caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     name1 = f'{cause_type}_fn'
@@ -85,6 +86,7 @@ async def test_retries_limited_handler_fails(
     await process_resource_event(
         lifecycle=kopf.lifecycles.one_by_one,
         registry=registry,
+        settings=settings,
         resource=resource,
         memories=ResourceMemories(),
         raw_event={'type': event_type, 'object': event_body},

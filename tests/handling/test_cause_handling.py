@@ -6,7 +6,6 @@ import pytest
 import kopf
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
-from kopf.structs.finalizers import FINALIZER
 from kopf.structs.handlers import Reason
 from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
 
@@ -14,7 +13,7 @@ EVENT_TYPES = [None, 'ADDED', 'MODIFIED', 'DELETED']
 
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES)
-async def test_create(registry, handlers, resource, cause_mock, event_type,
+async def test_create(registry, settings, handlers, resource, cause_mock, event_type,
                       caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = Reason.CREATE
@@ -23,6 +22,7 @@ async def test_create(registry, handlers, resource, cause_mock, event_type,
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
+        settings=settings,
         resource=resource,
         memories=ResourceMemories(),
         raw_event={'type': event_type, 'object': {}},
@@ -55,7 +55,7 @@ async def test_create(registry, handlers, resource, cause_mock, event_type,
 
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES)
-async def test_update(registry, handlers, resource, cause_mock, event_type,
+async def test_update(registry, settings, handlers, resource, cause_mock, event_type,
                       caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = Reason.UPDATE
@@ -64,6 +64,7 @@ async def test_update(registry, handlers, resource, cause_mock, event_type,
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
+        settings=settings,
         resource=resource,
         memories=ResourceMemories(),
         raw_event={'type': event_type, 'object': {}},
@@ -96,7 +97,7 @@ async def test_update(registry, handlers, resource, cause_mock, event_type,
 
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES)
-async def test_delete(registry, handlers, resource, cause_mock, event_type,
+async def test_delete(registry, settings, handlers, resource, cause_mock, event_type,
                       caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = Reason.DELETE
@@ -105,6 +106,7 @@ async def test_delete(registry, handlers, resource, cause_mock, event_type,
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
+        settings=settings,
         resource=resource,
         memories=ResourceMemories(),
         raw_event={'type': event_type, 'object': {}},
@@ -139,7 +141,7 @@ async def test_delete(registry, handlers, resource, cause_mock, event_type,
 #
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES)
-async def test_gone(registry, handlers, resource, cause_mock, event_type,
+async def test_gone(registry, settings, handlers, resource, cause_mock, event_type,
                     caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = Reason.GONE
@@ -148,6 +150,7 @@ async def test_gone(registry, handlers, resource, cause_mock, event_type,
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
+        settings=settings,
         resource=resource,
         memories=ResourceMemories(),
         raw_event={'type': event_type, 'object': {}},
@@ -170,7 +173,7 @@ async def test_gone(registry, handlers, resource, cause_mock, event_type,
 
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES)
-async def test_free(registry, handlers, resource, cause_mock, event_type,
+async def test_free(registry, settings, handlers, resource, cause_mock, event_type,
                     caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = Reason.FREE
@@ -179,6 +182,7 @@ async def test_free(registry, handlers, resource, cause_mock, event_type,
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
+        settings=settings,
         resource=resource,
         memories=ResourceMemories(),
         raw_event={'type': event_type, 'object': {}},
@@ -201,7 +205,7 @@ async def test_free(registry, handlers, resource, cause_mock, event_type,
 
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES)
-async def test_noop(registry, handlers, resource, cause_mock, event_type,
+async def test_noop(registry, settings, handlers, resource, cause_mock, event_type,
                     caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = Reason.NOOP
@@ -210,6 +214,7 @@ async def test_noop(registry, handlers, resource, cause_mock, event_type,
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
+        settings=settings,
         resource=resource,
         memories=ResourceMemories(),
         raw_event={'type': event_type, 'object': {}},

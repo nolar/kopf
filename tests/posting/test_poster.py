@@ -5,8 +5,7 @@ import pytest
 from asynctest import call
 
 from kopf import event, info, warn, exception
-from kopf.config import EventsConfig
-from kopf.engines.posting import poster, K8sEvent, event_queue_var, event_queue_loop_var
+from kopf.engines.posting import poster, K8sEvent, event_queue_var, event_queue_loop_var, settings_var
 
 OBJ1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
         'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1'}}
@@ -16,6 +15,11 @@ OBJ2 = {'apiVersion': 'group2/version2', 'kind': 'Kind2',
         'metadata': {'uid': 'uid2', 'name': 'name2', 'namespace': 'ns2'}}
 REF2 = {'apiVersion': 'group2/version2', 'kind': 'Kind2',
         'uid': 'uid2', 'name': 'name2', 'namespace': 'ns2'}
+
+
+@pytest.fixture(autouse=True)
+def _settings_via_contextvar(settings_via_contextvar):
+    pass
 
 
 async def test_poster_polls_and_posts(mocker):
@@ -83,13 +87,13 @@ async def test_via_event_function(mocker, event_queue, event_queue_loop):
     pytest.param(warn, "Warning", logging.WARNING, id='warn'),
     pytest.param(exception, "Error", logging.ERROR, id='exception'),
 ])
-async def test_via_shortcut(mocker, event_fn, event_type, min_levelno,
+async def test_via_shortcut(settings, mocker, event_fn, event_type, min_levelno,
                             event_queue, event_queue_loop):
     post_event = mocker.patch('kopf.clients.events.post_event')
 
-    mocker.patch.object(EventsConfig, 'events_loglevel', min_levelno)
+    settings.posting.level = min_levelno
     event_fn(OBJ1, reason='reason1', message='message1')  # posted
-    mocker.patch.object(EventsConfig, 'events_loglevel', min_levelno + 1)
+    settings.posting.level = min_levelno + 1
     event_fn(OBJ1, reason='reason2', message='message2')  # not posted
 
     assert not post_event.called

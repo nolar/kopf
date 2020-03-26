@@ -14,7 +14,7 @@ async def liveness_registry():
 
 
 @pytest.fixture()
-async def liveness_url(liveness_registry, aiohttp_unused_port):
+async def liveness_url(settings, liveness_registry, aiohttp_unused_port):
 
     # The server startup is not instant, so we need a readiness flag.
     ready_flag = asyncio.Event()
@@ -24,6 +24,7 @@ async def liveness_url(liveness_registry, aiohttp_unused_port):
         health_reporter(
             endpoint=f'http://:{port}/xyz',
             registry=liveness_registry,
+            settings=settings,
             ready_flag=ready_flag,
         )
     )
