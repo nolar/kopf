@@ -5,7 +5,7 @@ from typing import Any, Optional, Callable, List
 
 import click
 
-from kopf import config
+from kopf.engines import logging
 from kopf.engines import peering
 from kopf.reactor import registries
 from kopf.reactor import running
@@ -32,7 +32,7 @@ def logging_options(fn: Callable[..., Any]) -> Callable[..., Any]:
     @click.option('-q', '--quiet', is_flag=True)
     @functools.wraps(fn)  # to preserve other opts/args
     def wrapper(verbose: bool, quiet: bool, debug: bool, *args: Any, **kwargs: Any) -> Any:
-        config.configure(debug=debug, verbose=verbose, quiet=quiet)
+        logging.configure(debug=debug, verbose=verbose, quiet=quiet)
         return fn(*args, **kwargs)
 
     return wrapper
