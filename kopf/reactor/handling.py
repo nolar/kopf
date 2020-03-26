@@ -7,17 +7,13 @@ where the raw watch-events are interpreted and wrapped into extended *causes*.
 The handler execution can also be used in other places, such as in-memory
 activities, when there is no underlying Kubernetes object to patch'n'watch.
 """
-import asyncio
 import collections.abc
 import logging
 from contextvars import ContextVar
 from typing import Optional, Union, Iterable, Collection, Mapping, MutableMapping, Any
 
 from kopf.engines import logging as logging_engine
-from kopf.engines import sleeping
 from kopf.reactor import causation
-from kopf.reactor import errors
-from kopf.reactor import handlers as handlers_
 from kopf.reactor import invocation
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
@@ -25,6 +21,7 @@ from kopf.reactor import states
 from kopf.structs import callbacks
 from kopf.structs import dicts
 from kopf.structs import diffs
+from kopf.structs import handlers as handlers_
 
 WAITING_KEEPALIVE_INTERVAL = 10 * 60
 """ How often to wake up from the long sleep, to show liveness in the logs. """
@@ -173,48 +170,12 @@ async def execute(
         raise HandlerChildrenRetry(delay=state.delay)
 
 
-async def run_handlers_until_done(
-        cause: causation.BaseCause,
-        handlers: Collection[handlers_.BaseHandler],
-        lifecycle: lifecycles.LifeCycleFn,
-        default_errors: errors.ErrorsMode = errors.ErrorsMode.TEMPORARY,
-) -> Mapping[handlers_.HandlerId, states.HandlerOutcome]:
-    """
-    Run the full cycle until all the handlers are done.
-
-    This function simulates the Kubernetes-based event-driven reaction cycle,
-    but completely in memory.
-
-    It can be used for handler execution when there is no underlying object
-    or patching-watching is not desired.
-    """
-
-    # For the activity handlers, we have neither bodies, nor patches, just the state.
-    state = states.State.from_scratch(handlers=handlers)
-    latest_outcomes: MutableMapping[handlers_.HandlerId, states.HandlerOutcome] = {}
-    while not state.done:
-        outcomes = await execute_handlers_once(
-            lifecycle=lifecycle,
-            handlers=handlers,
-            cause=cause,
-            state=state,
-            default_errors=default_errors,
-        )
-        latest_outcomes.update(outcomes)
-        state = state.with_outcomes(outcomes)
-        delay = state.delay
-        if delay:
-            limited_delay = min(delay, WAITING_KEEPALIVE_INTERVAL)
-            await sleeping.sleep_or_wait(limited_delay, asyncio.Event())
-    return latest_outcomes
-
-
 async def execute_handlers_once(
         lifecycle: lifecycles.LifeCycleFn,
         handlers: Collection[handlers_.BaseHandler],
         cause: causation.BaseCause,
         state: states.State,
-        default_errors: errors.ErrorsMode = errors.ErrorsMode.TEMPORARY,
+        default_errors: handlers_.ErrorsMode = handlers_.ErrorsMode.TEMPORARY,
 ) -> Mapping[handlers_.HandlerId, states.HandlerOutcome]:
     """
     Call the next handler(s) from the chain of the handlers.
@@ -250,7 +211,7 @@ async def execute_handler_once(
         cause: causation.BaseCause,
         state: states.HandlerState,
         lifecycle: lifecycles.LifeCycleFn,
-        default_errors: errors.ErrorsMode = errors.ErrorsMode.TEMPORARY,
+        default_errors: handlers_.ErrorsMode = handlers_.ErrorsMode.TEMPORARY,
 ) -> states.HandlerOutcome:
     """
     Execute one and only one handler.
@@ -315,13 +276,13 @@ async def execute_handler_once(
 
     # Regular errors behave as either temporary or permanent depending on the error strictness.
     except Exception as e:
-        if errors_mode == errors.ErrorsMode.IGNORED:
+        if errors_mode == handlers_.ErrorsMode.IGNORED:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will ignore.")
             return states.HandlerOutcome(final=True)
-        elif errors_mode == errors.ErrorsMode.TEMPORARY:
+        elif errors_mode == handlers_.ErrorsMode.TEMPORARY:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")
             return states.HandlerOutcome(final=False, exception=e, delay=backoff)
-        elif errors_mode == errors.ErrorsMode.PERMANENT:
+        elif errors_mode == handlers_.ErrorsMode.PERMANENT:
             logger.exception(f"Handler {handler.id!r} failed with an exception. Will stop.")
             return states.HandlerOutcome(final=True, exception=e)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?

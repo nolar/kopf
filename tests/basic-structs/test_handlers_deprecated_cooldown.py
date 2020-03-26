@@ -1,7 +1,7 @@
 # Original test-file: tests/basic-structs/test_handlers.py
 import pytest
 
-from kopf.reactor.handlers import ActivityHandler, ResourceChangingHandler
+from kopf.structs.handlers import ActivityHandler, ResourceChangingHandler
 
 
 def test_activity_handler_with_deprecated_cooldown_instead_of_backoff(mocker):

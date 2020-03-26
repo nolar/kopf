@@ -7,11 +7,10 @@ from typing import Optional, Tuple, MutableMapping
 import aiohttp.web
 
 from kopf.reactor import activities
-from kopf.reactor import causation
-from kopf.reactor import handlers
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
 from kopf.structs import callbacks
+from kopf.structs import handlers
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +54,7 @@ async def health_reporter(
                     activity_results = await activities.run_activity(
                         lifecycle=lifecycles.all_at_once,
                         registry=registry,
-                        activity=causation.Activity.PROBE,
+                        activity=handlers.Activity.PROBE,
                     )
                     probing_container.clear()
                     probing_container.update(activity_results)

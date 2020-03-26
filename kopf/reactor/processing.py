@@ -22,7 +22,6 @@ from kopf.engines import logging as logging_engine
 from kopf.engines import posting
 from kopf.engines import sleeping
 from kopf.reactor import causation
-from kopf.reactor import errors
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
@@ -30,6 +29,7 @@ from kopf.reactor import states
 from kopf.structs import bodies
 from kopf.structs import containers
 from kopf.structs import finalizers
+from kopf.structs import handlers as handlers_
 from kopf.structs import lastseen
 from kopf.structs import patches
 from kopf.structs import resources
@@ -168,7 +168,7 @@ async def process_resource_watching_cause(
         handlers=handlers,
         cause=cause,
         state=states.State.from_scratch(handlers=handlers),
-        default_errors=errors.ErrorsMode.IGNORED,
+        default_errors=handlers_.ErrorsMode.IGNORED,
     )
 
     # Store the results, but not the handlers' progress.
@@ -192,22 +192,22 @@ async def process_resource_changing_cause(
     skip = None
 
     resource_changing_handlers = registry.resource_changing_handlers[cause.resource]
-    requires_finalizer = resource_changing_handlers.requires_finalizer(cause=cause)
-    has_finalizer = finalizers.has_finalizers(body=cause.body)
+    deletion_must_be_blocked = resource_changing_handlers.requires_finalizer(cause=cause)
+    deletion_is_blocked = finalizers.is_deletion_blocked(body=cause.body)
 
-    if requires_finalizer and not has_finalizer:
+    if deletion_must_be_blocked and not deletion_is_blocked:
         logger.debug("Adding the finalizer, thus preventing the actual deletion.")
-        finalizers.append_finalizers(body=body, patch=patch)
+        finalizers.block_deletion(body=body, patch=patch)
         return None
 
-    if not requires_finalizer and has_finalizer:
+    if not deletion_must_be_blocked and deletion_is_blocked:
         logger.debug("Removing the finalizer, as there are no handlers requiring it.")
-        finalizers.remove_finalizers(body=body, patch=patch)
+        finalizers.allow_deletion(body=body, patch=patch)
         return None
 
     # Regular causes invoke the handlers.
-    if cause.reason in causation.HANDLER_REASONS:
-        title = causation.TITLES.get(cause.reason, repr(cause.reason))
+    if cause.reason in handlers_.HANDLER_REASONS:
+        title = handlers_.TITLES.get(cause.reason, repr(cause.reason))
         logger.debug(f"{title.capitalize()} event: %r", body)
         if cause.diff and cause.old is not None and cause.new is not None:
             logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
@@ -238,22 +238,22 @@ async def process_resource_changing_cause(
     if done or skip:
         extra_fields = registry.resource_changing_handlers[cause.resource].get_extra_fields()
         lastseen.refresh_essence(body=body, patch=patch, extra_fields=extra_fields)
-        if cause.reason == causation.Reason.DELETE:
+        if cause.reason == handlers_.Reason.DELETE:
             logger.debug("Removing the finalizer, thus allowing the actual deletion.")
-            finalizers.remove_finalizers(body=body, patch=patch)
+            finalizers.allow_deletion(body=body, patch=patch)
 
         # Once all handlers have succeeded at least once for any reason, or if there were none,
         # prevent further resume-handlers (which otherwise happens on each watch-stream re-listing).
         memory.fully_handled_once = True
 
     # Informational causes just print the log lines.
-    if cause.reason == causation.Reason.GONE:
+    if cause.reason == handlers_.Reason.GONE:
         logger.debug("Deleted, really deleted, and we are notified.")
 
-    if cause.reason == causation.Reason.FREE:
+    if cause.reason == handlers_.Reason.FREE:
         logger.debug("Deletion event, but we are done with it, and we do not care.")
 
-    if cause.reason == causation.Reason.NOOP:
+    if cause.reason == handlers_.Reason.NOOP:
         logger.debug("Something has changed, but we are not interested (the essence is the same).")
 
     # The delay is then consumed by the main handling routine (in different ways).

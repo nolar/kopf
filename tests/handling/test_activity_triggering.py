@@ -4,12 +4,11 @@ import freezegun
 import pytest
 
 from kopf.reactor.activities import ActivityError, run_activity
-from kopf.reactor.causation import Activity
-from kopf.reactor.handlers import HandlerId, ActivityHandler
 from kopf.reactor.handling import PermanentError, TemporaryError
 from kopf.reactor.lifecycles import all_at_once
 from kopf.reactor.registries import OperatorRegistry
 from kopf.reactor.states import HandlerOutcome
+from kopf.structs.handlers import HandlerId, ActivityHandler, Activity
 
 
 def test_activity_error_exception():

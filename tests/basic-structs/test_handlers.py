@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.reactor.handlers import ActivityHandler, ResourceChangingHandler
+from kopf.structs.handlers import ActivityHandler, ResourceChangingHandler
 
 
 @pytest.mark.parametrize('cls', [ActivityHandler, ResourceChangingHandler])

@@ -3,11 +3,12 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.causation import Reason, ResourceChangingCause, ResourceWatchingCause
+from kopf.reactor.causation import ResourceChangingCause, ResourceWatchingCause
 from kopf.reactor.handling import cause_var
 from kopf.reactor.invocation import context
 from kopf.structs.bodies import RawBody, RawMeta, RawEvent, Body
 from kopf.structs.containers import ObjectDict
+from kopf.structs.handlers import Reason
 from kopf.structs.patches import Patch
 
 OWNER_API_VERSION = 'owner-api-version'
