@@ -41,6 +41,10 @@ matrix:
   allow_failures:
     - python: "3.9-dev"
 
+before_install:
+  - sudo apt-get update -y
+  - sudo apt-get install -y conntrack  # see #334
+
 before_script:
   - tools/minikube-for-travis.sh
   - tools/kubernetes-client.sh
