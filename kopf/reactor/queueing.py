@@ -32,7 +32,6 @@ from typing import Tuple, Union, MutableMapping, NewType, NamedTuple, TYPE_CHECK
 import aiojobs
 from typing_extensions import Protocol
 
-from kopf import config
 from kopf.clients import watching
 from kopf.structs import bodies
 from kopf.structs import configuration
@@ -97,7 +96,7 @@ async def watcher(
 
     # All per-object workers are handled as fire-and-forget jobs via the scheduler,
     # and communicated via the per-object event queues.
-    scheduler = await aiojobs.create_scheduler(limit=config.WorkersConfig.queue_workers_limit)
+    scheduler = await aiojobs.create_scheduler(limit=settings.batching.worker_limit)
     streams: Streams = {}
     try:
         # Either use the existing object's queue, or create a new one together with the per-object job.
@@ -163,7 +162,7 @@ async def worker(
             try:
                 raw_event = await asyncio.wait_for(
                     watchevents.get(),
-                    timeout=config.WorkersConfig.worker_idle_timeout)
+                    timeout=settings.batching.idle_timeout)
             except asyncio.TimeoutError:
                 break
             else:
@@ -172,7 +171,7 @@ async def worker(
                         prev_event = raw_event
                         next_event = await asyncio.wait_for(
                             watchevents.get(),
-                            timeout=config.WorkersConfig.worker_batch_window)
+                            timeout=settings.batching.batch_window)
                         shouldstop = shouldstop or isinstance(next_event, EOS)
                         raw_event = prev_event if isinstance(next_event, EOS) else next_event
                 except asyncio.TimeoutError:
@@ -216,8 +215,8 @@ async def _wait_for_depletion(
     started = time.perf_counter()
     while streams and \
             scheduler.active_count and \
-            time.perf_counter() - started < config.WorkersConfig.worker_exit_timeout:
-        await asyncio.sleep(config.WorkersConfig.worker_exit_timeout / 100.)
+            time.perf_counter() - started < settings.batching.exit_timeout:
+        await asyncio.sleep(settings.batching.exit_timeout / 100.)
 
     # The last check if the termination is going to be graceful or not.
     if streams:

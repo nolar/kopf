@@ -74,7 +74,43 @@ class WatchingSettings:
 
 
 @dataclasses.dataclass
+class BatchingSettings:
+    """
+    Settings for how raw events are batched and processed.
+    """
+
+    worker_limit: Optional[int] = dataclasses.field(
+        default_factory=lambda: config.WorkersConfig.queue_workers_limit)
+    """
+    How many workers can be running simultaneously on per-object event queue.
+    If ``None``, there is no limit to the number of workers (as many as needed).
+    """
+
+    idle_timeout: float = dataclasses.field(
+        default_factory=lambda: config.WorkersConfig.worker_idle_timeout)
+    """
+    How soon an idle worker is exited and garbage-collected if no events arrive.
+    """
+
+    batch_window: float = dataclasses.field(
+        default_factory=lambda: config.WorkersConfig.worker_batch_window)
+    """
+    How fast/slow does a worker deplete the queue when an event is received.
+    All events arriving within this window will be ignored except the last one.
+    """
+
+    exit_timeout: float = dataclasses.field(
+        default_factory=lambda: config.WorkersConfig.worker_exit_timeout)
+    """
+    How soon a worker is cancelled when the parent watcher is going to exit.
+    This is the time given to the worker to deplete and process the queue.
+    """
+
+
+
+@dataclasses.dataclass
 class OperatorSettings:
     logging: LoggingSettings = dataclasses.field(default_factory=LoggingSettings)
     posting: PostingSettings = dataclasses.field(default_factory=PostingSettings)
     watching: WatchingSettings = dataclasses.field(default_factory=WatchingSettings)
+    batching: BatchingSettings = dataclasses.field(default_factory=BatchingSettings)
