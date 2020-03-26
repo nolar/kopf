@@ -104,6 +104,27 @@ async def test_skipping_below_config(settings, caplog, logstream, logfn,
     'error',
     'critical',
 ])
+async def test_skipping_when_disabled(settings, caplog, logstream, logfn,
+                                      event_queue, event_queue_loop):
+
+    logger = LocalObjectLogger(body=OBJ1, settings=settings)
+    logger_fn = getattr(logger, logfn)
+
+    settings.posting.enabled = False
+    settings.posting.level = 0
+    logger_fn("hello %s", "world")
+
+    assert event_queue.qsize() == 0
+    assert caplog.messages == ["hello world"]
+
+
+@pytest.mark.parametrize('logfn', [
+    'debug',
+    'info',
+    'warning',
+    'error',
+    'critical',
+])
 async def test_skipping_when_local_with_all_levels(settings, caplog, logstream, logfn,
                                                    event_queue, event_queue_loop):
 

@@ -45,9 +45,10 @@ class K8sPoster(logging.Handler):
         settings: Optional[configuration.OperatorSettings]
         settings = getattr(record, 'settings', None)
         level_ok = settings is not None and record.levelno >= settings.posting.level
+        enabled = settings is not None and settings.posting.enabled
         has_ref = hasattr(record, 'k8s_ref')
         skipped = hasattr(record, 'k8s_skip') and getattr(record, 'k8s_skip')
-        return level_ok and has_ref and not skipped and super().filter(record)
+        return enabled and level_ok and has_ref and not skipped and super().filter(record)
 
     def emit(self, record: logging.LogRecord) -> None:
         # Same try-except as in e.g. `logging.StreamHandler`.

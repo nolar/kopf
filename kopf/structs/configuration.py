@@ -40,6 +40,15 @@ class LoggingSettings:
 @dataclasses.dataclass
 class PostingSettings:
 
+    enabled: bool = True
+    """
+    Should the log messages be sent as Kubernetes Events for an object.
+    The events can be seen in ``kubectl describe`` output for the object.
+
+    This also affects ``kopf.event()`` and similar functions
+    (``kopf.info()``, ``kopf.warn()``, ``kopf.exception()``).
+    """
+
     level: int = dataclasses.field(
         default_factory=lambda: config.EventsConfig.events_loglevel)
     """

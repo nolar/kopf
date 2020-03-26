@@ -91,35 +91,41 @@ def event(
         reason: str,
         message: str = '',
 ) -> None:
-    for obj in cast(Iterator[bodies.Body], dicts.walk(objs)):
-        ref = bodies.build_object_reference(obj)
-        enqueue(ref=ref, type=type, reason=reason, message=message)
+    settings: configuration.OperatorSettings = settings_var.get()
+    if settings.posting.enabled:
+        for obj in cast(Iterator[bodies.Body], dicts.walk(objs)):
+            ref = bodies.build_object_reference(obj)
+            enqueue(ref=ref, type=type, reason=reason, message=message)
 
 
 def info(
-        obj: bodies.Body,
+        objs: Union[bodies.Body, Iterable[bodies.Body]],
         *,
         reason: str,
         message: str = '',
 ) -> None:
     settings: configuration.OperatorSettings = settings_var.get()
-    if settings.posting.level <= logging.INFO:
-        event(obj, type='Normal', reason=reason, message=message)
+    if settings.posting.enabled and settings.posting.level <= logging.INFO:
+        for obj in cast(Iterator[bodies.Body], dicts.walk(objs)):
+            ref = bodies.build_object_reference(obj)
+            enqueue(ref=ref, type='Normal', reason=reason, message=message)
 
 
 def warn(
-        obj: bodies.Body,
+        objs: Union[bodies.Body, Iterable[bodies.Body]],
         *,
         reason: str,
         message: str = '',
 ) -> None:
     settings: configuration.OperatorSettings = settings_var.get()
     if settings.posting.level <= logging.WARNING:
-        event(obj, type='Warning', reason=reason, message=message)
+        for obj in cast(Iterator[bodies.Body], dicts.walk(objs)):
+            ref = bodies.build_object_reference(obj)
+            enqueue(ref=ref, type='Warning', reason=reason, message=message)
 
 
 def exception(
-        obj: bodies.Body,
+        objs: Union[bodies.Body, Iterable[bodies.Body]],
         *,
         reason: str = '',
         message: str = '',
@@ -130,8 +136,10 @@ def exception(
     reason = reason if reason else type(exc).__name__
     message = f'{message} {exc}' if message and exc else f'{exc}' if exc else f'{message}'
     settings: configuration.OperatorSettings = settings_var.get()
-    if settings.posting.level <= logging.ERROR:
-        event(obj, type='Error', reason=reason, message=message)
+    if settings.posting.enabled and settings.posting.level <= logging.ERROR:
+        for obj in cast(Iterator[bodies.Body], dicts.walk(objs)):
+            ref = bodies.build_object_reference(obj)
+            enqueue(ref=ref, type='Error', reason=reason, message=message)
 
 
 async def poster(

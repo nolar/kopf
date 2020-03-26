@@ -115,7 +115,8 @@ async def test_threadsafe_indeed_works(timer, awakener, threader, event_queue, e
     assert 0.2 <= timer.seconds <= 0.4
 
 
-async def test_queueing_is_threadsafe(timer, awakener, threader, event_queue, event_queue_loop):
+async def test_queueing_is_threadsafe(timer, awakener, threader, event_queue, event_queue_loop,
+                                      settings_via_contextvar):
 
     def thread_fn():
         event(OBJ1, type='type1', reason='reason1', message='message1')
