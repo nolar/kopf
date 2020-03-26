@@ -58,6 +58,7 @@ def configure(
     loop.set_debug(bool(debug))
 
 
+# DEPRECATED: Used for initial defaults for per-operator settings (see kopf.structs.configuration).
 class EventsConfig:
     """
     Used to configure events sending behaviour.
@@ -67,6 +68,7 @@ class EventsConfig:
     """ What events should be logged. """
 
 
+# DEPRECATED: Used for initial defaults for per-operator settings (see kopf.structs.configuration).
 class WorkersConfig:
     """
     Used as single point of configuration for kopf.reactor.
@@ -109,6 +111,7 @@ class WorkersConfig:
             settings.execution.max_workers = new_limit
 
 
+# DEPRECATED: Used for initial defaults for per-operator settings (see kopf.structs.configuration).
 class WatchersConfig:
     """
     Used to configure the K8s API watchers and streams.

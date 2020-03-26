@@ -11,12 +11,12 @@ from kopf import (
 )
 from kopf.config import (
     configure,
-    LOGLEVEL_INFO,
-    LOGLEVEL_WARNING,
-    LOGLEVEL_ERROR,
-    LOGLEVEL_CRITICAL,
-    EventsConfig,
-    WorkersConfig,
+    LOGLEVEL_INFO,  # deprecated
+    LOGLEVEL_WARNING,  # deprecated
+    LOGLEVEL_ERROR,  # deprecated
+    LOGLEVEL_CRITICAL,  # deprecated
+    EventsConfig,  # deprecated
+    WorkersConfig,  # deprecated
 )
 from kopf.engines.posting import (
     event,
