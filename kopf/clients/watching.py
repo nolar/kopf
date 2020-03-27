@@ -74,7 +74,7 @@ async def infinite_watch(
         )
         async for raw_event in stream:
             yield raw_event
-        await asyncio.sleep(settings.watching.retry_delay)
+        await asyncio.sleep(settings.watching.reconnect_backoff)
 
 
 async def streaming_watch(
@@ -139,7 +139,7 @@ async def continuous_watch(
         stream = watch_objs(
             settings=settings,
             resource=resource, namespace=namespace,
-            timeout=settings.watching.stream_timeout,
+            timeout=settings.watching.server_timeout,
             since=resource_version,
             freeze_waiter=freeze_waiter,
         )
@@ -210,7 +210,7 @@ async def watch_objs(
     # Talk to the API and initiate a streaming response.
     response = await context.session.get(
         url=resource.get_url(server=context.server, namespace=namespace, params=params),
-        timeout=aiohttp.ClientTimeout(total=settings.watching.session_timeout),
+        timeout=aiohttp.ClientTimeout(total=settings.watching.client_timeout),
     )
     response.raise_for_status()
 

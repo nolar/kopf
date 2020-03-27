@@ -63,20 +63,20 @@ class PostingSettings:
 @dataclasses.dataclass
 class WatchingSettings:
 
-    session_timeout: Optional[float] = dataclasses.field(
-        default_factory=lambda: config.WatchersConfig.session_timeout)
-    """
-    An HTTP/HTTPS session timeout to use in watch requests.
-    """
-
-    stream_timeout: Optional[float] = dataclasses.field(
+    server_timeout: Optional[float] = dataclasses.field(
         default_factory=lambda: config.WatchersConfig.default_stream_timeout)
     """
     The maximum duration of one streaming request. Patched in some tests.
     If ``None``, then obey the server-side timeouts (they seem to be random).
     """
 
-    retry_delay: float = dataclasses.field(
+    client_timeout: Optional[float] = dataclasses.field(
+        default_factory=lambda: config.WatchersConfig.session_timeout)
+    """
+    An HTTP/HTTPS session timeout to use in watch requests.
+    """
+
+    reconnect_backoff: float = dataclasses.field(
         default_factory=lambda: config.WatchersConfig.watcher_retry_delay)
     """
     How long should a pause be between watch requests (to prevent API flooding).

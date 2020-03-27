@@ -177,7 +177,7 @@ async def test_garbage_collection_of_streams(settings, stream, events, unique, w
     settings.batching.idle_timeout = 0.5
     settings.batching.batch_window = 0.1
     settings.batching.exit_timeout = 0.5
-    settings.watching.retry_delay = 1.0  # to prevent src depletion
+    settings.watching.reconnect_backoff = 1.0  # to prevent src depletion
 
     # Inject the events of unique objects - to produce few streams/workers.
     stream.feed(events)

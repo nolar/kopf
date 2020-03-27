@@ -24,8 +24,8 @@ The settings can be modified in the startup handlers (see :doc:`startup`):
     @kopf.on.startup()
     def configure(settings: kopf.OperatorSettings, **_):
         settings.posting.level = logging.WARNING
-        settings.watching.session_timeout = 1 * 60
-        settings.watching.stream_timeout = 10 * 60
+        settings.watching.client_timeout = 1 * 60
+        settings.watching.server_timeout = 10 * 60
 
 All the settings have reasonable defaults, so the configuration should be used
 only for fine-tuning when and if necessary.
@@ -108,24 +108,27 @@ API timeouts
 
 Few timeouts can be controlled when communicating with Kubernetes API:
 
-``settings.watching.session_timeout`` (seconds) is how long the session
-with a watching request will exist before terminating from the **client** side.
-The default is forever (``None``).
+``settings.watching.server_timeout`` (seconds) is how long the session
+with a watching request will exist before closing it from the **server** side.
+This value is passed to the server side in a query string, and the server
+decides on how to follow it. The watch-stream is then gracefully closed.
+The default is to use the server setup (``None``).
 
-``settings.watching.stream_timeout`` (seconds) is how long the session
-with a watching request will exist before terminating from the **server** side.
-The default is to let the server decide (``None``).
+``settings.watching.client_timeout`` (seconds) is how long the session
+with a watching request will exist before closing it from the **client** side.
+This includes the connection establishing and event streaming.
+The default is forever (``None``).
 
 It makes no sense to set the client-side timeout shorter than the server side
 timeout, but it is given to the developers' responsibility to decide.
 
-The server-side timeouts are unpredictable, they can be in 10 seconds or
-in 10 minutes. Yet, it feels wrong to assume any "good" values in a framework
+The server-side timeouts are unpredictable, they can be 10 seconds or
+10 minutes. Yet, it feels wrong to assume any "good" values in a framework
 (especially since it works without timeouts defined, just produces extra logs).
 
-``settings.watching.retry_delay`` (seconds) is for how long to sleep between
+``settings.watching.reconnect_backoff`` (seconds) is a backoff interval between
 watching requests -- in order to prevent API flooding in case of errors
-or disconnects. The default is 0.1 seconds (nearly instant, but no flooding).
+or disconnects. The default is 0.1 seconds (nearly instant, but not flooding).
 
 .. code-block:: python
 
@@ -134,4 +137,4 @@ or disconnects. The default is 0.1 seconds (nearly instant, but no flooding).
 
     @kopf.on.startup()
     def configure(settings: kopf.OperatorSettings, **_):
-        settings.watching.stream_timeout = 10 * 60
+        settings.watching.server_timeout = 10 * 60
