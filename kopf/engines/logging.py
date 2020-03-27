@@ -8,13 +8,14 @@ This eliminates the need to log & post the same messages, which complicates
 the operators' code, and can lead to information loss or mismatch
 (e.g. when logging call is added, but posting is forgotten).
 """
+import asyncio
 import copy
 import logging
-from typing import Tuple, MutableMapping, Any
+from typing import Tuple, MutableMapping, Any, Optional
 
-from kopf import config
 from kopf.engines import posting
 from kopf.structs import bodies
+from kopf.structs import configuration
 
 
 class ObjectPrefixingFormatter(logging.Formatter):
@@ -42,10 +43,13 @@ class K8sPoster(logging.Handler):
     def filter(self, record: logging.LogRecord) -> bool:
         # Only those which have a k8s object referred (see: `ObjectLogger`).
         # Otherwise, we have nothing to post, and nothing to do.
-        level_ok = record.levelno >= config.EventsConfig.events_loglevel
+        settings: Optional[configuration.OperatorSettings]
+        settings = getattr(record, 'settings', None)
+        level_ok = settings is not None and record.levelno >= settings.posting.level
+        enabled = settings is not None and settings.posting.enabled
         has_ref = hasattr(record, 'k8s_ref')
         skipped = hasattr(record, 'k8s_skip') and getattr(record, 'k8s_skip')
-        return level_ok and has_ref and not skipped and super().filter(record)
+        return enabled and level_ok and has_ref and not skipped and super().filter(record)
 
     def emit(self, record: logging.LogRecord) -> None:
         # Same try-except as in e.g. `logging.StreamHandler`.
@@ -85,8 +89,9 @@ class ObjectLogger(logging.LoggerAdapter):
     (e.g. in case of background posting via the queue; see `K8sPoster`).
     """
 
-    def __init__(self, *, body: bodies.Body):
+    def __init__(self, *, body: bodies.Body, settings: configuration.OperatorSettings) -> None:
         super().__init__(logger, dict(
+            settings=settings,
             k8s_skip=False,
             k8s_ref=dict(
                 apiVersion=body.get('apiVersion'),
@@ -125,3 +130,49 @@ class LocalObjectLogger(ObjectLogger):
 
 logger = logging.getLogger('kopf.objects')
 logger.addHandler(K8sPoster())
+
+format = '[%(asctime)s] %(name)-20.20s [%(levelname)-8.8s] %(message)s'
+
+
+def configure(
+        debug: Optional[bool] = None,
+        verbose: Optional[bool] = None,
+        quiet: Optional[bool] = None,
+) -> None:
+    log_level = 'DEBUG' if debug or verbose else 'WARNING' if quiet else 'INFO'
+
+    logger = logging.getLogger()
+    handler = logging.StreamHandler()
+    formatter = ObjectPrefixingFormatter(format)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(log_level)
+
+    # Configure the Kubernetes client defaults according to our settings.
+    try:
+        import kubernetes
+    except ImportError:
+        pass
+    else:
+        config = kubernetes.client.configuration.Configuration()
+        config.logger_format = format
+        config.logger_file = None  # once again after the constructor to re-apply the formatter
+        config.debug = debug
+        kubernetes.client.configuration.Configuration.set_default(config)
+
+    # Kubernetes client is as buggy as hell: it adds its own stream handlers even in non-debug mode,
+    # does not respect the formatting, and dumps too much of the low-level info.
+    if not debug:
+        logger = logging.getLogger("urllib3")
+        del logger.handlers[1:]  # everything except the default NullHandler
+
+    # Prevent the low-level logging unless in the debug verbosity mode. Keep only the operator's messages.
+    # For no-propagation loggers, add a dummy null handler to prevent printing the messages.
+    for name in ['urllib3', 'asyncio', 'kubernetes']:
+        logger = logging.getLogger(name)
+        logger.propagate = bool(debug)
+        if not debug:
+            logger.handlers[:] = [logging.NullHandler()]
+
+    loop = asyncio.get_event_loop()
+    loop.set_debug(bool(debug))

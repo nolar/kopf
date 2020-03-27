@@ -15,13 +15,14 @@ The k8s-events are queued in two ways:
 This also includes all logging messages posted by the framework itself.
 """
 import asyncio
+import logging
 import sys
 from contextvars import ContextVar
 from typing import NamedTuple, NoReturn, Optional, Union, Iterator, Iterable, cast, TYPE_CHECKING
 
-from kopf import config
 from kopf.clients import events
 from kopf.structs import bodies
+from kopf.structs import configuration
 from kopf.structs import dicts
 
 if TYPE_CHECKING:
@@ -34,6 +35,11 @@ else:
 # thread-safe coro calls both from inside that event-loop and from outside.
 event_queue_loop_var: ContextVar[asyncio.AbstractEventLoop] = ContextVar('event_queue_loop_var')
 event_queue_var: ContextVar[K8sEventQueue] = ContextVar('event_queue_var')
+
+# Per-operator container for settings. We only need a log level from there.
+# This variable is dedicated to a posting engine, as the call chain is interrupted
+# by user-side handlers (no pass-through `settings` arg).
+settings_var: ContextVar[configuration.OperatorSettings] = ContextVar('settings_var')
 
 
 class K8sEvent(NamedTuple):
@@ -85,33 +91,41 @@ def event(
         reason: str,
         message: str = '',
 ) -> None:
-    for obj in cast(Iterator[bodies.Body], dicts.walk(objs)):
-        ref = bodies.build_object_reference(obj)
-        enqueue(ref=ref, type=type, reason=reason, message=message)
+    settings: configuration.OperatorSettings = settings_var.get()
+    if settings.posting.enabled:
+        for obj in cast(Iterator[bodies.Body], dicts.walk(objs)):
+            ref = bodies.build_object_reference(obj)
+            enqueue(ref=ref, type=type, reason=reason, message=message)
 
 
 def info(
-        obj: bodies.Body,
+        objs: Union[bodies.Body, Iterable[bodies.Body]],
         *,
         reason: str,
         message: str = '',
 ) -> None:
-    if config.EventsConfig.events_loglevel <= config.LOGLEVEL_INFO:
-        event(obj, type='Normal', reason=reason, message=message)
+    settings: configuration.OperatorSettings = settings_var.get()
+    if settings.posting.enabled and settings.posting.level <= logging.INFO:
+        for obj in cast(Iterator[bodies.Body], dicts.walk(objs)):
+            ref = bodies.build_object_reference(obj)
+            enqueue(ref=ref, type='Normal', reason=reason, message=message)
 
 
 def warn(
-        obj: bodies.Body,
+        objs: Union[bodies.Body, Iterable[bodies.Body]],
         *,
         reason: str,
         message: str = '',
 ) -> None:
-    if config.EventsConfig.events_loglevel <= config.LOGLEVEL_WARNING:
-        event(obj, type='Warning', reason=reason, message=message)
+    settings: configuration.OperatorSettings = settings_var.get()
+    if settings.posting.level <= logging.WARNING:
+        for obj in cast(Iterator[bodies.Body], dicts.walk(objs)):
+            ref = bodies.build_object_reference(obj)
+            enqueue(ref=ref, type='Warning', reason=reason, message=message)
 
 
 def exception(
-        obj: bodies.Body,
+        objs: Union[bodies.Body, Iterable[bodies.Body]],
         *,
         reason: str = '',
         message: str = '',
@@ -121,8 +135,11 @@ def exception(
         _, exc, _ = sys.exc_info()
     reason = reason if reason else type(exc).__name__
     message = f'{message} {exc}' if message and exc else f'{exc}' if exc else f'{message}'
-    if config.EventsConfig.events_loglevel <= config.LOGLEVEL_ERROR:
-        event(obj, type='Error', reason=reason, message=message)
+    settings: configuration.OperatorSettings = settings_var.get()
+    if settings.posting.enabled and settings.posting.level <= logging.ERROR:
+        for obj in cast(Iterator[bodies.Body], dicts.walk(objs)):
+            ref = bodies.build_object_reference(obj)
+            enqueue(ref=ref, type='Error', reason=reason, message=message)
 
 
 async def poster(

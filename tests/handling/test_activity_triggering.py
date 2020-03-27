@@ -21,7 +21,7 @@ def test_activity_error_exception():
 
 
 @pytest.mark.parametrize('activity', list(Activity))
-async def test_results_are_returned_on_success(activity):
+async def test_results_are_returned_on_success(settings, activity):
 
     def sample_fn1(**_):
         return 123
@@ -41,6 +41,7 @@ async def test_results_are_returned_on_success(activity):
 
     results = await run_activity(
         registry=registry,
+        settings=settings,
         activity=activity,
         lifecycle=all_at_once,
     )
@@ -51,7 +52,7 @@ async def test_results_are_returned_on_success(activity):
 
 
 @pytest.mark.parametrize('activity', list(Activity))
-async def test_errors_are_raised_aggregated(activity):
+async def test_errors_are_raised_aggregated(settings, activity):
 
     def sample_fn1(**_):
         raise PermanentError("boo!123")
@@ -72,6 +73,7 @@ async def test_errors_are_raised_aggregated(activity):
     with pytest.raises(ActivityError) as e:
         await run_activity(
             registry=registry,
+            settings=settings,
             activity=activity,
             lifecycle=all_at_once,
         )
@@ -90,7 +92,7 @@ async def test_errors_are_raised_aggregated(activity):
 
 
 @pytest.mark.parametrize('activity', list(Activity))
-async def test_errors_are_cascaded_from_one_of_the_originals(activity):
+async def test_errors_are_cascaded_from_one_of_the_originals(settings, activity):
 
     def sample_fn(**_):
         raise PermanentError("boo!")
@@ -104,6 +106,7 @@ async def test_errors_are_cascaded_from_one_of_the_originals(activity):
     with pytest.raises(ActivityError) as e:
         await run_activity(
             registry=registry,
+            settings=settings,
             activity=activity,
             lifecycle=all_at_once,
         )
@@ -114,7 +117,7 @@ async def test_errors_are_cascaded_from_one_of_the_originals(activity):
 
 
 @pytest.mark.parametrize('activity', list(Activity))
-async def test_retries_are_simulated(activity, mocker):
+async def test_retries_are_simulated(settings, activity, mocker):
     mock = mocker.MagicMock()
 
     def sample_fn(**_):
@@ -130,6 +133,7 @@ async def test_retries_are_simulated(activity, mocker):
     with pytest.raises(ActivityError) as e:
         await run_activity(
             registry=registry,
+            settings=settings,
             activity=activity,
             lifecycle=all_at_once,
         )
@@ -139,7 +143,7 @@ async def test_retries_are_simulated(activity, mocker):
 
 
 @pytest.mark.parametrize('activity', list(Activity))
-async def test_delays_are_simulated(activity, mocker):
+async def test_delays_are_simulated(settings, activity, mocker):
 
     def sample_fn(**_):
         raise TemporaryError('to be retried', delay=123)
@@ -161,6 +165,7 @@ async def test_delays_are_simulated(activity, mocker):
         with pytest.raises(ActivityError) as e:
             await run_activity(
                 registry=registry,
+                settings=settings,
                 activity=activity,
                 lifecycle=all_at_once,
             )

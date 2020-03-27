@@ -10,7 +10,7 @@ from kopf.structs.handlers import Reason, HANDLER_REASONS, ALL_REASONS
 
 
 @pytest.mark.parametrize('cause_type', ALL_REASONS)
-async def test_all_logs_are_prefixed(registry, resource, handlers,
+async def test_all_logs_are_prefixed(registry, settings, resource, handlers,
                                      logstream, cause_type, cause_mock):
     event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     event_body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
@@ -19,6 +19,7 @@ async def test_all_logs_are_prefixed(registry, resource, handlers,
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
+        settings=settings,
         resource=resource,
         memories=ResourceMemories(),
         raw_event={'type': event_type, 'object': event_body},
@@ -35,8 +36,8 @@ async def test_all_logs_are_prefixed(registry, resource, handlers,
     pytest.param((('op', ('field',), 'old', 'new'),), id='realistic-diff'),
 ])
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
-async def test_diffs_logged_if_present(registry, resource, handlers, cause_type, cause_mock,
-                                       caplog, assert_logs, diff):
+async def test_diffs_logged_if_present(registry, settings, resource, handlers,
+                                       cause_type, cause_mock, caplog, assert_logs, diff):
     caplog.set_level(logging.DEBUG)
 
     event_type = None if cause_type == Reason.RESUME else 'irrelevant'
@@ -48,6 +49,7 @@ async def test_diffs_logged_if_present(registry, resource, handlers, cause_type,
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
+        settings=settings,
         resource=resource,
         memories=ResourceMemories(),
         raw_event={'type': event_type, 'object': {}},
@@ -66,7 +68,7 @@ async def test_diffs_logged_if_present(registry, resource, handlers, cause_type,
     pytest.param([], id='empty-list-diff'),
     pytest.param((), id='empty-tuple-diff'),
 ])
-async def test_diffs_not_logged_if_absent(registry, resource, handlers, cause_type, cause_mock,
+async def test_diffs_not_logged_if_absent(registry, settings, resource, handlers, cause_type, cause_mock,
                                           caplog, assert_logs, diff):
     caplog.set_level(logging.DEBUG)
 
@@ -77,6 +79,7 @@ async def test_diffs_not_logged_if_absent(registry, resource, handlers, cause_ty
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
+        settings=settings,
         resource=resource,
         memories=ResourceMemories(),
         raw_event={'type': event_type, 'object': {}},

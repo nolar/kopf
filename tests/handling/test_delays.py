@@ -20,7 +20,7 @@ from kopf.structs.handlers import Reason, HANDLER_REASONS
     ['2020-01-01T00:00:00', '2020-01-01T00:04:56.789000', 4 * 60 + 56.789],
 ], ids=['fast'])
 async def test_delayed_handlers_progress(
-        registry, handlers, resource, cause_mock, cause_reason,
+        registry, settings, handlers, resource, cause_mock, cause_reason,
         caplog, assert_logs, k8s_mocked, now, delayed_iso, delay):
     caplog.set_level(logging.DEBUG)
 
@@ -36,6 +36,7 @@ async def test_delayed_handlers_progress(
         await process_resource_event(
             lifecycle=kopf.lifecycles.all_at_once,
             registry=registry,
+            settings=settings,
             resource=resource,
             memories=ResourceMemories(),
             raw_event={'type': event_type, 'object': {}},
@@ -67,7 +68,7 @@ async def test_delayed_handlers_progress(
     ['2020-01-01T00:00:00', '2099-12-31T23:59:59.000000', WAITING_KEEPALIVE_INTERVAL],
 ], ids=['fast', 'slow'])
 async def test_delayed_handlers_sleep(
-        registry, handlers, resource, cause_mock, cause_reason,
+        registry, settings, handlers, resource, cause_mock, cause_reason,
         caplog, assert_logs, k8s_mocked, now, delayed_iso, delay):
     caplog.set_level(logging.DEBUG)
 
@@ -91,6 +92,7 @@ async def test_delayed_handlers_sleep(
         await process_resource_event(
             lifecycle=kopf.lifecycles.all_at_once,
             registry=registry,
+            settings=settings,
             resource=resource,
             memories=ResourceMemories(),
             raw_event={'type': event_type, 'object': event_body},

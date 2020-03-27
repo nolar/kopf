@@ -38,6 +38,22 @@ in case of retries & errors -- i.e. of the first attempt.
 in case of retries & errors -- i.e. since the first attempt.
 
 
+.. kwarg:: settings
+
+Operator configuration
+======================
+
+``settings`` is passed to activity handlers (but not to resource handlers).
+
+It is an object with predefined nested structure of containers with values,
+which defines the operator's behaviour. See also: `kopf.OperatorSettings`.
+
+It can be modified if needed (usually in the startup handlers). Every operator
+(if there are more than one in the same process) has its own config.
+
+See also: :doc:`configuration`.
+
+
 Resource-related kwargs
 =======================
 

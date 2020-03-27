@@ -12,11 +12,14 @@ def test_cause_with_no_args(cls):
 def test_activity_cause(mocker):
     logger = mocker.Mock()
     activity = mocker.Mock()
+    settings = mocker.Mock()
     cause = ActivityCause(
         activity=activity,
+        settings=settings,
         logger=logger,
     )
     assert cause.activity is activity
+    assert cause.settings is settings
     assert cause.logger is logger
 
 

@@ -11,7 +11,7 @@ from kopf.structs.handlers import ALL_REASONS
 
 @pytest.mark.parametrize('cause_type', ALL_REASONS)
 async def test_handlers_called_always(
-        registry, handlers, extrahandlers, resource, cause_mock, cause_type,
+        registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,
         caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = cause_type
@@ -19,6 +19,7 @@ async def test_handlers_called_always(
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
+        settings=settings,
         resource=resource,
         memories=ResourceMemories(),
         raw_event={'type': 'ev-type', 'object': {'field': 'value'}},
@@ -44,7 +45,7 @@ async def test_handlers_called_always(
 
 @pytest.mark.parametrize('cause_type', ALL_REASONS)
 async def test_errors_are_ignored(
-        registry, handlers, extrahandlers, resource, cause_mock, cause_type,
+        registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,
         caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = cause_type
@@ -53,6 +54,7 @@ async def test_errors_are_ignored(
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
+        settings=settings,
         resource=resource,
         memories=ResourceMemories(),
         raw_event={'type': 'ev-type', 'object': {}},

@@ -28,13 +28,16 @@ def obj_absent():
                    check=False, timeout=10, capture_output=True, shell=True)
 
 
-def test_handler_filtering(mocker):
+def test_handler_filtering():
 
     # To prevent lengthy threads in the loop executor when the process exits.
-    mocker.patch('kopf.config.WatchersConfig.default_stream_timeout', 10)
+    settings = kopf.OperatorSettings()
+    settings.watching.stream_timeout = 10
 
     # Run an operator and simulate some activity with the operated resource.
-    with kopf.testing.KopfRunner(['run', '--verbose', '--standalone', example_py]) as runner:
+    with kopf.testing.KopfRunner(['run', '--verbose', '--standalone', example_py],
+                                 settings=settings) as runner:
+
         subprocess.run(f"kubectl create -f {obj_yaml}",
                        shell=True, check=True, timeout=10, capture_output=True)
         time.sleep(5)  # give it some time to react

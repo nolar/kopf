@@ -10,7 +10,7 @@ from kopf.structs.handlers import Reason, HANDLER_REASONS
 
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_1st_step_stores_progress_by_patching(
-        registry, handlers, extrahandlers,
+        registry, settings, handlers, extrahandlers,
         resource, cause_mock, cause_type, k8s_mocked):
     name1 = f'{cause_type}_fn'
     name2 = f'{cause_type}_fn2'
@@ -21,6 +21,7 @@ async def test_1st_step_stores_progress_by_patching(
     await process_resource_event(
         lifecycle=kopf.lifecycles.asap,
         registry=registry,
+        settings=settings,
         resource=resource,
         memories=ResourceMemories(),
         raw_event={'type': event_type, 'object': {}},
@@ -51,7 +52,7 @@ async def test_1st_step_stores_progress_by_patching(
 
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_2nd_step_finishes_the_handlers(caplog,
-        registry, handlers, extrahandlers,
+        registry, settings, handlers, extrahandlers,
         resource, cause_mock, cause_type, k8s_mocked):
     name1 = f'{cause_type}_fn'
     name2 = f'{cause_type}_fn2'
@@ -70,6 +71,7 @@ async def test_2nd_step_finishes_the_handlers(caplog,
     await process_resource_event(
         lifecycle=kopf.lifecycles.one_by_one,
         registry=registry,
+        settings=settings,
         resource=resource,
         memories=ResourceMemories(),
         raw_event={'type': event_type, 'object': event_body},

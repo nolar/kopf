@@ -27,6 +27,7 @@ from kopf.reactor import lifecycles
 from kopf.reactor import registries
 from kopf.reactor import states
 from kopf.structs import bodies
+from kopf.structs import configuration
 from kopf.structs import containers
 from kopf.structs import finalizers
 from kopf.structs import handlers as handlers_
@@ -38,6 +39,7 @@ from kopf.structs import resources
 async def process_resource_event(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
+        settings: configuration.OperatorSettings,
         memories: containers.ResourceMemories,
         resource: resources.Resource,
         raw_event: bodies.RawEvent,
@@ -64,7 +66,7 @@ async def process_resource_event(
     delay: Optional[float] = None
 
     # Each object has its own prefixed logger, to distinguish parallel handling.
-    logger = logging_engine.ObjectLogger(body=body)
+    logger = logging_engine.ObjectLogger(body=body, settings=settings)
     posting.event_queue_loop_var.set(asyncio.get_running_loop())
     posting.event_queue_var.set(event_queue)  # till the end of this object's task.
 
@@ -87,6 +89,7 @@ async def process_resource_event(
         await process_resource_watching_cause(
             lifecycle=lifecycles.all_at_once,
             registry=registry,
+            settings=settings,
             memory=memory,
             cause=resource_watching_cause,
         )
@@ -111,6 +114,7 @@ async def process_resource_event(
         delay = await process_resource_changing_cause(
             lifecycle=lifecycle,
             registry=registry,
+            settings=settings,
             memory=memory,
             cause=resource_changing_cause,
         )
@@ -149,6 +153,7 @@ async def process_resource_event(
 async def process_resource_watching_cause(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
+        settings: configuration.OperatorSettings,
         memory: containers.ResourceMemory,
         cause: causation.ResourceWatchingCause,
 ) -> None:
@@ -165,6 +170,7 @@ async def process_resource_watching_cause(
     handlers = registry.resource_watching_handlers[cause.resource].get_handlers(cause=cause)
     outcomes = await handling.execute_handlers_once(
         lifecycle=lifecycle,
+        settings=settings,
         handlers=handlers,
         cause=cause,
         state=states.State.from_scratch(handlers=handlers),
@@ -178,6 +184,7 @@ async def process_resource_watching_cause(
 async def process_resource_changing_cause(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
+        settings: configuration.OperatorSettings,
         memory: containers.ResourceMemory,
         cause: causation.ResourceChangingCause,
 ) -> Optional[float]:
@@ -217,6 +224,7 @@ async def process_resource_changing_cause(
         if handlers:
             outcomes = await handling.execute_handlers_once(
                 lifecycle=lifecycle,
+                settings=settings,
                 handlers=handlers,
                 cause=cause,
                 state=state,

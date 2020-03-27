@@ -11,9 +11,9 @@ import contextvars
 import functools
 from typing import Optional, Any, List, Iterable, Iterator, Tuple, Dict, cast, TYPE_CHECKING
 
-from kopf import config
 from kopf.reactor import causation
 from kopf.structs import callbacks
+from kopf.structs import configuration
 
 if TYPE_CHECKING:
     asyncio_Future = asyncio.Future[Any]
@@ -59,6 +59,10 @@ def build_kwargs(
         new_kwargs.update(
             activity=cause.activity,
         )
+    if isinstance(cause, causation.ActivityCause) and cause.activity == cause.activity.STARTUP:
+        new_kwargs.update(
+            settings=cause.settings,
+        )
     if isinstance(cause, causation.ResourceCause):
         new_kwargs.update(
             patch=cause.patch,
@@ -93,6 +97,7 @@ def build_kwargs(
 async def invoke(
         fn: callbacks.BaseFn,
         *args: Any,
+        settings: Optional[configuration.OperatorSettings] = None,
         cause: Optional[causation.BaseCause] = None,
         **kwargs: Any,
 ) -> Any:
@@ -131,7 +136,7 @@ async def invoke(
         # Cancellation is postponed until the thread exits, but it happens anyway (for consistency).
         # Note: the docs say the result is a future, but typesheds say it is a coroutine => cast()!
         loop = asyncio.get_event_loop()
-        executor = config.WorkersConfig.get_syn_executor()
+        executor = settings.execution.executor if settings is not None else None
         future = cast(asyncio_Future, loop.run_in_executor(executor, real_fn))
         cancellation: Optional[asyncio.CancelledError] = None
         while not future.done():

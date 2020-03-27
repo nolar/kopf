@@ -10,13 +10,15 @@ from kopf import (
     on,  # as a separate name on the public namespace
 )
 from kopf.config import (
+    LOGLEVEL_INFO,  # deprecated
+    LOGLEVEL_WARNING,  # deprecated
+    LOGLEVEL_ERROR,  # deprecated
+    LOGLEVEL_CRITICAL,  # deprecated
+    EventsConfig,  # deprecated
+    WorkersConfig,  # deprecated
+)
+from kopf.engines.logging import (
     configure,
-    LOGLEVEL_INFO,
-    LOGLEVEL_WARNING,
-    LOGLEVEL_ERROR,
-    LOGLEVEL_CRITICAL,
-    EventsConfig,
-    WorkersConfig,
 )
 from kopf.engines.posting import (
     event,
@@ -61,6 +63,9 @@ from kopf.reactor.running import (
 from kopf.structs.bodies import (
     build_object_reference,
     build_owner_reference,
+)
+from kopf.structs.configuration import (
+    OperatorSettings,
 )
 from kopf.structs.credentials import (
     LoginError,
@@ -121,4 +126,5 @@ __all__ = [
     'get_default_registry',
     'set_default_registry',
     'PRESENT', 'ABSENT',
+    'OperatorSettings',
 ]

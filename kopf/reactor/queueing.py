@@ -32,9 +32,9 @@ from typing import Tuple, Union, MutableMapping, NewType, NamedTuple, TYPE_CHECK
 import aiojobs
 from typing_extensions import Protocol
 
-from kopf import config
 from kopf.clients import watching
 from kopf.structs import bodies
+from kopf.structs import configuration
 from kopf.structs import primitives
 from kopf.structs import resources
 
@@ -76,6 +76,7 @@ Streams = MutableMapping[ObjectRef, Stream]
 # TODO: add the label_selector support for the dev-mode?
 async def watcher(
         namespace: Union[None, str],
+        settings: configuration.OperatorSettings,
         resource: resources.Resource,
         processor: WatchStreamProcessor,
         freeze_mode: Optional[primitives.Toggle] = None,
@@ -95,12 +96,13 @@ async def watcher(
 
     # All per-object workers are handled as fire-and-forget jobs via the scheduler,
     # and communicated via the per-object event queues.
-    scheduler = await aiojobs.create_scheduler(limit=config.WorkersConfig.queue_workers_limit)
+    scheduler = await aiojobs.create_scheduler(limit=settings.batching.worker_limit)
     streams: Streams = {}
     try:
         # Either use the existing object's queue, or create a new one together with the per-object job.
         # "Fire-and-forget": we do not wait for the result; the job destroys itself when it is fully done.
         stream = watching.infinite_watch(
+            settings=settings,
             resource=resource, namespace=namespace,
             freeze_mode=freeze_mode,
         )
@@ -113,10 +115,15 @@ async def watcher(
                 streams[key] = Stream(watchevents=asyncio.Queue(), replenished=asyncio.Event())
                 streams[key].replenished.set()  # interrupt current sleeps, if any.
                 await streams[key].watchevents.put(raw_event)
-                await scheduler.spawn(worker(processor=processor, streams=streams, key=key))
+                await scheduler.spawn(worker(
+                    processor=processor,
+                    settings=settings,
+                    streams=streams,
+                    key=key,
+                ))
     finally:
         # Allow the existing workers to finish gracefully before killing them.
-        await _wait_for_depletion(scheduler=scheduler, streams=streams)
+        await _wait_for_depletion(scheduler=scheduler, streams=streams, settings=settings)
 
         # Forcedly terminate all the fire-and-forget per-object jobs, of they are still running.
         await asyncio.shield(scheduler.close())
@@ -124,6 +131,7 @@ async def watcher(
 
 async def worker(
         processor: WatchStreamProcessor,
+        settings: configuration.OperatorSettings,
         streams: Streams,
         key: ObjectRef,
 ) -> None:
@@ -154,7 +162,7 @@ async def worker(
             try:
                 raw_event = await asyncio.wait_for(
                     watchevents.get(),
-                    timeout=config.WorkersConfig.worker_idle_timeout)
+                    timeout=settings.batching.idle_timeout)
             except asyncio.TimeoutError:
                 break
             else:
@@ -163,7 +171,7 @@ async def worker(
                         prev_event = raw_event
                         next_event = await asyncio.wait_for(
                             watchevents.get(),
-                            timeout=config.WorkersConfig.worker_batch_window)
+                            timeout=settings.batching.batch_window)
                         shouldstop = shouldstop or isinstance(next_event, EOS)
                         raw_event = prev_event if isinstance(next_event, EOS) else next_event
                 except asyncio.TimeoutError:
@@ -194,6 +202,7 @@ async def worker(
 async def _wait_for_depletion(
         *,
         scheduler: aiojobs.Scheduler,
+        settings: configuration.OperatorSettings,
         streams: Streams,
 ) -> None:
 
@@ -206,8 +215,8 @@ async def _wait_for_depletion(
     started = time.perf_counter()
     while streams and \
             scheduler.active_count and \
-            time.perf_counter() - started < config.WorkersConfig.worker_exit_timeout:
-        await asyncio.sleep(config.WorkersConfig.worker_exit_timeout / 100.)
+            time.perf_counter() - started < settings.batching.exit_timeout:
+        await asyncio.sleep(settings.batching.exit_timeout / 100.)
 
     # The last check if the termination is going to be graceful or not.
     if streams:

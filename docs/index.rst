@@ -43,7 +43,7 @@ Kopf: Kubernetes Operators Framework
    shutdown
    probing
    authentication
-   configuring
+   configuration
    peering
 
 .. toctree::

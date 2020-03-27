@@ -5,9 +5,11 @@ from typing import Any, Optional, Callable, List
 
 import click
 
-from kopf import config
+from kopf.engines import logging
 from kopf.engines import peering
+from kopf.reactor import registries
 from kopf.reactor import running
+from kopf.structs import configuration
 from kopf.structs import credentials
 from kopf.structs import primitives
 from kopf.utilities import loaders
@@ -19,6 +21,8 @@ class CLIControls:
     ready_flag: Optional[primitives.Flag] = None
     stop_flag: Optional[primitives.Flag] = None
     vault: Optional[credentials.Vault] = None
+    registry: Optional[registries.OperatorRegistry] = None
+    settings: Optional[configuration.OperatorSettings] = None
 
 
 def logging_options(fn: Callable[..., Any]) -> Callable[..., Any]:
@@ -28,7 +32,7 @@ def logging_options(fn: Callable[..., Any]) -> Callable[..., Any]:
     @click.option('-q', '--quiet', is_flag=True)
     @functools.wraps(fn)  # to preserve other opts/args
     def wrapper(verbose: bool, quiet: bool, debug: bool, *args: Any, **kwargs: Any) -> Any:
-        config.configure(debug=debug, verbose=verbose, quiet=quiet)
+        logging.configure(debug=debug, verbose=verbose, quiet=quiet)
         return fn(*args, **kwargs)
 
     return wrapper
@@ -64,6 +68,8 @@ def run(
         liveness_endpoint: Optional[str],
 ) -> None:
     """ Start an operator process and handle all the requests. """
+    if __controls.registry is not None:
+        registries.set_default_registry(__controls.registry)
     loaders.preload(
         paths=paths,
         modules=modules,
@@ -74,6 +80,8 @@ def run(
         priority=priority,
         peering_name=peering_name,
         liveness_endpoint=liveness_endpoint,
+        registry=__controls.registry,
+        settings=__controls.settings,
         stop_flag=__controls.stop_flag,
         ready_flag=__controls.ready_flag,
         vault=__controls.vault,

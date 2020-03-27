@@ -12,7 +12,7 @@ from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
 
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_skipped_with_no_handlers(
-        registry, resource, cause_mock, cause_type,
+        registry, settings, resource, cause_mock, cause_type,
         caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
 
@@ -32,6 +32,7 @@ async def test_skipped_with_no_handlers(
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
+        settings=settings,
         resource=resource,
         memories=ResourceMemories(),
         raw_event={'type': event_type, 'object': event_body},

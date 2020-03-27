@@ -16,8 +16,9 @@ import pytest_mock
 
 import kopf
 from kopf.clients.auth import APIContext
-from kopf.config import configure
-from kopf.engines.logging import ObjectPrefixingFormatter
+from kopf.engines.logging import configure, ObjectPrefixingFormatter
+from kopf.engines.posting import settings_var
+from kopf.structs.configuration import OperatorSettings
 from kopf.structs.credentials import Vault, VaultKey, ConnectionInfo
 from kopf.structs.resources import Resource
 
@@ -88,6 +89,20 @@ def enforce_asyncio_mocker():
 def resource():
     """ The resource used in the tests. Usually mocked, so it does not matter. """
     return Resource('zalando.org', 'v1', 'kopfexamples')
+
+
+@pytest.fixture()
+def settings():
+    return OperatorSettings()
+
+
+@pytest.fixture()
+def settings_via_contextvar(settings):
+    token = settings_var.set(settings)
+    try:
+        yield
+    finally:
+        settings_var.reset(token)
 
 
 #

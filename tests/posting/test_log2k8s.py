@@ -2,7 +2,6 @@ import logging
 
 import pytest
 
-from kopf.config import EventsConfig
 from kopf.engines.logging import ObjectLogger, LocalObjectLogger
 
 OBJ1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
@@ -17,8 +16,10 @@ REF1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
     ['error', "Error"],
     ['critical', "Fatal"],
 ])
-async def test_posting_normal_levels(caplog, logstream, logfn, event_type, event_queue, event_queue_loop):
-    logger = ObjectLogger(body=OBJ1)
+async def test_posting_normal_levels(settings, caplog, logstream, logfn, event_type,
+                                     event_queue, event_queue_loop):
+
+    logger = ObjectLogger(body=OBJ1, settings=settings)
     logger_fn = getattr(logger, logfn)
 
     logger_fn("hello %s", "world")
@@ -39,14 +40,14 @@ async def test_posting_normal_levels(caplog, logstream, logfn, event_type, event
     ['error', "Error", logging.ERROR],
     ['critical', "Fatal", logging.CRITICAL],
 ])
-async def test_posting_above_config(caplog, logstream, logfn, event_type, min_levelno,
+async def test_posting_above_config(settings, caplog, logstream, logfn, event_type, min_levelno,
                                     event_queue, event_queue_loop, mocker):
-    logger = ObjectLogger(body=OBJ1)
+    logger = ObjectLogger(body=OBJ1, settings=settings)
     logger_fn = getattr(logger, logfn)
 
-    mocker.patch.object(EventsConfig, 'events_loglevel', min_levelno)
+    settings.posting.level = min_levelno
     logger_fn("hello %s", "world")
-    mocker.patch.object(EventsConfig, 'events_loglevel', min_levelno + 1)
+    settings.posting.level = min_levelno + 1
     logger_fn("must not be posted")
 
     assert event_queue.qsize() == 1
@@ -61,8 +62,10 @@ async def test_posting_above_config(caplog, logstream, logfn, event_type, min_le
 @pytest.mark.parametrize('logfn', [
     'debug',
 ])
-async def test_skipping_hidden_levels(caplog, logstream, logfn, event_queue, event_queue_loop):
-    logger = ObjectLogger(body=OBJ1)
+async def test_skipping_hidden_levels(settings, caplog, logstream, logfn,
+                                      event_queue, event_queue_loop):
+
+    logger = ObjectLogger(body=OBJ1, settings=settings)
     logger_fn = getattr(logger, logfn)
 
     logger_fn("hello %s", "world")
@@ -79,14 +82,15 @@ async def test_skipping_hidden_levels(caplog, logstream, logfn, event_queue, eve
     'error',
     'critical',
 ])
-async def test_skipping_below_config(caplog, logstream, logfn, event_queue, event_queue_loop,
-                                     mocker):
-    logger = ObjectLogger(body=OBJ1)
+async def test_skipping_below_config(settings, caplog, logstream, logfn,
+                                     event_queue, event_queue_loop, mocker):
+
+    logger = ObjectLogger(body=OBJ1, settings=settings)
     logger_fn = getattr(logger, logfn)
 
-    mocker.patch.object(EventsConfig, 'events_loglevel', 666)
+    settings.posting.level = 666
     logger_fn("hello %s", "world")
-    mocker.patch.object(EventsConfig, 'events_loglevel', 0)
+    settings.posting.level = 0
     logger.info("must be here")
 
     assert event_queue.qsize() == 1  # not 2!
@@ -100,8 +104,31 @@ async def test_skipping_below_config(caplog, logstream, logfn, event_queue, even
     'error',
     'critical',
 ])
-async def test_skipping_when_local_with_all_levels(caplog, logstream, logfn, event_queue, event_queue_loop):
-    logger = LocalObjectLogger(body=OBJ1)
+async def test_skipping_when_disabled(settings, caplog, logstream, logfn,
+                                      event_queue, event_queue_loop):
+
+    logger = LocalObjectLogger(body=OBJ1, settings=settings)
+    logger_fn = getattr(logger, logfn)
+
+    settings.posting.enabled = False
+    settings.posting.level = 0
+    logger_fn("hello %s", "world")
+
+    assert event_queue.qsize() == 0
+    assert caplog.messages == ["hello world"]
+
+
+@pytest.mark.parametrize('logfn', [
+    'debug',
+    'info',
+    'warning',
+    'error',
+    'critical',
+])
+async def test_skipping_when_local_with_all_levels(settings, caplog, logstream, logfn,
+                                                   event_queue, event_queue_loop):
+
+    logger = LocalObjectLogger(body=OBJ1, settings=settings)
     logger_fn = getattr(logger, logfn)
 
     logger_fn("hello %s", "world")

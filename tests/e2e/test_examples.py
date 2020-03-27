@@ -9,7 +9,7 @@ import pytest
 from kopf.testing import KopfRunner
 
 
-def test_all_examples_are_runnable(mocker, with_crd, exampledir, caplog):
+def test_all_examples_are_runnable(mocker, settings, with_crd, exampledir, caplog):
 
     # If the example has its own opinion on the timing, try to respect it.
     # See e.g. /examples/99-all-at-once/example.py.
@@ -45,7 +45,7 @@ def test_all_examples_are_runnable(mocker, with_crd, exampledir, caplog):
     mocker.patch('kopf.reactor.handling.DEFAULT_RETRY_DELAY', 1)
 
     # To prevent lengthy threads in the loop executor when the process exits.
-    mocker.patch('kopf.config.WatchersConfig.default_stream_timeout', 10)
+    settings.watching.stream_timeout = 10
 
     # Run an operator and simulate some activity with the operated resource.
     with KopfRunner(['run', '--standalone', '--verbose', str(example_py)], timeout=60) as runner:

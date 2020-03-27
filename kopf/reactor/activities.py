@@ -27,6 +27,7 @@ from kopf.reactor import lifecycles
 from kopf.reactor import registries
 from kopf.reactor import states
 from kopf.structs import callbacks
+from kopf.structs import configuration
 from kopf.structs import credentials
 from kopf.structs import handlers as handlers_
 
@@ -49,6 +50,7 @@ class ActivityError(Exception):
 async def authenticator(
         *,
         registry: registries.OperatorRegistry,
+        settings: configuration.OperatorSettings,
         vault: credentials.Vault,
 ) -> NoReturn:
     """ Keep the credentials forever up to date. """
@@ -56,6 +58,7 @@ async def authenticator(
     while True:
         await authenticate(
             registry=registry,
+            settings=settings,
             vault=vault,
             _activity_title="Re-authentication" if counter else "Initial authentication",
         )
@@ -65,6 +68,7 @@ async def authenticator(
 async def authenticate(
         *,
         registry: registries.OperatorRegistry,
+        settings: configuration.OperatorSettings,
         vault: credentials.Vault,
         _activity_title: str = "Authentication",
 ) -> None:
@@ -79,6 +83,7 @@ async def authenticate(
     activity_results = await run_activity(
         lifecycle=lifecycles.all_at_once,
         registry=registry,
+        settings=settings,
         activity=handlers_.Activity.AUTHENTICATION,
     )
 
@@ -96,18 +101,20 @@ async def run_activity(
         *,
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
+        settings: configuration.OperatorSettings,
         activity: handlers_.Activity,
 ) -> Mapping[handlers_.HandlerId, callbacks.Result]:
     logger = logging.getLogger(f'kopf.activities.{activity.value}')
 
     # For the activity handlers, we have neither bodies, nor patches, just the state.
-    cause = causation.ActivityCause(logger=logger, activity=activity)
+    cause = causation.ActivityCause(logger=logger, activity=activity, settings=settings)
     handlers = registry.activity_handlers.get_handlers(activity=activity)
     state = states.State.from_scratch(handlers=handlers)
     outcomes: MutableMapping[handlers_.HandlerId, states.HandlerOutcome] = {}
     while not state.done:
         current_outcomes = await handling.execute_handlers_once(
             lifecycle=lifecycle,
+            settings=settings,
             handlers=handlers,
             cause=cause,
             state=state,
