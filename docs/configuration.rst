@@ -2,14 +2,15 @@
 Configuration
 =============
 
-There are tools to configure some of kopf functionality, like asynchronous
-tasks behaviour and logging events.
+It is possible to fine-tune some aspects of Kopf-based operators,
+like timeouts, synchronous handler pool sizes, automatic Kubernetes Event
+creation from object-related log messages, etc.
 
 
 Startup configuration
 =====================
 
-Every operator has its settings (even if there are more than one operator
+Every operator has its settings (even if there is more than one operator
 in the same processes, e.g. due to :doc:`embedding`). The settings affect
 how the framework behaves in details.
 
@@ -72,8 +73,9 @@ The event-posting can be disabled completely (the default is to be enabled):
 Synchronous handlers
 ====================
 
-``settings.execution`` allows to set a number of synchronous workers used
-and redefined the asyncio executor:
+``settings.execution`` allows to set the number of synchronous workers used
+by the operator for synchronous handlers, or replace the asyncio executor
+with another one:
 
 .. code-block:: python
 
