@@ -210,7 +210,10 @@ async def watch_objs(
     # Talk to the API and initiate a streaming response.
     response = await context.session.get(
         url=resource.get_url(server=context.server, namespace=namespace, params=params),
-        timeout=aiohttp.ClientTimeout(total=settings.watching.client_timeout),
+        timeout=aiohttp.ClientTimeout(
+            total=settings.watching.client_timeout,
+            sock_connect=settings.watching.connect_timeout,
+        ),
     )
     response.raise_for_status()
 

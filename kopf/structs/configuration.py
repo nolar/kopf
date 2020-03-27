@@ -76,6 +76,11 @@ class WatchingSettings:
     An HTTP/HTTPS session timeout to use in watch requests.
     """
 
+    connect_timeout: Optional[float] = None
+    """
+    An HTTP/HTTPS connection timeout to use in watch requests.
+    """
+    
     reconnect_backoff: float = dataclasses.field(
         default_factory=lambda: config.WatchersConfig.watcher_retry_delay)
     """

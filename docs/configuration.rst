@@ -24,7 +24,7 @@ The settings can be modified in the startup handlers (see :doc:`startup`):
     @kopf.on.startup()
     def configure(settings: kopf.OperatorSettings, **_):
         settings.posting.level = logging.WARNING
-        settings.watching.client_timeout = 1 * 60
+        settings.watching.connect_timeout = 1 * 60
         settings.watching.server_timeout = 10 * 60
 
 All the settings have reasonable defaults, so the configuration should be used
@@ -118,6 +118,11 @@ The default is to use the server setup (``None``).
 with a watching request will exist before closing it from the **client** side.
 This includes the connection establishing and event streaming.
 The default is forever (``None``).
+
+``settings.watching.connect_timeout`` (seconds) is how long a connection
+can be established before failing. (With current aiohttp-based implementation,
+this corresponds to ``sock_connect=`` timeout, not to ``connect=`` timeout,
+which would also include the time for getting a connection from the pool.)
 
 It makes no sense to set the client-side timeout shorter than the server side
 timeout, but it is given to the developers' responsibility to decide.
