@@ -80,10 +80,10 @@ async def test_delayed_handlers_sleep(
     event_body = {
         'metadata': {'finalizers': [FINALIZER]},
         'status': {'kopf': {'progress': {
-            'create_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_dict(),
-            'update_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_dict(),
-            'delete_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_dict(),
-            'resume_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_dict(),
+            'create_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_in_storage(),
+            'update_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_in_storage(),
+            'delete_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_in_storage(),
+            'resume_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_in_storage(),
         }}}
     }
     cause_mock.reason = cause_reason

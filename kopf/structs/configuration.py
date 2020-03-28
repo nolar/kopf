@@ -31,6 +31,7 @@ from typing import Optional
 
 from kopf import config  # for legacy defaults only
 from kopf.storage import diffbase
+from kopf.storage import progress
 
 
 @dataclasses.dataclass
@@ -164,6 +165,12 @@ class ExecutionSettings:
 
 @dataclasses.dataclass
 class PersistenceSettings:
+
+    progress_storage: progress.ProgressStorage = dataclasses.field(
+        default_factory=progress.SmartProgressStorage)
+    """
+    How to persist the handlers' state between multiple handling cycles.
+    """
 
     diffbase_storage: diffbase.DiffBaseStorage = dataclasses.field(
         default_factory=diffbase.AnnotationsDiffBaseStorage)

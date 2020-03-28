@@ -5,7 +5,10 @@ from unittest.mock import Mock
 import freezegun
 import pytest
 
+from kopf.storage.progress import StatusProgressStorage, SmartProgressStorage
 from kopf.storage.states import HandlerOutcome, State, deliver_results
+from kopf.structs.bodies import Body
+from kopf.structs.patches import Patch
 
 # Timestamps: time zero (0), before (B), after (A), and time zero+1s (1).
 TSB = datetime.datetime(2020, 12, 31, 23, 59, 59, 000000)
@@ -19,16 +22,23 @@ TSA_ISO = '2020-12-31T23:59:59.999999'
 ZERO_DELTA = datetime.timedelta(seconds=0)
 
 
+# Use only the status-populating storages, to keep the tests with their original assertions.
+# The goal is to test the states, not the storages. The storages are tested in test_storages.py.
+@pytest.fixture(params=[StatusProgressStorage, SmartProgressStorage])
+def storage(request):
+    return request.param()
+
+
 @pytest.fixture()
 def handler():
     return Mock(id='some-id', spec_set=['id'])
 
 
 @freezegun.freeze_time(TS0)
-def test_always_started_when_created_from_scratch(handler):
-    patch = {}
+def test_always_started_when_created_from_scratch(storage, handler):
+    patch = Patch()
     state = State.from_scratch(handlers=[handler])
-    state.store(patch=patch)
+    state.store(body=Body({}), patch=patch, storage=storage)
     assert patch['status']['kopf']['progress']['some-id']['started'] == TS0_ISO
 
 
@@ -44,11 +54,11 @@ def test_always_started_when_created_from_scratch(handler):
     (TSA_ISO, {'status': {'kopf': {'progress': {'some-id': {'started': TSA_ISO}}}}}),
 ])
 @freezegun.freeze_time(TS0)
-def test_always_started_when_created_from_body(handler, body, expected):
+def test_always_started_when_created_from_body(storage, handler, body, expected):
     origbody = copy.deepcopy(body)
-    patch = {}
-    state = State.from_body(body=body, handlers=[handler])
-    state.store(patch=patch)
+    patch = Patch()
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    state.store(body=Body({}), patch=patch, storage=storage)
     assert patch['status']['kopf']['progress']['some-id']['started'] == expected
     assert body == origbody  # not modified
 
@@ -65,9 +75,9 @@ def test_always_started_when_created_from_body(handler, body, expected):
     (TS0 - TSA, {'status': {'kopf': {'progress': {'some-id': {'started': TSA_ISO}}}}}),
 ])
 @freezegun.freeze_time(TS0)
-def test_runtime(handler, expected, body):
+def test_runtime(storage, handler, expected, body):
     origbody = copy.deepcopy(body)
-    state = State.from_body(body=body, handlers=[handler])
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     result = state[handler.id].runtime
     assert result == expected
     assert body == origbody  # not modified
@@ -86,9 +96,9 @@ def test_runtime(handler, expected, body):
     (True , {'status': {'kopf': {'progress': {'some-id': {'success': True}}}}}),
     (True , {'status': {'kopf': {'progress': {'some-id': {'failure': True}}}}}),
 ])
-def test_finished_flag(handler, expected, body):
+def test_finished_flag(storage, handler, expected, body):
     origbody = copy.deepcopy(body)
-    state = State.from_body(body=body, handlers=[handler])
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     result = state[handler.id].finished
     assert result == expected
     assert body == origbody  # not modified
@@ -122,9 +132,9 @@ def test_finished_flag(handler, expected, body):
     (True , {'status': {'kopf': {'progress': {'some-id': {'delayed': TSA_ISO, 'failure': None}}}}}),
 ])
 @freezegun.freeze_time(TS0)
-def test_sleeping_flag(handler, expected, body):
+def test_sleeping_flag(storage, handler, expected, body):
     origbody = copy.deepcopy(body)
-    state = State.from_body(body=body, handlers=[handler])
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     result = state[handler.id].sleeping
     assert result == expected
     assert body == origbody  # not modified
@@ -158,9 +168,9 @@ def test_sleeping_flag(handler, expected, body):
     (False, {'status': {'kopf': {'progress': {'some-id': {'delayed': TSA_ISO, 'failure': None}}}}}),
 ])
 @freezegun.freeze_time(TS0)
-def test_awakened_flag(handler, expected, body):
+def test_awakened_flag(storage, handler, expected, body):
     origbody = copy.deepcopy(body)
-    state = State.from_body(body=body, handlers=[handler])
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     result = state[handler.id].awakened
     assert result == expected
     assert body == origbody  # not modified
@@ -175,9 +185,9 @@ def test_awakened_flag(handler, expected, body):
     (None, {'status': {'kopf': {'progress': {'some-id': {'delayed': None}}}}}),
     (TS0, {'status': {'kopf': {'progress': {'some-id': {'delayed': TS0_ISO}}}}}),
 ])
-def test_awakening_time(handler, expected, body):
+def test_awakening_time(storage, handler, expected, body):
     origbody = copy.deepcopy(body)
-    state = State.from_body(body=body, handlers=[handler])
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     result = state[handler.id].delayed
     assert result == expected
     assert body == origbody  # not modified
@@ -191,9 +201,9 @@ def test_awakening_time(handler, expected, body):
     (0, {'status': {'kopf': {'progress': {'some-id': {'retries': None}}}}}),
     (6, {'status': {'kopf': {'progress': {'some-id': {'retries': 6}}}}}),
 ])
-def test_get_retry_count(handler, expected, body):
+def test_get_retry_count(storage, handler, expected, body):
     origbody = copy.deepcopy(body)
-    state = State.from_body(body=body, handlers=[handler])
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     result = state[handler.id].retries
     assert result == expected
     assert body == origbody  # not modified
@@ -205,12 +215,12 @@ def test_get_retry_count(handler, expected, body):
     ({}, 1, TS1_ISO),
 ])
 @freezegun.freeze_time(TS0)
-def test_set_awake_time(handler, expected, body, delay):
+def test_set_awake_time(storage, handler, expected, body, delay):
     origbody = copy.deepcopy(body)
-    patch = {}
-    state = State.from_body(body=body, handlers=[handler])
+    patch = Patch()
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_outcomes(outcomes={handler.id: HandlerOutcome(final=False, delay=delay)})
-    state.store(patch=patch)
+    state.store(patch=patch, body=Body(body), storage=storage)
     assert patch['status']['kopf']['progress']['some-id'].get('delayed') == expected
     assert body == origbody  # not modified
 
@@ -229,12 +239,12 @@ def test_set_awake_time(handler, expected, body, delay):
     (6, TS1_ISO, 1, {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}),
 ])
 @freezegun.freeze_time(TS0)
-def test_set_retry_time(handler, expected_retries, expected_delayed, body, delay):
+def test_set_retry_time(storage, handler, expected_retries, expected_delayed, body, delay):
     origbody = copy.deepcopy(body)
-    patch = {}
-    state = State.from_body(body=body, handlers=[handler])
+    patch = Patch()
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_outcomes(outcomes={handler.id: HandlerOutcome(final=False, delay=delay)})
-    state.store(patch=patch)
+    state.store(patch=patch, body=Body(body), storage=storage)
     assert patch['status']['kopf']['progress']['some-id']['retries'] == expected_retries
     assert patch['status']['kopf']['progress']['some-id']['delayed'] == expected_delayed
     assert body == origbody  # not modified
@@ -245,13 +255,13 @@ def test_set_retry_time(handler, expected_retries, expected_delayed, body, delay
     (6, TS0_ISO, {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}),
 ])
 @freezegun.freeze_time(TS0)
-def test_store_failure(handler, expected_retries, expected_stopped, body):
+def test_store_failure(storage, handler, expected_retries, expected_stopped, body):
     error = Exception('some-error')
     origbody = copy.deepcopy(body)
-    patch = {}
-    state = State.from_body(body=body, handlers=[handler])
+    patch = Patch()
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_outcomes(outcomes={handler.id: HandlerOutcome(final=True, exception=error)})
-    state.store(patch=patch)
+    state.store(patch=patch, body=Body(body), storage=storage)
     assert patch['status']['kopf']['progress']['some-id']['success'] is False
     assert patch['status']['kopf']['progress']['some-id']['failure'] is True
     assert patch['status']['kopf']['progress']['some-id']['retries'] == expected_retries
@@ -265,12 +275,12 @@ def test_store_failure(handler, expected_retries, expected_stopped, body):
     (6, TS0_ISO, {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}),
 ])
 @freezegun.freeze_time(TS0)
-def test_store_success(handler, expected_retries, expected_stopped, body):
+def test_store_success(storage, handler, expected_retries, expected_stopped, body):
     origbody = copy.deepcopy(body)
-    patch = {}
-    state = State.from_body(body=body, handlers=[handler])
+    patch = Patch()
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_outcomes(outcomes={handler.id: HandlerOutcome(final=True)})
-    state.store(patch=patch)
+    state.store(patch=patch, body=Body(body), storage=storage)
     assert patch['status']['kopf']['progress']['some-id']['success'] is True
     assert patch['status']['kopf']['progress']['some-id']['failure'] is False
     assert patch['status']['kopf']['progress']['some-id']['retries'] == expected_retries
@@ -285,37 +295,37 @@ def test_store_success(handler, expected_retries, expected_stopped, body):
     ({'field': 'value'}, {'status': {'some-id': {'field': 'value'}}}),
 ])
 def test_store_result(handler, expected_patch, result):
-    patch = {}
+    patch = Patch()
     outcomes = {handler.id: HandlerOutcome(final=True, result=result)}
     deliver_results(outcomes=outcomes, patch=patch)
     assert patch == expected_patch
 
 
-def test_purge_progress_when_exists_in_body(handler):
+def test_purge_progress_when_exists_in_body(storage, handler):
     body = {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}
-    patch = {}
+    patch = Patch()
     origbody = copy.deepcopy(body)
-    state = State.from_body(body=body, handlers=[handler])
-    state.purge(patch=patch, body=body)
-    assert patch == {'status': {'kopf': {'progress': None}}}
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    state.purge(patch=patch, body=Body(body), storage=storage)
+    assert patch == {'status': {'kopf': {'progress': {'some-id': None}}}}
     assert body == origbody  # not modified
 
 
-def test_purge_progress_when_already_empty_in_body_and_patch(handler):
+def test_purge_progress_when_already_empty_in_body_and_patch(storage, handler):
     body = {}
-    patch = {}
+    patch = Patch()
     origbody = copy.deepcopy(body)
-    state = State.from_body(body=body, handlers=[handler])
-    state.purge(patch=patch, body=body)
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    state.purge(patch=patch, body=Body(body), storage=storage)
     assert not patch
     assert body == origbody  # not modified
 
 
-def test_purge_progress_when_already_empty_in_body_but_not_in__patch(handler):
+def test_purge_progress_when_already_empty_in_body_but_not_in__patch(storage, handler):
     body = {}
-    patch = {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}
+    patch = Patch({'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}})
     origbody = copy.deepcopy(body)
-    state = State.from_body(body=body, handlers=[handler])
-    state.purge(patch=patch, body=body)
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    state.purge(patch=patch, body=Body(body), storage=storage)
     assert not patch
     assert body == origbody  # not modified

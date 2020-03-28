@@ -100,6 +100,8 @@ async def process_resource_event(
         extra_fields = registry.resource_changing_handlers[resource].get_extra_fields()
         old = settings.persistence.diffbase_storage.fetch(body=body)
         new = settings.persistence.diffbase_storage.build(body=body, extra_fields=extra_fields)
+        old = settings.persistence.progress_storage.clear(essence=old) if old is not None else None
+        new = settings.persistence.progress_storage.clear(essence=new) if new is not None else None
         diff = diffs.diff(old, new)
         resource_changing_cause = causation.detect_resource_changing_cause(
             raw_event=raw_event,
@@ -222,7 +224,8 @@ async def process_resource_changing_cause(
             logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
 
         handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause=cause)
-        state = states.State.from_body(body=cause.body, handlers=handlers)
+        storage = settings.persistence.progress_storage
+        state = states.State.from_storage(body=cause.body, storage=storage, handlers=handlers)
         if handlers:
             outcomes = await handling.execute_handlers_once(
                 lifecycle=lifecycle,
@@ -232,12 +235,12 @@ async def process_resource_changing_cause(
                 state=state,
             )
             state = state.with_outcomes(outcomes)
-            state.store(patch=cause.patch)
+            state.store(body=cause.body, patch=cause.patch, storage=storage)
             states.deliver_results(outcomes=outcomes, patch=cause.patch)
 
             if state.done:
                 logger.info(f"All handlers succeeded for {title}.")
-                state.purge(patch=cause.patch, body=cause.body)
+                state.purge(body=cause.body, patch=cause.patch, storage=storage)
 
             done = state.done
             delay = state.delay

@@ -66,6 +66,13 @@ from kopf.storage.diffbase import (
     StatusDiffBaseStorage,
     MultiDiffBaseStorage,
 )
+from kopf.storage.progress import (
+    ProgressStorage,
+    AnnotationsProgressStorage,
+    StatusProgressStorage,
+    MultiProgressStorage,
+    SmartProgressStorage,
+)
 from kopf.structs.bodies import (
     build_object_reference,
     build_owner_reference,
@@ -137,4 +144,9 @@ __all__ = [
     'AnnotationsDiffBaseStorage',
     'StatusDiffBaseStorage',
     'MultiDiffBaseStorage',
+    'ProgressStorage',
+    'AnnotationsProgressStorage',
+    'StatusProgressStorage',
+    'MultiProgressStorage',
+    'SmartProgressStorage',
 ]

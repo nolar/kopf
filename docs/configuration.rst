@@ -145,6 +145,82 @@ or disconnects. The default is 0.1 seconds (nearly instant, but not flooding).
         settings.watching.server_timeout = 10 * 60
 
 
+.. _progress-storing:
+
+Handling progress
+=================
+
+In order to keep the handling state across multiple handling cycles, and to be
+resilient to errors and tolerable to restarts and downtimes, the operator keeps
+its state in a configured state storage. See more in :doc:`continuity`.
+
+To store the state only in the annotations with your own prefix:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.persistence.storage = kopf.AnnotationsStateStorage(prefix='my-op.example.com')
+
+To store the state only in the status or any other field:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.persistence.storage = kopf.StatusStateStorage(field='status.my-operator')
+
+To store in multiple places (stored in sync, but the first found state will be
+used when fetching, i.e. the first storage has precedence):
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.persistence.storage = kopf.MultiStateStorage([
+            kopf.AnnotationsStateStorage(prefix='my-op.example.com'),
+            kopf.StatusStateStorage(field='status.my-operator'),
+        ])
+
+The default storage is at both annotations and status, with annotations having
+precedence over the status (this is done as a transitioning solution
+from status-only storage in the past to annotations-only storage in the future).
+The annotations are ``kopf.zalando.org/{id}``,
+the status fields are ``status.kopf.progress.{id}``.
+It is an equivalent of:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.persistence.storage = kopf.SmartStateStorage()
+
+It is also possible to implement custom state storage instead of storing
+the state directly in the resource's fields -- e.g., in external databases.
+For this, inherit from `kopf.StateStorage`, and implement its abstract methods
+(``fetch()``, ``store()``, ``purge()``, optionally ``flush()``).
+
+.. note::
+
+    The legacy behavior is an equivalent of
+    ``kopf.StatusStateStorage(field='status.kopf.progress')``.
+    However, the ``.status`` stanza is not always stored by the server
+    for built-in or improperly configured custom resources since Kubernetes 1.16
+    (see `#321 <https://github.com/zalando-incubator/kopf/issues/321>`_).
+
+    The new default "smart" engine is supposed to ensure a smooth upgrade
+    of Kopf-based operators to the new state location without special upgrade
+    actions or conversions needed.
+
+
 Change detection
 ================
 
