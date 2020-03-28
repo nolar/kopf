@@ -51,6 +51,10 @@ class Patch(Dict[str, Any]):
         self._status = StatusPatch(self)
 
     @property
+    def metadata(self) -> MetaPatch:
+        return self._meta
+
+    @property
     def meta(self) -> MetaPatch:
         return self._meta
 
