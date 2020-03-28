@@ -5,9 +5,9 @@ import pytest
 
 import kopf
 from kopf.reactor.processing import process_resource_event
+from kopf.storage.lastseen import LAST_SEEN_ANNOTATION
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.handlers import ResourceChangingHandler, HANDLER_REASONS
-from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
 
 
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)

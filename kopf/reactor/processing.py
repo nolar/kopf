@@ -25,13 +25,13 @@ from kopf.reactor import causation
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
-from kopf.reactor import states
+from kopf.storage import finalizers
+from kopf.storage import lastseen
+from kopf.storage import states
 from kopf.structs import bodies
 from kopf.structs import configuration
 from kopf.structs import containers
-from kopf.structs import finalizers
 from kopf.structs import handlers as handlers_
-from kopf.structs import lastseen
 from kopf.structs import patches
 from kopf.structs import resources
 

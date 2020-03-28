@@ -2,11 +2,11 @@ import json
 
 import pytest
 
+from kopf.storage.lastseen import LAST_SEEN_ANNOTATION
+from kopf.storage.lastseen import get_essential_diffs
+from kopf.storage.lastseen import has_essence_stored, get_essence
+from kopf.storage.lastseen import retrieve_essence, refresh_essence
 from kopf.structs.bodies import Body
-from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
-from kopf.structs.lastseen import has_essence_stored, get_essence
-from kopf.structs.lastseen import get_essential_diffs
-from kopf.structs.lastseen import retrieve_essence, refresh_essence
 
 
 def test_annotation_is_fqdn():

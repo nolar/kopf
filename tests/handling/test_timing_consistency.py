@@ -48,7 +48,7 @@ async def test_consistent_awakening(registry, settings, resource, k8s_mocked, mo
     def move_to_tsB(*_, **__):
         frozen_dt.move_to(tsB_delivered)
 
-    state_store = mocker.patch('kopf.reactor.states.State.store', side_effect=move_to_tsB)
+    state_store = mocker.patch('kopf.storage.states.State.store', side_effect=move_to_tsB)
     body = {'status': {'kopf': {'progress': {'some-id': {'delayed': ts0_scheduled}}}}}
 
     # Simulate the call as if the event has just arrived on the watch-stream.

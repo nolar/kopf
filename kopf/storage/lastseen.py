@@ -12,7 +12,6 @@ Conceptually similar to how ``kubectl apply`` stores the applied state
 on any object, and then uses that for the patch calculation:
 https://kubernetes.io/docs/concepts/overview/object-management-kubectl/declarative-config/
 """
-
 import copy
 import json
 from typing import Optional, Iterable, Tuple, Dict, Any, cast

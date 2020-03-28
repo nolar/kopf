@@ -1,4 +1,4 @@
-from kopf.reactor.states import HandlerOutcome
+from kopf.storage.states import HandlerOutcome
 from kopf.structs.callbacks import Result
 
 

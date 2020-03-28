@@ -5,7 +5,7 @@ from unittest.mock import Mock
 import freezegun
 import pytest
 
-from kopf.reactor.states import HandlerOutcome, State, deliver_results
+from kopf.storage.states import HandlerOutcome, State, deliver_results
 
 # Timestamps: time zero (0), before (B), after (A), and time zero+1s (1).
 TSB = datetime.datetime(2020, 12, 31, 23, 59, 59, 000000)

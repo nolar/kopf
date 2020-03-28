@@ -4,10 +4,10 @@ import json
 import pytest
 
 from kopf.reactor.causation import detect_resource_changing_cause
+from kopf.storage.finalizers import FINALIZER
+from kopf.storage.lastseen import LAST_SEEN_ANNOTATION
 from kopf.structs.bodies import Body
-from kopf.structs.finalizers import FINALIZER
 from kopf.structs.handlers import Reason
-from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
 
 # Encoded at runtime, so that we do not make any assumptions on json formatting.
 SPEC_DATA = {'spec': {'field': 'value'}}

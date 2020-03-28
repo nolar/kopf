@@ -1,8 +1,8 @@
 import pytest
 
-from kopf.structs.finalizers import FINALIZER, LEGACY_FINALIZER
-from kopf.structs.finalizers import block_deletion, allow_deletion
-from kopf.structs.finalizers import is_deletion_ongoing, is_deletion_blocked
+from kopf.storage.finalizers import FINALIZER, LEGACY_FINALIZER
+from kopf.storage.finalizers import block_deletion, allow_deletion
+from kopf.storage.finalizers import is_deletion_ongoing, is_deletion_blocked
 
 
 def test_finalizer_is_fqdn():
