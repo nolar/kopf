@@ -5,7 +5,7 @@ import pytest
 
 import kopf
 from kopf.reactor.processing import process_resource_event
-from kopf.storage.lastseen import LAST_SEEN_ANNOTATION
+from kopf.storage.diffbase import LAST_SEEN_ANNOTATION
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.handlers import Reason
 

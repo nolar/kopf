@@ -143,3 +143,35 @@ or disconnects. The default is 0.1 seconds (nearly instant, but not flooding).
     @kopf.on.startup()
     def configure(settings: kopf.OperatorSettings, **_):
         settings.watching.server_timeout = 10 * 60
+
+
+Change detection
+================
+
+For change-detecting handlers, Kopf keeps the last handled configuration --
+i.e. the last state that has been successfully handled. New changes are compared
+against the last handled configuration, and a diff is formed.
+
+The last-handled configuration is also used to detect if there were any
+essential changes at all -- i.e. not just the system or status fields.
+
+The last-handled configuration storage can be configured
+with ``settings.persistence.diffbase_storage``.
+The default is an equivalent of:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.persistence.diffbase_storage = kopf.AnnotationsDiffBaseStore(
+            name='kopf.zalando.org/last-handled-configuration',
+        )
+
+The stored content is a JSON-serialised essence of the object (i.e., only
+the important fields, with system fields and status stanza removed).
+
+It is generally not a good idea to override this store, unless multiple
+Kopf-based operators must handle the same resources, and they should not
+collide with each other. In that case, they must take different names.

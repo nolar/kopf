@@ -60,6 +60,12 @@ from kopf.reactor.running import (
     login,  # deprecated
     create_tasks,  # deprecated
 )
+from kopf.storage.diffbase import (
+    DiffBaseStorage,
+    AnnotationsDiffBaseStorage,
+    StatusDiffBaseStorage,
+    MultiDiffBaseStorage,
+)
 from kopf.structs.bodies import (
     build_object_reference,
     build_owner_reference,
@@ -127,4 +133,8 @@ __all__ = [
     'set_default_registry',
     'PRESENT', 'ABSENT',
     'OperatorSettings',
+    'DiffBaseStorage',
+    'AnnotationsDiffBaseStorage',
+    'StatusDiffBaseStorage',
+    'MultiDiffBaseStorage',
 ]

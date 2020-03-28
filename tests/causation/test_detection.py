@@ -4,8 +4,8 @@ import json
 import pytest
 
 from kopf.reactor.causation import detect_resource_changing_cause
+from kopf.storage.diffbase import LAST_SEEN_ANNOTATION
 from kopf.storage.finalizers import FINALIZER
-from kopf.storage.lastseen import LAST_SEEN_ANNOTATION
 from kopf.structs.bodies import Body
 from kopf.structs.handlers import Reason
 

@@ -30,6 +30,7 @@ import dataclasses
 from typing import Optional
 
 from kopf import config  # for legacy defaults only
+from kopf.storage import diffbase
 
 
 @dataclasses.dataclass
@@ -162,9 +163,20 @@ class ExecutionSettings:
 
 
 @dataclasses.dataclass
+class PersistenceSettings:
+
+    diffbase_storage: diffbase.DiffBaseStorage = dataclasses.field(
+        default_factory=diffbase.AnnotationsDiffBaseStorage)
+    """
+    How the resource's essence (non-technical, contentful fields) are stored.
+    """
+
+
+@dataclasses.dataclass
 class OperatorSettings:
     logging: LoggingSettings = dataclasses.field(default_factory=LoggingSettings)
     posting: PostingSettings = dataclasses.field(default_factory=PostingSettings)
     watching: WatchingSettings = dataclasses.field(default_factory=WatchingSettings)
     batching: BatchingSettings = dataclasses.field(default_factory=BatchingSettings)
     execution: ExecutionSettings = dataclasses.field(default_factory=ExecutionSettings)
+    persistence: PersistenceSettings = dataclasses.field(default_factory=PersistenceSettings)

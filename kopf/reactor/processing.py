@@ -26,11 +26,11 @@ from kopf.reactor import handling
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
 from kopf.storage import finalizers
-from kopf.storage import lastseen
 from kopf.storage import states
 from kopf.structs import bodies
 from kopf.structs import configuration
 from kopf.structs import containers
+from kopf.structs import diffs
 from kopf.structs import handlers as handlers_
 from kopf.structs import patches
 from kopf.structs import resources
@@ -98,7 +98,9 @@ async def process_resource_event(
     # Detect the cause and handle it (or at least log this happened).
     if registry.resource_changing_handlers[resource]:
         extra_fields = registry.resource_changing_handlers[resource].get_extra_fields()
-        old, new, diff = lastseen.get_essential_diffs(body=body, extra_fields=extra_fields)
+        old = settings.persistence.diffbase_storage.fetch(body=body)
+        new = settings.persistence.diffbase_storage.build(body=body, extra_fields=extra_fields)
+        diff = diffs.diff(old, new)
         resource_changing_cause = causation.detect_resource_changing_cause(
             raw_event=raw_event,
             resource=resource,
@@ -245,7 +247,7 @@ async def process_resource_changing_cause(
     # Regular causes also do some implicit post-handling when all handlers are done.
     if done or skip:
         if cause.new is not None and cause.old != cause.new:
-            lastseen.refresh_essence(body=body, patch=patch, essence=cause.new)
+            settings.persistence.diffbase_storage.store(body=body, patch=patch, essence=cause.new)
         if cause.reason == handlers_.Reason.DELETE:
             logger.debug("Removing the finalizer, thus allowing the actual deletion.")
             finalizers.allow_deletion(body=body, patch=patch)
