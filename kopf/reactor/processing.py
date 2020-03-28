@@ -244,8 +244,8 @@ async def process_resource_changing_cause(
 
     # Regular causes also do some implicit post-handling when all handlers are done.
     if done or skip:
-        extra_fields = registry.resource_changing_handlers[cause.resource].get_extra_fields()
-        lastseen.refresh_essence(body=body, patch=patch, extra_fields=extra_fields)
+        if cause.new is not None and cause.old != cause.new:
+            lastseen.refresh_essence(body=body, patch=patch, essence=cause.new)
         if cause.reason == handlers_.Reason.DELETE:
             logger.debug("Removing the finalizer, thus allowing the actual deletion.")
             finalizers.allow_deletion(body=body, patch=patch)

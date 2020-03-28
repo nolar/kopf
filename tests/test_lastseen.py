@@ -113,7 +113,7 @@ def test_refresh_essence():
     patch = {}
     encoded = json.dumps(data)  # json formatting can vary across interpreters
     body = Body(data)
-    refresh_essence(body=body, patch=patch)
+    refresh_essence(body=body, patch=patch, essence=data)
     assert patch['metadata']['annotations'][LAST_SEEN_ANNOTATION] == encoded
 
 

@@ -25,7 +25,6 @@ import warnings
 from typing import Any, Optional, Union, TypeVar
 
 from kopf.storage import finalizers
-from kopf.storage import lastseen
 from kopf.structs import bodies
 from kopf.structs import configuration
 from kopf.structs import containers
@@ -106,6 +105,8 @@ def detect_resource_changing_cause(
         *,
         raw_event: bodies.RawEvent,
         body: bodies.Body,
+        old: Optional[bodies.BodyEssence] = None,
+        new: Optional[bodies.BodyEssence] = None,
         diff: Optional[diffs.Diff] = None,
         initial: bool = False,
         **kwargs: Any,
@@ -120,7 +121,7 @@ def detect_resource_changing_cause(
     """
 
     # Put them back to the pass-through kwargs (to avoid code duplication).
-    kwargs.update(body=body, initial=initial)
+    kwargs.update(body=body, old=old, new=new, initial=initial)
     if diff is not None:
         kwargs.update(diff=diff)
 
@@ -138,7 +139,7 @@ def detect_resource_changing_cause(
     # For an object seen for the first time (i.e. just-created), call the creation handlers,
     # then mark the state as if it was seen when the creation has finished.
     # Creation never mixes with resuming, even if an object is detected on startup (first listing).
-    if not lastseen.has_essence_stored(body):
+    if old is None:  # i.e. we have no essence stored
         kwargs['initial'] = False
         return ResourceChangingCause(reason=handlers.Reason.CREATE, **kwargs)
 
