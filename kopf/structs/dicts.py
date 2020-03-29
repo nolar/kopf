@@ -78,11 +78,12 @@ def ensure(
         d: MutableMapping[Any, Any],
         field: FieldSpec,
         value: Any,
-        *,
-        absent: bool = False,
 ) -> None:
     """
     Force-set a nested sub-field in a dict.
+
+    If some levels of parents are missing, they are created as empty dicts
+    (this what makes it "ensuring", not just "setting").
     """
     result = d
     path = parse_field(field)
@@ -93,10 +94,46 @@ def ensure(
             result = result[key]
         except KeyError:
             result = result.setdefault(key, {})
-    if absent:
-        del result[path[-1]]
+    result[path[-1]] = value
+
+
+def remove(
+        d: MutableMapping[Any, Any],
+        field: FieldSpec,
+) -> None:
+    """
+    Remove a nested sub-field from a dict, and all empty parents (optionally).
+
+    All intermediate parents that become empty after the removal are also
+    removed, making the whole original dict cleaner. For single-field removal,
+    use a built-in ``del d[key]`` operation.
+
+    If the target key is absent already, or any of the intermediate parents
+    is absent (which implies that the target key is also absent), no error
+    is raised, since the goal of deletion is achieved. The empty parents are
+    anyway removed.
+    """
+    path = parse_field(field)
+    if not path:
+        raise ValueError("Removing a root of a dict is impossible. Provide a specific field.")
+
+    elif len(path) == 1:
+        try:
+            del d[path[0]]
+        except KeyError:
+            pass
+
     else:
-        result[path[-1]] = value
+        try:
+            # Recursion is the easiest way to implement it, assuming the bodies/patches are shallow.
+            remove(d[path[0]], path[1:])
+        except KeyError:
+            pass
+        else:
+            # Clean the parent dict if it has become empty due to deletion of the only sub-key.
+            # Upper parents will be handled by upper recursion functions.
+            if d[path[0]] == {}:  # but not None, and not False, etc.
+                del d[path[0]]
 
 
 def cherrypick(
@@ -213,7 +250,8 @@ class MutableMappingView(Generic[_K, _V], MappingView[_K, _V], MutableMapping[_K
     _src: MutableMapping[_K, _V]  # type clarification
 
     def __delitem__(self, item: _K) -> None:
-        ensure(self._src, self._path + (item,), value=None, absent=True)
+        d = resolve(self._src, self._path)
+        del d[item]
 
     def __setitem__(self, item: _K, value: _V) -> None:
         ensure(self._src, self._path + (item,), value)
