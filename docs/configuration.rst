@@ -251,3 +251,43 @@ the important fields, with system fields and status stanza removed).
 It is generally not a good idea to override this store, unless multiple
 Kopf-based operators must handle the same resources, and they should not
 collide with each other. In that case, they must take different names.
+
+
+Storage transition
+==================
+
+.. warning::
+
+    Changing a storage method for an existing operator with existing resources
+    is dangerous: the operator will consider all those resources
+    as not handled yet (due to absence of a diff-base key) or will loose
+    their progress state (if some handlers are retried or slow). The operator
+    will start handling each of them again -- which can lead to duplicated
+    children or other side-effects.
+
+To ensure smooth transition, use a composite multi-storage, with the
+new storage as a first child, and the old storage as the second child
+(both are used for writing, the first found value is used for reading).
+
+For example, to eventually switch from Kopf's annotations to a status field
+for diff-base storage, apply this configuration:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.persistence.diffbase_storage = kopf.MiltiDiffBaseStorage([
+            kopf.StatusDiffBaseStorage(field='status.diff-base'),
+            kopf.AnnotationsDiffBaseStore('kopf.zalando.org/last-handled-configuration'),
+        ])
+
+Run the operator for some time. Let all resources to change or force this:
+e.g. by arbitrarily labelling them, so that a new diff-base is generated:
+
+.. code-block:: shell
+
+    kubectl label kex -l somelabel=somevalue  ping=pong
+
+Then, switch to the new storage alone, without the transitional setup.
