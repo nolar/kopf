@@ -45,7 +45,7 @@ def test_all_examples_are_runnable(mocker, settings, with_crd, exampledir, caplo
     mocker.patch('kopf.reactor.handling.DEFAULT_RETRY_DELAY', 1)
 
     # To prevent lengthy threads in the loop executor when the process exits.
-    settings.watching.stream_timeout = 10
+    settings.watching.server_timeout = 10
 
     # Run an operator and simulate some activity with the operated resource.
     with KopfRunner(['run', '--standalone', '--verbose', str(example_py)], timeout=60) as runner:

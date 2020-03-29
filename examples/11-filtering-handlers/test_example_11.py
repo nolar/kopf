@@ -32,7 +32,7 @@ def test_handler_filtering():
 
     # To prevent lengthy threads in the loop executor when the process exits.
     settings = kopf.OperatorSettings()
-    settings.watching.stream_timeout = 10
+    settings.watching.server_timeout = 10
 
     # Run an operator and simulate some activity with the operated resource.
     with kopf.testing.KopfRunner(['run', '--verbose', '--standalone', example_py],
