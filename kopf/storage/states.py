@@ -8,53 +8,16 @@ There could be more than one low-level k8s watch-events per one actual
 high-level kopf-event (a cause). The handlers are called at different times,
 and the overall handling routine should persist the handler status somewhere.
 
-The structure is this:
-
-.. code-block: yaml
-
-    metadata: ...
-    spec: ...
-    status: ...
-        kopf:
-            progress:
-                handler1:
-                    started: 2018-12-31T23:59:59,999999
-                    stopped: 2018-01-01T12:34:56,789000
-                    success: true
-                handler2:
-                    started: 2018-12-31T23:59:59,999999
-                    stopped: 2018-01-01T12:34:56,789000
-                    failure: true
-                    message: "Error message."
-                handler3:
-                    started: 2018-12-31T23:59:59,999999
-                    retries: 30
-                handler3/sub1:
-                    started: 2018-12-31T23:59:59,999999
-                    delayed: 2018-01-01T12:34:56,789000
-                    retries: 10
-                    message: "Not ready yet."
-                handler3/sub2:
-                    started: 2018-12-31T23:59:59,999999
-
-* ``status.kopf.success`` are the handlers that succeeded (no re-execution).
-* ``status.kopf.failure`` are the handlers that failed completely (no retries).
-* ``status.kopf.delayed`` are the timestamps, until which these handlers sleep.
-* ``status.kopf.retries`` are number of retries for succeeded, failed,
-  and for the progressing handlers.
-
-When the full event cycle is executed (possibly including multiple re-runs),
-the whole ``status.kopf`` section is purged. The life-long persistence of status
-is not intended: otherwise, multiple distinct causes will clutter the status
-and collide with each other (especially critical for multiple updates).
+The states are persisted in a state storage: see `kopf.storage.progress`.
 """
 
 import collections.abc
 import copy
 import dataclasses
 import datetime
-from typing import Any, Optional, Mapping, Dict, Collection, Iterator, cast, overload
+from typing import Any, Optional, Mapping, Dict, Collection, Iterator, overload
 
+from kopf.storage import progress
 from kopf.structs import bodies
 from kopf.structs import callbacks
 from kopf.structs import handlers as handlers_
@@ -95,7 +58,7 @@ class HandlerState:
     success: bool = False
     failure: bool = False
     message: Optional[str] = None
-    _origin: Optional[Dict[str, Any]] = None  # to check later if something has actually changed.
+    _origin: Optional[progress.ProgressRecord] = None  # to check later if it has actually changed.
 
     @classmethod
     def from_scratch(cls) -> "HandlerState":
@@ -104,7 +67,7 @@ class HandlerState:
         )
 
     @classmethod
-    def from_dict(cls, __d: Dict[str, Any]) -> "HandlerState":
+    def from_storage(cls, __d: progress.ProgressRecord) -> "HandlerState":
         return cls(
             started=_datetime_fromisoformat(__d.get('started')) or datetime.datetime.utcnow(),
             stopped=_datetime_fromisoformat(__d.get('stopped')),
@@ -116,8 +79,8 @@ class HandlerState:
             _origin=__d,
         )
 
-    def as_patch(self) -> Mapping[str, Any]:
-        return dict(
+    def for_storage(self) -> progress.ProgressRecord:
+        return progress.ProgressRecord(
             started=None if self.started is None else _datetime_toisoformat(self.started),
             stopped=None if self.stopped is None else _datetime_toisoformat(self.stopped),
             delayed=None if self.delayed is None else _datetime_toisoformat(self.delayed),
@@ -127,8 +90,9 @@ class HandlerState:
             message=None if self.message is None else str(self.message),
         )
 
-    def as_dict(self) -> Mapping[str, Any]:
-        return {key: val for key, val in self.as_patch().items() if val is not None}
+    def as_in_storage(self) -> Mapping[str, Any]:
+        # Nones are not stored by Kubernetes, so we filter them out for comparison.
+        return {key: val for key, val in self.for_storage().items() if val is not None}
 
     def with_outcome(
             self,
@@ -193,24 +157,22 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
             *,
             handlers: Collection[handlers_.BaseHandler],
     ) -> "State":
-        return cls.from_body(cast(bodies.Body, {}), handlers=handlers)
+        return cls({handler.id: HandlerState.from_scratch() for handler in handlers})
 
     @classmethod
-    def from_body(
+    def from_storage(
             cls,
-            body: bodies.Body,
             *,
+            body: bodies.Body,
+            storage: progress.ProgressStorage,
             handlers: Collection[handlers_.BaseHandler],
     ) -> "State":
-        storage = body.get('status', {}).get('kopf', {})
-        progress = storage.get('progress', {})
-        content = {}
-        content.update({
-            handler.id: (HandlerState.from_scratch() if handler.id not in progress else
-                         HandlerState.from_dict(progress[handler.id]))
-            for handler in handlers
-        })
-        return cls(content)
+        handler_states: Dict[handlers_.HandlerId, HandlerState] = {}
+        for handler in handlers:
+            content = storage.fetch(key=handler.id, body=body)
+            handler_states[handler.id] = (HandlerState.from_storage(content) if content else
+                                          HandlerState.from_scratch())
+        return cls(handler_states)
 
     def with_outcomes(
             self,
@@ -227,26 +189,30 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
             for handler_id, handler_state in self.items()
         })
 
-    def store(self, patch: patches.Patch) -> None:
+    def store(
+            self,
+            body: bodies.Body,
+            patch: patches.Patch,
+            storage: progress.ProgressStorage,
+    ) -> None:
         for handler_id, handler_state in self.items():
-            # Nones are not stored by Kubernetes, so we filter them out for comparison.
-            if handler_state.as_dict() != handler_state._origin:
-                # Note: create the 'progress' key only if there are handlers to store, not always.
-                storage = patch.setdefault('status', {}).setdefault('kopf', {})
-                storage.setdefault('progress', {})[handler_id] = handler_state.as_patch()
+            full_record = handler_state.for_storage()
+            pure_record = handler_state.as_in_storage()
+            if pure_record != handler_state._origin:
+                storage.store(key=handler_id, record=full_record, body=body, patch=patch)
+        storage.flush()
 
-    def purge(self, patch: patches.Patch, body: bodies.Body) -> None:
-        if 'progress' in body.get('status', {}).get('kopf', {}):
-            patch_storage = patch.setdefault('status', {}).setdefault('kopf', {})
-            patch_storage['progress'] = None
-        elif 'progress' in patch.get('status', {}).get('kopf', {}):
-            del patch['status']['kopf']['progress']
-
-        # Avoid storing the empty status dicts (but do so if they have any content).
-        if 'status' in patch and 'kopf' in patch['status'] and not patch['status']['kopf']:
-            del patch['status']['kopf']
-        if 'status' in patch and not patch['status']:
-            del patch['status']
+    def purge(
+            self,
+            *,
+            body: bodies.Body,
+            patch: patches.Patch,
+            storage: progress.ProgressStorage,
+    ) -> None:
+        # Purge only our own handlers. Ignore others (e.g. other operators).
+        for handler_id in self.keys():
+            storage.purge(key=handler_id, body=body, patch=patch)
+        storage.flush()
 
     def __len__(self) -> int:
         return len(self._states)

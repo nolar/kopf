@@ -9,9 +9,9 @@ import kopf
 from kopf.reactor.handling import TemporaryError
 from kopf.reactor.handling import WAITING_KEEPALIVE_INTERVAL
 from kopf.reactor.processing import process_resource_event
-from kopf.reactor.states import HandlerState
+from kopf.storage.finalizers import FINALIZER
+from kopf.storage.states import HandlerState
 from kopf.structs.containers import ResourceMemories
-from kopf.structs.finalizers import FINALIZER
 from kopf.structs.handlers import Reason, HANDLER_REASONS
 
 
@@ -80,10 +80,10 @@ async def test_delayed_handlers_sleep(
     event_body = {
         'metadata': {'finalizers': [FINALIZER]},
         'status': {'kopf': {'progress': {
-            'create_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_dict(),
-            'update_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_dict(),
-            'delete_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_dict(),
-            'resume_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_dict(),
+            'create_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_in_storage(),
+            'update_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_in_storage(),
+            'delete_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_in_storage(),
+            'resume_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_in_storage(),
         }}}
     }
     cause_mock.reason = cause_reason

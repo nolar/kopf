@@ -17,7 +17,7 @@ from kopf.reactor import causation
 from kopf.reactor import invocation
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
-from kopf.reactor import states
+from kopf.storage import states
 from kopf.structs import callbacks
 from kopf.structs import configuration
 from kopf.structs import dicts
@@ -155,18 +155,19 @@ async def execute(
                            "no practical use (there are no retries or state tracking).")
 
     # Execute the real handlers (all or few or one of them, as per the lifecycle).
-    subsettings = subsettings_var.get()
+    settings: configuration.OperatorSettings = subsettings_var.get()
     subhandlers = subregistry.get_handlers(cause=cause)
-    state = states.State.from_body(body=cause.body, handlers=subhandlers)
+    storage = settings.persistence.progress_storage
+    state = states.State.from_storage(body=cause.body, storage=storage, handlers=subhandlers)
     outcomes = await execute_handlers_once(
         lifecycle=lifecycle,
-        settings=subsettings,
+        settings=settings,
         handlers=subhandlers,
         cause=cause,
         state=state,
     )
     state = state.with_outcomes(outcomes)
-    state.store(patch=cause.patch)
+    state.store(body=cause.body, patch=cause.patch, storage=storage)
     states.deliver_results(outcomes=outcomes, patch=cause.patch)
 
     # Escalate `HandlerChildrenRetry` if the execute should be continued on the next iteration.

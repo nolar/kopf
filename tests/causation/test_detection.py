@@ -4,10 +4,10 @@ import json
 import pytest
 
 from kopf.reactor.causation import detect_resource_changing_cause
+from kopf.storage.diffbase import LAST_SEEN_ANNOTATION
+from kopf.storage.finalizers import FINALIZER
 from kopf.structs.bodies import Body
-from kopf.structs.finalizers import FINALIZER
 from kopf.structs.handlers import Reason
-from kopf.structs.lastseen import LAST_SEEN_ANNOTATION
 
 # Encoded at runtime, so that we do not make any assumptions on json formatting.
 SPEC_DATA = {'spec': {'field': 'value'}}
@@ -69,24 +69,24 @@ no_deletions = pytest.mark.parametrize('deletion_ts', [
 ])
 
 
-all_lastseen = pytest.mark.parametrize('annotations', [
-    pytest.param({}, id='no-annotations'),
-    pytest.param({'annotations': {}}, id='no-last-seen'),
-    pytest.param({'annotations': {LAST_SEEN_ANNOTATION: SPEC_JSON}}, id='matching-last-seen'),
-    pytest.param({'annotations': {LAST_SEEN_ANNOTATION: SPEC_JSON}}, id='mismatching-last-seen'),
+all_lastseen = pytest.mark.parametrize('old, annotations', [
+    pytest.param(None, {}, id='no-annotations'),
+    pytest.param(None, {'annotations': {}}, id='no-lastseen'),
+    pytest.param(SPEC_DATA, {'annotations': {LAST_SEEN_ANNOTATION: SPEC_JSON}}, id='good-lastseen'),
+    pytest.param(ALT_DATA, {'annotations': {LAST_SEEN_ANNOTATION: ALT_JSON}}, id='wrong-lastseen'),
 ])
 
-absent_lastseen = pytest.mark.parametrize('annotations', [
-    pytest.param({}, id='no-annotations'),
-    pytest.param({'annotations': {}}, id='no-last-seen'),
+absent_lastseen = pytest.mark.parametrize('old, annotations', [
+    pytest.param(None, {}, id='no-annotations'),
+    pytest.param(None, {'annotations': {}}, id='no-lastseen'),
 ])
 
-matching_lastseen = pytest.mark.parametrize('annotations', [
-    pytest.param({'annotations': {LAST_SEEN_ANNOTATION: SPEC_JSON}}, id='matching-last-seen'),
+matching_lastseen = pytest.mark.parametrize('old, annotations', [
+    pytest.param(SPEC_DATA, {'annotations': {LAST_SEEN_ANNOTATION: SPEC_JSON}}, id='good-lastseen'),
 ])
 
-mismatching_lastseen = pytest.mark.parametrize('annotations', [
-    pytest.param({'annotations': {LAST_SEEN_ANNOTATION: ALT_JSON}}, id='mismatching-last-seen'),
+mismatching_lastseen = pytest.mark.parametrize('old, annotations', [
+    pytest.param(ALT_DATA, {'annotations': {LAST_SEEN_ANNOTATION: ALT_JSON}}, id='wrong-lastseen'),
 ])
 
 all_requires_finalizer = pytest.mark.parametrize('requires_finalizer', [
@@ -138,7 +138,8 @@ def check_kwargs(cause, kwargs):
 @all_finalizers
 @all_deletions
 @deleted_events
-def test_for_gone(kwargs, event, finalizers, deletion_ts, requires_finalizer):
+def test_for_gone(
+        kwargs, event, finalizers, deletion_ts, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
@@ -154,7 +155,8 @@ def test_for_gone(kwargs, event, finalizers, deletion_ts, requires_finalizer):
 @no_finalizers
 @real_deletions
 @regular_events
-def test_for_free(kwargs, event, finalizers, deletion_ts, requires_finalizer):
+def test_for_free(
+        kwargs, event, finalizers, deletion_ts, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
@@ -170,7 +172,8 @@ def test_for_free(kwargs, event, finalizers, deletion_ts, requires_finalizer):
 @our_finalizers
 @real_deletions
 @regular_events
-def test_for_delete(kwargs, event, finalizers, deletion_ts, requires_finalizer):
+def test_for_delete(
+        kwargs, event, finalizers, deletion_ts, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
@@ -187,7 +190,8 @@ def test_for_delete(kwargs, event, finalizers, deletion_ts, requires_finalizer):
 @our_finalizers
 @no_deletions
 @regular_events
-def test_for_create(kwargs, event, finalizers, deletion_ts, annotations, content, requires_finalizer):
+def test_for_create(
+        kwargs, event, finalizers, deletion_ts, old, annotations, content, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
     event['object'].update(content)
     event['object']['metadata'].update(finalizers)
@@ -196,6 +200,7 @@ def test_for_create(kwargs, event, finalizers, deletion_ts, annotations, content
     cause = detect_resource_changing_cause(
         raw_event=event,
         body=Body(event['object']),
+        old=old,
         **kwargs)
     assert cause.reason == Reason.CREATE
     check_kwargs(cause, kwargs)
@@ -205,7 +210,8 @@ def test_for_create(kwargs, event, finalizers, deletion_ts, annotations, content
 @no_finalizers
 @no_deletions
 @regular_events
-def test_for_create_skip_acquire(kwargs, event, finalizers, deletion_ts, requires_finalizer):
+def test_for_create_skip_acquire(
+        kwargs, event, finalizers, deletion_ts, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
@@ -222,7 +228,8 @@ def test_for_create_skip_acquire(kwargs, event, finalizers, deletion_ts, require
 @our_finalizers
 @no_deletions
 @regular_events
-def test_for_no_op(kwargs, event, finalizers, deletion_ts, annotations, content, requires_finalizer):
+def test_for_no_op(
+        kwargs, event, finalizers, deletion_ts, old, annotations, content, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
     event['object'].update(content)
     event['object']['metadata'].update(finalizers)
@@ -231,6 +238,7 @@ def test_for_no_op(kwargs, event, finalizers, deletion_ts, annotations, content,
     cause = detect_resource_changing_cause(
         raw_event=event,
         body=Body(event['object']),
+        old=old,
         **kwargs)
     assert cause.reason == Reason.NOOP
     check_kwargs(cause, kwargs)
@@ -241,7 +249,8 @@ def test_for_no_op(kwargs, event, finalizers, deletion_ts, annotations, content,
 @our_finalizers
 @no_deletions
 @regular_events
-def test_for_update(kwargs, event, finalizers, deletion_ts, annotations, content, requires_finalizer):
+def test_for_update(
+        kwargs, event, finalizers, deletion_ts, old, annotations, content, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
     event['object'].update(content)
     event['object']['metadata'].update(finalizers)
@@ -251,6 +260,7 @@ def test_for_update(kwargs, event, finalizers, deletion_ts, annotations, content
         raw_event=event,
         body=Body(event['object']),
         diff=True,
+        old=old,
         **kwargs)
     assert cause.reason == Reason.UPDATE
     check_kwargs(cause, kwargs)

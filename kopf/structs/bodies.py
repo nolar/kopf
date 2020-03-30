@@ -41,7 +41,7 @@ In case the operators are also type-checked, type casting can be used
     and object-processing functions. The internal dicts will remain the same.
 """
 
-from typing import Any, Mapping, Union, List, Optional, cast
+from typing import Any, Mapping, MutableMapping, Union, List, Optional, cast
 
 from typing_extensions import TypedDict, Literal
 
@@ -111,13 +111,13 @@ class RawEvent(TypedDict, total=True):
 
 
 class MetaEssence(TypedDict, total=False):
-    labels: Mapping[str, str]
-    annotations: Mapping[str, str]
+    labels: MutableMapping[str, str]
+    annotations: MutableMapping[str, str]
 
 
 class BodyEssence(TypedDict, total=False):
     metadata: MetaEssence
-    spec: Mapping[str, Any]
+    spec: MutableMapping[str, Any]
 
 
 #

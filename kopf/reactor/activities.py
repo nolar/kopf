@@ -25,7 +25,7 @@ from kopf.reactor import causation
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
-from kopf.reactor import states
+from kopf.storage import states
 from kopf.structs import callbacks
 from kopf.structs import configuration
 from kopf.structs import credentials

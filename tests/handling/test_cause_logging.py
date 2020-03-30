@@ -43,8 +43,8 @@ async def test_diffs_logged_if_present(registry, settings, resource, handlers,
     event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_type
     cause_mock.diff = diff
-    cause_mock.new = object()  # checked for `not None`
-    cause_mock.old = object()  # checked for `not None`
+    cause_mock.new = {'field': 'old'}  # checked for `not None`, and JSON-serialised
+    cause_mock.old = {'field': 'new'}  # checked for `not None`, and JSON-serialised
 
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,

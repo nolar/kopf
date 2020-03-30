@@ -6,18 +6,26 @@ Persistence
 ===========
 
 Kopf does not have any database. It stores all the information directly
-on the objects in the Kubernetes cluster (which means `etcd` usually).
-All information is retrieved and stored via the Kubernetes API.
+on the objects in the Kubernetes cluster (which means ``etcd`` usually).
+All information is retrieved and stored via Kubernetes API.
 
 Specifically:
 
-* The cross-operator exchange is performed via the peering objects.
+* The cross-operator exchange is performed via peering objects of type
+  ``KopfPeering`` or ``ClusterKopfPeering`` (API version: ``zalando.org/v1``).
   See :doc:`peering` for more info.
-* The last handled state of the object is stored in ``metadata.annotations``.
+* The last handled state of the object is stored in ``metadata.annotations``
+  (the ``kopf.zalando.org/last-handled-configuration`` annotation).
   It is used to calculate diffs upon changes.
-* The handler status (failures, successes, retries, delays) is stored
-  in ``status.kopf.progress`` (with ``status.kopf`` reserved for any
-  framework-related information in the future).
+* The handlers' state (failures, successes, retries, delays) is stored
+  in either ``metadata.annotations`` (``kopf.zalando.org/{id}`` keys),
+  or in ``status.kopf.progress.{id}``, where ``{id}`` is the handler's id.
+
+The persistent state locations can be configured to use different keys,
+thus allowing multiple independent operators to handle the same resources
+without overlapping with each other. The above-mentioned keys are the defaults.
+See how to configure the stores in :doc:`configuration`
+(at :ref:`progress-storing`, :ref:`diffbase-storing`).
 
 
 Restarts

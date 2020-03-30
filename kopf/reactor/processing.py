@@ -25,13 +25,13 @@ from kopf.reactor import causation
 from kopf.reactor import handling
 from kopf.reactor import lifecycles
 from kopf.reactor import registries
-from kopf.reactor import states
+from kopf.storage import finalizers
+from kopf.storage import states
 from kopf.structs import bodies
 from kopf.structs import configuration
 from kopf.structs import containers
-from kopf.structs import finalizers
+from kopf.structs import diffs
 from kopf.structs import handlers as handlers_
-from kopf.structs import lastseen
 from kopf.structs import patches
 from kopf.structs import resources
 
@@ -98,7 +98,11 @@ async def process_resource_event(
     # Detect the cause and handle it (or at least log this happened).
     if registry.resource_changing_handlers[resource]:
         extra_fields = registry.resource_changing_handlers[resource].get_extra_fields()
-        old, new, diff = lastseen.get_essential_diffs(body=body, extra_fields=extra_fields)
+        old = settings.persistence.diffbase_storage.fetch(body=body)
+        new = settings.persistence.diffbase_storage.build(body=body, extra_fields=extra_fields)
+        old = settings.persistence.progress_storage.clear(essence=old) if old is not None else None
+        new = settings.persistence.progress_storage.clear(essence=new) if new is not None else None
+        diff = diffs.diff(old, new)
         resource_changing_cause = causation.detect_resource_changing_cause(
             raw_event=raw_event,
             resource=resource,
@@ -220,7 +224,8 @@ async def process_resource_changing_cause(
             logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
 
         handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause=cause)
-        state = states.State.from_body(body=cause.body, handlers=handlers)
+        storage = settings.persistence.progress_storage
+        state = states.State.from_storage(body=cause.body, storage=storage, handlers=handlers)
         if handlers:
             outcomes = await handling.execute_handlers_once(
                 lifecycle=lifecycle,
@@ -230,12 +235,12 @@ async def process_resource_changing_cause(
                 state=state,
             )
             state = state.with_outcomes(outcomes)
-            state.store(patch=cause.patch)
+            state.store(body=cause.body, patch=cause.patch, storage=storage)
             states.deliver_results(outcomes=outcomes, patch=cause.patch)
 
             if state.done:
                 logger.info(f"All handlers succeeded for {title}.")
-                state.purge(patch=cause.patch, body=cause.body)
+                state.purge(body=cause.body, patch=cause.patch, storage=storage)
 
             done = state.done
             delay = state.delay
@@ -244,8 +249,8 @@ async def process_resource_changing_cause(
 
     # Regular causes also do some implicit post-handling when all handlers are done.
     if done or skip:
-        extra_fields = registry.resource_changing_handlers[cause.resource].get_extra_fields()
-        lastseen.refresh_essence(body=body, patch=patch, extra_fields=extra_fields)
+        if cause.new is not None and cause.old != cause.new:
+            settings.persistence.diffbase_storage.store(body=body, patch=patch, essence=cause.new)
         if cause.reason == handlers_.Reason.DELETE:
             logger.debug("Removing the finalizer, thus allowing the actual deletion.")
             finalizers.allow_deletion(body=body, patch=patch)

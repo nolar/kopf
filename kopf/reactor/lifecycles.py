@@ -14,7 +14,7 @@ from typing import Sequence, Any, Optional
 
 from typing_extensions import Protocol
 
-from kopf.reactor import states
+from kopf.storage import states
 from kopf.structs import handlers as handlers_
 
 logger = logging.getLogger(__name__)
