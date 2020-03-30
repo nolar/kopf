@@ -100,6 +100,35 @@ async def stop_resource_daemons(
     for deletion. It can take some time until the deletion handlers also
     finish their work. The object is not physically deleted until all
     the daemons are terminated (by putting a finalizer on it).
+
+    **Notes on this non-trivial implementation:**
+
+    There is a same-purpose function `stop_daemon`, which works fully in-memory.
+    That method is used when killing the daemons on operator exit.
+    This method is used when the resource is deleted.
+
+    The difference is that in this method (termination with delays and patches),
+    other on-deletion handlers can be happening at the same time as the daemons
+    are being terminated (it can take time due to backoffs and timeouts).
+    In the end, the finalizer should be removed only once all deletion handlers
+    have succeeded and all daemons are terminated -- not earlier than that.
+    None of this (handlers and finalizers) is needed for the operator exiting.
+
+    To know "when" the next check of daemons should be performed:
+
+    * EITHER the operator should block this resource's processing and wait until
+      the daemons are terminated -- thus leaking daemon's abstractions and logic
+      and tools (e.g. aiojobs scheduler) to the upper level of processing;
+
+    * OR the daemons termination should mimic the change-detection handlers
+      and simulate the delays with multiple handling cycles -- in order to
+      re-check the daemon's status regularly until they are done.
+
+    Both of this approaches have the same complexity. But the latter one
+    keep the logic isolated into the daemons module/routines (a bit cleaner).
+
+    Hence, these duplicating methods of termination for different cases
+    (as by their surrounding circumstances: deletion handlers and finalizers).
     """
     delays: List[float] = []
     now = time.monotonic()
@@ -192,6 +221,8 @@ async def stop_daemon(
     The purpose is the same as in `stop_resource_daemons`, but this function
     is called on operator exiting, so there is no multi-step handling,
     everything happens in memory and linearly (while respecting the timing).
+
+    For explanation on different implementations, see `stop_resource_daemons`.
     """
     if isinstance(daemon.handler, handlers_.ResourceDaemonHandler):
         backoff = daemon.handler.cancellation_backoff
