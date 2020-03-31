@@ -2,14 +2,15 @@
 Daemons
 =======
 
-Daemons are a special type of handlers for background logic that accompanies
+Daemons are a special type of handler for background logic that accompanies
 the Kubernetes resources during their life cycle.
 
 Unlike event-driven short-running handlers declared with ``@kopf.on``,
-daemons are started when an object is created or an operator is started,
+daemons are started for every individual object when it is created
+(or when an operator is started/restarted while the object exists),
 and are capable of running indefinitely (or infinitely) long.
 
-The daemons are stopped when the object is deleted
+The object's daemons are stopped when the object is deleted
 or the whole operator is exiting/restarting.
 
 
@@ -89,7 +90,7 @@ it is cancelled when the operator exits and stops all "hung" left-over tasks
 
 .. note::
 
-    The MUST_ / SHOULD_ separation is due to Python has no way of terminating
+    The MUST_ / SHOULD_ separation is due to Python having no way to terminate
     a thread unless the thread exits by its own. The :kwarg:`stopped` flag
     is a way to signal the thread it should exit. If :kwarg:`stopped` is not
     checked, the synchronous daemons will run forever or until an error happens.
@@ -187,7 +188,7 @@ configured nor desired, ``stopped.wait()`` can be used too (with ``await``):
         while not stopped:
             await stopped.wait(10)
 
-This way, the daemon will exit as soon as possible when the :kwarg:`stopped``
+This way, the daemon will exit as soon as possible when the :kwarg:`stopped`
 is set, not when the next sleep is over. Therefore, the sleeps can be of any
 duration while the daemon remains terminable (leads to no OS resource leakage).
 
@@ -217,9 +218,9 @@ It is possible to postpone the daemon spawning:
             await asyncio.sleep(1.0)
 
 
-The daemon will not be started during the specified time after it should
-be started. For example, this can be used to give some time for regular
-event-driven handlers to finish without producing too much activity.
+The start of the daemon will be delayed by 30 seconds after the resource
+creation (or operator startup). For example, this can be used to give some time
+for regular event-driven handlers to finish without producing too much activity.
 
 
 Restarting
