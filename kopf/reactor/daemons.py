@@ -303,8 +303,8 @@ async def _resource_daemon(
     """
     logger = cause.logger
 
-    if handler.initial_backoff is not None:
-        await sleeping.sleep_or_wait(handler.initial_backoff, cause.stopper)
+    if handler.initial_delay is not None:
+        await sleeping.sleep_or_wait(handler.initial_delay, cause.stopper)
 
     # Similar to activities (in-memory execution), but applies patches on every attempt.
     state = states.State.from_scratch(handlers=[handler])
@@ -363,8 +363,8 @@ async def _resource_timer(
     but calls the handling functions from time to time.
     """
 
-    if handler.initial_backoff is not None:
-        await sleeping.sleep_or_wait(handler.initial_backoff, cause.stopper)
+    if handler.initial_delay is not None:
+        await sleeping.sleep_or_wait(handler.initial_delay, cause.stopper)
 
     # Similar to activities (in-memory execution), but applies patches on every attempt.
     state = states.State.from_scratch(handlers=[handler])

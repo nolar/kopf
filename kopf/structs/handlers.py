@@ -139,7 +139,7 @@ class ResourceChangingHandler(ResourceHandler):
 @dataclasses.dataclass
 class ResourceSpawningHandler(ResourceHandler):
     requires_finalizer: Optional[bool]
-    initial_backoff: Optional[float]
+    initial_delay: Optional[float]
 
 
 @dataclasses.dataclass

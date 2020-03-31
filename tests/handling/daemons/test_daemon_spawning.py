@@ -22,13 +22,13 @@ async def test_daemon_is_spawned_at_least_once(
     assert dummy.mock.call_count == 1  # not restarted
 
 
-async def test_daemon_initial_backoff_obeyed(
+async def test_daemon_initial_delay_obeyed(
         registry, resource, dummy,
         caplog, assert_logs, k8s_mocked, simulate_cycle):
     caplog.set_level(logging.DEBUG)
 
     @kopf.daemon(resource.group, resource.version, resource.plural, registry=registry, id='fn',
-                 initial_backoff=1.0)
+                 initial_delay=1.0)
     async def fn(**kwargs):
         dummy.mock()
         dummy.kwargs = kwargs

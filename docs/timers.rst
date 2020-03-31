@@ -95,7 +95,7 @@ It is possible to postpone the invocations:
     import time
     import kopf
 
-    @kopf.timer('zalando.org', 'v1', 'kopfexamples', interval=1, initial_backoff=5)
+    @kopf.timer('zalando.org', 'v1', 'kopfexamples', interval=1, initial_delay=5)
     def ping_kex(spec, **kwargs):
         print(f"FIELD={spec['field']}")
 
@@ -115,7 +115,7 @@ the resources every 10 seconds if they are unmodified for 10 minutes:
     import kopf
 
     @kopf.timer('zalando.org', 'v1', 'kopfexamples',
-                initial_backoff=60, interval=10, idle=600)
+                initial_delay=60, interval=10, idle=600)
     def ping_kex(spec, **kwargs):
         pass
 

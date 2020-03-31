@@ -211,7 +211,7 @@ It is possible to postpone the daemon spawning:
     import asyncio
     import kopf
 
-    @kopf.daemon('zalando.org', 'v1', 'kopfexamples', initial_backoff=30)
+    @kopf.daemon('zalando.org', 'v1', 'kopfexamples', initial_delay=30)
     async def monitor_kex(stopped, **kwargs):
         while True:
             await asyncio.sleep(1.0)

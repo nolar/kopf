@@ -337,7 +337,7 @@ def daemon(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
-        initial_backoff: Optional[float] = None,
+        initial_delay: Optional[float] = None,
         cancellation_backoff: Optional[float] = None,
         cancellation_timeout: Optional[float] = None,
         cancellation_polling: Optional[float] = None,
@@ -353,7 +353,7 @@ def daemon(  # lgtm[py/similar-function]
             fn=fn, id=real_id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
-            initial_backoff=initial_backoff, requires_finalizer=True,  #TODO: requires_finalizer? "optional"?
+            initial_delay=initial_delay, requires_finalizer=True,  #TODO: requires_finalizer? "optional"?
             cancellation_backoff=cancellation_backoff,
             cancellation_timeout=cancellation_timeout,
             cancellation_polling=cancellation_polling,
@@ -376,7 +376,7 @@ def timer(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
-        initial_backoff: Optional[float] = None,
+        initial_delay: Optional[float] = None,
         sharp: Optional[bool] = None,
         idle: Optional[float] = None,
         interval: Optional[float] = None,
@@ -392,7 +392,7 @@ def timer(  # lgtm[py/similar-function]
             fn=fn, id=real_id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
-            initial_backoff=initial_backoff, requires_finalizer=None,
+            initial_delay=initial_delay, requires_finalizer=None,
             sharp=sharp, idle=idle, interval=interval,
         )
         real_registry.resource_spawning_handlers[real_resource].append(handler)

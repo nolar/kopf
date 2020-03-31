@@ -27,13 +27,13 @@ async def test_timer_is_spawned_at_least_once(
     await dummy.wait_for_daemon_done()
 
 
-async def test_timer_initial_backoff_obeyed(
+async def test_timer_initial_delay_obeyed(
         registry, resource, dummy,
         caplog, assert_logs, k8s_mocked, simulate_cycle):
     caplog.set_level(logging.DEBUG)
 
     @kopf.timer(resource.group, resource.version, resource.plural, registry=registry, id='fn',
-                initial_backoff=5.0, interval=1.0)
+                initial_delay=5.0, interval=1.0)
     async def fn(**kwargs):
         dummy.mock()
         dummy.kwargs = kwargs
