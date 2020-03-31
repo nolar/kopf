@@ -234,11 +234,11 @@ async def stop_daemon(
         raise RuntimeError(f"Unsupported daemon handler: {daemon.handler!r}")
 
     # Whatever happens with other flags & logs & timings, this flag must be surely set.
+    # It might be so, that the daemon exits instantly (if written properly: give it chance).
     daemon.stopper.set(reason=primitives.DaemonStoppingReason.OPERATOR_EXITING)
-
-    # It might be so, that the daemon exits instantly (if written properly).
-    # Avoid waiting and cancelling below: just give the asyncio event loop an extra cycle.
-    await asyncio.sleep(0)
+    await asyncio.sleep(0)  # give a chance to exit gracefully if it can.
+    if daemon.task.done():
+        daemon.logger.debug(f"Daemon {daemon_id!r} has exited gracefully.")
 
     # Try different approaches to exiting the daemon based on timings.
     if not daemon.task.done() and backoff is not None:
