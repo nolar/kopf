@@ -70,6 +70,8 @@ The event-posting can be disabled completely (the default is to be enabled):
     directly with an API client library instead of Kopf-provided toolkit.
 
 
+.. _configure-sync-handlers:
+
 Synchronous handlers
 ====================
 
@@ -101,6 +103,19 @@ handler itself. To avoid it, make the on-startup handler asynchronous:
     @kopf.on.startup()
     async def configure(settings: kopf.OperatorSettings, **_):
         settings.execution.executor = concurrent.futures.ThreadPoolExecutor()
+
+The same executor is used both for regular sync handlers and for sync daemons.
+If you expect large number of synchronous daemons (e.g. for large clusters),
+make sure to pre-scale the executor accordingly
+(the default in Python is 5x times the CPU cores):
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    async def configure(settings: kopf.OperatorSettings, **kwargs):
+        settings.execution.max_workers = 1000
 
 
 API timeouts

@@ -40,9 +40,12 @@ with ``@kopf.daemon`` and make it run for long time or forever:
 
 Synchronous functions are executed in threads, asynchronous functions are
 executed directly in the asyncio event loop of the operator -- same as with
-regular handlers, except that a separate thread pool is used for daemons
-to prevent thread pool depletion for regular handlers.
-See :doc:`async`.
+regular handlers. See :doc:`async`.
+
+The same executor is used both for regular sync handlers and for sync daemons.
+If you expect large number of synchronous daemons (e.g. for large clusters),
+make sure to pre-scale the executor accordingly.
+See :doc:`configuration` (:ref:`configure-sync-handlers`).
 
 
 Termination
