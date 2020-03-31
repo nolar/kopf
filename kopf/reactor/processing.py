@@ -185,7 +185,7 @@ async def process_resource_event(
 
     # Whatever was done, apply the accumulated changes to the object, or sleep-n-touch for delays.
     # But only once, to reduce the number of API calls and the generated irrelevant events.
-    # And only of the object is at least supposed to exist (not "GONE"), even if actually does not.
+    # And only if the object is at least supposed to exist (not "GONE"), even if actually does not.
     if raw_event['type'] != 'DELETED':
         await apply_reaction_outcomes(
             resource=resource, body=body,
@@ -279,7 +279,7 @@ async def process_resource_spawning_cause(
     handlers invocation (even if it takes few cycles). For this, the signal
     to terminate is sent to the daemons immediately, but the actual check
     of their shutdown is performed only when all the on-deletion handlers
-    are succeeded (or after they were invoked if they are optional;
+    have succeeded (or after they were invoked if they are optional;
     or immediately if there were no on-deletion handlers to invoke at all).
 
     The resource remains blocked by the finalizers until all the daemons exit

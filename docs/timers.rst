@@ -137,7 +137,7 @@ When an error happens, its delay overrides the timer's schedule or life cycle:
 * For `kopf.TemporaryError`, the error's ``delay=...`` option is used.
 * For `kopf.PermanentError`, the timer stops forever and is never retried.
 
-The timer's own interval is only used of the function exits successfully.
+The timer's own interval is only used if the function exits successfully.
 
 For example, if the handler fails 3 times with a back-off time set to 5 seconds
 and the interval set to 10 seconds, it will take 25 seconds (``3*5+10``)

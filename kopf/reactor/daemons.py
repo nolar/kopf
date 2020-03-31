@@ -57,7 +57,7 @@ async def spawn_resource_daemons(
     be idempotent: not having duplicating side-effects on multiple calls.
     """
     if memory.live_fresh_body is None:  # for type-checking; "not None" is ensured in processing.
-        raise RuntimeError("A daemon is spawned with None as body. This is a bug. Please repor.")
+        raise RuntimeError("A daemon is spawned with None as body. This is a bug. Please report.")
     for handler in handlers:
         daemon_id = containers.DaemonId(handler.id)
         if daemon_id not in daemons:
