@@ -31,6 +31,7 @@ from kopf.structs import containers
 from kopf.structs import diffs
 from kopf.structs import handlers
 from kopf.structs import patches
+from kopf.structs import primitives
 from kopf.structs import resources
 
 
@@ -65,6 +66,17 @@ class ResourceWatchingCause(ResourceCause):
 
 
 @dataclasses.dataclass
+class ResourceSpawningCause(ResourceCause):
+    """
+    An internal daemon is spawning: tasks, threads, timers.
+
+    Used only on the first appearance of a resource as a container for resource-
+    specific objects (loggers, etc).
+    """
+    reset: bool
+
+
+@dataclasses.dataclass
 class ResourceChangingCause(ResourceCause):
     """
     The cause is what has caused the whole reaction as a chain of handlers.
@@ -89,6 +101,28 @@ class ResourceChangingCause(ResourceCause):
         return finalizers.is_deletion_ongoing(self.body)
 
 
+@dataclasses.dataclass
+class DaemonCause(ResourceCause):
+    """
+    An exceptional case of a container for daemon invocation kwargs.
+
+    Regular causes are usually short-term, triggered by a watch-stream event,
+    and disappear once the event is processed. The processing includes
+    daemon spawning: the original cause and its temporary watch-event
+    should not be remembered though the whole life cycle of a daemon.
+
+    Instead, a new artificial daemon-cause is used (this class), which
+    passes the kwarg values to the invocation routines. It only contains
+    the long-living kwargs: loggers, per-daemon stoppers, body-views
+    (with only the latest bodies as contained values), etc.
+
+    Unlike other causes, it is created not in the processing routines once
+    per event, but in the daemon spawning routines once per daemon (or a timer).
+    Therefore, it is not "detected", but is created directly as an instance.
+    """
+    stopper: primitives.DaemonStopper  # a signaller for the termination and its reason.
+
+
 def detect_resource_watching_cause(
         raw_event: bodies.RawEvent,
         body: bodies.Body,
@@ -97,6 +131,15 @@ def detect_resource_watching_cause(
     return ResourceWatchingCause(
         raw=raw_event,
         type=raw_event['type'],
+        body=body,
+        **kwargs)
+
+
+def detect_resource_spawning_cause(
+        body: bodies.Body,
+        **kwargs: Any,
+) -> ResourceSpawningCause:
+    return ResourceSpawningCause(
         body=body,
         **kwargs)
 

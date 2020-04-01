@@ -92,7 +92,7 @@ def test_all_examples_are_runnable(mocker, settings, with_crd, exampledir, caplo
         assert 'Traceback (most recent call last):' not in runner.stdout
 
     # Verify that once a handler succeeds, it is never re-executed again.
-    handler_names = re.findall(r"Handler '(.+?)' succeeded", runner.stdout)
+    handler_names = re.findall(r"'(.+?)' succeeded", runner.stdout)
     if e2e_success_counts is not None:
         checked_names = [name for name in handler_names if name in e2e_success_counts]
         name_counts = collections.Counter(checked_names)
@@ -102,7 +102,7 @@ def test_all_examples_are_runnable(mocker, settings, with_crd, exampledir, caplo
         assert set(name_counts.values()) == {1}
 
     # Verify that once a handler fails, it is never re-executed again.
-    handler_names = re.findall(r"Handler '(.+?)' failed (?:permanently|with an exception. Will stop.)", runner.stdout)
+    handler_names = re.findall(r"'(.+?)' failed (?:permanently|with an exception. Will stop.)", runner.stdout)
     if e2e_failure_counts is not None:
         checked_names = [name for name in handler_names if name in e2e_failure_counts]
         name_counts = collections.Counter(checked_names)

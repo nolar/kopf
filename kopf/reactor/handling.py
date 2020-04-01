@@ -7,6 +7,7 @@ where the raw watch-events are interpreted and wrapped into extended *causes*.
 The handler execution can also be used in other places, such as in-memory
 activities, when there is no underlying Kubernetes object to patch'n'watch.
 """
+import asyncio
 import collections.abc
 import logging
 from contextvars import ContextVar
@@ -24,8 +25,6 @@ from kopf.structs import dicts
 from kopf.structs import diffs
 from kopf.structs import handlers as handlers_
 
-WAITING_KEEPALIVE_INTERVAL = 10 * 60
-""" How often to wake up from the long sleep, to show liveness in the logs. """
 
 DEFAULT_RETRY_DELAY = 1 * 60
 """ The default delay duration for the regular exception in retry-mode. """
@@ -60,7 +59,7 @@ class HandlerChildrenRetry(TemporaryError):
 
 # The task-local context; propagated down the stack instead of multiple kwargs.
 # Used in `@kopf.on.this` and `kopf.execute()` to add/get the sub-handlers.
-sublifecycle_var: ContextVar[lifecycles.LifeCycleFn] = ContextVar('sublifecycle_var')
+sublifecycle_var: ContextVar[Optional[lifecycles.LifeCycleFn]] = ContextVar('sublifecycle_var')
 subregistry_var: ContextVar[registries.ResourceChangingRegistry] = ContextVar('subregistry_var')
 subsettings_var: ContextVar[configuration.OperatorSettings] = ContextVar('subsettings_var')
 subexecuted_var: ContextVar[bool] = ContextVar('subexecuted_var')
@@ -94,6 +93,7 @@ async def execute(
 
     # Restore the current context as set in the handler execution cycle.
     lifecycle = lifecycle if lifecycle is not None else sublifecycle_var.get()
+    lifecycle = lifecycle if lifecycle is not None else lifecycles.get_default_lifecycle()
     cause = cause if cause is not None else cause_var.get()
     parent_handler: handlers_.BaseHandler = handler_var.get()
     parent_prefix = parent_handler.id if parent_handler is not None else None
@@ -218,15 +218,20 @@ async def execute_handler_once(
         handler: handlers_.BaseHandler,
         cause: causation.BaseCause,
         state: states.HandlerState,
-        lifecycle: lifecycles.LifeCycleFn,
+        lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         default_errors: handlers_.ErrorsMode = handlers_.ErrorsMode.TEMPORARY,
 ) -> states.HandlerOutcome:
     """
-    Execute one and only one handler.
+    Execute one and only one handler for one and only one time.
 
     *Execution* means not just *calling* the handler in properly set context
     (see `_call_handler`), but also interpreting its result and errors, and
     wrapping them into am `HandlerOutcome` object -- to be stored in the state.
+
+    The *execution* can be long -- depending on how the handler is implemented.
+    For daemons, it is normal to run for hours and days if needed.
+    This is different from the regular handlers, which are supposed
+    to be finished as soon as possible.
 
     This method is not supposed to raise any exceptions from the handlers:
     exceptions mean the failure of execution itself.
@@ -243,13 +248,13 @@ async def execute_handler_once(
 
     # The exceptions are handled locally and are not re-raised, to keep the operator running.
     try:
-        logger.debug(f"Invoking handler {handler.id!r}.")
+        logger.debug(f"{handler} is invoked.")
 
         if handler.timeout is not None and state.runtime.total_seconds() >= handler.timeout:
-            raise HandlerTimeoutError(f"Handler {handler.id!r} has timed out after {state.runtime}.")
+            raise HandlerTimeoutError(f"{handler} has timed out after {state.runtime}.")
 
         if handler.retries is not None and state.retries >= handler.retries:
-            raise HandlerRetriesError(f"Handler {handler.id!r} has exceeded {state.retries} retries.")
+            raise HandlerRetriesError(f"{handler} has exceeded {state.retries} retries.")
 
         result = await invoke_handler(
             handler,
@@ -261,14 +266,19 @@ async def execute_handler_once(
             lifecycle=lifecycle,  # just a default for the sub-handlers, not used directly.
         )
 
+    # The cancellations are an excepted way of stopping the handler. Especially for daemons.
+    except asyncio.CancelledError:
+        logger.warning(f"{handler} is cancelled. Will escalate.")
+        raise
+
     # Unfinished children cause the regular retry, but with less logging and event reporting.
     except HandlerChildrenRetry as e:
-        logger.debug(f"Handler {handler.id!r} has unfinished sub-handlers. Will retry soon.")
+        logger.debug(f"{handler} has unfinished sub-handlers. Will retry soon.")
         return states.HandlerOutcome(final=False, exception=e, delay=e.delay)
 
     # Definitely a temporary error, regardless of the error strictness.
     except TemporaryError as e:
-        logger.error(f"Handler {handler.id!r} failed temporarily: %s", str(e) or repr(e))
+        logger.error(f"{handler} failed temporarily: %s", str(e) or repr(e))
         return states.HandlerOutcome(final=False, exception=e, delay=e.delay)
 
     # Same as permanent errors below, but with better logging for our internal cases.
@@ -279,20 +289,20 @@ async def execute_handler_once(
 
     # Definitely a permanent error, regardless of the error strictness.
     except PermanentError as e:
-        logger.error(f"Handler {handler.id!r} failed permanently: %s", str(e) or repr(e))
+        logger.error(f"{handler} failed permanently: %s", str(e) or repr(e))
         return states.HandlerOutcome(final=True, exception=e)
         # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
     # Regular errors behave as either temporary or permanent depending on the error strictness.
     except Exception as e:
         if errors_mode == handlers_.ErrorsMode.IGNORED:
-            logger.exception(f"Handler {handler.id!r} failed with an exception. Will ignore.")
+            logger.exception(f"{handler} failed with an exception. Will ignore.")
             return states.HandlerOutcome(final=True)
         elif errors_mode == handlers_.ErrorsMode.TEMPORARY:
-            logger.exception(f"Handler {handler.id!r} failed with an exception. Will retry.")
+            logger.exception(f"{handler} failed with an exception. Will retry.")
             return states.HandlerOutcome(final=False, exception=e, delay=backoff)
         elif errors_mode == handlers_.ErrorsMode.PERMANENT:
-            logger.exception(f"Handler {handler.id!r} failed with an exception. Will stop.")
+            logger.exception(f"{handler} failed with an exception. Will stop.")
             return states.HandlerOutcome(final=True, exception=e)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?
         else:
@@ -300,7 +310,7 @@ async def execute_handler_once(
 
     # No errors means the handler should be excluded from future runs in this reaction cycle.
     else:
-        logger.info(f"Handler {handler.id!r} succeeded.")
+        logger.info(f"{handler} succeeded.")
         return states.HandlerOutcome(final=True, result=result)
 
 
@@ -309,7 +319,7 @@ async def invoke_handler(
         *args: Any,
         cause: causation.BaseCause,
         settings: configuration.OperatorSettings,
-        lifecycle: lifecycles.LifeCycleFn,
+        lifecycle: Optional[lifecycles.LifeCycleFn],
         **kwargs: Any,
 ) -> Optional[callbacks.Result]:
     """

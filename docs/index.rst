@@ -27,6 +27,8 @@ Kopf: Kubernetes Operators Framework
    :caption: Resource handling:
 
    handlers
+   daemons
+   timers
    kwargs
    async
    loading
@@ -62,6 +64,7 @@ Kopf: Kubernetes Operators Framework
    deployment
    continuity
    idempotence
+   reconciliation
    troubleshooting
 
 .. toctree::

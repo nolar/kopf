@@ -6,13 +6,15 @@ import pytest
 import kopf
 from kopf.reactor.processing import process_resource_event
 from kopf.storage.diffbase import LAST_SEEN_ANNOTATION
+from kopf.storage.finalizers import FINALIZER
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.handlers import Reason
 
 EVENT_TYPES = [None, 'ADDED', 'MODIFIED', 'DELETED']
+EVENT_TYPES_WHEN_EXISTS = [None, 'ADDED', 'MODIFIED']
 
 
-@pytest.mark.parametrize('event_type', EVENT_TYPES)
+@pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_create(registry, settings, handlers, resource, cause_mock, event_type,
                       caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
@@ -34,7 +36,6 @@ async def test_create(registry, settings, handlers, resource, cause_mock, event_
     assert not handlers.update_mock.called
     assert not handlers.delete_mock.called
 
-    assert k8s_mocked.asyncio_sleep.call_count == 0
     assert k8s_mocked.sleep_or_wait.call_count == 0
     assert k8s_mocked.patch_obj.call_count == 1
     assert not event_queue.empty()
@@ -47,14 +48,14 @@ async def test_create(registry, settings, handlers, resource, cause_mock, event_
 
     assert_logs([
         "Creation event:",
-        "Invoking handler 'create_fn'",
+        "Handler 'create_fn' is invoked",
         "Handler 'create_fn' succeeded",
         "All handlers succeeded",
         "Patching with",
     ])
 
 
-@pytest.mark.parametrize('event_type', EVENT_TYPES)
+@pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_update(registry, settings, handlers, resource, cause_mock, event_type,
                       caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
@@ -76,7 +77,6 @@ async def test_update(registry, settings, handlers, resource, cause_mock, event_
     assert handlers.update_mock.call_count == 1
     assert not handlers.delete_mock.called
 
-    assert k8s_mocked.asyncio_sleep.call_count == 0
     assert k8s_mocked.sleep_or_wait.call_count == 0
     assert k8s_mocked.patch_obj.call_count == 1
     assert not event_queue.empty()
@@ -89,18 +89,19 @@ async def test_update(registry, settings, handlers, resource, cause_mock, event_
 
     assert_logs([
         "Update event:",
-        "Invoking handler 'update_fn'",
+        "Handler 'update_fn' is invoked",
         "Handler 'update_fn' succeeded",
         "All handlers succeeded",
         "Patching with",
     ])
 
 
-@pytest.mark.parametrize('event_type', EVENT_TYPES)
+@pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_delete(registry, settings, handlers, resource, cause_mock, event_type,
                       caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = Reason.DELETE
+    event_body = {'metadata': {'deletionTimestamp': '...', 'finalizers': [FINALIZER]}}
 
     event_queue = asyncio.Queue()
     await process_resource_event(
@@ -109,7 +110,7 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
         settings=settings,
         resource=resource,
         memories=ResourceMemories(),
-        raw_event={'type': event_type, 'object': {}},
+        raw_event={'type': event_type, 'object': event_body},
         replenished=asyncio.Event(),
         event_queue=event_queue,
     )
@@ -118,7 +119,6 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
     assert not handlers.update_mock.called
     assert handlers.delete_mock.call_count == 1
 
-    assert k8s_mocked.asyncio_sleep.call_count == 0
     assert k8s_mocked.sleep_or_wait.call_count == 0
     assert k8s_mocked.patch_obj.call_count == 1
     assert not event_queue.empty()
@@ -128,7 +128,7 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
 
     assert_logs([
         "Deletion event",
-        "Invoking handler 'delete_fn'",
+        "Handler 'delete_fn' is invoked",
         "Handler 'delete_fn' succeeded",
         "All handlers succeeded",
         "Removing the finalizer",
@@ -162,8 +162,6 @@ async def test_gone(registry, settings, handlers, resource, cause_mock, event_ty
     assert not handlers.update_mock.called
     assert not handlers.delete_mock.called
 
-    assert not k8s_mocked.asyncio_sleep.called
-    assert not k8s_mocked.sleep_or_wait.called
     assert not k8s_mocked.patch_obj.called
     assert event_queue.empty()
 
@@ -194,7 +192,6 @@ async def test_free(registry, settings, handlers, resource, cause_mock, event_ty
     assert not handlers.update_mock.called
     assert not handlers.delete_mock.called
 
-    assert not k8s_mocked.asyncio_sleep.called
     assert not k8s_mocked.sleep_or_wait.called
     assert not k8s_mocked.patch_obj.called
     assert event_queue.empty()
@@ -226,7 +223,6 @@ async def test_noop(registry, settings, handlers, resource, cause_mock, event_ty
     assert not handlers.update_mock.called
     assert not handlers.delete_mock.called
 
-    assert not k8s_mocked.asyncio_sleep.called
     assert not k8s_mocked.sleep_or_wait.called
     assert not k8s_mocked.patch_obj.called
     assert event_queue.empty()

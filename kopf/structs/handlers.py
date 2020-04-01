@@ -94,12 +94,19 @@ class BaseHandler:
         else:
             return super().__getattribute__(name)
 
+    # Used in the logs. Overridden in some (but not all) handler types for better log messages.
+    def __str__(self) -> str:
+        return f"Handler {self.id!r}"
+
 
 @dataclasses.dataclass
 class ActivityHandler(BaseHandler):
     fn: callbacks.ActivityFn  # type clarification
     activity: Optional[Activity]
     _fallback: bool = False  # non-public!
+
+    def __str__(self) -> str:
+        return f"Activity {self.id!r}"
 
 
 @dataclasses.dataclass
@@ -127,3 +134,31 @@ class ResourceChangingHandler(ResourceHandler):
     def event(self) -> Optional[Reason]:
         warnings.warn("handler.event is deprecated; use handler.reason.", DeprecationWarning)
         return self.reason
+
+
+@dataclasses.dataclass
+class ResourceSpawningHandler(ResourceHandler):
+    requires_finalizer: Optional[bool]
+    initial_delay: Optional[float]
+
+
+@dataclasses.dataclass
+class ResourceDaemonHandler(ResourceSpawningHandler):
+    fn: callbacks.ResourceDaemonFn  # type clarification
+    cancellation_backoff: Optional[float]  # how long to wait before actual cancellation.
+    cancellation_timeout: Optional[float]  # how long to wait before giving up on cancellation.
+    cancellation_polling: Optional[float]  # how often to check for cancellation status.
+
+    def __str__(self) -> str:
+        return f"Daemon {self.id!r}"
+
+
+@dataclasses.dataclass
+class ResourceTimerHandler(ResourceSpawningHandler):
+    fn: callbacks.ResourceTimerFn  # type clarification
+    sharp: Optional[bool]
+    idle: Optional[float]
+    interval: Optional[float]
+
+    def __str__(self) -> str:
+        return f"Timer {self.id!r}"

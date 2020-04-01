@@ -2,7 +2,7 @@ import kopf
 
 
 @kopf.on.resume('zalando.org', 'v1', 'kopfexamples')
-def resume_fn_1(cause, **kwargs):
+def resume_fn_1(**kwargs):
     print(f'RESUMED 1st')
 
 
@@ -12,7 +12,7 @@ def create_fn_1(**kwargs):
 
 
 @kopf.on.resume('zalando.org', 'v1', 'kopfexamples')
-def resume_fn_2(cause, **kwargs):
+def resume_fn_2(**kwargs):
     print(f'RESUMED 2nd')
 
 

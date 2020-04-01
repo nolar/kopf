@@ -170,4 +170,7 @@ async def test_delays_are_simulated(settings, activity, mocker):
                 lifecycle=all_at_once,
             )
 
-    assert sleep_or_wait.call_count == 3  # 3 retries, 1 sleep each
+    assert sleep_or_wait.call_count >= 3  # 3 retries, 1 sleep each
+    assert sleep_or_wait.call_count <= 4  # 3 retries, 1 final success (delay=None), not more
+    if sleep_or_wait.call_count > 3:
+        sleep_or_wait.call_args_list[-1].args[0] is None

@@ -35,6 +35,7 @@ ResourceHandlerT = TypeVar('ResourceHandlerT', bound=handlers.ResourceHandler)
 HandlerFnT = TypeVar('HandlerFnT',
                      callbacks.ActivityFn,
                      callbacks.ResourceWatchingFn,
+                     callbacks.ResourceSpawningFn,
                      callbacks.ResourceChangingFn,
                      Union[callbacks.ResourceWatchingFn, callbacks.ResourceChangingFn])  # DEPRECATED: for legacy_registries
 
@@ -193,6 +194,21 @@ class ResourceWatchingRegistry(ResourceRegistry[
                 yield handler
 
 
+class ResourceSpawningRegistry(ResourceRegistry[
+        causation.ResourceSpawningCause,
+        callbacks.ResourceSpawningFn,
+        handlers.ResourceSpawningHandler]):
+
+    @abc.abstractmethod
+    def iter_handlers(
+            self,
+            cause: causation.ResourceSpawningCause,
+    ) -> Iterator[handlers.ResourceSpawningHandler]:
+        for handler in self._handlers:
+            if match(handler=handler, cause=cause):
+                yield handler
+
+
 class ResourceChangingRegistry(ResourceRegistry[
         causation.ResourceChangingCause,
         callbacks.ResourceChangingFn,
@@ -261,18 +277,21 @@ class OperatorRegistry:
     """
     activity_handlers: ActivityRegistry
     resource_watching_handlers: MutableMapping[resources_.Resource, ResourceWatchingRegistry]
+    resource_spawning_handlers: MutableMapping[resources_.Resource, ResourceSpawningRegistry]
     resource_changing_handlers: MutableMapping[resources_.Resource, ResourceChangingRegistry]
 
     def __init__(self) -> None:
         super().__init__()
         self.activity_handlers = ActivityRegistry()
         self.resource_watching_handlers = collections.defaultdict(ResourceWatchingRegistry)
+        self.resource_spawning_handlers = collections.defaultdict(ResourceSpawningRegistry)
         self.resource_changing_handlers = collections.defaultdict(ResourceChangingRegistry)
 
     @property
     def resources(self) -> FrozenSet[resources_.Resource]:
         """ All known resources in the registry. """
         return (frozenset(self.resource_watching_handlers) |
+                frozenset(self.resource_spawning_handlers) |
                 frozenset(self.resource_changing_handlers))
 
     #

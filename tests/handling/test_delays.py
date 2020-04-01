@@ -7,8 +7,7 @@ import pytest
 
 import kopf
 from kopf.reactor.handling import TemporaryError
-from kopf.reactor.handling import WAITING_KEEPALIVE_INTERVAL
-from kopf.reactor.processing import process_resource_event
+from kopf.reactor.processing import process_resource_event, WAITING_KEEPALIVE_INTERVAL
 from kopf.storage.finalizers import FINALIZER
 from kopf.storage.states import HandlerState
 from kopf.structs.containers import ResourceMemories
@@ -57,7 +56,7 @@ async def test_delayed_handlers_progress(
     assert patch['status']['kopf']['progress'][fname]['delayed'] == delayed_iso
 
     assert_logs([
-        "Invoking handler .+",
+        "Handler .+ is invoked",
         "Handler .+ failed temporarily: oops",
     ])
 
@@ -114,5 +113,5 @@ async def test_delayed_handlers_sleep(
     assert k8s_mocked.sleep_or_wait.call_args_list[0][0][0] == delay
 
     assert_logs([
-        r"Sleeping for [\d\.]+ seconds",
+        r"Sleeping for ([\d\.]+|[\d\.]+ \(capped [\d\.]+\)) seconds",
     ])
