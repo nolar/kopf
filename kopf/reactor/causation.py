@@ -51,7 +51,7 @@ class ResourceCause(BaseCause):
     resource: resources.Resource
     patch: patches.Patch
     body: bodies.Body
-    memo: containers.ObjectDict
+    memo: containers.Memo
 
 
 @dataclasses.dataclass

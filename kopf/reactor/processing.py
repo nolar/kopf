@@ -97,7 +97,7 @@ async def process_resource_event(
         logger=logger,
         patch=patch,
         body=body,
-        memo=memory.user_data,
+        memo=memory.memo,
     ) if registry.resource_watching_handlers[resource] else None
 
     resource_spawning_cause = causation.detect_resource_spawning_cause(
@@ -105,7 +105,7 @@ async def process_resource_event(
         logger=logger,
         patch=patch,
         body=body,
-        memo=memory.user_data,
+        memo=memory.memo,
         reset=bool(diff),  # only essential changes reset idling, not every event
     ) if registry.resource_spawning_handlers[resource] else None
 
@@ -118,7 +118,7 @@ async def process_resource_event(
         old=old,
         new=new,
         diff=diff,
-        memo=memory.user_data,
+        memo=memory.memo,
         initial=memory.noticed_by_listing and not memory.fully_handled_once,
     ) if registry.resource_changing_handlers[resource] else None
 

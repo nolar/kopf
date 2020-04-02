@@ -36,7 +36,7 @@ class Daemon:
     stopper: primitives.DaemonStopper  # a signaller for the termination and its reason.
 
 
-class ObjectDict(Dict[Any, Any]):
+class Memo(Dict[Any, Any]):
     """ A container to hold arbitrary keys-fields assigned by the users. """
 
     def __setattr__(self, key: str, value: Any) -> None:
@@ -60,7 +60,7 @@ class ResourceMemory:
     """ A system memo about a single resource/object. Usually stored in `Memories`. """
 
     # For arbitrary user data to be stored in memory, passed as `memo` to all the handlers.
-    user_data: ObjectDict = dataclasses.field(default_factory=ObjectDict)
+    memo: Memo = dataclasses.field(default_factory=Memo)
 
     # For resuming handlers tracking and deciding on should they be called or not.
     noticed_by_listing: bool = False

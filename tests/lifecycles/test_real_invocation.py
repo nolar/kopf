@@ -7,7 +7,7 @@ from kopf.reactor.causation import ResourceChangingCause
 from kopf.reactor.invocation import invoke
 from kopf.storage.states import State
 from kopf.structs.bodies import Body
-from kopf.structs.containers import ObjectDict
+from kopf.structs.containers import Memo
 from kopf.structs.handlers import Reason
 from kopf.structs.patches import Patch
 
@@ -30,7 +30,7 @@ async def test_protocol_invocation(lifecycle, resource):
         logger=logging.getLogger('kopf.test.fake.logger'),
         resource=resource,
         patch=Patch(),
-        memo=ObjectDict(),
+        memo=Memo(),
         body=Body({}),
         initial=False,
         reason=Reason.NOOP,
