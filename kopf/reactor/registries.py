@@ -621,7 +621,9 @@ def _matches_field(
     return (ignore_fields or
             not isinstance(handler, handlers.ResourceChangingHandler) or
             not handler.field or
-            any(field[:len(handler.field)] == handler.field for field in changed_fields))
+            any(changed_field[:len(handler.field)] == handler.field or  # a.b.c -vs- a.b => ignore c
+                changed_field == handler.field[:len(changed_field)]     # a.b -vs- a.b.c => ignore c
+                for changed_field in changed_fields))
 
 
 def _matches_labels(

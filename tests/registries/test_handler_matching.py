@@ -7,6 +7,7 @@ from kopf import OperatorRegistry
 from kopf.reactor.causation import ResourceChangingCause
 from kopf.structs.bodies import Body
 from kopf.structs.dicts import parse_field
+from kopf.structs.diffs import DiffOperation, DiffItem
 from kopf.structs.filters import MetaFilterToken
 from kopf.structs.handlers import ResourceChangingHandler, Reason, ALL_REASONS
 
@@ -666,6 +667,50 @@ def test_irrelevant_handlers_with_when_callback_not_satisfied(
     cause.reason = reason
     handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert not handlers
+
+
+#
+# Special case for nested fields with shorter/longer diffs.
+#
+
+def test_field_same_as_diff(cause_with_diff, registry, resource):
+
+    @kopf.on.field(resource.group, resource.version, resource.plural, registry=registry,
+                   field='level1.level2')
+    def some_fn(**_): ...
+
+    cause = cause_with_diff
+    cause.reason = Reason.UPDATE
+    cause.diff = [DiffItem(DiffOperation.CHANGE, ('level1', 'level2'), 'old', 'new')]
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
+    assert handlers
+
+
+def test_field_longer_than_diff(cause_with_diff, registry, resource):
+
+    @kopf.on.field(resource.group, resource.version, resource.plural, registry=registry,
+                   field='level1.level2.level3')
+    def some_fn(**_): ...
+
+    cause = cause_with_diff
+    cause.reason = Reason.UPDATE
+    cause.diff = [DiffItem(DiffOperation.CHANGE, ('level1', 'level2'), 'old', 'new')]
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
+    assert handlers
+
+
+def test_field_shorter_than_diff(cause_with_diff, registry, resource):
+
+    @kopf.on.field(resource.group, resource.version, resource.plural, registry=registry,
+                   field='level1')
+    def some_fn(**_): ...
+
+    cause = cause_with_diff
+    cause.reason = Reason.UPDATE
+    cause.diff = [DiffItem(DiffOperation.CHANGE, ('level1', 'level2'), 'old', 'new')]
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
+    assert handlers
+
 
 #
 # The handlers must be returned in order of registration,
