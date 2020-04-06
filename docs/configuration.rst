@@ -152,12 +152,37 @@ or disconnects. The default is 0.1 seconds (nearly instant, but not flooding).
 
 .. code-block:: python
 
-    import concurrent.futures
     import kopf
 
     @kopf.on.startup()
     def configure(settings: kopf.OperatorSettings, **_):
         settings.watching.server_timeout = 10 * 60
+
+
+Finalizers
+==========
+
+A resource is blocked from deletion if the framework believes it is safer
+to do so, e.g. if non-optional deletion handlers are present
+or if daemons/timers are running at the moment.
+
+For this, a finalizer_ is added to the object. It is removed when the framework
+believes it is safe to release the object for actual deletion.
+
+.. _finalizer: https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/#finalizers
+
+The name of the finalizer can be configured:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.persistence.finalizer = 'my-operator.example.com/kopf-finalizer'
+
+The default is the one that was hard-coded before:
+``kopf.zalando.org/KopfFinalizerMarker``.
 
 
 .. _progress-storing:

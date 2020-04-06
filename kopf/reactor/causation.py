@@ -146,6 +146,7 @@ def detect_resource_spawning_cause(
 
 def detect_resource_changing_cause(
         *,
+        finalizer: str,
         raw_event: bodies.RawEvent,
         body: bodies.Body,
         old: Optional[bodies.BodyEssence] = None,
@@ -173,10 +174,12 @@ def detect_resource_changing_cause(
         return ResourceChangingCause(reason=handlers.Reason.GONE, **kwargs)
 
     # The finalizer has been just removed. We are fully done.
-    if finalizers.is_deletion_ongoing(body) and not finalizers.is_deletion_blocked(body):
+    deletion_is_ongoing = finalizers.is_deletion_ongoing(body=body)
+    deletion_is_blocked = finalizers.is_deletion_blocked(body=body, finalizer=finalizer)
+    if deletion_is_ongoing and not deletion_is_blocked:
         return ResourceChangingCause(reason=handlers.Reason.FREE, **kwargs)
 
-    if finalizers.is_deletion_ongoing(body):
+    if deletion_is_ongoing:
         return ResourceChangingCause(reason=handlers.Reason.DELETE, **kwargs)
 
     # For an object seen for the first time (i.e. just-created), call the creation handlers,

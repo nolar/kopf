@@ -8,7 +8,6 @@ import pytest
 import kopf
 from kopf.reactor.handling import TemporaryError
 from kopf.reactor.processing import process_resource_event, WAITING_KEEPALIVE_INTERVAL
-from kopf.storage.finalizers import FINALIZER
 from kopf.storage.states import HandlerState
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.handlers import Reason, HANDLER_REASONS
@@ -77,7 +76,7 @@ async def test_delayed_handlers_sleep(
     delayed_dt = datetime.datetime.fromisoformat(delayed_iso)
     event_type = None if cause_reason == Reason.RESUME else 'irrelevant'
     event_body = {
-        'metadata': {'finalizers': [FINALIZER]},
+        'metadata': {'finalizers': [settings.persistence.finalizer]},
         'status': {'kopf': {'progress': {
             'create_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_in_storage(),
             'update_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_in_storage(),

@@ -8,9 +8,6 @@ to "release" the object (e.g. cleanups; delete-handlers in our case).
 from kopf.structs import bodies
 from kopf.structs import patches
 
-# A string marker to be put on the list of the finalizers to block
-# the object from being deleted without the permission of the framework.
-FINALIZER = 'kopf.zalando.org/KopfFinalizerMarker'
 LEGACY_FINALIZER = 'KopfFinalizerMarker'
 
 
@@ -22,31 +19,34 @@ def is_deletion_ongoing(
 
 def is_deletion_blocked(
         body: bodies.Body,
+        finalizer: str,
 ) -> bool:
     finalizers = body.get('metadata', {}).get('finalizers', [])
-    return FINALIZER in finalizers or LEGACY_FINALIZER in finalizers
+    return finalizer in finalizers or LEGACY_FINALIZER in finalizers
 
 
 def block_deletion(
         *,
         body: bodies.Body,
         patch: patches.Patch,
+        finalizer: str,
 ) -> None:
-    if not is_deletion_blocked(body=body):
+    if not is_deletion_blocked(body=body, finalizer=finalizer):
         finalizers = body.get('metadata', {}).get('finalizers', [])
         patch.setdefault('metadata', {}).setdefault('finalizers', list(finalizers))
-        patch['metadata']['finalizers'].append(FINALIZER)
+        patch['metadata']['finalizers'].append(finalizer)
 
 
 def allow_deletion(
         *,
         body: bodies.Body,
         patch: patches.Patch,
+        finalizer: str,
 ) -> None:
-    if is_deletion_blocked(body=body):
+    if is_deletion_blocked(body=body, finalizer=finalizer):
         finalizers = body.get('metadata', {}).get('finalizers', [])
         patch.setdefault('metadata', {}).setdefault('finalizers', list(finalizers))
         if LEGACY_FINALIZER in patch['metadata']['finalizers']:
             patch['metadata']['finalizers'].remove(LEGACY_FINALIZER)
-        if FINALIZER in patch['metadata']['finalizers']:
-            patch['metadata']['finalizers'].remove(FINALIZER)
+        if finalizer in patch['metadata']['finalizers']:
+            patch['metadata']['finalizers'].remove(finalizer)

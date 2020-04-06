@@ -6,7 +6,6 @@ import pytest
 import kopf
 from kopf.reactor.processing import process_resource_event
 from kopf.storage.diffbase import LAST_SEEN_ANNOTATION
-from kopf.storage.finalizers import FINALIZER
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.handlers import Reason
 
@@ -101,7 +100,8 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
                       caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = Reason.DELETE
-    event_body = {'metadata': {'deletionTimestamp': '...', 'finalizers': [FINALIZER]}}
+    finalizer = settings.persistence.finalizer
+    event_body = {'metadata': {'deletionTimestamp': '...', 'finalizers': [finalizer]}}
 
     event_queue = asyncio.Queue()
     await process_resource_event(

@@ -166,6 +166,12 @@ class ExecutionSettings:
 @dataclasses.dataclass
 class PersistenceSettings:
 
+    finalizer: str = 'kopf.zalando.org/KopfFinalizerMarker'
+    """
+    A string marker to be put on a list of finalizers to block the object
+    from being deleted without framework's/operator's permission.
+    """
+
     progress_storage: progress.ProgressStorage = dataclasses.field(
         default_factory=progress.SmartProgressStorage)
     """
