@@ -188,13 +188,19 @@ async def process_resource_event(
     # And only if the object is at least supposed to exist (not "GONE"), even if actually does not.
     if raw_event['type'] != 'DELETED':
         await apply_reaction_outcomes(
-            resource=resource, body=body,
-            patch=patch, delays=list(resource_spawning_delays) + list(resource_changing_delays),
-            logger=logger, replenished=replenished)
+            settings=settings,
+            resource=resource,
+            body=body,
+            patch=patch,
+            logger=logger,
+            delays=list(resource_spawning_delays) + list(resource_changing_delays),
+            replenished=replenished,
+        )
 
 
 async def apply_reaction_outcomes(
         *,
+        settings: configuration.OperatorSettings,
         resource: resources.Resource,
         body: bodies.Body,
         patch: patches.Patch,
@@ -204,6 +210,11 @@ async def apply_reaction_outcomes(
 ) -> None:
     delay = min(delays) if delays else None
 
+    # Delete dummies on occasion, but don't trigger special patching for them [discussable].
+    if patch:  # TODO: LATER: and the dummies are there (without additional methods?)
+        settings.persistence.progress_storage.touch(body=body, patch=patch, value=None)
+
+    # Actually patch if it contained payload originally or after dummies removal.
     if patch:
         logger.debug("Patching with: %r", patch)
         await patching.patch_obj(resource=resource, patch=patch, body=body)
@@ -233,10 +244,12 @@ async def apply_reaction_outcomes(
             logger.debug(f"Sleeping was interrupted by new changes, {unslept_delay} seconds left.")
         else:
             # Any unique always-changing value will work; not necessary a timestamp.
-            dummy_value = datetime.datetime.utcnow().isoformat()
-            dummy_patch = patches.Patch({'status': {'kopf': {'dummy': dummy_value}}})
-            logger.debug("Provoking reaction with: %r", dummy_patch)
-            await patching.patch_obj(resource=resource, patch=dummy_patch, body=body)
+            value = datetime.datetime.utcnow().isoformat()
+            touch_patch = patches.Patch()
+            settings.persistence.progress_storage.touch(body=body, patch=touch_patch, value=value)
+            if touch_patch:
+                logger.debug("Provoking reaction with: %r", touch_patch)
+                await patching.patch_obj(resource=resource, patch=touch_patch, body=body)
 
 
 async def process_resource_watching_cause(

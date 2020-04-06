@@ -40,6 +40,7 @@ All timestamps are strings in ISO8601 format in UTC (no explicit ``Z`` suffix).
 """
 import abc
 import copy
+import datetime
 import json
 from typing import Optional, Collection, Mapping, Dict, Any, cast
 
@@ -111,6 +112,16 @@ class ProgressStorage(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
+    def touch(
+            self,
+            *,
+            body: bodies.Body,
+            patch: patches.Patch,
+            value: Optional[str],
+    ) -> None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def clear(self, *, essence: bodies.BodyEssence) -> bodies.BodyEssence:
         return copy.deepcopy(essence)
 
@@ -152,10 +163,12 @@ class AnnotationsProgressStorage(ProgressStorage):
             *,
             prefix: Optional[str] = 'kopf.zalando.org',
             verbose: bool = False,
+            touch_key: str = 'touch-dummy',  # NB: not dotted, but dashed
     ) -> None:
         super().__init__()
         self.prefix = prefix
         self.verbose = verbose
+        self.touch_key = touch_key
 
     def fetch(
             self,
@@ -193,6 +206,19 @@ class AnnotationsProgressStorage(ProgressStorage):
         full_key = f'{self.prefix}/{safe_key}' if self.prefix else safe_key
         if full_key in body.metadata.annotations or full_key in patch.meta.annotations:
             patch.meta.annotations[full_key] = None
+
+    def touch(
+            self,
+            *,
+            body: bodies.Body,
+            patch: patches.Patch,
+            value: Optional[str],
+    ) -> None:
+        key = self.touch_key
+        safe_key = key.replace('/', '.')
+        full_key = f'{self.prefix}/{safe_key}' if self.prefix else safe_key
+        if body.meta.annotations.get(full_key, None) != value:  # also covers absent-vs-None cases.
+            patch.meta.annotations[full_key] = value
 
     def clear(self, *, essence: bodies.BodyEssence) -> bodies.BodyEssence:
         essence = super().clear(essence=essence)
@@ -242,11 +268,16 @@ class StatusProgressStorage(ProgressStorage):
             *,
             name: str = 'kopf',
             field: dicts.FieldSpec = 'status.{name}.progress',
+            touch_field: dicts.FieldSpec = 'status.{name}.dummy',
     ) -> None:
         super().__init__()
         self._name = name
-        real_field = field.format(name=self._name) if isinstance(field, str) else field
+
+        real_field = field.format(name=name) if isinstance(field, str) else field
         self._field = dicts.parse_field(real_field)
+
+        real_field = touch_field.format(name=name) if isinstance(touch_field, str) else touch_field
+        self._touch_field = dicts.parse_field(real_field)
 
     @property
     def field(self) -> dicts.FieldPath:
@@ -256,6 +287,15 @@ class StatusProgressStorage(ProgressStorage):
     def field(self, field: dicts.FieldSpec) -> None:
         real_field = field.format(name=self._name) if isinstance(field, str) else field
         self._field = dicts.parse_field(real_field)
+
+    @property
+    def touch_field(self) -> dicts.FieldPath:
+        return self._touch_field
+
+    @touch_field.setter
+    def touch_field(self, field: dicts.FieldSpec) -> None:
+        real_field = field.format(name=self._name) if isinstance(field, str) else field
+        self._touch_field = dicts.parse_field(real_field)
 
     def fetch(
             self,
@@ -293,6 +333,18 @@ class StatusProgressStorage(ProgressStorage):
             dicts.ensure(patch, key_field, None)
         elif patch_value is not absent:
             dicts.remove(patch, key_field)
+
+    def touch(
+            self,
+            *,
+            body: bodies.Body,
+            patch: patches.Patch,
+            value: Optional[str],
+    ) -> None:
+        key_field = self.touch_field
+        body_value = dicts.resolve(body, key_field, None, assume_empty=True)
+        if body_value != value:  # also covers absent-vs-None cases.
+            dicts.ensure(patch, key_field, value)
 
     def clear(self, *, essence: bodies.BodyEssence) -> bodies.BodyEssence:
         essence = super().clear(essence=essence)
@@ -346,6 +398,16 @@ class MultiProgressStorage(ProgressStorage):
         for storage in self.storages:
             storage.purge(key=key, body=body, patch=patch)
 
+    def touch(
+            self,
+            *,
+            body: bodies.Body,
+            patch: patches.Patch,
+            value: Optional[str],
+    ) -> None:
+        for storage in self.storages:
+            storage.touch(body=body, patch=patch, value=value)
+
     def clear(self, *, essence: bodies.BodyEssence) -> bodies.BodyEssence:
         for storage in self.storages:
             essence = storage.clear(essence=essence)
@@ -359,10 +421,12 @@ class SmartProgressStorage(MultiProgressStorage):
             *,
             name: str = 'kopf',
             field: dicts.FieldSpec = 'status.{name}.progress',
+            touch_key: str = 'touch-dummy',  # NB: not dotted, but dashed
+            touch_field: dicts.FieldSpec = 'status.{name}.dummy',
             prefix: str = 'kopf.zalando.org',
             verbose: bool = False,
     ) -> None:
         super().__init__([
-            AnnotationsProgressStorage(prefix=prefix, verbose=verbose),
-            StatusProgressStorage(name=name, field=field),
+            AnnotationsProgressStorage(prefix=prefix, verbose=verbose, touch_key=touch_key),
+            StatusProgressStorage(name=name, field=field, touch_field=touch_field),
         ])
