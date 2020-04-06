@@ -226,7 +226,10 @@ async def apply_reaction_outcomes(
         else:
             unslept_delay = None  # no need to sleep? means: slept in full.
 
-        if unslept_delay is not None:
+        # Exclude cases when touching immediately after patching (including: ``delay == 0``).
+        if patch and not delay:
+            pass
+        elif unslept_delay is not None:
             logger.debug(f"Sleeping was interrupted by new changes, {unslept_delay} seconds left.")
         else:
             # Any unique always-changing value will work; not necessary a timestamp.
