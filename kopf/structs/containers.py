@@ -11,7 +11,7 @@ import asyncio
 import dataclasses
 import logging
 import time
-from typing import MutableMapping, Dict, Any, Iterator, Optional, Union, NewType, TYPE_CHECKING
+from typing import MutableMapping, Dict, Set, Any, Iterator, Optional, Union, NewType, TYPE_CHECKING
 
 from kopf.structs import bodies
 from kopf.structs import handlers
@@ -69,8 +69,8 @@ class ResourceMemory:
     # For background and timed threads/tasks (invoked with the kwargs of the last-seen body).
     live_fresh_body: Optional[bodies.Body] = None
     idle_reset_time: float = dataclasses.field(default_factory=time.monotonic)
+    forever_stopped: Set[handlers.HandlerId] = dataclasses.field(default_factory=set)
     daemons: Dict[DaemonId, Daemon] = dataclasses.field(default_factory=dict)
-    fully_spawned: bool = False
 
 
 class ResourceMemories:

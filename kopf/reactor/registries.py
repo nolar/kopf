@@ -17,7 +17,8 @@ import functools
 import warnings
 from types import FunctionType, MethodType
 from typing import (Any, MutableMapping, Optional, Sequence, Collection, Iterable, Iterator,
-                    List, Set, FrozenSet, Mapping, Callable, cast, Generic, TypeVar, Union)
+                    List, Set, FrozenSet, Mapping, Callable, cast, Generic, TypeVar, Union,
+                    Container)
 
 from kopf.reactor import causation
 from kopf.reactor import invocation
@@ -116,13 +117,15 @@ class ResourceRegistry(
     def get_handlers(
             self,
             cause: CauseT,
+            excluded: Container[handlers.HandlerId] = frozenset(),
     ) -> Sequence[ResourceHandlerT]:
-        return list(_deduplicated(self.iter_handlers(cause=cause)))
+        return list(_deduplicated(self.iter_handlers(cause=cause, excluded=excluded)))
 
     @abc.abstractmethod
     def iter_handlers(
             self,
             cause: CauseT,
+            excluded: Container[handlers.HandlerId] = frozenset(),
     ) -> Iterator[ResourceHandlerT]:
         raise NotImplementedError
 
@@ -141,15 +144,16 @@ class ResourceRegistry(
     def requires_finalizer(
             self,
             cause: causation.ResourceCause,
+            excluded: Container[handlers.HandlerId] = frozenset(),
     ) -> bool:
         """
         Check whether a finalizer should be added to the given resource or not.
         """
         # check whether the body matches a deletion handler
         for handler in self._handlers:
-            if handler.requires_finalizer and match(handler=handler, cause=cause):
-                return True
-
+            if handler.id not in excluded:
+                if handler.requires_finalizer and match(handler=handler, cause=cause):
+                    return True
         return False
 
 
@@ -188,10 +192,12 @@ class ResourceWatchingRegistry(ResourceRegistry[
     def iter_handlers(
             self,
             cause: causation.ResourceWatchingCause,
+            excluded: Container[handlers.HandlerId] = frozenset(),
     ) -> Iterator[handlers.ResourceWatchingHandler]:
         for handler in self._handlers:
-            if match(handler=handler, cause=cause, ignore_fields=True):
-                yield handler
+            if handler.id not in excluded:
+                if match(handler=handler, cause=cause, ignore_fields=True):
+                    yield handler
 
 
 class ResourceSpawningRegistry(ResourceRegistry[
@@ -203,10 +209,12 @@ class ResourceSpawningRegistry(ResourceRegistry[
     def iter_handlers(
             self,
             cause: causation.ResourceSpawningCause,
+            excluded: Container[handlers.HandlerId] = frozenset(),
     ) -> Iterator[handlers.ResourceSpawningHandler]:
         for handler in self._handlers:
-            if match(handler=handler, cause=cause):
-                yield handler
+            if handler.id not in excluded:
+                if match(handler=handler, cause=cause):
+                    yield handler
 
 
 class ResourceChangingRegistry(ResourceRegistry[
@@ -256,16 +264,18 @@ class ResourceChangingRegistry(ResourceRegistry[
     def iter_handlers(
             self,
             cause: causation.ResourceChangingCause,
+            excluded: Container[handlers.HandlerId] = frozenset(),
     ) -> Iterator[handlers.ResourceChangingHandler]:
         changed_fields = frozenset(field for _, field, _, _ in cause.diff or [])
         for handler in self._handlers:
-            if handler.reason is None or handler.reason == cause.reason:
-                if handler.initial and not cause.initial:
-                    pass  # ignore initial handlers in non-initial causes.
-                elif handler.initial and cause.deleted and not handler.deleted:
-                    pass  # ignore initial handlers on deletion, unless explicitly marked as usable.
-                elif match(handler=handler, cause=cause, changed_fields=changed_fields):
-                    yield handler
+            if handler.id not in excluded:
+                if handler.reason is None or handler.reason == cause.reason:
+                    if handler.initial and not cause.initial:
+                        pass  # skip initial handlers in non-initial causes.
+                    elif handler.initial and cause.deleted and not handler.deleted:
+                        pass  # skip initial handlers on deletion, unless explicitly marked as used.
+                    elif match(handler=handler, cause=cause, changed_fields=changed_fields):
+                        yield handler
 
 
 class OperatorRegistry:

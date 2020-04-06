@@ -130,10 +130,15 @@ async def process_resource_event(
     deletion_is_blocked = finalizers.is_deletion_blocked(body=body)
     deletion_must_be_blocked = (
         (resource_spawning_cause is not None and
-         registry.resource_spawning_handlers[resource].requires_finalizer(resource_spawning_cause))
+         registry.resource_spawning_handlers[resource].requires_finalizer(
+             cause=resource_spawning_cause,
+             excluded=memory.forever_stopped,
+         ))
         or
         (resource_changing_cause is not None and
-         registry.resource_changing_handlers[resource].requires_finalizer(resource_changing_cause)))
+         registry.resource_changing_handlers[resource].requires_finalizer(
+             cause=resource_changing_cause,
+         )))
 
     if deletion_must_be_blocked and not deletion_is_blocked and not deletion_is_ongoing:
         logger.debug("Adding the finalizer, thus preventing the actual deletion.")
@@ -293,27 +298,30 @@ async def process_resource_spawning_cause(
         memory.idle_reset_time = time.monotonic()
 
     if finalizers.is_deletion_ongoing(cause.body):
-        delays = await daemons.stop_resource_daemons(
+        stopping_delays = await daemons.stop_resource_daemons(
             settings=settings,
             daemons=memory.daemons,
         )
-        return delays
+        return stopping_delays
 
-    # Save a little bit of CPU on handlers selection if everything is spawned already.
-    elif not memory.fully_spawned:
-        handlers = registry.resource_spawning_handlers[cause.resource].get_handlers(cause=cause)
-        delays = await daemons.spawn_resource_daemons(
+    else:
+        handlers = registry.resource_spawning_handlers[cause.resource].get_handlers(
+            cause=cause,
+            excluded=memory.forever_stopped,
+        )
+        spawning_delays = await daemons.spawn_resource_daemons(
             settings=settings,
             daemons=memory.daemons,
             cause=cause,
             memory=memory,
             handlers=handlers,
         )
-        memory.fully_spawned = not delays
-        return delays
-
-    else:
-        return []
+        matching_delays = await daemons.match_resource_daemons(
+            settings=settings,
+            daemons=memory.daemons,
+            handlers=handlers,
+        )
+        return list(spawning_delays) + list(matching_delays)
 
 
 async def process_resource_changing_cause(
