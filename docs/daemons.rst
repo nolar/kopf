@@ -252,6 +252,9 @@ To simulate restarting, raise `kopf.TemporaryError` with a delay set.
 
 Same as with regular error handling, a delay of ``None`` means instant restart.
 
+See also: :ref:`never-again-filters` to prevent daemons from spawning across
+operator restarts.
+
 
 Deletion prevention
 ===================
