@@ -19,6 +19,8 @@ from kopf.config import (
 )
 from kopf.engines.logging import (
     configure,
+    ObjectLogger,
+    LocalObjectLogger,
 )
 from kopf.engines.posting import (
     event,
@@ -71,6 +73,7 @@ from kopf.storage.diffbase import (
     MultiDiffBaseStorage,
 )
 from kopf.storage.progress import (
+    ProgressRecord,
     ProgressStorage,
     AnnotationsProgressStorage,
     StatusProgressStorage,
@@ -78,25 +81,57 @@ from kopf.storage.progress import (
     SmartProgressStorage,
 )
 from kopf.structs.bodies import (
+    RawEventType,
+    RawEvent,
+    RawBody,
+    Status,
+    Spec,
+    Meta,
+    Body,
+    BodyEssence,
+    OwnerReference,
+    ObjectReference,
     build_object_reference,
     build_owner_reference,
 )
 from kopf.structs.configuration import (
     OperatorSettings,
 )
+from kopf.structs.containers import (
+    Memo,
+)
 from kopf.structs.credentials import (
     LoginError,
     ConnectionInfo,
+)
+from kopf.structs.dicts import (
+    FieldSpec,
+    FieldPath,
+)
+from kopf.structs.diffs import (
+    Diff,
+    DiffItem,
+    DiffOperation,
 )
 from kopf.structs.filters import (
     ABSENT,
     PRESENT,
 )
 from kopf.structs.handlers import (
+    HandlerId,
     ErrorsMode,
+    Reason,
+)
+from kopf.structs.patches import (
+    Patch,
 )
 from kopf.structs.primitives import (
     DaemonStoppingReason,
+    SyncDaemonStopperChecker,
+    AsyncDaemonStopperChecker,
+)
+from kopf.structs.resources import (
+    Resource,
 )
 from kopf.toolkits.hierarchies import (
     adopt,
@@ -151,10 +186,35 @@ __all__ = [
     'AnnotationsDiffBaseStorage',
     'StatusDiffBaseStorage',
     'MultiDiffBaseStorage',
+    'ProgressRecord',
     'ProgressStorage',
     'AnnotationsProgressStorage',
     'StatusProgressStorage',
     'MultiProgressStorage',
     'SmartProgressStorage',
     'DaemonStoppingReason',
+    'RawEventType',
+    'RawEvent',
+    'RawBody',
+    'Status',
+    'Spec',
+    'Meta',
+    'Body',
+    'BodyEssence',
+    'ObjectReference',
+    'OwnerReference',
+    'Memo',
+    'ObjectLogger',
+    'LocalObjectLogger',
+    'FieldSpec',
+    'FieldPath',
+    'Diff',
+    'DiffItem',
+    'DiffOperation',
+    'HandlerId',
+    'Reason',
+    'Patch',
+    'SyncDaemonStopperChecker',
+    'AsyncDaemonStopperChecker',
+    'Resource',
 ]

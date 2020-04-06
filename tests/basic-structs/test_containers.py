@@ -3,7 +3,7 @@ import collections.abc
 import pytest
 
 from kopf.structs.bodies import Body
-from kopf.structs.containers import ResourceMemory, ResourceMemories, ObjectDict
+from kopf.structs.containers import ResourceMemory, ResourceMemories, Memo
 
 BODY: Body = {
     'metadata': {
@@ -45,55 +45,55 @@ async def test_forgetting_ignores_when_absent():
 
 
 def test_object_dict_creation():
-    obj = ObjectDict()
+    obj = Memo()
     assert isinstance(obj, collections.abc.MutableMapping)
 
 
 def test_object_dict_fields_are_keys():
-    obj = ObjectDict()
+    obj = Memo()
     obj.xyz = 100
     assert obj['xyz'] == 100
 
 
 def test_object_dict_keys_are_fields():
-    obj = ObjectDict()
+    obj = Memo()
     obj['xyz'] = 100
     assert obj.xyz == 100
 
 
 def test_object_dict_keys_deleted():
-    obj = ObjectDict()
+    obj = Memo()
     obj['xyz'] = 100
     del obj['xyz']
     assert obj == {}
 
 
 def test_object_dict_fields_deleted():
-    obj = ObjectDict()
+    obj = Memo()
     obj.xyz = 100
     del obj.xyz
     assert obj == {}
 
 
 def test_object_dict_raises_key_errors_on_get():
-    obj = ObjectDict()
+    obj = Memo()
     with pytest.raises(KeyError):
         obj['unexistent']
 
 
 def test_object_dict_raises_attribute_errors_on_get():
-    obj = ObjectDict()
+    obj = Memo()
     with pytest.raises(AttributeError):
         obj.unexistent
 
 
 def test_object_dict_raises_key_errors_on_del():
-    obj = ObjectDict()
+    obj = Memo()
     with pytest.raises(KeyError):
         del obj['unexistent']
 
 
 def test_object_dict_raises_attribute_errors_on_del():
-    obj = ObjectDict()
+    obj = Memo()
     with pytest.raises(AttributeError):
         del obj.unexistent

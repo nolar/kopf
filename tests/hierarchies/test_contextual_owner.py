@@ -7,7 +7,7 @@ from kopf.reactor.causation import ResourceChangingCause, ResourceWatchingCause
 from kopf.reactor.handling import cause_var
 from kopf.reactor.invocation import context
 from kopf.structs.bodies import RawBody, RawMeta, RawEvent, Body
-from kopf.structs.containers import ObjectDict
+from kopf.structs.containers import Memo
 from kopf.structs.handlers import Reason
 from kopf.structs.patches import Patch
 
@@ -36,7 +36,7 @@ def owner(request, resource):
             logger=logging.getLogger('kopf.test.fake.logger'),
             resource=resource,
             patch=Patch(),
-            memo=ObjectDict(),
+            memo=Memo(),
             body=Body(OWNER),
             initial=False,
             reason=Reason.NOOP,
@@ -48,7 +48,7 @@ def owner(request, resource):
             logger=logging.getLogger('kopf.test.fake.logger'),
             resource=resource,
             patch=Patch(),
-            memo=ObjectDict(),
+            memo=Memo(),
             body=Body(OWNER),
             type='irrelevant',
             raw=RawEvent(type='irrelevant', object=OWNER),
