@@ -5,7 +5,7 @@ Since these signatures contain a lot of copy-pasted kwargs and are
 not so important for the codebase, they are moved to this separate module.
 """
 import logging
-from typing import NewType, Any, Union, Optional, Callable, Coroutine
+from typing import NewType, Any, Collection, Union, Optional, Callable, Coroutine, TypeVar
 
 from typing_extensions import Protocol
 
@@ -171,3 +171,54 @@ class MetaFilterFn(Protocol):
             logger: Union[logging.Logger, logging.LoggerAdapter],
             **kwargs: Any,
     ) -> bool: ...
+
+
+_FnT = TypeVar('_FnT', WhenFilterFn, MetaFilterFn)
+
+
+def all_(fns: Collection[_FnT]) -> _FnT:
+    """
+    Combine few callbacks into one::
+
+        import kopf
+
+        def whole_fn1(name, **_): return name.startswith('kopf-')
+        def whole_fn2(spec, **_): return spec.get('field') == 'value'
+        def value_fn1(value, **_): return value.startswith('some')
+        def value_fn2(value, **_): return value.endswith('label')
+
+        @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
+                        when=kopf.all_([whole_fn1, whole_fn2]),
+                        labels={'somelabel': kopf.all_([value_fn1, value_fn2])})
+        def create_fn(**_):
+            pass
+
+    The semantics is the same as for Python's built-in :func:`all`.
+    """
+    def all_fn(*args: Any, **kwargs: Any) -> bool:
+        return all(fn(*args, **kwargs) for fn in fns)
+    return all_fn
+
+
+def any_(fns: Collection[_FnT]) -> _FnT:
+    """
+    Combine few callbacks into one::
+
+        import kopf
+
+        def whole_fn1(name, **_): return name.startswith('kopf-')
+        def whole_fn2(spec, **_): return spec.get('field') == 'value'
+        def value_fn1(value, **_): return value.startswith('some')
+        def value_fn2(value, **_): return value.endswith('label')
+
+        @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
+                        when=kopf.any_([whole_fn1, whole_fn2]),
+                        labels={'somelabel': kopf.any_([value_fn1, value_fn2])})
+        def create_fn(**_):
+            pass
+
+    The semantics is the same as for Python's built-in :func:`any`.
+    """
+    def any_fn(*args: Any, **kwargs: Any) -> bool:
+        return any(fn(*args, **kwargs) for fn in fns)
+    return any_fn
