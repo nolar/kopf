@@ -47,16 +47,19 @@ CONTENT_JSON_2 = json.dumps(CONTENT_DATA_2)  # the same serialisation for all en
 def test_status_storage_with_defaults():
     storage = StatusProgressStorage()
     assert storage.field == ('status', 'kopf', 'progress')  # as before the change
+    assert storage.touch_field == ('status', 'kopf', 'dummy')  # as before the change
 
 
 def test_status_storage_with_name():
     storage = StatusProgressStorage(name='my-operator')
     assert storage.field == ('status', 'my-operator', 'progress')
+    assert storage.touch_field == ('status', 'my-operator', 'dummy')
 
 
 def test_status_storage_with_field():
-    storage = StatusProgressStorage(field='status.my-operator')
+    storage = StatusProgressStorage(field='status.my-operator', touch_field='status.my-dummy')
     assert storage.field == ('status', 'my-operator')
+    assert storage.touch_field == ('status', 'my-dummy')
 
 
 def test_annotations_storage_with_defaults():
@@ -75,6 +78,7 @@ def test_smart_storage_with_defaults():
     assert isinstance(storage.storages[1], StatusProgressStorage)
     assert storage.storages[0].prefix == 'kopf.zalando.org'
     assert storage.storages[1].field == ('status', 'kopf', 'progress')
+    assert storage.storages[1].touch_field == ('status', 'kopf', 'dummy')
 
 
 def test_smart_storage_with_name():
@@ -83,14 +87,16 @@ def test_smart_storage_with_name():
     assert isinstance(storage.storages[1], StatusProgressStorage)
     assert storage.storages[0].prefix == 'kopf.zalando.org'
     assert storage.storages[1].field == ('status', 'my-operator', 'progress')
+    assert storage.storages[1].touch_field == ('status', 'my-operator', 'dummy')
 
 
 def test_smart_storage_with_field():
-    storage = SmartProgressStorage(field='status.my-operator')
+    storage = SmartProgressStorage(field='status.my-operator', touch_field='status.my-dummy')
     assert isinstance(storage.storages[0], AnnotationsProgressStorage)
     assert isinstance(storage.storages[1], StatusProgressStorage)
     assert storage.storages[0].prefix == 'kopf.zalando.org'
     assert storage.storages[1].field == ('status', 'my-operator')
+    assert storage.storages[1].touch_field == ('status', 'my-dummy')
 
 
 def test_smart_storage_with_prefix():
@@ -99,6 +105,7 @@ def test_smart_storage_with_prefix():
     assert isinstance(storage.storages[1], StatusProgressStorage)
     assert storage.storages[0].prefix == 'my-operator.my-company.com'
     assert storage.storages[1].field == ('status', 'kopf', 'progress')
+    assert storage.storages[1].touch_field == ('status', 'kopf', 'dummy')
 
 
 #
@@ -210,6 +217,42 @@ def test_purging_of_annotations_storage_nullifies_content(cls):
     assert patch['metadata']['annotations']['my-operator.example.com/id1'] is None
 
 
+@pytest.mark.parametrize('body_data', [
+    pytest.param({}, id='without-data'),
+    pytest.param({'metadata': {'annotations': {'my-operator.example.com/my-dummy': 'something'}}}, id='with-data'),
+])
+@pytest.mark.parametrize('cls', ANNOTATIONS_POPULATING_STORAGES)
+def test_touching_via_annotations_storage_with_payload(cls, body_data):
+    storage = cls(prefix='my-operator.example.com', touch_key='my-dummy')
+    patch = Patch()
+    body = Body(body_data)
+    storage.touch(body=body, patch=patch, value='hello')
+
+    assert patch
+    assert patch['metadata']['annotations']['my-operator.example.com/my-dummy'] == 'hello'
+
+
+@pytest.mark.parametrize('cls', ANNOTATIONS_POPULATING_STORAGES)
+def test_touching_via_annotations_storage_with_none_when_absent(cls):
+    storage = cls(prefix='my-operator.example.com', touch_key='my-dummy')
+    patch = Patch()
+    body = Body({})
+    storage.touch(body=body, patch=patch, value=None)
+
+    assert not patch
+
+
+@pytest.mark.parametrize('cls', ANNOTATIONS_POPULATING_STORAGES)
+def test_touching_via_annotations_storage_with_none_when_present(cls):
+    storage = cls(prefix='my-operator.example.com', touch_key='my-dummy')
+    patch = Patch()
+    body = Body({'metadata': {'annotations': {'my-operator.example.com/my-dummy': 'something'}}})
+    storage.touch(body=body, patch=patch, value=None)
+
+    assert patch
+    assert patch['metadata']['annotations']['my-operator.example.com/my-dummy'] is None
+
+
 #
 # Status-populating.
 #
@@ -269,3 +312,39 @@ def test_purging_of_status_storage_nullifies_content(cls):
 
     assert patch
     assert patch['status']['my-operator']['id1'] is None
+
+
+@pytest.mark.parametrize('body_data', [
+    pytest.param({}, id='without-data'),
+    pytest.param({'status': {'my-dummy': 'something'}}, id='with-data'),
+])
+@pytest.mark.parametrize('cls', STATUS_POPULATING_STORAGES)
+def test_touching_via_status_storage_with_payload(cls, body_data):
+    storage = cls(field='status.my-operator', touch_field='status.my-dummy')
+    patch = Patch()
+    body = Body(body_data)
+    storage.touch(body=body, patch=patch, value='hello')
+
+    assert patch
+    assert patch['status']['my-dummy'] == 'hello'
+
+
+@pytest.mark.parametrize('cls', STATUS_POPULATING_STORAGES)
+def test_touching_via_status_storage_with_none_when_absent(cls):
+    storage = cls(touch_field='status.my-dummy')
+    patch = Patch()
+    body = Body({})
+    storage.touch(body=body, patch=patch, value=None)
+
+    assert not patch
+
+
+@pytest.mark.parametrize('cls', STATUS_POPULATING_STORAGES)
+def test_touching_via_status_storage_with_none_when_present(cls):
+    storage = cls(touch_field='status.my-dummy')
+    patch = Patch()
+    body = Body({'status': {'my-dummy': 'something'}})
+    storage.touch(body=body, patch=patch, value=None)
+
+    assert patch
+    assert patch['status']['my-dummy'] is None
