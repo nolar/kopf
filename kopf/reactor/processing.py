@@ -60,6 +60,7 @@ async def process_resource_event(
     All the internally provoked changes are intercepted, do not create causes,
     and therefore do not call the handling logic.
     """
+    finalizer = settings.persistence.finalizer
 
     # Recall what is stored about that object. Share it in little portions with the consumers.
     # And immediately forget it if the object is deleted from the cluster (but keep in memory).
@@ -110,6 +111,7 @@ async def process_resource_event(
     ) if registry.resource_spawning_handlers[resource] else None
 
     resource_changing_cause = causation.detect_resource_changing_cause(
+        finalizer=finalizer,
         raw_event=raw_event,
         resource=resource,
         logger=logger,
@@ -127,7 +129,7 @@ async def process_resource_event(
     # The high-level handlers are prevented if this event cycle is dedicated to the finalizer.
     # The low-level handlers (on-event spying & daemon spawning) are still executed asap.
     deletion_is_ongoing = finalizers.is_deletion_ongoing(body=body)
-    deletion_is_blocked = finalizers.is_deletion_blocked(body=body)
+    deletion_is_blocked = finalizers.is_deletion_blocked(body=body, finalizer=finalizer)
     deletion_must_be_blocked = (
         (resource_spawning_cause is not None and
          registry.resource_spawning_handlers[resource].requires_finalizer(
@@ -142,12 +144,12 @@ async def process_resource_event(
 
     if deletion_must_be_blocked and not deletion_is_blocked and not deletion_is_ongoing:
         logger.debug("Adding the finalizer, thus preventing the actual deletion.")
-        finalizers.block_deletion(body=body, patch=patch)
+        finalizers.block_deletion(body=body, patch=patch, finalizer=finalizer)
         resource_changing_cause = None  # prevent further high-level processing this time
 
     if not deletion_must_be_blocked and deletion_is_blocked:
         logger.debug("Removing the finalizer, as there are no handlers requiring it.")
-        finalizers.allow_deletion(body=body, patch=patch)
+        finalizers.allow_deletion(body=body, patch=patch, finalizer=finalizer)
         resource_changing_cause = None  # prevent further high-level processing this time
 
     # Invoke all the handlers that should or could be invoked at this processing cycle.
@@ -186,7 +188,7 @@ async def process_resource_event(
             and not resource_spawning_delays \
             and not resource_changing_delays:
         logger.debug("Removing the finalizer, thus allowing the actual deletion.")
-        finalizers.allow_deletion(body=body, patch=patch)
+        finalizers.allow_deletion(body=body, patch=patch, finalizer=finalizer)
 
     # Whatever was done, apply the accumulated changes to the object, or sleep-n-touch for delays.
     # But only once, to reduce the number of API calls and the generated irrelevant events.

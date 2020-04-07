@@ -166,7 +166,7 @@ def extrahandlers(clear_default_registry, handlers):
 
 
 @pytest.fixture()
-def cause_mock(mocker, resource):
+def cause_mock(mocker, settings, resource):
     """
     Mock the resulting _cause_ of the resource change detection logic.
 
@@ -183,12 +183,12 @@ def cause_mock(mocker, resource):
 
     # Use everything from a mock, but use the passed `patch` dict as is.
     # The event handler passes its own accumulator, and checks/applies it later.
-    def new_detect_fn(*, diff, new, old, **kwargs):
+    def new_detect_fn(*, finalizer, diff, new, old, **kwargs):
 
         # For change detection, we ensure that there is no extra cycle of adding a finalizer.
         raw_event = kwargs.pop('raw_event', None)
         raw_body = raw_event['object']
-        raw_body.setdefault('metadata', {}).setdefault('finalizers', ['kopf.zalando.org/KopfFinalizerMarker'])
+        raw_body.setdefault('metadata', {}).setdefault('finalizers', [finalizer])
 
         # Pass through kwargs: resource, logger, patch, diff, old, new.
         # I.e. everything except what we mock -- for them, use the mocked values (if not None).

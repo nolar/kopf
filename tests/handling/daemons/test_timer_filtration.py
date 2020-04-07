@@ -3,7 +3,6 @@ import logging
 import pytest
 
 import kopf
-from kopf.storage.finalizers import FINALIZER
 
 
 # We assume that the handler filtering is tested in details elsewhere (for all handlers).
@@ -11,7 +10,7 @@ from kopf.storage.finalizers import FINALIZER
 
 
 async def test_timer_filtration_satisfied(
-        registry, resource, dummy,
+        registry, settings, resource, dummy,
         caplog, assert_logs, k8s_mocked, simulate_cycle):
     caplog.set_level(logging.DEBUG)
 
@@ -24,7 +23,7 @@ async def test_timer_filtration_satisfied(
 
     event_body = {'metadata': {'labels': {'a': 'value', 'b': '...'},
                                'annotations': {'x': 'value', 'y': '...'},
-                               'finalizers': [FINALIZER]}}
+                               'finalizers': [settings.persistence.finalizer]}}
     await simulate_cycle(event_body)
 
     await dummy.steps['called'].wait()
@@ -42,7 +41,7 @@ async def test_timer_filtration_satisfied(
     ({'a': 'value'}, {'x': 'value', 'y': '...'}),
 ])
 async def test_timer_filtration_mismatched(
-        registry, resource, mocker, labels, annotations,
+        registry, settings, resource, mocker, labels, annotations,
         caplog, assert_logs, k8s_mocked, simulate_cycle):
     caplog.set_level(logging.DEBUG)
     spawn_resource_daemons = mocker.patch('kopf.reactor.daemons.spawn_resource_daemons')
@@ -55,7 +54,7 @@ async def test_timer_filtration_mismatched(
 
     event_body = {'metadata': {'labels': labels,
                                'annotations': annotations,
-                               'finalizers': [FINALIZER]}}
+                               'finalizers': [settings.persistence.finalizer]}}
     await simulate_cycle(event_body)
 
     assert spawn_resource_daemons.called

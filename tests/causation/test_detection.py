@@ -5,9 +5,11 @@ import pytest
 
 from kopf.reactor.causation import detect_resource_changing_cause
 from kopf.storage.diffbase import LAST_SEEN_ANNOTATION
-from kopf.storage.finalizers import FINALIZER
 from kopf.structs.bodies import Body
 from kopf.structs.handlers import Reason
+
+# Same as in the settings by default.
+FINALIZER = 'fin'
 
 # Encoded at runtime, so that we do not make any assumptions on json formatting.
 SPEC_DATA = {'spec': {'field': 'value'}}
@@ -115,6 +117,7 @@ def content():
 @pytest.fixture()
 def kwargs():
     return dict(
+        finalizer=FINALIZER,
         resource=object(),
         logger=object(),
         patch=object(),

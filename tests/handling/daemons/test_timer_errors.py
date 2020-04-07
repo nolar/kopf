@@ -1,11 +1,10 @@
 import logging
 
 import kopf
-from kopf.storage.finalizers import FINALIZER
 
 
 async def test_timer_stopped_on_permanent_error(
-        registry, resource, dummy,
+        registry, settings, resource, dummy,
         caplog, assert_logs, k8s_mocked, simulate_cycle):
     caplog.set_level(logging.DEBUG)
 
@@ -18,7 +17,7 @@ async def test_timer_stopped_on_permanent_error(
         kwargs['stopped']._stopper.set(reason=kopf.DaemonStoppingReason.NONE)  # to exit the cycle
         raise kopf.PermanentError("boo!")
 
-    event_object = {'metadata': {'finalizers': [FINALIZER]}}
+    event_object = {'metadata': {'finalizers': [settings.persistence.finalizer]}}
     await simulate_cycle(event_object)
 
     await dummy.steps['called'].wait()
@@ -36,7 +35,7 @@ async def test_timer_stopped_on_permanent_error(
 
 
 async def test_timer_stopped_on_arbitrary_errors_with_mode_permanent(
-        registry, resource, dummy,
+        registry, settings, resource, dummy,
         caplog, assert_logs, k8s_mocked, simulate_cycle):
     caplog.set_level(logging.DEBUG)
 
@@ -49,7 +48,7 @@ async def test_timer_stopped_on_arbitrary_errors_with_mode_permanent(
         kwargs['stopped']._stopper.set(reason=kopf.DaemonStoppingReason.NONE)  # to exit the cycle
         raise Exception("boo!")
 
-    event_object = {'metadata': {'finalizers': [FINALIZER]}}
+    event_object = {'metadata': {'finalizers': [settings.persistence.finalizer]}}
     await simulate_cycle(event_object)
 
     await dummy.steps['called'].wait()
@@ -83,7 +82,7 @@ async def test_timer_retried_on_temporary_error(
             kwargs['stopped']._stopper.set(reason=kopf.DaemonStoppingReason.NONE)  # to exit the cycle
             dummy.steps['finish'].set()
 
-    event_object = {'metadata': {'finalizers': [FINALIZER]}}
+    event_object = {'metadata': {'finalizers': [settings.persistence.finalizer]}}
     await simulate_cycle(event_object)
 
     await dummy.steps['called'].wait()
@@ -101,7 +100,7 @@ async def test_timer_retried_on_temporary_error(
 
 
 async def test_timer_retried_on_arbitrary_error_with_mode_temporary(
-        registry, resource, dummy,
+        registry, settings, resource, dummy,
         caplog, assert_logs, k8s_mocked, simulate_cycle, manual_time):
     caplog.set_level(logging.DEBUG)
 
@@ -117,7 +116,7 @@ async def test_timer_retried_on_arbitrary_error_with_mode_temporary(
             kwargs['stopped']._stopper.set(reason=kopf.DaemonStoppingReason.NONE)  # to exit the cycle
             dummy.steps['finish'].set()
 
-    event_object = {'metadata': {'finalizers': [FINALIZER]}}
+    event_object = {'metadata': {'finalizers': [settings.persistence.finalizer]}}
     await simulate_cycle(event_object)
 
     await dummy.steps['called'].wait()

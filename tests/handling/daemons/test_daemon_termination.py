@@ -4,11 +4,10 @@ import logging
 import pytest
 
 import kopf
-from kopf.storage.finalizers import FINALIZER
 
 
 async def test_daemon_exits_gracefully_and_instantly_via_stopper(
-        registry, resource, dummy, simulate_cycle,
+        registry, settings, resource, dummy, simulate_cycle,
         caplog, assert_logs, k8s_mocked, frozen_time, mocker, timer):
     caplog.set_level(logging.DEBUG)
 
@@ -20,7 +19,8 @@ async def test_daemon_exits_gracefully_and_instantly_via_stopper(
         await kwargs['stopped'].wait()
 
     # 0th cycle:tTrigger spawning and wait until ready. Assume the finalizers are already added.
-    event_object = {'metadata': {'finalizers': [FINALIZER]}}
+    finalizer = settings.persistence.finalizer
+    event_object = {'metadata': {'finalizers': [finalizer]}}
     await simulate_cycle(event_object)
     await dummy.steps['called'].wait()
 
@@ -41,7 +41,7 @@ async def test_daemon_exits_gracefully_and_instantly_via_stopper(
 
 
 async def test_daemon_exits_via_cancellation_with_backoff(
-        registry, resource, dummy, simulate_cycle,
+        registry, settings, resource, dummy, simulate_cycle,
         caplog, assert_logs, k8s_mocked, frozen_time, mocker):
     caplog.set_level(logging.DEBUG)
 
@@ -54,7 +54,8 @@ async def test_daemon_exits_via_cancellation_with_backoff(
         await asyncio.Event().wait()  # this one is cancelled.
 
     # Trigger spawning and wait until ready. Assume the finalizers are already added.
-    event_object = {'metadata': {'finalizers': [FINALIZER]}}
+    finalizer = settings.persistence.finalizer
+    event_object = {'metadata': {'finalizers': [finalizer]}}
     await simulate_cycle(event_object)
     await dummy.steps['called'].wait()
 
@@ -90,7 +91,7 @@ async def test_daemon_exits_via_cancellation_with_backoff(
 
 
 async def test_daemon_is_abandoned_due_to_cancellation_timeout_reached(
-        registry, resource, dummy, simulate_cycle,
+        registry, settings, resource, dummy, simulate_cycle,
         caplog, assert_logs, k8s_mocked, frozen_time, mocker):
     caplog.set_level(logging.DEBUG)
 
@@ -106,7 +107,8 @@ async def test_daemon_is_abandoned_due_to_cancellation_timeout_reached(
             await dummy.steps['finish'].wait()  # simulated disobedience to be cancelled.
 
     # 0th cycle:tTrigger spawning and wait until ready. Assume the finalizers are already added.
-    event_object = {'metadata': {'finalizers': [FINALIZER]}}
+    finalizer = settings.persistence.finalizer
+    event_object = {'metadata': {'finalizers': [finalizer]}}
     await simulate_cycle(event_object)
     await dummy.steps['called'].wait()
 
