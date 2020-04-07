@@ -138,6 +138,7 @@ class DaemonStoppingReason(enum.Flag):
     """
     NONE = 0
     DONE = enum.auto()  # whatever the reason and the status, the asyncio task has exited.
+    FILTERS_MISMATCH = enum.auto()  # the resource does not match the filters anymore.
     RESOURCE_DELETED = enum.auto()  # the resource was deleted, the asyncio task is still awaited.
     OPERATOR_EXITING = enum.auto()  # the operator is exiting, the asyncio task is still awaited.
     DAEMON_SIGNALLED = enum.auto()  # the stopper flag was set, the asyncio task is still awaited.
@@ -225,6 +226,10 @@ class DaemonStopperChecker:
 
     def is_set(self) -> bool:
         return self._stopper.is_set()
+
+    @property
+    def reason(self) -> DaemonStoppingReason:
+        return self._stopper.reason
 
 
 class SyncDaemonStopperChecker(DaemonStopperChecker):

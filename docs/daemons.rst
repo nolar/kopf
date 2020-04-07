@@ -252,6 +252,9 @@ To simulate restarting, raise `kopf.TemporaryError` with a delay set.
 
 Same as with regular error handling, a delay of ``None`` means instant restart.
 
+See also: :ref:`never-again-filters` to prevent daemons from spawning across
+operator restarts.
+
 
 Deletion prevention
 ===================
@@ -359,6 +362,23 @@ to only spawn daemons for specific resources:
             time.sleep(1)
 
 Other (non-matching) resources of that kind will be ignored.
+
+The daemons will be executed only while the filtering criteria are met.
+Both the resource's state and the criteria can be highly dynamic (e.g.
+due to ``when=`` callable filters or labels/annotations value callbacks).
+
+Once the daemon stops matching the criteria (either because the resource
+or the criteria have been changed (e.g. for `when=` callbacks)),
+the daemon is stopped. Once it matches the criteria again, it is re-spawned.
+
+The checking is done only when the resource changes (any watch-event arrives).
+The criteria themselves are not re-evaluated if nothing changes.
+
+.. warning::
+
+    A daemon that is being terminated is considered as still running, therefore
+    it will not be re-spawned until the termination ends. It will be re-spawned
+    the next time a watch-event arrives after the daemon has truly exited.
 
 
 System resources

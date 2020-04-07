@@ -65,6 +65,7 @@ Kopf: Kubernetes Operators Framework
    continuity
    idempotence
    reconciliation
+   tips-and-tricks
    troubleshooting
 
 .. toctree::

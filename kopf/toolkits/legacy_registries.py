@@ -7,7 +7,7 @@ with an incompatible class hierarchy and method signatures.
 """
 import abc
 import warnings
-from typing import Any, Union, Sequence, Iterator, Optional
+from typing import Any, Union, Sequence, Iterator, Container, Optional
 
 from kopf.reactor import causation
 from kopf.reactor import registries
@@ -125,6 +125,7 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[
     def iter_handlers(
             self,
             cause: AnyCause,
+            excluded: Container[handlers.HandlerId] = frozenset(),  # only for signature matching
     ) -> Iterator[AnyHandler]:
         yield from self._handlers
 

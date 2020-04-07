@@ -23,7 +23,7 @@ of the daemons, and they are not actually "hung".
 import asyncio
 import time
 import warnings
-from typing import MutableMapping, Sequence, Collection, List
+from typing import MutableMapping, Mapping, Sequence, Collection, List
 
 from kopf.clients import patching
 from kopf.engines import logging as logging_engine
@@ -76,6 +76,7 @@ async def spawn_resource_daemons(
                 logger=logging_engine.LocalObjectLogger(body=cause.body, settings=settings),
                 task=asyncio.create_task(_runner(
                     settings=settings,
+                    daemons=daemons,  # for self-garbage-collection
                     handler=handler,
                     cause=daemon_cause,
                     memory=memory,
@@ -85,10 +86,36 @@ async def spawn_resource_daemons(
     return []
 
 
+async def match_resource_daemons(
+        *,
+        settings: configuration.OperatorSettings,
+        handlers: Sequence[handlers_.ResourceSpawningHandler],
+        daemons: MutableMapping[containers.DaemonId, containers.Daemon],
+) -> Collection[float]:
+    """
+    Re-match the running daemons with the filters, and stop those mismatching.
+
+    Stopping can take few iterations, same as `stop_resource_daemons` would do.
+    """
+    matching_daemon_ids = {containers.DaemonId(handler.id) for handler in handlers}
+    mismatching_daemons = {
+        daemon_id: daemon
+        for daemon_id, daemon in daemons.items()
+        if daemon_id not in matching_daemon_ids
+    }
+    delays = await stop_resource_daemons(
+        settings=settings,
+        daemons=mismatching_daemons,
+        reason=primitives.DaemonStoppingReason.FILTERS_MISMATCH,
+    )
+    return delays
+
+
 async def stop_resource_daemons(
         *,
         settings: configuration.OperatorSettings,
-        daemons: MutableMapping[containers.DaemonId, containers.Daemon],
+        daemons: Mapping[containers.DaemonId, containers.Daemon],
+        reason: primitives.DaemonStoppingReason = primitives.DaemonStoppingReason.RESOURCE_DELETED,
 ) -> Collection[float]:
     """
     Terminate all daemons of an individual resource (gracefully and by force).
@@ -132,7 +159,7 @@ async def stop_resource_daemons(
     """
     delays: List[float] = []
     now = time.monotonic()
-    for daemon_id, daemon in daemons.items():
+    for daemon_id, daemon in list(daemons.items()):
         logger = daemon.logger
         stopper = daemon.stopper
         age = (now - (stopper.when or now))
@@ -149,7 +176,7 @@ async def stop_resource_daemons(
             raise RuntimeError(f"Unsupported daemon handler: {daemon.handler!r}")
 
         # Whatever happens with other flags & logs & timings, this flag must be surely set.
-        stopper.set(reason=primitives.DaemonStoppingReason.RESOURCE_DELETED)
+        stopper.set(reason=reason)
 
         # It might be so, that the daemon exits instantly (if written properly). Avoid patching and
         # unnecessary handling cycles in this case: just give the asyncio event loop an extra cycle.
@@ -157,7 +184,7 @@ async def stop_resource_daemons(
 
         # Try different approaches to exiting the daemon based on timings.
         if daemon.task.done():
-            pass
+            pass  # same as if the daemon is not in the structure anymore (self-deleted on exit).
 
         elif backoff is not None and age < backoff:
             if not stopper.is_set(reason=primitives.DaemonStoppingReason.DAEMON_SIGNALLED):
@@ -261,6 +288,7 @@ async def stop_daemon(
 async def _runner(
         *,
         settings: configuration.OperatorSettings,
+        daemons: MutableMapping[containers.DaemonId, containers.Daemon],
         handler: handlers_.ResourceSpawningHandler,
         memory: containers.ResourceMemory,
         cause: causation.DaemonCause,
@@ -280,6 +308,15 @@ async def _runner(
             raise RuntimeError("Cannot determine which task wrapper to use. This is a bug.")
 
     finally:
+
+        # Prevent future re-spawns for those exited on their own, for no reason.
+        # Only the filter-mismatching daemons can be re-spawned on future events.
+        if cause.stopper.reason == primitives.DaemonStoppingReason.NONE:
+            memory.forever_stopped.add(handler.id)
+
+        # Save the memory by not remembering the exited daemons (they may be never re-spawned).
+        del daemons[containers.DaemonId(handler.id)]
+
         # Whatever happened, make sure the sync threads of asyncio threaded executor are notified:
         # in a hope that they will exit maybe some time later to free the OS/asyncio resources.
         # A possible case: operator is exiting and cancelling all "hung" non-root tasks, etc.

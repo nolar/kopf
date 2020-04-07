@@ -59,6 +59,9 @@ is no need to retry over time, as it will not become better::
         if valid_until <= datetime.datetime.utcnow():
             raise kopf.PermanentError("The object is not valid anymore.")
 
+See also: :ref:`never-again-filters` to prevent handlers from being invoked
+for the future change-sets even after operator restarts.
+
 
 Regular errors
 ==============
