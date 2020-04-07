@@ -95,8 +95,10 @@ from kopf.structs.bodies import (
     build_owner_reference,
 )
 from kopf.structs.callbacks import (
+    not_,
     all_,
     any_,
+    none_,
 )
 from kopf.structs.configuration import (
     OperatorSettings,
@@ -166,8 +168,10 @@ __all__ = [
     'event', 'info', 'warn', 'exception',
     'spawn_tasks', 'run_tasks', 'operator', 'run', 'create_tasks',
     'adopt', 'label',
+    'not_',
     'all_',
     'any_',
+    'none_',
     'get_default_lifecycle', 'set_default_lifecycle',
     'build_object_reference', 'build_owner_reference',
     'append_owner_reference', 'remove_owner_reference',

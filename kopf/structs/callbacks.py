@@ -176,49 +176,25 @@ class MetaFilterFn(Protocol):
 _FnT = TypeVar('_FnT', WhenFilterFn, MetaFilterFn)
 
 
+def not_(fn: _FnT) -> _FnT:
+    def not_fn(*args: Any, **kwargs: Any) -> bool:
+        return not fn(*args, **kwargs)
+    return not_fn
+
+
 def all_(fns: Collection[_FnT]) -> _FnT:
-    """
-    Combine few callbacks into one::
-
-        import kopf
-
-        def whole_fn1(name, **_): return name.startswith('kopf-')
-        def whole_fn2(spec, **_): return spec.get('field') == 'value'
-        def value_fn1(value, **_): return value.startswith('some')
-        def value_fn2(value, **_): return value.endswith('label')
-
-        @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
-                        when=kopf.all_([whole_fn1, whole_fn2]),
-                        labels={'somelabel': kopf.all_([value_fn1, value_fn2])})
-        def create_fn(**_):
-            pass
-
-    The semantics is the same as for Python's built-in :func:`all`.
-    """
     def all_fn(*args: Any, **kwargs: Any) -> bool:
         return all(fn(*args, **kwargs) for fn in fns)
     return all_fn
 
 
 def any_(fns: Collection[_FnT]) -> _FnT:
-    """
-    Combine few callbacks into one::
-
-        import kopf
-
-        def whole_fn1(name, **_): return name.startswith('kopf-')
-        def whole_fn2(spec, **_): return spec.get('field') == 'value'
-        def value_fn1(value, **_): return value.startswith('some')
-        def value_fn2(value, **_): return value.endswith('label')
-
-        @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
-                        when=kopf.any_([whole_fn1, whole_fn2]),
-                        labels={'somelabel': kopf.any_([value_fn1, value_fn2])})
-        def create_fn(**_):
-            pass
-
-    The semantics is the same as for Python's built-in :func:`any`.
-    """
     def any_fn(*args: Any, **kwargs: Any) -> bool:
         return any(fn(*args, **kwargs) for fn in fns)
     return any_fn
+
+
+def none_(fns: Collection[_FnT]) -> _FnT:
+    def none_fn(*args: Any, **kwargs: Any) -> bool:
+        return not any(fn(*args, **kwargs) for fn in fns)
+    return none_fn

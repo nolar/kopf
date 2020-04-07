@@ -105,3 +105,10 @@ Kopf provides few helpers to combine multiple callbacks into one
                     labels={'somelabel': kopf.any_([value_fn1, value_fn2])})
     def create_fn2(**_):
         pass
+
+The following wrappers are available:
+
+* `kopf.not_(fn)` -- the function must return ``False`` to pass the filters.
+* `kopf.any_([...])` -- at least one of the functions must return ``True``.
+* `kopf.all_([...])` -- all of the functions must return ``True``.
+* `kopf.none_([...])` -- all of the functions must return ``False``.
