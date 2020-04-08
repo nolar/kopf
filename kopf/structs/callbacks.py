@@ -5,7 +5,7 @@ Since these signatures contain a lot of copy-pasted kwargs and are
 not so important for the codebase, they are moved to this separate module.
 """
 import logging
-from typing import NewType, Any, Union, Optional, Callable, Coroutine
+from typing import NewType, Any, Collection, Union, Optional, Callable, Coroutine, TypeVar
 
 from typing_extensions import Protocol
 
@@ -171,3 +171,30 @@ class MetaFilterFn(Protocol):
             logger: Union[logging.Logger, logging.LoggerAdapter],
             **kwargs: Any,
     ) -> bool: ...
+
+
+_FnT = TypeVar('_FnT', WhenFilterFn, MetaFilterFn)
+
+
+def not_(fn: _FnT) -> _FnT:
+    def not_fn(*args: Any, **kwargs: Any) -> bool:
+        return not fn(*args, **kwargs)
+    return not_fn
+
+
+def all_(fns: Collection[_FnT]) -> _FnT:
+    def all_fn(*args: Any, **kwargs: Any) -> bool:
+        return all(fn(*args, **kwargs) for fn in fns)
+    return all_fn
+
+
+def any_(fns: Collection[_FnT]) -> _FnT:
+    def any_fn(*args: Any, **kwargs: Any) -> bool:
+        return any(fn(*args, **kwargs) for fn in fns)
+    return any_fn
+
+
+def none_(fns: Collection[_FnT]) -> _FnT:
+    def none_fn(*args: Any, **kwargs: Any) -> bool:
+        return not any(fn(*args, **kwargs) for fn in fns)
+    return none_fn

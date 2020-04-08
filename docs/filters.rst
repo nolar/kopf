@@ -83,3 +83,32 @@ By arbitrary callbacks
                     annotations={'some-annotation': check_value})
     def my_handler(spec, **_):
         pass
+
+Kopf provides few helpers to combine multiple callbacks into one
+(the semantics is the same as for Python's built-in functions)::
+
+    import kopf
+
+    def whole_fn1(name, **_): return name.startswith('kopf-')
+    def whole_fn2(spec, **_): return spec.get('field') == 'value'
+    def value_fn1(value, **_): return value.startswith('some')
+    def value_fn2(value, **_): return value.endswith('label')
+
+    @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
+                    when=kopf.all_([whole_fn1, whole_fn2]),
+                    labels={'somelabel': kopf.all_([value_fn1, value_fn2])})
+    def create_fn1(**_):
+        pass
+
+    @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
+                    when=kopf.any_([whole_fn1, whole_fn2]),
+                    labels={'somelabel': kopf.any_([value_fn1, value_fn2])})
+    def create_fn2(**_):
+        pass
+
+The following wrappers are available:
+
+* `kopf.not_(fn)` -- the function must return ``False`` to pass the filters.
+* `kopf.any_([...])` -- at least one of the functions must return ``True``.
+* `kopf.all_([...])` -- all of the functions must return ``True``.
+* `kopf.none_([...])` -- all of the functions must return ``False``.
