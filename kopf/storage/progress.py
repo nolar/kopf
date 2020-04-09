@@ -39,10 +39,11 @@ with the following keys:
 All timestamps are strings in ISO8601 format in UTC (no explicit ``Z`` suffix).
 """
 import abc
+import base64
 import copy
-import datetime
+import hashlib
 import json
-from typing import Optional, Collection, Mapping, Dict, Any, cast
+from typing import Optional, Collection, Mapping, Dict, Union, Any, cast
 
 from typing_extensions import TypedDict
 
@@ -176,8 +177,7 @@ class AnnotationsProgressStorage(ProgressStorage):
             key: handlers.HandlerId,
             body: bodies.Body,
     ) -> Optional[ProgressRecord]:
-        safe_key = key.replace('/', '.')
-        full_key = f'{self.prefix}/{safe_key}' if self.prefix else safe_key
+        full_key = self.make_key(key)
         value = body.metadata.annotations.get(full_key, None)
         content = json.loads(value) if value is not None else None
         return cast(Optional[ProgressRecord], content)
@@ -190,8 +190,7 @@ class AnnotationsProgressStorage(ProgressStorage):
             body: bodies.Body,
             patch: patches.Patch,
     ) -> None:
-        safe_key = key.replace('/', '.')
-        full_key = f'{self.prefix}/{safe_key}' if self.prefix else safe_key
+        full_key = self.make_key(key)
         clean_data = {key: val for key, val in record.items() if self.verbose or val is not None}
         patch.meta.annotations[full_key] = json.dumps(clean_data)
 
@@ -202,8 +201,7 @@ class AnnotationsProgressStorage(ProgressStorage):
             body: bodies.Body,
             patch: patches.Patch,
     ) -> None:
-        safe_key = key.replace('/', '.')
-        full_key = f'{self.prefix}/{safe_key}' if self.prefix else safe_key
+        full_key = self.make_key(key)
         if full_key in body.metadata.annotations or full_key in patch.meta.annotations:
             patch.meta.annotations[full_key] = None
 
@@ -214,9 +212,7 @@ class AnnotationsProgressStorage(ProgressStorage):
             patch: patches.Patch,
             value: Optional[str],
     ) -> None:
-        key = self.touch_key
-        safe_key = key.replace('/', '.')
-        full_key = f'{self.prefix}/{safe_key}' if self.prefix else safe_key
+        full_key = self.make_key(self.touch_key)
         if body.meta.annotations.get(full_key, None) != value:  # also covers absent-vs-None cases.
             patch.meta.annotations[full_key] = value
 
@@ -227,6 +223,25 @@ class AnnotationsProgressStorage(ProgressStorage):
             if name.startswith(f'{self.prefix}/'):
                 del annotations[name]
         return essence
+
+    def make_key(self, key: Union[str, handlers.HandlerId], max_length: int = 63) -> str:
+
+        # K8s has a limitation on the allowed charsets in annotation/label keys.
+        # https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/#syntax-and-character-set
+        safe_key = key.replace('/', '.')
+
+        # K8s has a limitation of 63 chars per annotation/label key.
+        # Force it to 63 chars by replacing the tail with a consistent hash (with full alphabet).
+        prefix = f'{self.prefix}/' if self.prefix else ''
+        if len(safe_key) <= max_length - len(prefix):
+            suffix = ''
+        else:
+            digest = hashlib.blake2b(safe_key.encode('utf-8'), digest_size=4).digest()
+            alnums = base64.b64encode(digest, altchars=b'-.').replace(b'=', b'-').decode('ascii')
+            suffix = f'-{alnums}'
+
+        full_key = f'{prefix}{safe_key[:max_length - len(prefix) - len(suffix)]}{suffix}'
+        return full_key
 
 
 class StatusProgressStorage(ProgressStorage):
