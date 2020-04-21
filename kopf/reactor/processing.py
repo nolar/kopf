@@ -67,6 +67,47 @@ async def process_resource_event(
     posting.event_queue_loop_var.set(asyncio.get_running_loop())
     posting.event_queue_var.set(event_queue)  # till the end of this object's task.
 
+    # Do the magic -- do the job.
+    delays = await process_resource_causes(
+        lifecycle=lifecycle,
+        registry=registry,
+        settings=settings,
+        resource=resource,
+        raw_event=raw_event,
+        body=body,
+        patch=patch,
+        logger=logger,
+        memory=memory,
+    )
+
+    # Whatever was done, apply the accumulated changes to the object, or sleep-n-touch for delays.
+    # But only once, to reduce the number of API calls and the generated irrelevant events.
+    # And only if the object is at least supposed to exist (not "GONE"), even if actually does not.
+    if raw_event['type'] != 'DELETED':
+        await effects.apply(
+            settings=settings,
+            resource=resource,
+            body=body,
+            patch=patch,
+            logger=logger,
+            delays=delays,
+            replenished=replenished,
+        )
+
+
+async def process_resource_causes(
+        lifecycle: lifecycles.LifeCycleFn,
+        registry: registries.OperatorRegistry,
+        settings: configuration.OperatorSettings,
+        resource: resources.Resource,
+        raw_event: bodies.RawEvent,
+        body: bodies.Body,
+        patch: patches.Patch,
+        logger: loggers.ObjectLogger,
+        memory: containers.ResourceMemory,
+) -> Collection[float]:
+
+    finalizer = settings.persistence.finalizer
     extra_fields = registry.resource_changing_handlers[resource].get_extra_fields()
     old = settings.persistence.diffbase_storage.fetch(body=body)
     new = settings.persistence.diffbase_storage.build(body=body, extra_fields=extra_fields)
@@ -173,19 +214,7 @@ async def process_resource_event(
         logger.debug("Removing the finalizer, thus allowing the actual deletion.")
         finalizers.allow_deletion(body=body, patch=patch, finalizer=finalizer)
 
-    # Whatever was done, apply the accumulated changes to the object, or sleep-n-touch for delays.
-    # But only once, to reduce the number of API calls and the generated irrelevant events.
-    # And only if the object is at least supposed to exist (not "GONE"), even if actually does not.
-    if raw_event['type'] != 'DELETED':
-        await effects.apply(
-            settings=settings,
-            resource=resource,
-            body=body,
-            patch=patch,
-            logger=logger,
-            delays=list(resource_spawning_delays) + list(resource_changing_delays),
-            replenished=replenished,
-        )
+    return list(resource_spawning_delays) + list(resource_changing_delays)
 
 
 async def process_resource_watching_cause(
