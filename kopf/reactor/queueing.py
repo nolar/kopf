@@ -30,12 +30,19 @@ import time
 from typing import TYPE_CHECKING, MutableMapping, NamedTuple, NewType, Optional, Tuple, Union, cast
 
 import aiojobs
-from typing_extensions import Protocol
+from typing_extensions import Protocol, TypedDict
 
 from kopf.clients import watching
 from kopf.structs import bodies, configuration, primitives, resources
 
 logger = logging.getLogger(__name__)
+
+
+# This should be aiojobs' type, but they do not provide it. So, we simulate it.
+class _aiojobs_Context(TypedDict, total=False):
+    exception: BaseException
+    # message: str
+    # job: aiojobs._job.Job
 
 
 class WatchStreamProcessor(Protocol):
@@ -88,11 +95,27 @@ async def watcher(
 
     The watcher is generally a never-ending task (unless an error happens or it is cancelled).
     The workers, on the other hand, are limited approximately to the life-time of an object's event.
+
+    Watchers spend their time in the infinite watch stream, not in task waiting.
+    The only valid way for a worker to wake up the watcher is to cancel it:
+    this will terminate any i/o operation with `asyncio.CancelledError`, where
+    we can make a decision on whether it was a real cancellation, or our own.
     """
+
+    # In case of a failed worker, stop the watcher, and escalate to the operator to stop it.
+    watcher_task = asyncio.current_task()
+    worker_error: Optional[BaseException] = None
+    def exception_handler(scheduler: aiojobs.Scheduler, context: _aiojobs_Context) -> None:
+        nonlocal worker_error
+        if worker_error is None:
+            worker_error = context['exception']
+            if watcher_task is not None:  # never happens, but is needed for type-checking.
+                watcher_task.cancel()
 
     # All per-object workers are handled as fire-and-forget jobs via the scheduler,
     # and communicated via the per-object event queues.
-    scheduler = await aiojobs.create_scheduler(limit=settings.batching.worker_limit)
+    scheduler = await aiojobs.create_scheduler(limit=settings.batching.worker_limit,
+                                               exception_handler=exception_handler)
     streams: Streams = {}
     try:
         # Either use the existing object's queue, or create a new one together with the per-object job.
@@ -117,11 +140,18 @@ async def watcher(
                     streams=streams,
                     key=key,
                 ))
+    except asyncio.CancelledError:
+        if worker_error is None:
+            raise
+        else:
+            raise RuntimeError("Event processing has failed with an unrecoverable error. "
+                               "This seems to be a framework bug. "
+                               "The operator will stop to prevent damage.") from worker_error
     finally:
         # Allow the existing workers to finish gracefully before killing them.
         await _wait_for_depletion(scheduler=scheduler, streams=streams, settings=settings)
 
-        # Forcedly terminate all the fire-and-forget per-object jobs, of they are still running.
+        # Terminate all the fire-and-forget per-object jobs if they are still running.
         await asyncio.shield(scheduler.close())
 
 
@@ -179,11 +209,13 @@ async def worker(
 
             # Try the processor. In case of errors, show the error, but continue the processing.
             replenished.clear()
-            try:
-                await processor(raw_event=raw_event, replenished=replenished)
-            except Exception:
-                logger.exception("Event processing failed with an exception. Ignoring the event.")
-                # raise
+            await processor(raw_event=raw_event, replenished=replenished)
+
+    except Exception:
+        # Log the error for every worker: there can be several of them failing at the same time,
+        # but only one will trigger the watcher's failure -- others could be lost if not logged.
+        logger.exception(f"Event processing has failed with an unrecoverable error for {key}.")
+        raise
 
     finally:
         # Whether an exception or a break or a success, notify the caller, and garbage-collect our queue.
