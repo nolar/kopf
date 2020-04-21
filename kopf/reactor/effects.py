@@ -20,13 +20,16 @@ all the modules, of which the reactor's core consists.
 """
 import asyncio
 import collections
+import contextlib
 import datetime
 import logging
-from typing import Collection, Optional, Union
+import time
+from typing import AsyncGenerator, Collection, Iterable, Optional, Tuple, Type, Union
 
 from kopf.clients import patching
 from kopf.engines import loggers
-from kopf.structs import bodies, configuration, dicts, diffs, patches, primitives, resources
+from kopf.structs import bodies, configuration, containers, dicts, \
+                         diffs, patches, primitives, resources
 
 # How often to wake up from the long sleep, to show liveness in the logs.
 WAITING_KEEPALIVE_INTERVAL = 10 * 60
@@ -154,3 +157,68 @@ async def sleep_or_wait(
         end_time = loop.time()
         duration = end_time - start_time
         return max(0, minimal_delay - duration)
+
+
+@contextlib.asynccontextmanager
+async def throttled(
+        *,
+        throttler: containers.Throttler,
+        delays: Iterable[float],
+        wakeup: Optional[Union[asyncio.Event, primitives.DaemonStopper]] = None,
+        logger: Union[logging.Logger, logging.LoggerAdapter],
+        errors: Union[Type[BaseException], Tuple[Type[BaseException], ...]] = Exception,
+) -> AsyncGenerator[bool, None]:
+    """
+    A helper to throttle any arbitrary operation.
+    """
+
+    # The 1st sleep: if throttling is already active, but was interrupted by a queue replenishment.
+    # It is needed to properly process the latest known event after the successful sleep.
+    if throttler.active_until is not None:
+        remaining_time = throttler.active_until - time.monotonic()
+        unslept_time = await sleep_or_wait(remaining_time, wakeup=wakeup)
+        if unslept_time is None:
+            logger.info("Throttling is over. Switching back to normal operations.")
+            throttler.active_until = None
+
+    # Run only if throttling either is not active initially, or has just finished sleeping.
+    should_run = throttler.active_until is None
+    try:
+        yield should_run
+
+    except Exception as e:
+
+        # If it is not an error-of-interest, escalate normally. BaseExceptions are escalated always.
+        if not isinstance(e, errors):
+            raise
+
+        # If the code does not follow the recommendation to not run, escalate.
+        if not should_run:
+            raise
+
+        # Activate throttling if not yet active, or reuse the active sequence of delays.
+        if throttler.source_of_delays is None:
+            throttler.source_of_delays = iter(delays)
+            throttle_delay = next(throttler.source_of_delays)
+        elif throttler.last_used_delay is None:
+            throttle_delay = next(throttler.source_of_delays)
+        else:
+            throttle_delay = next(throttler.source_of_delays, throttler.last_used_delay)
+
+        throttler.last_used_delay = throttle_delay
+        throttler.active_until = time.monotonic() + throttle_delay
+        logger.exception(f"Throttling for {throttle_delay} seconds due to an unexpected exception:")
+
+    else:
+        # Reset the throttling. Release the iterator to keep the memory free during normal run.
+        if should_run:
+            throttler.source_of_delays = throttler.last_used_delay = None
+
+    # The 2nd sleep: if throttling has been just activated (i.e. there was a fresh error).
+    # It is needed to have better logging/sleeping without workers exiting for "no events".
+    if throttler.active_until is not None and should_run:
+        remaining_time = throttler.active_until - time.monotonic()
+        unslept_time = await sleep_or_wait(remaining_time, wakeup=wakeup)
+        if unslept_time is None:
+            throttler.active_until = None
+            logger.info("Throttling is over. Switching back to normal operations.")

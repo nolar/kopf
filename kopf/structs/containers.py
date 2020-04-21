@@ -31,6 +31,14 @@ class Daemon:
     stopper: primitives.DaemonStopper  # a signaller for the termination and its reason.
 
 
+@dataclasses.dataclass(frozen=False)
+class Throttler:
+    """ A state of throttling for one specific purpose (there can be a few). """
+    source_of_delays: Optional[Iterator[float]] = None
+    last_used_delay: Optional[float] = None
+    active_until: Optional[float] = None  # internal clock
+
+
 class Memo(Dict[Any, Any]):
     """ A container to hold arbitrary keys-fields assigned by the users. """
 
@@ -60,6 +68,9 @@ class ResourceMemory:
     # For resuming handlers tracking and deciding on should they be called or not.
     noticed_by_listing: bool = False
     fully_handled_once: bool = False
+
+    # Throttling for API errors (mostly from PATCHing) and for processing in general.
+    error_throttler: Throttler = dataclasses.field(default_factory=Throttler)
 
     # For background and timed threads/tasks (invoked with the kwargs of the last-seen body).
     live_fresh_body: Optional[bodies.Body] = None
