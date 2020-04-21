@@ -70,7 +70,6 @@ ObjectRef = Tuple[resources.Resource, ObjectUid]
 Streams = MutableMapping[ObjectRef, Stream]
 
 
-# TODO: add the label_selector support for the dev-mode?
 async def watcher(
         namespace: Union[None, str],
         settings: configuration.OperatorSettings,
@@ -183,8 +182,7 @@ async def worker(
             try:
                 await processor(raw_event=raw_event, replenished=replenished)
             except Exception:
-                # TODO: processor is a functools.partial. make the prints a bit nicer by removing it.
-                logger.exception(f"{processor} failed with an exception. Ignoring the event.")
+                logger.exception("Event processing failed with an exception. Ignoring the event.")
                 # raise
 
     finally:
