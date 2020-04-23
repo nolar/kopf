@@ -7,7 +7,7 @@ pytest-aiohttp
 pytest-asyncio
 pytest-mock>=1.11.1
 pytest-cov
-pytest
+pytest>=5.4.0
 aresponses
 asynctest
 freezegun
