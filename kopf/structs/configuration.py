@@ -135,6 +135,8 @@ class BatchingSettings:
     If needed, this value can be an arbitrary collection/iterator/object:
     only ``iter()`` is called on every new throttling cycle, no other protocols
     are required; but make sure that it is re-iterable for multiple uses.
+    
+    To disable throttling (on your own risk), set it to ``[]`` or ``()``.
     """
 
 

@@ -129,6 +129,21 @@ async def test_resets_on_success(sleep):
     assert sleep.mock_calls == []
 
 
+async def test_skips_on_no_delays(sleep):
+    logger = logging.getLogger()
+    throttler = Throttler()
+
+    async with throttled(throttler=throttler, logger=logger, delays=[]):
+        raise Exception()
+
+    assert throttler.last_used_delay is None
+    assert throttler.source_of_delays is not None
+    assert next(throttler.source_of_delays, 999) == 999
+
+    assert throttler.active_until is None  # means: no sleep time left
+    assert sleep.mock_calls == []
+
+
 async def test_renews_on_repeated_failure(sleep):
     logger = logging.getLogger()
     throttler = Throttler()
@@ -278,7 +293,7 @@ async def test_logging_when_deactivates_immediately(caplog):
         raise Exception()
 
     assert caplog.messages == [
-        "Throttling for 123 seconds due to an unexpected exception:",
+        "Throttling for 123 seconds due to an unexpected error:",
         "Throttling is over. Switching back to normal operations.",
     ]
 
@@ -297,6 +312,6 @@ async def test_logging_when_deactivates_on_reentry(sleep, caplog):
         pass
 
     assert caplog.messages == [
-        "Throttling for 123 seconds due to an unexpected exception:",
+        "Throttling for 123 seconds due to an unexpected error:",
         "Throttling is over. Switching back to normal operations.",
     ]

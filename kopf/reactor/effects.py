@@ -203,15 +203,13 @@ async def throttled(
         # Activate throttling if not yet active, or reuse the active sequence of delays.
         if throttler.source_of_delays is None:
             throttler.source_of_delays = iter(delays)
-            throttle_delay = next(throttler.source_of_delays)
-        elif throttler.last_used_delay is None:
-            throttle_delay = next(throttler.source_of_delays)
-        else:
-            throttle_delay = next(throttler.source_of_delays, throttler.last_used_delay)
 
-        throttler.last_used_delay = throttle_delay
-        throttler.active_until = time.monotonic() + throttle_delay
-        logger.exception(f"Throttling for {throttle_delay} seconds due to an unexpected exception:")
+        # Choose a delay. If there are none, avoid throttling at all.
+        throttle_delay = next(throttler.source_of_delays, throttler.last_used_delay)
+        if throttle_delay is not None:
+            throttler.last_used_delay = throttle_delay
+            throttler.active_until = time.monotonic() + throttle_delay
+            logger.exception(f"Throttling for {throttle_delay} seconds due to an unexpected error:")
 
     else:
         # Reset the throttling. Release the iterator to keep the memory free during normal run.
