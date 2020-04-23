@@ -142,6 +142,10 @@ async def sleep_or_wait(
     actual_delays = [delay for delay in passed_delays if delay is not None]
     minimal_delay = min(actual_delays) if actual_delays else 0
 
+    # Do not go for the real low-level system sleep if there is no need to sleep.
+    if minimal_delay <= 0:
+        return None
+
     awakening_event = (
         wakeup.async_event if isinstance(wakeup, primitives.DaemonStopper) else
         wakeup if wakeup is not None else
