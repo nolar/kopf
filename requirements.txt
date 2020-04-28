@@ -7,7 +7,7 @@ pytest-aiohttp
 pytest-asyncio==0.10.0  # until fixed: https://github.com/pytest-dev/pytest-asyncio/issues/154
 pytest-mock
 pytest-cov
-pytest<5.4.0  # until fixed: https://github.com/pytest-dev/pytest-asyncio/issues/154
+pytest==5.3.5  # until fixed: https://github.com/pytest-dev/pytest-asyncio/issues/154
 aresponses
 asynctest
 freezegun
