@@ -32,19 +32,19 @@ keys = pytest.mark.parametrize('prefix, provided_key, expected_key', [
     # The suffix itself (if appended) takes 9, so it is 30 left. The same math for no prefix.
     ['my-operator.example.com', 'x', 'my-operator.example.com/x'],
     ['my-operator.example.com', 'x' * 39, 'my-operator.example.com/' + 'x' * 39],
-    ['my-operator.example.com', 'x' * 40, 'my-operator.example.com/' + 'x' * 30 + '-tEokcg--'],
-    ['my-operator.example.com', 'y' * 40, 'my-operator.example.com/' + 'y' * 30 + '-VZlvhw--'],
-    ['my-operator.example.com', 'z' * 40, 'my-operator.example.com/' + 'z' * 30 + '-LlPQyA--'],
+    ['my-operator.example.com', 'x' * 40, 'my-operator.example.com/' + 'x' * 30 + 'xx-tEokcg'],
+    ['my-operator.example.com', 'y' * 40, 'my-operator.example.com/' + 'y' * 30 + 'yy-VZlvhw'],
+    ['my-operator.example.com', 'z' * 40, 'my-operator.example.com/' + 'z' * 30 + 'zz-LlPQyA'],
     [None, 'x', 'x'],
     [None, 'x' * 63, 'x' * 63],
-    [None, 'x' * 64, 'x' * 54 + '-SItAqA--'],
-    [None, 'y' * 64, 'y' * 54 + '-0d251g--'],
-    [None, 'z' * 64, 'z' * 54 + '-E7wvIA--'],
+    [None, 'x' * 64, 'x' * 54 + 'xx-SItAqA'],  # base64: SItAqA==
+    [None, 'y' * 64, 'y' * 54 + 'yy-0d251g'],  # base64: 0d251g==
+    [None, 'z' * 64, 'z' * 54 + 'zz-E7wvIA'],  # base64: E7wvIA==
 
     # For special chars in base64 encoding ("+" and "/"), which are not compatible with K8s.
     # The numbers are found empirically so that both "/" and "+" are found in the base64'ed digest.
-    ['my-operator.example.com', 'fn' * 323, 'my-operator.example.com/' + 'fn' * 15 + '-Az-r.g--'],
-    [None, 'fn' * 323, 'fn' * 27 + '-Az-r.g--'],
+    ['my-operator.example.com', 'fn' * 323, 'my-operator.example.com/' + 'fn' * 15 + 'fn-Az-r.g'],
+    [None, 'fn' * 323, 'fn' * 27 + 'fn-Az-r.g'],  # base64: Az-r.g==
 
 ])
 
