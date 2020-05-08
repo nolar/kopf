@@ -244,9 +244,9 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
         """
         now = datetime.datetime.utcnow()
         return [
-            max(0, (handler_state.delayed - now).total_seconds())
+            max(0, (handler_state.delayed - now).total_seconds()) if handler_state.delayed else 0
             for handler_state in self._states.values()
-            if handler_state.delayed
+            if not handler_state.finished
         ]
 
 

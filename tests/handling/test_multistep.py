@@ -58,6 +58,10 @@ async def test_1st_step_stores_progress_by_patching(
     assert patch['status']['kopf']['progress'][name1]['started']
     assert patch['status']['kopf']['progress'][name2]['started']
 
+    # Premature removal of finalizers can prevent the 2nd step for deletion handlers.
+    # So, the finalizers must never be removed on the 1st step.
+    assert 'finalizers' not in patch['metadata']
+
 
 @pytest.mark.parametrize('deletion_ts', [
     pytest.param({}, id='no-deletion-ts'),
@@ -105,3 +109,8 @@ async def test_2nd_step_finishes_the_handlers(caplog,
 
     patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
     assert patch['status']['kopf']['progress'] == {name1: None, name2: None}
+
+    # Finalizers could be removed for resources being deleted on the 2nd step.
+    # The logic can vary though: either by deletionTimestamp, or by reason==DELETE.
+    if deletion_ts and deletion_ts['deletionTimestamp']:
+        assert patch['metadata']['finalizers'] == []
