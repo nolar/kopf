@@ -51,7 +51,7 @@ before_script:
 
 script:
   - pytest --cov=kopf --cov-branch
-  - coveralls
+  - coveralls || true
   - codecov --flags unit
   - pytest --only-e2e  # NB: after the coverage uploads!
   - mypy kopf --strict --pretty
