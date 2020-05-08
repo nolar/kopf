@@ -188,24 +188,24 @@ async def stop_resource_daemons(
         elif backoff is not None and age < backoff:
             if not stopper.is_set(reason=primitives.DaemonStoppingReason.DAEMON_SIGNALLED):
                 stopper.set(reason=primitives.DaemonStoppingReason.DAEMON_SIGNALLED)
-                logger.debug(f"Daemon {daemon_id!r} is signalled to exit gracefully.")
+                logger.debug(f"{handler} is signalled to exit gracefully.")
             delays.append(backoff - age)
 
         elif timeout is not None and age < timeout + (backoff or 0):
             if not stopper.is_set(reason=primitives.DaemonStoppingReason.DAEMON_CANCELLED):
                 stopper.set(reason=primitives.DaemonStoppingReason.DAEMON_CANCELLED)
-                logger.debug(f"Daemon {daemon_id!r} is signalled to exit by force.")
+                logger.debug(f"{handler} is signalled to exit by force.")
                 daemon.task.cancel()
             delays.append(timeout + (backoff or 0) - age)
 
         elif timeout is not None:
             if not stopper.is_set(reason=primitives.DaemonStoppingReason.DAEMON_ABANDONED):
                 stopper.set(reason=primitives.DaemonStoppingReason.DAEMON_ABANDONED)
-                logger.warning(f"Daemon {daemon_id!r} did not exit in time. Leaving it orphaned.")
-                warnings.warn(f"Daemon {daemon_id!r} did not exit in time.", ResourceWarning)
+                logger.warning(f"{handler} did not exit in time. Leaving it orphaned.")
+                warnings.warn(f"{handler} did not exit in time.", ResourceWarning)
 
         else:
-            logger.debug(f"Daemon {daemon_id!r} is still exiting. Next check is in {polling}s.")
+            logger.debug(f"{handler} is still exiting. The next check is in {polling} seconds.")
             delays.append(polling)
 
     return delays
@@ -250,38 +250,39 @@ async def stop_daemon(
 
     For explanation on different implementations, see `stop_resource_daemons`.
     """
-    if isinstance(daemon.handler, handlers_.ResourceDaemonHandler):
-        backoff = daemon.handler.cancellation_backoff
-        timeout = daemon.handler.cancellation_timeout
-    elif isinstance(daemon.handler, handlers_.ResourceTimerHandler):
+    handler = daemon.handler
+    if isinstance(handler, handlers_.ResourceDaemonHandler):
+        backoff = handler.cancellation_backoff
+        timeout = handler.cancellation_timeout
+    elif isinstance(handler, handlers_.ResourceTimerHandler):
         backoff = None
         timeout = None
     else:
-        raise RuntimeError(f"Unsupported daemon handler: {daemon.handler!r}")
+        raise RuntimeError(f"Unsupported daemon handler: {handler!r}")
 
     # Whatever happens with other flags & logs & timings, this flag must be surely set.
     # It might be so, that the daemon exits instantly (if written properly: give it chance).
     daemon.stopper.set(reason=primitives.DaemonStoppingReason.OPERATOR_EXITING)
     await asyncio.sleep(0)  # give a chance to exit gracefully if it can.
     if daemon.task.done():
-        daemon.logger.debug(f"Daemon {daemon_id!r} has exited gracefully.")
+        daemon.logger.debug(f"{handler} has exited gracefully.")
 
     # Try different approaches to exiting the daemon based on timings.
     if not daemon.task.done() and backoff is not None:
         daemon.stopper.set(reason=primitives.DaemonStoppingReason.DAEMON_SIGNALLED)
-        daemon.logger.debug(f"Daemon {daemon_id!r} is signalled to exit gracefully.")
+        daemon.logger.debug(f"{handler} is signalled to exit gracefully.")
         await asyncio.wait([daemon.task], timeout=backoff)
 
     if not daemon.task.done() and timeout is not None:
         daemon.stopper.set(reason=primitives.DaemonStoppingReason.DAEMON_CANCELLED)
-        daemon.logger.debug(f"Daemon {daemon_id!r} is signalled to exit by force.")
+        daemon.logger.debug(f"{handler} is signalled to exit by force.")
         daemon.task.cancel()
         await asyncio.wait([daemon.task], timeout=timeout)
 
     if not daemon.task.done():
         daemon.stopper.set(reason=primitives.DaemonStoppingReason.DAEMON_ABANDONED)
-        daemon.logger.warning(f"Daemon {daemon_id!r} did not exit in time. Leaving it orphaned.")
-        warnings.warn(f"Daemon {daemon_id!r} did not exit in time.", ResourceWarning)
+        daemon.logger.warning(f"{handler} did not exit in time. Leaving it orphaned.")
+        warnings.warn(f"{handler} did not exit in time.", ResourceWarning)
 
 
 async def _runner(
