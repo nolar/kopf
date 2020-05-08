@@ -43,7 +43,7 @@ async def spawn_resource_daemons(
         *,
         settings: configuration.OperatorSettings,
         handlers: Sequence[handlers_.ResourceSpawningHandler],
-        daemons: MutableMapping[containers.DaemonId, containers.Daemon],
+        daemons: MutableMapping[handlers_.HandlerId, containers.Daemon],
         cause: causation.ResourceSpawningCause,
         memory: containers.ResourceMemory,
 ) -> Collection[float]:
@@ -57,8 +57,7 @@ async def spawn_resource_daemons(
     if memory.live_fresh_body is None:  # for type-checking; "not None" is ensured in processing.
         raise RuntimeError("A daemon is spawned with None as body. This is a bug. Please report.")
     for handler in handlers:
-        daemon_id = containers.DaemonId(handler.id)
-        if daemon_id not in daemons:
+        if handler.id not in daemons:
             stopper = primitives.DaemonStopper()
             daemon_cause = causation.DaemonCause(
                 resource=cause.resource,
@@ -80,7 +79,7 @@ async def spawn_resource_daemons(
                     memory=memory,
                 )),
             )
-            daemons[daemon_id] = daemon
+            daemons[handler.id] = daemon
     return []
 
 
@@ -88,18 +87,18 @@ async def match_resource_daemons(
         *,
         settings: configuration.OperatorSettings,
         handlers: Sequence[handlers_.ResourceSpawningHandler],
-        daemons: MutableMapping[containers.DaemonId, containers.Daemon],
+        daemons: MutableMapping[handlers_.HandlerId, containers.Daemon],
 ) -> Collection[float]:
     """
     Re-match the running daemons with the filters, and stop those mismatching.
 
     Stopping can take few iterations, same as `stop_resource_daemons` would do.
     """
-    matching_daemon_ids = {containers.DaemonId(handler.id) for handler in handlers}
+    matching_daemon_ids = {handler.id for handler in handlers}
     mismatching_daemons = {
-        daemon_id: daemon
-        for daemon_id, daemon in daemons.items()
-        if daemon_id not in matching_daemon_ids
+        daemon.handler.id: daemon
+        for daemon in daemons.values()
+        if daemon.handler.id not in matching_daemon_ids
     }
     delays = await stop_resource_daemons(
         settings=settings,
@@ -112,7 +111,7 @@ async def match_resource_daemons(
 async def stop_resource_daemons(
         *,
         settings: configuration.OperatorSettings,
-        daemons: Mapping[containers.DaemonId, containers.Daemon],
+        daemons: Mapping[handlers_.HandlerId, containers.Daemon],
         reason: primitives.DaemonStoppingReason = primitives.DaemonStoppingReason.RESOURCE_DELETED,
 ) -> Collection[float]:
     """
@@ -157,7 +156,7 @@ async def stop_resource_daemons(
     """
     delays: List[float] = []
     now = time.monotonic()
-    for daemon_id, daemon in list(daemons.items()):
+    for daemon in list(daemons.values()):
         logger = daemon.logger
         stopper = daemon.stopper
         age = (now - (stopper.when or now))
@@ -228,9 +227,9 @@ async def daemon_killer(
 
     # Terminate all running daemons when the operator exits (and this task is cancelled).
     coros = [
-        stop_daemon(daemon_id=daemon_id, daemon=daemon)
+        stop_daemon(daemon=daemon)
         for memory in memories.iter_all_memories()
-        for daemon_id, daemon in memory.daemons.items()
+        for daemon in memory.running_daemons.values()
     ]
     if coros:
         await asyncio.wait(coros)
@@ -238,7 +237,6 @@ async def daemon_killer(
 
 async def stop_daemon(
         *,
-        daemon_id: containers.DaemonId,
         daemon: containers.Daemon,
 ) -> None:
     """
@@ -288,7 +286,7 @@ async def stop_daemon(
 async def _runner(
         *,
         settings: configuration.OperatorSettings,
-        daemons: MutableMapping[containers.DaemonId, containers.Daemon],
+        daemons: MutableMapping[handlers_.HandlerId, containers.Daemon],
         handler: handlers_.ResourceSpawningHandler,
         memory: containers.ResourceMemory,
         cause: causation.DaemonCause,
@@ -315,7 +313,7 @@ async def _runner(
             memory.forever_stopped.add(handler.id)
 
         # Save the memory by not remembering the exited daemons (they may be never re-spawned).
-        del daemons[containers.DaemonId(handler.id)]
+        del daemons[handler.id]
 
         # Whatever happened, make sure the sync threads of asyncio threaded executor are notified:
         # in a hope that they will exit maybe some time later to free the OS/asyncio resources.

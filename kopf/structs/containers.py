@@ -25,8 +25,6 @@ else:
     asyncio_Task = asyncio.Task
     asyncio_Future = asyncio.Future
 
-DaemonId = NewType('DaemonId', str)
-
 
 @dataclasses.dataclass(frozen=True)
 class Daemon:
@@ -70,7 +68,7 @@ class ResourceMemory:
     live_fresh_body: Optional[bodies.Body] = None
     idle_reset_time: float = dataclasses.field(default_factory=time.monotonic)
     forever_stopped: Set[handlers.HandlerId] = dataclasses.field(default_factory=set)
-    daemons: Dict[DaemonId, Daemon] = dataclasses.field(default_factory=dict)
+    running_daemons: Dict[handlers.HandlerId, Daemon] = dataclasses.field(default_factory=dict)
 
 
 class ResourceMemories:
