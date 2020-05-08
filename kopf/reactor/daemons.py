@@ -361,7 +361,8 @@ async def _resource_daemon(
             cause.patch.clear()
 
         # The in-memory sleep does not react to resource changes, but only to stopping.
-        await sleeping.sleep_or_wait(state.delay, cause.stopper)
+        if state.delay:
+            await sleeping.sleep_or_wait(state.delay, cause.stopper)
 
     if cause.stopper.is_set():
         logger.debug(f"{handler} has exited on request and will not be retried or restarted.")
