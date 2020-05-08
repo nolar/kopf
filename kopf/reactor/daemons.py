@@ -174,11 +174,9 @@ async def stop_resource_daemons(
             raise RuntimeError(f"Unsupported daemon handler: {handler!r}")
 
         # Whatever happens with other flags & logs & timings, this flag must be surely set.
-        stopper.set(reason=reason)
-
-        # It might be so, that the daemon exits instantly (if written properly). Avoid patching and
-        # unnecessary handling cycles in this case: just give the asyncio event loop an extra cycle.
-        await asyncio.sleep(0)
+        if not stopper.is_set(reason=reason):
+            stopper.set(reason=reason)
+            await _wait_for_instant_exit(settings=settings, daemon=daemon)
 
         # Try different approaches to exiting the daemon based on timings.
         if daemon.task.done():
@@ -188,14 +186,18 @@ async def stop_resource_daemons(
             if not stopper.is_set(reason=primitives.DaemonStoppingReason.DAEMON_SIGNALLED):
                 stopper.set(reason=primitives.DaemonStoppingReason.DAEMON_SIGNALLED)
                 logger.debug(f"{handler} is signalled to exit gracefully.")
-            delays.append(backoff - age)
+                await _wait_for_instant_exit(settings=settings, daemon=daemon)
+            if not daemon.task.done():  # due to "instant exit"
+                delays.append(backoff - age)
 
         elif timeout is not None and age < timeout + (backoff or 0):
             if not stopper.is_set(reason=primitives.DaemonStoppingReason.DAEMON_CANCELLED):
                 stopper.set(reason=primitives.DaemonStoppingReason.DAEMON_CANCELLED)
                 logger.debug(f"{handler} is signalled to exit by force.")
                 daemon.task.cancel()
-            delays.append(timeout + (backoff or 0) - age)
+                await _wait_for_instant_exit(settings=settings, daemon=daemon)
+            if not daemon.task.done():  # due to "instant exit"
+                delays.append(timeout + (backoff or 0) - age)
 
         elif timeout is not None:
             if not stopper.is_set(reason=primitives.DaemonStoppingReason.DAEMON_ABANDONED):
@@ -227,7 +229,7 @@ async def daemon_killer(
 
     # Terminate all running daemons when the operator exits (and this task is cancelled).
     coros = [
-        stop_daemon(daemon=daemon)
+        stop_daemon(daemon=daemon, settings=settings)
         for memory in memories.iter_all_memories()
         for daemon in memory.running_daemons.values()
     ]
@@ -237,6 +239,7 @@ async def daemon_killer(
 
 async def stop_daemon(
         *,
+        settings: configuration.OperatorSettings,
         daemon: containers.Daemon,
 ) -> None:
     """
@@ -259,9 +262,9 @@ async def stop_daemon(
         raise RuntimeError(f"Unsupported daemon handler: {handler!r}")
 
     # Whatever happens with other flags & logs & timings, this flag must be surely set.
-    # It might be so, that the daemon exits instantly (if written properly: give it chance).
     daemon.stopper.set(reason=primitives.DaemonStoppingReason.OPERATOR_EXITING)
-    await asyncio.sleep(0)  # give a chance to exit gracefully if it can.
+    await _wait_for_instant_exit(settings=settings, daemon=daemon)
+
     if daemon.task.done():
         daemon.logger.debug(f"{handler} has exited gracefully.")
 
@@ -281,6 +284,36 @@ async def stop_daemon(
         daemon.stopper.set(reason=primitives.DaemonStoppingReason.DAEMON_ABANDONED)
         daemon.logger.warning(f"{handler} did not exit in time. Leaving it orphaned.")
         warnings.warn(f"{handler} did not exit in time.", ResourceWarning)
+
+
+async def _wait_for_instant_exit(
+        *,
+        settings: configuration.OperatorSettings,
+        daemon: containers.Daemon,
+) -> None:
+    """
+    Wait for a kind-of-instant exit of a daemon/timer.
+
+    It might be so, that the daemon exits instantly (if written properly).
+    Avoid resource patching and unnecessary handling cycles in this case:
+    just give the asyncio event loop an extra time & cycles to finish it.
+
+    There is nothing "instant", of course. Any code takes some time to execute.
+    We just assume that the "instant" is something defined by a small timeout
+    and a few zero-time asyncio cycles (read as: zero-time `await` statements).
+    """
+
+    if daemon.task.done():
+        pass
+
+    elif settings.background.instant_exit_timeout is not None:
+        await asyncio.wait([daemon.task], timeout=settings.background.instant_exit_timeout)
+
+    elif settings.background.instant_exit_zero_time_cycles is not None:
+        for _ in range(settings.background.instant_exit_zero_time_cycles):
+            await asyncio.sleep(0)
+            if daemon.task.done():
+                break
 
 
 async def _runner(
