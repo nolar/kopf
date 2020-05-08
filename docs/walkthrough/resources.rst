@@ -7,6 +7,8 @@ Custom Resource Definition
 
 Let us define a CRD (custom resource definition) for our object.
 
+For Kubernetes 1.15 and below:
+
 .. code-block:: yaml
     :caption: crd.yaml
     :name: crd-yaml
@@ -18,10 +20,6 @@ Let us define a CRD (custom resource definition) for our object.
     spec:
       scope: Namespaced
       group: zalando.org
-      versions:
-        - name: v1
-          served: true
-          storage: true
       names:
         kind: EphemeralVolumeClaim
         plural: ephemeralvolumeclaims
@@ -29,6 +27,49 @@ Let us define a CRD (custom resource definition) for our object.
         shortNames:
           - evcs
           - evc
+      versions:
+        - name: v1
+          served: true
+          storage: true
+          schema:
+            openAPIV3Schema:
+              type: object
+              properties:
+                status:
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
+
+For Kubernetes 1.16 and above:
+
+.. code-block:: yaml
+    :caption: crd.yaml
+    :name: crd-yaml
+
+    apiVersion: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    metadata:
+      name: ephemeralvolumeclaims.zalando.org
+    spec:
+      scope: Namespaced
+      group: zalando.org
+      names:
+        kind: EphemeralVolumeClaim
+        plural: ephemeralvolumeclaims
+        singular: ephemeralvolumeclaim
+        shortNames:
+          - evcs
+          - evc
+      versions:
+        - name: v1
+          served: true
+          storage: true
+          schema:
+            openAPIV3Schema:
+              type: object
+              properties:
+                status:
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
 
 Note the short names: they can be used as the aliases on the command line,
 when getting a list or an object of that kind.

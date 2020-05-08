@@ -1,15 +1,13 @@
 # A demo CRD for the Kopf example operators.
-apiVersion: apiextensions.k8s.io/v1beta1
+# Use it with Kubernetes 1.16 and above.
+# For Kubernetes 1.15 and below, use crd-v1beta1.yaml.
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: kopfexamples.zalando.org
 spec:
   scope: Namespaced
   group: zalando.org
-  versions:
-    - name: v1
-      served: true
-      storage: true
   names:
     kind: KopfExample
     plural: kopfexamples
@@ -19,19 +17,30 @@ spec:
       - kopfex
       - kexes
       - kex
-  additionalPrinterColumns:
-    - name: Duration
-      type: string
-      priority: 0
-      JSONPath: .spec.duration
-      description: For how long the pod should sleep.
-    - name: Children
-      type: string
-      priority: 0
-      JSONPath: .status.create_fn.children
-      description: The children pods created.
-    - name: Message
-      type: string
-      priority: 0
-      JSONPath: .status.create_fn.message
-      description: As returned from the handler (sometimes).
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+      additionalPrinterColumns:
+        - name: Duration
+          type: string
+          priority: 0
+          jsonPath: .spec.duration
+          description: For how long the pod should sleep.
+        - name: Children
+          type: string
+          priority: 0
+          jsonPath: .status.create_fn.children
+          description: The children pods created.
+        - name: Message
+          type: string
+          priority: 0
+          jsonPath: .status.create_fn.message
+          description: As returned from the handler (sometimes).
