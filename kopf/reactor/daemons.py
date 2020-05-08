@@ -38,8 +38,6 @@ from kopf.structs import handlers as handlers_
 from kopf.structs import patches
 from kopf.structs import primitives
 
-DAEMON_POLLING_INTERVAL = 60
-
 
 async def spawn_resource_daemons(
         *,
@@ -164,16 +162,17 @@ async def stop_resource_daemons(
         stopper = daemon.stopper
         age = (now - (stopper.when or now))
 
-        if isinstance(daemon.handler, handlers_.ResourceDaemonHandler):
-            backoff = daemon.handler.cancellation_backoff
-            timeout = daemon.handler.cancellation_timeout
-            polling = daemon.handler.cancellation_polling or DAEMON_POLLING_INTERVAL
-        elif isinstance(daemon.handler, handlers_.ResourceTimerHandler):
+        handler = daemon.handler
+        if isinstance(handler, handlers_.ResourceDaemonHandler):
+            backoff = handler.cancellation_backoff
+            timeout = handler.cancellation_timeout
+            polling = handler.cancellation_polling or settings.background.cancellation_polling
+        elif isinstance(handler, handlers_.ResourceTimerHandler):
             backoff = None
             timeout = None
-            polling = DAEMON_POLLING_INTERVAL
+            polling = settings.background.cancellation_polling
         else:
-            raise RuntimeError(f"Unsupported daemon handler: {daemon.handler!r}")
+            raise RuntimeError(f"Unsupported daemon handler: {handler!r}")
 
         # Whatever happens with other flags & logs & timings, this flag must be surely set.
         stopper.set(reason=reason)

@@ -186,10 +186,25 @@ class PersistenceSettings:
 
 
 @dataclasses.dataclass
+class BackgroundSettings:
+    """
+    Settings for background routines in general, daemons & timers specifically.
+    """
+
+    cancellation_polling: float = 60
+    """
+    How often (in seconds) to poll the status of an exiting daemon/timer
+    when it has no cancellation timeout set (i.e. when it is assumed to
+    exit gracefully by its own, but it does not).
+    """
+
+
+@dataclasses.dataclass
 class OperatorSettings:
     logging: LoggingSettings = dataclasses.field(default_factory=LoggingSettings)
     posting: PostingSettings = dataclasses.field(default_factory=PostingSettings)
     watching: WatchingSettings = dataclasses.field(default_factory=WatchingSettings)
     batching: BatchingSettings = dataclasses.field(default_factory=BatchingSettings)
     execution: ExecutionSettings = dataclasses.field(default_factory=ExecutionSettings)
+    background: BackgroundSettings = dataclasses.field(default_factory=BackgroundSettings)
     persistence: PersistenceSettings = dataclasses.field(default_factory=PersistenceSettings)
