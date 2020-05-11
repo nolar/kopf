@@ -178,9 +178,10 @@ class AnnotationsProgressStorage(ProgressStorage):
             body: bodies.Body,
     ) -> Optional[ProgressRecord]:
         full_key = self.make_key(key)
-        value = body.metadata.annotations.get(full_key, None)
-        content = json.loads(value) if value is not None else None
-        return cast(Optional[ProgressRecord], content)
+        key_field = ['metadata', 'annotations', full_key]
+        encoded = dicts.resolve(body, key_field, None, assume_empty=True)
+        decoded = json.loads(encoded) if encoded is not None else None
+        return cast(Optional[ProgressRecord], decoded)
 
     def store(
             self,
@@ -191,8 +192,10 @@ class AnnotationsProgressStorage(ProgressStorage):
             patch: patches.Patch,
     ) -> None:
         full_key = self.make_key(key)
-        clean_data = {key: val for key, val in record.items() if self.verbose or val is not None}
-        patch.meta.annotations[full_key] = json.dumps(clean_data)
+        key_field = ['metadata', 'annotations', full_key]
+        decoded = {key: val for key, val in record.items() if self.verbose or val is not None}
+        encoded = json.dumps(decoded)
+        dicts.ensure(patch, key_field, encoded)
 
     def purge(
             self,
@@ -201,9 +204,15 @@ class AnnotationsProgressStorage(ProgressStorage):
             body: bodies.Body,
             patch: patches.Patch,
     ) -> None:
+        absent = object()
         full_key = self.make_key(key)
-        if full_key in body.metadata.annotations or full_key in patch.meta.annotations:
-            patch.meta.annotations[full_key] = None
+        key_field = ['metadata', 'annotations', full_key]
+        body_value = dicts.resolve(body, key_field, absent, assume_empty=True)
+        patch_value = dicts.resolve(patch, key_field, absent, assume_empty=True)
+        if body_value is not absent:
+            dicts.ensure(patch, key_field, None)
+        elif patch_value is not absent:
+            dicts.remove(patch, key_field)
 
     def touch(
             self,
@@ -213,8 +222,10 @@ class AnnotationsProgressStorage(ProgressStorage):
             value: Optional[str],
     ) -> None:
         full_key = self.make_key(self.touch_key)
-        if body.meta.annotations.get(full_key, None) != value:  # also covers absent-vs-None cases.
-            patch.meta.annotations[full_key] = value
+        key_field = ['metadata', 'annotations', full_key]
+        body_value = dicts.resolve(body, key_field, None, assume_empty=True)
+        if body_value != value:  # also covers absent-vs-None cases.
+            dicts.ensure(patch, key_field, value)
 
     def clear(self, *, essence: bodies.BodyEssence) -> bodies.BodyEssence:
         essence = super().clear(essence=essence)
