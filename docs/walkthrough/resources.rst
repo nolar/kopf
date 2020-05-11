@@ -35,6 +35,9 @@ For Kubernetes 1.15 and below:
             openAPIV3Schema:
               type: object
               properties:
+                spec:
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 status:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
@@ -67,6 +70,9 @@ For Kubernetes 1.16 and above:
             openAPIV3Schema:
               type: object
               properties:
+                spec:
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 status:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
