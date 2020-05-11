@@ -318,7 +318,7 @@ async def process_resource_spawning_cause(
     if finalizers.is_deletion_ongoing(cause.body):
         stopping_delays = await daemons.stop_resource_daemons(
             settings=settings,
-            daemons=memory.daemons,
+            daemons=memory.running_daemons,
         )
         return stopping_delays
 
@@ -329,14 +329,14 @@ async def process_resource_spawning_cause(
         )
         spawning_delays = await daemons.spawn_resource_daemons(
             settings=settings,
-            daemons=memory.daemons,
+            daemons=memory.running_daemons,
             cause=cause,
             memory=memory,
             handlers=handlers,
         )
         matching_delays = await daemons.match_resource_daemons(
             settings=settings,
-            daemons=memory.daemons,
+            daemons=memory.running_daemons,
             handlers=handlers,
         )
         return list(spawning_delays) + list(matching_delays)

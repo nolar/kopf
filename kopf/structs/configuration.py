@@ -186,10 +186,70 @@ class PersistenceSettings:
 
 
 @dataclasses.dataclass
+class BackgroundSettings:
+    """
+    Settings for background routines in general, daemons & timers specifically.
+    """
+
+    cancellation_polling: float = 60
+    """
+    How often (in seconds) to poll the status of an exiting daemon/timer
+    when it has no cancellation timeout set (i.e. when it is assumed to
+    exit gracefully by its own, but it does not).
+    """
+
+    instant_exit_timeout: Optional[float] = None
+    """
+    For how long (in seconds) to wait for a daemon/timer to exit instantly.
+
+    If they continue running after the stopper is set for longer than this time,
+    then external polling is initiated via the resource's persistence storages,
+    as for regular handlers.
+
+    The "instant exit" timeout is neither combined with any other timeouts, nor
+    deducted from any other timeouts, such as the daemon cancellation timeout.
+    
+    So, keep the timeout low: 0.001, 0.01, or 0.1 are good enough; 1.0 is risky.
+    Big delays can cause slower operator reaction to the resource deletion
+    or operator exiting, but can reduce the amount of unnecessary patches.
+
+    If the timeout is not set (the default), then a limited amount of zero-time
+    asyncio event loop cycles is used instead.
+    """
+
+    instant_exit_zero_time_cycles: Optional[int] = 10
+    """
+    How many asyncio cycles to give to a daemon/timer to exit instantly. 
+
+    There is a speed-up hack to let the daemons/timers to exit instantly,
+    without external patching & polling. For this, ``asyncio.sleep(0)`` is used
+    to give control back to the event loop and their coroutines. However,
+    the daemons/timers can do extra `await` calls (even zero-time) before
+    actually exiting, which prematurely returns the control flow back
+    to the daemon-stopper coroutine.
+
+    This configuration value is a maximum amount of zero-time `await` statements
+    that can happen before exiting: both in the daemon and in the framework.
+
+    It the daemons/timers coroutines exit earlier, extra cycles are not used.
+    If they continue running after that, then external polling is initiated
+    via the resource's persistence storages, as for regular handlers.
+
+    All of this happens with zero delays, so no slowdown is expected
+    (but a bit of CPU will be consumed).
+
+    If an "instant exit" timeout is set, the zero-time cycles are not used.
+
+    PS: The default value is a rough guess on a typical code complexity.
+    """
+
+
+@dataclasses.dataclass
 class OperatorSettings:
     logging: LoggingSettings = dataclasses.field(default_factory=LoggingSettings)
     posting: PostingSettings = dataclasses.field(default_factory=PostingSettings)
     watching: WatchingSettings = dataclasses.field(default_factory=WatchingSettings)
     batching: BatchingSettings = dataclasses.field(default_factory=BatchingSettings)
     execution: ExecutionSettings = dataclasses.field(default_factory=ExecutionSettings)
+    background: BackgroundSettings = dataclasses.field(default_factory=BackgroundSettings)
     persistence: PersistenceSettings = dataclasses.field(default_factory=PersistenceSettings)

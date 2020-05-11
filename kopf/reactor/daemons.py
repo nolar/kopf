@@ -38,14 +38,12 @@ from kopf.structs import handlers as handlers_
 from kopf.structs import patches
 from kopf.structs import primitives
 
-DAEMON_POLLING_INTERVAL = 60
-
 
 async def spawn_resource_daemons(
         *,
         settings: configuration.OperatorSettings,
         handlers: Sequence[handlers_.ResourceSpawningHandler],
-        daemons: MutableMapping[containers.DaemonId, containers.Daemon],
+        daemons: MutableMapping[handlers_.HandlerId, containers.Daemon],
         cause: causation.ResourceSpawningCause,
         memory: containers.ResourceMemory,
 ) -> Collection[float]:
@@ -59,8 +57,7 @@ async def spawn_resource_daemons(
     if memory.live_fresh_body is None:  # for type-checking; "not None" is ensured in processing.
         raise RuntimeError("A daemon is spawned with None as body. This is a bug. Please report.")
     for handler in handlers:
-        daemon_id = containers.DaemonId(handler.id)
-        if daemon_id not in daemons:
+        if handler.id not in daemons:
             stopper = primitives.DaemonStopper()
             daemon_cause = causation.DaemonCause(
                 resource=cause.resource,
@@ -82,7 +79,7 @@ async def spawn_resource_daemons(
                     memory=memory,
                 )),
             )
-            daemons[daemon_id] = daemon
+            daemons[handler.id] = daemon
     return []
 
 
@@ -90,18 +87,18 @@ async def match_resource_daemons(
         *,
         settings: configuration.OperatorSettings,
         handlers: Sequence[handlers_.ResourceSpawningHandler],
-        daemons: MutableMapping[containers.DaemonId, containers.Daemon],
+        daemons: MutableMapping[handlers_.HandlerId, containers.Daemon],
 ) -> Collection[float]:
     """
     Re-match the running daemons with the filters, and stop those mismatching.
 
     Stopping can take few iterations, same as `stop_resource_daemons` would do.
     """
-    matching_daemon_ids = {containers.DaemonId(handler.id) for handler in handlers}
+    matching_daemon_ids = {handler.id for handler in handlers}
     mismatching_daemons = {
-        daemon_id: daemon
-        for daemon_id, daemon in daemons.items()
-        if daemon_id not in matching_daemon_ids
+        daemon.handler.id: daemon
+        for daemon in daemons.values()
+        if daemon.handler.id not in matching_daemon_ids
     }
     delays = await stop_resource_daemons(
         settings=settings,
@@ -114,7 +111,7 @@ async def match_resource_daemons(
 async def stop_resource_daemons(
         *,
         settings: configuration.OperatorSettings,
-        daemons: Mapping[containers.DaemonId, containers.Daemon],
+        daemons: Mapping[handlers_.HandlerId, containers.Daemon],
         reason: primitives.DaemonStoppingReason = primitives.DaemonStoppingReason.RESOURCE_DELETED,
 ) -> Collection[float]:
     """
@@ -159,28 +156,27 @@ async def stop_resource_daemons(
     """
     delays: List[float] = []
     now = time.monotonic()
-    for daemon_id, daemon in list(daemons.items()):
+    for daemon in list(daemons.values()):
         logger = daemon.logger
         stopper = daemon.stopper
         age = (now - (stopper.when or now))
 
-        if isinstance(daemon.handler, handlers_.ResourceDaemonHandler):
-            backoff = daemon.handler.cancellation_backoff
-            timeout = daemon.handler.cancellation_timeout
-            polling = daemon.handler.cancellation_polling or DAEMON_POLLING_INTERVAL
-        elif isinstance(daemon.handler, handlers_.ResourceTimerHandler):
+        handler = daemon.handler
+        if isinstance(handler, handlers_.ResourceDaemonHandler):
+            backoff = handler.cancellation_backoff
+            timeout = handler.cancellation_timeout
+            polling = handler.cancellation_polling or settings.background.cancellation_polling
+        elif isinstance(handler, handlers_.ResourceTimerHandler):
             backoff = None
             timeout = None
-            polling = DAEMON_POLLING_INTERVAL
+            polling = settings.background.cancellation_polling
         else:
-            raise RuntimeError(f"Unsupported daemon handler: {daemon.handler!r}")
+            raise RuntimeError(f"Unsupported daemon handler: {handler!r}")
 
         # Whatever happens with other flags & logs & timings, this flag must be surely set.
-        stopper.set(reason=reason)
-
-        # It might be so, that the daemon exits instantly (if written properly). Avoid patching and
-        # unnecessary handling cycles in this case: just give the asyncio event loop an extra cycle.
-        await asyncio.sleep(0)
+        if not stopper.is_set(reason=reason):
+            stopper.set(reason=reason)
+            await _wait_for_instant_exit(settings=settings, daemon=daemon)
 
         # Try different approaches to exiting the daemon based on timings.
         if daemon.task.done():
@@ -189,24 +185,28 @@ async def stop_resource_daemons(
         elif backoff is not None and age < backoff:
             if not stopper.is_set(reason=primitives.DaemonStoppingReason.DAEMON_SIGNALLED):
                 stopper.set(reason=primitives.DaemonStoppingReason.DAEMON_SIGNALLED)
-                logger.debug(f"Daemon {daemon_id!r} is signalled to exit gracefully.")
-            delays.append(backoff - age)
+                logger.debug(f"{handler} is signalled to exit gracefully.")
+                await _wait_for_instant_exit(settings=settings, daemon=daemon)
+            if not daemon.task.done():  # due to "instant exit"
+                delays.append(backoff - age)
 
         elif timeout is not None and age < timeout + (backoff or 0):
             if not stopper.is_set(reason=primitives.DaemonStoppingReason.DAEMON_CANCELLED):
                 stopper.set(reason=primitives.DaemonStoppingReason.DAEMON_CANCELLED)
-                logger.debug(f"Daemon {daemon_id!r} is signalled to exit by force.")
+                logger.debug(f"{handler} is signalled to exit by force.")
                 daemon.task.cancel()
-            delays.append(timeout + (backoff or 0) - age)
+                await _wait_for_instant_exit(settings=settings, daemon=daemon)
+            if not daemon.task.done():  # due to "instant exit"
+                delays.append(timeout + (backoff or 0) - age)
 
         elif timeout is not None:
             if not stopper.is_set(reason=primitives.DaemonStoppingReason.DAEMON_ABANDONED):
                 stopper.set(reason=primitives.DaemonStoppingReason.DAEMON_ABANDONED)
-                logger.warning(f"Daemon {daemon_id!r} did not exit in time. Leaving it orphaned.")
-                warnings.warn(f"Daemon {daemon_id!r} did not exit in time.", ResourceWarning)
+                logger.warning(f"{handler} did not exit in time. Leaving it orphaned.")
+                warnings.warn(f"{handler} did not exit in time.", ResourceWarning)
 
         else:
-            logger.debug(f"Daemon {daemon_id!r} is still exiting. Next check is in {polling}s.")
+            logger.debug(f"{handler} is still exiting. The next check is in {polling} seconds.")
             delays.append(polling)
 
     return delays
@@ -229,9 +229,9 @@ async def daemon_killer(
 
     # Terminate all running daemons when the operator exits (and this task is cancelled).
     coros = [
-        stop_daemon(daemon_id=daemon_id, daemon=daemon)
+        stop_daemon(daemon=daemon, settings=settings)
         for memory in memories.iter_all_memories()
-        for daemon_id, daemon in memory.daemons.items()
+        for daemon in memory.running_daemons.values()
     ]
     if coros:
         await asyncio.wait(coros)
@@ -239,7 +239,7 @@ async def daemon_killer(
 
 async def stop_daemon(
         *,
-        daemon_id: containers.DaemonId,
+        settings: configuration.OperatorSettings,
         daemon: containers.Daemon,
 ) -> None:
     """
@@ -251,44 +251,75 @@ async def stop_daemon(
 
     For explanation on different implementations, see `stop_resource_daemons`.
     """
-    if isinstance(daemon.handler, handlers_.ResourceDaemonHandler):
-        backoff = daemon.handler.cancellation_backoff
-        timeout = daemon.handler.cancellation_timeout
-    elif isinstance(daemon.handler, handlers_.ResourceTimerHandler):
+    handler = daemon.handler
+    if isinstance(handler, handlers_.ResourceDaemonHandler):
+        backoff = handler.cancellation_backoff
+        timeout = handler.cancellation_timeout
+    elif isinstance(handler, handlers_.ResourceTimerHandler):
         backoff = None
         timeout = None
     else:
-        raise RuntimeError(f"Unsupported daemon handler: {daemon.handler!r}")
+        raise RuntimeError(f"Unsupported daemon handler: {handler!r}")
 
     # Whatever happens with other flags & logs & timings, this flag must be surely set.
-    # It might be so, that the daemon exits instantly (if written properly: give it chance).
     daemon.stopper.set(reason=primitives.DaemonStoppingReason.OPERATOR_EXITING)
-    await asyncio.sleep(0)  # give a chance to exit gracefully if it can.
+    await _wait_for_instant_exit(settings=settings, daemon=daemon)
+
     if daemon.task.done():
-        daemon.logger.debug(f"Daemon {daemon_id!r} has exited gracefully.")
+        daemon.logger.debug(f"{handler} has exited gracefully.")
 
     # Try different approaches to exiting the daemon based on timings.
     if not daemon.task.done() and backoff is not None:
         daemon.stopper.set(reason=primitives.DaemonStoppingReason.DAEMON_SIGNALLED)
-        daemon.logger.debug(f"Daemon {daemon_id!r} is signalled to exit gracefully.")
+        daemon.logger.debug(f"{handler} is signalled to exit gracefully.")
         await asyncio.wait([daemon.task], timeout=backoff)
 
     if not daemon.task.done() and timeout is not None:
         daemon.stopper.set(reason=primitives.DaemonStoppingReason.DAEMON_CANCELLED)
-        daemon.logger.debug(f"Daemon {daemon_id!r} is signalled to exit by force.")
+        daemon.logger.debug(f"{handler} is signalled to exit by force.")
         daemon.task.cancel()
         await asyncio.wait([daemon.task], timeout=timeout)
 
     if not daemon.task.done():
         daemon.stopper.set(reason=primitives.DaemonStoppingReason.DAEMON_ABANDONED)
-        daemon.logger.warning(f"Daemon {daemon_id!r} did not exit in time. Leaving it orphaned.")
-        warnings.warn(f"Daemon {daemon_id!r} did not exit in time.", ResourceWarning)
+        daemon.logger.warning(f"{handler} did not exit in time. Leaving it orphaned.")
+        warnings.warn(f"{handler} did not exit in time.", ResourceWarning)
+
+
+async def _wait_for_instant_exit(
+        *,
+        settings: configuration.OperatorSettings,
+        daemon: containers.Daemon,
+) -> None:
+    """
+    Wait for a kind-of-instant exit of a daemon/timer.
+
+    It might be so, that the daemon exits instantly (if written properly).
+    Avoid resource patching and unnecessary handling cycles in this case:
+    just give the asyncio event loop an extra time & cycles to finish it.
+
+    There is nothing "instant", of course. Any code takes some time to execute.
+    We just assume that the "instant" is something defined by a small timeout
+    and a few zero-time asyncio cycles (read as: zero-time `await` statements).
+    """
+
+    if daemon.task.done():
+        pass
+
+    elif settings.background.instant_exit_timeout is not None:
+        await asyncio.wait([daemon.task], timeout=settings.background.instant_exit_timeout)
+
+    elif settings.background.instant_exit_zero_time_cycles is not None:
+        for _ in range(settings.background.instant_exit_zero_time_cycles):
+            await asyncio.sleep(0)
+            if daemon.task.done():
+                break
 
 
 async def _runner(
         *,
         settings: configuration.OperatorSettings,
-        daemons: MutableMapping[containers.DaemonId, containers.Daemon],
+        daemons: MutableMapping[handlers_.HandlerId, containers.Daemon],
         handler: handlers_.ResourceSpawningHandler,
         memory: containers.ResourceMemory,
         cause: causation.DaemonCause,
@@ -315,7 +346,7 @@ async def _runner(
             memory.forever_stopped.add(handler.id)
 
         # Save the memory by not remembering the exited daemons (they may be never re-spawned).
-        del daemons[containers.DaemonId(handler.id)]
+        del daemons[handler.id]
 
         # Whatever happened, make sure the sync threads of asyncio threaded executor are notified:
         # in a hope that they will exit maybe some time later to free the OS/asyncio resources.
@@ -363,7 +394,8 @@ async def _resource_daemon(
             cause.patch.clear()
 
         # The in-memory sleep does not react to resource changes, but only to stopping.
-        await sleeping.sleep_or_wait(state.delay, cause.stopper)
+        if state.delay:
+            await sleeping.sleep_or_wait(state.delay, cause.stopper)
 
     if cause.stopper.is_set():
         logger.debug(f"{handler} has exited on request and will not be retried or restarted.")
