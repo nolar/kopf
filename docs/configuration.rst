@@ -252,11 +252,44 @@ For this, inherit from `kopf.StateStorage`, and implement its abstract methods
 
     The legacy behavior is an equivalent of
     ``kopf.StatusStateStorage(field='status.kopf.progress')``.
-    However, the ``.status`` stanza is not always stored by the server
-    for built-in or improperly configured custom resources since Kubernetes 1.16
-    (see `#321 <https://github.com/zalando-incubator/kopf/issues/321>`_).
 
-    The new default "smart" engine is supposed to ensure a smooth upgrade
+    Starting with Kubernetes 1.16, both custom and built-in resources have
+    strict structural schemas with pruning of unknown fields
+    (more information is in `Future of CRDs: Structural Schemas`__).
+
+    __ https://kubernetes.io/blog/2019/06/20/crd-structural-schema/
+
+    Long story short, unknown fields are silently pruned by Kubernetes API.
+    As a result, Kopf's status storage will not be able to actually store
+    anything in the resource, as it will be instantly lost.
+    (See `#321 <https://github.com/zalando-incubator/kopf/issues/321>`_.)
+
+    To quickly fix this for custom resources, modify their definitions
+    with ``x-kubernetes-preserve-unknown-fields: true``. For example:
+
+    .. code-block:: yaml
+
+        apiVersion: apiextensions.k8s.io/v1
+        kind: CustomResourceDefinition
+        spec:
+          scope: ...
+          group: ...
+          names: ...
+          versions:
+            - name: v1
+              served: true
+              storage: true
+              schema:
+                openAPIV3Schema:
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
+
+    See a more verbose example in ``examples/crd.yaml``.
+
+    For built-in resources, such as pods, namespaces, etc, the schemas cannot
+    be modified, so a full switch to annotations storage is advised.
+
+    The new default "smart" storage is supposed to ensure a smooth upgrade
     of Kopf-based operators to the new state location without special upgrade
     actions or conversions needed.
 
