@@ -92,7 +92,8 @@ def handlers(clear_default_registry):
         return event_mock(**kwargs)
 
     # Keep on-resume on top, to catch any issues with the test design (where it could be skipped).
-    @kopf.on.resume('zalando.org', 'v1', 'kopfexamples', id='resume_fn', timeout=600, retries=100)
+    @kopf.on.resume('zalando.org', 'v1', 'kopfexamples', id='resume_fn', timeout=600, retries=100,
+                    deleted=True)  # only for resuming handles, to cover the resource being deleted.
     async def resume_fn(**kwargs):
         return resume_mock(**kwargs)
 
@@ -135,7 +136,8 @@ def extrahandlers(clear_default_registry, handlers):
         return event_mock(**kwargs)
 
     # Keep on-resume on top, to catch any issues with the test design (where it could be skipped).
-    @kopf.on.resume('zalando.org', 'v1', 'kopfexamples', id='resume_fn2')
+    @kopf.on.resume('zalando.org', 'v1', 'kopfexamples', id='resume_fn2',
+                    deleted=True)  # only for resuming handles, to cover the resource being deleted.
     async def resume_fn2(**kwargs):
         return resume_mock(**kwargs)
 
