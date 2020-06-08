@@ -23,9 +23,6 @@ env:
     - KUBERNETES_VERSION=v1.15.0 CLIENT=no CRDAPI=v1beta1
     - KUBERNETES_VERSION=v1.14.0 CLIENT=no CRDAPI=v1beta1
     - KUBERNETES_VERSION=v1.13.0 CLIENT=no CRDAPI=v1beta1
-    - KUBERNETES_VERSION=v1.12.0 CLIENT=no CRDAPI=v1beta1
-#    - KUBERNETES_VERSION=v1.11.10  # Minikube fails on CRI preflight checks
-#    - KUBERNETES_VERSION=v1.10.13  # CRDs require spec.version, which fails on 1.14
 
 # Only one Python version is tested with all supported K8s versions: to check for API compatibility.
 # Other Python versions are tested with only one K8s version: if it works for one, it works for all.
