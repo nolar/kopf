@@ -170,8 +170,10 @@ async def execute(
     state.store(body=cause.body, patch=cause.patch, storage=storage)
     states.deliver_results(outcomes=outcomes, patch=cause.patch)
 
-    # Escalate `HandlerChildrenRetry` if the execute should be continued on the next iteration.
-    if not state.done:
+    if state.done:
+        state.purge(body=cause.body, patch=cause.patch, storage=storage)
+    else:
+        # Escalate `HandlerChildrenRetry` if the execute should be continued on the next iteration.
         raise HandlerChildrenRetry(delay=state.delay)
 
 
