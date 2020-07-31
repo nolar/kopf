@@ -314,7 +314,7 @@ The default is an equivalent of:
 
     @kopf.on.startup()
     def configure(settings: kopf.OperatorSettings, **_):
-        settings.persistence.diffbase_storage = kopf.AnnotationsDiffBaseStore(
+        settings.persistence.diffbase_storage = kopf.AnnotationsDiffBaseStorage(
             name='kopf.zalando.org/last-handled-configuration',
         )
 
@@ -353,7 +353,7 @@ for diff-base storage, apply this configuration:
     def configure(settings: kopf.OperatorSettings, **_):
         settings.persistence.diffbase_storage = kopf.MiltiDiffBaseStorage([
             kopf.StatusDiffBaseStorage(field='status.diff-base'),
-            kopf.AnnotationsDiffBaseStore('kopf.zalando.org/last-handled-configuration'),
+            kopf.AnnotationsDiffBaseStorage('kopf.zalando.org/last-handled-configuration'),
         ])
 
 Run the operator for some time. Let all resources to change or force this:
