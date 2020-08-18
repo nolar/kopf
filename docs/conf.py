@@ -13,7 +13,7 @@ import docutils.nodes
 # sys.path.insert(0, os.path.abspath('.'))
 
 project = 'Kopf'
-copyright = '2019, Zalando SE'
+copyright = '2020 Sergey Vasilyev; 2019-2020 Zalando SE'
 author = 'Sergey Vasilyev'
 
 extensions = [
@@ -36,7 +36,7 @@ todo_include_todos = False
 todo_emit_warnings = True
 
 extlinks = {
-    'issue': ('https://github.com/zalando-incubator/kopf/issues/%s', 'issue '),
+    'issue': ('https://github.com/nolar/kopf/issues/%s', 'issue '),
 }
 
 intersphinx_mapping = {
@@ -51,7 +51,7 @@ def linkcode_resolve(domain, info):
     if not info['module']:
         return None
     filename = info['module'].replace('.', '/')
-    return "https://github.com/zalando-incubator/kopf/blob/master/%s.py" % filename
+    return "https://github.com/nolar/kopf/blob/master/%s.py" % filename
 
 
 ###############################################################################

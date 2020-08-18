@@ -2,7 +2,9 @@
 
 All external contributors to the project, we are grateful for all their help.
 
-For the detailed information on who did what, see [GitHub Contributors](https://github.com/zalando-incubator/kopf/graphs/contributors) page. 
+For the detailed information on who did what, 
+see [GitHub Contributors](https://github.com/nolar/kopf/graphs/contributors)
+and [Historic GitHub Contributors](https://github.com/zalando-incubator/kopf/graphs/contributors). 
 
 ## Contributors sorted alphabetically
 
