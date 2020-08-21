@@ -94,3 +94,4 @@ async def post_event(
     except aiohttp.ClientOSError as e:
         logger.warning(f"Failed to post an event. Ignoring and continuing. "
                        f"Event: type={type!r}, reason={reason!r}, message={message!r}.")
+                       
