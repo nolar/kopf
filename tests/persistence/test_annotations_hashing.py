@@ -19,7 +19,7 @@ CONTENT_DATA = ProgressRecord(
     message=None,
 )
 
-CONTENT_JSON = json.dumps(CONTENT_DATA)  # the same serialisation for all environments
+CONTENT_JSON = json.dumps(CONTENT_DATA, separators=(',', ':'))
 
 
 keys = pytest.mark.parametrize('prefix, provided_key, expected_key', [

@@ -150,7 +150,9 @@ class AnnotationsDiffBaseStorage(DiffBaseStorage):
             patch: patches.Patch,
             essence: bodies.BodyEssence,
     ) -> None:
-        patch.metadata.annotations[self.name] = json.dumps(essence)
+        encoded: str = json.dumps(essence, separators=(',', ':'))  # NB: no spaces
+        encoded += '\n'  # for better kubectl presentation without wrapping (same as kubectl's one)
+        patch.metadata.annotations[self.name] = encoded
 
 
 class StatusDiffBaseStorage(DiffBaseStorage):
@@ -206,7 +208,7 @@ class StatusDiffBaseStorage(DiffBaseStorage):
             essence: bodies.BodyEssence,
     ) -> None:
         # Store as a single string instead of full dict -- to avoid merges and unexpected data.
-        encoded: str = json.dumps(essence)
+        encoded: str = json.dumps(essence, separators=(',', ':'))  # NB: no spaces
         dicts.ensure(patch, self.field, encoded)
 
 
