@@ -81,9 +81,17 @@ async def post_event(
         )
         response.raise_for_status()
 
+    # Events are helpful but auxiliary, they should not fail the handling cycle.
+    # Yet we want to notice that something went wrong (in logs).
     except aiohttp.ClientResponseError as e:
-        # Events are helpful but auxiliary, they should not fail the handling cycle.
-        # Yet we want to notice that something went wrong (in logs).
         logger.warning(f"Failed to post an event. Ignoring and continuing. "
                        f"Status: {e.status}. Message: {e.message}. "
                        f"Event: type={type!r}, reason={reason!r}, message={message!r}.")
+    except aiohttp.ServerDisconnectedError as e:
+        logger.warning(f"Failed to post an event. Ignoring and continuing. "
+                       f"Message: {e.message}. "
+                       f"Event: type={type!r}, reason={reason!r}, message={message!r}.")
+    except aiohttp.ClientOSError as e:
+        logger.warning(f"Failed to post an event. Ignoring and continuing. "
+                       f"Event: type={type!r}, reason={reason!r}, message={message!r}.")
+                       

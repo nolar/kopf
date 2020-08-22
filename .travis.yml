@@ -18,14 +18,12 @@ env:
   matrix:
     - KUBERNETES_VERSION=latest CLIENT=yes  # only one "yes" is enough
     - KUBERNETES_VERSION=latest CLIENT=no
-    - KUBERNETES_VERSION=v1.16.0 CLIENT=no
-    - KUBERNETES_VERSION=v1.16.0 CLIENT=no CRDAPI=v1beta1
-    - KUBERNETES_VERSION=v1.15.0 CLIENT=no CRDAPI=v1beta1
-    - KUBERNETES_VERSION=v1.14.0 CLIENT=no CRDAPI=v1beta1
-    - KUBERNETES_VERSION=v1.13.0 CLIENT=no CRDAPI=v1beta1
-    - KUBERNETES_VERSION=v1.12.0 CLIENT=no CRDAPI=v1beta1
-#    - KUBERNETES_VERSION=v1.11.10  # Minikube fails on CRI preflight checks
-#    - KUBERNETES_VERSION=v1.10.13  # CRDs require spec.version, which fails on 1.14
+    - KUBERNETES_VERSION=v1.17.11 CLIENT=no
+    - KUBERNETES_VERSION=v1.16.14 CLIENT=no  # starting from 1.16, use CRD API v1.
+    - KUBERNETES_VERSION=v1.16.14 CLIENT=no CRDAPI=v1beta1
+    - KUBERNETES_VERSION=v1.15.12 CLIENT=no CRDAPI=v1beta1
+    - KUBERNETES_VERSION=v1.14.10 CLIENT=no CRDAPI=v1beta1
+    - KUBERNETES_VERSION=v1.13.12 CLIENT=no CRDAPI=v1beta1
 
 # Only one Python version is tested with all supported K8s versions: to check for API compatibility.
 # Other Python versions are tested with only one K8s version: if it works for one, it works for all.
@@ -59,9 +57,9 @@ script:
 
 deploy:
   provider: pypi
-  user: nolar
+  username: "__token__"
   password:
-    secure: "hvXIiqAAzsB5p++rv12XJM6WtuUHa9YnvoY12HfdZeLcim+/TQpMM0qThF0Y7tLcgAq/CqIOVoawOxDU+yKtzEbDqOd7wVIu8Z9tlnaIXIobV7BmLqeeqHAWNRB95fbkPWVUp0Ff0pdV4lvNwzw9qI4sB4J+x3k5sgiLKGh/JIxJpMxZTpQzsaxPsbIh4nbTebysdKfRsBbtUGx6Z1JK9vlK+a+fTho3hpmbv5Ku6z8JZePx2Ox0hugTCak556lDy4Psa6Hhnf69Rm05wfr7n4zIkU1/0zt1q+ggPs6L+Hc5PbBxWw1zUWn8YvNiSpEqiwuRZ9rgJl396g2ge2eUNwTjnc7qmbxgO8Ue3GuqRzokXzeAlS6MNSFfjzENrL+FjMUiHEWiP8HOpWfd2vVSK7Sp2HLE0NKWIhn38w3VhMz++rOPn8OdL4+K48BUSYod051+CJnjczcCWYyfoK4pvajOtsTgswnJvVG1it2iEdS/j7U1KslKfR3A38ojzwyrFb3F4XQ4D4yZxYIz0E0xl3X0q63vGibvGsFLgnD4okUq6r3k4TvoWn5rbN4039CcQbhVZrAaDzdvrTGiSTXMEMklr0G8rQEq6SQOsclMB6Db4ttnLOj5rk14gs0FvhvR/R4wF1SMAK2IzhgEx1S78xIvralrk+anHIWydhm+P8A="
+    secure: "Rya+PxejTJQLEiLAjdwDXQu6H3PPEx0dmbj2wrfAUqi4B2ybuIfSno3GE1EQ4O41iXm7Oh5r53sCCxYjIvuXH1l5K3c8qerwTuYk5Kek60Rc04HUZnsLi9Z1mRTFQgpuJHvPU0+MJG5RMfV15aC4ondcWIeHri1TgTxmHzkQu2t2jqZ+majd75KwcnSuH1/vS/10Fkv1uQqope929io8r6scmdpOZ0hDZqXV7UG18Str6JEFuE7oFLJq1NNy7rINS/kGMU/qlObFa21VEm6bFSvxYhbvmW17vGKP5HsNvttqf5qgRvDY7d5c3glsduiDyL6a8AGNYEcCDwEA1dE9pQ7IKnBlHikfS1TuXiQjp5Rfdh61sqUQ5UJH7JHBEFOxZzwJpf3VcOx3uXq+XdSPgI+t1nzGm25OiXTo1I6LlpZdr33v3Ox5N2Fpeh/XQLSOnyMEssHQFDdI6mFfg6DNdLggBK9JCyFBArpy6QwyGcN4ul762XHdRQSkp0aRMEmavIFoBlDg9laNrgEXZJLhE56cTlre4JNxm4PeXFz0UUGBrrum7G/MSP+symzyMTJpfVbNfFKZOjPS5WneT7HiZuPyeQCbTT9kszJC6+2h40NxyByPr0zkhbTk7WjEUmD11YkLZ0UiPVtiTafe9Kks1inxZ2SOHkJ1j06Tao7C74E="
   distributions: sdist bdist_wheel
   skip_existing: true
   on:

@@ -229,7 +229,7 @@ async def watch_objs(
         finally:
             freeze_waiter.remove_done_callback(response_close_callback)
 
-    except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError):
+    except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, asyncio.TimeoutError):
         pass
 
 

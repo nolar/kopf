@@ -8,8 +8,8 @@ with open(os.path.join(os.path.dirname(__file__), 'README.md')) as f:
 
 PROJECT_URLS = {
     'Documentation': 'https://kopf.readthedocs.io',
-    'Bug Tracker': 'https://github.com/zalando-incubator/kopf/issues',
-    'Source Code': 'https://github.com/zalando-incubator/kopf',
+    'Bug Tracker': 'https://github.com/nolar/kopf/issues',
+    'Source Code': 'https://github.com/nolar/kopf',
 }
 
 setup(
@@ -22,9 +22,9 @@ setup(
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
     author='Sergey Vasilyev',
-    author_email='sergey.vasilyev@zalando.de',
-    maintainer='Sergey Vasilyev, Chiara Mezzavilla',
-    maintainer_email='sergey.vasilyev@zalando.de, chiara.mezzavilla@zalando.de',
+    author_email='nolar@nolar.info',
+    maintainer='Sergey Vasilyev',
+    maintainer_email='nolar@nolar.info',
     keywords=['kubernetes', 'operator', 'framework', 'python', 'k8s'],
     license='MIT',
 

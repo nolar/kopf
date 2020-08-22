@@ -16,7 +16,7 @@ assignees: ''
 ## Checklist
 
 - [ ] I have read the [documentation](https://kopf.readthedocs.io/en/latest/) and searched there for the problem
-- [ ] I have searched in the [GitHub Issues](https://github.com/zalando-incubator/kopf/issues?utf8=%E2%9C%93&q=) for similar questions
+- [ ] I have searched in the [GitHub Issues](https://github.com/nolar/kopf/issues?utf8=%E2%9C%93&q=) for similar questions
 
 
 ## Keywords

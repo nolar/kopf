@@ -15,7 +15,7 @@ The recommended setup:
 * Fork a repo on GitHub and clone the fork (not the original repo).
 * Configure the ``upstream`` remote in addition to ``origin``::
 
-        git remote add upstream git@github.com:zalando-incubator/kopf.git
+        git remote add upstream git@github.com:nolar/kopf.git
         git fetch upstream
 
 * Sync your ``master`` branch with the upstream regularly::
@@ -100,18 +100,11 @@ a [Git hook](https://stackoverflow.com/questions/15015894/git-add-signed-off-by-
 Code reviews
 ============
 
-As Kopf is part of the Zalando's OpenSource initiative,
-we have to follow some rules of play for compliance:
-
-* Always have an issue for which the PR is created.
+* If possible, try to have an issue for which the PR is created.
   Put a link to that issue in the PR body.
-  You can use one of the existing or closed issues that matches your topic best.
-  PRs without a referred issue will not be approved
-  (not silently though: you will be asked to add a reference).
+  You can use one of the existing or closed issues that match your topic best.
 * The PRs can be reviewed and commented by anyone,
-  but can be approved only by the Zalando employees.
-  Two approvals are needed at least
-  (the PR author automatically counts if they are a Zalando employee).
+  but can be approved only by the project maintainers.
 
 
 Private CI/CD
