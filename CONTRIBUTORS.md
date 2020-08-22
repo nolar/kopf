@@ -15,3 +15,4 @@ and [Historic GitHub Contributors](https://github.com/zalando-incubator/kopf/gra
 - [Soroosh Sarabadani](https://github.com/psycho-ir)
 - [Trond Hindenes](https://github.com/trondhindenes)
 - [Vennamaneni Sai Narasimha](https://github.com/thevennamaneni)
+- [Cliff Burdick](https://github.com/cliffburdick)
