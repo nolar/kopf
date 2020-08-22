@@ -207,29 +207,30 @@ async def watch_objs(
     if timeout is not None:
         params['timeoutSeconds'] = str(timeout)
 
-    # Talk to the API and initiate a streaming response.
-    response = await context.session.get(
-        url=resource.get_url(server=context.server, namespace=namespace, params=params),
-        timeout=aiohttp.ClientTimeout(
-            total=settings.watching.client_timeout,
-            sock_connect=settings.watching.connect_timeout,
-        ),
-    )
-    response.raise_for_status()
-
     # Stream the parsed events from the response until it is closed server-side,
     # or until it is closed client-side by the freeze-waiting future's callbacks.
-    response_close_callback = lambda _: response.close()
-    freeze_waiter.add_done_callback(response_close_callback)
     try:
-        async with response:
-            async for line in _iter_jsonlines(response.content):
-                raw_input = cast(bodies.RawInput, json.loads(line.decode("utf-8")))
-                yield raw_input
+        response = await context.session.get(
+            url=resource.get_url(server=context.server, namespace=namespace, params=params),
+            timeout=aiohttp.ClientTimeout(
+                total=settings.watching.client_timeout,
+                sock_connect=settings.watching.connect_timeout,
+            ),
+        )
+        response.raise_for_status()
+
+        response_close_callback = lambda _: response.close()
+        freeze_waiter.add_done_callback(response_close_callback)
+        try:
+            async with response:
+                async for line in _iter_jsonlines(response.content):
+                    raw_input = cast(bodies.RawInput, json.loads(line.decode("utf-8")))
+                    yield raw_input
+        finally:
+            freeze_waiter.remove_done_callback(response_close_callback)
+
     except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, asyncio.TimeoutError):
         pass
-    finally:
-        freeze_waiter.remove_done_callback(response_close_callback)
 
 
 async def _iter_jsonlines(
