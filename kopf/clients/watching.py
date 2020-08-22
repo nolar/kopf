@@ -226,7 +226,7 @@ async def watch_objs(
             async for line in _iter_jsonlines(response.content):
                 raw_input = cast(bodies.RawInput, json.loads(line.decode("utf-8")))
                 yield raw_input
-    except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError):
+    except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, asyncio.TimeoutError):
         pass
     finally:
         freeze_waiter.remove_done_callback(response_close_callback)
