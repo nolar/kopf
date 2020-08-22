@@ -23,6 +23,7 @@ CONTENT_DATA_1 = ProgressRecord(
     success=False,
     failure=False,
     message=None,
+    subrefs=None,
 )
 
 CONTENT_DATA_2 = ProgressRecord(
@@ -33,6 +34,7 @@ CONTENT_DATA_2 = ProgressRecord(
     success=False,
     failure=False,
     message="Some error.",
+    subrefs=['sub1', 'sub2'],
 )
 
 CONTENT_JSON_1 = json.dumps(CONTENT_DATA_1)  # the same serialisation for all environments
@@ -197,6 +199,7 @@ def test_storing_to_annotations_storage_cleans_content(cls):
         success=None,
         failure=None,
         message=None,
+        subrefs=None,
     )
     storage.store(body=body, patch=patch, key=HandlerId('id1'), record=content)
 

@@ -41,6 +41,7 @@ class HandlerOutcome:
     delay: Optional[float] = None
     result: Optional[callbacks.Result] = None
     exception: Optional[Exception] = None
+    subrefs: Collection[handlers_.HandlerId] = ()
 
 
 @dataclasses.dataclass(frozen=True)
@@ -58,6 +59,7 @@ class HandlerState:
     success: bool = False
     failure: bool = False
     message: Optional[str] = None
+    subrefs: Collection[handlers_.HandlerId] = ()  # ids of actual sub-handlers of all levels deep.
     _origin: Optional[progress.ProgressRecord] = None  # to check later if it has actually changed.
 
     @classmethod
@@ -76,6 +78,7 @@ class HandlerState:
             success=__d.get('success') or False,
             failure=__d.get('failure') or False,
             message=__d.get('message'),
+            subrefs=__d.get('subrefs') or (),
             _origin=__d,
         )
 
@@ -88,6 +91,7 @@ class HandlerState:
             success=None if self.success is None else bool(self.success),
             failure=None if self.failure is None else bool(self.failure),
             message=None if self.message is None else str(self.message),
+            subrefs=None if not self.subrefs else list(sorted(self.subrefs)),
         )
 
     def as_in_storage(self) -> Mapping[str, Any]:
@@ -108,6 +112,7 @@ class HandlerState:
             failure=bool(outcome.final and outcome.exception is not None),
             retries=(self.retries if self.retries is not None else 0) + 1,
             message=None if outcome.exception is None else str(outcome.exception),
+            subrefs=list(sorted(set(self.subrefs) | set(outcome.subrefs))),  # deduplicate
             _origin=self._origin,
         )
 
@@ -209,9 +214,12 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
             patch: patches.Patch,
             storage: progress.ProgressStorage,
     ) -> None:
-        # Purge only our own handlers. Ignore others (e.g. other operators).
-        for handler_id in self.keys():
+        # Purge only our own handlers and their direct & indirect sub-handlers of all levels deep.
+        # Ignore other handlers (e.g. handlers of other operators).
+        for handler_id, handler_state in self.items():
             storage.purge(key=handler_id, body=body, patch=patch)
+            for subref in handler_state.subrefs:
+                storage.purge(key=subref, body=body, patch=patch)
         storage.flush()
 
     def __len__(self) -> int:
