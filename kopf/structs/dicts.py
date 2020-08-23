@@ -47,12 +47,17 @@ def resolve(
         default: Union[_T, _UNSET] = _UNSET.token,
         *,
         assume_empty: bool = False,
+        ignore_wrong: bool = False,
 ) -> Union[Any, _T]:
     """
     Retrieve a nested sub-field from a dict.
 
     If ``assume_empty`` is set, then the non-existent path keys are assumed
     to be empty dictionaries, and then the ``default`` is returned.
+
+    if ``ignore_wrong`` is set, then the non-dictionaries are assumed to
+    not exist, since we cannot dive deep into non-dictionary values.
+    This is used in the diff reduction.
 
     Otherwise (by default), any attempt to get a key from ``None``
     leads to a ``TypeError`` -- same as in Python: ``None['key']``.
@@ -65,6 +70,8 @@ def resolve(
                 return default
             elif isinstance(result, collections.abc.Mapping):
                 result = result[key]
+            elif ignore_wrong:
+                result = None
             else:
                 raise TypeError(f"The structure is not a dict with field {key!r}: {result!r}")
         return result

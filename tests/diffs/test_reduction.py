@@ -51,8 +51,19 @@ def test_existent_path_selects_relevant_ops():
     )
 
 
-def test_nonexistent_path_selects_nothing():
-    result = reduce(DIFF, ['nonexistent-key'])
+@pytest.mark.parametrize('path', [
+    ['nonexistent-key'],
+    ['key1', 'nonexistent-key'],
+    ['key2', 'nonexistent-key'],
+    ['key3', 'nonexistent-key'],
+    ['key4', 'nonexistent-key'],
+    ['key4', 'suba', 'nonexistent-key'],
+    ['key4', 'subb', 'nonexistent-key'],
+    ['key4', 'subc', 'nonexistent-key'],
+    ['key4', 'nonexistent-dict', 'nonexistent-key'],
+])
+def test_nonexistent_path_selects_nothing(path):
+    result = reduce(DIFF, path)
     assert result == ()
 
 

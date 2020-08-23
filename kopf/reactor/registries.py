@@ -16,7 +16,7 @@ import collections
 import functools
 import warnings
 from types import FunctionType, MethodType
-from typing import (Any, MutableMapping, Optional, Sequence, Collection, Iterable, Iterator,
+from typing import (Any, MutableMapping, Optional, Sequence, Iterable, Iterator,
                     List, Set, FrozenSet, Mapping, Callable, cast, Generic, TypeVar, Union,
                     Container)
 
@@ -24,6 +24,7 @@ from kopf.reactor import causation
 from kopf.reactor import invocation
 from kopf.structs import callbacks
 from kopf.structs import dicts
+from kopf.structs import diffs
 from kopf.structs import filters
 from kopf.structs import handlers
 from kopf.structs import resources as resources_
@@ -266,7 +267,6 @@ class ResourceChangingRegistry(ResourceRegistry[
             cause: causation.ResourceChangingCause,
             excluded: Container[handlers.HandlerId] = frozenset(),
     ) -> Iterator[handlers.ResourceChangingHandler]:
-        changed_fields = frozenset(field for _, field, _, _ in cause.diff or [])
         for handler in self._handlers:
             if handler.id not in excluded:
                 if handler.reason is None or handler.reason == cause.reason:
@@ -274,7 +274,7 @@ class ResourceChangingRegistry(ResourceRegistry[
                         pass  # skip initial handlers in non-initial causes.
                     elif handler.initial and cause.deleted and not handler.deleted:
                         pass  # skip initial handlers on deletion, unless explicitly marked as used.
-                    elif match(handler=handler, cause=cause, changed_fields=changed_fields):
+                    elif match(handler=handler, cause=cause):
                         yield handler
 
 
@@ -610,13 +610,12 @@ def _deduplicated(
 def match(
         handler: handlers.ResourceHandler,
         cause: causation.ResourceCause,
-        changed_fields: Collection[dicts.FieldPath] = frozenset(),
         ignore_fields: bool = False,
 ) -> bool:
     # Kwargs are lazily evaluated on the first _actual_ use, and shared for all filters since then.
     kwargs: MutableMapping[str, Any] = {}
     return all([
-        _matches_field(handler, changed_fields or {}, ignore_fields),
+        _matches_field(handler, cause, ignore_fields),
         _matches_labels(handler, cause, kwargs),
         _matches_annotations(handler, cause, kwargs),
         _matches_filter_callback(handler, cause, kwargs),
@@ -625,15 +624,15 @@ def match(
 
 def _matches_field(
         handler: handlers.ResourceHandler,
-        changed_fields: Collection[dicts.FieldPath] = frozenset(),
+        cause: causation.ResourceCause,
         ignore_fields: bool = False,
 ) -> bool:
     return (ignore_fields or
             not isinstance(handler, handlers.ResourceChangingHandler) or
-            not handler.field or
-            any(changed_field[:len(handler.field)] == handler.field or  # a.b.c -vs- a.b => ignore c
-                changed_field == handler.field[:len(changed_field)]     # a.b -vs- a.b.c => ignore c
-                for changed_field in changed_fields))
+            not handler.field or (
+                isinstance(cause, causation.ResourceChangingCause) and
+                bool(diffs.reduce(cause.diff, handler.field))
+            ))
 
 
 def _matches_labels(
