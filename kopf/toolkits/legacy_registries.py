@@ -169,15 +169,13 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[
         warnings.warn("SimpleRegistry.iter_cause_handlers() is deprecated; use "
                       "ResourceChangingRegistry.iter_handlers().", DeprecationWarning)
 
-        changed_fields = frozenset(field for _, field, _, _ in cause.diff or [])
         for handler in self._handlers:
             if not isinstance(handler, handlers.ResourceChangingHandler):
                 pass
             elif handler.reason is None or handler.reason == cause.reason:
                 if handler.initial and not cause.initial:
                     pass  # ignore initial handlers in non-initial causes.
-                elif registries.match(handler=handler, cause=cause,
-                                      changed_fields=changed_fields):
+                elif registries.match(handler=handler, cause=cause):
                     yield handler
 
 
