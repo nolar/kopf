@@ -66,8 +66,8 @@ class Peer:
             *,
             name: str,
             priority: int = 0,
-            lastseen: Optional[str] = None,
-            lifetime: int = 60,
+            lastseen: Optional[Union[str, datetime.datetime]] = None,
+            lifetime: Union[int, datetime.timedelta] = 60,
             namespace: Optional[str] = None,
             legacy: bool = False,
             **_: Any,  # for the forward-compatibility with the new fields
