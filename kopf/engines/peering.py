@@ -241,15 +241,15 @@ async def process_peering_event(
         if freeze_mode.is_off():
             logger.info(f"Freezing operations in favour of {prio_peers}.")
             await freeze_mode.turn_on()
-    
     elif same_peers:
         logger.warning(f"Possibly conflicting operators with the same priority: {same_peers}.")
-        logger.warning(f"Freezing all operators, including self: {peers}")
-        await freeze_mode.turn_on()
-
-    elif freeze_mode.is_on():
-        logger.info(f"Resuming operations after the freeze. Conflicting operators with the same priority are gone.")
-        await freeze_mode.turn_off()
+        if freeze_mode.is_off():
+            logger.warning(f"Freezing all operators, including self: {peers}")
+            await freeze_mode.turn_on()
+    else:
+        if freeze_mode.is_on():
+            logger.info(f"Resuming operations after the freeze. Conflicting operators with the same priority are gone.")
+            await freeze_mode.turn_off()
 
 
 async def peers_keepalive(
