@@ -61,10 +61,10 @@ def test_on_probe_minimal():
 
 # Resume handlers are mixed-in into all resource-changing reactions with initial listing.
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
-def test_on_resume_minimal(mocker, reason):
+def test_on_resume_minimal(reason, cause_factory):
     registry = kopf.get_default_registry()
     resource = Resource('group', 'version', 'plural')
-    cause = mocker.MagicMock(resource=resource, reason=reason, initial=True, deleted=False)
+    cause = cause_factory(resource=resource, reason=reason, initial=True)
 
     @kopf.on.resume('group', 'version', 'plural')
     def fn(**_):
@@ -84,10 +84,10 @@ def test_on_resume_minimal(mocker, reason):
     assert handlers[0].when is None
 
 
-def test_on_create_minimal(mocker):
+def test_on_create_minimal(cause_factory):
     registry = kopf.get_default_registry()
     resource = Resource('group', 'version', 'plural')
-    cause = mocker.MagicMock(resource=resource, reason=Reason.CREATE)
+    cause = cause_factory(resource=resource, reason=Reason.CREATE)
 
     @kopf.on.create('group', 'version', 'plural')
     def fn(**_):
@@ -107,10 +107,10 @@ def test_on_create_minimal(mocker):
     assert handlers[0].when is None
 
 
-def test_on_update_minimal(mocker):
+def test_on_update_minimal(cause_factory):
     registry = kopf.get_default_registry()
     resource = Resource('group', 'version', 'plural')
-    cause = mocker.MagicMock(resource=resource, reason=Reason.UPDATE)
+    cause = cause_factory(resource=resource, reason=Reason.UPDATE)
 
     @kopf.on.update('group', 'version', 'plural')
     def fn(**_):
@@ -130,10 +130,10 @@ def test_on_update_minimal(mocker):
     assert handlers[0].when is None
 
 
-def test_on_delete_minimal(mocker):
+def test_on_delete_minimal(cause_factory):
     registry = kopf.get_default_registry()
     resource = Resource('group', 'version', 'plural')
-    cause = mocker.MagicMock(resource=resource, reason=Reason.DELETE)
+    cause = cause_factory(resource=resource, reason=Reason.DELETE)
 
     @kopf.on.delete('group', 'version', 'plural')
     def fn(**_):
@@ -153,11 +153,11 @@ def test_on_delete_minimal(mocker):
     assert handlers[0].when is None
 
 
-def test_on_field_minimal(mocker):
+def test_on_field_minimal(cause_factory):
     registry = kopf.get_default_registry()
     resource = Resource('group', 'version', 'plural')
     diff = [('op', ('field', 'subfield'), 'old', 'new')]
-    cause = mocker.MagicMock(resource=resource, reason=Reason.UPDATE, diff=diff)
+    cause = cause_factory(resource=resource, reason=Reason.UPDATE, diff=diff)
 
     @kopf.on.field('group', 'version', 'plural', 'field.subfield')
     def fn(**_):
@@ -184,7 +184,7 @@ def test_on_field_fails_without_field():
             pass
 
 
-def test_on_startup_with_all_kwargs(mocker):
+def test_on_startup_with_all_kwargs():
     registry = OperatorRegistry()
 
     @kopf.on.startup(
@@ -246,10 +246,10 @@ def test_on_probe_with_all_kwargs(mocker):
 
 # Resume handlers are mixed-in into all resource-changing reactions with initial listing.
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
-def test_on_resume_with_all_kwargs(mocker, reason):
+def test_on_resume_with_all_kwargs(mocker, reason, cause_factory):
     registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
-    cause = mocker.MagicMock(resource=resource, reason=reason, initial=True, deleted=False)
+    cause = cause_factory(resource=resource, reason=reason, initial=True)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
     when = lambda **_: False
@@ -280,10 +280,10 @@ def test_on_resume_with_all_kwargs(mocker, reason):
     assert handlers[0].when == when
 
 
-def test_on_create_with_all_kwargs(mocker):
+def test_on_create_with_all_kwargs(mocker, cause_factory):
     registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
-    cause = mocker.MagicMock(resource=resource, reason=Reason.CREATE)
+    cause = cause_factory(resource=resource, reason=Reason.CREATE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
     when = lambda **_: False
@@ -312,10 +312,10 @@ def test_on_create_with_all_kwargs(mocker):
     assert handlers[0].when == when
 
 
-def test_on_update_with_all_kwargs(mocker):
+def test_on_update_with_all_kwargs(mocker, cause_factory):
     registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
-    cause = mocker.MagicMock(resource=resource, reason=Reason.UPDATE)
+    cause = cause_factory(resource=resource, reason=Reason.UPDATE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
     when = lambda **_: False
@@ -348,10 +348,10 @@ def test_on_update_with_all_kwargs(mocker):
     pytest.param(True, id='optional'),
     pytest.param(False, id='mandatory'),
 ])
-def test_on_delete_with_all_kwargs(mocker, optional):
+def test_on_delete_with_all_kwargs(mocker, cause_factory, optional):
     registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
-    cause = mocker.MagicMock(resource=resource, reason=Reason.DELETE)
+    cause = cause_factory(resource=resource, reason=Reason.DELETE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
     when = lambda **_: False
@@ -381,11 +381,11 @@ def test_on_delete_with_all_kwargs(mocker, optional):
     assert handlers[0].when == when
 
 
-def test_on_field_with_all_kwargs(mocker):
+def test_on_field_with_all_kwargs(mocker, cause_factory):
     registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
     diff = [('op', ('field', 'subfield'), 'old', 'new')]
-    cause = mocker.MagicMock(resource=resource, reason=Reason.UPDATE, diff=diff)
+    cause = cause_factory(resource=resource, reason=Reason.UPDATE, diff=diff)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
     when = lambda **_: False
@@ -430,8 +430,8 @@ def test_subhandler_fails_with_no_parent_handler():
             pass
 
 
-def test_subhandler_declaratively(mocker, parent_handler):
-    cause = mocker.MagicMock(reason=Reason.UPDATE, diff=None)
+def test_subhandler_declaratively(parent_handler, cause_factory):
+    cause = cause_factory(reason=Reason.UPDATE)
 
     registry = ResourceChangingRegistry()
     subregistry_var.set(registry)
@@ -446,8 +446,8 @@ def test_subhandler_declaratively(mocker, parent_handler):
     assert handlers[0].fn is fn
 
 
-def test_subhandler_imperatively(mocker, parent_handler):
-    cause = mocker.MagicMock(reason=Reason.UPDATE, diff=None)
+def test_subhandler_imperatively(parent_handler, cause_factory):
+    cause = cause_factory(reason=Reason.UPDATE)
 
     registry = ResourceChangingRegistry()
     subregistry_var.set(registry)

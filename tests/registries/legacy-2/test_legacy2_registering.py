@@ -2,6 +2,7 @@ import collections.abc
 
 import pytest
 
+from kopf.reactor.causation import ResourceWatchingCause, ResourceChangingCause
 from kopf.structs.handlers import Activity
 
 
@@ -10,9 +11,10 @@ def some_fn():
     pass
 
 
-def test_generic_registry_via_iter(mocker, generic_registry_cls):
-    cause = mocker.Mock(event=None, diff=None)
+def test_generic_registry_via_iter(
+        generic_registry_cls, cause_factory):
 
+    cause = cause_factory(generic_registry_cls)
     registry = generic_registry_cls()
     iterator = registry.iter_handlers(cause)
 
@@ -25,9 +27,10 @@ def test_generic_registry_via_iter(mocker, generic_registry_cls):
     assert not handlers
 
 
-def test_generic_registry_via_list(mocker, generic_registry_cls):
-    cause = mocker.Mock(event=None, diff=None)
+def test_generic_registry_via_list(
+        generic_registry_cls, cause_factory):
 
+    cause = cause_factory(generic_registry_cls)
     registry = generic_registry_cls()
     handlers = registry.get_handlers(cause)
 
@@ -37,9 +40,10 @@ def test_generic_registry_via_list(mocker, generic_registry_cls):
     assert not handlers
 
 
-def test_generic_registry_with_minimal_signature(mocker, generic_registry_cls):
-    cause = mocker.Mock(event=None, diff=None)
+def test_generic_registry_with_minimal_signature(
+        generic_registry_cls, cause_factory):
 
+    cause = cause_factory(generic_registry_cls)
     registry = generic_registry_cls()
     with pytest.deprecated_call(match=r"use @kopf.on"):
         registry.register(some_fn)
@@ -67,9 +71,9 @@ def test_operator_registry_with_activity_via_iter(
 
 
 def test_operator_registry_with_resource_watching_via_iter(
-        mocker, operator_registry_cls, resource):
-    cause = mocker.Mock(resource=resource, event=None, diff=None)
+        operator_registry_cls, cause_factory):
 
+    cause = cause_factory(ResourceWatchingCause)
     registry = operator_registry_cls()
     iterator = registry.iter_resource_watching_handlers(cause)
 
@@ -84,9 +88,9 @@ def test_operator_registry_with_resource_watching_via_iter(
 
 
 def test_operator_registry_with_resource_changing_via_iter(
-        mocker, operator_registry_cls, resource):
-    cause = mocker.Mock(resource=resource, event=None, diff=None)
+        operator_registry_cls, cause_factory):
 
+    cause = cause_factory(ResourceChangingCause)
     registry = operator_registry_cls()
     iterator = registry.iter_resource_changing_handlers(cause)
 
@@ -115,10 +119,11 @@ def test_operator_registry_with_activity_via_list(
 
 
 def test_operator_registry_with_resource_watching_via_list(
-        mocker, operator_registry_cls, resource):
-    cause = mocker.Mock(resource=resource, event=None, diff=None)
+        operator_registry_cls, cause_factory):
 
+    cause = cause_factory(ResourceWatchingCause)
     registry = operator_registry_cls()
+
     with pytest.deprecated_call(match=r"use registry.resource_watching_handlers"):
         handlers = registry.get_resource_watching_handlers(cause)
 
@@ -129,10 +134,11 @@ def test_operator_registry_with_resource_watching_via_list(
 
 
 def test_operator_registry_with_resource_changing_via_list(
-        mocker, operator_registry_cls, resource):
-    cause = mocker.Mock(resource=resource, event=None, diff=None)
+        operator_registry_cls, cause_factory):
 
+    cause = cause_factory(ResourceChangingCause)
     registry = operator_registry_cls()
+
     with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
         handlers = registry.get_resource_changing_handlers(cause)
 
@@ -157,10 +163,11 @@ def test_operator_registry_with_activity_with_minimal_signature(
 
 
 def test_operator_registry_with_resource_watching_with_minimal_signature(
-        mocker, operator_registry_cls, resource):
-    cause = mocker.Mock(resource=resource, event=None, diff=None)
+        operator_registry_cls, cause_factory, resource):
 
+    cause = cause_factory(ResourceWatchingCause)
     registry = operator_registry_cls()
+
     with pytest.deprecated_call(match=r"use @kopf.on"):
         registry.register_resource_watching_handler(resource.group, resource.version, resource.plural, some_fn)
     with pytest.deprecated_call(match=r"use registry.resource_watching_handlers"):
@@ -171,10 +178,11 @@ def test_operator_registry_with_resource_watching_with_minimal_signature(
 
 
 def test_operator_registry_with_resource_changing_with_minimal_signature(
-        mocker, operator_registry_cls, resource):
-    cause = mocker.Mock(resource=resource, event=None, diff=None)
+        operator_registry_cls, cause_factory, resource):
 
+    cause = cause_factory(ResourceChangingCause)
     registry = operator_registry_cls()
+
     with pytest.deprecated_call(match=r"use @kopf.on"):
         registry.register_resource_changing_handler(resource.group, resource.version, resource.plural, some_fn)
     with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
