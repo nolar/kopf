@@ -1,5 +1,6 @@
 import asyncio
-import time
+import dataclasses
+from typing import Tuple, NamedTuple
 
 import pytest
 from asynctest import CoroutineMock
@@ -24,7 +25,7 @@ def processor():
 # Code overhead is not used, but is needed to order the fixtures: first,
 # the measurement, which requires the real worker; then, the worker mocking.
 @pytest.fixture()
-def worker_spy(mocker, watcher_code_overhead):
+def worker_spy(mocker, code_overhead):
     """ Spy on the watcher: actually call it, but provide the mock-fields. """
     spy = CoroutineMock(spec=original_worker, wraps=original_worker)
     return mocker.patch('kopf.reactor.queueing.worker', spy)
@@ -33,7 +34,7 @@ def worker_spy(mocker, watcher_code_overhead):
 # Code overhead is not used, but is needed to order the fixtures: first,
 # the measurement, which requires the real worker; then, the worker mocking.
 @pytest.fixture()
-def worker_mock(mocker, watcher_code_overhead):
+def worker_mock(mocker, code_overhead):
     """ Prevent the queue consumption, so that the queues could be checked. """
     return mocker.patch('kopf.reactor.queueing.worker')
 
@@ -75,8 +76,15 @@ def watcher_in_background(settings, resource, event_loop, worker_spy, stream):
             pass
 
 
+@dataclasses.dataclass(frozen=True)
+class CodeOverhead:
+    min: float
+    avg: float
+    max: float
+
+
 @pytest.fixture()
-async def watcher_code_overhead(resource, stream, aresponses, watcher_limited, timer) -> float:
+async def code_overhead(resource, stream, aresponses, watcher_limited, timer) -> CodeOverhead:
     """
     Estimate the overhead of synchronous code in the watching routines.
 
@@ -142,4 +150,9 @@ async def watcher_code_overhead(resource, stream, aresponses, watcher_limited, t
     # Uncomment for debugging of the actual timing: visible only with -s pytest option.
     # print(f"The estimated code overhead is {timer.seconds:.3f} seconds (unadjusted).")
 
-    return timer.seconds * 1.33
+    # Reserve extra 10-30% from both sides for occasional variations.
+    return CodeOverhead(
+        min=timer.seconds * 0.8,
+        avg=timer.seconds * 1.0,
+        max=timer.seconds * 1.2,
+    )
