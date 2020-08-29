@@ -5,12 +5,13 @@ from kopf.structs.handlers import Reason, HANDLER_REASONS
 from kopf.structs.resources import Resource
 
 
-@pytest.mark.parametrize('deleted', [True, False, None])
+@pytest.mark.parametrize('deleted', [True, False])
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
-def test_resumes_ignored_for_non_initial_causes(mocker, reason, deleted):
+def test_resumes_ignored_for_non_initial_causes(reason, deleted, cause_factory):
     registry = kopf.get_default_registry()
     resource = Resource('group', 'version', 'plural')
-    cause = mocker.MagicMock(resource=resource, reason=reason, initial=False, deleted=deleted)
+    cause = cause_factory(resource=resource, reason=reason, initial=False,
+                          body={'metadata': {'deletionTimestamp': '...'} if deleted else {}})
 
     @kopf.on.resume('group', 'version', 'plural')
     def fn(**_):
@@ -22,10 +23,10 @@ def test_resumes_ignored_for_non_initial_causes(mocker, reason, deleted):
 
 
 @pytest.mark.parametrize('reason', list(set(HANDLER_REASONS) - {Reason.DELETE}))
-def test_resumes_selected_for_initial_non_deletions(mocker, reason):
+def test_resumes_selected_for_initial_non_deletions(reason, cause_factory):
     registry = kopf.get_default_registry()
     resource = Resource('group', 'version', 'plural')
-    cause = mocker.MagicMock(resource=resource, reason=reason, initial=True, deleted=False)
+    cause = cause_factory(resource=resource, reason=reason, initial=True)
 
     @kopf.on.resume('group', 'version', 'plural')
     def fn(**_):
@@ -38,10 +39,11 @@ def test_resumes_selected_for_initial_non_deletions(mocker, reason):
 
 
 @pytest.mark.parametrize('reason', [Reason.DELETE])
-def test_resumes_ignored_for_initial_deletions_by_default(mocker, reason):
+def test_resumes_ignored_for_initial_deletions_by_default(reason, cause_factory):
     registry = kopf.get_default_registry()
     resource = Resource('group', 'version', 'plural')
-    cause = mocker.MagicMock(resource=resource, reason=reason, initial=True, deleted=True)
+    cause = cause_factory(resource=resource, reason=reason, initial=True,
+                          body={'metadata': {'deletionTimestamp': '...'}})
 
     @kopf.on.resume('group', 'version', 'plural')
     def fn(**_):
@@ -53,10 +55,11 @@ def test_resumes_ignored_for_initial_deletions_by_default(mocker, reason):
 
 
 @pytest.mark.parametrize('reason', [Reason.DELETE])
-def test_resumes_selected_for_initial_deletions_when_explicitly_marked(mocker, reason):
+def test_resumes_selected_for_initial_deletions_when_explicitly_marked(reason, cause_factory):
     registry = kopf.get_default_registry()
     resource = Resource('group', 'version', 'plural')
-    cause = mocker.MagicMock(resource=resource, reason=reason, initial=True, deleted=True)
+    cause = cause_factory(resource=resource, reason=reason, initial=True,
+                          body={'metadata': {'deletionTimestamp': '...'}})
 
     @kopf.on.resume('group', 'version', 'plural', deleted=True)
     def fn(**_):

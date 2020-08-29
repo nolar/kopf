@@ -9,28 +9,30 @@ def child_fn(**_):
 
 
 def test_with_no_parent(
-        mocker, resource_registry_cls):
+        resource_registry_cls, cause_factory):
 
+    cause = cause_factory(resource_registry_cls)
     registry = resource_registry_cls()
 
     with context([(handler_var, None)]):
         kopf.on.this(registry=registry)(child_fn)
 
-    handlers = registry.get_handlers(mocker.MagicMock())
+    handlers = registry.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is child_fn
     assert handlers[0].id == 'child_fn'
 
 
 def test_with_parent(
-        mocker, parent_handler, resource_registry_cls):
+        parent_handler, resource_registry_cls, cause_factory):
 
+    cause = cause_factory(resource_registry_cls)
     registry = resource_registry_cls()
 
     with context([(handler_var, parent_handler)]):
         kopf.on.this(registry=registry)(child_fn)
 
-    handlers = registry.get_handlers(mocker.MagicMock())
+    handlers = registry.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is child_fn
     assert handlers[0].id == 'parent_fn/child_fn'

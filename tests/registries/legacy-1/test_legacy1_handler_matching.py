@@ -32,31 +32,28 @@ def register_fn(registry, resource):
 
 
 @pytest.fixture(params=[
-    pytest.param(None, id='without-diff'),
     pytest.param([], id='with-empty-diff'),
 ])
-def cause_no_diff(request, resource):
+def cause_no_diff(request, cause_factory):
     body = {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}}
-    return Mock(resource=resource, reason='some-reason', diff=request.param, body=body)
+    return cause_factory(diff=request.param, body=body)
 
 
 @pytest.fixture(params=[
     pytest.param([('op', ('some-field',), 'old', 'new')], id='with-field-diff'),
 ])
-def cause_with_diff(resource):
+def cause_with_diff(request, cause_factory):
     body = {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}}
-    diff = [('op', ('some-field',), 'old', 'new')]
-    return Mock(resource=resource, reason='some-reason', diff=diff, body=body)
+    return cause_factory(diff=request.param, body=body)
 
 
 @pytest.fixture(params=[
-    pytest.param(None, id='without-diff'),
     pytest.param([], id='with-empty-diff'),
     pytest.param([('op', ('some-field',), 'old', 'new')], id='with-field-diff'),
 ])
-def cause_any_diff(resource, request):
+def cause_any_diff(request, cause_factory):
     body = {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}}
-    return Mock(resource=resource, reason='some-reason', diff=request.param, body=body)
+    return cause_factory(diff=request.param, body=body)
 
 
 #
@@ -88,8 +85,9 @@ def test_catchall_handlers_with_field_ignored(cause_no_diff, registry, register_
     pytest.param({'somelabel': 'somevalue'}, id='with-label'),
     pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, id='with-extra-label'),
 ])
-def test_catchall_handlers_with_labels_satisfied(registry, register_fn, resource, labels):
-    cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'labels': labels}})
+def test_catchall_handlers_with_labels_satisfied(
+        cause_factory, registry, register_fn, resource, labels):
+    cause = cause_factory(body={'metadata': {'labels': labels}})
     register_fn(some_fn, reason=None, field=None, labels={'somelabel': 'somevalue'})
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
         handlers = registry.get_cause_handlers(cause)
@@ -101,8 +99,9 @@ def test_catchall_handlers_with_labels_satisfied(registry, register_fn, resource
     pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
     pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
 ])
-def test_catchall_handlers_with_labels_not_satisfied(registry, register_fn, resource, labels):
-    cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'labels': labels}})
+def test_catchall_handlers_with_labels_not_satisfied(
+        cause_factory, registry, register_fn, resource, labels):
+    cause = cause_factory(body={'metadata': {'labels': labels}})
     register_fn(some_fn, reason=None, field=None, labels={'somelabel': 'somevalue'})
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
         handlers = registry.get_cause_handlers(cause)
@@ -113,8 +112,9 @@ def test_catchall_handlers_with_labels_not_satisfied(registry, register_fn, reso
     pytest.param({'somelabel': 'somevalue'}, id='with-label'),
     pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
 ])
-def test_catchall_handlers_with_labels_exist(registry, register_fn, resource, labels):
-    cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'labels': labels}})
+def test_catchall_handlers_with_labels_exist(
+        cause_factory, registry, register_fn, resource, labels):
+    cause = cause_factory(body={'metadata': {'labels': labels}})
     register_fn(some_fn, reason=None, field=None, labels={'somelabel': None})
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
         handlers = registry.get_cause_handlers(cause)
@@ -125,8 +125,9 @@ def test_catchall_handlers_with_labels_exist(registry, register_fn, resource, la
     pytest.param({}, id='without-label'),
     pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
 ])
-def test_catchall_handlers_with_labels_not_exist(registry, register_fn, resource, labels):
-    cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'labels': labels}})
+def test_catchall_handlers_with_labels_not_exist(
+        cause_factory, registry, register_fn, resource, labels):
+    cause = cause_factory(body={'metadata': {'labels': labels}})
     register_fn(some_fn, reason=None, field=None, labels={'somelabel': None})
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
         handlers = registry.get_cause_handlers(cause)
@@ -140,8 +141,9 @@ def test_catchall_handlers_with_labels_not_exist(registry, register_fn, resource
     pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
     pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, id='with-extra-label'),
 ])
-def test_catchall_handlers_without_labels(registry, register_fn, resource, labels):
-    cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'labels': labels}})
+def test_catchall_handlers_without_labels(
+        cause_factory, registry, register_fn, resource, labels):
+    cause = cause_factory(body={'metadata': {'labels': labels}})
     register_fn(some_fn, reason=None, field=None, labels=None)
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
         handlers = registry.get_cause_handlers(cause)
@@ -152,8 +154,9 @@ def test_catchall_handlers_without_labels(registry, register_fn, resource, label
     pytest.param({'someannotation': 'somevalue'}, id='with-annotation'),
     pytest.param({'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-extra-annotation'),
 ])
-def test_catchall_handlers_with_annotations_satisfied(registry, register_fn, resource, annotations):
-    cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'annotations': annotations}})
+def test_catchall_handlers_with_annotations_satisfied(
+        cause_factory, registry, register_fn, resource, annotations):
+    cause = cause_factory(body={'metadata': {'annotations': annotations}})
     register_fn(some_fn, reason=None, field=None, annotations={'someannotation': 'somevalue'})
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
         handlers = registry.get_cause_handlers(cause)
@@ -165,8 +168,9 @@ def test_catchall_handlers_with_annotations_satisfied(registry, register_fn, res
     pytest.param({'someannotation': 'othervalue'}, id='with-other-value'),
     pytest.param({'otherannotation': 'othervalue'}, id='with-other-annotation'),
 ])
-def test_catchall_handlers_with_annotations_not_satisfied(registry, register_fn, resource, annotations):
-    cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'annotations': annotations}})
+def test_catchall_handlers_with_annotations_not_satisfied(
+        cause_factory, registry, register_fn, resource, annotations):
+    cause = cause_factory(body={'metadata': {'annotations': annotations}})
     register_fn(some_fn, reason=None, field=None, annotations={'someannotation': 'somevalue'})
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
         handlers = registry.get_cause_handlers(cause)
@@ -177,8 +181,9 @@ def test_catchall_handlers_with_annotations_not_satisfied(registry, register_fn,
     pytest.param({'someannotation': 'somevalue'}, id='with-annotation'),
     pytest.param({'someannotation': 'othervalue'}, id='with-other-value'),
 ])
-def test_catchall_handlers_with_annotations_exist(registry, register_fn, resource, annotations):
-    cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'annotations': annotations}})
+def test_catchall_handlers_with_annotations_exist(
+        cause_factory, registry, register_fn, resource, annotations):
+    cause = cause_factory(body={'metadata': {'annotations': annotations}})
     register_fn(some_fn, reason=None, field=None, annotations={'someannotation': None})
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
         handlers = registry.get_cause_handlers(cause)
@@ -189,8 +194,9 @@ def test_catchall_handlers_with_annotations_exist(registry, register_fn, resourc
     pytest.param({}, id='without-annotation'),
     pytest.param({'otherannotation': 'othervalue'}, id='with-other-annotation'),
 ])
-def test_catchall_handlers_with_annotations_not_exist(registry, register_fn, resource, annotations):
-    cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'annotations': annotations}})
+def test_catchall_handlers_with_annotations_not_exist(
+        cause_factory, registry, register_fn, resource, annotations):
+    cause = cause_factory(body={'metadata': {'annotations': annotations}})
     register_fn(some_fn, reason=None, field=None, annotations={'someannotation': None})
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
         handlers = registry.get_cause_handlers(cause)
@@ -204,8 +210,9 @@ def test_catchall_handlers_with_annotations_not_exist(registry, register_fn, res
     pytest.param({'otherannotation': 'othervalue'}, id='with-other-annotation'),
     pytest.param({'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-extra-annotation'),
 ])
-def test_catchall_handlers_without_annotations(registry, register_fn, resource, annotations):
-    cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'annotations': annotations}})
+def test_catchall_handlers_without_annotations(
+        cause_factory, registry, register_fn, resource, annotations):
+    cause = cause_factory(body={'metadata': {'annotations': annotations}})
     register_fn(some_fn, reason=None, field=None, annotations=None)
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
         handlers = registry.get_cause_handlers(cause)
@@ -218,8 +225,9 @@ def test_catchall_handlers_without_annotations(registry, register_fn, resource, 
     pytest.param({'somelabel': 'somevalue'}, {'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-label-extra-annotation'),
     pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, {'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-extra-label-extra-annotation'),
 ])
-def test_catchall_handlers_with_labels_and_annotations_satisfied(registry, register_fn, resource, labels, annotations):
-    cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'labels': labels, 'annotations': annotations}})
+def test_catchall_handlers_with_labels_and_annotations_satisfied(
+        cause_factory, registry, register_fn, resource, labels, annotations):
+    cause = cause_factory(body={'metadata': {'labels': labels, 'annotations': annotations}})
     register_fn(some_fn, reason=None, field=None, labels={'somelabel': 'somevalue'}, annotations={'someannotation': 'somevalue'})
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
         handlers = registry.get_cause_handlers(cause)
@@ -233,8 +241,9 @@ def test_catchall_handlers_with_labels_and_annotations_satisfied(registry, regis
     pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
     pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, id='with-extra-label'),
 ])
-def test_catchall_handlers_with_labels_and_annotations_not_satisfied(registry, register_fn, resource, labels):
-    cause = Mock(resource=resource, reason='some-reason', diff=None, body={'metadata': {'labels': labels}})
+def test_catchall_handlers_with_labels_and_annotations_not_satisfied(
+        cause_factory, registry, register_fn, resource, labels):
+    cause = cause_factory(body={'metadata': {'labels': labels}})
     register_fn(some_fn, reason=None, field=None, labels={'somelabel': 'somevalue'}, annotations={'someannotation': 'somevalue'})
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
         handlers = registry.get_cause_handlers(cause)

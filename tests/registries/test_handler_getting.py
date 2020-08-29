@@ -2,6 +2,7 @@ import collections.abc
 
 import pytest
 
+from kopf.reactor.causation import ResourceWatchingCause, ResourceChangingCause
 from kopf.structs.handlers import Activity
 
 
@@ -10,9 +11,10 @@ def some_fn():
     pass
 
 
-def test_generic_registry_via_iter(mocker, generic_registry_cls):
-    cause = mocker.Mock(event=None, diff=None)
+def test_generic_registry_via_iter(
+        generic_registry_cls, cause_factory):
 
+    cause = cause_factory(generic_registry_cls)
     registry = generic_registry_cls()
     iterator = registry.iter_handlers(cause)
 
@@ -25,9 +27,10 @@ def test_generic_registry_via_iter(mocker, generic_registry_cls):
     assert not handlers
 
 
-def test_generic_registry_via_list(mocker, generic_registry_cls):
-    cause = mocker.Mock(event=None, diff=None)
+def test_generic_registry_via_list(
+        generic_registry_cls, cause_factory):
 
+    cause = cause_factory(generic_registry_cls)
     registry = generic_registry_cls()
     handlers = registry.get_handlers(cause)
 
@@ -54,9 +57,9 @@ def test_operator_registry_with_activity_via_iter(
 
 
 def test_operator_registry_with_resource_watching_via_iter(
-        mocker, operator_registry_cls, resource):
-    cause = mocker.Mock(resource=resource, event=None, diff=None)
+        operator_registry_cls, resource, cause_factory):
 
+    cause = cause_factory(ResourceWatchingCause)
     registry = operator_registry_cls()
     iterator = registry.resource_watching_handlers[resource].iter_handlers(cause)
 
@@ -70,9 +73,9 @@ def test_operator_registry_with_resource_watching_via_iter(
 
 
 def test_operator_registry_with_resource_changing_via_iter(
-        mocker, operator_registry_cls, resource):
-    cause = mocker.Mock(resource=resource, event=None, diff=None)
+        operator_registry_cls, resource, cause_factory):
 
+    cause = cause_factory(ResourceChangingCause)
     registry = operator_registry_cls()
     iterator = registry.resource_changing_handlers[resource].iter_handlers(cause)
 
@@ -99,9 +102,9 @@ def test_operator_registry_with_activity_via_list(
 
 
 def test_operator_registry_with_resource_watching_via_list(
-        mocker, operator_registry_cls, resource):
-    cause = mocker.Mock(resource=resource, event=None, diff=None)
+        operator_registry_cls, resource, cause_factory):
 
+    cause = cause_factory(ResourceWatchingCause)
     registry = operator_registry_cls()
     handlers = registry.resource_watching_handlers[resource].get_handlers(cause)
 
@@ -112,9 +115,9 @@ def test_operator_registry_with_resource_watching_via_list(
 
 
 def test_operator_registry_with_resource_changing_via_list(
-        mocker, operator_registry_cls, resource):
-    cause = mocker.Mock(resource=resource, event=None, diff=None)
+        operator_registry_cls, resource, cause_factory):
 
+    cause = cause_factory(ResourceChangingCause)
     registry = operator_registry_cls()
     handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
 

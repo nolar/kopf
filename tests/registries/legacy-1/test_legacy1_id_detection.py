@@ -71,14 +71,15 @@ def test_id_of_lambda():
     assert fn_id.startswith(f'lambda:{__file__}:')
 
 
-def test_with_no_hints(mocker):
+def test_with_no_hints(mocker, cause_factory):
     get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
+    cause = cause_factory()
 
     registry = SimpleRegistry()
     with pytest.deprecated_call(match=r"registry.register\(\) is deprecated"):
         registry.register(some_fn)
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
-        handlers = registry.get_cause_handlers(mocker.MagicMock())
+        handlers = registry.get_cause_handlers(cause)
 
     assert get_fn_id.called
 
@@ -88,14 +89,15 @@ def test_with_no_hints(mocker):
 
 
 @pytest.mark.skip("Prefixes are removed from the registries, even from the legacy ones.")
-def test_with_prefix(mocker):
+def test_with_prefix(mocker, cause_factory):
     get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
+    cause = cause_factory()
 
     registry = SimpleRegistry()
     with pytest.deprecated_call(match=r"registry.register\(\) is deprecated"):
         registry.register(some_fn)
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
-        handlers = registry.get_cause_handlers(mocker.MagicMock())
+        handlers = registry.get_cause_handlers(cause)
 
     assert get_fn_id.called
 
@@ -104,15 +106,16 @@ def test_with_prefix(mocker):
     assert handlers[0].id == 'some-prefix/some-id'
 
 
-def test_with_suffix(mocker, field):
+def test_with_suffix(mocker, field, cause_factory):
     get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
     diff = [('add', ('some-field', 'sub-field'), 'old', 'new')]
+    cause = cause_factory(diff=diff)
 
     registry = SimpleRegistry()
     with pytest.deprecated_call(match=r"registry.register\(\) is deprecated"):
         registry.register(some_fn, field=field)
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
-        handlers = registry.get_cause_handlers(mocker.MagicMock(diff=diff))
+        handlers = registry.get_cause_handlers(cause)
 
     assert get_fn_id.called
 
@@ -122,15 +125,16 @@ def test_with_suffix(mocker, field):
 
 
 @pytest.mark.skip("Prefixes are removed from the registries, even from the legacy ones.")
-def test_with_prefix_and_suffix(mocker, field):
+def test_with_prefix_and_suffix(mocker, field, cause_factory):
     get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
     diff = [('add', ('some-field', 'sub-field'), 'old', 'new')]
+    cause = cause_factory(diff=diff)
 
     registry = SimpleRegistry(prefix='some-prefix')
     with pytest.deprecated_call(match=r"registry.register\(\) is deprecated"):
         registry.register(some_fn, field=field)
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
-        handlers = registry.get_cause_handlers(mocker.MagicMock(diff=diff))
+        handlers = registry.get_cause_handlers(cause)
 
     assert get_fn_id.called
 
@@ -140,15 +144,16 @@ def test_with_prefix_and_suffix(mocker, field):
 
 
 @pytest.mark.skip("Prefixes are removed from the registries, even from the legacy ones.")
-def test_with_explicit_id_and_prefix_and_suffix(mocker, field):
+def test_with_explicit_id_and_prefix_and_suffix(mocker, field, cause_factory):
     get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
     diff = [('add', ('some-field', 'sub-field'), 'old', 'new')]
+    cause = cause_factory(diff=diff)
 
     registry = SimpleRegistry(prefix='some-prefix')
     with pytest.deprecated_call(match=r"registry.register\(\) is deprecated"):
         registry.register(some_fn, id='explicit-id', field=field)
     with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
-        handlers = registry.get_cause_handlers(mocker.MagicMock(diff=diff))
+        handlers = registry.get_cause_handlers(cause)
 
     assert not get_fn_id.called
 
