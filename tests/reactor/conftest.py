@@ -1,5 +1,6 @@
 import asyncio
-import time
+import dataclasses
+from typing import List
 
 import pytest
 from asynctest import CoroutineMock
@@ -24,7 +25,7 @@ def processor():
 # Code overhead is not used, but is needed to order the fixtures: first,
 # the measurement, which requires the real worker; then, the worker mocking.
 @pytest.fixture()
-def worker_spy(mocker, watcher_code_overhead):
+def worker_spy(mocker, code_overhead):
     """ Spy on the watcher: actually call it, but provide the mock-fields. """
     spy = CoroutineMock(spec=original_worker, wraps=original_worker)
     return mocker.patch('kopf.reactor.queueing.worker', spy)
@@ -33,7 +34,7 @@ def worker_spy(mocker, watcher_code_overhead):
 # Code overhead is not used, but is needed to order the fixtures: first,
 # the measurement, which requires the real worker; then, the worker mocking.
 @pytest.fixture()
-def worker_mock(mocker, watcher_code_overhead):
+def worker_mock(mocker, code_overhead):
     """ Prevent the queue consumption, so that the queues could be checked. """
     return mocker.patch('kopf.reactor.queueing.worker')
 
@@ -75,8 +76,23 @@ def watcher_in_background(settings, resource, event_loop, worker_spy, stream):
             pass
 
 
+@dataclasses.dataclass(frozen=True)
+class CodeOverhead:
+    min: float
+    avg: float
+    max: float
+
+
+@pytest.fixture(scope='session')
+def _code_overhead_cache():
+    return []
+
+
 @pytest.fixture()
-async def watcher_code_overhead(resource, stream, aresponses, watcher_limited, timer) -> float:
+async def code_overhead(
+        resource, stream, aresponses, watcher_limited, timer,
+        _code_overhead_cache,
+) -> CodeOverhead:
     """
     Estimate the overhead of synchronous code in the watching routines.
 
@@ -110,36 +126,54 @@ async def watcher_code_overhead(resource, stream, aresponses, watcher_limited, t
     Empirically, the overhead usually remains within the range of 50-150 ms.
     It does not depend on the number of events or unique uids in the stream.
     It does depend on the hardware used, or containers in the CI systems.
+
+    Several dummy runs are used to average the values, to avoid fluctuation.
+    The estimation happens only once per session, and is reused for all tests.
     """
+    if not _code_overhead_cache:
 
-    # We feed the stream and consume the stream before we go into the tests,
-    # which can feed the stream with their own events.
-    stream.feed([
-        {'type': 'ADDED', 'object': {'metadata': {'uid': 'uid'}}},
-    ])
-    stream.close()
+        # Collect a few data samples to make the estimation realistic.
+        overheads: List[float] = []
+        for _ in range(10):
 
-    # We use our own fixtures -- to not collide with the tests' fixtures.
-    processor = CoroutineMock()
-    settings = OperatorSettings()
-    settings.batching.batch_window = 0
-    settings.batching.idle_timeout = 1
-    settings.batching.exit_timeout = 1
+            # We feed the stream and consume the stream before we go into the tests,
+            # which can feed the stream with their own events.
+            stream.feed([
+                {'type': 'ADDED', 'object': {'metadata': {'uid': 'uid'}}},
+            ])
+            stream.close()
 
-    with timer:
-        await watcher(
-            namespace=None,
-            resource=resource,
-            settings=settings,
-            processor=processor,
-        )
+            # We use our own fixtures -- to not collide with the tests' fixtures.
+            processor = CoroutineMock()
+            settings = OperatorSettings()
+            settings.batching.batch_window = 0
+            settings.batching.idle_timeout = 1
+            settings.batching.exit_timeout = 1
 
-    # Ensure that everything worked as expected, i.e. the worker is not mocked,
-    # and the whole code is actually executed down to the processor callback.
-    assert processor.awaited, "The processor is not called for code overhead measurement."
-    aresponses._responses[:] = []
+            with timer:
+                await watcher(
+                    namespace=None,
+                    resource=resource,
+                    settings=settings,
+                    processor=processor,
+                )
+
+            # Ensure that everything worked as expected, i.e. the worker is not mocked,
+            # and the whole code is actually executed down to the processor callback.
+            assert processor.awaited, "The processor is not called for code overhead measurement."
+            overheads.append(timer.seconds)
+
+        # Reserve extra 10-30% from both sides for occasional variations.
+        _code_overhead_cache.append(CodeOverhead(
+            min=min(overheads) * 0.9,
+            avg=sum(overheads) / len(overheads),
+            max=max(overheads) * 1.1,
+        ))
+
+        # Cleanup our own endpoints, if something is left.
+        aresponses._responses[:] = []
 
     # Uncomment for debugging of the actual timing: visible only with -s pytest option.
-    # print(f"The estimated code overhead is {timer.seconds:.3f} seconds (unadjusted).")
+    # print(f"The estimated code overhead is {overhead}.")
 
-    return timer.seconds * 1.33
+    return _code_overhead_cache[0]
