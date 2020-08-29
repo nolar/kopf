@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 import pytest
 from asynctest import CoroutineMock
@@ -6,6 +7,7 @@ from asynctest import CoroutineMock
 from kopf.clients.watching import streaming_watch
 from kopf.reactor.queueing import watcher
 from kopf.reactor.queueing import worker as original_worker
+from kopf.structs.configuration import OperatorSettings
 
 
 @pytest.fixture(autouse=True)
@@ -19,15 +21,19 @@ def processor():
     return CoroutineMock()
 
 
+# Code overhead is not used, but is needed to order the fixtures: first,
+# the measurement, which requires the real worker; then, the worker mocking.
 @pytest.fixture()
-def worker_spy(mocker):
+def worker_spy(mocker, watcher_code_overhead):
     """ Spy on the watcher: actually call it, but provide the mock-fields. """
     spy = CoroutineMock(spec=original_worker, wraps=original_worker)
     return mocker.patch('kopf.reactor.queueing.worker', spy)
 
 
+# Code overhead is not used, but is needed to order the fixtures: first,
+# the measurement, which requires the real worker; then, the worker mocking.
 @pytest.fixture()
-def worker_mock(mocker):
+def worker_mock(mocker, watcher_code_overhead):
     """ Prevent the queue consumption, so that the queues could be checked. """
     return mocker.patch('kopf.reactor.queueing.worker')
 
@@ -67,3 +73,73 @@ def watcher_in_background(settings, resource, event_loop, worker_spy, stream):
             event_loop.run_until_complete(task)
         except asyncio.CancelledError:
             pass
+
+
+@pytest.fixture()
+async def watcher_code_overhead(resource, stream, aresponses, watcher_limited, timer) -> float:
+    """
+    Estimate the overhead of synchronous code in the watching routines.
+
+    The code overhead is caused by Kopf's and tests' own low-level activities:
+    the code of ``watcher()``/``worker()`` itself, including a job scheduler,
+    the local ``aresponses`` server, the API communication with that server
+    in ``aiohttp``, serialization/deserialization in ``kopf.clients``, etc.
+
+    The actual aspect being tested are the ``watcher()``/``worker()`` routines:
+    their input/output and their timing regarding the blocking queue operations
+    or explicit sleeps, not the timing of underlying low-level activities.
+    So, the expected values for the durations of the call are adjusted for
+    the estimated code overhead before asserting them.
+
+    .. note::
+
+        The tests are designed with small timeouts to run fast, so that
+        the whole test-suite with thousands of tests is not delayed much.
+        Once there is a way to simulate asyncio time like with ``freezegun``,
+        or ``freezegun`` supports asyncio time, the problem can be solved by
+        using the lengthy timeouts and ignoring the code overhead._
+
+    The estimation of the overhead is measured by running a single-event cycle,
+    which means one worker only, but with batching of events disabled. This
+    ensures that only the fastest way is executed: no explicit or implicit
+    sleeps are used (e.g. as in getting from an empty queue with timeouts).
+
+    Extra 10-30% are added to the measured overhead to ensure that the future
+    code executions would fit into the estimation despite the variations.
+
+    Empirically, the overhead usually remains within the range of 50-150 ms.
+    It does not depend on the number of events or unique uids in the stream.
+    It does depend on the hardware used, or containers in the CI systems.
+    """
+
+    # We feed the stream and consume the stream before we go into the tests,
+    # which can feed the stream with their own events.
+    stream.feed([
+        {'type': 'ADDED', 'object': {'metadata': {'uid': 'uid'}}},
+    ])
+    stream.close()
+
+    # We use our own fixtures -- to not collide with the tests' fixtures.
+    processor = CoroutineMock()
+    settings = OperatorSettings()
+    settings.batching.batch_window = 0
+    settings.batching.idle_timeout = 1
+    settings.batching.exit_timeout = 1
+
+    with timer:
+        await watcher(
+            namespace=None,
+            resource=resource,
+            settings=settings,
+            processor=processor,
+        )
+
+    # Ensure that everything worked as expected, i.e. the worker is not mocked,
+    # and the whole code is actually executed down to the processor callback.
+    assert processor.awaited, "The processor is not called for code overhead measurement."
+    aresponses._responses[:] = []
+
+    # Uncomment for debugging of the actual timing: visible only with -s pytest option.
+    # print(f"The estimated code overhead is {timer.seconds:.3f} seconds (unadjusted).")
+
+    return timer.seconds * 1.33

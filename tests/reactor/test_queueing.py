@@ -18,10 +18,6 @@ import pytest
 
 from kopf.reactor.queueing import watcher, EOS
 
-# An overhead for the sync logic in async tests. Guesstimated empirically:
-# 10ms is too fast, 200ms is too slow, 50-150ms is good enough (can vary).
-CODE_OVERHEAD = 0.130
-
 
 @pytest.mark.parametrize('uids, cnts, events', [
 
@@ -46,7 +42,8 @@ CODE_OVERHEAD = 0.130
 ])
 @pytest.mark.usefixtures('watcher_limited')
 async def test_watchevent_demultiplexing(worker_mock, timer, resource, processor,
-                                         settings, stream, events, uids, cnts):
+                                         settings, stream, events, uids, cnts,
+                                         watcher_code_overhead):
     """ Verify that every unique uid goes into its own queue+worker, which are never shared. """
 
     # Inject the events of unique objects - to produce few streams/workers.
@@ -63,7 +60,7 @@ async def test_watchevent_demultiplexing(worker_mock, timer, resource, processor
         )
 
     # The streams are not cleared by the mocked worker, but the worker exits fast.
-    assert timer.seconds < CODE_OVERHEAD
+    assert timer.seconds < watcher_code_overhead
 
     # The processor must not be called by the watcher, only by the worker.
     # But the worker (even if mocked) must be called & awaited by the watcher.
@@ -116,7 +113,8 @@ async def test_watchevent_demultiplexing(worker_mock, timer, resource, processor
 ])
 @pytest.mark.usefixtures('watcher_limited')
 async def test_watchevent_batching(settings, resource, processor, timer,
-                                   stream, events, uids, vals):
+                                   stream, events, uids, vals,
+                                   watcher_code_overhead):
     """ Verify that only the last event per uid is actually handled. """
 
     # Override the default timeouts to make the tests faster.
@@ -138,8 +136,8 @@ async def test_watchevent_batching(settings, resource, processor, timer,
         )
 
     # Significantly less than the queue getting timeout, but sufficient to run.
-    # 2 <= 1 pull for the event chain + 1 pull for EOS. TODO: 1x must be enough.
-    assert timer.seconds < settings.batching.batch_window + CODE_OVERHEAD
+    # 2x: 1 pull for the event chain + 1 pull for EOS. TODO: 1x must be enough.
+    assert timer.seconds < settings.batching.batch_window + watcher_code_overhead
 
     # Was the processor called at all? Awaited as needed for async fns?
     assert processor.awaited
@@ -171,7 +169,8 @@ async def test_watchevent_batching(settings, resource, processor, timer,
 
 ])
 @pytest.mark.usefixtures('watcher_in_background')
-async def test_garbage_collection_of_streams(settings, stream, events, unique, worker_spy):
+async def test_garbage_collection_of_streams(settings, stream, events, unique, worker_spy,
+                                             watcher_code_overhead):
 
     # Override the default timeouts to make the tests faster.
     settings.batching.idle_timeout = 0.5
@@ -201,7 +200,7 @@ async def test_garbage_collection_of_streams(settings, stream, events, unique, w
     # Once the idle timeout, they will exit and gc their individual streams.
     await asyncio.sleep(settings.batching.batch_window)  # depleting the queues.
     await asyncio.sleep(settings.batching.idle_timeout)  # idling on empty queues.
-    await asyncio.sleep(CODE_OVERHEAD)
+    await asyncio.sleep(watcher_code_overhead)
 
     # The mutable(!) streams dict is now empty, i.e. garbage-collected.
     assert len(streams) == 0
