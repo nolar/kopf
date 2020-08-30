@@ -26,7 +26,7 @@ from typing import Collection, Optional, Union
 
 from kopf.clients import patching
 from kopf.engines import loggers
-from kopf.structs import bodies, configuration, patches, primitives, resources
+from kopf.structs import bodies, configuration, diffs, patches, primitives, resources
 
 # How often to wake up from the long sleep, to show liveness in the logs.
 WAITING_KEEPALIVE_INTERVAL = 10 * 60
@@ -89,9 +89,20 @@ async def patch_and_check(
         patch: patches.Patch,
         logger: Union[logging.Logger, logging.LoggerAdapter],
 ) -> None:
+    """
+    Apply a patch and verify that it is applied correctly.
+
+    The inconsistencies are checked only against what was in the patch.
+    Other unexpected changes in the body are ignored, including the system
+    fields, such as generations, resource versions, and other unrelated fields,
+    such as other statuses, spec, labels, annotations, etc.
+    """
     if patch:
         logger.debug(f"Patching with: {patch!r}")
-        await patching.patch_obj(resource=resource, patch=patch, body=body)
+        resulting_body = await patching.patch_obj(resource=resource, patch=patch, body=body)
+        inconsistencies = diffs.diff(dict(patch), dict(resulting_body), scope=diffs.DiffScope.LEFT)
+        if inconsistencies:
+            logger.warning(f"Patching failed with inconsistencies: {inconsistencies}")
 
 
 async def sleep_or_wait(
