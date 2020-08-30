@@ -19,8 +19,7 @@ The process is intentionally split into multiple packages:
 import logging
 from typing import Mapping, MutableMapping, NoReturn
 
-from kopf.engines import sleeping
-from kopf.reactor import causation, handling, lifecycles, registries
+from kopf.reactor import causation, effects, handling, lifecycles, registries
 from kopf.storage import states
 from kopf.structs import callbacks, configuration, credentials, handlers as handlers_
 
@@ -114,7 +113,7 @@ async def run_activity(
         )
         outcomes.update(current_outcomes)
         state = state.with_outcomes(current_outcomes)
-        await sleeping.sleep_or_wait(state.delay)
+        await effects.sleep_or_wait(state.delay)
 
     # Activities assume that all handlers must eventually succeed.
     # We raise from the 1st exception only: just to have something real in the tracebacks.

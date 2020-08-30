@@ -56,7 +56,7 @@ def k8s_mocked(mocker, resp_mocker):
     return K8sMocks(
         patch_obj=mocker.patch('kopf.clients.patching.patch_obj'),
         post_event=mocker.patch('kopf.clients.events.post_event'),
-        sleep_or_wait=mocker.patch('kopf.engines.sleeping.sleep_or_wait', return_value=None),
+        sleep_or_wait=mocker.patch('kopf.reactor.effects.sleep_or_wait', return_value=None),
     )
 
 

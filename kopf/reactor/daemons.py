@@ -26,8 +26,8 @@ import warnings
 from typing import Collection, List, Mapping, MutableMapping, Sequence
 
 from kopf.clients import patching
-from kopf.engines import loggers, sleeping
-from kopf.reactor import causation, handling, lifecycles
+from kopf.engines import loggers
+from kopf.reactor import causation, effects, handling, lifecycles
 from kopf.storage import states
 from kopf.structs import configuration, containers, handlers as handlers_, patches, primitives
 
@@ -365,7 +365,7 @@ async def _resource_daemon(
     logger = cause.logger
 
     if handler.initial_delay is not None:
-        await sleeping.sleep_or_wait(handler.initial_delay, cause.stopper)
+        await effects.sleep_or_wait(handler.initial_delay, cause.stopper)
 
     # Similar to activities (in-memory execution), but applies patches on every attempt.
     state = states.State.from_scratch(handlers=[handler])
@@ -388,7 +388,7 @@ async def _resource_daemon(
 
         # The in-memory sleep does not react to resource changes, but only to stopping.
         if state.delay:
-            await sleeping.sleep_or_wait(state.delay, cause.stopper)
+            await effects.sleep_or_wait(state.delay, cause.stopper)
 
     if cause.stopper.is_set():
         logger.debug(f"{handler} has exited on request and will not be retried or restarted.")
@@ -426,7 +426,7 @@ async def _resource_timer(
     """
 
     if handler.initial_delay is not None:
-        await sleeping.sleep_or_wait(handler.initial_delay, cause.stopper)
+        await effects.sleep_or_wait(handler.initial_delay, cause.stopper)
 
     # Similar to activities (in-memory execution), but applies patches on every attempt.
     state = states.State.from_scratch(handlers=[handler])
@@ -442,7 +442,7 @@ async def _resource_timer(
         if handler.idle is not None:
             while not cause.stopper.is_set() and time.monotonic() - memory.idle_reset_time < handler.idle:
                 delay = memory.idle_reset_time + handler.idle - time.monotonic()
-                await sleeping.sleep_or_wait(delay, cause.stopper)
+                await effects.sleep_or_wait(delay, cause.stopper)
             if cause.stopper.is_set():
                 continue
 
@@ -469,7 +469,7 @@ async def _resource_timer(
         # For temporary errors, override the schedule by the one provided by errors themselves.
         # It can be either a delay from TemporaryError, or a backoff for an arbitrary exception.
         if not state.done:
-            await sleeping.sleep_or_wait(state.delays, cause.stopper)
+            await effects.sleep_or_wait(state.delays, cause.stopper)
 
         # For sharp timers, calculate how much time is left to fit the interval grid:
         #       |-----|-----|-----|-----|-----|-----|---> (interval=5, sharp=True)
@@ -477,19 +477,19 @@ async def _resource_timer(
         elif handler.interval is not None and handler.sharp:
             passed_duration = time.monotonic() - started
             remaining_delay = handler.interval - (passed_duration % handler.interval)
-            await sleeping.sleep_or_wait(remaining_delay, cause.stopper)
+            await effects.sleep_or_wait(remaining_delay, cause.stopper)
 
         # For regular (non-sharp) timers, simply sleep from last exit to the next call:
         #       |-----|-----|-----|-----|-----|-----|---> (interval=5, sharp=False)
         #       [slow_handler].....[slow_handler].....[slow...
         elif handler.interval is not None:
-            await sleeping.sleep_or_wait(handler.interval, cause.stopper)
+            await effects.sleep_or_wait(handler.interval, cause.stopper)
 
         # For idle-only no-interval timers, wait till the next change (i.e. idling reset).
         # NB: This will skip the handler in the same tact (1/64th of a second) even if changed.
         elif handler.idle is not None:
             while memory.idle_reset_time <= started:
-                await sleeping.sleep_or_wait(handler.idle, cause.stopper)
+                await effects.sleep_or_wait(handler.idle, cause.stopper)
 
         # Only in case there are no intervals and idling, treat it as a one-shot handler.
         # This makes the handler practically meaningless, but technically possible.
