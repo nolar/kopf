@@ -54,7 +54,7 @@ class K8sMocks:
 def k8s_mocked(mocker, resp_mocker):
     # We mock on the level of our own K8s API wrappers, not the K8s client.
     return K8sMocks(
-        patch_obj=mocker.patch('kopf.clients.patching.patch_obj'),
+        patch_obj=mocker.patch('kopf.clients.patching.patch_obj', return_value={}),
         post_event=mocker.patch('kopf.clients.events.post_event'),
         sleep_or_wait=mocker.patch('kopf.reactor.effects.sleep_or_wait', return_value=None),
     )
