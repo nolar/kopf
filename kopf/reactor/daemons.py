@@ -26,7 +26,7 @@ import warnings
 from typing import Collection, List, Mapping, MutableMapping, Sequence
 
 from kopf.clients import patching
-from kopf.engines import logging as logging_engine, sleeping
+from kopf.engines import loggers, sleeping
 from kopf.reactor import causation, handling, lifecycles
 from kopf.storage import states
 from kopf.structs import configuration, containers, handlers as handlers_, patches, primitives
@@ -63,7 +63,7 @@ async def spawn_resource_daemons(
             daemon = containers.Daemon(
                 stopper=stopper,  # for stopping (outside of causes)
                 handler=handler,
-                logger=logging_engine.LocalObjectLogger(body=cause.body, settings=settings),
+                logger=loggers.LocalObjectLogger(body=cause.body, settings=settings),
                 task=asyncio.create_task(_runner(
                     settings=settings,
                     daemons=daemons,  # for self-garbage-collection

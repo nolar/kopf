@@ -19,7 +19,7 @@ import time
 from typing import Collection, Optional
 
 from kopf.clients import patching
-from kopf.engines import logging as logging_engine, posting, sleeping
+from kopf.engines import loggers, posting, sleeping
 from kopf.reactor import causation, daemons, handling, lifecycles, registries
 from kopf.storage import finalizers, states
 from kopf.structs import (bodies, configuration, containers, diffs,
@@ -68,7 +68,7 @@ async def process_resource_event(
     patch = patches.Patch()
 
     # Each object has its own prefixed logger, to distinguish parallel handling.
-    logger = logging_engine.ObjectLogger(body=body, settings=settings)
+    logger = loggers.ObjectLogger(body=body, settings=settings)
     posting.event_queue_loop_var.set(asyncio.get_running_loop())
     posting.event_queue_var.set(event_queue)  # till the end of this object's task.
 
@@ -200,7 +200,7 @@ async def apply_reaction_outcomes(
         body: bodies.Body,
         patch: patches.Patch,
         delays: Collection[float],
-        logger: logging_engine.ObjectLogger,
+        logger: loggers.ObjectLogger,
         replenished: asyncio.Event,
 ) -> None:
     delay = min(delays) if delays else None
