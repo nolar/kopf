@@ -1,6 +1,5 @@
 import kopf
 
-
 #
 # If namespace is set, it should be preserved, unmodified.
 #

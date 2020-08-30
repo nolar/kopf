@@ -4,7 +4,7 @@ import freezegun
 import pytest
 
 from kopf.engines.peering import Peer, process_peering_event
-from kopf.structs import primitives, bodies
+from kopf.structs import bodies, primitives
 
 
 @pytest.mark.parametrize('our_name, our_namespace, their_name, their_namespace', [

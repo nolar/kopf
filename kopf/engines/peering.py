@@ -36,16 +36,12 @@ import logging
 import os
 import random
 import socket
-from typing import Any, Dict, Iterable, Optional, Union, NoReturn, Mapping, cast
+from typing import Any, Dict, Iterable, Mapping, NoReturn, Optional, Union, cast
 
 import iso8601
 
-from kopf.clients import fetching
-from kopf.clients import patching
-from kopf.structs import bodies
-from kopf.structs import patches
-from kopf.structs import primitives
-from kopf.structs import resources
+from kopf.clients import fetching, patching
+from kopf.structs import bodies, patches, primitives, resources
 
 logger = logging.getLogger(__name__)
 

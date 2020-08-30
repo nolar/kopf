@@ -19,23 +19,11 @@ import time
 from typing import Collection, Optional
 
 from kopf.clients import patching
-from kopf.engines import logging as logging_engine
-from kopf.engines import posting
-from kopf.engines import sleeping
-from kopf.reactor import causation
-from kopf.reactor import daemons
-from kopf.reactor import handling
-from kopf.reactor import lifecycles
-from kopf.reactor import registries
-from kopf.storage import finalizers
-from kopf.storage import states
-from kopf.structs import bodies
-from kopf.structs import configuration
-from kopf.structs import containers
-from kopf.structs import diffs
-from kopf.structs import handlers as handlers_
-from kopf.structs import patches
-from kopf.structs import resources
+from kopf.engines import logging as logging_engine, posting, sleeping
+from kopf.reactor import causation, daemons, handling, lifecycles, registries
+from kopf.storage import finalizers, states
+from kopf.structs import (bodies, configuration, containers, diffs,
+                          handlers as handlers_, patches, resources)
 
 # How often to wake up from the long sleep, to show liveness in the logs.
 WAITING_KEEPALIVE_INTERVAL = 10 * 60

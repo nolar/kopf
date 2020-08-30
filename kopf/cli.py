@@ -1,17 +1,13 @@
 import asyncio
 import dataclasses
 import functools
-from typing import Any, Optional, Callable, List
+from typing import Any, Callable, List, Optional
 
 import click
 
-from kopf.engines import logging
-from kopf.engines import peering
-from kopf.reactor import registries
-from kopf.reactor import running
-from kopf.structs import configuration
-from kopf.structs import credentials
-from kopf.structs import primitives
+from kopf.engines import logging, peering
+from kopf.reactor import registries, running
+from kopf.structs import configuration, credentials, primitives
 from kopf.utilities import loaders
 
 

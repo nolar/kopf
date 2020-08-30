@@ -9,11 +9,10 @@ import asyncio
 import contextlib
 import contextvars
 import functools
-from typing import Optional, Any, List, Iterable, Iterator, Tuple, Dict, cast, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Optional, Tuple, cast
 
 from kopf.reactor import causation
-from kopf.structs import callbacks
-from kopf.structs import configuration
+from kopf.structs import callbacks, configuration
 
 if TYPE_CHECKING:
     asyncio_Future = asyncio.Future[Any]

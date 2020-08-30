@@ -2,7 +2,7 @@ import collections.abc
 
 import pytest
 
-from kopf.reactor.causation import ResourceWatchingCause, ResourceChangingCause
+from kopf.reactor.causation import ResourceChangingCause, ResourceWatchingCause
 from kopf.structs.handlers import Activity
 
 

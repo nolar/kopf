@@ -3,7 +3,7 @@ import collections.abc
 import pytest
 
 from kopf.structs.bodies import Body
-from kopf.structs.containers import ResourceMemory, ResourceMemories, Memo
+from kopf.structs.containers import Memo, ResourceMemories, ResourceMemory
 
 BODY: Body = {
     'metadata': {

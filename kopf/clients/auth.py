@@ -6,7 +6,7 @@ import ssl
 import tempfile
 import warnings
 from contextvars import ContextVar
-from typing import Optional, Callable, Any, TypeVar, Dict, Iterator, Mapping, cast
+from typing import Any, Callable, Dict, Iterator, Mapping, Optional, TypeVar, cast
 
 import aiohttp
 

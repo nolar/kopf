@@ -5,7 +5,7 @@ import pytest
 import kopf
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
-from kopf.structs.handlers import Reason, HANDLER_REASONS
+from kopf.structs.handlers import HANDLER_REASONS, Reason
 
 
 @pytest.mark.parametrize('deletion_ts', [

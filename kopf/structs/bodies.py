@@ -41,9 +41,9 @@ In case the operators are also type-checked, type casting can be used
     and object-processing functions. The internal dicts will remain the same.
 """
 
-from typing import Any, Mapping, MutableMapping, Union, List, Optional, cast
+from typing import Any, List, Mapping, MutableMapping, Optional, Union, cast
 
-from typing_extensions import TypedDict, Literal
+from typing_extensions import Literal, TypedDict
 
 from kopf.structs import dicts
 

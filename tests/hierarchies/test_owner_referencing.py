@@ -1,9 +1,8 @@
 import copy
-
-from unittest.mock import call, Mock
+from unittest.mock import Mock, call
 
 import kopf
-from kopf.structs.bodies import RawBody, RawMeta, Body
+from kopf.structs.bodies import Body, RawBody, RawMeta
 
 OWNER_API_VERSION = 'owner-api-version'
 OWNER_NAMESPACE = 'owner-namespace'

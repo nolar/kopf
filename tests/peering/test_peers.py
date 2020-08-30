@@ -3,10 +3,8 @@ import datetime
 import freezegun
 import pytest
 
-from kopf.engines.peering import (
-    Peer,
-    CLUSTER_PEERING_RESOURCE, NAMESPACED_PEERING_RESOURCE, LEGACY_PEERING_RESOURCE,
-)
+from kopf.engines.peering import (CLUSTER_PEERING_RESOURCE, LEGACY_PEERING_RESOURCE,
+                                  NAMESPACED_PEERING_RESOURCE, Peer)
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')

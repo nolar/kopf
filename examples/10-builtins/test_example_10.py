@@ -1,9 +1,8 @@
 import os.path
 import time
 
-import pykube
-
 import kopf.testing
+import pykube
 
 
 def test_pods_reacted():

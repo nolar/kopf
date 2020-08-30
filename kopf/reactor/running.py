@@ -4,24 +4,13 @@ import logging
 import signal
 import threading
 import warnings
-from typing import (Optional, Collection, Tuple, Set, Any, Coroutine,
-                    Sequence, MutableSequence, cast, TYPE_CHECKING)
+from typing import (TYPE_CHECKING, Any, Collection, Coroutine,
+                    MutableSequence, Optional, Sequence, Set, Tuple, cast)
 
 from kopf.clients import auth
-from kopf.engines import peering
-from kopf.engines import posting
-from kopf.engines import probing
-from kopf.reactor import activities
-from kopf.reactor import daemons
-from kopf.reactor import lifecycles
-from kopf.reactor import processing
-from kopf.reactor import queueing
-from kopf.reactor import registries
-from kopf.structs import configuration
-from kopf.structs import containers
-from kopf.structs import credentials
-from kopf.structs import handlers
-from kopf.structs import primitives
+from kopf.engines import peering, posting, probing
+from kopf.reactor import activities, daemons, lifecycles, processing, queueing, registries
+from kopf.structs import configuration, containers, credentials, handlers, primitives
 
 if TYPE_CHECKING:
     asyncio_Task = asyncio.Task[None]

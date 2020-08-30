@@ -4,8 +4,8 @@ import textwrap
 
 import pytest
 
-from kopf.clients.auth import reauthenticated_request, vault_var, APIContext
-from kopf.structs.credentials import Vault, ConnectionInfo
+from kopf.clients.auth import APIContext, reauthenticated_request, vault_var
+from kopf.structs.credentials import ConnectionInfo, Vault
 
 # These are Minikube's locally geenrated certificates (CN=minikubeCA).
 # They are not in any public use, and are regenerated regularly.

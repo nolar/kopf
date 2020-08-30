@@ -11,12 +11,9 @@ import asyncio
 import dataclasses
 import logging
 import time
-from typing import MutableMapping, Dict, Set, Any, Iterator, Optional, Union, NewType, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Iterator, MutableMapping, NewType, Optional, Set, Union
 
-from kopf.structs import bodies
-from kopf.structs import handlers
-from kopf.structs import primitives
-
+from kopf.structs import bodies, handlers, primitives
 
 if TYPE_CHECKING:
     asyncio_Task = asyncio.Task[None]

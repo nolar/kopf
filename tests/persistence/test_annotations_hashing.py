@@ -2,10 +2,10 @@ import json
 
 import pytest
 
+from kopf.storage.progress import AnnotationsProgressStorage, ProgressRecord, SmartProgressStorage
 from kopf.structs.bodies import Body
 from kopf.structs.handlers import HandlerId
 from kopf.structs.patches import Patch
-from kopf.storage.progress import ProgressRecord, AnnotationsProgressStorage, SmartProgressStorage
 
 ANNOTATIONS_POPULATING_STORAGES = [AnnotationsProgressStorage, SmartProgressStorage]
 

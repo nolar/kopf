@@ -1,10 +1,10 @@
 import pytest
 
 import kopf
-from kopf.reactor.handling import subregistry_var, handler_var
+from kopf.reactor.handling import handler_var, subregistry_var
 from kopf.reactor.invocation import context
 from kopf.reactor.registries import OperatorRegistry, ResourceChangingRegistry
-from kopf.structs.handlers import ErrorsMode, Activity, Reason, HANDLER_REASONS
+from kopf.structs.handlers import HANDLER_REASONS, Activity, ErrorsMode, Reason
 from kopf.structs.resources import Resource
 
 

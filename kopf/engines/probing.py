@@ -2,16 +2,12 @@ import asyncio
 import datetime
 import logging
 import urllib.parse
-from typing import Optional, Tuple, MutableMapping
+from typing import MutableMapping, Optional, Tuple
 
 import aiohttp.web
 
-from kopf.reactor import activities
-from kopf.reactor import lifecycles
-from kopf.reactor import registries
-from kopf.structs import callbacks
-from kopf.structs import configuration
-from kopf.structs import handlers
+from kopf.reactor import activities, lifecycles, registries
+from kopf.structs import callbacks, configuration, handlers
 
 logger = logging.getLogger(__name__)
 

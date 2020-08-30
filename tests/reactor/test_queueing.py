@@ -16,7 +16,7 @@ import weakref
 
 import pytest
 
-from kopf.reactor.queueing import watcher, EOS
+from kopf.reactor.queueing import EOS, watcher
 
 
 @pytest.mark.parametrize('uids, cnts, events', [

@@ -1,7 +1,6 @@
 import pytest
 
-from kopf.structs.diffs import reduce, Diff, DiffItem, DiffOperation
-
+from kopf.structs.diffs import Diff, DiffItem, DiffOperation, reduce
 
 DIFF = Diff([
     DiffItem(DiffOperation.ADD   , ('key1',), None, 'new1'),

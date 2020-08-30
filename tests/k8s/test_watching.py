@@ -14,7 +14,7 @@ import logging
 import aiohttp
 import pytest
 
-from kopf.clients.watching import streaming_watch, infinite_watch, WatchingError
+from kopf.clients.watching import WatchingError, infinite_watch, streaming_watch
 from kopf.structs.primitives import Toggle
 
 STREAM_WITH_NORMAL_EVENTS = [

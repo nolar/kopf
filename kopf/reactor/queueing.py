@@ -27,16 +27,13 @@ import asyncio
 import enum
 import logging
 import time
-from typing import Tuple, Union, MutableMapping, NewType, NamedTuple, TYPE_CHECKING, cast, Optional
+from typing import TYPE_CHECKING, MutableMapping, NamedTuple, NewType, Optional, Tuple, Union, cast
 
 import aiojobs
 from typing_extensions import Protocol
 
 from kopf.clients import watching
-from kopf.structs import bodies
-from kopf.structs import configuration
-from kopf.structs import primitives
-from kopf.structs import resources
+from kopf.structs import bodies, configuration, primitives, resources
 
 logger = logging.getLogger(__name__)
 

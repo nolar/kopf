@@ -6,7 +6,7 @@ import pytest
 import kopf
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
-from kopf.structs.handlers import Reason, HANDLER_REASONS, ALL_REASONS
+from kopf.structs.handlers import ALL_REASONS, HANDLER_REASONS, Reason
 
 
 @pytest.mark.parametrize('cause_type', ALL_REASONS)

@@ -30,8 +30,7 @@ import dataclasses
 from typing import Optional
 
 from kopf import config  # for legacy defaults only
-from kopf.storage import diffbase
-from kopf.storage import progress
+from kopf.storage import diffbase, progress
 
 
 @dataclasses.dataclass

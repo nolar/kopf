@@ -17,18 +17,12 @@ The process is intentionally split into multiple packages:
   belong to neither the reactor, nor the engines, nor the client wrappers.
 """
 import logging
-from typing import NoReturn, Mapping, MutableMapping
+from typing import Mapping, MutableMapping, NoReturn
 
 from kopf.engines import sleeping
-from kopf.reactor import causation
-from kopf.reactor import handling
-from kopf.reactor import lifecycles
-from kopf.reactor import registries
+from kopf.reactor import causation, handling, lifecycles, registries
 from kopf.storage import states
-from kopf.structs import callbacks
-from kopf.structs import configuration
-from kopf.structs import credentials
-from kopf.structs import handlers as handlers_
+from kopf.structs import callbacks, configuration, credentials, handlers as handlers_
 
 logger = logging.getLogger(__name__)
 

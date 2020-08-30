@@ -3,7 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from kopf import SimpleRegistry, GlobalRegistry
+from kopf import GlobalRegistry, SimpleRegistry
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.

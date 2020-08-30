@@ -2,9 +2,8 @@ import os.path
 import subprocess
 import time
 
-import pytest
-
 import kopf.testing
+import pytest
 
 obj_yaml = os.path.relpath(os.path.join(os.path.dirname(__file__), '..', 'obj.yaml'))
 example_py = os.path.relpath(os.path.join(os.path.dirname(__file__), 'example.py'))

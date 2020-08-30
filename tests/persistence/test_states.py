@@ -5,7 +5,7 @@ from unittest.mock import Mock
 import freezegun
 import pytest
 
-from kopf.storage.progress import StatusProgressStorage, SmartProgressStorage
+from kopf.storage.progress import SmartProgressStorage, StatusProgressStorage
 from kopf.storage.states import HandlerOutcome, State, deliver_results
 from kopf.structs.bodies import Body
 from kopf.structs.patches import Patch

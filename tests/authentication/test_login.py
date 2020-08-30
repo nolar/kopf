@@ -2,9 +2,8 @@
 Remember: We do not test the clients, we assume they work when used properly.
 We test our own functions here, and check if the clients were called.
 """
-import pytest
-
 import pykube
+import pytest
 
 from kopf import login
 

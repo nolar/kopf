@@ -22,17 +22,12 @@ import asyncio
 import contextlib
 import json
 import logging
-from typing import Optional, Dict, AsyncIterator, Any, cast, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, Optional, cast
 
 import aiohttp
 
-from kopf.clients import auth
-from kopf.clients import discovery
-from kopf.clients import fetching
-from kopf.structs import bodies
-from kopf.structs import configuration
-from kopf.structs import primitives
-from kopf.structs import resources
+from kopf.clients import auth, discovery, fetching
+from kopf.structs import bodies, configuration, primitives, resources
 
 logger = logging.getLogger(__name__)
 

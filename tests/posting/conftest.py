@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from kopf.engines.posting import event_queue_var, event_queue_loop_var
+from kopf.engines.posting import event_queue_loop_var, event_queue_var
 
 
 @pytest.fixture()

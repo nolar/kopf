@@ -6,8 +6,7 @@ from typing import Optional
 import aiohttp
 
 from kopf.clients import auth
-from kopf.structs import bodies
-from kopf.structs import resources
+from kopf.structs import bodies, resources
 
 logger = logging.getLogger(__name__)
 

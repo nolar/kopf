@@ -2,11 +2,8 @@ from typing import Optional, cast
 
 import aiohttp
 
-from kopf.clients import auth
-from kopf.clients import discovery
-from kopf.structs import bodies
-from kopf.structs import patches
-from kopf.structs import resources
+from kopf.clients import auth, discovery
+from kopf.structs import bodies, patches, resources
 
 
 @auth.reauthenticated_request

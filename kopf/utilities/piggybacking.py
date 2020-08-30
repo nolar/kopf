@@ -12,7 +12,7 @@ in them, and extracts the basic credentials for its own use.
 """
 import logging
 import warnings
-from typing import Any, Union, Optional, Sequence
+from typing import Any, Optional, Sequence, Union
 
 from kopf.clients import auth
 from kopf.structs import credentials

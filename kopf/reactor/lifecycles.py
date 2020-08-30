@@ -10,7 +10,7 @@ execute in the order they are registered, one by one.
 """
 import logging
 import random
-from typing import Sequence, Any, Optional
+from typing import Any, Optional, Sequence
 
 from typing_extensions import Protocol
 

@@ -1,4 +1,4 @@
-from kopf.structs.credentials import VaultKey, ConnectionInfo
+from kopf.structs.credentials import ConnectionInfo, VaultKey
 
 
 def test_key_as_string():

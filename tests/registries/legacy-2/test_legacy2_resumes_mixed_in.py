@@ -1,7 +1,7 @@
 import pytest
 
 import kopf
-from kopf.structs.handlers import Reason, HANDLER_REASONS
+from kopf.structs.handlers import HANDLER_REASONS, Reason
 from kopf.structs.resources import Resource
 
 

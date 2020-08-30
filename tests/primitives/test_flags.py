@@ -4,7 +4,7 @@ import threading
 
 import pytest
 
-from kopf.structs.primitives import wait_flag, raise_flag
+from kopf.structs.primitives import raise_flag, wait_flag
 
 
 @pytest.fixture(params=[

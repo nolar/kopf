@@ -1,11 +1,9 @@
 import abc
 import copy
 import json
-from typing import Optional, Iterable, Collection, cast, Dict, Any
+from typing import Any, Collection, Dict, Iterable, Optional, cast
 
-from kopf.structs import bodies
-from kopf.structs import dicts
-from kopf.structs import patches
+from kopf.structs import bodies, dicts, patches
 
 LAST_SEEN_ANNOTATION = 'kopf.zalando.org/last-handled-configuration'
 """ The annotation name for the last stored state of the resource. """

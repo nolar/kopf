@@ -1,5 +1,5 @@
 import urllib.parse
-from typing import NamedTuple, Optional, Mapping, List
+from typing import List, Mapping, NamedTuple, Optional
 
 
 # An immutable reference to a custom resource definition.

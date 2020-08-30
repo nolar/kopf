@@ -1,12 +1,10 @@
 """
 All the functions to properly build the object hierarchies.
 """
-from typing import Optional, Iterable, Iterator, cast, Mapping, MutableMapping, Any, Union
+from typing import Any, Iterable, Iterator, Mapping, MutableMapping, Optional, Union, cast
 
-from kopf.reactor import causation
-from kopf.reactor import handling
-from kopf.structs import bodies
-from kopf.structs import dicts
+from kopf.reactor import causation, handling
+from kopf.structs import bodies, dicts
 
 K8sObject = MutableMapping[Any, Any]
 K8sObjects = Union[K8sObject, Iterable[K8sObject]]

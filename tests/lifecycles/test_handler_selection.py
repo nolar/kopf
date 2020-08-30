@@ -1,7 +1,7 @@
 import pytest
 
 import kopf
-from kopf.storage.states import State, HandlerOutcome
+from kopf.storage.states import HandlerOutcome, State
 
 
 @pytest.mark.parametrize('lifecycle', [

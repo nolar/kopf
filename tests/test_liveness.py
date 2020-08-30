@@ -5,7 +5,7 @@ import pytest
 
 from kopf.engines.probing import health_reporter
 from kopf.reactor.registries import OperatorRegistry
-from kopf.structs.handlers import ActivityHandler, Activity
+from kopf.structs.handlers import Activity, ActivityHandler
 
 
 @pytest.fixture()

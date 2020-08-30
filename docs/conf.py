@@ -1,6 +1,7 @@
 # Configuration file for the Sphinx documentation builder.
 # http://www.sphinx-doc.org/en/master/config
 import os
+
 import docutils.nodes
 
 ###############################################################################
