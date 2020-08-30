@@ -21,6 +21,7 @@ all the modules, of which the reactor's core consists.
 import asyncio
 import collections
 import datetime
+import logging
 from typing import Collection, Optional, Union
 
 from kopf.clients import patching
@@ -47,10 +48,8 @@ async def apply(
     if patch:  # TODO: LATER: and the dummies are there (without additional methods?)
         settings.persistence.progress_storage.touch(body=body, patch=patch, value=None)
 
-    # Actually patch if it contained payload originally or after dummies removal.
-    if patch:
-        logger.debug("Patching with: %r", patch)
-        await patching.patch_obj(resource=resource, patch=patch, body=body)
+    # Actually patch if it was not empty originally or after the dummies removal.
+    await patch_and_check(resource=resource, patch=patch, body=body, logger=logger)
 
     # Sleep strictly after patching, never before -- to keep the status proper.
     # The patching above, if done, interrupts the sleep instantly, so we skip it at all.
@@ -78,11 +77,21 @@ async def apply(
         else:
             # Any unique always-changing value will work; not necessary a timestamp.
             value = datetime.datetime.utcnow().isoformat()
-            touch_patch = patches.Patch()
-            settings.persistence.progress_storage.touch(body=body, patch=touch_patch, value=value)
-            if touch_patch:
-                logger.debug("Provoking reaction with: %r", touch_patch)
-                await patching.patch_obj(resource=resource, patch=touch_patch, body=body)
+            touch = patches.Patch()
+            settings.persistence.progress_storage.touch(body=body, patch=touch, value=value)
+            await patch_and_check(resource=resource, patch=touch, body=body, logger=logger)
+
+
+async def patch_and_check(
+        *,
+        resource: resources.Resource,
+        body: bodies.Body,
+        patch: patches.Patch,
+        logger: Union[logging.Logger, logging.LoggerAdapter],
+) -> None:
+    if patch:
+        logger.debug(f"Patching with: {patch!r}")
+        await patching.patch_obj(resource=resource, patch=patch, body=body)
 
 
 async def sleep_or_wait(

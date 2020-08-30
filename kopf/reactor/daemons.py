@@ -25,7 +25,6 @@ import time
 import warnings
 from typing import Collection, List, Mapping, MutableMapping, Sequence
 
-from kopf.clients import patching
 from kopf.engines import loggers
 from kopf.reactor import causation, effects, handling, lifecycles
 from kopf.storage import states
@@ -386,11 +385,8 @@ async def _resource_daemon(
         )
         state = state.with_outcomes(outcomes)
         states.deliver_results(outcomes=outcomes, patch=patch)
-
-        if patch:
-            logger.debug(f"Patching with: {patch!r}")
-            await patching.patch_obj(resource=resource, patch=patch, body=body)
-            patch.clear()
+        await effects.patch_and_check(resource=resource, patch=patch, body=body, logger=logger)
+        patch.clear()
 
         # The in-memory sleep does not react to resource changes, but only to stopping.
         if state.delay:
@@ -470,12 +466,8 @@ async def _resource_timer(
         )
         state = state.with_outcomes(outcomes)
         states.deliver_results(outcomes=outcomes, patch=patch)
-
-        # Apply the accumulated patches after every invocation attempt (regardless of its outcome).
-        if patch:
-            logger.debug(f"Patching with: {patch!r}")
-            await patching.patch_obj(resource=resource, patch=patch, body=body)
-            patch.clear()
+        await effects.patch_and_check(resource=resource, patch=patch, body=body, logger=logger)
+        patch.clear()
 
         # For temporary errors, override the schedule by the one provided by errors themselves.
         # It can be either a delay from TemporaryError, or a backoff for an arbitrary exception.
