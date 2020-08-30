@@ -6,8 +6,9 @@ import freezegun
 import pytest
 
 import kopf
+from kopf.reactor.effects import WAITING_KEEPALIVE_INTERVAL
 from kopf.reactor.handling import TemporaryError
-from kopf.reactor.processing import WAITING_KEEPALIVE_INTERVAL, process_resource_event
+from kopf.reactor.processing import process_resource_event
 from kopf.storage.states import HandlerState
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.handlers import HANDLER_REASONS, Reason

@@ -13,7 +13,7 @@ import logging
 from contextvars import ContextVar
 from typing import Any, Collection, Iterable, Mapping, MutableMapping, Optional, Set, Union
 
-from kopf.engines import logging as logging_engine
+from kopf.engines import loggers
 from kopf.reactor import causation, invocation, lifecycles, registries
 from kopf.storage import states
 from kopf.structs import callbacks, configuration, dicts, diffs, handlers as handlers_
@@ -242,7 +242,7 @@ async def execute_handler_once(
     # Prevent successes/failures from posting k8s-events for resource-watching causes.
     logger: Union[logging.Logger, logging.LoggerAdapter]
     if isinstance(cause, causation.ResourceWatchingCause):
-        logger = logging_engine.LocalObjectLogger(body=cause.body, settings=settings)
+        logger = loggers.LocalObjectLogger(body=cause.body, settings=settings)
     else:
         logger = cause.logger
 

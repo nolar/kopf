@@ -18,7 +18,7 @@ from kopf.config import (
     EventsConfig,  # deprecated
     WorkersConfig,  # deprecated
 )
-from kopf.engines.logging import (
+from kopf.engines.loggers import (
     configure,
     ObjectLogger,
     LocalObjectLogger,
