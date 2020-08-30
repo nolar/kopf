@@ -11,7 +11,7 @@ import asyncio
 import collections.abc
 import logging
 from contextvars import ContextVar
-from typing import Optional, Union, Iterable, Collection, Mapping, MutableMapping, Any
+from typing import Optional, Union, Iterable, Collection, Mapping, MutableMapping, Any, Set
 
 from kopf.engines import logging as logging_engine
 from kopf.reactor import causation
@@ -63,6 +63,7 @@ sublifecycle_var: ContextVar[Optional[lifecycles.LifeCycleFn]] = ContextVar('sub
 subregistry_var: ContextVar[registries.ResourceChangingRegistry] = ContextVar('subregistry_var')
 subsettings_var: ContextVar[configuration.OperatorSettings] = ContextVar('subsettings_var')
 subexecuted_var: ContextVar[bool] = ContextVar('subexecuted_var')
+subrefs_var: ContextVar[Iterable[Set[handlers_.HandlerId]]] = ContextVar('subrefs_var')
 handler_var: ContextVar[handlers_.BaseHandler] = ContextVar('handler_var')
 cause_var: ContextVar[causation.BaseCause] = ContextVar('cause_var')
 
@@ -170,6 +171,13 @@ async def execute(
     state.store(body=cause.body, patch=cause.patch, storage=storage)
     states.deliver_results(outcomes=outcomes, patch=cause.patch)
 
+    # Enrich all parents with references to sub-handlers of any level deep (sub-sub-handlers, etc).
+    # There is at least one container, as this function can be called only from a handler.
+    subrefs_containers: Iterable[Set[handlers_.HandlerId]] = subrefs_var.get()
+    for key in state:
+        for subrefs_container in subrefs_containers:
+            subrefs_container.add(key)
+
     # Escalate `HandlerChildrenRetry` if the execute should be continued on the next iteration.
     if not state.done:
         raise HandlerChildrenRetry(delay=state.delay)
@@ -246,6 +254,9 @@ async def execute_handler_once(
     else:
         logger = cause.logger
 
+    # Mutable accumulator for all the sub-handlers of any level deep; populated in `kopf.execute`.
+    subrefs: Set[handlers_.HandlerId] = set()
+
     # The exceptions are handled locally and are not re-raised, to keep the operator running.
     try:
         logger.debug(f"{handler} is invoked.")
@@ -264,6 +275,7 @@ async def execute_handler_once(
             runtime=state.runtime,
             settings=settings,
             lifecycle=lifecycle,  # just a default for the sub-handlers, not used directly.
+            subrefs=subrefs,
         )
 
     # The cancellations are an excepted way of stopping the handler. Especially for daemons.
@@ -274,36 +286,36 @@ async def execute_handler_once(
     # Unfinished children cause the regular retry, but with less logging and event reporting.
     except HandlerChildrenRetry as e:
         logger.debug(f"{handler} has unfinished sub-handlers. Will retry soon.")
-        return states.HandlerOutcome(final=False, exception=e, delay=e.delay)
+        return states.HandlerOutcome(final=False, exception=e, delay=e.delay, subrefs=subrefs)
 
     # Definitely a temporary error, regardless of the error strictness.
     except TemporaryError as e:
         logger.error(f"{handler} failed temporarily: %s", str(e) or repr(e))
-        return states.HandlerOutcome(final=False, exception=e, delay=e.delay)
+        return states.HandlerOutcome(final=False, exception=e, delay=e.delay, subrefs=subrefs)
 
     # Same as permanent errors below, but with better logging for our internal cases.
     except HandlerTimeoutError as e:
         logger.error(f"%s", str(e) or repr(e))  # already formatted
-        return states.HandlerOutcome(final=True, exception=e)
+        return states.HandlerOutcome(final=True, exception=e, subrefs=subrefs)
         # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
     # Definitely a permanent error, regardless of the error strictness.
     except PermanentError as e:
         logger.error(f"{handler} failed permanently: %s", str(e) or repr(e))
-        return states.HandlerOutcome(final=True, exception=e)
+        return states.HandlerOutcome(final=True, exception=e, subrefs=subrefs)
         # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
     # Regular errors behave as either temporary or permanent depending on the error strictness.
     except Exception as e:
         if errors_mode == handlers_.ErrorsMode.IGNORED:
             logger.exception(f"{handler} failed with an exception. Will ignore.")
-            return states.HandlerOutcome(final=True)
+            return states.HandlerOutcome(final=True, subrefs=subrefs)
         elif errors_mode == handlers_.ErrorsMode.TEMPORARY:
             logger.exception(f"{handler} failed with an exception. Will retry.")
-            return states.HandlerOutcome(final=False, exception=e, delay=backoff)
+            return states.HandlerOutcome(final=False, exception=e, delay=backoff, subrefs=subrefs)
         elif errors_mode == handlers_.ErrorsMode.PERMANENT:
             logger.exception(f"{handler} failed with an exception. Will stop.")
-            return states.HandlerOutcome(final=True, exception=e)
+            return states.HandlerOutcome(final=True, exception=e, subrefs=subrefs)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?
         else:
             raise RuntimeError(f"Unknown mode for errors: {errors_mode!r}")
@@ -311,7 +323,7 @@ async def execute_handler_once(
     # No errors means the handler should be excluded from future runs in this reaction cycle.
     else:
         logger.info(f"{handler} succeeded.")
-        return states.HandlerOutcome(final=True, result=result)
+        return states.HandlerOutcome(final=True, result=result, subrefs=subrefs)
 
 
 async def invoke_handler(
@@ -320,6 +332,7 @@ async def invoke_handler(
         cause: causation.BaseCause,
         settings: configuration.OperatorSettings,
         lifecycle: Optional[lifecycles.LifeCycleFn],
+        subrefs: Set[handlers_.HandlerId],
         **kwargs: Any,
 ) -> Optional[callbacks.Result]:
     """
@@ -350,6 +363,7 @@ async def invoke_handler(
         (subregistry_var, registries.ResourceChangingRegistry()),
         (subsettings_var, settings),
         (subexecuted_var, False),
+        (subrefs_var, list(subrefs_var.get([])) + [subrefs]),
         (handler_var, handler),
         (cause_var, cause),
     ]):

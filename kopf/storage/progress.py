@@ -62,6 +62,7 @@ class ProgressRecord(TypedDict, total=True):
     success: Optional[bool]
     failure: Optional[bool]
     message: Optional[str]
+    subrefs: Optional[Collection[handlers.HandlerId]]
 
 
 class ProgressStorage(metaclass=abc.ABCMeta):

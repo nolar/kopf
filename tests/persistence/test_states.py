@@ -250,6 +250,40 @@ def test_set_retry_time(storage, handler, expected_retries, expected_delayed, bo
     assert body == origbody  # not modified
 
 
+def test_subrefs_added_to_empty_state(storage, handler):
+    body = {}
+    patch = Patch()
+    outcome_subrefs = ['sub2/b', 'sub2/a', 'sub2', 'sub1', 'sub3']
+    expected_subrefs = ['sub1', 'sub2', 'sub2/a', 'sub2/b', 'sub3']
+    outcome = HandlerOutcome(final=True, subrefs=outcome_subrefs)
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    state = state.with_outcomes(outcomes={handler.id: outcome})
+    state.store(patch=patch, body=Body(body), storage=storage)
+    assert patch['status']['kopf']['progress']['some-id']['subrefs'] == expected_subrefs
+
+
+def test_subrefs_added_to_preexisting_subrefs(storage, handler):
+    body = {'status': {'kopf': {'progress': {'some-id': {'subrefs': ['sub9/2', 'sub9/1']}}}}}
+    patch = Patch()
+    outcome_subrefs = ['sub2/b', 'sub2/a', 'sub2', 'sub1', 'sub3']
+    expected_subrefs = ['sub1', 'sub2', 'sub2/a', 'sub2/b', 'sub3', 'sub9/1', 'sub9/2']
+    outcome = HandlerOutcome(final=True, subrefs=outcome_subrefs)
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    state = state.with_outcomes(outcomes={handler.id: outcome})
+    state.store(patch=patch, body=Body(body), storage=storage)
+    assert patch['status']['kopf']['progress']['some-id']['subrefs'] == expected_subrefs
+
+
+def test_subrefs_ignored_when_not_specified(storage, handler):
+    body = {}
+    patch = Patch()
+    outcome = HandlerOutcome(final=True, subrefs=[])
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    state = state.with_outcomes(outcomes={handler.id: outcome})
+    state.store(patch=patch, body=Body(body), storage=storage)
+    assert patch['status']['kopf']['progress']['some-id']['subrefs'] is None
+
+
 @pytest.mark.parametrize('expected_retries, expected_stopped, body', [
     (1, TS0_ISO, {}),
     (6, TS0_ISO, {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}),
@@ -329,3 +363,21 @@ def test_purge_progress_when_already_empty_in_body_but_not_in__patch(storage, ha
     state.purge(patch=patch, body=Body(body), storage=storage)
     assert not patch
     assert body == origbody  # not modified
+
+
+def test_purge_progress_cascades_to_subrefs(storage, handler):
+    body = {'status': {'kopf': {'progress': {
+        'some-id': {'subrefs': ['sub1', 'sub2', 'sub3']},
+        'sub1': {},
+        'sub2': {},
+        # 'sub3' is intentionally absent -- should not be purged as already non-existent.
+        'sub-unrelated': {},  # should be ignored, as not related to the involved handlers.
+    }}}}
+    patch = Patch()
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    state.purge(patch=patch, body=Body(body), storage=storage)
+    assert patch == {'status': {'kopf': {'progress': {
+        'some-id': None,
+        'sub1': None,
+        'sub2': None,
+    }}}}
