@@ -665,19 +665,6 @@ def test_field_same_as_diff(cause_with_diff, registry, resource):
     assert handlers
 
 
-def test_field_longer_than_diff(cause_with_diff, registry, resource):
-
-    @kopf.on.field(resource.group, resource.version, resource.plural, registry=registry,
-                   field='level1.level2.level3')
-    def some_fn(**_): ...
-
-    cause = cause_with_diff
-    cause.reason = Reason.UPDATE
-    cause.diff = [DiffItem(DiffOperation.CHANGE, ('level1', 'level2'), 'old', 'new')]
-    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
-    assert handlers
-
-
 def test_field_shorter_than_diff(cause_with_diff, registry, resource):
 
     @kopf.on.field(resource.group, resource.version, resource.plural, registry=registry,
@@ -687,6 +674,41 @@ def test_field_shorter_than_diff(cause_with_diff, registry, resource):
     cause = cause_with_diff
     cause.reason = Reason.UPDATE
     cause.diff = [DiffItem(DiffOperation.CHANGE, ('level1', 'level2'), 'old', 'new')]
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
+    assert handlers
+
+
+def test_field_longer_than_diff_for_wrong_field(cause_with_diff, registry, resource):
+
+    @kopf.on.field(resource.group, resource.version, resource.plural, registry=registry,
+                   field='level1.level2.level3')
+    def some_fn(**_): ...
+
+    cause = cause_with_diff
+    cause.reason = Reason.UPDATE
+    cause.diff = [DiffItem(DiffOperation.CHANGE, ('level1', 'level2'), 'old', 'new')]
+    handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
+    assert not handlers
+
+
+@pytest.mark.parametrize('old, new', [
+    pytest.param({'level3': 'old'}, {'level3': 'new'}, id='struct2struct'),
+    pytest.param({'level3': 'old'}, 'new', id='struct2scalar'),
+    pytest.param('old', {'level3': 'new'}, id='scalar2struct'),
+    pytest.param(None, {'level3': 'new'}, id='none2struct'),
+    pytest.param({'level3': 'old'}, None, id='struct2none'),
+    pytest.param({}, {'level3': 'new'}, id='empty2struct'),
+    pytest.param({'level3': 'old'}, {}, id='struct2empty'),
+])
+def test_field_longer_than_diff_for_right_field(cause_with_diff, registry, resource, old, new):
+
+    @kopf.on.field(resource.group, resource.version, resource.plural, registry=registry,
+                   field='level1.level2.level3')
+    def some_fn(**_): ...
+
+    cause = cause_with_diff
+    cause.reason = Reason.UPDATE
+    cause.diff = [DiffItem(DiffOperation.CHANGE, ('level1', 'level2'), old, new)]
     handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert handlers
 
