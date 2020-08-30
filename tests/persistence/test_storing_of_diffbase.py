@@ -46,8 +46,8 @@ ESSENCE_DATA_2 = BodyEssence(
     },
 )
 
-ESSENCE_JSON_1 = json.dumps(ESSENCE_DATA_1)  # the same serialisation for all environments
-ESSENCE_JSON_2 = json.dumps(ESSENCE_DATA_2)  # the same serialisation for all environments
+ESSENCE_JSON_1 = json.dumps(ESSENCE_DATA_1, separators=(',', ':'))
+ESSENCE_JSON_2 = json.dumps(ESSENCE_DATA_2, separators=(',', ':'))
 
 
 #
@@ -89,11 +89,19 @@ def test_fetching_from_empty_body_returns_none(
 #
 
 
+@pytest.mark.parametrize('suffix', [
+    pytest.param('', id='no-suffix'),
+    pytest.param('\n', id='newline-suffix'),
+])
+@pytest.mark.parametrize('prefix', [
+    pytest.param('', id='no-prefix'),
+    pytest.param('\n', id='newline-prefix'),
+])
 @pytest.mark.parametrize('cls', ANNOTATIONS_POPULATING_STORAGES)
-def test_fetching_from_annotations_storage(cls):
+def test_fetching_from_annotations_storage(cls, prefix, suffix):
     storage = cls(name='my-operator.example.com/diff-base')
     body = Body({'metadata': {'annotations': {
-        'my-operator.example.com/diff-base': ESSENCE_JSON_1,
+        'my-operator.example.com/diff-base': prefix + ESSENCE_JSON_1 + suffix,
     }}})
     content = storage.fetch(body=body)
 
@@ -108,7 +116,9 @@ def test_storing_to_annotations_storage_populates_keys(cls):
     storage.store(body=body, patch=patch, essence=ESSENCE_DATA_1)
 
     assert patch
-    assert patch['metadata']['annotations']['my-operator.example.com/diff-base'] == ESSENCE_JSON_1
+    assert patch.meta.annotations['my-operator.example.com/diff-base'][0] != '\n'
+    assert patch.meta.annotations['my-operator.example.com/diff-base'][-1] == '\n'
+    assert patch.meta.annotations['my-operator.example.com/diff-base'].strip() == ESSENCE_JSON_1
 
 
 @pytest.mark.parametrize('cls', ANNOTATIONS_POPULATING_STORAGES)
@@ -120,7 +130,9 @@ def test_storing_to_annotations_storage_overwrites_old_content(cls):
     storage.store(body=body, patch=patch, essence=ESSENCE_DATA_2)
 
     assert patch
-    assert patch['metadata']['annotations']['my-operator.example.com/diff-base'] == ESSENCE_JSON_2
+    assert patch.meta.annotations['my-operator.example.com/diff-base'][0] != '\n'
+    assert patch.meta.annotations['my-operator.example.com/diff-base'][-1] == '\n'
+    assert patch.meta.annotations['my-operator.example.com/diff-base'].strip() == ESSENCE_JSON_2
 
 
 #
@@ -128,10 +140,18 @@ def test_storing_to_annotations_storage_overwrites_old_content(cls):
 #
 
 
+@pytest.mark.parametrize('suffix', [
+    pytest.param('', id='no-suffix'),
+    pytest.param('\n', id='newline-suffix'),
+])
+@pytest.mark.parametrize('prefix', [
+    pytest.param('', id='no-prefix'),
+    pytest.param('\n', id='newline-prefix'),
+])
 @pytest.mark.parametrize('cls', STATUS_POPULATING_STORAGES)
-def test_fetching_from_status_storage(cls):
+def test_fetching_from_status_storage(cls, prefix, suffix):
     storage = cls(field='status.my-operator.diff-base')
-    body = Body({'status': {'my-operator': {'diff-base': ESSENCE_JSON_1}}})
+    body = Body({'status': {'my-operator': {'diff-base': prefix + ESSENCE_JSON_1 + suffix}}})
     content = storage.fetch(body=body)
 
     assert content == ESSENCE_DATA_1
@@ -145,7 +165,9 @@ def test_storing_to_status_storage_populates_keys(cls):
     storage.store(body=body, patch=patch, essence=ESSENCE_DATA_1)
 
     assert patch
-    assert patch['status']['my-operator']['diff-base'] == ESSENCE_JSON_1
+    assert patch.status['my-operator']['diff-base'][0] != '\n'
+    assert patch.status['my-operator']['diff-base'][-1] != '\n'
+    assert patch.status['my-operator']['diff-base'] == ESSENCE_JSON_1
 
 
 @pytest.mark.parametrize('cls', STATUS_POPULATING_STORAGES)
@@ -158,4 +180,6 @@ def test_storing_to_status_storage_overwrites_old_content(
     storage.store(body=body, patch=patch, essence=ESSENCE_DATA_2)
 
     assert patch
-    assert patch['status']['my-operator']['diff-base'] == ESSENCE_JSON_2
+    assert patch.status['my-operator']['diff-base'][0] != '\n'
+    assert patch.status['my-operator']['diff-base'][-1] != '\n'
+    assert patch.status['my-operator']['diff-base'] == ESSENCE_JSON_2

@@ -13,9 +13,9 @@ FINALIZER = 'fin'
 
 # Encoded at runtime, so that we do not make any assumptions on json formatting.
 SPEC_DATA = {'spec': {'field': 'value'}}
-SPEC_JSON = json.dumps((SPEC_DATA))
+SPEC_JSON = json.dumps(SPEC_DATA, separators=(',', ':'))
 ALT_DATA = {'spec': {'field': 'other'}}
-ALT_JSON = json.dumps((ALT_DATA))
+ALT_JSON = json.dumps(ALT_DATA, separators=(',', ':'))
 
 #
 # The following factors contribute to the detection of the cause

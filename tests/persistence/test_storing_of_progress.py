@@ -35,8 +35,8 @@ CONTENT_DATA_2 = ProgressRecord(
     message="Some error.",
 )
 
-CONTENT_JSON_1 = json.dumps(CONTENT_DATA_1)  # the same serialisation for all environments
-CONTENT_JSON_2 = json.dumps(CONTENT_DATA_2)  # the same serialisation for all environments
+CONTENT_JSON_1 = json.dumps(CONTENT_DATA_1, separators=(',', ':'))
+CONTENT_JSON_2 = json.dumps(CONTENT_DATA_2, separators=(',', ':'))
 
 
 #
