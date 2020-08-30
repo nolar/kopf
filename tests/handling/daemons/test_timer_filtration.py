@@ -4,7 +4,6 @@ import pytest
 
 import kopf
 
-
 # We assume that the handler filtering is tested in details elsewhere (for all handlers).
 # Here, we only test if it is applied or not applied.
 

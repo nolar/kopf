@@ -55,6 +55,10 @@ script:
   - pytest --only-e2e  # NB: after the coverage uploads!
   - mypy kopf --strict --pretty
 
+  # Currently, code linting is optional and performed manually from time to time.
+  - isort . --check --diff || true
+  - isort examples --settings=examples --check --diff || true
+
 deploy:
   provider: pypi
   username: "__token__"

@@ -43,14 +43,11 @@ import base64
 import copy
 import hashlib
 import json
-from typing import Optional, Collection, Mapping, Dict, Union, Any, cast
+from typing import Any, Collection, Dict, Mapping, Optional, Union, cast
 
 from typing_extensions import TypedDict
 
-from kopf.structs import bodies
-from kopf.structs import dicts
-from kopf.structs import handlers
-from kopf.structs import patches
+from kopf.structs import bodies, dicts, handlers, patches
 
 
 class ProgressRecord(TypedDict, total=True):

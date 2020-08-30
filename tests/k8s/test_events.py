@@ -1,8 +1,8 @@
 import aiohttp.web
 import pytest
 
+from kopf.clients.events import EVENTS_CORE_V1_CRD, EVENTS_V1BETA1_CRD, post_event
 from kopf.structs.bodies import build_object_reference
-from kopf.clients.events import post_event, EVENTS_V1BETA1_CRD, EVENTS_CORE_V1_CRD
 
 
 async def test_posting(

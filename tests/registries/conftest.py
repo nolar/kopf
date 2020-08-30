@@ -2,10 +2,11 @@ import logging
 
 import pytest
 
-from kopf import SimpleRegistry, GlobalRegistry  # deprecated, but tested
-from kopf.reactor.causation import ActivityCause, ResourceCause, ResourceWatchingCause, ResourceChangingCause
-from kopf.reactor.registries import ResourceRegistry, ActivityRegistry, OperatorRegistry
-from kopf.reactor.registries import ResourceWatchingRegistry, ResourceChangingRegistry
+from kopf import GlobalRegistry, SimpleRegistry  # deprecated, but tested
+from kopf.reactor.causation import (ActivityCause, ResourceCause,
+                                    ResourceChangingCause, ResourceWatchingCause)
+from kopf.reactor.registries import (ActivityRegistry, OperatorRegistry, ResourceChangingRegistry,
+                                     ResourceRegistry, ResourceWatchingRegistry)
 from kopf.structs.bodies import Body
 from kopf.structs.containers import Memo
 from kopf.structs.diffs import Diff, DiffItem

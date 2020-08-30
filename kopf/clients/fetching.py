@@ -1,12 +1,10 @@
 import enum
-from typing import TypeVar, Optional, Union, Collection, List, Tuple, cast
+from typing import Collection, List, Optional, Tuple, TypeVar, Union, cast
 
 import aiohttp
 
-from kopf.clients import auth
-from kopf.clients import discovery
-from kopf.structs import bodies
-from kopf.structs import resources
+from kopf.clients import auth, discovery
+from kopf.structs import bodies, resources
 
 _T = TypeVar('_T')
 

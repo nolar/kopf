@@ -1,4 +1,5 @@
 import asynctest
+
 from kopf.clients.watching import _iter_jsonlines
 
 

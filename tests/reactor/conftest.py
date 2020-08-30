@@ -6,8 +6,7 @@ import pytest
 from asynctest import CoroutineMock
 
 from kopf.clients.watching import streaming_watch
-from kopf.reactor.queueing import watcher
-from kopf.reactor.queueing import worker as original_worker
+from kopf.reactor.queueing import watcher, worker as original_worker
 from kopf.structs.configuration import OperatorSettings
 
 

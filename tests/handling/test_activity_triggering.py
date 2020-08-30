@@ -8,7 +8,7 @@ from kopf.reactor.handling import PermanentError, TemporaryError
 from kopf.reactor.lifecycles import all_at_once
 from kopf.reactor.registries import OperatorRegistry
 from kopf.storage.states import HandlerOutcome
-from kopf.structs.handlers import HandlerId, ActivityHandler, Activity
+from kopf.structs.handlers import Activity, ActivityHandler, HandlerId
 
 
 def test_activity_error_exception():

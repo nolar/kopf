@@ -6,7 +6,7 @@ import kopf
 from kopf.reactor.causation import ResourceChangingCause, ResourceWatchingCause
 from kopf.reactor.handling import cause_var
 from kopf.reactor.invocation import context
-from kopf.structs.bodies import RawBody, RawMeta, RawEvent, Body
+from kopf.structs.bodies import Body, RawBody, RawEvent, RawMeta
 from kopf.structs.containers import Memo
 from kopf.structs.handlers import Reason
 from kopf.structs.patches import Patch

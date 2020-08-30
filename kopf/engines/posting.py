@@ -18,12 +18,10 @@ import asyncio
 import logging
 import sys
 from contextvars import ContextVar
-from typing import NamedTuple, NoReturn, Optional, Union, Iterator, Iterable, cast, TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterable, Iterator, NamedTuple, NoReturn, Optional, Union, cast
 
 from kopf.clients import events
-from kopf.structs import bodies
-from kopf.structs import configuration
-from kopf.structs import dicts
+from kopf.structs import bodies, configuration, dicts
 
 if TYPE_CHECKING:
     K8sEventQueue = asyncio.Queue["K8sEvent"]

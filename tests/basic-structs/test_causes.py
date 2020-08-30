@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.reactor.causation import ActivityCause, ResourceWatchingCause, ResourceChangingCause
+from kopf.reactor.causation import ActivityCause, ResourceChangingCause, ResourceWatchingCause
 
 
 @pytest.mark.parametrize('cls', [ActivityCause, ResourceWatchingCause, ResourceChangingCause])

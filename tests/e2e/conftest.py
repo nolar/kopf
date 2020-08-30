@@ -1,7 +1,5 @@
 import glob
 import os.path
-import re
-
 import pathlib
 import subprocess
 

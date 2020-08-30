@@ -22,17 +22,11 @@ could execute on the yet-existing object (and its children, if created).
 import dataclasses
 import logging
 import warnings
-from typing import Any, Optional, Union, TypeVar
+from typing import Any, Optional, TypeVar, Union
 
 from kopf.storage import finalizers
-from kopf.structs import bodies
-from kopf.structs import configuration
-from kopf.structs import containers
-from kopf.structs import diffs
-from kopf.structs import handlers
-from kopf.structs import patches
-from kopf.structs import primitives
-from kopf.structs import resources
+from kopf.structs import (bodies, configuration, containers, diffs,
+                          handlers, patches, primitives, resources)
 
 
 @dataclasses.dataclass

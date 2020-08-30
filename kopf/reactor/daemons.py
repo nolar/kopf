@@ -23,20 +23,13 @@ of the daemons, and they are not actually "hung".
 import asyncio
 import time
 import warnings
-from typing import MutableMapping, Mapping, Sequence, Collection, List
+from typing import Collection, List, Mapping, MutableMapping, Sequence
 
 from kopf.clients import patching
-from kopf.engines import logging as logging_engine
-from kopf.engines import sleeping
-from kopf.reactor import causation
-from kopf.reactor import handling
-from kopf.reactor import lifecycles
+from kopf.engines import logging as logging_engine, sleeping
+from kopf.reactor import causation, handling, lifecycles
 from kopf.storage import states
-from kopf.structs import configuration
-from kopf.structs import containers
-from kopf.structs import handlers as handlers_
-from kopf.structs import patches
-from kopf.structs import primitives
+from kopf.structs import configuration, containers, handlers as handlers_, patches, primitives
 
 
 async def spawn_resource_daemons(

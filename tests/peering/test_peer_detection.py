@@ -2,11 +2,8 @@ import re
 
 import pytest
 
-from kopf.engines.peering import (
-    Peer, PEERING_DEFAULT_NAME,
-    CLUSTER_PEERING_RESOURCE, NAMESPACED_PEERING_RESOURCE,
-)
-
+from kopf.engines.peering import (CLUSTER_PEERING_RESOURCE, NAMESPACED_PEERING_RESOURCE,
+                                  PEERING_DEFAULT_NAME, Peer)
 
 # Note: the legacy peering is intentionally not tested: it was long time before
 # these tests were written, so it does not make sense to keep it stable.

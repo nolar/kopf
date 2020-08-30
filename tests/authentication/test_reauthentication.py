@@ -1,4 +1,4 @@
-from typing import Optional, AsyncIterator, Tuple
+from typing import AsyncIterator, Optional, Tuple
 
 import aiohttp.web
 

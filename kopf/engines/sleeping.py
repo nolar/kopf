@@ -3,7 +3,7 @@ Advanced modes of sleeping.
 """
 import asyncio
 import collections
-from typing import Optional, Collection, Union
+from typing import Collection, Optional, Union
 
 from kopf.structs import primitives
 

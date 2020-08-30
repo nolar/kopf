@@ -13,16 +13,10 @@ This module is a part of the framework's public interface.
 # TODO: add cluster=True support (different API methods)
 import inspect
 import warnings
+from typing import Any, Callable, Optional
 
-from typing import Optional, Callable, Any
-
-from kopf.reactor import handling
-from kopf.reactor import registries
-from kopf.structs import callbacks
-from kopf.structs import dicts
-from kopf.structs import filters
-from kopf.structs import handlers
-from kopf.structs import resources
+from kopf.reactor import handling, registries
+from kopf.structs import callbacks, dicts, filters, handlers, resources
 
 ActivityDecorator = Callable[[callbacks.ActivityFn], callbacks.ActivityFn]
 ResourceWatchingDecorator = Callable[[callbacks.ResourceWatchingFn], callbacks.ResourceWatchingFn]

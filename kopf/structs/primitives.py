@@ -6,8 +6,7 @@ import concurrent.futures
 import enum
 import threading
 import time
-from typing import Optional, Union, Any, TYPE_CHECKING
-
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 if TYPE_CHECKING:
     asyncio_Future = asyncio.Future[Any]

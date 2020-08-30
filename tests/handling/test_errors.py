@@ -7,7 +7,7 @@ import kopf
 from kopf.reactor.handling import PermanentError, TemporaryError
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
-from kopf.structs.handlers import Reason, HANDLER_REASONS
+from kopf.structs.handlers import HANDLER_REASONS, Reason
 
 
 # The extrahandlers are needed to prevent the cycle ending and status purging.

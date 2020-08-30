@@ -16,18 +16,11 @@ import collections
 import functools
 import warnings
 from types import FunctionType, MethodType
-from typing import (Any, MutableMapping, Optional, Sequence, Iterable, Iterator,
-                    List, Set, FrozenSet, Mapping, Callable, cast, Generic, TypeVar, Union,
-                    Container)
+from typing import (Any, Callable, Container, FrozenSet, Generic, Iterable, Iterator, List,
+                    Mapping, MutableMapping, Optional, Sequence, Set, TypeVar, Union, cast)
 
-from kopf.reactor import causation
-from kopf.reactor import invocation
-from kopf.structs import callbacks
-from kopf.structs import dicts
-from kopf.structs import diffs
-from kopf.structs import filters
-from kopf.structs import handlers
-from kopf.structs import resources as resources_
+from kopf.reactor import causation, invocation
+from kopf.structs import callbacks, dicts, diffs, filters, handlers, resources as resources_
 from kopf.utilities import piggybacking
 
 # We only type-check for known classes of handlers/callbacks, and ignore any custom subclasses.

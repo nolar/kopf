@@ -11,20 +11,12 @@ import asyncio
 import collections.abc
 import logging
 from contextvars import ContextVar
-from typing import Optional, Union, Iterable, Collection, Mapping, MutableMapping, Any, Set
+from typing import Any, Collection, Iterable, Mapping, MutableMapping, Optional, Set, Union
 
 from kopf.engines import logging as logging_engine
-from kopf.reactor import causation
-from kopf.reactor import invocation
-from kopf.reactor import lifecycles
-from kopf.reactor import registries
+from kopf.reactor import causation, invocation, lifecycles, registries
 from kopf.storage import states
-from kopf.structs import callbacks
-from kopf.structs import configuration
-from kopf.structs import dicts
-from kopf.structs import diffs
-from kopf.structs import handlers as handlers_
-
+from kopf.structs import callbacks, configuration, dicts, diffs, handlers as handlers_
 
 DEFAULT_RETRY_DELAY = 1 * 60
 """ The default delay duration for the regular exception in retry-mode. """

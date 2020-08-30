@@ -11,11 +11,10 @@ the operators' code, and can lead to information loss or mismatch
 import asyncio
 import copy
 import logging
-from typing import Tuple, MutableMapping, Any, Optional
+from typing import Any, MutableMapping, Optional, Tuple
 
 from kopf.engines import posting
-from kopf.structs import bodies
-from kopf.structs import configuration
+from kopf.structs import bodies, configuration
 
 
 class ObjectPrefixingFormatter(logging.Formatter):

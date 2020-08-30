@@ -3,7 +3,7 @@ All the functions to calculate the diffs of the dicts.
 """
 import collections.abc
 import enum
-from typing import Any, Iterator, Sequence, NamedTuple, Iterable, Union, overload
+from typing import Any, Iterable, Iterator, NamedTuple, Sequence, Union, overload
 
 from kopf.structs import dicts
 

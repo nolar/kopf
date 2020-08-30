@@ -7,10 +7,10 @@ import pytest
 
 import kopf
 from kopf.reactor.handling import TemporaryError
-from kopf.reactor.processing import process_resource_event, WAITING_KEEPALIVE_INTERVAL
+from kopf.reactor.processing import WAITING_KEEPALIVE_INTERVAL, process_resource_event
 from kopf.storage.states import HandlerState
 from kopf.structs.containers import ResourceMemories
-from kopf.structs.handlers import Reason, HANDLER_REASONS
+from kopf.structs.handlers import HANDLER_REASONS, Reason
 
 
 @pytest.mark.parametrize('cause_reason', HANDLER_REASONS)

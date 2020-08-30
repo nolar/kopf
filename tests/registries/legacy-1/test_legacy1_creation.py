@@ -1,4 +1,4 @@
-from kopf import BaseRegistry, SimpleRegistry, GlobalRegistry
+from kopf import BaseRegistry, GlobalRegistry, SimpleRegistry
 
 
 def test_creation_of_simple():

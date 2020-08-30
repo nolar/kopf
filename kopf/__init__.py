@@ -1,6 +1,7 @@
 """
 The main Kopf module for all the exported functions & classes.
 """
+# isort: skip_file
 
 # Unlike all other places, where we import other modules and refer
 # the functions via the modules, this is the framework's top-level interface,

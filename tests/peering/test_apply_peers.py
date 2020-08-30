@@ -2,8 +2,8 @@ import aiohttp.web
 import freezegun
 import pytest
 
-from kopf.engines.peering import NAMESPACED_PEERING_RESOURCE, CLUSTER_PEERING_RESOURCE
-from kopf.engines.peering import Peer, apply_peers
+from kopf.engines.peering import (CLUSTER_PEERING_RESOURCE,
+                                  NAMESPACED_PEERING_RESOURCE, Peer, apply_peers)
 
 
 @pytest.mark.usefixtures('with_both_crds')

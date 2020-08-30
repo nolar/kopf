@@ -3,12 +3,7 @@
 """
 import warnings
 
-from kopf.engines.posting import (
-    event,
-    info,
-    warn,
-    exception,
-)
+from kopf.engines.posting import event, exception, info, warn
 
 __all__ = ['event', 'info', 'warn', 'exception']
 

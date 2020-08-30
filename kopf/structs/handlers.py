@@ -1,11 +1,9 @@
 import dataclasses
 import enum
 import warnings
-from typing import NewType, Optional, Any
+from typing import Any, NewType, Optional
 
-from kopf.structs import callbacks
-from kopf.structs import dicts
-from kopf.structs import filters
+from kopf.structs import callbacks, dicts, filters
 
 # Strings are taken from the users, but then tainted as this type for stricter type-checking:
 # to prevent usage of some other strings (e.g. operator id) as the handlers ids.

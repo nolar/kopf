@@ -15,13 +15,10 @@ import collections.abc
 import copy
 import dataclasses
 import datetime
-from typing import Any, Optional, Mapping, Dict, Collection, Iterator, overload
+from typing import Any, Collection, Dict, Iterator, Mapping, Optional, overload
 
 from kopf.storage import progress
-from kopf.structs import bodies
-from kopf.structs import callbacks
-from kopf.structs import handlers as handlers_
-from kopf.structs import patches
+from kopf.structs import bodies, callbacks, handlers as handlers_, patches
 
 
 @dataclasses.dataclass(frozen=True)

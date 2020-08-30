@@ -7,17 +7,11 @@ with an incompatible class hierarchy and method signatures.
 """
 import abc
 import warnings
-from typing import Any, Union, Sequence, Iterator, Container, Optional
+from typing import Any, Container, Iterator, Optional, Sequence, Union
 
-from kopf.reactor import causation
-from kopf.reactor import registries
-from kopf.structs import bodies
-from kopf.structs import callbacks
-from kopf.structs import dicts
-from kopf.structs import filters
-from kopf.structs import handlers
-from kopf.structs import patches
-from kopf.structs import resources as resources_
+from kopf.reactor import causation, registries
+from kopf.structs import (bodies, callbacks, dicts, filters,
+                          handlers, patches, resources as resources_)
 
 AnyCause = Union[causation.ResourceWatchingCause, causation.ResourceChangingCause]
 AnyHandler = Union[handlers.ResourceWatchingHandler, handlers.ResourceChangingHandler]

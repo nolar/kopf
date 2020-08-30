@@ -7,9 +7,9 @@ from kopf import OperatorRegistry
 from kopf.reactor.causation import ResourceChangingCause
 from kopf.structs.bodies import Body
 from kopf.structs.dicts import parse_field
-from kopf.structs.diffs import DiffOperation, DiffItem, Diff, EMPTY
+from kopf.structs.diffs import EMPTY, Diff, DiffItem, DiffOperation
 from kopf.structs.filters import MetaFilterToken
-from kopf.structs.handlers import ResourceChangingHandler, Reason, ALL_REASONS
+from kopf.structs.handlers import ALL_REASONS, Reason, ResourceChangingHandler
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.

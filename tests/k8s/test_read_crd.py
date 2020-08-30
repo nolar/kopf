@@ -1,7 +1,7 @@
 import aiohttp.web
 import pytest
 
-from kopf.clients.fetching import read_crd, CRD_CRD
+from kopf.clients.fetching import CRD_CRD, read_crd
 
 
 async def test_when_present(

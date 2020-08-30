@@ -8,7 +8,7 @@ In the future, it can be extended to a standalone object, which exposes
 a dict-like behaviour, and remembers the changes in order of their execution,
 and then generates the JSON patch (RFC 6902).
 """
-from typing import Dict, MutableMapping, Optional, Any
+from typing import Any, Dict, MutableMapping, Optional
 
 from kopf.structs import dicts
 

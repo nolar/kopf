@@ -2,8 +2,8 @@ from typing import Type
 
 import pytest
 
-from kopf.storage.diffbase import DiffBaseStorage, AnnotationsDiffBaseStorage, StatusDiffBaseStorage
-from kopf.storage.diffbase import LAST_SEEN_ANNOTATION
+from kopf.storage.diffbase import (LAST_SEEN_ANNOTATION, AnnotationsDiffBaseStorage,
+                                   DiffBaseStorage, StatusDiffBaseStorage)
 from kopf.structs.bodies import Body
 
 ALL_STORAGES = [AnnotationsDiffBaseStorage, StatusDiffBaseStorage]

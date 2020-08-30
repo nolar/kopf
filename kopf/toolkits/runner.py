@@ -3,7 +3,7 @@ import concurrent.futures
 import contextlib
 import threading
 import types
-from typing import cast, Any, Optional, Tuple, Type, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional, Tuple, Type, cast
 
 import click.testing
 from typing_extensions import Literal
