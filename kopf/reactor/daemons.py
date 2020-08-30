@@ -323,6 +323,8 @@ async def _runner(
     Note: synchronous daemons are awaited to the exit and postpone cancellation.
     The runner will not exit until the thread exits. See `invoke` for details.
     """
+    stopper = cause.stopper
+
     try:
         if isinstance(handler, handlers_.ResourceDaemonHandler):
             await _resource_daemon(settings=settings, handler=handler, cause=cause)
@@ -335,7 +337,7 @@ async def _runner(
 
         # Prevent future re-spawns for those exited on their own, for no reason.
         # Only the filter-mismatching daemons can be re-spawned on future events.
-        if cause.stopper.reason == primitives.DaemonStoppingReason.NONE:
+        if stopper.reason == primitives.DaemonStoppingReason.NONE:
             memory.forever_stopped.add(handler.id)
 
         # Save the memory by not remembering the exited daemons (they may be never re-spawned).
@@ -344,7 +346,7 @@ async def _runner(
         # Whatever happened, make sure the sync threads of asyncio threaded executor are notified:
         # in a hope that they will exit maybe some time later to free the OS/asyncio resources.
         # A possible case: operator is exiting and cancelling all "hung" non-root tasks, etc.
-        cause.stopper.set(reason=primitives.DaemonStoppingReason.DONE)
+        stopper.set(reason=primitives.DaemonStoppingReason.DONE)
 
 
 async def _resource_daemon(
@@ -362,14 +364,18 @@ async def _resource_daemon(
     Few kinds of errors are suppressed, those expected from the daemons when
     they are cancelled due to the resource deletion.
     """
+    resource = cause.resource
+    stopper = cause.stopper
     logger = cause.logger
+    patch = cause.patch
+    body = cause.body
 
     if handler.initial_delay is not None:
         await effects.sleep_or_wait(handler.initial_delay, cause.stopper)
 
     # Similar to activities (in-memory execution), but applies patches on every attempt.
     state = states.State.from_scratch(handlers=[handler])
-    while not cause.stopper.is_set() and not state.done:
+    while not stopper.is_set() and not state.done:
 
         outcomes = await handling.execute_handlers_once(
             lifecycle=lifecycles.all_at_once,  # there is only one anyway
@@ -379,18 +385,18 @@ async def _resource_daemon(
             state=state,
         )
         state = state.with_outcomes(outcomes)
-        states.deliver_results(outcomes=outcomes, patch=cause.patch)
+        states.deliver_results(outcomes=outcomes, patch=patch)
 
-        if cause.patch:
-            cause.logger.debug("Patching with: %r", cause.patch)
-            await patching.patch_obj(resource=cause.resource, patch=cause.patch, body=cause.body)
-            cause.patch.clear()
+        if patch:
+            logger.debug(f"Patching with: {patch!r}")
+            await patching.patch_obj(resource=resource, patch=patch, body=body)
+            patch.clear()
 
         # The in-memory sleep does not react to resource changes, but only to stopping.
         if state.delay:
             await effects.sleep_or_wait(state.delay, cause.stopper)
 
-    if cause.stopper.is_set():
+    if stopper.is_set():
         logger.debug(f"{handler} has exited on request and will not be retried or restarted.")
     else:
         logger.debug(f"{handler} has exited on its own and will not be retried or restarted.")
@@ -424,13 +430,18 @@ async def _resource_timer(
     It is much easier to have an extra task which mostly sleeps,
     but calls the handling functions from time to time.
     """
+    resource = cause.resource
+    stopper = cause.stopper
+    logger = cause.logger
+    patch = cause.patch
+    body = cause.body
 
     if handler.initial_delay is not None:
-        await effects.sleep_or_wait(handler.initial_delay, cause.stopper)
+        await effects.sleep_or_wait(handler.initial_delay, stopper)
 
     # Similar to activities (in-memory execution), but applies patches on every attempt.
     state = states.State.from_scratch(handlers=[handler])
-    while not cause.stopper.is_set():  # NB: ignore state.done! it is checked below explicitly.
+    while not stopper.is_set():  # NB: ignore state.done! it is checked below explicitly.
 
         # Reset success/failure retry counters & timers if it has succeeded. Keep it if failed.
         # Every next invocation of a successful handler starts the retries from scratch (from zero).
@@ -440,10 +451,10 @@ async def _resource_timer(
         # Both `now` and `last_seen_time` are moving targets: the last seen time is updated
         # on every watch-event received, and prolongs the sleep. The sleep is never shortened.
         if handler.idle is not None:
-            while not cause.stopper.is_set() and time.monotonic() - memory.idle_reset_time < handler.idle:
+            while not stopper.is_set() and time.monotonic() - memory.idle_reset_time < handler.idle:
                 delay = memory.idle_reset_time + handler.idle - time.monotonic()
-                await effects.sleep_or_wait(delay, cause.stopper)
-            if cause.stopper.is_set():
+                await effects.sleep_or_wait(delay, stopper)
+            if stopper.is_set():
                 continue
 
         # Remember the start time for the sharp timing and idle-time-waster below.
@@ -458,18 +469,18 @@ async def _resource_timer(
             state=state,
         )
         state = state.with_outcomes(outcomes)
-        states.deliver_results(outcomes=outcomes, patch=cause.patch)
+        states.deliver_results(outcomes=outcomes, patch=patch)
 
         # Apply the accumulated patches after every invocation attempt (regardless of its outcome).
-        if cause.patch:
-            cause.logger.debug("Patching with: %r", cause.patch)
-            await patching.patch_obj(resource=cause.resource, patch=cause.patch, body=cause.body)
-            cause.patch.clear()
+        if patch:
+            logger.debug(f"Patching with: {patch!r}")
+            await patching.patch_obj(resource=resource, patch=patch, body=body)
+            patch.clear()
 
         # For temporary errors, override the schedule by the one provided by errors themselves.
         # It can be either a delay from TemporaryError, or a backoff for an arbitrary exception.
         if not state.done:
-            await effects.sleep_or_wait(state.delays, cause.stopper)
+            await effects.sleep_or_wait(state.delays, stopper)
 
         # For sharp timers, calculate how much time is left to fit the interval grid:
         #       |-----|-----|-----|-----|-----|-----|---> (interval=5, sharp=True)
@@ -477,19 +488,19 @@ async def _resource_timer(
         elif handler.interval is not None and handler.sharp:
             passed_duration = time.monotonic() - started
             remaining_delay = handler.interval - (passed_duration % handler.interval)
-            await effects.sleep_or_wait(remaining_delay, cause.stopper)
+            await effects.sleep_or_wait(remaining_delay, stopper)
 
         # For regular (non-sharp) timers, simply sleep from last exit to the next call:
         #       |-----|-----|-----|-----|-----|-----|---> (interval=5, sharp=False)
         #       [slow_handler].....[slow_handler].....[slow...
         elif handler.interval is not None:
-            await effects.sleep_or_wait(handler.interval, cause.stopper)
+            await effects.sleep_or_wait(handler.interval, stopper)
 
         # For idle-only no-interval timers, wait till the next change (i.e. idling reset).
         # NB: This will skip the handler in the same tact (1/64th of a second) even if changed.
         elif handler.idle is not None:
             while memory.idle_reset_time <= started:
-                await effects.sleep_or_wait(handler.idle, cause.stopper)
+                await effects.sleep_or_wait(handler.idle, stopper)
 
         # Only in case there are no intervals and idling, treat it as a one-shot handler.
         # This makes the handler practically meaningless, but technically possible.
