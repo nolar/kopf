@@ -26,10 +26,17 @@ from typing import Collection, Optional, Union
 
 from kopf.clients import patching
 from kopf.engines import loggers
-from kopf.structs import bodies, configuration, diffs, patches, primitives, resources
+from kopf.structs import bodies, configuration, dicts, diffs, patches, primitives, resources
 
 # How often to wake up from the long sleep, to show liveness in the logs.
 WAITING_KEEPALIVE_INTERVAL = 10 * 60
+
+# K8s-managed fields that are removed completely when patched to an empty list/dict.
+KNOWN_INCONSISTENCIES = (
+    dicts.parse_field('metadata.annotations'),
+    dicts.parse_field('metadata.finalizers'),
+    dicts.parse_field('metadata.labels'),
+)
 
 
 async def apply(
@@ -96,11 +103,22 @@ async def patch_and_check(
     Other unexpected changes in the body are ignored, including the system
     fields, such as generations, resource versions, and other unrelated fields,
     such as other statuses, spec, labels, annotations, etc.
+
+    Selected false-positive inconsistencies are explicitly ignored
+    for K8s-managed fields, such as finalizers, labels or annotations:
+    whenever an empty list/dict is stored, such fields are completely removed.
+    For normal fields (e.g. in spec/status), an empty list/dict is still
+    a value and is persisted in the object and matches with the patch.
     """
     if patch:
         logger.debug(f"Patching with: {patch!r}")
         resulting_body = await patching.patch_obj(resource=resource, patch=patch, body=body)
         inconsistencies = diffs.diff(dict(patch), dict(resulting_body), scope=diffs.DiffScope.LEFT)
+        inconsistencies = diffs.Diff(
+            diffs.DiffItem(op, field, old, new)
+            for op, field, old, new in inconsistencies
+            if old or new or field not in KNOWN_INCONSISTENCIES
+        )
         if inconsistencies:
             logger.warning(f"Patching failed with inconsistencies: {inconsistencies}")
 

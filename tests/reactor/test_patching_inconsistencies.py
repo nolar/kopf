@@ -34,6 +34,12 @@ from kopf.structs.patches import Patch
     pytest.param({'spec': {'x': None}, 'status': {'s': None}},
                  {'spec': {}, 'status': {}},
                  id='response-clean'),
+
+    # False-positive inconsistencies for K8s-managed fields.
+    pytest.param({'metadata': {'annotations': {}}}, {'metadata': {}}, id='false-annotations'),
+    pytest.param({'metadata': {'finalizers': []}}, {'metadata': {}}, id='false-finalizers'),
+    pytest.param({'metadata': {'labels': {}}}, {'metadata': {}}, id='false-labels'),
+
 ])
 async def test_patching_without_inconsistencies(
         resource, settings, caplog, assert_logs, version_api,
@@ -90,6 +96,12 @@ async def test_patching_without_inconsistencies(
     pytest.param({'spec': {'x': None}, 'status': {'s': None}},
                  {'spec': {}, 'status': {'s': 't'}},
                  id='response-status-undeleted'),
+
+    # True-positive inconsistencies for K8s-managed fields with possible false-positives.
+    pytest.param({'metadata': {'annotations': {'x': 'y'}}}, {'metadata': {}}, id='true-annotations'),
+    pytest.param({'metadata': {'finalizers': ['x', 'y']}}, {'metadata': {}}, id='true-finalizers'),
+    pytest.param({'metadata': {'labels': {'x': 'y'}}}, {'metadata': {}}, id='true-labels'),
+
 ])
 async def test_patching_with_inconsistencies(
         resource, settings, caplog, assert_logs, version_api,
