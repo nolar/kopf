@@ -44,7 +44,7 @@ import copy
 import hashlib
 import json
 import warnings
-from typing import Any, Collection, Dict, Mapping, Optional, Union, cast
+from typing import Any, Collection, Dict, Iterable, Mapping, Optional, Union, cast
 
 from typing_extensions import TypedDict
 
@@ -180,11 +180,13 @@ class AnnotationsProgressStorage(ProgressStorage):
             key: handlers.HandlerId,
             body: bodies.Body,
     ) -> Optional[ProgressRecord]:
-        full_key = self.make_key_v1(key)
-        key_field = ['metadata', 'annotations', full_key]
-        encoded = dicts.resolve(body, key_field, None, assume_empty=True)
-        decoded = json.loads(encoded) if encoded is not None else None
-        return cast(Optional[ProgressRecord], decoded)
+        for full_key in self.make_keys(key):
+            key_field = ['metadata', 'annotations', full_key]
+            encoded = dicts.resolve(body, key_field, None, assume_empty=True)
+            decoded = json.loads(encoded) if encoded is not None else None
+            if decoded is not None:
+                return cast(ProgressRecord, decoded)
+        return None
 
     def store(
             self,
@@ -194,11 +196,11 @@ class AnnotationsProgressStorage(ProgressStorage):
             body: bodies.Body,
             patch: patches.Patch,
     ) -> None:
-        full_key = self.make_key_v1(key)
-        key_field = ['metadata', 'annotations', full_key]
-        decoded = {key: val for key, val in record.items() if self.verbose or val is not None}
-        encoded = json.dumps(decoded, separators=(',', ':'))  # NB: no spaces
-        dicts.ensure(patch, key_field, encoded)
+        for full_key in self.make_keys(key):
+            key_field = ['metadata', 'annotations', full_key]
+            decoded = {key: val for key, val in record.items() if self.verbose or val is not None}
+            encoded = json.dumps(decoded, separators=(',', ':'))  # NB: no spaces
+            dicts.ensure(patch, key_field, encoded)
 
     def purge(
             self,
@@ -208,14 +210,14 @@ class AnnotationsProgressStorage(ProgressStorage):
             patch: patches.Patch,
     ) -> None:
         absent = object()
-        full_key = self.make_key_v1(key)
-        key_field = ['metadata', 'annotations', full_key]
-        body_value = dicts.resolve(body, key_field, absent, assume_empty=True)
-        patch_value = dicts.resolve(patch, key_field, absent, assume_empty=True)
-        if body_value is not absent:
-            dicts.ensure(patch, key_field, None)
-        elif patch_value is not absent:
-            dicts.remove(patch, key_field)
+        for full_key in self.make_keys(key):
+            key_field = ['metadata', 'annotations', full_key]
+            body_value = dicts.resolve(body, key_field, absent, assume_empty=True)
+            patch_value = dicts.resolve(patch, key_field, absent, assume_empty=True)
+            if body_value is not absent:
+                dicts.ensure(patch, key_field, None)
+            elif patch_value is not absent:
+                dicts.remove(patch, key_field)
 
     def touch(
             self,
@@ -224,11 +226,11 @@ class AnnotationsProgressStorage(ProgressStorage):
             patch: patches.Patch,
             value: Optional[str],
     ) -> None:
-        full_key = self.make_key_v1(self.touch_key)
-        key_field = ['metadata', 'annotations', full_key]
-        body_value = dicts.resolve(body, key_field, None, assume_empty=True)
-        if body_value != value:  # also covers absent-vs-None cases.
-            dicts.ensure(patch, key_field, value)
+        for full_key in self.make_keys(self.touch_key):
+            key_field = ['metadata', 'annotations', full_key]
+            body_value = dicts.resolve(body, key_field, None, assume_empty=True)
+            if body_value != value:  # also covers absent-vs-None cases.
+                dicts.ensure(patch, key_field, value)
 
     def clear(self, *, essence: bodies.BodyEssence) -> bodies.BodyEssence:
         essence = super().clear(essence=essence)
@@ -242,6 +244,9 @@ class AnnotationsProgressStorage(ProgressStorage):
         warnings.warn("make_key() is deprecated; use make_key_v1(), make_key_v2(), make_keys(), "
                       "or avoid making the keys directly at all.", DeprecationWarning)
         return self.make_key_v1(key, max_length=max_length)
+
+    def make_keys(self, key: Union[str, handlers.HandlerId]) -> Iterable[str]:
+        return [self.make_key_v2(key), self.make_key_v1(key)]
 
     def make_key_v1(self, key: Union[str, handlers.HandlerId], max_length: int = 63) -> str:
 
@@ -260,6 +265,14 @@ class AnnotationsProgressStorage(ProgressStorage):
 
         full_key = f'{prefix}{safe_key[:max_length - len(prefix) - len(suffix)]}{suffix}'
         return full_key
+
+    def make_key_v2(self, key: Union[str, handlers.HandlerId], max_length: int = 63) -> str:
+        prefix = f'{self.prefix}/' if self.prefix else ''
+        suffix = self.make_suffix(key) if len(key) > max_length else ''
+        key_limit = max(0, max_length - len(suffix))
+        clean_key = key.replace('/', '.')
+        final_key = f'{prefix}{clean_key[:key_limit]}{suffix}'
+        return final_key
 
     def make_suffix(self, key: str) -> str:
         digest = hashlib.blake2b(key.encode('utf-8'), digest_size=4).digest()
