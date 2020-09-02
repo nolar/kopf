@@ -135,8 +135,8 @@ async def test_watchevent_batching(settings, resource, processor, timer, overhea
         )
 
     # Significantly less than the queue getting timeout, but sufficient to run.
-    # 2x: 1 pull for the event chain + 1 pull for EOS. TODO: 1x must be enough.
-    assert overhead.min < timer.seconds < settings.batching.batch_window + overhead.max
+    # 2x = 1x batch window on queue pulling of the event chain + 1x for the EOS token.
+    assert overhead.min < timer.seconds < 2 * settings.batching.batch_window + overhead.max
 
     # Was the processor called at all? Awaited as needed for async fns?
     assert processor.awaited
