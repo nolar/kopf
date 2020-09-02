@@ -94,3 +94,9 @@ def test_keys_normalized_on_touching(cls, prefix, provided_key, expected_key):
     body = Body({})
     storage.touch(body=body, patch=patch, value='irrelevant')
     assert set(patch.metadata.annotations) == {expected_key}
+
+
+@pytest.mark.parametrize('cls', ANNOTATIONS_POPULATING_STORAGES)
+def test_warning_on_long_prefix(cls):
+    with pytest.warns(UserWarning, match=r"The annotations prefix is too long"):
+        cls(prefix='x' * (253 - 63))

@@ -43,6 +43,7 @@ import base64
 import copy
 import hashlib
 import json
+import warnings
 from typing import Any, Collection, Dict, Mapping, Optional, Union, cast
 
 from typing_extensions import TypedDict
@@ -168,6 +169,10 @@ class AnnotationsProgressStorage(ProgressStorage):
         self.prefix = prefix
         self.verbose = verbose
         self.touch_key = touch_key
+
+        # 253 is the max length, 63 is the most lengthy name part, 1 is for the "/" separator.
+        if len(self.prefix or '') > 253 - 63 - 1:
+            warnings.warn("The annotations prefix is too long. It can cause errors when PATCHing.")
 
     def fetch(
             self,
