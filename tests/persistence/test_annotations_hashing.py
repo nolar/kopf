@@ -21,13 +21,13 @@ CONTENT_DATA = ProgressRecord(
 
 CONTENT_JSON = json.dumps(CONTENT_DATA, separators=(',', ':'))
 
-
-keys = pytest.mark.parametrize('prefix, provided_key, expected_key', [
-
+COMMON_KEYS = [
     # For character replacements (only those that happen in our own ids, not all of them).
     ['my-operator.example.com', 'a_b.c-d/e', 'my-operator.example.com/a_b.c-d.e'],
     [None, 'a_b.c-d/e', 'a_b.c-d.e'],
+]
 
+V1_KEYS = [
     # For length cutting. Hint: the prefix length is 23, the remaining space is 63 - 23 - 1 = 39.
     # The suffix itself (if appended) takes 9, so it is 30 left. The same math for no prefix.
     ['my-operator.example.com', 'x', 'my-operator.example.com/x'],
@@ -45,18 +45,17 @@ keys = pytest.mark.parametrize('prefix, provided_key, expected_key', [
     # The numbers are found empirically so that both "/" and "+" are found in the base64'ed digest.
     ['my-operator.example.com', 'fn' * 323, 'my-operator.example.com/' + 'fn' * 15 + 'fn-Az-r.g'],
     [None, 'fn' * 323, 'fn' * 27 + 'fn-Az-r.g'],  # base64: Az-r.g==
+]
 
-])
 
-
-@keys
-def test_key_hashing(prefix, provided_key, expected_key):
+@pytest.mark.parametrize('prefix, provided_key, expected_key', COMMON_KEYS + V1_KEYS)
+def test_key_hashing_v1(prefix, provided_key, expected_key):
     storage = AnnotationsProgressStorage(prefix=prefix)
     returned_key = storage.make_key(provided_key)
     assert returned_key == expected_key
 
 
-@keys
+@pytest.mark.parametrize('prefix, provided_key, expected_key', COMMON_KEYS + V1_KEYS)
 @pytest.mark.parametrize('cls', ANNOTATIONS_POPULATING_STORAGES)
 def test_keys_hashed_on_fetching(cls, prefix, provided_key, expected_key):
     storage = cls(prefix=prefix)
@@ -66,7 +65,7 @@ def test_keys_hashed_on_fetching(cls, prefix, provided_key, expected_key):
     assert record == CONTENT_DATA
 
 
-@keys
+@pytest.mark.parametrize('prefix, provided_key, expected_key', COMMON_KEYS + V1_KEYS)
 @pytest.mark.parametrize('cls', ANNOTATIONS_POPULATING_STORAGES)
 def test_keys_normalized_on_storing(cls, prefix, provided_key, expected_key):
     storage = cls(prefix=prefix)
@@ -76,7 +75,7 @@ def test_keys_normalized_on_storing(cls, prefix, provided_key, expected_key):
     assert set(patch.metadata.annotations) == {expected_key}
 
 
-@keys
+@pytest.mark.parametrize('prefix, provided_key, expected_key', COMMON_KEYS + V1_KEYS)
 @pytest.mark.parametrize('cls', ANNOTATIONS_POPULATING_STORAGES)
 def test_keys_normalized_on_purging(cls, prefix, provided_key, expected_key):
     storage = cls(prefix=prefix)
@@ -86,7 +85,7 @@ def test_keys_normalized_on_purging(cls, prefix, provided_key, expected_key):
     assert set(patch.metadata.annotations) == {expected_key}
 
 
-@keys
+@pytest.mark.parametrize('prefix, provided_key, expected_key', COMMON_KEYS + V1_KEYS)
 @pytest.mark.parametrize('cls', ANNOTATIONS_POPULATING_STORAGES)
 def test_keys_normalized_on_touching(cls, prefix, provided_key, expected_key):
     storage = cls(prefix=prefix, touch_key=provided_key)
