@@ -229,7 +229,7 @@ class AnnotationsProgressStorage(ProgressStorage):
         essence = super().clear(essence=essence)
         annotations = essence.get('metadata', {}).get('annotations', {})
         for name in list(annotations.keys()):
-            if name.startswith(f'{self.prefix}/'):
+            if self.prefix and name.startswith(f'{self.prefix}/'):
                 del annotations[name]
         return essence
 
