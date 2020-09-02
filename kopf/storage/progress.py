@@ -164,11 +164,13 @@ class AnnotationsProgressStorage(ProgressStorage):
             prefix: Optional[str] = 'kopf.zalando.org',
             verbose: bool = False,
             touch_key: str = 'touch-dummy',  # NB: not dotted, but dashed
+            v1: bool = True,  # Will be switch to False a few releases later.
     ) -> None:
         super().__init__()
         self.prefix = prefix
         self.verbose = verbose
         self.touch_key = touch_key
+        self.v1 = v1
 
         # 253 is the max length, 63 is the most lengthy name part, 1 is for the "/" separator.
         if len(self.prefix or '') > 253 - 63 - 1:
@@ -246,7 +248,9 @@ class AnnotationsProgressStorage(ProgressStorage):
         return self.make_key_v1(key, max_length=max_length)
 
     def make_keys(self, key: Union[str, handlers.HandlerId]) -> Iterable[str]:
-        return [self.make_key_v2(key), self.make_key_v1(key)]
+        v2_keys = [self.make_key_v2(key)]
+        v1_keys = [self.make_key_v1(key)] if self.v1 else []
+        return v2_keys + list(set(v1_keys) - set(v2_keys))
 
     def make_key_v1(self, key: Union[str, handlers.HandlerId], max_length: int = 63) -> str:
 
