@@ -156,6 +156,47 @@ class AnnotationsProgressStorage(ProgressStorage):
             kopf.zalando.org/create_fn_2: '{"started": "2020-02-14T16:58:25.396421", "retries": 0}'
         spec: ...
         status: ...
+
+    A note on the annotation names/keys:
+
+    **V1** keys were implemented overly restrictive: the length of 63 chars
+    was applied to the whole annotation key, including the prefix.
+
+    This caused unnecessary and avoidable loss of useful information: e.g.
+    ``lengthy-operator-name-to-hit-63-chars.example.com/update-OJOYLA``
+    instead of
+    ``lengthy-operator-name-to-hit-63-chars.example.com/update.sub1``.
+
+    `K8s says`__ that only the name is max 63 chars long, while the whole key
+    (i.e. including the prefix, if present) can be max 253 chars.
+
+    __ https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/#syntax-and-character-set
+
+    **V2** keys implement this new hashing approach, trying to keep as much
+    information in the keys as possible. Only the really lengthy keys
+    will be cut the same way as V1 keys.
+
+    If the prefix is longer than 189 chars (253-63-1), the full key could
+    be longer than the limit of 253 chars -- e.g. with lengthy handler ids,
+    more often for field-handlers or sub-handlers. In that case,
+    the annotation keys are not shortened, and the patching would fail.
+
+    It is the developer's responsibility to choose the prefix short enough
+    to fit into K8s's restrictions. However, a warning is issued on storage
+    creation, so that the strict-mode operators could convert the warning
+    into an exception, thus failing the operator startup.
+
+    For smoother upgrades of operators from V1 to V2, and for safer rollbacks
+    from V2 to V1, both versions of keys are stored in annotations.
+    At some point in time, the V1 keys will be read, purged, but not stored,
+    thus cutting the rollback possibilities to Kopf versions with V1 keys.
+
+    Since the annotations are purged in case of a successful handling cycle,
+    this multi-versioned behaviour will most likely be unnoticed by the users,
+    except when investigating the issues with persistence.
+
+    This mode can be controlled via the storage's constructor parameter
+    ``v1=True/False`` (the default is ``True`` for the time of transition).
     """
 
     def __init__(
