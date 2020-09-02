@@ -202,7 +202,7 @@ To store the state only in the annotations with your own prefix:
 
     @kopf.on.startup()
     def configure(settings: kopf.OperatorSettings, **_):
-        settings.persistence.storage = kopf.AnnotationsStateStorage(prefix='my-op.example.com')
+        settings.persistence.progress_storage = kopf.AnnotationsProgressStorage(prefix='my-op.example.com')
 
 To store the state only in the status or any other field:
 
@@ -212,7 +212,7 @@ To store the state only in the status or any other field:
 
     @kopf.on.startup()
     def configure(settings: kopf.OperatorSettings, **_):
-        settings.persistence.storage = kopf.StatusStateStorage(field='status.my-operator')
+        settings.persistence.progress_storage = kopf.StatusProgressStorage(field='status.my-operator')
 
 To store in multiple places (stored in sync, but the first found state will be
 used when fetching, i.e. the first storage has precedence):
@@ -223,9 +223,9 @@ used when fetching, i.e. the first storage has precedence):
 
     @kopf.on.startup()
     def configure(settings: kopf.OperatorSettings, **_):
-        settings.persistence.storage = kopf.MultiStateStorage([
-            kopf.AnnotationsStateStorage(prefix='my-op.example.com'),
-            kopf.StatusStateStorage(field='status.my-operator'),
+        settings.persistence.progress_storage = kopf.MultiProgressStorage([
+            kopf.AnnotationsProgressStorage(prefix='my-op.example.com'),
+            kopf.StatusProgressStorage(field='status.my-operator'),
         ])
 
 The default storage is at both annotations and status, with annotations having
@@ -241,17 +241,17 @@ It is an equivalent of:
 
     @kopf.on.startup()
     def configure(settings: kopf.OperatorSettings, **_):
-        settings.persistence.storage = kopf.SmartStateStorage()
+        settings.persistence.progress_storage = kopf.SmartProgressStorage()
 
 It is also possible to implement custom state storage instead of storing
 the state directly in the resource's fields -- e.g., in external databases.
-For this, inherit from `kopf.StateStorage`, and implement its abstract methods
+For this, inherit from `kopf.ProgressStorage` and implement its abstract methods
 (``fetch()``, ``store()``, ``purge()``, optionally ``flush()``).
 
 .. note::
 
     The legacy behavior is an equivalent of
-    ``kopf.StatusStateStorage(field='status.kopf.progress')``.
+    ``kopf.StatusProgressStorage(field='status.kopf.progress')``.
 
     Starting with Kubernetes 1.16, both custom and built-in resources have
     strict structural schemas with pruning of unknown fields
