@@ -256,12 +256,15 @@ class AnnotationsProgressStorage(ProgressStorage):
         if len(safe_key) <= max_length - len(prefix):
             suffix = ''
         else:
-            digest = hashlib.blake2b(safe_key.encode('utf-8'), digest_size=4).digest()
-            alnums = base64.b64encode(digest, altchars=b'-.').decode('ascii')
-            suffix = f'-{alnums}'.rstrip('=-.')
+            suffix = self.make_suffix(safe_key)
 
         full_key = f'{prefix}{safe_key[:max_length - len(prefix) - len(suffix)]}{suffix}'
         return full_key
+
+    def make_suffix(self, key: str) -> str:
+        digest = hashlib.blake2b(key.encode('utf-8'), digest_size=4).digest()
+        alnums = base64.b64encode(digest, altchars=b'-.').decode('ascii')
+        return f'-{alnums}'.rstrip('=-.')
 
 
 class StatusProgressStorage(ProgressStorage):
