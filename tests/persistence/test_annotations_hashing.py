@@ -48,10 +48,18 @@ V1_KEYS = [
 ]
 
 
+def test_unversioned_keys_are_depecated():
+    storage = AnnotationsProgressStorage()
+    v1_key = storage.make_key_v1('...')
+    with pytest.deprecated_call(match=r"make_key\(\) is deprecated"):
+        returned_key = storage.make_key('...')
+    assert returned_key == v1_key
+
+
 @pytest.mark.parametrize('prefix, provided_key, expected_key', COMMON_KEYS + V1_KEYS)
 def test_key_hashing_v1(prefix, provided_key, expected_key):
     storage = AnnotationsProgressStorage(prefix=prefix)
-    returned_key = storage.make_key(provided_key)
+    returned_key = storage.make_key_v1(provided_key)
     assert returned_key == expected_key
 
 

@@ -180,7 +180,7 @@ class AnnotationsProgressStorage(ProgressStorage):
             key: handlers.HandlerId,
             body: bodies.Body,
     ) -> Optional[ProgressRecord]:
-        full_key = self.make_key(key)
+        full_key = self.make_key_v1(key)
         key_field = ['metadata', 'annotations', full_key]
         encoded = dicts.resolve(body, key_field, None, assume_empty=True)
         decoded = json.loads(encoded) if encoded is not None else None
@@ -194,7 +194,7 @@ class AnnotationsProgressStorage(ProgressStorage):
             body: bodies.Body,
             patch: patches.Patch,
     ) -> None:
-        full_key = self.make_key(key)
+        full_key = self.make_key_v1(key)
         key_field = ['metadata', 'annotations', full_key]
         decoded = {key: val for key, val in record.items() if self.verbose or val is not None}
         encoded = json.dumps(decoded, separators=(',', ':'))  # NB: no spaces
@@ -208,7 +208,7 @@ class AnnotationsProgressStorage(ProgressStorage):
             patch: patches.Patch,
     ) -> None:
         absent = object()
-        full_key = self.make_key(key)
+        full_key = self.make_key_v1(key)
         key_field = ['metadata', 'annotations', full_key]
         body_value = dicts.resolve(body, key_field, absent, assume_empty=True)
         patch_value = dicts.resolve(patch, key_field, absent, assume_empty=True)
@@ -224,7 +224,7 @@ class AnnotationsProgressStorage(ProgressStorage):
             patch: patches.Patch,
             value: Optional[str],
     ) -> None:
-        full_key = self.make_key(self.touch_key)
+        full_key = self.make_key_v1(self.touch_key)
         key_field = ['metadata', 'annotations', full_key]
         body_value = dicts.resolve(body, key_field, None, assume_empty=True)
         if body_value != value:  # also covers absent-vs-None cases.
@@ -239,6 +239,11 @@ class AnnotationsProgressStorage(ProgressStorage):
         return essence
 
     def make_key(self, key: Union[str, handlers.HandlerId], max_length: int = 63) -> str:
+        warnings.warn("make_key() is deprecated; use make_key_v1(), make_key_v2(), make_keys(), "
+                      "or avoid making the keys directly at all.", DeprecationWarning)
+        return self.make_key_v1(key, max_length=max_length)
+
+    def make_key_v1(self, key: Union[str, handlers.HandlerId], max_length: int = 63) -> str:
 
         # K8s has a limitation on the allowed charsets in annotation/label keys.
         # https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/#syntax-and-character-set
