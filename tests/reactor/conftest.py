@@ -24,7 +24,7 @@ def processor():
 # Code overhead is not used, but is needed to order the fixtures: first,
 # the measurement, which requires the real worker; then, the worker mocking.
 @pytest.fixture()
-def worker_spy(mocker, code_overhead):
+def worker_spy(mocker, overhead):
     """ Spy on the watcher: actually call it, but provide the mock-fields. """
     spy = CoroutineMock(spec=original_worker, wraps=original_worker)
     return mocker.patch('kopf.reactor.queueing.worker', spy)
@@ -33,7 +33,7 @@ def worker_spy(mocker, code_overhead):
 # Code overhead is not used, but is needed to order the fixtures: first,
 # the measurement, which requires the real worker; then, the worker mocking.
 @pytest.fixture()
-def worker_mock(mocker, code_overhead):
+def worker_mock(mocker, overhead):
     """ Prevent the queue consumption, so that the queues could be checked. """
     return mocker.patch('kopf.reactor.queueing.worker')
 
@@ -76,22 +76,22 @@ def watcher_in_background(settings, resource, event_loop, worker_spy, stream):
 
 
 @dataclasses.dataclass(frozen=True)
-class CodeOverhead:
+class Overhead:
     min: float
     avg: float
     max: float
 
 
 @pytest.fixture(scope='session')
-def _code_overhead_cache():
+def _overhead_cache():
     return []
 
 
 @pytest.fixture()
-async def code_overhead(
+async def overhead(
         resource, stream, aresponses, watcher_limited, timer,
-        _code_overhead_cache,
-) -> CodeOverhead:
+        _overhead_cache,
+) -> Overhead:
     """
     Estimate the overhead of synchronous code in the watching routines.
 
@@ -129,7 +129,7 @@ async def code_overhead(
     Several dummy runs are used to average the values, to avoid fluctuation.
     The estimation happens only once per session, and is reused for all tests.
     """
-    if not _code_overhead_cache:
+    if not _overhead_cache:
 
         # Collect a few data samples to make the estimation realistic.
         overheads: List[float] = []
@@ -163,7 +163,7 @@ async def code_overhead(
             overheads.append(timer.seconds)
 
         # Reserve extra 10-30% from both sides for occasional variations.
-        _code_overhead_cache.append(CodeOverhead(
+        _overhead_cache.append(Overhead(
             min=min(overheads) * 0.9,
             avg=sum(overheads) / len(overheads),
             max=max(overheads) * 1.1,
@@ -175,4 +175,4 @@ async def code_overhead(
     # Uncomment for debugging of the actual timing: visible only with -s pytest option.
     # print(f"The estimated code overhead is {overhead}.")
 
-    return _code_overhead_cache[0]
+    return _overhead_cache[0]
