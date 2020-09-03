@@ -21,14 +21,22 @@ all the modules, of which the reactor's core consists.
 import asyncio
 import collections
 import datetime
+import logging
 from typing import Collection, Optional, Union
 
 from kopf.clients import patching
 from kopf.engines import loggers
-from kopf.structs import bodies, configuration, patches, primitives, resources
+from kopf.structs import bodies, configuration, dicts, diffs, patches, primitives, resources
 
 # How often to wake up from the long sleep, to show liveness in the logs.
 WAITING_KEEPALIVE_INTERVAL = 10 * 60
+
+# K8s-managed fields that are removed completely when patched to an empty list/dict.
+KNOWN_INCONSISTENCIES = (
+    dicts.parse_field('metadata.annotations'),
+    dicts.parse_field('metadata.finalizers'),
+    dicts.parse_field('metadata.labels'),
+)
 
 
 async def apply(
@@ -47,10 +55,8 @@ async def apply(
     if patch:  # TODO: LATER: and the dummies are there (without additional methods?)
         settings.persistence.progress_storage.touch(body=body, patch=patch, value=None)
 
-    # Actually patch if it contained payload originally or after dummies removal.
-    if patch:
-        logger.debug("Patching with: %r", patch)
-        await patching.patch_obj(resource=resource, patch=patch, body=body)
+    # Actually patch if it was not empty originally or after the dummies removal.
+    await patch_and_check(resource=resource, patch=patch, body=body, logger=logger)
 
     # Sleep strictly after patching, never before -- to keep the status proper.
     # The patching above, if done, interrupts the sleep instantly, so we skip it at all.
@@ -78,11 +84,43 @@ async def apply(
         else:
             # Any unique always-changing value will work; not necessary a timestamp.
             value = datetime.datetime.utcnow().isoformat()
-            touch_patch = patches.Patch()
-            settings.persistence.progress_storage.touch(body=body, patch=touch_patch, value=value)
-            if touch_patch:
-                logger.debug("Provoking reaction with: %r", touch_patch)
-                await patching.patch_obj(resource=resource, patch=touch_patch, body=body)
+            touch = patches.Patch()
+            settings.persistence.progress_storage.touch(body=body, patch=touch, value=value)
+            await patch_and_check(resource=resource, patch=touch, body=body, logger=logger)
+
+
+async def patch_and_check(
+        *,
+        resource: resources.Resource,
+        body: bodies.Body,
+        patch: patches.Patch,
+        logger: Union[logging.Logger, logging.LoggerAdapter],
+) -> None:
+    """
+    Apply a patch and verify that it is applied correctly.
+
+    The inconsistencies are checked only against what was in the patch.
+    Other unexpected changes in the body are ignored, including the system
+    fields, such as generations, resource versions, and other unrelated fields,
+    such as other statuses, spec, labels, annotations, etc.
+
+    Selected false-positive inconsistencies are explicitly ignored
+    for K8s-managed fields, such as finalizers, labels or annotations:
+    whenever an empty list/dict is stored, such fields are completely removed.
+    For normal fields (e.g. in spec/status), an empty list/dict is still
+    a value and is persisted in the object and matches with the patch.
+    """
+    if patch:
+        logger.debug(f"Patching with: {patch!r}")
+        resulting_body = await patching.patch_obj(resource=resource, patch=patch, body=body)
+        inconsistencies = diffs.diff(dict(patch), dict(resulting_body), scope=diffs.DiffScope.LEFT)
+        inconsistencies = diffs.Diff(
+            diffs.DiffItem(op, field, old, new)
+            for op, field, old, new in inconsistencies
+            if old or new or field not in KNOWN_INCONSISTENCIES
+        )
+        if inconsistencies:
+            logger.warning(f"Patching failed with inconsistencies: {inconsistencies}")
 
 
 async def sleep_or_wait(

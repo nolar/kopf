@@ -8,6 +8,26 @@ from typing import Any, Iterable, Iterator, NamedTuple, Sequence, Union, overloa
 from kopf.structs import dicts
 
 
+class DiffScope(enum.Flag):
+    """
+    Scope limitation for the diffs' fields to be noticed or ignored.
+
+    In the full-scoped diff (the default), both objects (diff source & target)
+    are treated equally important, and the diff is calculated from the left
+    to the right one for all fields.
+
+    In the left-scoped diff, only the left object (diff source) is considered
+    important, and only the differences for the fields found in the left object
+    (source) are checked. Extra fields in the right object (target) are ignored.
+
+    In the right-scoped diff, only the fields in the right object (diff target)
+    are scanned. Extra fields in the left object (diff source) are ignored.
+    """
+    RIGHT = enum.auto()
+    LEFT = enum.auto()
+    FULL = LEFT | RIGHT
+
+
 class DiffOperation(str, enum.Enum):
     ADD = 'add'
     CHANGE = 'change'
@@ -118,6 +138,8 @@ def diff_iter(
         a: Any,
         b: Any,
         path: dicts.FieldPath = (),
+        *,
+        scope: DiffScope = DiffScope.FULL,
 ) -> Iterator[DiffItem]:
     """
     Calculate the diff between two dicts.
@@ -148,12 +170,12 @@ def diff_iter(
     elif isinstance(a, collections.abc.Mapping):
         a_keys = frozenset(a.keys())
         b_keys = frozenset(b.keys())
-        for key in b_keys - a_keys:
-            yield from diff_iter(None, b[key], path=path+(key,))
-        for key in a_keys - b_keys:
-            yield from diff_iter(a[key], None, path=path+(key,))
-        for key in a_keys & b_keys:
-            yield from diff_iter(a[key], b[key], path=path+(key,))
+        for key in (b_keys - a_keys if DiffScope.RIGHT in scope else ()):
+            yield from diff_iter(None, b[key], path=path+(key,), scope=scope)
+        for key in (a_keys - b_keys if DiffScope.LEFT in scope else ()):
+            yield from diff_iter(a[key], None, path=path+(key,), scope=scope)
+        for key in (a_keys & b_keys):
+            yield from diff_iter(a[key], b[key], path=path+(key,), scope=scope)
     else:
         yield DiffItem(DiffOperation.CHANGE, path, a, b)
 
@@ -162,11 +184,13 @@ def diff(
         a: Any,
         b: Any,
         path: dicts.FieldPath = (),
+        *,
+        scope: DiffScope = DiffScope.FULL,
 ) -> Diff:
     """
     Same as `diff`, but returns the whole tuple instead of iterator.
     """
-    return Diff(diff_iter(a, b, path=path))
+    return Diff(diff_iter(a, b, path=path, scope=scope))
 
 
 EMPTY = diff(None, None)

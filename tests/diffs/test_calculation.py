@@ -1,101 +1,133 @@
-from kopf.structs.diffs import diff
+import pytest
+
+from kopf.structs.diffs import DiffScope, diff
 
 
-def test_none_for_old():
+@pytest.mark.parametrize('scope', list(DiffScope))
+def test_none_for_old(scope):
     a = None
     b = object()
-    d = diff(a, b)
+    d = diff(a, b, scope=scope)
     assert d == (('add', (), None, b),)
 
 
-def test_none_for_new():
+@pytest.mark.parametrize('scope', list(DiffScope))
+def test_none_for_new(scope):
     a = object()
     b = None
-    d = diff(a, b)
+    d = diff(a, b, scope=scope)
     assert d == (('remove', (), a, None),)
 
 
-def test_nones_for_both():
+@pytest.mark.parametrize('scope', list(DiffScope))
+def test_nones_for_both(scope):
     a = None
     b = None
-    d = diff(a, b)
+    d = diff(a, b, scope=scope)
     assert d == ()
 
 
-def test_scalars_equal():
+@pytest.mark.parametrize('scope', list(DiffScope))
+def test_scalars_equal(scope):
     a = 100
     b = 100
-    d = diff(a, b)
+    d = diff(a, b, scope=scope)
     assert d == ()
 
 
-def test_scalars_unequal():
+@pytest.mark.parametrize('scope', list(DiffScope))
+def test_scalars_unequal(scope):
     a = 100
     b = 200
-    d = diff(a, b)
+    d = diff(a, b, scope=scope)
     assert d == (('change', (), 100, 200),)
 
 
-def test_strings_equal():
+@pytest.mark.parametrize('scope', list(DiffScope))
+def test_strings_equal(scope):
     a = 'hello'
     b = 'hello'
-    d = diff(a, b)
+    d = diff(a, b, scope=scope)
     assert d == ()
 
 
-def test_strings_unequal():
+@pytest.mark.parametrize('scope', list(DiffScope))
+def test_strings_unequal(scope):
     a = 'hello'
     b = 'world'
-    d = diff(a, b)
+    d = diff(a, b, scope=scope)
     assert d == (('change', (), 'hello', 'world'),)
 
 
-def test_lists_equal():
+@pytest.mark.parametrize('scope', list(DiffScope))
+def test_lists_equal(scope):
     a = [100, 200, 300]
     b = [100, 200, 300]
-    d = diff(a, b)
+    d = diff(a, b, scope=scope)
     assert d == ()
 
 
-def test_lists_unequal():
+@pytest.mark.parametrize('scope', list(DiffScope))
+def test_lists_unequal(scope):
     a = [100, 200, 300]
     b = [100, 666, 300]
-    d = diff(a, b)
+    d = diff(a, b, scope=scope)
     assert d == (('change', (), [100, 200, 300], [100, 666, 300]),)
 
 
-def test_dicts_equal():
+@pytest.mark.parametrize('scope', list(DiffScope))
+def test_dicts_equal(scope):
     a = {'hello': 'world', 'key': 'val'}
     b = {'key': 'val', 'hello': 'world'}
-    d = diff(a, b)
+    d = diff(a, b, scope=scope)
     assert d == ()
 
 
-def test_dicts_with_keys_added():
+@pytest.mark.parametrize('scope', [DiffScope.FULL, DiffScope.RIGHT])
+def test_dicts_with_keys_added_and_noticed(scope):
     a = {'hello': 'world'}
     b = {'hello': 'world', 'key': 'val'}
-    d = diff(a, b)
+    d = diff(a, b, scope=scope)
     assert d == (('add', ('key',), None, 'val'),)
 
 
-def test_dicts_with_keys_removed():
+@pytest.mark.parametrize('scope', [DiffScope.LEFT])
+def test_dicts_with_keys_added_but_ignored(scope):
+    a = {'hello': 'world'}
+    b = {'hello': 'world', 'key': 'val'}
+    d = diff(a, b, scope=scope)
+    assert d == ()
+
+
+@pytest.mark.parametrize('scope', [DiffScope.FULL, DiffScope.LEFT])
+def test_dicts_with_keys_removed_and_noticed(scope):
     a = {'hello': 'world', 'key': 'val'}
     b = {'hello': 'world'}
-    d = diff(a, b)
+    d = diff(a, b, scope=scope)
     assert d == (('remove', ('key',), 'val', None),)
 
 
-def test_dicts_with_keys_changed():
+@pytest.mark.parametrize('scope', [DiffScope.RIGHT])
+def test_dicts_with_keys_removed_but_ignored(scope):
+    a = {'hello': 'world', 'key': 'val'}
+    b = {'hello': 'world'}
+    d = diff(a, b, scope=scope)
+    assert d == ()
+
+
+@pytest.mark.parametrize('scope', list(DiffScope))
+def test_dicts_with_keys_changed(scope):
     a = {'hello': 'world', 'key': 'old'}
     b = {'hello': 'world', 'key': 'new'}
-    d = diff(a, b)
+    d = diff(a, b, scope=scope)
     assert d == (('change', ('key',), 'old', 'new'),)
 
 
-def test_dicts_with_subkeys_changed():
+@pytest.mark.parametrize('scope', list(DiffScope))
+def test_dicts_with_subkeys_changed(scope):
     a = {'main': {'hello': 'world', 'key': 'old'}}
     b = {'main': {'hello': 'world', 'key': 'new'}}
-    d = diff(a, b)
+    d = diff(a, b, scope=scope)
     assert d == (('change', ('main', 'key'), 'old', 'new'),)
 
 

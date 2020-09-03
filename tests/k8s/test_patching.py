@@ -2,6 +2,8 @@ import aiohttp.web
 import pytest
 
 from kopf.clients.patching import patch_obj
+from kopf.structs.bodies import Body
+from kopf.structs.patches import Patch
 
 
 @pytest.mark.resource_clustered  # see `resp_mocker`
@@ -11,7 +13,7 @@ async def test_by_name_clustered(
     patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
     aresponses.add(hostname, resource.get_url(namespace=None, name='name1'), 'patch', patch_mock)
 
-    patch = {'x': 'y'}
+    patch = Patch({'x': 'y'})
     await patch_obj(resource=resource, namespace=None, name='name1', patch=patch)
 
     assert patch_mock.called
@@ -27,7 +29,7 @@ async def test_by_name_namespaced(
     patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
     aresponses.add(hostname, resource.get_url(namespace='ns1', name='name1'), 'patch', patch_mock)
 
-    patch = {'x': 'y'}
+    patch = Patch({'x': 'y'})
     await patch_obj(resource=resource, namespace='ns1', name='name1', patch=patch)
 
     assert patch_mock.called
@@ -44,8 +46,8 @@ async def test_by_body_clustered(
     patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
     aresponses.add(hostname, resource.get_url(namespace=None, name='name1'), 'patch', patch_mock)
 
-    patch = {'x': 'y'}
-    body = {'metadata': {'name': 'name1'}}
+    body = Body({'metadata': {'name': 'name1'}})
+    patch = Patch({'x': 'y'})
     await patch_obj(resource=resource, body=body, patch=patch)
 
     assert patch_mock.called
@@ -61,8 +63,8 @@ async def test_by_body_namespaced(
     patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
     aresponses.add(hostname, resource.get_url(namespace='ns1', name='name1'), 'patch', patch_mock)
 
-    patch = {'x': 'y'}
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    body = Body({'metadata': {'namespace': 'ns1', 'name': 'name1'}})
+    patch = Patch({'x': 'y'})
     await patch_obj(resource=resource, body=body, patch=patch)
 
     assert patch_mock.called
@@ -75,16 +77,24 @@ async def test_by_body_namespaced(
 async def test_status_as_subresource_with_combined_payload(
         resp_mocker, aresponses, hostname, resource, version_api_with_substatus):
 
+    # Simulate Kopf's initial state and intention.
+    body = Body({'metadata': {'namespace': 'ns1', 'name': 'name1'}})
+    patch = Patch({'spec': {'x': 'y'}, 'status': {'s': 't'}})
+
+    # Simulate K8s API's behaviour. Assume something extra is added remotely.
+    object_response = {'metadata': {'namespace': 'ns1', 'name': 'name1', 'extra': '123'},
+                       'spec': {'x': 'y', 'extra': '456'},
+                       'status': '...'}
+    status_response = {'s': 't', 'extra': '789'}
+
     object_url = resource.get_url(namespace='ns1', name='name1')
     status_url = resource.get_url(namespace='ns1', name='name1', subresource='status')
-    object_patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
-    status_patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
+    object_patch_mock = resp_mocker(return_value=aiohttp.web.json_response(object_response))
+    status_patch_mock = resp_mocker(return_value=aiohttp.web.json_response(status_response))
     aresponses.add(hostname, object_url, 'patch', object_patch_mock)
     aresponses.add(hostname, status_url, 'patch', status_patch_mock)
 
-    patch = {'spec': {'x': 'y'}, 'status': {'s': 't'}}
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
-    await patch_obj(resource=resource, body=body, patch=patch)
+    reconstructed = await patch_obj(resource=resource, body=body, patch=patch)
 
     assert object_patch_mock.called
     assert object_patch_mock.call_count == 1
@@ -96,20 +106,32 @@ async def test_status_as_subresource_with_combined_payload(
     data = status_patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
     assert data == {'status': {'s': 't'}}
 
+    assert reconstructed == {'metadata': {'namespace': 'ns1', 'name': 'name1', 'extra': '123'},
+                             'spec': {'x': 'y', 'extra': '456'},
+                             'status': {'s': 't', 'extra': '789'}}
 
-async def test_status_as_subresource_with_fields_only(
+
+async def test_status_as_subresource_with_object_fields_only(
         resp_mocker, aresponses, hostname, resource, version_api_with_substatus):
+
+    # Simulate Kopf's initial state and intention.
+    body = Body({'metadata': {'namespace': 'ns1', 'name': 'name1'}})
+    patch = Patch({'spec': {'x': 'y'}})
+
+    # Simulate K8s API's behaviour. Assume something extra is added remotely.
+    object_response = {'metadata': {'namespace': 'ns1', 'name': 'name1', 'extra': '123'},
+                       'spec': {'x': 'y', 'extra': '456'},
+                       'status': '...'}
+    status_response = {'s': 't', 'extra': '789'}
 
     object_url = resource.get_url(namespace='ns1', name='name1')
     status_url = resource.get_url(namespace='ns1', name='name1', subresource='status')
-    object_patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
-    status_patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
+    object_patch_mock = resp_mocker(return_value=aiohttp.web.json_response(object_response))
+    status_patch_mock = resp_mocker(return_value=aiohttp.web.json_response(status_response))
     aresponses.add(hostname, object_url, 'patch', object_patch_mock)
     aresponses.add(hostname, status_url, 'patch', status_patch_mock)
 
-    patch = {'spec': {'x': 'y'}}
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
-    await patch_obj(resource=resource, body=body, patch=patch)
+    reconstructed = await patch_obj(resource=resource, body=body, patch=patch)
 
     assert object_patch_mock.called
     assert object_patch_mock.call_count == 1
@@ -118,20 +140,32 @@ async def test_status_as_subresource_with_fields_only(
     data = object_patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
     assert data == {'spec': {'x': 'y'}}
 
+    assert reconstructed == {'metadata': {'namespace': 'ns1', 'name': 'name1', 'extra': '123'},
+                             'spec': {'x': 'y', 'extra': '456'},
+                             'status': '...'}
 
-async def test_status_as_subresource_with_status_only(
+
+async def test_status_as_subresource_with_status_fields_only(
         resp_mocker, aresponses, hostname, resource, version_api_with_substatus):
+
+    # Simulate Kopf's initial state and intention.
+    body = Body({'metadata': {'namespace': 'ns1', 'name': 'name1'}})
+    patch = Patch({'status': {'s': 't'}})
+
+    # Simulate K8s API's behaviour. Assume something extra is added remotely.
+    object_response = {'metadata': {'namespace': 'ns1', 'name': 'name1', 'extra': '123'},
+                       'spec': {'x': 'y', 'extra': '456'},
+                       'status': '...'}
+    status_response = {'s': 't', 'extra': '789'}
 
     object_url = resource.get_url(namespace='ns1', name='name1')
     status_url = resource.get_url(namespace='ns1', name='name1', subresource='status')
-    object_patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
-    status_patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
+    object_patch_mock = resp_mocker(return_value=aiohttp.web.json_response(object_response))
+    status_patch_mock = resp_mocker(return_value=aiohttp.web.json_response(status_response))
     aresponses.add(hostname, object_url, 'patch', object_patch_mock)
     aresponses.add(hostname, status_url, 'patch', status_patch_mock)
 
-    patch = {'status': {'s': 't'}}
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
-    await patch_obj(resource=resource, body=body, patch=patch)
+    reconstructed = await patch_obj(resource=resource, body=body, patch=patch)
 
     assert not object_patch_mock.called
     assert status_patch_mock.called
@@ -140,20 +174,30 @@ async def test_status_as_subresource_with_status_only(
     data = status_patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
     assert data == {'status': {'s': 't'}}
 
+    assert reconstructed == {'status': {'s': 't', 'extra': '789'}}
 
-async def test_status_as_body_field(
+
+async def test_status_as_body_field_with_combined_payload(
         resp_mocker, aresponses, hostname, resource):
+
+    # Simulate Kopf's initial state and intention.
+    body = Body({'metadata': {'namespace': 'ns1', 'name': 'name1'}})
+    patch = Patch({'spec': {'x': 'y'}, 'status': {'s': 't'}})
+
+    # Simulate K8s API's behaviour. Assume something extra is added remotely.
+    object_response = {'metadata': {'namespace': 'ns1', 'name': 'name1', 'extra': '123'},
+                       'spec': {'x': 'y', 'extra': '456'},
+                       'status': '...'}
+    status_response = {'s': 't', 'extra': '789'}
 
     object_url = resource.get_url(namespace='ns1', name='name1')
     status_url = resource.get_url(namespace='ns1', name='name1', subresource='status')
-    object_patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
-    status_patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
+    object_patch_mock = resp_mocker(return_value=aiohttp.web.json_response(object_response))
+    status_patch_mock = resp_mocker(return_value=aiohttp.web.json_response(status_response))
     aresponses.add(hostname, object_url, 'patch', object_patch_mock)
     aresponses.add(hostname, status_url, 'patch', status_patch_mock)
 
-    patch = {'spec': {'x': 'y'}, 'status': {'s': 't'}}
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
-    await patch_obj(resource=resource, body=body, patch=patch)
+    reconstructed = await patch_obj(resource=resource, body=body, patch=patch)
 
     assert object_patch_mock.called
     assert object_patch_mock.call_count == 1
@@ -161,6 +205,10 @@ async def test_status_as_body_field(
 
     data = object_patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
     assert data == {'spec': {'x': 'y'}, 'status': {'s': 't'}}
+
+    assert reconstructed == {'metadata': {'namespace': 'ns1', 'name': 'name1', 'extra': '123'},
+                             'spec': {'x': 'y', 'extra': '456'},
+                             'status': '...'}
 
 
 async def test_raises_when_body_conflicts_with_namespace(
@@ -219,7 +267,9 @@ async def test_ignores_absent_objects(
 
     patch = {'x': 'y'}
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
-    await patch_obj(resource=resource, body=body, patch=patch)
+    reconstructed = await patch_obj(resource=resource, body=body, patch=patch)
+
+    assert reconstructed == {}
 
 
 @pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['without-namespace', 'with-namespace'])

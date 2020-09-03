@@ -11,6 +11,7 @@ and [Historic GitHub Contributors](https://github.com/zalando-incubator/kopf/gra
 - [Daniel Middlecote](https://github.com/dlmiddlecote)
 - [Henning Jacobs](https://github.com/hjacobs)
 - [Ismail Kaboubi](https://github.com/smileisak)
+- [Michael Narodovitch](https://github.com/michaelnarodovitch)
 - [Sergey Vasilyev](https://github.com/nolar)
 - [Soroosh Sarabadani](https://github.com/psycho-ir)
 - [Trond Hindenes](https://github.com/trondhindenes)
