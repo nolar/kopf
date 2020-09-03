@@ -3,8 +3,8 @@ from typing import Type
 
 import pytest
 
-from kopf.storage.diffbase import (AnnotationsDiffBaseStorage, DiffBaseStorage,
-                                   MultiDiffBaseStorage, StatusDiffBaseStorage)
+from kopf.storage.diffbase import AnnotationsDiffBaseStorage, DiffBaseStorage, \
+                                  MultiDiffBaseStorage, StatusDiffBaseStorage
 from kopf.structs.bodies import Body, BodyEssence
 from kopf.structs.dicts import FieldSpec
 from kopf.structs.patches import Patch

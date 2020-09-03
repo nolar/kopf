@@ -3,8 +3,8 @@ Some basic dicts and field-in-a-dict manipulation helpers.
 """
 import collections.abc
 import enum
-from typing import (Any, Callable, Generic, Iterable, Iterator, List,
-                    Mapping, MutableMapping, Optional, Tuple, TypeVar, Union)
+from typing import Any, Callable, Generic, Iterable, Iterator, List, \
+                   Mapping, MutableMapping, Optional, Tuple, TypeVar, Union
 
 FieldPath = Tuple[str, ...]
 FieldSpec = Union[None, str, FieldPath, List[str]]

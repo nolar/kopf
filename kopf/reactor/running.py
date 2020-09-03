@@ -4,8 +4,8 @@ import logging
 import signal
 import threading
 import warnings
-from typing import (TYPE_CHECKING, Any, Collection, Coroutine,
-                    MutableSequence, Optional, Sequence, Set, Tuple, cast)
+from typing import TYPE_CHECKING, Any, Collection, Coroutine, \
+                   MutableSequence, Optional, Sequence, Set, Tuple, cast
 
 from kopf.clients import auth
 from kopf.engines import peering, posting, probing

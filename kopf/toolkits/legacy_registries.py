@@ -10,8 +10,8 @@ import warnings
 from typing import Any, Container, Iterator, Optional, Sequence, Union
 
 from kopf.reactor import causation, registries
-from kopf.structs import (bodies, callbacks, dicts, filters,
-                          handlers, patches, resources as resources_)
+from kopf.structs import bodies, callbacks, dicts, filters, \
+                         handlers, patches, resources as resources_
 
 AnyCause = Union[causation.ResourceWatchingCause, causation.ResourceChangingCause]
 AnyHandler = Union[handlers.ResourceWatchingHandler, handlers.ResourceChangingHandler]
