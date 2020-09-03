@@ -14,3 +14,4 @@ freezegun
 codecov
 coveralls
 mypy==0.770
+isort>=5.5.0
