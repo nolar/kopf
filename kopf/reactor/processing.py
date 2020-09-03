@@ -20,8 +20,8 @@ from typing import Collection, Optional
 from kopf.engines import loggers, posting
 from kopf.reactor import causation, daemons, effects, handling, lifecycles, registries
 from kopf.storage import finalizers, states
-from kopf.structs import (bodies, configuration, containers, diffs,
-                          handlers as handlers_, patches, resources)
+from kopf.structs import bodies, configuration, containers, diffs, \
+                         handlers as handlers_, patches, resources
 
 
 async def process_resource_event(

@@ -27,8 +27,8 @@ import asyncio
 import collections
 import dataclasses
 import random
-from typing import (AsyncIterable, AsyncIterator, Callable, Dict, List,
-                    Mapping, NewType, Optional, Tuple, TypeVar, cast)
+from typing import AsyncIterable, AsyncIterator, Callable, Dict, List, \
+                   Mapping, NewType, Optional, Tuple, TypeVar, cast
 
 from kopf.structs import primitives
 

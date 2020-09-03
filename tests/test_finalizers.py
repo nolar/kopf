@@ -1,7 +1,7 @@
 import pytest
 
-from kopf.storage.finalizers import (LEGACY_FINALIZER, allow_deletion, block_deletion,
-                                     is_deletion_blocked, is_deletion_ongoing)
+from kopf.storage.finalizers import LEGACY_FINALIZER, allow_deletion, block_deletion, \
+                                    is_deletion_blocked, is_deletion_ongoing
 
 
 def test_finalizer_is_fqdn(settings):

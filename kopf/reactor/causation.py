@@ -25,8 +25,8 @@ import warnings
 from typing import Any, Optional, TypeVar, Union
 
 from kopf.storage import finalizers
-from kopf.structs import (bodies, configuration, containers, diffs,
-                          handlers, patches, primitives, resources)
+from kopf.structs import bodies, configuration, containers, diffs, \
+                         handlers, patches, primitives, resources
 
 
 @dataclasses.dataclass

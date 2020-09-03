@@ -16,8 +16,8 @@ import collections
 import functools
 import warnings
 from types import FunctionType, MethodType
-from typing import (Any, Callable, Container, FrozenSet, Generic, Iterable, Iterator, List,
-                    Mapping, MutableMapping, Optional, Sequence, Set, TypeVar, Union, cast)
+from typing import Any, Callable, Container, FrozenSet, Generic, Iterable, Iterator, List, \
+                   Mapping, MutableMapping, Optional, Sequence, Set, TypeVar, Union, cast
 
 from kopf.reactor import causation, invocation
 from kopf.structs import callbacks, dicts, diffs, filters, handlers, resources as resources_

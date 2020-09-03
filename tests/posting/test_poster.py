@@ -5,8 +5,8 @@ import pytest
 from asynctest import call
 
 from kopf import event, exception, info, warn
-from kopf.engines.posting import (K8sEvent, event_queue_loop_var,
-                                  event_queue_var, poster, settings_var)
+from kopf.engines.posting import K8sEvent, event_queue_loop_var, \
+                                 event_queue_var, poster, settings_var
 
 OBJ1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
         'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1'}}
