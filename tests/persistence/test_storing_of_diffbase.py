@@ -10,7 +10,7 @@ from kopf.structs.dicts import FieldSpec
 from kopf.structs.patches import Patch
 
 
-class DualDiffBaseStore(MultiDiffBaseStorage):
+class DualDiffBaseStorage(MultiDiffBaseStorage):
     def __init__(
             self,
             name: str = 'kopf.zalando.org/last-handled-configuration',
@@ -22,9 +22,9 @@ class DualDiffBaseStore(MultiDiffBaseStorage):
         ])
 
 
-ALL_STORAGES = [AnnotationsDiffBaseStorage, StatusDiffBaseStorage, DualDiffBaseStore]
-ANNOTATIONS_POPULATING_STORAGES = [AnnotationsDiffBaseStorage, DualDiffBaseStore]
-STATUS_POPULATING_STORAGES = [StatusDiffBaseStorage, DualDiffBaseStore]
+ALL_STORAGES = [AnnotationsDiffBaseStorage, StatusDiffBaseStorage, DualDiffBaseStorage]
+ANNOTATIONS_POPULATING_STORAGES = [AnnotationsDiffBaseStorage, DualDiffBaseStorage]
+STATUS_POPULATING_STORAGES = [StatusDiffBaseStorage, DualDiffBaseStorage]
 
 ESSENCE_DATA_1 = BodyEssence(
     spec={
