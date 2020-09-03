@@ -2,7 +2,7 @@
 -e .
 
 # Everything needed to develop (test, debug) the framework.
-coverage<5.0  # manual enforcement where pip fails, see #272.
+coverage
 pytest-aiohttp
 pytest-asyncio==0.10.0  # until fixed: https://github.com/pytest-dev/pytest-asyncio/issues/154
 pytest-mock
