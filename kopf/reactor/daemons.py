@@ -216,17 +216,16 @@ async def daemon_killer(
     # Sleep forever, or until cancelled, which happens when the operator begins its shutdown.
     try:
         await asyncio.Event().wait()
-    except asyncio.CancelledError:
-        pass
 
     # Terminate all running daemons when the operator exits (and this task is cancelled).
-    coros = [
-        stop_daemon(daemon=daemon, settings=settings)
-        for memory in memories.iter_all_memories()
-        for daemon in memory.running_daemons.values()
-    ]
-    if coros:
-        await asyncio.wait(coros)
+    finally:
+        coros = [
+            stop_daemon(daemon=daemon, settings=settings)
+            for memory in memories.iter_all_memories()
+            for daemon in memory.running_daemons.values()
+        ]
+        if coros:
+            await asyncio.wait(coros)
 
 
 async def stop_daemon(
