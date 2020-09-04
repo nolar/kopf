@@ -364,3 +364,36 @@ e.g. by arbitrarily labelling them, so that a new diff-base is generated:
     kubectl label kex -l somelabel=somevalue  ping=pong
 
 Then, switch to the new storage alone, without the transitional setup.
+
+
+Error throttling
+================
+
+To prevent uncontrollable flood of activities in case of errors that prevent
+the resources being marked as handled, which could lead to Kubernetes API
+flooding, it is possible to throttle the activities on a per-resource basis:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.batching.error_delays = [10, 20, 30]
+
+In that case, all unhandled errors in the framework or in the Kubernetes API
+would be backed-off by 10s after the 1st error, then by 20s after the 2nd one,
+and then by 30s after the 3rd, 4th, 5th errors and so on. On a first success,
+the backoff intervals will be reset and re-used again on the next error.
+
+The default is a sequence of Fibonacci numbers from 1 second to 10 minutes.
+
+The back-offs are not persisted, so they are lost on the operator restarts.
+
+These back-offs do not cover errors in the handlers -- the handlers have their
+own configurable per-handler back-off intervals. These back-offs are for Kopf
+and for Kubernetes API mostly (and other environment issues).
+
+To disable throttling (on your own risk!), set the error delays to
+an empty list (``[]``) or an empty tuple (``()``).
+Interpret as: no throttling delays set -- no throttling sleeps done.

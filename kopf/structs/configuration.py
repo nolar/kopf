@@ -27,7 +27,7 @@ the root object, while keeping the legacy names for backward compatibility.
 """
 import concurrent.futures
 import dataclasses
-from typing import Optional
+from typing import Iterable, Optional
 
 from kopf import config  # for legacy defaults only
 from kopf.storage import diffbase, progress
@@ -121,6 +121,24 @@ class BatchingSettings:
     How soon a worker is cancelled when the parent watcher is going to exit.
     This is the time given to the worker to deplete and process the queue.
     """
+
+    error_delays: Iterable[float] = (1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610)
+    """
+    Backoff intervals in case of unexpected errors in the framework (not the handlers).
+
+    Per-resource workers freeze all activities for this number of seconds in case of errors.
+    Once they are back to work, they process only the latest event seen (due to event batching).
+
+    Every further error leads to the next, even bigger delay (10m is enough for a default maximum).
+    Every success resets the backoff intervals, and it goes from the beginning on the next error.
+
+    If needed, this value can be an arbitrary collection/iterator/object:
+    only ``iter()`` is called on every new throttling cycle, no other protocols
+    are required; but make sure that it is re-iterable for multiple uses.
+    
+    To disable throttling (on your own risk), set it to ``[]`` or ``()``.
+    """
+
 
 
 @dataclasses.dataclass

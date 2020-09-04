@@ -26,9 +26,14 @@ async def test_specific_delays_only_are_awaited(timer):
     assert unslept is None
 
 
-async def test_passed_delays_skip_sleeping(timer):
+@pytest.mark.parametrize('delays', [
+    pytest.param([1000, -10], id='mixed-signs'),
+    pytest.param([-100, -10], id='all-negative'),
+    pytest.param(-10, id='alone'),
+])
+async def test_negative_delays_skip_sleeping(timer, delays):
     with timer:
-        unslept = await asyncio.wait_for(sleep_or_wait([0.10, -10]), timeout=1.0)
+        unslept = await asyncio.wait_for(sleep_or_wait(delays), timeout=1.0)
     assert timer.seconds < 0.01
     assert unslept is None
 
