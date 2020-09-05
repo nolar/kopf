@@ -578,7 +578,7 @@ def assert_logs(caplog):
 # Helpers for asyncio checks.
 #
 @pytest.fixture(autouse=True)
-def _no_asyncio_pending_tasks():
+def _no_asyncio_pending_tasks(event_loop):
     """
     Ensure there are no unattended asyncio tasks after the test.
 
@@ -592,9 +592,18 @@ def _no_asyncio_pending_tasks():
     collection after every test, and check messages from `asyncio.Task.__del__`.
     This, however, requires intercepting all event-loop creation in the code.
     """
+
     # See `asyncio.all_tasks()` implementation for reference.
     before = {t for t in list(asyncio.tasks._all_tasks) if not t.done()}
+
+    # Run the test.
     yield
+
+    # Let the pytest-asyncio's async2sync wrapper to finish all callbacks. Otherwise, it raises:
+    #   <Task pending name='Task-2' coro=<<async_generator_athrow without __name__>()>>
+    event_loop.run_until_complete(asyncio.sleep(0))
+
+    # Detect all leftover tasks.
     after = {t for t in list(asyncio.tasks._all_tasks) if not t.done()}
     remains = after - before
     if remains:
