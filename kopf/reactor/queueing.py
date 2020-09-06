@@ -114,6 +114,7 @@ async def watcher(
 
     # All per-object workers are handled as fire-and-forget jobs via the scheduler,
     # and communicated via the per-object event queues.
+    signaller = asyncio.Condition()
     scheduler = await aiojobs.create_scheduler(limit=settings.batching.worker_limit,
                                                exception_handler=exception_handler)
     streams: Streams = {}
@@ -135,6 +136,7 @@ async def watcher(
                 streams[key].replenished.set()  # interrupt current sleeps, if any.
                 await streams[key].watchevents.put(raw_event)
                 await scheduler.spawn(worker(
+                    signaller=signaller,
                     processor=processor,
                     settings=settings,
                     streams=streams,
@@ -149,13 +151,20 @@ async def watcher(
                                "The operator will stop to prevent damage.") from worker_error
     finally:
         # Allow the existing workers to finish gracefully before killing them.
-        await _wait_for_depletion(scheduler=scheduler, streams=streams, settings=settings)
+        await _wait_for_depletion(
+            signaller=signaller,
+            scheduler=scheduler,
+            streams=streams,
+            settings=settings,
+        )
 
         # Terminate all the fire-and-forget per-object jobs if they are still running.
         await asyncio.shield(scheduler.close())
 
 
 async def worker(
+        *,
+        signaller: asyncio.Condition,
         processor: WatchStreamProcessor,
         settings: configuration.OperatorSettings,
         streams: Streams,
@@ -225,9 +234,16 @@ async def worker(
         except KeyError:
             pass
 
+        # Notify the depletion routine about the changes in the workers'/streams' overall state.
+        # * This should happen STRICTLY AFTER the removal from the streams[], and
+        # * This should happen A MOMENT BEFORE the job ends (within the scheduler's close_timeout).
+        async with signaller:
+            signaller.notify_all()
+
 
 async def _wait_for_depletion(
         *,
+        signaller: asyncio.Condition,
         scheduler: aiojobs.Scheduler,
         settings: configuration.OperatorSettings,
         streams: Streams,
@@ -239,11 +255,14 @@ async def _wait_for_depletion(
 
     # Wait for the queues to be depleted, but only if there are some workers running.
     # Continue with the tasks termination if the timeout is reached, no matter the queues.
-    started = time.perf_counter()
-    while streams and \
-            scheduler.active_count and \
-            time.perf_counter() - started < settings.batching.exit_timeout:
-        await asyncio.sleep(settings.batching.exit_timeout / 100.)
+    # NB: the scheduler is checked for a case of mocked workers; otherwise, the streams are enough.
+    async with signaller:
+        try:
+            await asyncio.wait_for(
+                signaller.wait_for(lambda: not streams or not scheduler.active_count),
+                timeout=settings.batching.exit_timeout)
+        except asyncio.TimeoutError:
+            pass
 
     # The last check if the termination is going to be graceful or not.
     if streams:

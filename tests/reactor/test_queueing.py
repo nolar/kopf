@@ -46,6 +46,11 @@ async def test_watchevent_demultiplexing(worker_mock, timer, resource, processor
                                          overhead):
     """ Verify that every unique uid goes into its own queue+worker, which are never shared. """
 
+    # Override the default timeouts to make the tests faster.
+    settings.batching.idle_timeout = 100  # should not be involved, fail if it is
+    settings.batching.exit_timeout = 100  # should exit instantly, fail if it didn't
+    settings.batching.batch_window = 100  # should not be involved, fail if it is
+
     # Inject the events of unique objects - to produce few streams/workers.
     stream.feed(events)
     stream.close()
@@ -112,14 +117,14 @@ async def test_watchevent_demultiplexing(worker_mock, timer, resource, processor
 
 ])
 @pytest.mark.usefixtures('watcher_limited')
-async def test_watchevent_batching(settings, resource, processor, timer, overhead,
-                                   stream, events, uids, vals):
+async def test_watchevent_batching(settings, resource, processor, timer,
+                                   stream, events, uids, vals, event_loop):
     """ Verify that only the last event per uid is actually handled. """
 
     # Override the default timeouts to make the tests faster.
-    settings.batching.idle_timeout = 0.5
-    settings.batching.batch_window = 0.2
-    settings.batching.exit_timeout = 0.5
+    settings.batching.idle_timeout = 100  # should not be involved, fail if it is
+    settings.batching.exit_timeout = 100  # should exit instantly, fail if it didn't
+    settings.batching.batch_window = 0.3  # the time period being tested (make bigger than overhead)
 
     # Inject the events of unique objects - to produce few streams/workers.
     stream.feed(events)
@@ -134,9 +139,10 @@ async def test_watchevent_batching(settings, resource, processor, timer, overhea
             processor=processor,
         )
 
-    # Significantly less than the queue getting timeout, but sufficient to run.
-    # 2x = 1x batch window on queue pulling of the event chain + 1x for the EOS token.
-    assert overhead.min < timer.seconds < 2 * settings.batching.batch_window + overhead.max
+    # Should be batched strictly once (never twice). Note: multiple uids run concurrently,
+    # so they all are batched in parallel, and the timing remains the same.
+    assert timer.seconds > settings.batching.batch_window * 1
+    assert timer.seconds < settings.batching.batch_window * 2
 
     # Was the processor called at all? Awaited as needed for async fns?
     assert processor.awaited
@@ -172,9 +178,9 @@ async def test_garbage_collection_of_streams(settings, stream, events, unique, w
                                              overhead):
 
     # Override the default timeouts to make the tests faster.
-    settings.batching.idle_timeout = 0.5
-    settings.batching.batch_window = 0.1
-    settings.batching.exit_timeout = 0.5
+    settings.batching.exit_timeout = 100  # should exit instantly, fail if it didn't
+    settings.batching.idle_timeout = .05  # finish workers faster, but not as fast as batching
+    settings.batching.batch_window = .01  # minimize the effects of batching (not our interest)
     settings.watching.reconnect_backoff = 1.0  # to prevent src depletion
 
     # Inject the events of unique objects - to produce few streams/workers.
@@ -199,7 +205,7 @@ async def test_garbage_collection_of_streams(settings, stream, events, unique, w
     # Once the idle timeout, they will exit and gc their individual streams.
     await asyncio.sleep(settings.batching.batch_window)  # depleting the queues.
     await asyncio.sleep(settings.batching.idle_timeout)  # idling on empty queues.
-    await asyncio.sleep(overhead.max)
+    await asyncio.sleep(overhead.max)  # the code itself also takes time.
 
     # The mutable(!) streams dict is now empty, i.e. garbage-collected.
     assert len(streams) == 0
