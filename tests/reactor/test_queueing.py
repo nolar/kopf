@@ -42,8 +42,7 @@ from kopf.reactor.queueing import EOS, watcher
 ])
 @pytest.mark.usefixtures('watcher_limited')
 async def test_watchevent_demultiplexing(worker_mock, timer, resource, processor,
-                                         settings, stream, events, uids, cnts,
-                                         overhead):
+                                         settings, stream, events, uids, cnts):
     """ Verify that every unique uid goes into its own queue+worker, which are never shared. """
 
     # Override the default timeouts to make the tests faster.
@@ -64,8 +63,9 @@ async def test_watchevent_demultiplexing(worker_mock, timer, resource, processor
             processor=processor,
         )
 
-    # The streams are not cleared by the mocked worker, but the worker exits fast.
-    assert timer.seconds < overhead.max
+    # Extra-check: verify that the real workers were not involved:
+    # they would do batching, which is absent in the mocked workers.
+    assert timer.seconds < settings.batching.batch_window
 
     # The processor must not be called by the watcher, only by the worker.
     # But the worker (even if mocked) must be called & awaited by the watcher.
@@ -174,8 +174,7 @@ async def test_watchevent_batching(settings, resource, processor, timer,
 
 ])
 @pytest.mark.usefixtures('watcher_in_background')
-async def test_garbage_collection_of_streams(settings, stream, events, unique, worker_spy,
-                                             overhead):
+async def test_garbage_collection_of_streams(settings, stream, events, unique, worker_spy):
 
     # Override the default timeouts to make the tests faster.
     settings.batching.exit_timeout = 100  # should exit instantly, fail if it didn't
@@ -192,6 +191,7 @@ async def test_garbage_collection_of_streams(settings, stream, events, unique, w
     while worker_spy.call_count < unique:
         await asyncio.sleep(0.001)  # give control to the loop
     streams = worker_spy.call_args_list[-1][1]['streams']
+    signaller: asyncio.Condition = worker_spy.call_args_list[0][1]['signaller']
 
     # The mutable(!) streams dict is now populated with the objects' streams.
     assert len(streams) != 0  # usually 1, but can be 2+ if it is fast enough.
@@ -202,13 +202,23 @@ async def test_garbage_collection_of_streams(settings, stream, events, unique, w
     assert all([ref() is not None for ref in refs])
 
     # Give the workers some time to finish waiting for the events.
-    # Once the idle timeout, they will exit and gc their individual streams.
-    await asyncio.sleep(settings.batching.batch_window)  # depleting the queues.
-    await asyncio.sleep(settings.batching.idle_timeout)  # idling on empty queues.
-    await asyncio.sleep(overhead.max)  # the code itself also takes time.
+    # After the idle timeout is reached, they will exit and gc their streams.
+    async with signaller:
+        try:
+            await asyncio.wait_for(
+                signaller.wait_for(lambda: not streams),
+                timeout=(settings.batching.batch_window +  # depleting the queues.
+                         settings.batching.idle_timeout +  # idling on empty queues.
+                         1.0))  # the code itself takes time: add a max tolerable delay.
+        except asyncio.TimeoutError:
+            pass
 
     # The mutable(!) streams dict is now empty, i.e. garbage-collected.
     assert len(streams) == 0
+
+    # Let the workers to actually exit and gc their local scopes with variables.
+    # The jobs can take a tiny moment more, but this is noticeable in the tests.
+    await asyncio.sleep(0.1)
 
     # Truly garbage-collected? Memory freed?
     assert all([ref() is None for ref in refs])
