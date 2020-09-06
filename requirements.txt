@@ -4,10 +4,10 @@
 # Everything needed to develop (test, debug) the framework.
 coverage
 pytest-aiohttp
-pytest-asyncio==0.10.0  # until fixed: https://github.com/pytest-dev/pytest-asyncio/issues/154
+pytest-asyncio
 pytest-mock
 pytest-cov
-pytest==5.3.5  # until fixed: https://github.com/pytest-dev/pytest-asyncio/issues/154
+pytest>=6.0.0
 aresponses
 asynctest
 freezegun
