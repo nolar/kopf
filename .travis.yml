@@ -5,6 +5,13 @@ dist: xenial
 language: python
 python: "3.8"
 
+# Only test the final merges and releases. The work-in-progress branches are tested by PR builds.
+branches:
+  only:
+  - master
+  - /^release\/.*$/
+  - /^\d+\.\d+(\.\d+)?(\.?(rc|dev|pre|post)\d+)?(-\S*)?(\+\S*)?$/
+
 # Linting is super-fast and lightweight, gives the near-instant feedback if code is wrong.
 # It does not depend on the environment (services, dependencies, even the framework itself).
 # Currently, most linters are optional and performed manually from time to time. This will change.
