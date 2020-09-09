@@ -54,5 +54,5 @@ async def test_skipped_with_no_handlers(
         ".* event:",
         "Patching with:",
     ], prohibited=[
-        "All handlers succeeded",
+        "event is processed:",
     ])
