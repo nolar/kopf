@@ -433,9 +433,10 @@ class SmartProgressStorage(MultiProgressStorage):
             touch_key: str = 'touch-dummy',  # NB: not dotted, but dashed
             touch_field: dicts.FieldSpec = 'status.{name}.dummy',
             prefix: str = 'kopf.zalando.org',
+            v1: bool = True,  # will be switched to False a few releases later
             verbose: bool = False,
     ) -> None:
         super().__init__([
-            AnnotationsProgressStorage(prefix=prefix, verbose=verbose, touch_key=touch_key),
+            AnnotationsProgressStorage(v1=v1, prefix=prefix, verbose=verbose, touch_key=touch_key),
             StatusProgressStorage(name=name, field=field, touch_field=touch_field),
         ])
