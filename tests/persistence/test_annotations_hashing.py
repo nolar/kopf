@@ -2,12 +2,22 @@ import json
 
 import pytest
 
+from kopf.storage.conventions import StorageKeyFormingConvention
+from kopf.storage.diffbase import AnnotationsDiffBaseStorage
 from kopf.storage.progress import AnnotationsProgressStorage, ProgressRecord, SmartProgressStorage
 from kopf.structs.bodies import Body
 from kopf.structs.handlers import HandlerId
 from kopf.structs.patches import Patch
 
-ANNOTATIONS_POPULATING_STORAGES = [AnnotationsProgressStorage, SmartProgressStorage]
+ANNOTATIONS_POPULATING_STORAGES = [
+    AnnotationsProgressStorage,
+    SmartProgressStorage,
+]
+STORAGE_KEY_FORMING_CLASSES = [
+    StorageKeyFormingConvention,
+    AnnotationsProgressStorage,
+    AnnotationsDiffBaseStorage,
+]
 
 CONTENT_DATA = ProgressRecord(
     started='2020-01-01T00:00:00',
@@ -68,18 +78,20 @@ V2_KEYS = [
 ]
 
 
-def test_unversioned_keys_are_depecated():
-    storage = AnnotationsProgressStorage()
-    v1_key = storage.make_key_v1('...')
+@pytest.mark.parametrize('cls', STORAGE_KEY_FORMING_CLASSES)
+def test_unversioned_keys_are_depecated(cls):
+    storage = cls(v1=True, prefix='kopf.zalando.org')
+    v1_key = storage.make_v1_key('...')
     with pytest.deprecated_call(match=r"make_key\(\) is deprecated"):
         returned_key = storage.make_key('...')
     assert returned_key == v1_key
 
 
-def test_keys_for_all_versions():
-    storage = AnnotationsProgressStorage(v1=True)
-    v1_key = storage.make_key_v1('.' * 64)
-    v2_key = storage.make_key_v2('.' * 64)
+@pytest.mark.parametrize('cls', STORAGE_KEY_FORMING_CLASSES)
+def test_keys_for_all_versions(cls):
+    storage = cls(v1=True, prefix='kopf.zalando.org')
+    v1_key = storage.make_v1_key('.' * 64)
+    v2_key = storage.make_v2_key('.' * 64)
     assert v1_key != v2_key  # prerequisite
     keys = storage.make_keys('.' * 64)
     assert len(list(keys)) == 2
@@ -87,10 +99,11 @@ def test_keys_for_all_versions():
     assert v2_key in keys
 
 
-def test_keys_deduplication():
-    storage = AnnotationsProgressStorage(v1=True)
-    v1_key = storage.make_key_v1('...')
-    v2_key = storage.make_key_v2('...')
+@pytest.mark.parametrize('cls', STORAGE_KEY_FORMING_CLASSES)
+def test_keys_deduplication(cls):
+    storage = cls(v1=True, prefix='kopf.zalando.org')
+    v1_key = storage.make_v1_key('...')
+    v2_key = storage.make_v2_key('...')
     assert v1_key == v2_key  # prerequisite
     keys = storage.make_keys('...')
     assert len(list(keys)) == 1
@@ -99,16 +112,18 @@ def test_keys_deduplication():
 
 
 @pytest.mark.parametrize('prefix, provided_key, expected_key', COMMON_KEYS + V1_KEYS)
-def test_key_hashing_v1(prefix, provided_key, expected_key):
-    storage = AnnotationsProgressStorage(prefix=prefix)
-    returned_key = storage.make_key_v1(provided_key)
+@pytest.mark.parametrize('cls', STORAGE_KEY_FORMING_CLASSES)
+def test_key_hashing_v1(cls, prefix, provided_key, expected_key):
+    storage = cls(v1=True, prefix=prefix)
+    returned_key = storage.make_v1_key(provided_key)
     assert returned_key == expected_key
 
 
 @pytest.mark.parametrize('prefix, provided_key, expected_key', COMMON_KEYS + V2_KEYS)
-def test_key_hashing_v2(prefix, provided_key, expected_key):
-    storage = AnnotationsProgressStorage(prefix=prefix)
-    returned_key = storage.make_key_v2(provided_key)
+@pytest.mark.parametrize('cls', STORAGE_KEY_FORMING_CLASSES)
+def test_key_hashing_v2(cls, prefix, provided_key, expected_key):
+    storage = cls(v1=True, prefix=prefix)
+    returned_key = storage.make_v2_key(provided_key)
     assert returned_key == expected_key
 
 
@@ -152,7 +167,7 @@ def test_keys_normalized_on_touching(cls, prefix, provided_key, expected_key):
     assert expected_key in patch.metadata.annotations
 
 
-@pytest.mark.parametrize('cls', ANNOTATIONS_POPULATING_STORAGES)
+@pytest.mark.parametrize('cls', ANNOTATIONS_POPULATING_STORAGES + STORAGE_KEY_FORMING_CLASSES)
 def test_warning_on_long_prefix(cls):
     with pytest.warns(UserWarning, match=r"The annotations prefix is too long"):
-        cls(prefix='x' * (253 - 63))
+        cls(v1=True, prefix='x' * (253 - 63))

@@ -1,8 +1,10 @@
 import abc
 import copy
 import json
+import warnings
 from typing import Any, Collection, Dict, Iterable, Optional, cast
 
+from kopf.storage import conventions
 from kopf.structs import bodies, dicts, patches
 
 LAST_SEEN_ANNOTATION = 'kopf.zalando.org/last-handled-configuration'
@@ -110,15 +112,31 @@ class DiffBaseStorage(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
 
-class AnnotationsDiffBaseStorage(DiffBaseStorage):
+class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBaseStorage):
 
     def __init__(
             self,
             *,
-            name: str = 'kopf.zalando.org/last-handled-configuration',
+            prefix: Optional[str] = 'kopf.zalando.org',
+            key: str = 'last-handled-configuration',
+            v1: bool = True,  # will be switched to False a few releases later
+            name: Optional[str] = None,  # deprecated, but parsed into prefix+name
     ) -> None:
-        super().__init__()
-        self.name = name
+        if name is not None:
+            warnings.warn("name= is deprecated for AnnotationsDiffBaseStorage(); "
+                          "use prefix= & key=", DeprecationWarning)
+            if '/' in name:
+                prefix, key = name.split('/', 1)
+            else:
+                prefix, key = None, name
+
+        super().__init__(prefix=prefix, v1=v1)
+        self.key = key
+
+    @property
+    def name(self) -> str:
+        prefix = f'{self.prefix}/' if self.prefix else ''
+        return f'{prefix}{self.key}'
 
     def build(
             self,
@@ -128,8 +146,9 @@ class AnnotationsDiffBaseStorage(DiffBaseStorage):
     ) -> bodies.BodyEssence:
         essence = super().build(body=body, extra_fields=extra_fields)
         annotations = essence.get('metadata', {}).get('annotations', {})
-        if self.name in annotations:
-            del annotations[self.name]
+        for full_key in self.make_keys(self.key):
+            if full_key in annotations:
+                del annotations[full_key]
         return essence
 
     def fetch(
@@ -137,9 +156,12 @@ class AnnotationsDiffBaseStorage(DiffBaseStorage):
             *,
             body: bodies.Body,
     ) -> Optional[bodies.BodyEssence]:
-        encoded: Optional[str] = body.metadata.annotations.get(self.name, None)
-        essence: Optional[bodies.BodyEssence] = json.loads(encoded) if encoded is not None else None
-        return essence
+        for full_key in self.make_keys(self.key):
+            encoded = body.metadata.annotations.get(full_key, None)
+            decoded = json.loads(encoded) if encoded is not None else None
+            if decoded is not None:
+                return cast(bodies.BodyEssence, decoded)
+        return None
 
     def store(
             self,
@@ -150,7 +172,8 @@ class AnnotationsDiffBaseStorage(DiffBaseStorage):
     ) -> None:
         encoded: str = json.dumps(essence, separators=(',', ':'))  # NB: no spaces
         encoded += '\n'  # for better kubectl presentation without wrapping (same as kubectl's one)
-        patch.metadata.annotations[self.name] = encoded
+        for full_key in self.make_keys(self.key):
+            patch.metadata.annotations[full_key] = encoded
 
 
 class StatusDiffBaseStorage(DiffBaseStorage):

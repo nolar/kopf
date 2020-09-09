@@ -13,11 +13,12 @@ from kopf.structs.patches import Patch
 class DualDiffBaseStorage(MultiDiffBaseStorage):
     def __init__(
             self,
-            name: str = 'kopf.zalando.org/last-handled-configuration',
+            prefix: str = 'kopf.zalando.org',
+            key: str = 'last-handled-configuration',
             field: FieldSpec = 'status.kopf.last-handled-configuration',
     ):
         super().__init__([
-            AnnotationsDiffBaseStorage(name=name),
+            AnnotationsDiffBaseStorage(prefix=prefix, key=key),
             StatusDiffBaseStorage(field=field),
         ])
 
@@ -54,13 +55,25 @@ ESSENCE_JSON_2 = json.dumps(ESSENCE_DATA_2, separators=(',', ':'))
 #
 
 
+def test_annotations_store_deprecates_name():
+    with pytest.deprecated_call(match=r'name= is deprecated'):
+        storage = AnnotationsDiffBaseStorage(name='my-operator.my-company.com/diff-base')
+    assert storage.prefix == 'my-operator.my-company.com'
+    assert storage.key == 'diff-base'
+    assert storage.name == 'my-operator.my-company.com/diff-base'
+
+
 def test_annotations_store_with_defaults():
     storage = AnnotationsDiffBaseStorage()
+    assert storage.prefix == 'kopf.zalando.org'
+    assert storage.key == 'last-handled-configuration'
     assert storage.name == 'kopf.zalando.org/last-handled-configuration'
 
 
-def test_annotations_storage_with_name():
-    storage = AnnotationsDiffBaseStorage(name='my-operator.my-company.com/diff-base')
+def test_annotations_storage_with_prefix_and_key():
+    storage = AnnotationsDiffBaseStorage(prefix='my-operator.my-company.com', key='diff-base')
+    assert storage.prefix == 'my-operator.my-company.com'
+    assert storage.key == 'diff-base'
     assert storage.name == 'my-operator.my-company.com/diff-base'
 
 
@@ -98,7 +111,7 @@ def test_fetching_from_empty_body_returns_none(
 ])
 @pytest.mark.parametrize('cls', ANNOTATIONS_POPULATING_STORAGES)
 def test_fetching_from_annotations_storage(cls, prefix, suffix):
-    storage = cls(name='my-operator.example.com/diff-base')
+    storage = cls(prefix='my-operator.example.com', key='diff-base')
     body = Body({'metadata': {'annotations': {
         'my-operator.example.com/diff-base': prefix + ESSENCE_JSON_1 + suffix,
     }}})
@@ -109,7 +122,7 @@ def test_fetching_from_annotations_storage(cls, prefix, suffix):
 
 @pytest.mark.parametrize('cls', ANNOTATIONS_POPULATING_STORAGES)
 def test_storing_to_annotations_storage_populates_keys(cls):
-    storage = cls(name='my-operator.example.com/diff-base')
+    storage = cls(prefix='my-operator.example.com', key='diff-base')
     patch = Patch()
     body = Body({})
     storage.store(body=body, patch=patch, essence=ESSENCE_DATA_1)
@@ -122,7 +135,7 @@ def test_storing_to_annotations_storage_populates_keys(cls):
 
 @pytest.mark.parametrize('cls', ANNOTATIONS_POPULATING_STORAGES)
 def test_storing_to_annotations_storage_overwrites_old_content(cls):
-    storage = cls(name='my-operator.example.com/diff-base')
+    storage = cls(prefix='my-operator.example.com', key='diff-base')
     patch = Patch()
     body = Body({})
     storage.store(body=body, patch=patch, essence=ESSENCE_DATA_1)
