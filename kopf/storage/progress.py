@@ -193,10 +193,10 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention, Progre
             body: bodies.Body,
             patch: patches.Patch,
     ) -> None:
+        decoded = {key: val for key, val in record.items() if self.verbose or val is not None}
+        encoded = json.dumps(decoded, separators=(',', ':'))  # NB: no spaces
         for full_key in self.make_keys(key):
             key_field = ['metadata', 'annotations', full_key]
-            decoded = {key: val for key, val in record.items() if self.verbose or val is not None}
-            encoded = json.dumps(decoded, separators=(',', ':'))  # NB: no spaces
             dicts.ensure(patch, key_field, encoded)
 
     def purge(
