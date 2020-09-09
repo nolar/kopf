@@ -4,11 +4,10 @@ import json
 import pytest
 
 from kopf.reactor.causation import detect_resource_changing_cause
-from kopf.storage.diffbase import LAST_SEEN_ANNOTATION
 from kopf.structs.bodies import Body
 from kopf.structs.handlers import Reason
 
-# Same as in the settings by default.
+LAST_SEEN_ANNOTATION = 'kopf.zalando.org/last-handled-configuration'
 FINALIZER = 'fin'
 
 # Encoded at runtime, so that we do not make any assumptions on json formatting.

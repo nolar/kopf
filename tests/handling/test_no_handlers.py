@@ -5,9 +5,10 @@ import pytest
 
 import kopf
 from kopf.reactor.processing import process_resource_event
-from kopf.storage.diffbase import LAST_SEEN_ANNOTATION
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.handlers import HANDLER_REASONS, ResourceChangingHandler
+
+LAST_SEEN_ANNOTATION = 'kopf.zalando.org/last-handled-configuration'
 
 
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)

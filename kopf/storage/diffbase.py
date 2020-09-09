@@ -7,9 +7,6 @@ from typing import Any, Collection, Dict, Iterable, Optional, cast
 from kopf.storage import conventions
 from kopf.structs import bodies, dicts, patches
 
-LAST_SEEN_ANNOTATION = 'kopf.zalando.org/last-handled-configuration'
-""" The annotation name for the last stored state of the resource. """
-
 
 class DiffBaseStorage(conventions.StorageKeyMarkingConvention, metaclass=abc.ABCMeta):
     """

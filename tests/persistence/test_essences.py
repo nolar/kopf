@@ -2,8 +2,7 @@ from typing import Type
 
 import pytest
 
-from kopf.storage.diffbase import LAST_SEEN_ANNOTATION, AnnotationsDiffBaseStorage, \
-                                  DiffBaseStorage, StatusDiffBaseStorage
+from kopf.storage.diffbase import AnnotationsDiffBaseStorage, DiffBaseStorage, StatusDiffBaseStorage
 from kopf.structs.bodies import Body
 
 ALL_STORAGES = [AnnotationsDiffBaseStorage, StatusDiffBaseStorage]
@@ -66,7 +65,6 @@ def test_get_essence_removes_system_fields_but_keeps_extra_fields(
 
 
 @pytest.mark.parametrize('annotation', [
-    pytest.param(LAST_SEEN_ANNOTATION, id='kopf'),
     pytest.param('kubectl.kubernetes.io/last-applied-configuration', id='kubectl'),
 ])
 @pytest.mark.parametrize('cls', ALL_STORAGES)
@@ -81,7 +79,6 @@ def test_get_essence_removes_garbage_annotations_and_cleans_parents(
 
 
 @pytest.mark.parametrize('annotation', [
-    pytest.param(LAST_SEEN_ANNOTATION, id='kopf'),
     pytest.param('kubectl.kubernetes.io/last-applied-configuration', id='kubectl'),
 ])
 @pytest.mark.parametrize('cls', ALL_STORAGES)
