@@ -15,7 +15,7 @@ import collections.abc
 import copy
 import dataclasses
 import datetime
-from typing import Any, Collection, Dict, Iterator, Mapping, Optional, overload
+from typing import Any, Collection, Dict, Iterator, Mapping, Optional, Tuple, overload
 
 from kopf.storage import progress
 from kopf.structs import bodies, callbacks, handlers as handlers_, patches
@@ -232,6 +232,13 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
     def done(self) -> bool:
         # In particular, no handlers means that it is "done" even before doing.
         return all(handler_state.finished for handler_state in self._states.values())
+
+    @property
+    def counts(self) -> Tuple[int, int]:
+        return (
+            len([1 for handler_state in self._states.values() if handler_state.success]),
+            len([1 for handler_state in self._states.values() if handler_state.failure]),
+        )
 
     @property
     def delay(self) -> Optional[float]:

@@ -348,7 +348,10 @@ async def process_resource_changing_cause(
             states.deliver_results(outcomes=outcomes, patch=cause.patch)
 
             if state.done:
-                logger.info(f"All handlers succeeded for {title}.")
+                success_count, failure_count = state.counts
+                logger.info(f"{title.capitalize()} event is processed: "
+                            f"{success_count} succeeded; "
+                            f"{failure_count} failed.")
                 state.purge(body=cause.body, patch=cause.patch, storage=storage)
 
             done = state.done
