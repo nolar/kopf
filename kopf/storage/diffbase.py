@@ -1,6 +1,7 @@
 import abc
 import copy
 import json
+import warnings
 from typing import Any, Collection, Dict, Iterable, Optional, cast
 
 from kopf.structs import bodies, dicts, patches
@@ -115,10 +116,26 @@ class AnnotationsDiffBaseStorage(DiffBaseStorage):
     def __init__(
             self,
             *,
-            name: str = 'kopf.zalando.org/last-handled-configuration',
+            prefix: Optional[str] = 'kopf.zalando.org',
+            key: str = 'last-handled-configuration',
+            name: Optional[str] = None,  # deprecated, but parsed into prefix+name
     ) -> None:
+        if name is not None:
+            warnings.warn("name= is deprecated for AnnotationsDiffBaseStorage(); "
+                          "use prefix= & key=", DeprecationWarning)
+            if '/' in name:
+                prefix, key = name.split('/', 1)
+            else:
+                prefix, key = None, name
+
         super().__init__()
-        self.name = name
+        self.prefix = prefix
+        self.key = key
+
+    @property
+    def name(self) -> str:
+        prefix = f'{self.prefix}/' if self.prefix else ''
+        return f'{prefix}{self.key}'
 
     def build(
             self,
