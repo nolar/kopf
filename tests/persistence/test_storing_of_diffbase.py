@@ -63,6 +63,14 @@ def test_annotations_store_deprecates_name():
     assert storage.name == 'my-operator.my-company.com/diff-base'
 
 
+def test_annotations_store_deprecates_nonprefixed():
+    with pytest.deprecated_call(match=r'Non-prefixed storages are deprecated'):
+        storage = AnnotationsDiffBaseStorage(prefix=None, key='diff-base')
+    assert storage.prefix is None
+    assert storage.key == 'diff-base'
+    assert storage.name == 'diff-base'
+
+
 def test_annotations_store_with_defaults():
     storage = AnnotationsDiffBaseStorage()
     assert storage.prefix == 'kopf.zalando.org'

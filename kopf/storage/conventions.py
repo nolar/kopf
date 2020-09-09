@@ -93,6 +93,10 @@ class StorageKeyFormingConvention:
         self.prefix = prefix
         self.v1 = v1
 
+        if not self.prefix:
+            warnings.warn("Non-prefixed storages are deprecated. "
+                          "Please, add any prefix or use the default one.", DeprecationWarning)
+
         # 253 is the max length, 63 is the most lengthy name part, 1 is for the "/" separator.
         if len(self.prefix or '') > 253 - 63 - 1:
             warnings.warn("The annotations prefix is too long. It can cause errors when PATCHing.")
