@@ -127,7 +127,9 @@ class ProgressStorage(metaclass=abc.ABCMeta):
         pass
 
 
-class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention, ProgressStorage):
+class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
+                                 conventions.StorageKeyMarkingConvention,
+                                 ProgressStorage):
     """
     State storage in ``.metadata.annotations`` with JSON-serialised content.
 
@@ -198,6 +200,7 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention, Progre
         for full_key in self.make_keys(key):
             key_field = ['metadata', 'annotations', full_key]
             dicts.ensure(patch, key_field, encoded)
+        self._store_marker(prefix=self.prefix, patch=patch, body=body)
 
     def purge(
             self,
@@ -228,6 +231,7 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention, Progre
             body_value = dicts.resolve(body, key_field, None, assume_empty=True)
             if body_value != value:  # also covers absent-vs-None cases.
                 dicts.ensure(patch, key_field, value)
+                self._store_marker(prefix=self.prefix, patch=patch, body=body)
 
     def clear(self, *, essence: bodies.BodyEssence) -> bodies.BodyEssence:
         essence = super().clear(essence=essence)

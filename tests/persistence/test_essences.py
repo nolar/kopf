@@ -95,6 +95,61 @@ def test_get_essence_removes_garbage_annotations_but_keeps_others(
     assert essence == {'metadata': {'annotations': {'other': 'y'}}}
 
 
+@pytest.mark.parametrize('prefix', [
+    'kopf-domain.tld',
+    'kopf.domain.tld',
+    'domain.tld.kopf',
+    'domain.tld-kopf',
+    'domain.kopf.tld',
+    'domain.kopf-tld',
+    'domain-kopf.tld',
+    'domain-kopf-tld',
+])
+@pytest.mark.parametrize('cls', ALL_STORAGES)
+def test_get_essence_keeps_annotations_mentioning_kopf_but_not_from_other_operators(
+        prefix: str,
+        cls: Type[DiffBaseStorage],
+):
+    annotation = f'{prefix}/to-be-removed'
+    body = Body({'metadata': {'annotations': {annotation: 'x'}}})
+    storage = cls()
+    essence = storage.build(body=body)
+    assert essence == {'metadata': {'annotations': {annotation: 'x'}}}
+
+
+@pytest.mark.parametrize('prefix', [
+    'kopf.zalando.org',
+    'sub.kopf.zalando.org',
+    'sub.sub.kopf.zalando.org',
+])
+@pytest.mark.parametrize('cls', ALL_STORAGES)
+def test_get_essence_removes_other_operators_annotations_by_domain(
+        prefix: str,
+        cls: Type[DiffBaseStorage],
+):
+    annotation = f'{prefix}/to-be-removed'
+    body = Body({'metadata': {'annotations': {annotation: 'x', 'other': 'y'}}})
+    storage = cls()
+    essence = storage.build(body=body)
+    assert essence == {'metadata': {'annotations': {'other': 'y'}}}
+
+
+@pytest.mark.parametrize('prefix', [
+    'domain.tld',
+])
+@pytest.mark.parametrize('cls', ALL_STORAGES)
+def test_get_essence_removes_other_operators_annotations_by_marker(
+        prefix: str,
+        cls: Type[DiffBaseStorage],
+):
+    marker = f'{prefix}/kopf-managed'
+    annotation = f'{prefix}/to-be-removed'
+    body = Body({'metadata': {'annotations': {annotation: 'x', marker: 'yes', 'other': 'y'}}})
+    storage = cls()
+    essence = storage.build(body=body)
+    assert essence == {'metadata': {'annotations': {'other': 'y'}}}
+
+
 @pytest.mark.parametrize('cls', ALL_STORAGES)
 def test_get_essence_removes_status_and_cleans_parents(
         cls: Type[DiffBaseStorage],

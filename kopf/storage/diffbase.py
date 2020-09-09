@@ -11,7 +11,7 @@ LAST_SEEN_ANNOTATION = 'kopf.zalando.org/last-handled-configuration'
 """ The annotation name for the last stored state of the resource. """
 
 
-class DiffBaseStorage(metaclass=abc.ABCMeta):
+class DiffBaseStorage(conventions.StorageKeyMarkingConvention, metaclass=abc.ABCMeta):
     """
     Store the base essence for diff calculations, i.e. last handled state.
 
@@ -70,12 +70,12 @@ class DiffBaseStorage(metaclass=abc.ABCMeta):
             'metadata.annotations',  # but not all of them! deleted below.
         ], picker=copy.deepcopy)
 
-        # But we do not want not all of the annotations, only potentially useful.
+        # But we do not want all the annotations, only the potentially useful ones.
+        # Also exclude the annotations of other Kopf-based operators' storages.
         annotations = essence.get('metadata', {}).get('annotations', {})
+        ignored_prefixes = self._detect_marked_prefixes(annotations)
         for annotation in list(annotations):
-            if annotation == LAST_SEEN_ANNOTATION:
-                del annotations[annotation]
-            elif annotation.startswith('kopf.zalando.org/'):
+            if any(annotation.startswith(f'{prefix}/') for prefix in ignored_prefixes):
                 del annotations[annotation]
             elif annotation == 'kubectl.kubernetes.io/last-applied-configuration':
                 del annotations[annotation]
@@ -174,6 +174,7 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
         encoded += '\n'  # for better kubectl presentation without wrapping (same as kubectl's one)
         for full_key in self.make_keys(self.key):
             patch.metadata.annotations[full_key] = encoded
+        self._store_marker(prefix=self.prefix, patch=patch, body=body)
 
 
 class StatusDiffBaseStorage(DiffBaseStorage):
