@@ -70,7 +70,7 @@ V2_KEYS = [
 
 def test_unversioned_keys_are_depecated():
     storage = AnnotationsProgressStorage()
-    v1_key = storage.make_key_v1('...')
+    v1_key = storage.make_v1_key('...')
     with pytest.deprecated_call(match=r"make_key\(\) is deprecated"):
         returned_key = storage.make_key('...')
     assert returned_key == v1_key
@@ -78,8 +78,8 @@ def test_unversioned_keys_are_depecated():
 
 def test_keys_for_all_versions():
     storage = AnnotationsProgressStorage(v1=True)
-    v1_key = storage.make_key_v1('.' * 64)
-    v2_key = storage.make_key_v2('.' * 64)
+    v1_key = storage.make_v1_key('.' * 64)
+    v2_key = storage.make_v2_key('.' * 64)
     assert v1_key != v2_key  # prerequisite
     keys = storage.make_keys('.' * 64)
     assert len(list(keys)) == 2
@@ -89,8 +89,8 @@ def test_keys_for_all_versions():
 
 def test_keys_deduplication():
     storage = AnnotationsProgressStorage(v1=True)
-    v1_key = storage.make_key_v1('...')
-    v2_key = storage.make_key_v2('...')
+    v1_key = storage.make_v1_key('...')
+    v2_key = storage.make_v2_key('...')
     assert v1_key == v2_key  # prerequisite
     keys = storage.make_keys('...')
     assert len(list(keys)) == 1
@@ -101,14 +101,14 @@ def test_keys_deduplication():
 @pytest.mark.parametrize('prefix, provided_key, expected_key', COMMON_KEYS + V1_KEYS)
 def test_key_hashing_v1(prefix, provided_key, expected_key):
     storage = AnnotationsProgressStorage(prefix=prefix)
-    returned_key = storage.make_key_v1(provided_key)
+    returned_key = storage.make_v1_key(provided_key)
     assert returned_key == expected_key
 
 
 @pytest.mark.parametrize('prefix, provided_key, expected_key', COMMON_KEYS + V2_KEYS)
 def test_key_hashing_v2(prefix, provided_key, expected_key):
     storage = AnnotationsProgressStorage(prefix=prefix)
-    returned_key = storage.make_key_v2(provided_key)
+    returned_key = storage.make_v2_key(provided_key)
     assert returned_key == expected_key
 
 

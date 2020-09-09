@@ -284,16 +284,16 @@ class AnnotationsProgressStorage(ProgressStorage):
         return essence
 
     def make_key(self, key: str, max_length: int = 63) -> str:
-        warnings.warn("make_key() is deprecated; use make_key_v1(), make_key_v2(), make_keys(), "
+        warnings.warn("make_key() is deprecated; use make_v1_key(), make_v2_key(), make_keys(), "
                       "or avoid making the keys directly at all.", DeprecationWarning)
-        return self.make_key_v1(key, max_length=max_length)
+        return self.make_v1_key(key, max_length=max_length)
 
     def make_keys(self, key: str) -> Iterable[str]:
-        v2_keys = [self.make_key_v2(key)]
-        v1_keys = [self.make_key_v1(key)] if self.v1 else []
+        v2_keys = [self.make_v2_key(key)]
+        v1_keys = [self.make_v1_key(key)] if self.v1 else []
         return v2_keys + list(set(v1_keys) - set(v2_keys))
 
-    def make_key_v1(self, key: str, max_length: int = 63) -> str:
+    def make_v1_key(self, key: str, max_length: int = 63) -> str:
 
         # K8s has a limitation on the allowed charsets in annotation/label keys.
         # https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/#syntax-and-character-set
@@ -311,7 +311,7 @@ class AnnotationsProgressStorage(ProgressStorage):
         full_key = f'{prefix}{safe_key[:max_length - len(prefix) - len(suffix)]}{suffix}'
         return full_key
 
-    def make_key_v2(self, key: str, max_length: int = 63) -> str:
+    def make_v2_key(self, key: str, max_length: int = 63) -> str:
         prefix = f'{self.prefix}/' if self.prefix else ''
         suffix = self.make_suffix(key) if len(key) > max_length else ''
         key_limit = max(0, max_length - len(suffix))
