@@ -77,6 +77,8 @@ V2_KEYS = [
     [None, 'fn' * 323, 'fn' * 27 + 'fn-Az-r.g'],  # base64: Az-r.g==
 ]
 
+pytestmark = pytest.mark.filterwarnings("ignore:Non-prefixed storages are deprecated")
+
 
 @pytest.mark.parametrize('cls', STORAGE_KEY_FORMING_CLASSES)
 def test_unversioned_keys_are_depecated(cls):

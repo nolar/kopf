@@ -5,9 +5,10 @@ import pytest
 
 import kopf
 from kopf.reactor.processing import process_resource_event
-from kopf.storage.diffbase import LAST_SEEN_ANNOTATION
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.handlers import Reason
+
+LAST_SEEN_ANNOTATION = 'kopf.zalando.org/last-handled-configuration'
 
 EVENT_TYPES = [None, 'ADDED', 'MODIFIED', 'DELETED']
 EVENT_TYPES_WHEN_EXISTS = [None, 'ADDED', 'MODIFIED']

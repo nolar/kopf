@@ -3,7 +3,12 @@ Some reusable implementation details regarding naming in K8s.
 
 This module implements conventions for annotations & labels with restrictions.
 They are used to identify operator's own keys consistently during the run,
-keep backward- & forward-compatibility of naming schemas across the versions.
+keep backward- & forward-compatibility of naming schemas across the versions,
+and to detect cross-operator keys to prevent ping-pong effects (if Kopf-based).
+
+This is mostly important for storages in the shared spaces, such as annotations
+or labels of a resource being handled: to distinguish operator-related and
+unrelated keys (e.g. manually added annotations/labels).
 
 For some fields, such as annotations and labels, K8s puts extra restrictions
 on the alphabet used and on lengths of the names, name parts, and values.
@@ -28,7 +33,9 @@ replaced; in some cases, they will be cut and hash-suffixed.
 import base64
 import hashlib
 import warnings
-from typing import Any, Iterable, Optional
+from typing import Any, Collection, Iterable, Optional, Set
+
+from kopf.structs import bodies, patches
 
 
 class StorageKeyFormingConvention:
@@ -93,6 +100,10 @@ class StorageKeyFormingConvention:
         self.prefix = prefix
         self.v1 = v1
 
+        if not self.prefix:
+            warnings.warn("Non-prefixed storages are deprecated. "
+                          "Please, add any prefix or use the default one.", DeprecationWarning)
+
         # 253 is the max length, 63 is the most lengthy name part, 1 is for the "/" separator.
         if len(self.prefix or '') > 253 - 63 - 1:
             warnings.warn("The annotations prefix is too long. It can cause errors when PATCHing.")
@@ -137,3 +148,74 @@ class StorageKeyFormingConvention:
         digest = hashlib.blake2b(key.encode('utf-8'), digest_size=4).digest()
         alnums = base64.b64encode(digest, altchars=b'-.').decode('ascii')
         return f'-{alnums}'.rstrip('=-.')
+
+
+class StorageKeyMarkingConvention:
+    """
+    A mixin to detect annotations of other Kopf-based operators.
+
+    The detection of other Kopf-based operators' annotations should prevent
+    "ping-pong" effects of multiple operators handling the same resources:
+
+    (1) operator A persists its state into an object;
+    (2) operator B believes it is a valid essential change and reacts;
+    (3) operator B persists its updated state (diff-base), which contains
+        the state of the operator A as the essential payload;
+    (4) operator A believes the new change is a valid essential change;
+    (∞) and so it continues forever (the annotations sizes can explode fast).
+
+    To detect the annotations as belonging to Kopf-based operators, the storages
+    inject a marker into the annotation names, and later detect these markers.
+
+    As an extra safety measure, all names of the whole `domain.tld/` prefix,
+    both V1 & V2, are detected as marked if there is at least one marked V2 name
+    under that prefix -- assuming that the prefix is for a Kopf-based operator.
+    For non-prefixed storages, the V1 names are detected by their V2
+    counterparts with some additional treatment (marker & hashes removed).
+
+    The marker and the marking are not configurable to prevent turning them off,
+    except as by writing self-made storages. In that case, all ping-pong issues
+    are considered as intended and handled by the storage/operator developers.
+
+    This logic is already included into all Kopf-provided storages, both with
+    and without annotations, so there is no need to explicitly configure it.
+    The only case where this class can be of direct use, is when custom storages
+    are implemented, but other operators' annotations still have to be cleaned.
+    """
+
+    __KNOWN_MARKERS = frozenset([
+        'kopf-managed',
+    ])
+
+    __KNOWN_PREFIXES = frozenset([
+        'kopf.zalando.org',
+    ])
+
+    def _detect_marked_prefixes(self, keys: Collection[str]) -> Collection[str]:
+        """
+        Detect annotation prefixes managed by any other Kopf-based operators.
+        """
+        prefixes: Set[str] = set()
+        for prefix, name in (key.split('/', 1) for key in keys if '/' in key):
+            if name in self.__KNOWN_MARKERS:
+                prefixes.add(prefix)
+            elif prefix in self.__KNOWN_PREFIXES:
+                prefixes.add(prefix)
+            elif any(prefix.endswith(f'.{p}') for p in self.__KNOWN_PREFIXES):
+                prefixes.add(prefix)
+        return frozenset(prefixes)
+
+    def _store_marker(
+            self,
+            prefix: Optional[str],
+            patch: patches.Patch,
+            body: bodies.Body,
+    ) -> None:
+        """
+        Store a Kopf-branding marker to make this operator's prefix detectable.
+        """
+        value = 'yes'
+        if prefix and not prefix.startswith('kopf.'):
+            marker = f'{prefix}/kopf-managed'
+            if marker not in body.metadata.annotations and marker not in patch.metadata.annotations:
+                patch.metadata.annotations[marker] = value
