@@ -64,6 +64,26 @@ async def raise_flag(
         raise TypeError(f"Unsupported type of a flag: {flag!r}")
 
 
+def check_flag(
+        flag: Optional[Flag],
+) -> Optional[bool]:
+    """
+    Check if a flag is raised.
+    """
+    if flag is None:
+        return None
+    elif isinstance(flag, asyncio.Future):
+        return flag.done()
+    elif isinstance(flag, asyncio.Event):
+        return flag.is_set()
+    elif isinstance(flag, concurrent.futures.Future):
+        return flag.done()
+    elif isinstance(flag, threading.Event):
+        return flag.is_set()
+    else:
+        raise TypeError(f"Unsupported type of a flag: {flag!r}")
+
+
 class Toggle:
     """
     An synchronisation primitive that can be awaited both until set or cleared.

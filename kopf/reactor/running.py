@@ -200,6 +200,11 @@ async def spawn_tasks(
             signal_flag=signal_flag,
             stop_flag=stop_flag)))
     tasks.append(_create_startup_root_task(
+        name="ultimate termination",
+        coro=_ultimate_termination(
+            settings=settings,
+            stop_flag=stop_flag)))
+    tasks.append(_create_startup_root_task(
         name="startup/cleanup activities",
         coro=_startup_cleanup_activities(
             root_tasks=tasks,  # used as a "live" view, populated later.
@@ -276,7 +281,7 @@ async def spawn_tasks(
                                             resource=resource,
                                             event_queue=event_queue))))
 
-    # On Ctrl+C or pod termination, cancel all tasks gracefully.
+    # On Ctrl+C or pod termination, cancel all tasks gracefully if possible.
     if threading.current_thread() is threading.main_thread():
         # Handle NotImplementedError when ran on Windows since asyncio only supports Unix signals
         try:
@@ -472,6 +477,31 @@ async def _stop_flag_checker(
             logger.info("Signal %s is received. Operator is stopping.", result.name)
         else:
             logger.info("Stop-flag is set to %r. Operator is stopping.", result)
+
+
+async def _ultimate_termination(
+        *,
+        settings: configuration.OperatorSettings,
+        stop_flag: Optional[primitives.Flag],
+) -> None:
+    """
+    Ensure that SIGKILL is sent regardless of the operator's stopping routines.
+
+    Try to be gentle and kill only the thread with the operator, not the whole
+    process or a process group. If this is the main thread (as in most cases),
+    this would imply the process termination too.
+
+    Intentional stopping via a stop-flag is ignored.
+    """
+    # Sleep forever, or until cancelled, which happens when the operator begins its shutdown.
+    try:
+        await asyncio.Event().wait()
+    except asyncio.CancelledError:
+        if not primitives.check_flag(stop_flag):
+            if settings.process.ultimate_exiting_timeout is not None:
+                loop = asyncio.get_running_loop()
+                loop.call_later(settings.process.ultimate_exiting_timeout,
+                                signal.pthread_kill, threading.get_ident(), signal.SIGKILL)
 
 
 async def _startup_cleanup_activities(

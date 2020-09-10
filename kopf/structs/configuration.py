@@ -34,6 +34,31 @@ from kopf.storage import diffbase, progress
 
 
 @dataclasses.dataclass
+class ProcessSettings:
+    """
+    Settings for Kopf's OS processes: e.g. when started via CLI as `kopf run`.
+    """
+
+    ultimate_exiting_timeout: Optional[float] = 10 * 60
+    """
+    How long to wait for the graceful exit before SIGKILL'ing the operator.
+
+    This is the last resort to make the operator exit instead of getting stuck
+    at exiting due to the framework's bugs, operator's bugs, threads left,
+    daemons not exiting, etc.
+    
+    The countdown goes from when a graceful signal arrives (SIGTERM/SIGINT),
+    regardless of what is happening in the graceful exiting routine.
+
+    Measured in seconds. Set to `None` to disable (on your own risk).
+    
+    The default is 10 minutes -- high enough for all common sense cases,
+    and higher than K8s pods' ``terminationGracePeriodSeconds`` -- 
+    to let K8s kill the operator's pod instead, if it can.
+    """
+
+
+@dataclasses.dataclass
 class LoggingSettings:
     pass
 
@@ -263,6 +288,7 @@ class BackgroundSettings:
 
 @dataclasses.dataclass
 class OperatorSettings:
+    process: ProcessSettings = dataclasses.field(default_factory=ProcessSettings)
     logging: LoggingSettings = dataclasses.field(default_factory=LoggingSettings)
     posting: PostingSettings = dataclasses.field(default_factory=PostingSettings)
     watching: WatchingSettings = dataclasses.field(default_factory=WatchingSettings)
