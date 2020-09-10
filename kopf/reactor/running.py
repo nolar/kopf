@@ -11,6 +11,7 @@ from kopf.clients import auth
 from kopf.engines import peering, posting, probing
 from kopf.reactor import activities, daemons, lifecycles, processing, queueing, registries
 from kopf.structs import configuration, containers, credentials, handlers, primitives
+from kopf.utilities import backports
 
 if TYPE_CHECKING:
     asyncio_Task = asyncio.Task[None]
@@ -193,58 +194,50 @@ async def spawn_tasks(
     posting.settings_var.set(settings)
 
     # Few common background forever-running infrastructural tasks (irregular root tasks).
-    tasks.extend([
-        loop.create_task(_stop_flag_checker(
+    tasks.append(_create_startup_root_task(
+        name="stop-flag checker",
+        coro=_stop_flag_checker(
             signal_flag=signal_flag,
-            stop_flag=stop_flag,
-        )),
-        loop.create_task(_startup_cleanup_activities(
+            stop_flag=stop_flag)))
+    tasks.append(_create_startup_root_task(
+        name="startup/cleanup activities",
+        coro=_startup_cleanup_activities(
             root_tasks=tasks,  # used as a "live" view, populated later.
             ready_flag=ready_flag,
             registry=registry,
             settings=settings,
-            vault=vault,  # to purge & finalize the caches in the end.
-        )),
-    ])
+            vault=vault)))  # to purge & finalize the caches in the end.
 
     # Kill all the daemons gracefully when the operator exits (so that they are not "hung").
-    tasks.extend([
-        loop.create_task(_root_task_checker(
-            name="daemon killer", ready_flag=ready_flag,
-            coro=daemons.daemon_killer(
-                settings=settings,
-                memories=memories))),
-    ])
+    tasks.append(_create_checked_root_task(
+        name="daemon killer", ready_flag=ready_flag,
+        coro=daemons.daemon_killer(
+            settings=settings,
+            memories=memories)))
 
     # Keeping the credentials fresh and valid via the authentication handlers on demand.
-    tasks.extend([
-        loop.create_task(_root_task_checker(
-            name="credentials retriever", ready_flag=ready_flag,
-            coro=activities.authenticator(
-                registry=registry,
-                settings=settings,
-                vault=vault))),
-    ])
+    tasks.append(_create_checked_root_task(
+        name="credentials retriever", ready_flag=ready_flag,
+        coro=activities.authenticator(
+            registry=registry,
+            settings=settings,
+            vault=vault)))
 
     # K8s-event posting. Events are queued in-memory and posted in the background.
     # NB: currently, it is a global task, but can be made per-resource or per-object.
-    tasks.extend([
-        loop.create_task(_root_task_checker(
-            name="poster of events", ready_flag=ready_flag,
-            coro=posting.poster(
-                event_queue=event_queue))),
-    ])
+    tasks.append(_create_checked_root_task(
+        name="poster of events", ready_flag=ready_flag,
+        coro=posting.poster(
+            event_queue=event_queue)))
 
     # Liveness probing -- so that Kubernetes would know that the operator is alive.
     if liveness_endpoint:
-        tasks.extend([
-            loop.create_task(_root_task_checker(
-                name="health reporter", ready_flag=ready_flag,
-                coro=probing.health_reporter(
-                    registry=registry,
-                    settings=settings,
-                    endpoint=liveness_endpoint))),
-        ])
+        tasks.append(_create_checked_root_task(
+            name="health reporter", ready_flag=ready_flag,
+            coro=probing.health_reporter(
+                registry=registry,
+                settings=settings,
+                endpoint=liveness_endpoint)))
 
     # Monitor the peers, unless explicitly disabled.
     ourselves: Optional[peering.Peer] = await peering.Peer.detect(
@@ -252,38 +245,36 @@ async def spawn_tasks(
         standalone=standalone, namespace=namespace, name=peering_name,
     )
     if ourselves:
-        tasks.extend([
-            loop.create_task(peering.peers_keepalive(
-                ourselves=ourselves)),
-            loop.create_task(_root_task_checker(
-                name="watcher of peering", ready_flag=ready_flag,
-                coro=queueing.watcher(
-                    namespace=namespace,
-                    settings=settings,
-                    resource=ourselves.resource,
-                    processor=functools.partial(peering.process_peering_event,
-                                                ourselves=ourselves,
-                                                freeze_mode=freeze_mode)))),
-        ])
+        tasks.append(_create_checked_root_task(
+            name="peering keepalive", ready_flag=ready_flag,
+            coro=peering.peers_keepalive(
+                ourselves=ourselves)))
+        tasks.append(_create_checked_root_task(
+            name="watcher of peering", ready_flag=ready_flag,
+            coro=queueing.watcher(
+                namespace=namespace,
+                settings=settings,
+                resource=ourselves.resource,
+                processor=functools.partial(peering.process_peering_event,
+                                            ourselves=ourselves,
+                                            freeze_mode=freeze_mode))))
 
     # Resource event handling, only once for every known resource (de-duplicated).
     for resource in registry.resources:
-        tasks.extend([
-            loop.create_task(_root_task_checker(
-                name=f"watcher of {resource.name}", ready_flag=ready_flag,
-                coro=queueing.watcher(
-                    namespace=namespace,
-                    settings=settings,
-                    resource=resource,
-                    freeze_mode=freeze_mode,
-                    processor=functools.partial(processing.process_resource_event,
-                                                lifecycle=lifecycle,
-                                                registry=registry,
-                                                settings=settings,
-                                                memories=memories,
-                                                resource=resource,
-                                                event_queue=event_queue)))),
-        ])
+        tasks.append(_create_checked_root_task(
+            name=f"watcher of {resource.name}", ready_flag=ready_flag,
+            coro=queueing.watcher(
+                namespace=namespace,
+                settings=settings,
+                resource=resource,
+                freeze_mode=freeze_mode,
+                processor=functools.partial(processing.process_resource_event,
+                                            lifecycle=lifecycle,
+                                            registry=registry,
+                                            settings=settings,
+                                            memories=memories,
+                                            resource=resource,
+                                            event_queue=event_queue))))
 
     # On Ctrl+C or pod termination, cancel all tasks gracefully.
     if threading.current_thread() is threading.main_thread():
@@ -464,7 +455,8 @@ async def _stop_flag_checker(
     if signal_flag is not None:
         flags.append(signal_flag)
     if stop_flag is not None:
-        flags.append(asyncio.create_task(primitives.wait_flag(stop_flag)))
+        flags.append(backports.create_task(primitives.wait_flag(stop_flag),
+                                           name="stop-flag waiter"))
 
     # Wait until one of the stoppers is set/raised.
     try:
@@ -545,6 +537,27 @@ async def _startup_cleanup_activities(
     except asyncio.CancelledError:
         logger.warning("Cleanup activity is only partially executed due to cancellation.")
         raise
+
+
+def _create_startup_root_task(
+        *,
+        name: str,
+        coro: Coroutine[Any, Any, Any],
+) -> asyncio_Task:
+    return backports.create_task(coro=coro, name=name)
+
+
+def _create_checked_root_task(
+        *,
+        name: str,
+        coro: Coroutine[Any, Any, Any],
+        ready_flag: primitives.Flag,
+) -> asyncio_Task:
+    return backports.create_task(_root_task_checker(
+        ready_flag=ready_flag,
+        name=name,
+        coro=coro,
+    ), name=name)
 
 
 def create_tasks(
