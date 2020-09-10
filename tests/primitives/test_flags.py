@@ -4,7 +4,7 @@ import threading
 
 import pytest
 
-from kopf.structs.primitives import raise_flag, wait_flag
+from kopf.structs.primitives import check_flag, raise_flag, wait_flag
 
 
 @pytest.fixture(params=[
@@ -26,6 +26,70 @@ async def flag(request):
             flag.cancel()
         if hasattr(flag, 'set'):
             flag.set()
+
+
+async def test_checking_of_unsupported_raises_an_error():
+    with pytest.raises(TypeError):
+        check_flag(object())
+
+
+async def test_checking_of_none_is_none():
+    result = check_flag(None)
+    assert result is None
+
+
+async def test_checking_of_asyncio_event_when_raised():
+    event = asyncio.Event()
+    event.set()
+    result = check_flag(event)
+    assert result is True
+
+
+async def test_checking_of_asyncio_event_when_unset():
+    event = asyncio.Event()
+    event.clear()
+    result = check_flag(event)
+    assert result is False
+
+
+async def test_checking_of_asyncio_future_when_set():
+    future = asyncio.Future()
+    future.set_result(None)
+    result = check_flag(future)
+    assert result is True
+
+
+async def test_checking_of_asyncio_future_when_empty():
+    future = asyncio.Future()
+    result = check_flag(future)
+    assert result is False
+
+
+async def test_checking_of_threading_event_when_set():
+    event = threading.Event()
+    event.set()
+    result = check_flag(event)
+    assert result is True
+
+
+async def test_checking_of_threading_event_when_unset():
+    event = threading.Event()
+    event.clear()
+    result = check_flag(event)
+    assert result is False
+
+
+async def test_checking_of_concurrent_future_when_set():
+    future = concurrent.futures.Future()
+    future.set_result(None)
+    result = check_flag(future)
+    assert result is True
+
+
+async def test_checking_of_concurrent_future_when_unset():
+    future = concurrent.futures.Future()
+    result = check_flag(future)
+    assert result is False
 
 
 async def test_raising_of_unsupported_raises_an_error():
