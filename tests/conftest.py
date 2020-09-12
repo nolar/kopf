@@ -16,7 +16,7 @@ import pytest_mock
 
 import kopf
 from kopf.clients.auth import APIContext
-from kopf.engines.loggers import ObjectPrefixingFormatter, configure
+from kopf.engines.loggers import ObjectPrefixingTextFormatter, configure
 from kopf.engines.posting import settings_var
 from kopf.structs.configuration import OperatorSettings
 from kopf.structs.credentials import ConnectionInfo, Vault, VaultKey
@@ -521,7 +521,7 @@ def logstream(caplog):
     # Inject our stream-intercepting handler.
     stream = io.StringIO()
     handler = logging.StreamHandler(stream)
-    formatter = ObjectPrefixingFormatter('prefix %(message)s')
+    formatter = ObjectPrefixingTextFormatter('prefix %(message)s')
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 

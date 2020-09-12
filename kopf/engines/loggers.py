@@ -10,16 +10,72 @@ the operators' code, and can lead to information loss or mismatch
 """
 import asyncio
 import copy
+import enum
 import logging
 from typing import Any, MutableMapping, Optional, Tuple
+
+import pythonjsonlogger.jsonlogger
 
 from kopf.engines import posting
 from kopf.structs import bodies, configuration
 
+DEFAULT_JSON_REFKEY = 'object'
+""" A key for object references in JSON logs, as seen by the log parsers. """
 
-class ObjectPrefixingFormatter(logging.Formatter):
-    """ An utility to prefix the per-object log messages. """
 
+class LogFormat(enum.Enum):
+    """ Log formats, as specified on CLI. """
+    PLAIN = '%(message)s'
+    FULL = '[%(asctime)s] %(name)-20.20s [%(levelname)-8.8s] %(message)s'
+    JSON = enum.auto()
+
+
+class ObjectFormatter(logging.Formatter):
+    pass
+
+
+class ObjectTextFormatter(ObjectFormatter, logging.Formatter):
+    pass
+
+
+class ObjectJsonFormatter(ObjectFormatter, pythonjsonlogger.jsonlogger.JsonFormatter):  # type: ignore
+    def __init__(
+            self,
+            *args: Any,
+            refkey: Optional[str] = None,
+            **kwargs: Any,
+    ) -> None:
+        # Avoid type checking, as the args are not in the parent consructor.
+        reserved_attrs = kwargs.pop('reserved_attrs', pythonjsonlogger.jsonlogger.RESERVED_ATTRS)
+        reserved_attrs = set(reserved_attrs)
+        reserved_attrs |= {'k8s_skip', 'k8s_ref', 'settings'}
+        kwargs.update(reserved_attrs=reserved_attrs)
+        kwargs.setdefault('timestamp', True)
+        super().__init__(*args, **kwargs)
+        self._refkey: str = refkey or DEFAULT_JSON_REFKEY
+
+    def add_fields(
+            self,
+            log_record: MutableMapping[str, object],
+            record: logging.LogRecord,
+            message_dict: MutableMapping[str, object],
+    ) -> None:
+        super().add_fields(log_record, record, message_dict)
+
+        if self._refkey and hasattr(record, 'k8s_ref'):
+            ref = getattr(record, 'k8s_ref')
+            log_record[self._refkey] = ref
+
+        if 'severity' not in log_record:
+            log_record['severity'] = (
+                "debug" if record.levelno <= logging.DEBUG else
+                "info" if record.levelno <= logging.INFO else
+                "warn" if record.levelno <= logging.WARNING else
+                "error" if record.levelno <= logging.ERROR else
+                "fatal")
+
+
+class ObjectPrefixingMixin(ObjectFormatter):
     def format(self, record: logging.LogRecord) -> str:
         if hasattr(record, 'k8s_ref'):
             ref = getattr(record, 'k8s_ref')
@@ -29,6 +85,14 @@ class ObjectPrefixingFormatter(logging.Formatter):
             record = copy.copy(record)  # shallow
             record.msg = f"{prefix} {record.msg}"
         return super().format(record)
+
+
+class ObjectPrefixingTextFormatter(ObjectPrefixingMixin, ObjectTextFormatter):
+    pass
+
+
+class ObjectPrefixingJsonFormatter(ObjectPrefixingMixin, ObjectJsonFormatter):
+    pass
 
 
 class K8sPoster(logging.Handler):
@@ -132,20 +196,20 @@ class LocalObjectLogger(ObjectLogger):
 logger = logging.getLogger('kopf.objects')
 logger.addHandler(K8sPoster())
 
-format = '[%(asctime)s] %(name)-20.20s [%(levelname)-8.8s] %(message)s'
-
 
 def configure(
         debug: Optional[bool] = None,
         verbose: Optional[bool] = None,
         quiet: Optional[bool] = None,
+        log_format: LogFormat = LogFormat.FULL,
+        log_prefix: Optional[bool] = False,
+        log_refkey: Optional[str] = None,
 ) -> None:
     log_level = 'DEBUG' if debug or verbose else 'WARNING' if quiet else 'INFO'
-
-    logger = logging.getLogger()
+    formatter = make_formatter(log_format=log_format, log_prefix=log_prefix, log_refkey=log_refkey)
     handler = logging.StreamHandler()
-    formatter = ObjectPrefixingFormatter(format)
     handler.setFormatter(formatter)
+    logger = logging.getLogger()
     logger.addHandler(handler)
     logger.setLevel(log_level)
 
@@ -159,3 +223,28 @@ def configure(
 
     loop = asyncio.get_event_loop()
     loop.set_debug(bool(debug))
+
+
+def make_formatter(
+        log_format: LogFormat = LogFormat.FULL,
+        log_prefix: Optional[bool] = False,
+        log_refkey: Optional[str] = None,
+) -> ObjectFormatter:
+    log_prefix = log_prefix if log_prefix is not None else bool(log_format is not LogFormat.JSON)
+    if log_format is LogFormat.JSON:
+        if log_prefix:
+            return ObjectPrefixingJsonFormatter(refkey=log_refkey)
+        else:
+            return ObjectJsonFormatter(refkey=log_refkey)
+    elif isinstance(log_format, LogFormat):
+        if log_prefix:
+            return ObjectPrefixingTextFormatter(log_format.value)
+        else:
+            return ObjectTextFormatter(log_format.value)
+    elif isinstance(log_format, str):
+        if log_prefix:
+            return ObjectPrefixingTextFormatter(log_format)
+        else:
+            return ObjectTextFormatter(log_format)
+    else:
+        raise ValueError(f"Unsupported log format: {log_format!r}")
