@@ -52,7 +52,7 @@ _integration: &realistic
 # K3d/K3s in PR/branch-tests). They are too slow and too numerous for PRs, so they run by cron only.
 # To run/debug in a PR, comment out the `if:` line. Uncomment it back before merging.
 _nightly: &fullscale
-  if: env(TRAVIS_EVENT_TYPE) == cron
+  if: type == cron
   services:
     - docker
   before_script:
