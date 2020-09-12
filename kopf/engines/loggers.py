@@ -23,7 +23,9 @@ class ObjectPrefixingFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         if hasattr(record, 'k8s_ref'):
             ref = getattr(record, 'k8s_ref')
-            prefix = f"[{ref.get('namespace', '')}/{ref.get('name', '')}]"
+            namespace = ref.get('namespace', '')
+            name = ref.get('name', '')
+            prefix = f"[{namespace}/{name}]" if namespace else f"[{name}]"
             record = copy.copy(record)  # shallow
             record.msg = f"{prefix} {record.msg}"
         return super().format(record)
