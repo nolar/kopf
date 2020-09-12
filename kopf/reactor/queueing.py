@@ -26,7 +26,6 @@ is done in the `kopf.reactor.handling` routines.
 import asyncio
 import enum
 import logging
-import time
 from typing import TYPE_CHECKING, MutableMapping, NamedTuple, NewType, Optional, Tuple, Union, cast
 
 import aiojobs

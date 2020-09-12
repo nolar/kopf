@@ -11,7 +11,7 @@ import asyncio
 import dataclasses
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Dict, Iterator, MutableMapping, NewType, Optional, Set, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterator, MutableMapping, Optional, Set, Union
 
 from kopf.structs import bodies, handlers, primitives
 
