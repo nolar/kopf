@@ -35,7 +35,9 @@ def startup(  # lgtm[py/similar-function]
         cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityDecorator:
-    def decorator(fn: callbacks.ActivityFn) -> callbacks.ActivityFn:
+    def decorator(  # lgtm[py/similar-function]
+            fn: callbacks.ActivityFn,
+    ) -> callbacks.ActivityFn:
         _warn_deprecated_signatures(fn)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_id = registries.generate_id(fn=fn, id=id)
@@ -59,7 +61,9 @@ def cleanup(  # lgtm[py/similar-function]
         cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityDecorator:
-    def decorator(fn: callbacks.ActivityFn) -> callbacks.ActivityFn:
+    def decorator(  # lgtm[py/similar-function]
+            fn: callbacks.ActivityFn,
+    ) -> callbacks.ActivityFn:
         _warn_deprecated_signatures(fn)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_id = registries.generate_id(fn=fn, id=id)
@@ -84,7 +88,9 @@ def login(  # lgtm[py/similar-function]
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityDecorator:
     """ ``@kopf.on.login()`` handler for custom (re-)authentication. """
-    def decorator(fn: callbacks.ActivityFn) -> callbacks.ActivityFn:
+    def decorator(  # lgtm[py/similar-function]
+            fn: callbacks.ActivityFn,
+    ) -> callbacks.ActivityFn:
         _warn_deprecated_signatures(fn)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_id = registries.generate_id(fn=fn, id=id)
@@ -109,7 +115,9 @@ def probe(  # lgtm[py/similar-function]
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityDecorator:
     """ ``@kopf.on.probe()`` handler for arbitrary liveness metrics. """
-    def decorator(fn: callbacks.ActivityFn) -> callbacks.ActivityFn:
+    def decorator(  # lgtm[py/similar-function]
+            fn: callbacks.ActivityFn,
+    ) -> callbacks.ActivityFn:
         _warn_deprecated_signatures(fn)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_id = registries.generate_id(fn=fn, id=id)
@@ -139,7 +147,9 @@ def resume(  # lgtm[py/similar-function]
         when: Optional[callbacks.WhenFilterFn] = None,
 ) -> ResourceChangingDecorator:
     """ ``@kopf.on.resume()`` handler for the object resuming on operator (re)start. """
-    def decorator(fn: callbacks.ResourceChangingFn) -> callbacks.ResourceChangingFn:
+    def decorator(  # lgtm[py/similar-function]
+            fn: callbacks.ResourceChangingFn,
+    ) -> callbacks.ResourceChangingFn:
         _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -172,7 +182,9 @@ def create(  # lgtm[py/similar-function]
         when: Optional[callbacks.WhenFilterFn] = None,
 ) -> ResourceChangingDecorator:
     """ ``@kopf.on.create()`` handler for the object creation. """
-    def decorator(fn: callbacks.ResourceChangingFn) -> callbacks.ResourceChangingFn:
+    def decorator(  # lgtm[py/similar-function]
+            fn: callbacks.ResourceChangingFn,
+    ) -> callbacks.ResourceChangingFn:
         _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -205,7 +217,9 @@ def update(  # lgtm[py/similar-function]
         when: Optional[callbacks.WhenFilterFn] = None,
 ) -> ResourceChangingDecorator:
     """ ``@kopf.on.update()`` handler for the object update or change. """
-    def decorator(fn: callbacks.ResourceChangingFn) -> callbacks.ResourceChangingFn:
+    def decorator(  # lgtm[py/similar-function]
+            fn: callbacks.ResourceChangingFn,
+    ) -> callbacks.ResourceChangingFn:
         _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -239,7 +253,9 @@ def delete(  # lgtm[py/similar-function]
         when: Optional[callbacks.WhenFilterFn] = None,
 ) -> ResourceChangingDecorator:
     """ ``@kopf.on.delete()`` handler for the object deletion. """
-    def decorator(fn: callbacks.ResourceChangingFn) -> callbacks.ResourceChangingFn:
+    def decorator(  # lgtm[py/similar-function]
+            fn: callbacks.ResourceChangingFn,
+    ) -> callbacks.ResourceChangingFn:
         _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -273,7 +289,9 @@ def field(  # lgtm[py/similar-function]
         when: Optional[callbacks.WhenFilterFn] = None,
 ) -> ResourceChangingDecorator:
     """ ``@kopf.on.field()`` handler for the individual field changes. """
-    def decorator(fn: callbacks.ResourceChangingFn) -> callbacks.ResourceChangingFn:
+    def decorator(  # lgtm[py/similar-function]
+            fn: callbacks.ResourceChangingFn,
+    ) -> callbacks.ResourceChangingFn:
         _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -302,7 +320,9 @@ def event(  # lgtm[py/similar-function]
         when: Optional[callbacks.WhenFilterFn] = None,
 ) -> ResourceWatchingDecorator:
     """ ``@kopf.on.event()`` handler for the silent spies on the events. """
-    def decorator(fn: callbacks.ResourceWatchingFn) -> callbacks.ResourceWatchingFn:
+    def decorator(  # lgtm[py/similar-function]
+            fn: callbacks.ResourceWatchingFn,
+    ) -> callbacks.ResourceWatchingFn:
         _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -337,7 +357,9 @@ def daemon(  # lgtm[py/similar-function]
         cancellation_polling: Optional[float] = None,
 ) -> ResourceDaemonDecorator:
     """ ``@kopf.daemon()`` decorator for the background threads/tasks. """
-    def decorator(fn: callbacks.ResourceDaemonFn) -> callbacks.ResourceDaemonFn:
+    def decorator(  # lgtm[py/similar-function]
+            fn: callbacks.ResourceDaemonFn,
+    ) -> callbacks.ResourceDaemonFn:
         _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -376,7 +398,9 @@ def timer(  # lgtm[py/similar-function]
         interval: Optional[float] = None,
 ) -> ResourceTimerDecorator:
     """ ``@kopf.timer()`` handler for the regular events. """
-    def decorator(fn: callbacks.ResourceTimerFn) -> callbacks.ResourceTimerFn:
+    def decorator(  # lgtm[py/similar-function]
+            fn: callbacks.ResourceTimerFn,
+    ) -> callbacks.ResourceTimerFn:
         _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -438,7 +462,9 @@ def this(  # lgtm[py/similar-function]
     Note: ``task=task`` is needed to freeze the closure variable, so that every
     create function will have its own value, not the latest in the for-cycle.
     """
-    def decorator(fn: callbacks.ResourceChangingFn) -> callbacks.ResourceChangingFn:
+    def decorator(  # lgtm[py/similar-function]
+            fn: callbacks.ResourceChangingFn,
+    ) -> callbacks.ResourceChangingFn:
         _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         parent_handler = handling.handler_var.get()
