@@ -15,7 +15,7 @@ and therefore do not trigger the user-defined handlers.
 """
 import asyncio
 import time
-from typing import Collection, Optional
+from typing import Collection, Optional, Tuple
 
 from kopf.engines import loggers, posting
 from kopf.reactor import causation, daemons, effects, handling, lifecycles, registries
@@ -76,7 +76,7 @@ async def process_resource_event(
             posting.event_queue_var.set(event_queue)  # till the end of this object's task.
 
             # Do the magic -- do the job.
-            delays = await process_resource_causes(
+            delays, matched = await process_resource_causes(
                 lifecycle=lifecycle,
                 registry=registry,
                 settings=settings,
@@ -92,7 +92,7 @@ async def process_resource_event(
             # But only once, to reduce the number of API calls and the generated irrelevant events.
             # And only if the object is at least supposed to exist (not "GONE"), even if actually does not.
             if raw_event['type'] != 'DELETED':
-                await effects.apply(
+                applied = await effects.apply(
                     settings=settings,
                     resource=resource,
                     body=body,
@@ -101,6 +101,8 @@ async def process_resource_event(
                     delays=delays,
                     replenished=replenished,
                 )
+                if applied and matched:
+                    logger.debug(f"Handling cycle is finished, waiting for new changes since now.")
 
 
 async def process_resource_causes(
@@ -113,7 +115,7 @@ async def process_resource_causes(
         patch: patches.Patch,
         logger: loggers.ObjectLogger,
         memory: containers.ResourceMemory,
-) -> Collection[float]:
+) -> Tuple[Collection[float], bool]:
 
     finalizer = settings.persistence.finalizer
     extra_fields = registry.resource_changing_handlers[resource].get_extra_fields()
@@ -155,6 +157,12 @@ async def process_resource_causes(
         memo=memory.memo,
         initial=memory.noticed_by_listing and not memory.fully_handled_once,
     ) if registry.resource_changing_handlers[resource] else None
+
+    # If there are any handlers for this resource kind in general, but not for this specific object
+    # due to filters, then be blind to it, store no state, and log nothing about the handling cycle.
+    if (resource_changing_cause is not None and
+        not registry.resource_changing_handlers[resource].prematch(cause=resource_changing_cause)):
+        resource_changing_cause = None
 
     # Block the object from deletion if we have anything to do in its end of life:
     # specifically, if there are daemons to kill or mandatory on-deletion handlers to call.
@@ -222,7 +230,8 @@ async def process_resource_causes(
         logger.debug("Removing the finalizer, thus allowing the actual deletion.")
         finalizers.allow_deletion(body=body, patch=patch, finalizer=finalizer)
 
-    return list(resource_spawning_delays) + list(resource_changing_delays)
+    delays = list(resource_spawning_delays) + list(resource_changing_delays)
+    return (delays, resource_changing_cause is not None)
 
 
 async def process_resource_watching_cause(

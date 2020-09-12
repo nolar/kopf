@@ -270,6 +270,15 @@ class ResourceChangingRegistry(ResourceRegistry[
                     elif match(handler=handler, cause=cause):
                         yield handler
 
+    def prematch(
+            self,
+            cause: causation.ResourceChangingCause,
+    ) -> bool:
+        for handler in self._handlers:
+            if match(handler=handler, cause=cause, ignore_fields=True):
+                return True
+        return False
+
 
 class OperatorRegistry:
     """

@@ -112,3 +112,30 @@ The following wrappers are available:
 * `kopf.any_([...])` -- at least one of the functions must return ``True``.
 * `kopf.all_([...])` -- all of the functions must return ``True``.
 * `kopf.none_([...])` -- all of the functions must return ``False``.
+
+
+Stealth mode
+============
+
+.. note::
+
+    Please note that if an object does not match any filters of any handlers
+    for its resource kind, there will be no messages logged and no annotations
+    stored on the object. Such objects are processed in the stealth mode
+    even if the operator technically sees them in the watch-stream.
+
+    As the result, when the object is updated to match the filters some time
+    later (e.g. by putting labels/annotations on it, or changing its spec),
+    this will not be considered as an update, but as a creation.
+
+    From the operator's point of view, the object has suddenly appeared
+    in sight with no diff-base, which means that it is a newly created object;
+    so, the on-creation handlers will be called instead of the on-update ones.
+
+    This behaviour is correct and reasonable from the filtering logic side.
+    If this is a problem, then create a dummy handler without filters
+    (e.g. a field-handler for a non-existent field) --
+    this will make all the objects always being in the scope of the operator,
+    even if the operator did not react to their creation/update/deletion,
+    and so the diff-base annotations ("last-handled-configuration", etc)
+    will be always added on the actual object creation, not on scope changes.
