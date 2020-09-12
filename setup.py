@@ -43,6 +43,7 @@ setup(
     ],
     install_requires=[
         'typing_extensions',
+        'python-json-logger',
         'click',
         'iso8601',
         'aiohttp<4.0.0',

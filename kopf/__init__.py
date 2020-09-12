@@ -20,6 +20,7 @@ from kopf.config import (
 )
 from kopf.engines.loggers import (
     configure,
+    LogFormat,
     ObjectLogger,
     LocalObjectLogger,
 )
@@ -163,7 +164,7 @@ HandlerRetryError = TemporaryError  # a backward-compatibility alias
 
 __all__ = [
     'on', 'lifecycles', 'register', 'execute', 'daemon', 'timer',
-    'configure',
+    'configure', 'LogFormat',
     'login', 'LoginError', 'ConnectionInfo',
     'login_via_pykube', 'login_via_client',
     'event', 'info', 'warn', 'exception',

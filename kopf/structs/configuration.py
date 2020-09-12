@@ -59,11 +59,6 @@ class ProcessSettings:
 
 
 @dataclasses.dataclass
-class LoggingSettings:
-    pass
-
-
-@dataclasses.dataclass
 class PostingSettings:
 
     enabled: bool = True
@@ -289,7 +284,6 @@ class BackgroundSettings:
 @dataclasses.dataclass
 class OperatorSettings:
     process: ProcessSettings = dataclasses.field(default_factory=ProcessSettings)
-    logging: LoggingSettings = dataclasses.field(default_factory=LoggingSettings)
     posting: PostingSettings = dataclasses.field(default_factory=PostingSettings)
     watching: WatchingSettings = dataclasses.field(default_factory=WatchingSettings)
     batching: BatchingSettings = dataclasses.field(default_factory=BatchingSettings)
