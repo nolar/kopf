@@ -56,3 +56,45 @@ async def test_skipped_with_no_handlers(
     ], prohibited=[
         "event is processed:",
     ])
+
+
+@pytest.mark.parametrize('cause_type', HANDLER_REASONS)
+@pytest.mark.parametrize('initial', [True, False, None])
+@pytest.mark.parametrize('deleted', [True, False, None])
+@pytest.mark.parametrize('annotations, labels, when', [
+    (None, {'some-label': '...'}, None),
+    ({'some-annotation': '...'}, None, None),
+    (None, None, lambda **_: False),
+])
+async def test_stealth_mode_with_mismatching_handlers(
+        registry, settings, resource, cause_mock, cause_type,
+        caplog, assert_logs, k8s_mocked, annotations, labels, when, deleted, initial):
+    caplog.set_level(logging.DEBUG)
+
+    event_type = None
+    event_body = {'metadata': {'finalizers': []}}
+    cause_mock.reason = cause_type
+
+    assert not registry.resource_changing_handlers[resource]  # prerequisite
+    registry.resource_changing_handlers[resource].append(ResourceChangingHandler(
+        reason=None,
+        fn=lambda **_: None, id='id',
+        errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+        annotations=annotations, labels=labels, when=when, field=None,
+        deleted=deleted, initial=initial, requires_finalizer=None,
+    ))
+
+    await process_resource_event(
+        lifecycle=kopf.lifecycles.all_at_once,
+        registry=registry,
+        settings=settings,
+        resource=resource,
+        memories=ResourceMemories(),
+        raw_event={'type': event_type, 'object': event_body},
+        replenished=asyncio.Event(),
+        event_queue=asyncio.Queue(),
+    )
+
+    assert not k8s_mocked.sleep_or_wait.called
+    assert not k8s_mocked.patch_obj.called
+    assert not caplog.messages  # total stealth mode!

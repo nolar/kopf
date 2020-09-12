@@ -51,7 +51,7 @@ async def apply(
         delays: Collection[float],
         logger: loggers.ObjectLogger,
         replenished: asyncio.Event,
-) -> None:
+) -> bool:
     delay = min(delays) if delays else None
 
     # Delete dummies on occasion, but don't trigger special patching for them [discussable].
@@ -64,10 +64,9 @@ async def apply(
     # Sleep strictly after patching, never before -- to keep the status proper.
     # The patching above, if done, interrupts the sleep instantly, so we skip it at all.
     # Note: a zero-second or negative sleep is still a sleep, it will trigger a dummy patch.
+    applied = False
     if delay and patch:
         logger.debug(f"Sleeping was skipped because of the patch, {delay} seconds left.")
-    elif delay is None and not patch:
-        logger.debug(f"Handling cycle is finished, waiting for new changes since now.")
     elif delay is not None:
         if delay > WAITING_KEEPALIVE_INTERVAL:
             limit = WAITING_KEEPALIVE_INTERVAL
@@ -90,6 +89,9 @@ async def apply(
             touch = patches.Patch()
             settings.persistence.progress_storage.touch(body=body, patch=touch, value=value)
             await patch_and_check(resource=resource, patch=touch, body=body, logger=logger)
+    elif not patch:  # no patch/touch and no delay
+        applied = True
+    return applied
 
 
 async def patch_and_check(
