@@ -347,7 +347,7 @@ def daemon(  # lgtm[py/similar-function]
             fn=fn, id=real_id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
-            initial_delay=initial_delay, requires_finalizer=True,  #TODO: requires_finalizer? "optional"?
+            initial_delay=initial_delay, requires_finalizer=True,
             cancellation_backoff=cancellation_backoff,
             cancellation_timeout=cancellation_timeout,
             cancellation_polling=cancellation_polling,
@@ -386,7 +386,7 @@ def timer(  # lgtm[py/similar-function]
             fn=fn, id=real_id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
-            initial_delay=initial_delay, requires_finalizer=None,
+            initial_delay=initial_delay, requires_finalizer=True,
             sharp=sharp, idle=idle, interval=interval,
         )
         real_registry.resource_spawning_handlers[real_resource].append(handler)
