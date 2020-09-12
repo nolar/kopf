@@ -149,27 +149,9 @@ def configure(
     logger.addHandler(handler)
     logger.setLevel(log_level)
 
-    # Configure the Kubernetes client defaults according to our settings.
-    try:
-        import kubernetes
-    except ImportError:
-        pass
-    else:
-        config = kubernetes.client.configuration.Configuration()
-        config.logger_format = format
-        config.logger_file = None  # once again after the constructor to re-apply the formatter
-        config.debug = debug
-        kubernetes.client.configuration.Configuration.set_default(config)
-
-    # Kubernetes client is as buggy as hell: it adds its own stream handlers even in non-debug mode,
-    # does not respect the formatting, and dumps too much of the low-level info.
-    if not debug:
-        logger = logging.getLogger("urllib3")
-        del logger.handlers[1:]  # everything except the default NullHandler
-
-    # Prevent the low-level logging unless in the debug verbosity mode. Keep only the operator's messages.
+    # Prevent the low-level logging unless in the debug mode. Keep only the operator's messages.
     # For no-propagation loggers, add a dummy null handler to prevent printing the messages.
-    for name in ['urllib3', 'asyncio', 'kubernetes']:
+    for name in ['asyncio']:
         logger = logging.getLogger(name)
         logger.propagate = bool(debug)
         if not debug:
