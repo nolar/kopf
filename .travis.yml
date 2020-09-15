@@ -12,16 +12,6 @@ branches:
   - /^release\/.*$/
   - /^\d+\.\d+(\.\d+)?(\.?(rc|dev|pre|post)\d+)?(-\S*)?(\+\S*)?$/
 
-# Linting is super-fast and lightweight, gives the near-instant feedback if code is wrong.
-# It does not depend on the environment (services, dependencies, even the framework itself).
-# Currently, most linters are optional and performed manually from time to time. This will change.
-_linting: &linting
-#  install: []  # no requirements.txt  # TODO: Uncomment again when pre-commit is used (saves ~15s)
-  services: []  # no docker & co
-  before_script: []
-  script:
-    - isort . --check --diff || true
-    - isort examples --settings=examples --check --diff || true
 
 # Unit-tests depend on a lightweight environment of the framework and its dependencies only, no K8s.
 # Type-checking also needs the dependencies installed, but it goes first for faster failure.
@@ -29,7 +19,6 @@ _unittests: &unittests
   services: []  # no docker & co
   before_script: []
   script:
-    - mypy kopf --strict --pretty
     - pytest --cov=kopf --cov-branch
   after_success:
     - coveralls || true
@@ -88,10 +77,8 @@ jobs:
   - { <<: *realistic, env: K3S=v1.16.14+k3s1 }
   - { <<: *realistic, env: K3S=v1.16.14+k3s1 CRDAPI=v1beta1 }
 
-  # Linting is super-fast and lightweight (40s), gives the near-instant feedback.
   # Unit-tests are relatively fast (2m), but no integration tests, no k8s installed.
   # This pack of jobs takes roughly 5m, which is a duration of one realistic job.
-  - { <<: *linting, name: Linting and static analysis }
   - { <<: *unittests, python: "3.7" }
   - { <<: *unittests, python: "3.8" }
 

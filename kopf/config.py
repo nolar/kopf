@@ -7,7 +7,6 @@ LOGLEVEL_WARNING = logging.WARNING
 LOGLEVEL_ERROR = logging.ERROR
 LOGLEVEL_CRITICAL = logging.CRITICAL
 
-
 # DEPRECATED: Used for initial defaults for per-operator settings (see kopf.structs.configuration).
 class EventsConfig:
     """
