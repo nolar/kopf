@@ -105,8 +105,8 @@ And the created service account is attached to the pods as follows:
 
 .. literalinclude:: deployment-depl.yaml
     :language: yaml
-    :lines: 1-2,5,10,14-17
-    :emphasize-lines: 6
+    :lines: 1-2,5,12,16-20
+    :emphasize-lines: 17
     :caption: deployment.yaml
     :name: deployment-service-account-yaml
 
