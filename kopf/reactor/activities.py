@@ -101,7 +101,7 @@ async def run_activity(
     # For the activity handlers, we have neither bodies, nor patches, just the state.
     cause = causation.ActivityCause(logger=logger, activity=activity, settings=settings)
     handlers = registry.activity_handlers.get_handlers(activity=activity)
-    state = states.State.from_scratch(handlers=handlers)
+    state = states.State.from_scratch().with_handlers(handlers)
     outcomes: MutableMapping[handlers_.HandlerId, states.HandlerOutcome] = {}
     while not state.done:
         current_outcomes = await handling.execute_handlers_once(

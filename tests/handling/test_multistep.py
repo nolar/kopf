@@ -79,8 +79,6 @@ async def test_2nd_step_finishes_the_handlers(caplog,
     event_body = {
         'metadata': {'finalizers': [settings.persistence.finalizer]},
         'status': {'kopf': {'progress': {
-            'resume_fn':  {'started': '1979-01-01T00:00:00', 'success': True},
-            'resume_fn2':  {'started': '1979-01-01T00:00:00', 'success': True},
             name1: {'started': '1979-01-01T00:00:00', 'success': True},
             name2: {'started': '1979-01-01T00:00:00'},
         }}}

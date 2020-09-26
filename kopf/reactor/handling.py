@@ -149,13 +149,15 @@ async def execute(
 
     # Execute the real handlers (all or few or one of them, as per the lifecycle).
     settings: configuration.OperatorSettings = subsettings_var.get()
-    subhandlers = subregistry.get_handlers(cause=cause)
+    owned_handlers = subregistry.get_all_handlers()
+    cause_handlers = subregistry.get_handlers(cause=cause)
     storage = settings.persistence.progress_storage
-    state = states.State.from_storage(body=cause.body, storage=storage, handlers=subhandlers)
+    state = states.State.from_storage(body=cause.body, storage=storage, handlers=owned_handlers)
+    state = state.with_handlers(cause_handlers)
     outcomes = await execute_handlers_once(
         lifecycle=lifecycle,
         settings=settings,
-        handlers=subhandlers,
+        handlers=cause_handlers,
         cause=cause,
         state=state,
     )

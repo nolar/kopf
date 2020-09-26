@@ -15,7 +15,7 @@ import collections.abc
 import copy
 import dataclasses
 import datetime
-from typing import Any, Collection, Dict, Iterator, Mapping, Optional, Tuple, overload
+from typing import Any, Collection, Dict, Iterable, Iterator, Mapping, Optional, Tuple, overload
 
 from kopf.storage import progress
 from kopf.structs import bodies, callbacks, handlers as handlers_, patches
@@ -154,12 +154,8 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
         self._states = dict(__src)
 
     @classmethod
-    def from_scratch(
-            cls,
-            *,
-            handlers: Collection[handlers_.BaseHandler],
-    ) -> "State":
-        return cls({handler.id: HandlerState.from_scratch() for handler in handlers})
+    def from_scratch(cls) -> "State":
+        return cls({})
 
     @classmethod
     def from_storage(
@@ -167,13 +163,26 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
             *,
             body: bodies.Body,
             storage: progress.ProgressStorage,
-            handlers: Collection[handlers_.BaseHandler],
+            handlers: Iterable[handlers_.BaseHandler],
     ) -> "State":
+        handler_ids = {handler.id for handler in handlers}
         handler_states: Dict[handlers_.HandlerId, HandlerState] = {}
-        for handler in handlers:
-            content = storage.fetch(key=handler.id, body=body)
-            handler_states[handler.id] = (HandlerState.from_storage(content) if content else
-                                          HandlerState.from_scratch())
+        for handler_id in handler_ids:
+            content = storage.fetch(key=handler_id, body=body)
+            if content is not None:
+                handler_states[handler_id] = HandlerState.from_storage(content)
+        return cls(handler_states)
+
+    def with_handlers(
+            self,
+            handlers: Iterable[handlers_.BaseHandler],
+    ) -> "State":
+        handler_ids = {handler.id for handler in handlers}
+        handler_states: Dict[handlers_.HandlerId, HandlerState] = dict(self)
+        for handler_id in handler_ids:
+            if handler_id not in handler_states:
+                handler_states[handler_id] = HandlerState.from_scratch()
+        cls = type(self)
         return cls(handler_states)
 
     def with_outcomes(
@@ -210,11 +219,16 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
             body: bodies.Body,
             patch: patches.Patch,
             storage: progress.ProgressStorage,
+            handlers: Iterable[handlers_.BaseHandler],
     ) -> None:
         # Purge only our own handlers and their direct & indirect sub-handlers of all levels deep.
         # Ignore other handlers (e.g. handlers of other operators).
-        for handler_id, handler_state in self.items():
+        handler_ids = {handler.id for handler in handlers}
+        for handler_id in handler_ids:
             storage.purge(key=handler_id, body=body, patch=patch)
+        for handler_id, handler_state in self.items():
+            if handler_id not in handler_ids:
+                storage.purge(key=handler_id, body=body, patch=patch)
             for subref in handler_state.subrefs:
                 storage.purge(key=subref, body=body, patch=patch)
         storage.flush()

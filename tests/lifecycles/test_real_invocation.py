@@ -25,7 +25,7 @@ async def test_protocol_invocation(lifecycle, resource):
     Especially when the new kwargs are added or an invocation protocol changed.
     """
     # The values are irrelevant, they can be anything.
-    state = State.from_scratch(handlers=[])
+    state = State.from_scratch()
     cause = ResourceChangingCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
         resource=resource,

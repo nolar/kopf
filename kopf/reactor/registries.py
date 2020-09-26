@@ -16,8 +16,8 @@ import collections
 import functools
 import warnings
 from types import FunctionType, MethodType
-from typing import Any, Callable, Container, FrozenSet, Generic, Iterable, Iterator, List, \
-                   Mapping, MutableMapping, Optional, Sequence, Set, TypeVar, Union, cast
+from typing import Any, Callable, Collection, Container, FrozenSet, Generic, Iterable, Iterator, \
+                   List, Mapping, MutableMapping, Optional, Sequence, Set, TypeVar, Union, cast
 
 from kopf.reactor import causation, invocation
 from kopf.structs import callbacks, dicts, diffs, filters, handlers, resources as resources_
@@ -48,6 +48,9 @@ class GenericRegistry(Generic[HandlerFnT, HandlerT]):
 
     def append(self, handler: HandlerT) -> None:
         self._handlers.append(handler)
+
+    def get_all_handlers(self) -> Collection[HandlerT]:
+        return list(self._handlers)
 
 
 class ActivityRegistry(GenericRegistry[
