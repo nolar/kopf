@@ -373,7 +373,7 @@ async def _resource_daemon(
         await effects.sleep_or_wait(handler.initial_delay, cause.stopper)
 
     # Similar to activities (in-memory execution), but applies patches on every attempt.
-    state = states.State.from_scratch(handlers=[handler])
+    state = states.State.from_scratch().with_handlers([handler])
     while not stopper.is_set() and not state.done:
 
         outcomes = await handling.execute_handlers_once(
@@ -436,13 +436,13 @@ async def _resource_timer(
         await effects.sleep_or_wait(handler.initial_delay, stopper)
 
     # Similar to activities (in-memory execution), but applies patches on every attempt.
-    state = states.State.from_scratch(handlers=[handler])
+    state = states.State.from_scratch().with_handlers([handler])
     while not stopper.is_set():  # NB: ignore state.done! it is checked below explicitly.
 
         # Reset success/failure retry counters & timers if it has succeeded. Keep it if failed.
         # Every next invocation of a successful handler starts the retries from scratch (from zero).
         if state.done:
-            state = states.State.from_scratch(handlers=[handler])
+            state = states.State.from_scratch().with_handlers([handler])
 
         # Both `now` and `last_seen_time` are moving targets: the last seen time is updated
         # on every watch-event received, and prolongs the sleep. The sleep is never shortened.

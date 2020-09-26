@@ -256,7 +256,7 @@ async def process_resource_watching_cause(
         settings=settings,
         handlers=handlers,
         cause=cause,
-        state=states.State.from_scratch(handlers=handlers),
+        state=states.State.from_scratch().with_handlers(handlers),
         default_errors=handlers_.ErrorsMode.IGNORED,
     )
 
@@ -341,14 +341,17 @@ async def process_resource_changing_cause(
         if cause.diff and cause.old is not None and cause.new is not None:
             logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
 
-        handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause=cause)
+        resource_registry = registry.resource_changing_handlers[cause.resource]
+        cause_handlers = resource_registry.get_handlers(cause=cause)
+        owned_handlers = resource_registry.get_all_handlers()
         storage = settings.persistence.progress_storage
-        state = states.State.from_storage(body=cause.body, storage=storage, handlers=handlers)
-        if handlers:
+        state = states.State.from_storage(body=cause.body, storage=storage, handlers=owned_handlers)
+        state = state.with_handlers(cause_handlers)
+        if cause_handlers:
             outcomes = await handling.execute_handlers_once(
                 lifecycle=lifecycle,
                 settings=settings,
-                handlers=handlers,
+                handlers=cause_handlers,
                 cause=cause,
                 state=state,
             )
@@ -361,7 +364,8 @@ async def process_resource_changing_cause(
                 logger.info(f"{title.capitalize()} event is processed: "
                             f"{success_count} succeeded; "
                             f"{failure_count} failed.")
-                state.purge(body=cause.body, patch=cause.patch, storage=storage)
+                state.purge(body=cause.body, patch=cause.patch,
+                            storage=storage, handlers=owned_handlers)
 
             done = state.done
             delays = state.delays
