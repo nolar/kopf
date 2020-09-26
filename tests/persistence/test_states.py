@@ -1,4 +1,3 @@
-import copy
 import datetime
 from unittest.mock import Mock
 
@@ -55,12 +54,10 @@ def test_always_started_when_created_from_scratch(storage, handler):
 ])
 @freezegun.freeze_time(TS0)
 def test_always_started_when_created_from_body(storage, handler, body, expected):
-    origbody = copy.deepcopy(body)
     patch = Patch()
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state.store(body=Body({}), patch=patch, storage=storage)
     assert patch['status']['kopf']['progress']['some-id']['started'] == expected
-    assert body == origbody  # not modified
 
 
 @pytest.mark.parametrize('expected, body', [
@@ -76,11 +73,9 @@ def test_always_started_when_created_from_body(storage, handler, body, expected)
 ])
 @freezegun.freeze_time(TS0)
 def test_runtime(storage, handler, expected, body):
-    origbody = copy.deepcopy(body)
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     result = state[handler.id].runtime
     assert result == expected
-    assert body == origbody  # not modified
 
 
 @pytest.mark.parametrize('expected, body', [
@@ -97,11 +92,9 @@ def test_runtime(storage, handler, expected, body):
     (True , {'status': {'kopf': {'progress': {'some-id': {'failure': True}}}}}),
 ])
 def test_finished_flag(storage, handler, expected, body):
-    origbody = copy.deepcopy(body)
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     result = state[handler.id].finished
     assert result == expected
-    assert body == origbody  # not modified
 
 
 @pytest.mark.parametrize('expected, body', [
@@ -133,11 +126,9 @@ def test_finished_flag(storage, handler, expected, body):
 ])
 @freezegun.freeze_time(TS0)
 def test_sleeping_flag(storage, handler, expected, body):
-    origbody = copy.deepcopy(body)
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     result = state[handler.id].sleeping
     assert result == expected
-    assert body == origbody  # not modified
 
 
 @pytest.mark.parametrize('expected, body', [
@@ -169,11 +160,9 @@ def test_sleeping_flag(storage, handler, expected, body):
 ])
 @freezegun.freeze_time(TS0)
 def test_awakened_flag(storage, handler, expected, body):
-    origbody = copy.deepcopy(body)
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     result = state[handler.id].awakened
     assert result == expected
-    assert body == origbody  # not modified
 
 
 @pytest.mark.parametrize('expected, body', [
@@ -186,11 +175,9 @@ def test_awakened_flag(storage, handler, expected, body):
     (TS0, {'status': {'kopf': {'progress': {'some-id': {'delayed': TS0_ISO}}}}}),
 ])
 def test_awakening_time(storage, handler, expected, body):
-    origbody = copy.deepcopy(body)
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     result = state[handler.id].delayed
     assert result == expected
-    assert body == origbody  # not modified
 
 
 @pytest.mark.parametrize('expected, body', [
@@ -202,11 +189,9 @@ def test_awakening_time(storage, handler, expected, body):
     (6, {'status': {'kopf': {'progress': {'some-id': {'retries': 6}}}}}),
 ])
 def test_get_retry_count(storage, handler, expected, body):
-    origbody = copy.deepcopy(body)
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     result = state[handler.id].retries
     assert result == expected
-    assert body == origbody  # not modified
 
 
 @pytest.mark.parametrize('body, delay, expected', [
@@ -216,13 +201,11 @@ def test_get_retry_count(storage, handler, expected, body):
 ])
 @freezegun.freeze_time(TS0)
 def test_set_awake_time(storage, handler, expected, body, delay):
-    origbody = copy.deepcopy(body)
     patch = Patch()
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_outcomes(outcomes={handler.id: HandlerOutcome(final=False, delay=delay)})
     state.store(patch=patch, body=Body(body), storage=storage)
     assert patch['status']['kopf']['progress']['some-id'].get('delayed') == expected
-    assert body == origbody  # not modified
 
 
 @pytest.mark.parametrize('expected_retries, expected_delayed, delay, body', [
@@ -240,14 +223,12 @@ def test_set_awake_time(storage, handler, expected, body, delay):
 ])
 @freezegun.freeze_time(TS0)
 def test_set_retry_time(storage, handler, expected_retries, expected_delayed, body, delay):
-    origbody = copy.deepcopy(body)
     patch = Patch()
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_outcomes(outcomes={handler.id: HandlerOutcome(final=False, delay=delay)})
     state.store(patch=patch, body=Body(body), storage=storage)
     assert patch['status']['kopf']['progress']['some-id']['retries'] == expected_retries
     assert patch['status']['kopf']['progress']['some-id']['delayed'] == expected_delayed
-    assert body == origbody  # not modified
 
 
 def test_subrefs_added_to_empty_state(storage, handler):
@@ -291,7 +272,6 @@ def test_subrefs_ignored_when_not_specified(storage, handler):
 @freezegun.freeze_time(TS0)
 def test_store_failure(storage, handler, expected_retries, expected_stopped, body):
     error = Exception('some-error')
-    origbody = copy.deepcopy(body)
     patch = Patch()
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_outcomes(outcomes={handler.id: HandlerOutcome(final=True, exception=error)})
@@ -301,7 +281,6 @@ def test_store_failure(storage, handler, expected_retries, expected_stopped, bod
     assert patch['status']['kopf']['progress']['some-id']['retries'] == expected_retries
     assert patch['status']['kopf']['progress']['some-id']['stopped'] == expected_stopped
     assert patch['status']['kopf']['progress']['some-id']['message'] == 'some-error'
-    assert body == origbody  # not modified
 
 
 @pytest.mark.parametrize('expected_retries, expected_stopped, body', [
@@ -310,7 +289,6 @@ def test_store_failure(storage, handler, expected_retries, expected_stopped, bod
 ])
 @freezegun.freeze_time(TS0)
 def test_store_success(storage, handler, expected_retries, expected_stopped, body):
-    origbody = copy.deepcopy(body)
     patch = Patch()
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_outcomes(outcomes={handler.id: HandlerOutcome(final=True)})
@@ -320,7 +298,6 @@ def test_store_success(storage, handler, expected_retries, expected_stopped, bod
     assert patch['status']['kopf']['progress']['some-id']['retries'] == expected_retries
     assert patch['status']['kopf']['progress']['some-id']['stopped'] == expected_stopped
     assert patch['status']['kopf']['progress']['some-id']['message'] is None
-    assert body == origbody  # not modified
 
 
 @pytest.mark.parametrize('result, expected_patch', [
@@ -338,31 +315,25 @@ def test_store_result(handler, expected_patch, result):
 def test_purge_progress_when_exists_in_body(storage, handler):
     body = {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}
     patch = Patch()
-    origbody = copy.deepcopy(body)
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state.purge(patch=patch, body=Body(body), storage=storage)
     assert patch == {'status': {'kopf': {'progress': {'some-id': None}}}}
-    assert body == origbody  # not modified
 
 
 def test_purge_progress_when_already_empty_in_body_and_patch(storage, handler):
     body = {}
     patch = Patch()
-    origbody = copy.deepcopy(body)
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state.purge(patch=patch, body=Body(body), storage=storage)
     assert not patch
-    assert body == origbody  # not modified
 
 
 def test_purge_progress_when_already_empty_in_body_but_not_in__patch(storage, handler):
     body = {}
     patch = Patch({'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}})
-    origbody = copy.deepcopy(body)
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state.purge(patch=patch, body=Body(body), storage=storage)
     assert not patch
-    assert body == origbody  # not modified
 
 
 def test_purge_progress_cascades_to_subrefs(storage, handler):
@@ -381,3 +352,11 @@ def test_purge_progress_cascades_to_subrefs(storage, handler):
         'sub1': None,
         'sub2': None,
     }}}}
+
+
+def test_original_body_is_not_modified_by_storing(storage, handler):
+    body = Body({})
+    patch = Patch()
+    state = State.from_storage(body=body, handlers=[handler], storage=storage)
+    state.store(body=body, patch=patch, storage=storage)
+    assert dict(body) == {}
