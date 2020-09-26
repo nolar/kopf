@@ -52,10 +52,10 @@ from kopf.reactor.lifecycles import (
     set_default_lifecycle,
 )
 from kopf.reactor.registries import (
-    ActivityRegistry,
-    ResourceRegistry,
-    ResourceWatchingRegistry,
-    ResourceChangingRegistry,
+    ActivityRegistry,  # deprecated
+    ResourceRegistry,  # deprecated
+    ResourceWatchingRegistry,  # deprecated
+    ResourceChangingRegistry,  # deprecated
     OperatorRegistry,
     get_default_registry,
     set_default_registry,
@@ -185,10 +185,10 @@ __all__ = [
     'BaseRegistry',  # deprecated
     'SimpleRegistry',  # deprecated
     'GlobalRegistry',  # deprecated
-    'ActivityRegistry',
-    'ResourceRegistry',
-    'ResourceWatchingRegistry',
-    'ResourceChangingRegistry',
+    'ActivityRegistry',  # deprecated
+    'ResourceRegistry',  # deprecated
+    'ResourceWatchingRegistry',  # deprecated
+    'ResourceChangingRegistry',  # deprecated
     'OperatorRegistry',
     'get_default_registry',
     'set_default_registry',
