@@ -5,7 +5,7 @@ from typing import Optional
 
 import aiohttp
 
-from kopf.clients import auth
+from kopf.clients import auth, errors
 from kopf.structs import bodies, resources
 
 logger = logging.getLogger(__name__)
@@ -78,7 +78,7 @@ async def post_event(
             headers={'Content-Type': 'application/json'},
             json=body,
         )
-        response.raise_for_status()
+        await errors.check_response(response)
 
     # Events are helpful but auxiliary, they should not fail the handling cycle.
     # Yet we want to notice that something went wrong (in logs).
@@ -93,4 +93,3 @@ async def post_event(
     except aiohttp.ClientOSError as e:
         logger.warning(f"Failed to post an event. Ignoring and continuing. "
                        f"Event: type={type!r}, reason={reason!r}, message={message!r}.")
-                       

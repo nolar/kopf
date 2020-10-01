@@ -2,7 +2,7 @@ from typing import Dict, Optional, cast
 
 import aiohttp
 
-from kopf.clients import auth
+from kopf.clients import auth, errors
 from kopf.structs import resources
 
 
@@ -25,7 +25,7 @@ async def discover(
                     response = await context.session.get(
                         url=resource.get_version_url(server=context.server),
                     )
-                    response.raise_for_status()
+                    await errors.check_response(response)
                     respdata = await response.json()
 
                     context._discovered_resources[resource.api_version].update({

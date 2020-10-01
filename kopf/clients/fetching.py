@@ -3,7 +3,7 @@ from typing import Collection, List, Optional, Tuple, TypeVar, Union, cast
 
 import aiohttp
 
-from kopf.clients import auth, discovery
+from kopf.clients import auth, discovery, errors
 from kopf.structs import bodies, resources
 
 _T = TypeVar('_T')
@@ -29,7 +29,7 @@ async def read_crd(
         response = await context.session.get(
             url=CRD_CRD.get_url(server=context.server, name=resource.name),
         )
-        response.raise_for_status()
+        await errors.check_response(response)
         respdata = await response.json()
         return cast(bodies.RawBody, respdata)
 
@@ -58,7 +58,7 @@ async def read_obj(
         response = await context.session.get(
             url=resource.get_url(server=context.server, namespace=namespace, name=name),
         )
-        response.raise_for_status()
+        await errors.check_response(response)
         respdata = await response.json()
         return cast(bodies.RawBody, respdata)
 
@@ -96,7 +96,7 @@ async def list_objs_rv(
     response = await context.session.get(
         url=resource.get_url(server=context.server, namespace=namespace),
     )
-    response.raise_for_status()
+    await errors.check_response(response)
     rsp = await response.json()
 
     items: List[bodies.RawBody] = []

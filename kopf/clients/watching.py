@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, Optional, cast
 
 import aiohttp
 
-from kopf.clients import auth, discovery, fetching
+from kopf.clients import auth, discovery, errors, fetching
 from kopf.structs import bodies, configuration, primitives, resources
 from kopf.utilities import backports
 
@@ -215,7 +215,7 @@ async def watch_objs(
                 sock_connect=settings.watching.connect_timeout,
             ),
         )
-        response.raise_for_status()
+        await errors.check_response(response)
 
         response_close_callback = lambda _: response.close()
         freeze_waiter.add_done_callback(response_close_callback)

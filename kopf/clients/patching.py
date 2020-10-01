@@ -2,7 +2,7 @@ from typing import Optional, cast
 
 import aiohttp
 
-from kopf.clients import auth, discovery
+from kopf.clients import auth, discovery, errors
 from kopf.structs import bodies, patches, resources
 
 
@@ -63,8 +63,8 @@ async def patch_obj(
                 url=resource.get_url(server=context.server, namespace=namespace, name=name),
                 headers={'Content-Type': 'application/merge-patch+json'},
                 json=body_patch,
-                raise_for_status=True,
             )
+            await errors.check_response(response)
             patched_body = await response.json()
 
         if status_patch:
@@ -73,8 +73,8 @@ async def patch_obj(
                                      subresource='status' if as_subresource else None),
                 headers={'Content-Type': 'application/merge-patch+json'},
                 json={'status': status_patch},
-                raise_for_status=True,
             )
+            await errors.check_response(response)
             patched_body['status'] = await response.json()
 
     except aiohttp.ClientResponseError as e:
