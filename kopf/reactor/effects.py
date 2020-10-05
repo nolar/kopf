@@ -118,13 +118,15 @@ async def patch_and_check(
     if patch:
         logger.debug(f"Patching with: {patch!r}")
         resulting_body = await patching.patch_obj(resource=resource, patch=patch, body=body)
-        inconsistencies = diffs.diff(dict(patch), dict(resulting_body), scope=diffs.DiffScope.LEFT)
+        inconsistencies = diffs.diff(patch, resulting_body, scope=diffs.DiffScope.LEFT)
         inconsistencies = diffs.Diff(
             diffs.DiffItem(op, field, old, new)
             for op, field, old, new in inconsistencies
             if old or new or field not in KNOWN_INCONSISTENCIES
         )
-        if inconsistencies:
+        if resulting_body is None:
+            logger.debug(f"Patching was skipped: the object does not exist anymore.")
+        elif inconsistencies:
             logger.warning(f"Patching failed with inconsistencies: {inconsistencies}")
 
 
