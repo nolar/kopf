@@ -126,3 +126,30 @@ async def test_patching_with_inconsistencies(
         "Patching with:",
         "Patching failed with inconsistencies:",
     ])
+
+
+async def test_patching_with_disappearance(
+        resource, settings, caplog, assert_logs, version_api,
+        aresponses, hostname, resp_mocker):
+    caplog.set_level(logging.DEBUG)
+
+    patch = {'spec': {'x': 'y'}, 'status': {'s': 't'}}  # irrelevant
+    url = resource.get_url(namespace='ns1', name='name1')
+    patch_mock = resp_mocker(return_value=aresponses.Response(status=404))
+    aresponses.add(hostname, url, 'patch', patch_mock)
+
+    body = Body({'metadata': {'namespace': 'ns1', 'name': 'name1'}})
+    logger = LocalObjectLogger(body=body, settings=settings)
+    await patch_and_check(
+        resource=resource,
+        body=body,
+        patch=Patch(patch),
+        logger=logger,
+    )
+
+    assert_logs([
+        "Patching with:",
+        "Patching was skipped: the object does not exist anymore",
+    ], prohibited=[
+        "inconsistencies"
+    ])

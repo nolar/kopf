@@ -124,7 +124,9 @@ async def patch_and_check(
             for op, field, old, new in inconsistencies
             if old or new or field not in KNOWN_INCONSISTENCIES
         )
-        if inconsistencies:
+        if resulting_body is None:
+            logger.debug(f"Patching was skipped: the object does not exist anymore.")
+        elif inconsistencies:
             logger.warning(f"Patching failed with inconsistencies: {inconsistencies}")
 
 

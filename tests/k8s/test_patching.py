@@ -269,7 +269,7 @@ async def test_ignores_absent_objects(
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     reconstructed = await patch_obj(resource=resource, body=body, patch=patch)
 
-    assert reconstructed == {}
+    assert reconstructed is None
 
 
 @pytest.mark.parametrize('namespace', [None, 'ns1'], ids=['without-namespace', 'with-namespace'])
