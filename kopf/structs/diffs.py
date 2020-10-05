@@ -165,9 +165,7 @@ def diff_iter(
         yield DiffItem(DiffOperation.ADD, path, a, b)
     elif b is None:
         yield DiffItem(DiffOperation.REMOVE, path, a, b)
-    elif type(a) != type(b):
-        yield DiffItem(DiffOperation.CHANGE, path, a, b)
-    elif isinstance(a, collections.abc.Mapping):
+    elif isinstance(a, collections.abc.Mapping) and isinstance(b, collections.abc.Mapping):
         a_keys = frozenset(a.keys())
         b_keys = frozenset(b.keys())
         for key in (b_keys - a_keys if DiffScope.RIGHT in scope else ()):
