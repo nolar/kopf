@@ -1,7 +1,7 @@
 # The primary environment for testing. Some jobs selectively override these settings.
 os: linux
 arch: amd64
-dist: xenial
+dist: focal
 language: python
 python: "3.8"
 
