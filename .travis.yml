@@ -39,8 +39,6 @@ matrix:
     - python: "3.7"
       env: KUBERNETES_VERSION=latest CLIENT=no
     - python: "3.9-dev"
-  allow_failures:
-    - python: "3.9-dev"
 
 before_install:
   - sudo apt-get update -y

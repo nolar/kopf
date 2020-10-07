@@ -194,7 +194,7 @@ def walk(
         yield objs  # NB: not a mapping, no nested sub-fields.
 
 
-class MappingView(Generic[_K, _V], Mapping[_K, _V]):
+class MappingView(Mapping[_K, _V], Generic[_K, _V]):
     """
     A lazy resolver for the "on-demand" dict keys.
 
@@ -231,7 +231,7 @@ class MappingView(Generic[_K, _V], Mapping[_K, _V]):
         return resolve(self._src, self._path + (item,))
 
 
-class MutableMappingView(Generic[_K, _V], MappingView[_K, _V], MutableMapping[_K, _V]):
+class MutableMappingView(MappingView[_K, _V], MutableMapping[_K, _V], Generic[_K, _V]):
     """
     A mapping view with values stored and sub-dicts auto-created.
 
@@ -257,7 +257,7 @@ class MutableMappingView(Generic[_K, _V], MappingView[_K, _V], MutableMapping[_K
         ensure(self._src, self._path + (item,), value)
 
 
-class ReplaceableMappingView(Generic[_K, _V], MappingView[_K, _V]):
+class ReplaceableMappingView(MappingView[_K, _V], Generic[_K, _V]):
     """
     A mapping view where the whole source can be replaced atomically.
 

@@ -111,8 +111,8 @@ class ActivityRegistry(GenericRegistry[
 
 
 class ResourceRegistry(
-        Generic[CauseT, HandlerFnT, ResourceHandlerT],
-        GenericRegistry[HandlerFnT, ResourceHandlerT]):
+        GenericRegistry[HandlerFnT, ResourceHandlerT],
+        Generic[CauseT, HandlerFnT, ResourceHandlerT]):
 
     def get_handlers(
             self,
