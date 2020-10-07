@@ -1,9 +1,9 @@
 # The primary environment for testing. Some jobs selectively override these settings.
 os: linux
 arch: amd64
-dist: xenial
+dist: focal
 language: python
-python: "3.8"
+python: "3.9-dev"
 
 # Only test the final merges and releases. The work-in-progress branches are tested by PR builds.
 branches:
@@ -94,10 +94,11 @@ jobs:
   - { <<: *linting, name: Linting and static analysis }
   - { <<: *unittests, python: "3.7" }
   - { <<: *unittests, python: "3.8" }
+  - { <<: *unittests, python: "3.9-dev" }
 
   fast_finish: true
   allow_failures:
-    - python: "3.9-dev"
+    - python: "3.10-dev"
 
 deploy:
   provider: pypi
