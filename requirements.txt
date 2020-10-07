@@ -13,4 +13,4 @@ asynctest
 freezegun
 codecov
 coveralls
-mypy==0.770
+mypy==0.782
