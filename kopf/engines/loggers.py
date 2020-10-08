@@ -12,6 +12,7 @@ import asyncio
 import copy
 import enum
 import logging
+import sys
 from typing import Any, MutableMapping, Optional, Tuple
 
 import pythonjsonlogger.jsonlogger
@@ -207,10 +208,16 @@ def configure(
 ) -> None:
     log_level = 'DEBUG' if debug or verbose else 'WARNING' if quiet else 'INFO'
     formatter = make_formatter(log_format=log_format, log_prefix=log_prefix, log_refkey=log_refkey)
-    handler = logging.StreamHandler()
-    handler.setFormatter(formatter)
+    handler_stdout = logging.StreamHandler(sys.stdout)
+    handler_stdout.setFormatter(formatter)
+    handler_stdout.addFilter(lambda record: record.levelno <= logging.INFO)
+    handler_stdout.setLevel(logging.DEBUG)
+    handler_stderr = logging.StreamHandler(sys.stderr)
+    handler_stderr.setFormatter(formatter)
+    handler_stderr.setLevel(logging.WARNING)
     logger = logging.getLogger()
-    logger.addHandler(handler)
+    logger.addHandler(handler_stdout)
+    logger.addHandler(handler_stderr)
     logger.setLevel(log_level)
 
     # Prevent the low-level logging unless in the debug mode. Keep only the operator's messages.
