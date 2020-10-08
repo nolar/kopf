@@ -30,7 +30,7 @@ def test_own_formatter_is_used():
     configure()
     logger = logging.getLogger()
     own_handlers = _get_own_handlers(logger)
-    assert len(own_handlers) == 1
+    assert len(own_handlers) == 2
 
 
 @pytest.mark.parametrize('log_format', [LogFormat.FULL, LogFormat.PLAIN, '%(message)s'])
@@ -38,8 +38,9 @@ def test_formatter_nonprefixed_text(log_format):
     configure(log_format=log_format, log_prefix=False)
     logger = logging.getLogger()
     own_handlers = _get_own_handlers(logger)
-    assert len(own_handlers) == 1
+    assert len(own_handlers) == 2
     assert type(own_handlers[0].formatter) is ObjectTextFormatter
+    assert type(own_handlers[1].formatter) is ObjectTextFormatter
 
 
 @pytest.mark.parametrize('log_format', [LogFormat.FULL, LogFormat.PLAIN, '%(message)s'])
@@ -47,8 +48,9 @@ def test_formatter_prefixed_text(log_format):
     configure(log_format=log_format, log_prefix=True)
     logger = logging.getLogger()
     own_handlers = _get_own_handlers(logger)
-    assert len(own_handlers) == 1
+    assert len(own_handlers) == 2
     assert type(own_handlers[0].formatter) is ObjectPrefixingTextFormatter
+    assert type(own_handlers[1].formatter) is ObjectPrefixingTextFormatter
 
 
 @pytest.mark.parametrize('log_format', [LogFormat.JSON])
@@ -56,8 +58,9 @@ def test_formatter_nonprefixed_json(log_format):
     configure(log_format=log_format, log_prefix=False)
     logger = logging.getLogger()
     own_handlers = _get_own_handlers(logger)
-    assert len(own_handlers) == 1
+    assert len(own_handlers) == 2
     assert type(own_handlers[0].formatter) is ObjectJsonFormatter
+    assert type(own_handlers[1].formatter) is ObjectJsonFormatter
 
 
 @pytest.mark.parametrize('log_format', [LogFormat.JSON])
@@ -65,8 +68,9 @@ def test_formatter_prefixed_json(log_format):
     configure(log_format=log_format, log_prefix=True)
     logger = logging.getLogger()
     own_handlers = _get_own_handlers(logger)
-    assert len(own_handlers) == 1
+    assert len(own_handlers) == 2
     assert type(own_handlers[0].formatter) is ObjectPrefixingJsonFormatter
+    assert type(own_handlers[1].formatter) is ObjectPrefixingJsonFormatter
 
 
 @pytest.mark.parametrize('log_format', [LogFormat.JSON])
@@ -74,8 +78,9 @@ def test_json_has_no_prefix_by_default(log_format):
     configure(log_format=log_format, log_prefix=None)
     logger = logging.getLogger()
     own_handlers = _get_own_handlers(logger)
-    assert len(own_handlers) == 1
+    assert len(own_handlers) == 2
     assert type(own_handlers[0].formatter) is ObjectJsonFormatter
+    assert type(own_handlers[1].formatter) is ObjectJsonFormatter
 
 
 def test_error_on_unknown_formatter():
