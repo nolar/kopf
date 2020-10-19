@@ -28,7 +28,7 @@ import aiohttp
 
 from kopf.clients import auth, discovery, errors, fetching
 from kopf.structs import bodies, configuration, primitives, resources
-from kopf.utilities import backports
+from kopf.utilities import aiotasks
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +95,7 @@ async def streaming_watch(
     # to the future's callbacks, and a background task triggers it when the mode is turned on.
     freeze_waiter: asyncio_Future
     if freeze_mode is not None:
-        freeze_waiter = backports.create_task(
+        freeze_waiter = aiotasks.create_task(
             freeze_mode.wait_for_on(),
             name=f'freeze-waiter for {resource.name} @ {namespace or "cluster-wide"}')
     else:

@@ -29,7 +29,7 @@ from kopf.engines import loggers
 from kopf.reactor import causation, effects, handling, lifecycles
 from kopf.storage import states
 from kopf.structs import configuration, containers, handlers as handlers_, patches, primitives
-from kopf.utilities import backports
+from kopf.utilities import aiotasks
 
 
 async def spawn_resource_daemons(
@@ -64,7 +64,7 @@ async def spawn_resource_daemons(
                 stopper=stopper,  # for stopping (outside of causes)
                 handler=handler,
                 logger=loggers.LocalObjectLogger(body=cause.body, settings=settings),
-                task=backports.create_task(_runner(
+                task=aiotasks.create_task(_runner(
                     settings=settings,
                     daemons=daemons,  # for self-garbage-collection
                     handler=handler,

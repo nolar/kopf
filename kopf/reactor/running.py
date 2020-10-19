@@ -11,7 +11,7 @@ from kopf.clients import auth
 from kopf.engines import peering, posting, probing
 from kopf.reactor import activities, daemons, lifecycles, processing, queueing, registries
 from kopf.structs import configuration, containers, credentials, handlers, primitives
-from kopf.utilities import backports
+from kopf.utilities import aiotasks
 
 if TYPE_CHECKING:
     asyncio_Task = asyncio.Task[None]
@@ -470,8 +470,8 @@ async def _stop_flag_checker(
     if signal_flag is not None:
         flags.append(signal_flag)
     if stop_flag is not None:
-        flags.append(backports.create_task(primitives.wait_flag(stop_flag),
-                                           name="stop-flag waiter"))
+        flags.append(aiotasks.create_task(primitives.wait_flag(stop_flag),
+                                          name="stop-flag waiter"))
 
     # Wait until one of the stoppers is set/raised.
     try:
@@ -584,7 +584,7 @@ def _create_startup_root_task(
         name: str,
         coro: Coroutine[Any, Any, Any],
 ) -> asyncio_Task:
-    return backports.create_task(coro=coro, name=name)
+    return aiotasks.create_task(coro=coro, name=name)
 
 
 def _create_checked_root_task(
@@ -593,7 +593,7 @@ def _create_checked_root_task(
         coro: Coroutine[Any, Any, Any],
         ready_flag: primitives.Flag,
 ) -> asyncio_Task:
-    return backports.create_task(_root_task_checker(
+    return aiotasks.create_task(_root_task_checker(
         ready_flag=ready_flag,
         name=name,
         coro=coro,
