@@ -59,25 +59,11 @@ Create the peering objects as needed with one of:
 
 .. note::
 
-    Previously, ``KopfPeering`` was the only CRD, and it was cluster-scoped.
-    Now, it is namespaced. For the new users, it all will be fine and working.
-
-    If the old ``KopfPeering`` CRD is already deployed to your cluster,
-    it will also continue to work as before without re-configuration:
-    though there will be no namespace isolation as documented here ---
-    it will be cluster peering regardless of :option:`--namespace`
-    (as it was before the changes).
-
-    When possible (but strictly after the Kopf's version upgrade),
-    please delete the old CRD, and re-create from scratch:
-
-    .. code-block:: bash
-
-        kubectl delete crd kopfpeerings.zalando.org
-        # give it 1-2 minutes to cleanup, or repeat until succeeded:
-        kubectl create -f peering.yaml
-
-    Then re-deploy your custom peering objects of your apps.
+    In ``kopf<0.11`` (until May'2019), ``KopfPeering`` was the only CRD,
+    and it was cluster-scoped. In ``kopf>=0.11,<0.29`` (until Oct'2020),
+    this mode was deprecated but supported if the old CRD existed.
+    Since ``kopf>=0.29`` (Nov'2020), it is not supported anymore.
+    To upgrade, delete and re-create the peering CRDs to the new ones.
 
 
 Custom peering

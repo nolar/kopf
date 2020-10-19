@@ -3,8 +3,7 @@ import datetime
 import freezegun
 import pytest
 
-from kopf.engines.peering import CLUSTER_PEERING_RESOURCE, LEGACY_PEERING_RESOURCE, \
-                                 NAMESPACED_PEERING_RESOURCE, Peer
+from kopf.engines.peering import CLUSTER_PEERING_RESOURCE, NAMESPACED_PEERING_RESOURCE, Peer
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
@@ -13,7 +12,6 @@ def test_defaults():
     assert peer.id == 'id'
     assert peer.name == 'name'
     assert peer.namespace is None
-    assert peer.legacy is False
     assert peer.lifetime == datetime.timedelta(seconds=60)
     assert peer.lastseen == datetime.datetime(2020, 12, 31, 23, 59, 59, 123456)
 
@@ -49,23 +47,14 @@ def test_priority_unspecified():
     assert peer.priority == 0
 
 
-@pytest.mark.parametrize('namespace', [None, 'namespaced'])
-def test_resource_for_legacy_peering(namespace):
-    peer = Peer(id='id', name='name', legacy=True, namespace=namespace)
-    assert peer.legacy is True
-    assert peer.resource == LEGACY_PEERING_RESOURCE
-
-
 def test_resource_for_cluster_peering():
-    peer = Peer(id='id', name='name', legacy=False, namespace=None)
-    assert peer.legacy is False
+    peer = Peer(id='id', name='name', namespace=None)
     assert peer.resource == CLUSTER_PEERING_RESOURCE
     assert peer.namespace is None
 
 
 def test_resource_for_namespaced_peering():
-    peer = Peer(id='id', name='name', legacy=False, namespace='namespaced')
-    assert peer.legacy is False
+    peer = Peer(id='id', name='name', namespace='namespaced')
     assert peer.resource == NAMESPACED_PEERING_RESOURCE
     assert peer.namespace == 'namespaced'
 

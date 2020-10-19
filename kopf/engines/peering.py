@@ -48,7 +48,6 @@ logger = logging.getLogger(__name__)
 # The CRD info on the special sync-object.
 CLUSTER_PEERING_RESOURCE = resources.Resource('zalando.org', 'v1', 'clusterkopfpeerings')
 NAMESPACED_PEERING_RESOURCE = resources.Resource('zalando.org', 'v1', 'kopfpeerings')
-LEGACY_PEERING_RESOURCE = resources.Resource('zalando.org', 'v1', 'kopfpeerings')
 PEERING_DEFAULT_NAME = 'default'
 
 
@@ -65,7 +64,6 @@ class Peer:
             lastseen: Optional[Union[str, datetime.datetime]] = None,
             lifetime: Union[int, datetime.timedelta] = 60,
             namespace: Optional[str] = None,
-            legacy: bool = False,
             **_: Any,  # for the forward-compatibility with the new fields
     ):
         super().__init__()
@@ -81,14 +79,13 @@ class Peer:
         self.lastseen = self.lastseen.replace(tzinfo=None)  # only the naive utc -- for comparison
         self.deadline = self.lastseen + self.lifetime
         self.is_dead = self.deadline <= datetime.datetime.utcnow()
-        self.legacy = legacy
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.id}, namespace={self.namespace}, priority={self.priority}, lastseen={self.lastseen}, lifetime={self.lifetime})"
 
     @property
     def resource(self) -> resources.Resource:
-        return LEGACY_PEERING_RESOURCE if self.legacy else CLUSTER_PEERING_RESOURCE if self.namespace is None else NAMESPACED_PEERING_RESOURCE
+        return CLUSTER_PEERING_RESOURCE if self.namespace is None else NAMESPACED_PEERING_RESOURCE
 
     @classmethod
     async def detect(
@@ -105,15 +102,11 @@ class Peer:
         if name:
             if await Peer._is_peering_exist(name, namespace=namespace):
                 return cls(name=name, namespace=namespace, **kwargs)
-            elif await Peer._is_peering_legacy(name, namespace=namespace):
-                return cls(name=name, namespace=namespace, legacy=True, **kwargs)
             else:
                 raise Exception(f"The peering {name!r} was not found")
 
         if await Peer._is_peering_exist(name=PEERING_DEFAULT_NAME, namespace=namespace):
             return cls(name=PEERING_DEFAULT_NAME, namespace=namespace, **kwargs)
-        elif await Peer._is_peering_legacy(name=PEERING_DEFAULT_NAME, namespace=namespace):
-            return cls(name=PEERING_DEFAULT_NAME, namespace=namespace, legacy=True, **kwargs)
 
         logger.warning(f"Default peering object not found, falling back to the standalone mode.")
         return None
@@ -140,14 +133,14 @@ class Peer:
         Add a peer to the peers, and update its alive status.
         """
         self.touch()
-        await apply_peers([self], name=self.name, namespace=self.namespace, legacy=self.legacy)
+        await apply_peers([self], name=self.name, namespace=self.namespace)
 
     async def disappear(self) -> None:
         """
         Remove a peer from the peers (gracefully).
         """
         self.touch(lifetime=0)
-        await apply_peers([self], name=self.name, namespace=self.namespace, legacy=self.legacy)
+        await apply_peers([self], name=self.name, namespace=self.namespace)
 
     @staticmethod
     async def _is_peering_exist(name: str, namespace: Optional[str]) -> bool:
@@ -155,32 +148,11 @@ class Peer:
         obj = await fetching.read_obj(resource=resource, namespace=namespace, name=name, default=None)
         return obj is not None
 
-    @staticmethod
-    async def _is_peering_legacy(name: str, namespace: Optional[str]) -> bool:
-        """
-        Legacy mode for the peering: cluster-scoped KopfPeering (new mode: namespaced).
-
-        .. deprecated:: 1.0
-
-            This logic will be removed since 1.0.
-            Deploy ``ClusterKopfPeering`` as per documentation, and use it normally.
-        """
-        crd = await fetching.read_crd(resource=LEGACY_PEERING_RESOURCE, default=None)
-        if crd is None:
-            return False
-
-        if str(crd.get('spec', {}).get('scope', '')).lower() != 'cluster':
-            return False  # no legacy mode detected
-
-        obj = await fetching.read_obj(resource=LEGACY_PEERING_RESOURCE, name=name, default=None)
-        return obj is not None
-
 
 async def apply_peers(
         peers: Iterable[Peer],
         name: str,
         namespace: Union[None, str],
-        legacy: bool = False,
 ) -> None:
     """
     Apply the changes in the peers to the sync-object.
@@ -190,9 +162,7 @@ async def apply_peers(
     """
     patch = patches.Patch()
     patch.update({'status': {peer.id: None if peer.is_dead else peer.as_dict() for peer in peers}})
-    resource = (LEGACY_PEERING_RESOURCE if legacy else
-                CLUSTER_PEERING_RESOURCE if namespace is None else
-                NAMESPACED_PEERING_RESOURCE)
+    resource = CLUSTER_PEERING_RESOURCE if namespace is None else NAMESPACED_PEERING_RESOURCE
     await patching.patch_obj(resource=resource, namespace=namespace, name=name, patch=patch)
 
 
@@ -231,7 +201,7 @@ async def process_peering_event(
 
     if autoclean and dead_peers:
         # NB: sync and blocking, but this is fine.
-        await apply_peers(dead_peers, name=ourselves.name, namespace=ourselves.namespace, legacy=ourselves.legacy)
+        await apply_peers(dead_peers, name=ourselves.name, namespace=ourselves.namespace)
 
     if prio_peers:
         if freeze_mode.is_off():

@@ -5,10 +5,6 @@ import pytest
 from kopf.engines.peering import CLUSTER_PEERING_RESOURCE, NAMESPACED_PEERING_RESOURCE, \
                                  PEERING_DEFAULT_NAME, Peer
 
-# Note: the legacy peering is intentionally not tested: it was long time before
-# these tests were written, so it does not make sense to keep it stable.
-# The legacy peering is going to be removed in version 1.0 when it happens.
-
 
 @pytest.fixture()
 def with_cluster_default(hostname, aresponses):
