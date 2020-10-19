@@ -1,7 +1,5 @@
 from typing import Dict, Optional, cast
 
-import aiohttp
-
 from kopf.clients import auth, errors
 from kopf.structs import resources
 
@@ -33,11 +31,8 @@ async def discover(
                         for info in respdata['resources']
                     })
 
-                except aiohttp.ClientResponseError as e:
-                    if e.status in [403, 404]:
-                        pass
-                    else:
-                        raise
+                except (errors.APINotFoundError, errors.APIForbiddenError):
+                    pass
 
     name = resource.plural if subresource is None else f'{resource.plural}/{subresource}'
     return context._discovered_resources[resource.api_version].get(name, None)

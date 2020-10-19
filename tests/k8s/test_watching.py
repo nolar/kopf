@@ -14,6 +14,7 @@ import logging
 import aiohttp
 import pytest
 
+from kopf.clients.errors import APIError
 from kopf.clients.watching import WatchingError, infinite_watch, streaming_watch
 from kopf.structs.primitives import Toggle
 
@@ -249,7 +250,7 @@ async def test_freezing_waits_until_resumed(
 async def test_infinite_watch_never_exits_normally(
         settings, resource, stream, namespace, aresponses):
 
-    error = aresponses.Response(status=555, reason='stop-infinite-cycle')
+    error = aresponses.Response(status=555)
     stream.feed(
         STREAM_WITH_ERROR_410GONE,          # watching restarted
         STREAM_WITH_UNKNOWN_EVENT,          # event ignored
@@ -259,14 +260,13 @@ async def test_infinite_watch_never_exits_normally(
     stream.close(namespace=namespace)
 
     events = []
-    with pytest.raises(aiohttp.ClientResponseError) as e:
+    with pytest.raises(APIError) as e:
         async for event in infinite_watch(settings=settings,
                                           resource=resource,
                                           namespace=namespace):
             events.append(event)
 
     assert e.value.status == 555
-    assert e.value.message == 'stop-infinite-cycle'
 
     assert len(events) == 3
     assert events[0]['object']['spec'] == 'a'

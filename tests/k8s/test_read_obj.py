@@ -1,6 +1,7 @@
 import aiohttp.web
 import pytest
 
+from kopf.clients.errors import APIError
 from kopf.clients.fetching import read_obj
 
 
@@ -36,11 +37,11 @@ async def test_when_present_namespaced(
 async def test_when_absent_with_no_default(
         resp_mocker, aresponses, hostname, resource, namespace, status):
 
-    get_mock = resp_mocker(return_value=aresponses.Response(status=status, reason="boo!"))
+    get_mock = resp_mocker(return_value=aresponses.Response(status=status))
     aresponses.add(hostname, resource.get_url(namespace=None, name='name1'), 'get', get_mock)
     aresponses.add(hostname, resource.get_url(namespace='ns1', name='name1'), 'get', get_mock)
 
-    with pytest.raises(aiohttp.ClientResponseError) as e:
+    with pytest.raises(APIError) as e:
         await read_obj(resource=resource, namespace=namespace, name='name1')
     assert e.value.status == status
 
@@ -51,7 +52,7 @@ async def test_when_absent_with_no_default(
 async def test_when_absent_with_default(
         resp_mocker, aresponses, hostname, resource, namespace, default, status):
 
-    get_mock = resp_mocker(return_value=aresponses.Response(status=status, reason="boo!"))
+    get_mock = resp_mocker(return_value=aresponses.Response(status=status))
     aresponses.add(hostname, resource.get_url(namespace=None, name='name1'), 'get', get_mock)
     aresponses.add(hostname, resource.get_url(namespace='ns1', name='name1'), 'get', get_mock)
 
@@ -64,10 +65,10 @@ async def test_when_absent_with_default(
 async def test_raises_api_error_despite_default(
         resp_mocker, aresponses, hostname, resource, namespace, status):
 
-    get_mock = resp_mocker(return_value=aresponses.Response(status=status, reason="boo!"))
+    get_mock = resp_mocker(return_value=aresponses.Response(status=status))
     aresponses.add(hostname, resource.get_url(namespace=None, name='name1'), 'get', get_mock)
     aresponses.add(hostname, resource.get_url(namespace='ns1', name='name1'), 'get', get_mock)
 
-    with pytest.raises(aiohttp.ClientResponseError) as e:
+    with pytest.raises(APIError) as e:
         await read_obj(resource=resource, namespace=namespace, name='name1', default=object())
     assert e.value.status == status

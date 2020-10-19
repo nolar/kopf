@@ -1,8 +1,6 @@
 import enum
 from typing import Collection, List, Optional, Tuple, TypeVar, Union, cast
 
-import aiohttp
-
 from kopf.clients import auth, discovery, errors
 from kopf.structs import bodies, resources
 
@@ -38,8 +36,8 @@ async def read_obj(
         respdata = await response.json()
         return cast(bodies.RawBody, respdata)
 
-    except aiohttp.ClientResponseError as e:
-        if e.status in [403, 404] and not isinstance(default, _UNSET):
+    except (errors.APINotFoundError, errors.APIForbiddenError):
+        if not isinstance(default, _UNSET):
             return default
         raise
 

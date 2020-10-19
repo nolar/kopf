@@ -1,7 +1,5 @@
 from typing import Optional, cast
 
-import aiohttp
-
 from kopf.clients import auth, discovery, errors
 from kopf.structs import bodies, patches, resources
 
@@ -85,8 +83,5 @@ async def patch_obj(
 
         return patched_body
 
-    except aiohttp.ClientResponseError as e:
-        if e.status == 404:
-            return None
-        else:
-            raise
+    except errors.APINotFoundError:
+        return None
