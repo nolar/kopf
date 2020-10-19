@@ -7,25 +7,18 @@ On the operator restart, all the memories are lost.
 It is used internally to track allocated system resources for each Kubernetes
 object, even if that object does not show up in the event streams for long time.
 """
-import asyncio
 import dataclasses
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Dict, Iterator, MutableMapping, Optional, Set, Union
+from typing import Any, Dict, Iterator, MutableMapping, Optional, Set, Union
 
 from kopf.structs import bodies, handlers, primitives
-
-if TYPE_CHECKING:
-    asyncio_Task = asyncio.Task[None]
-    asyncio_Future = asyncio.Future[Any]
-else:
-    asyncio_Task = asyncio.Task
-    asyncio_Future = asyncio.Future
+from kopf.utilities import aiotasks
 
 
 @dataclasses.dataclass(frozen=True)
 class Daemon:
-    task: asyncio_Task  # a guarding task of the daemon.
+    task: aiotasks.Task  # a guarding task of the daemon.
     logger: Union[logging.Logger, logging.LoggerAdapter]
     handler: handlers.ResourceSpawningHandler
     stopper: primitives.DaemonStopper  # a signaller for the termination and its reason.
