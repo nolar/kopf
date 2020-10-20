@@ -4,7 +4,7 @@ import logging
 import signal
 import threading
 import warnings
-from typing import Any, Collection, Coroutine, MutableSequence, Optional, Sequence, Set, Tuple, cast
+from typing import Any, Collection, Coroutine, MutableSequence, Optional, Sequence
 
 from kopf.clients import auth
 from kopf.engines import peering, posting, probing
@@ -123,7 +123,7 @@ async def operator(
 
     It is efficiently `spawn_tasks` + `run_tasks` with some safety.
     """
-    existing_tasks = await _all_tasks()
+    existing_tasks = await aiotasks.all_tasks()
     operator_tasks = await spawn_tasks(
         lifecycle=lifecycle,
         registry=registry,
@@ -193,17 +193,17 @@ async def spawn_tasks(
     posting.settings_var.set(settings)
 
     # Few common background forever-running infrastructural tasks (irregular root tasks).
-    tasks.append(_create_startup_root_task(
+    tasks.append(aiotasks.create_task(
         name="stop-flag checker",
         coro=_stop_flag_checker(
             signal_flag=signal_flag,
             stop_flag=stop_flag)))
-    tasks.append(_create_startup_root_task(
+    tasks.append(aiotasks.create_task(
         name="ultimate termination",
         coro=_ultimate_termination(
             settings=settings,
             stop_flag=stop_flag)))
-    tasks.append(_create_startup_root_task(
+    tasks.append(aiotasks.create_task(
         name="startup/cleanup activities",
         coro=_startup_cleanup_activities(
             root_tasks=tasks,  # used as a "live" view, populated later.
@@ -214,15 +214,15 @@ async def spawn_tasks(
             vault=vault)))  # to purge & finalize the caches in the end.
 
     # Kill all the daemons gracefully when the operator exits (so that they are not "hung").
-    tasks.append(_create_checked_root_task(
-        name="daemon killer", flag=started_flag,
+    tasks.append(aiotasks.create_guarded_task(
+        name="daemon killer", flag=started_flag, logger=logger,
         coro=daemons.daemon_killer(
             settings=settings,
             memories=memories)))
 
     # Keeping the credentials fresh and valid via the authentication handlers on demand.
-    tasks.append(_create_checked_root_task(
-        name="credentials retriever", flag=started_flag,
+    tasks.append(aiotasks.create_guarded_task(
+        name="credentials retriever", flag=started_flag, logger=logger,
         coro=activities.authenticator(
             registry=registry,
             settings=settings,
@@ -230,15 +230,15 @@ async def spawn_tasks(
 
     # K8s-event posting. Events are queued in-memory and posted in the background.
     # NB: currently, it is a global task, but can be made per-resource or per-object.
-    tasks.append(_create_checked_root_task(
-        name="poster of events", flag=started_flag,
+    tasks.append(aiotasks.create_guarded_task(
+        name="poster of events", flag=started_flag, logger=logger,
         coro=posting.poster(
             event_queue=event_queue)))
 
     # Liveness probing -- so that Kubernetes would know that the operator is alive.
     if liveness_endpoint:
-        tasks.append(_create_checked_root_task(
-            name="health reporter", flag=started_flag,
+        tasks.append(aiotasks.create_guarded_task(
+            name="health reporter", flag=started_flag, logger=logger,
             coro=probing.health_reporter(
                 registry=registry,
                 settings=settings,
@@ -247,14 +247,14 @@ async def spawn_tasks(
     # Monitor the peers, unless explicitly disabled.
     if await peering.detect_presence(namespace=namespace, settings=settings):
         identity = peering.detect_own_id(manual=False)
-        tasks.append(_create_checked_root_task(
-            name="peering keepalive", flag=started_flag,
+        tasks.append(aiotasks.create_guarded_task(
+            name="peering keepalive", flag=started_flag, logger=logger,
             coro=peering.keepalive(
                 namespace=namespace,
                 settings=settings,
                 identity=identity)))
-        tasks.append(_create_checked_root_task(
-            name="watcher of peering", flag=started_flag,
+        tasks.append(aiotasks.create_guarded_task(
+            name="watcher of peering", flag=started_flag, logger=logger,
             coro=queueing.watcher(
                 namespace=namespace,
                 settings=settings,
@@ -267,8 +267,8 @@ async def spawn_tasks(
 
     # Resource event handling, only once for every known resource (de-duplicated).
     for resource in registry.resources:
-        tasks.append(_create_checked_root_task(
-            name=f"watcher of {resource.name}", flag=started_flag,
+        tasks.append(aiotasks.create_guarded_task(
+            name=f"watcher of {resource.name}", flag=started_flag, logger=logger,
             coro=queueing.watcher(
                 namespace=namespace,
                 settings=settings,
@@ -328,123 +328,32 @@ async def run_tasks(
     # If the operator is cancelled, propagate the cancellation to all the sub-tasks.
     # There is no graceful period: cancel as soon as possible, but allow them to finish.
     try:
-        root_done, root_pending = await _wait(root_tasks, return_when=asyncio.FIRST_COMPLETED)
+        root_done, root_pending = await aiotasks.wait(root_tasks, return_when=asyncio.FIRST_COMPLETED)
     except asyncio.CancelledError:
-        await _stop(root_tasks, title="Root", cancelled=True, interval=10)
-        hung_tasks = await _all_tasks(ignored=ignored)
-        await _stop(hung_tasks, title="Hung", cancelled=True, interval=1)
+        await aiotasks.stop(root_tasks, title="Root", logger=logger, cancelled=True, interval=10)
+        hung_tasks = await aiotasks.all_tasks(ignored=ignored)
+        await aiotasks.stop(hung_tasks, title="Hung", logger=logger, cancelled=True, interval=1)
         raise
 
     # If the operator is intact, but one of the root tasks has exited (successfully or not),
     # cancel all the remaining root tasks, and gracefully exit other spawned sub-tasks.
-    root_cancelled, _ = await _stop(root_pending, title="Root", cancelled=False)
+    root_cancelled, _ = await aiotasks.stop(root_pending, title="Root", logger=logger)
 
     # After the root tasks are all gone, cancel any spawned sub-tasks (e.g. handlers).
     # If the operator is cancelled, propagate the cancellation to all the sub-tasks.
     # TODO: an assumption! the loop is not fully ours! find a way to cancel only our spawned tasks.
-    hung_tasks = await _all_tasks(ignored=ignored)
+    hung_tasks = await aiotasks.all_tasks(ignored=ignored)
     try:
-        hung_done, hung_pending = await _wait(hung_tasks, timeout=5)
+        hung_done, hung_pending = await aiotasks.wait(hung_tasks, timeout=5)
     except asyncio.CancelledError:
-        await _stop(hung_tasks, title="Hung", cancelled=True, interval=1)
+        await aiotasks.stop(hung_tasks, title="Hung", logger=logger, cancelled=True, interval=1)
         raise
 
     # If the operator is intact, but the timeout is reached, forcely cancel the sub-tasks.
-    hung_cancelled, _ = await _stop(hung_pending, title="Hung", cancelled=False, interval=1)
+    hung_cancelled, _ = await aiotasks.stop(hung_pending, title="Hung", logger=logger, interval=1)
 
     # If succeeded or if cancellation is silenced, re-raise from failed tasks (if any).
-    await _reraise(root_done | root_cancelled | hung_done | hung_cancelled)
-
-
-async def _all_tasks(
-        ignored: Collection[aiotasks.Task] = frozenset(),
-) -> Collection[aiotasks.Task]:
-    current_task = asyncio.current_task()
-    return {task for task in asyncio.all_tasks()
-            if task is not current_task and task not in ignored}
-
-
-async def _wait(
-        tasks: Collection[aiotasks.Task],
-        *,
-        timeout: Optional[float] = None,
-        return_when: Any = asyncio.ALL_COMPLETED,
-) -> Tuple[Set[aiotasks.Task], Set[aiotasks.Task]]:
-    if not tasks:
-        return set(), set()
-    done, pending = await asyncio.wait(tasks, timeout=timeout, return_when=return_when)
-    return cast(Set[aiotasks.Task], done), cast(Set[aiotasks.Task], pending)
-
-
-async def _stop(
-        tasks: Collection[aiotasks.Task],
-        title: str,
-        cancelled: bool,
-        interval: Optional[float] = None,
-) -> Tuple[Set[aiotasks.Task], Set[aiotasks.Task]]:
-    if not tasks:
-        logger.debug(f"{title} tasks stopping is skipped: no tasks given.")
-        return set(), set()
-
-    for task in tasks:
-        task.cancel()
-
-    done_ever: Set[aiotasks.Task] = set()
-    pending: Set[aiotasks.Task] = set(tasks)
-    while pending:
-        # If the waiting (current) task is cancelled before the wait is over,
-        # propagate the cancellation to all the awaited (sub-) tasks, and let them finish.
-        try:
-            done_now, pending = await _wait(pending, timeout=interval)
-        except asyncio.CancelledError:
-            # If the waiting (current) task is cancelled while propagating the cancellation
-            # (i.e. double-cancelled), let it fail without graceful cleanup. It is urgent, it seems.
-            pending = {task for task in tasks if not task.done()}
-            are = 'are' if not pending else 'are not'
-            why = 'double-cancelling at stopping' if cancelled else 'cancelling at stopping'
-            logger.debug(f"{title} tasks {are} stopped: {why}; tasks left: {pending!r}")
-            raise  # the repeated cancellation, handled specially.
-        else:
-            # If the cancellation is propagated normally and the awaited (sub-) tasks exited,
-            # consider it as a successful cleanup.
-            are = 'are' if not pending else 'are not'
-            why = 'cancelling normally' if cancelled else 'finishing normally'
-            logger.debug(f"{title} tasks {are} stopped: {why}; tasks left: {pending!r}")
-            done_ever |= done_now
-
-    return done_ever, pending
-
-
-async def _reraise(
-        tasks: Collection[aiotasks.Task],
-) -> None:
-    for task in tasks:
-        try:
-            task.result()  # can raise the regular (non-cancellation) exceptions.
-        except asyncio.CancelledError:
-            pass
-
-
-async def _root_task_checker(
-        name: str,
-        flag: asyncio.Event,
-        coro: Coroutine[Any, Any, Any],
-) -> None:
-
-    # Wait until the startup activity succeeds. The wait will be cancelled if the startup failed.
-    await flag.wait()
-
-    # Actually run the root task, and log the outcome.
-    try:
-        await coro
-    except asyncio.CancelledError:
-        logger.debug(f"Root task {name!r} is cancelled.")
-        raise
-    except Exception as e:
-        logger.exception(f"Root task {name!r} is failed: %s", e)
-        raise  # fail the process and its exit status
-    else:
-        logger.warning(f"Root task {name!r} is finished unexpectedly.")
+    await aiotasks.reraise(root_done | root_cancelled | hung_done | hung_cancelled)
 
 
 async def _stop_flag_checker(
@@ -553,7 +462,7 @@ async def _startup_cleanup_activities(
     try:
         current_task = asyncio.current_task()
         awaited_tasks = {task for task in root_tasks if task is not current_task}
-        await _wait(awaited_tasks)
+        await aiotasks.wait(awaited_tasks)
     except asyncio.CancelledError:
         logger.warning("Cleanup activity is not executed at all due to cancellation.")
         raise
@@ -570,27 +479,6 @@ async def _startup_cleanup_activities(
     except asyncio.CancelledError:
         logger.warning("Cleanup activity is only partially executed due to cancellation.")
         raise
-
-
-def _create_startup_root_task(
-        *,
-        name: str,
-        coro: Coroutine[Any, Any, Any],
-) -> aiotasks.Task:
-    return aiotasks.create_task(coro=coro, name=name)
-
-
-def _create_checked_root_task(
-        *,
-        name: str,
-        coro: Coroutine[Any, Any, Any],
-        flag: asyncio.Event,
-) -> aiotasks.Task:
-    return aiotasks.create_task(_root_task_checker(
-        flag=flag,
-        name=name,
-        coro=coro,
-    ), name=name)
 
 
 def create_tasks(

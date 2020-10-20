@@ -220,13 +220,14 @@ async def daemon_killer(
 
     # Terminate all running daemons when the operator exits (and this task is cancelled).
     finally:
-        coros = [
-            stop_daemon(daemon=daemon, settings=settings)
+        tasks = [
+            aiotasks.create_task(
+                name=f"stop daemon {daemon.handler.id}",
+                coro=stop_daemon(daemon=daemon, settings=settings))
             for memory in memories.iter_all_memories()
             for daemon in memory.running_daemons.values()
         ]
-        if coros:
-            await asyncio.wait(coros)
+        await aiotasks.wait(tasks)
 
 
 async def stop_daemon(
@@ -264,13 +265,13 @@ async def stop_daemon(
     if not daemon.task.done() and backoff is not None:
         daemon.stopper.set(reason=primitives.DaemonStoppingReason.DAEMON_SIGNALLED)
         daemon.logger.debug(f"{handler} is signalled to exit gracefully.")
-        await asyncio.wait([daemon.task], timeout=backoff)
+        await aiotasks.wait([daemon.task], timeout=backoff)
 
     if not daemon.task.done() and timeout is not None:
         daemon.stopper.set(reason=primitives.DaemonStoppingReason.DAEMON_CANCELLED)
         daemon.logger.debug(f"{handler} is signalled to exit by force.")
         daemon.task.cancel()
-        await asyncio.wait([daemon.task], timeout=timeout)
+        await aiotasks.wait([daemon.task], timeout=timeout)
 
     if not daemon.task.done():
         daemon.stopper.set(reason=primitives.DaemonStoppingReason.DAEMON_ABANDONED)
@@ -299,7 +300,7 @@ async def _wait_for_instant_exit(
         pass
 
     elif settings.background.instant_exit_timeout is not None:
-        await asyncio.wait([daemon.task], timeout=settings.background.instant_exit_timeout)
+        await aiotasks.wait([daemon.task], timeout=settings.background.instant_exit_timeout)
 
     elif settings.background.instant_exit_zero_time_cycles is not None:
         for _ in range(settings.background.instant_exit_zero_time_cycles):
