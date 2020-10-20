@@ -46,7 +46,7 @@ def login_via_client(
             raise credentials.LoginError(f"Cannot authenticate client neither in-cluster, nor via kubeconfig.")
 
     # We do not even try to understand how it works and why. Just load it, and extract the results.
-    config = kubernetes.client.Configuration()
+    config = kubernetes.client.Configuration.get_default_copy()
 
     # For auth-providers, this method is monkey-patched with the auth-provider's one.
     # We need the actual auth-provider's token, so we call it instead of accessing api_key.
