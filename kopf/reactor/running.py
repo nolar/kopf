@@ -173,7 +173,7 @@ async def spawn_tasks(
     event_queue: posting.K8sEventQueue = asyncio.Queue()
     freeze_mode: primitives.Toggle = primitives.Toggle()
     signal_flag: aiotasks.Future = asyncio.Future()
-    ready_flag = ready_flag if ready_flag is not None else asyncio.Event()
+    started_flag: asyncio.Event = asyncio.Event()
     tasks: MutableSequence[aiotasks.Task] = []
 
     # Map kwargs into the settings object.
@@ -208,20 +208,21 @@ async def spawn_tasks(
         coro=_startup_cleanup_activities(
             root_tasks=tasks,  # used as a "live" view, populated later.
             ready_flag=ready_flag,
+            started_flag=started_flag,
             registry=registry,
             settings=settings,
             vault=vault)))  # to purge & finalize the caches in the end.
 
     # Kill all the daemons gracefully when the operator exits (so that they are not "hung").
     tasks.append(_create_checked_root_task(
-        name="daemon killer", ready_flag=ready_flag,
+        name="daemon killer", flag=started_flag,
         coro=daemons.daemon_killer(
             settings=settings,
             memories=memories)))
 
     # Keeping the credentials fresh and valid via the authentication handlers on demand.
     tasks.append(_create_checked_root_task(
-        name="credentials retriever", ready_flag=ready_flag,
+        name="credentials retriever", flag=started_flag,
         coro=activities.authenticator(
             registry=registry,
             settings=settings,
@@ -230,14 +231,14 @@ async def spawn_tasks(
     # K8s-event posting. Events are queued in-memory and posted in the background.
     # NB: currently, it is a global task, but can be made per-resource or per-object.
     tasks.append(_create_checked_root_task(
-        name="poster of events", ready_flag=ready_flag,
+        name="poster of events", flag=started_flag,
         coro=posting.poster(
             event_queue=event_queue)))
 
     # Liveness probing -- so that Kubernetes would know that the operator is alive.
     if liveness_endpoint:
         tasks.append(_create_checked_root_task(
-            name="health reporter", ready_flag=ready_flag,
+            name="health reporter", flag=started_flag,
             coro=probing.health_reporter(
                 registry=registry,
                 settings=settings,
@@ -247,13 +248,13 @@ async def spawn_tasks(
     if await peering.detect_presence(namespace=namespace, settings=settings):
         identity = peering.detect_own_id(manual=False)
         tasks.append(_create_checked_root_task(
-            name="peering keepalive", ready_flag=ready_flag,
+            name="peering keepalive", flag=started_flag,
             coro=peering.keepalive(
                 namespace=namespace,
                 settings=settings,
                 identity=identity)))
         tasks.append(_create_checked_root_task(
-            name="watcher of peering", ready_flag=ready_flag,
+            name="watcher of peering", flag=started_flag,
             coro=queueing.watcher(
                 namespace=namespace,
                 settings=settings,
@@ -267,7 +268,7 @@ async def spawn_tasks(
     # Resource event handling, only once for every known resource (de-duplicated).
     for resource in registry.resources:
         tasks.append(_create_checked_root_task(
-            name=f"watcher of {resource.name}", ready_flag=ready_flag,
+            name=f"watcher of {resource.name}", flag=started_flag,
             coro=queueing.watcher(
                 namespace=namespace,
                 settings=settings,
@@ -426,12 +427,12 @@ async def _reraise(
 
 async def _root_task_checker(
         name: str,
-        ready_flag: primitives.Flag,
+        flag: asyncio.Event,
         coro: Coroutine[Any, Any, Any],
 ) -> None:
 
     # Wait until the startup activity succeeds. The wait will be cancelled if the startup failed.
-    await primitives.wait_flag(ready_flag)
+    await flag.wait()
 
     # Actually run the root task, and log the outcome.
     try:
@@ -507,6 +508,7 @@ async def _ultimate_termination(
 async def _startup_cleanup_activities(
         root_tasks: Sequence[aiotasks.Task],  # mutated externally!
         ready_flag: Optional[primitives.Flag],
+        started_flag: asyncio.Event,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         vault: credentials.Vault,
@@ -537,6 +539,7 @@ async def _startup_cleanup_activities(
         raise
 
     # Notify the caller that we are ready to be executed. This unfreezes all the root tasks.
+    started_flag.set()
     await primitives.raise_flag(ready_flag)
 
     # Sleep forever, or until cancelled, which happens when the operator begins its shutdown.
@@ -581,10 +584,10 @@ def _create_checked_root_task(
         *,
         name: str,
         coro: Coroutine[Any, Any, Any],
-        ready_flag: primitives.Flag,
+        flag: asyncio.Event,
 ) -> aiotasks.Task:
     return aiotasks.create_task(_root_task_checker(
-        ready_flag=ready_flag,
+        flag=flag,
         name=name,
         coro=coro,
     ), name=name)
