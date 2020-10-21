@@ -86,3 +86,18 @@ def test_good_addresses_over_bad_aliases(mocker, good, bad):
     mocker.patch('socket.gethostbyaddr', side_effect=lambda fqdn: (fqdn, [bad], [good]))
     own_id = detect_own_id()
     assert own_id == f'some-user@{good}/2020-12-31T23:59:59.123456/random-str'
+
+
+@freezegun.freeze_time('2020-12-31T23:59:59.123456')
+@pytest.mark.parametrize('fqdn', [
+    'my-host',
+    'my-host.local',
+    'my-host.localdomain',
+    'my-host.local.localdomain',
+    'my-host.localdomain.local',
+])
+def test_useless_suffixes_removed(mocker, fqdn):
+    mocker.patch('socket.gethostname', return_value=fqdn)
+    mocker.patch('socket.gethostbyaddr', side_effect=lambda fqdn: (fqdn, [], []))
+    own_id = detect_own_id()
+    assert own_id == 'some-user@my-host/2020-12-31T23:59:59.123456/random-str'

@@ -36,11 +36,20 @@ def get_descriptive_hostname() -> str:
         # Dotted hostname (fqdn) is always better, unless it is an ARPA-name or an IP-address.
         for name, ipv4, ipv6 in parsed:
             if '.' in name and not name.endswith('.arpa') and not ipv4 and not ipv6:
-                return name
+                return remove_useless_suffixes(name)
 
         # Non-dotted hostname is fine too, unless it is ARPA-name/IP-address or a localhost.
         for name, ipv4, ipv6 in parsed:
             if name != 'localhost' and not name.endswith('.arpa') and not ipv4 and not ipv6:
-                return name
+                return remove_useless_suffixes(name)
 
-    return socket.gethostname()
+    return remove_useless_suffixes(socket.gethostname())
+
+
+def remove_useless_suffixes(hostname: str) -> str:
+    suffixes = ['.local', '.localdomain']
+    while any(hostname.endswith(suffix) for suffix in suffixes):
+        for suffix in suffixes:
+            if hostname.endswith(suffix):
+                hostname = hostname[:-len(suffix)]
+    return hostname
