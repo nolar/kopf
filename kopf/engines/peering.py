@@ -35,13 +35,13 @@ import getpass
 import logging
 import os
 import random
-import socket
 from typing import Any, Dict, Iterable, Mapping, NoReturn, Optional, Union, cast
 
 import iso8601
 
 from kopf.clients import fetching, patching
 from kopf.structs import bodies, patches, primitives, resources
+from kopf.utilities import hostnames
 
 logger = logging.getLogger(__name__)
 
@@ -298,7 +298,7 @@ def detect_own_id() -> str:
         return pod
 
     user = getpass.getuser()
-    host = socket.getfqdn()
+    host = hostnames.get_descriptive_hostname()
     now = datetime.datetime.utcnow().isoformat()
     rnd = ''.join(random.choices('abcdefhijklmnopqrstuvwxyz0123456789', k=6))
     return f'{user}@{host}/{now}/{rnd}'
