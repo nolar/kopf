@@ -122,7 +122,7 @@ def freeze(
 ) -> None:
     """ Freeze the resource handling in the cluster. """
     ourserlves = peering.Peer(
-        id=id or peering.detect_own_id(),
+        id=id or peering.detect_own_id(manual=True),
         name=peering_name,
         namespace=namespace,
         priority=priority,
@@ -151,7 +151,7 @@ def resume(
 ) -> None:
     """ Resume the resource handling in the cluster. """
     ourselves = peering.Peer(
-        id=id or peering.detect_own_id(),
+        id=id or peering.detect_own_id(manual=True),
         name=peering_name,
         namespace=namespace,
     )
