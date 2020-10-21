@@ -5,8 +5,9 @@ from typing import Any, Callable, List, Optional
 
 import click
 
+from kopf.clients import auth
 from kopf.engines import loggers, peering
-from kopf.reactor import registries, running
+from kopf.reactor import activities, registries, running
 from kopf.structs import configuration, credentials, primitives
 from kopf.utilities import loaders
 
@@ -127,8 +128,15 @@ def freeze(
         priority=priority,
         lifetime=lifetime,
     )
+    registry = registries.SmartOperatorRegistry()
+    settings = configuration.OperatorSettings()
+    vault = credentials.Vault()
+    auth.vault_var.set(vault)
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(ourserlves.keepalive())
+    loop.run_until_complete(asyncio.wait({
+        activities.authenticate(registry=registry, settings=settings, vault=vault),
+        ourserlves.keepalive(),
+    }))
 
 
 @main.command()
@@ -147,5 +155,12 @@ def resume(
         name=peering_name,
         namespace=namespace,
     )
+    registry = registries.SmartOperatorRegistry()
+    settings = configuration.OperatorSettings()
+    vault = credentials.Vault()
+    auth.vault_var.set(vault)
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(ourselves.disappear())
+    loop.run_until_complete(asyncio.wait({
+        activities.authenticate(registry=registry, settings=settings, vault=vault),
+        ourselves.disappear(),
+    }))
