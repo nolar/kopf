@@ -299,6 +299,6 @@ def detect_own_id() -> str:
 
     user = getpass.getuser()
     host = hostnames.get_descriptive_hostname()
-    now = datetime.datetime.utcnow().isoformat()
-    rnd = ''.join(random.choices('abcdefhijklmnopqrstuvwxyz0123456789', k=6))
+    now = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    rnd = ''.join(random.choices('abcdefhijklmnopqrstuvwxyz0123456789', k=3))
     return f'{user}@{host}/{now}/{rnd}'

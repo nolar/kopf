@@ -48,12 +48,12 @@ def test_good_hostnames_over_good_aliases__symmetric(mocker, good1, good2):
     mocker.patch('socket.gethostname', return_value=good1)
     mocker.patch('socket.gethostbyaddr', side_effect=lambda fqdn: (fqdn, [good2], []))
     own_id = detect_own_id()
-    assert own_id == f'some-user@{good1}/2020-12-31T23:59:59.123456/random-str'
+    assert own_id == f'some-user@{good1}/20201231235959/random-str'
 
     mocker.patch('socket.gethostname', return_value=good2)
     mocker.patch('socket.gethostbyaddr', side_effect=lambda fqdn: (fqdn, [good1], []))
     own_id = detect_own_id()
-    assert own_id == f'some-user@{good2}/2020-12-31T23:59:59.123456/random-str'
+    assert own_id == f'some-user@{good2}/20201231235959/random-str'
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
@@ -62,12 +62,12 @@ def test_good_aliases_over_good_addresses__symmetric(mocker, good1, good2):
     mocker.patch('socket.gethostname', return_value='localhost')
     mocker.patch('socket.gethostbyaddr', side_effect=lambda fqdn: (fqdn, [good1], [good2]))
     own_id = detect_own_id()
-    assert own_id == f'some-user@{good1}/2020-12-31T23:59:59.123456/random-str'
+    assert own_id == f'some-user@{good1}/20201231235959/random-str'
 
     mocker.patch('socket.gethostname', return_value='localhost')
     mocker.patch('socket.gethostbyaddr', side_effect=lambda fqdn: (fqdn, [good2], [good1]))
     own_id = detect_own_id()
-    assert own_id == f'some-user@{good2}/2020-12-31T23:59:59.123456/random-str'
+    assert own_id == f'some-user@{good2}/20201231235959/random-str'
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
@@ -76,7 +76,7 @@ def test_good_aliases_over_bad_hostnames(mocker, good, bad):
     mocker.patch('socket.gethostname', return_value=bad)
     mocker.patch('socket.gethostbyaddr', side_effect=lambda fqdn: (fqdn, [good], []))
     own_id = detect_own_id()
-    assert own_id == f'some-user@{good}/2020-12-31T23:59:59.123456/random-str'
+    assert own_id == f'some-user@{good}/20201231235959/random-str'
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
@@ -85,7 +85,7 @@ def test_good_addresses_over_bad_aliases(mocker, good, bad):
     mocker.patch('socket.gethostname', return_value='localhost')
     mocker.patch('socket.gethostbyaddr', side_effect=lambda fqdn: (fqdn, [bad], [good]))
     own_id = detect_own_id()
-    assert own_id == f'some-user@{good}/2020-12-31T23:59:59.123456/random-str'
+    assert own_id == f'some-user@{good}/20201231235959/random-str'
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
@@ -100,4 +100,4 @@ def test_useless_suffixes_removed(mocker, fqdn):
     mocker.patch('socket.gethostname', return_value=fqdn)
     mocker.patch('socket.gethostbyaddr', side_effect=lambda fqdn: (fqdn, [], []))
     own_id = detect_own_id()
-    assert own_id == 'some-user@my-host/2020-12-31T23:59:59.123456/random-str'
+    assert own_id == 'some-user@my-host/20201231235959/random-str'
