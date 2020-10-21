@@ -246,7 +246,7 @@ async def spawn_tasks(
 
     # Monitor the peers, unless explicitly disabled.
     ourselves: Optional[peering.Peer] = await peering.Peer.detect(
-        id=peering.detect_own_id(), priority=priority,
+        id=peering.detect_own_id(manual=False), priority=priority,
         standalone=standalone, namespace=namespace, name=peering_name,
     )
     if ourselves:

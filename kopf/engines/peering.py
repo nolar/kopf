@@ -273,7 +273,7 @@ async def peers_keepalive(
             logger.exception(f"Couldn't remove self from the peering. Ignoring.")
 
 
-def detect_own_id() -> str:
+def detect_own_id(*, manual: bool) -> str:
     """
     Detect or generate the id for ourselves, i.e. the execute operator.
 
@@ -301,4 +301,4 @@ def detect_own_id() -> str:
     host = hostnames.get_descriptive_hostname()
     now = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
     rnd = ''.join(random.choices('abcdefhijklmnopqrstuvwxyz0123456789', k=3))
-    return f'{user}@{host}/{now}/{rnd}'
+    return f'{user}@{host}' if manual else f'{user}@{host}/{now}/{rnd}'
