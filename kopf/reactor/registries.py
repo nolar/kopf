@@ -112,6 +112,7 @@ class ActivityRegistry(GenericRegistry[
 
 class ResourceRegistry(
         GenericRegistry[HandlerFnT, ResourceHandlerT],
+        Mapping[Union[references.Resource, references.Selector], "ResourceRegistry[CauseT, HandlerFnT, ResourceHandlerT]"],  # deprecated
         Generic[CauseT, HandlerFnT, ResourceHandlerT]):
 
     def has_handlers(
@@ -172,15 +173,15 @@ class ResourceRegistry(
     # registries in the all-resource registries in the OperatorRegistry, which is the public API.
     def __len__(self) -> int:
         warnings.warn("Direct usage of registries is deprecated.", DeprecationWarning)
-        return len({h.resource for h in self._handlers if h.resource})
+        return len({h.selector for h in self._handlers if h.selector})
 
-    def __iter__(self) -> Iterator[references.Resource]:
+    def __iter__(self) -> Iterator[Union[references.Resource, references.Selector]]:
         warnings.warn("Direct usage of registries is deprecated.", DeprecationWarning)
-        return iter({h.resource for h in self._handlers if h.resource})
+        return iter({h.selector for h in self._handlers if h.selector})
 
     def __getitem__(
             self: "ResourceRegistry[CauseT, HandlerFnT, ResourceHandlerT]",
-            _: references.Resource,
+            _: Union[references.Resource, references.Selector],
     ) -> "ResourceRegistry[CauseT, HandlerFnT, ResourceHandlerT]":
         warnings.warn("Direct usage of registries is deprecated.", DeprecationWarning)
         return self
@@ -195,7 +196,7 @@ class ResourceWatchingRegistry(ResourceRegistry[
             self,
             fn: callbacks.ResourceWatchingFn,
             *,
-            resource: references.Resource,
+            resource: references.Selector,
             id: Optional[str] = None,
             errors: Optional[handlers.ErrorsMode] = None,
             timeout: Optional[float] = None,
@@ -214,7 +215,7 @@ class ResourceWatchingRegistry(ResourceRegistry[
         handler = handlers.ResourceWatchingHandler(
             id=real_id, fn=fn,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            resource=resource, labels=labels, annotations=annotations, when=when,
+            selector=resource, labels=labels, annotations=annotations, when=when,
             field=None, value=None,
         )
         self.append(handler)
@@ -256,7 +257,7 @@ class ResourceChangingRegistry(ResourceRegistry[
             self,
             fn: callbacks.ResourceChangingFn,
             *,
-            resource: references.Resource,
+            resource: references.Selector,
             id: Optional[str] = None,
             reason: Optional[handlers.Reason] = None,
             event: Optional[str] = None,  # deprecated, use `reason`
@@ -286,7 +287,7 @@ class ResourceChangingRegistry(ResourceRegistry[
             id=real_id, fn=fn, reason=reason,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
-            resource=resource, labels=labels, annotations=annotations, when=when,
+            selector=resource, labels=labels, annotations=annotations, when=when,
             field=real_field, value=None, old=None, new=None, field_needs_change=None,
         )
 
@@ -350,11 +351,17 @@ class OperatorRegistry:
     @property
     def resources(self) -> FrozenSet[references.Resource]:
         """ All known resources in the registry. """
-        return frozenset(
-            {h.resource for h in self.resource_watching_handlers.get_all_handlers() if h.resource} |
-            {h.resource for h in self.resource_spawning_handlers.get_all_handlers() if h.resource} |
-            {h.resource for h in self.resource_changing_handlers.get_all_handlers() if h.resource}
+        # It is a convertion point between the operator's specification (at handlers registration)
+        # and the operator's runtime (watching & streaming of events for specific resources).
+        selectors: FrozenSet[references.Selector] = frozenset(
+            {h.selector for h in self.resource_watching_handlers.get_all_handlers() if h.selector} |
+            {h.selector for h in self.resource_spawning_handlers.get_all_handlers() if h.selector} |
+            {h.selector for h in self.resource_changing_handlers.get_all_handlers() if h.selector}
         )
+        return frozenset({
+            references.Resource(selector.group, selector.version, selector.plural)
+            for selector in selectors
+        })
 
     #
     # Everything below is deprecated and will be removed in the next major release.
@@ -399,10 +406,10 @@ class OperatorRegistry:
         warnings.warn("registry.register_resource_watching_handler() is deprecated; "
                       "use @kopf.on... decorators with registry= kwarg.",
                       DeprecationWarning)
-        resource = references.Resource(group, version, plural)
         return self.resource_watching_handlers.register(
             fn=fn, id=id,
-            resource=resource, labels=labels, annotations=annotations, when=when,
+            labels=labels, annotations=annotations, when=when,
+            resource=references.Selector(group, version, plural),
         )
 
     def register_resource_changing_handler(
@@ -433,12 +440,12 @@ class OperatorRegistry:
         warnings.warn("registry.register_resource_changing_handler() is deprecated; "
                       "use @kopf.on... decorators with registry= kwarg.",
                       DeprecationWarning)
-        resource = references.Resource(group, version, plural)
         return self.resource_changing_handlers.register(
             reason=reason, event=event, field=field, fn=fn, id=id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
-            resource=resource, labels=labels, annotations=annotations, when=when,
+            labels=labels, annotations=annotations, when=when,
+            resource=references.Selector(group, version, plural),
         )
 
     def has_activity_handlers(
@@ -699,8 +706,8 @@ def _matches_resource(
         handler: handlers.ResourceHandler,
         resource: references.Resource,
 ) -> bool:
-    return (handler.resource is None or
-            handler.resource == resource)
+    return (handler.selector is None or
+            handler.selector.check(resource))
 
 
 def _matches_labels(

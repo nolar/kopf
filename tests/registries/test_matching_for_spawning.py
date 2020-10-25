@@ -7,6 +7,7 @@ from kopf.reactor.causation import ResourceSpawningCause
 from kopf.structs.dicts import parse_field
 from kopf.structs.filters import MetaFilterToken
 from kopf.structs.handlers import ResourceSpawningHandler
+from kopf.structs.references import Selector
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.
@@ -29,12 +30,12 @@ spawning_decorators = pytest.mark.parametrize('decorator', [
 
 
 @pytest.fixture()
-def handler_factory(registry, resource):
+def handler_factory(registry, selector):
     def factory(**kwargs):
         handler = ResourceSpawningHandler(**dict(dict(
             fn=some_fn, id='a',
             errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
-            resource=resource, annotations=None, labels=None, when=None,
+            selector=selector, annotations=None, labels=None, when=None,
             field=None, value=None,
             requires_finalizer=None, initial_delay=None,
         ), **kwargs))

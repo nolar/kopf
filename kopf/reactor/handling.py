@@ -102,7 +102,7 @@ async def execute(
             handler = handlers_.ResourceChangingHandler(
                 fn=fn, id=real_id,
                 errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
-                resource=None, labels=None, annotations=None, when=None,
+                selector=None, labels=None, annotations=None, when=None,
                 initial=None, deleted=None, requires_finalizer=None,
                 reason=None, field=None, value=None, old=None, new=None,
                 field_needs_change=None,
@@ -116,7 +116,7 @@ async def execute(
             handler = handlers_.ResourceChangingHandler(
                 fn=fn, id=real_id,
                 errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
-                resource=None, labels=None, annotations=None, when=None,
+                selector=None, labels=None, annotations=None, when=None,
                 initial=None, deleted=None, requires_finalizer=None,
                 reason=None, field=None, value=None, old=None, new=None,
                 field_needs_change=None,

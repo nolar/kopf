@@ -20,7 +20,7 @@ from kopf.engines.loggers import ObjectPrefixingTextFormatter, configure
 from kopf.engines.posting import settings_var
 from kopf.structs.configuration import OperatorSettings
 from kopf.structs.credentials import ConnectionInfo, Vault, VaultKey
-from kopf.structs.references import Resource
+from kopf.structs.references import Resource, Selector
 
 
 def pytest_configure(config):
@@ -93,6 +93,12 @@ def enforce_asyncio_mocker():
 def resource():
     """ The resource used in the tests. Usually mocked, so it does not matter. """
     return Resource('zalando.org', 'v1', 'kopfexamples')
+
+
+@pytest.fixture()
+def selector(resource):
+    """ The selector used in the tests. Usually mocked, so it does not matter. """
+    return Selector(resource.group, resource.version, resource.plural)
 
 
 @pytest.fixture()
