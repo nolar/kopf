@@ -44,7 +44,7 @@ async def infinite_watch(
         settings: configuration.OperatorSettings,
         resource: resources.Resource,
         namespace: Optional[str],
-        freeze_mode: Optional[primitives.Toggle] = None,
+        freeze_checker: Optional[primitives.ToggleSet] = None,
         _iterations: Optional[int] = None,  # used in tests/mocks/fixtures
 ) -> AsyncIterator[bodies.RawEvent]:
     """
@@ -62,7 +62,7 @@ async def infinite_watch(
         async with streaming_block(
                 namespace=namespace,
                 resource=resource,
-                freeze_mode=freeze_mode,
+                freeze_checker=freeze_checker,
         ) as freeze_waiter:
             stream = continuous_watch(
                 settings=settings,
@@ -80,7 +80,7 @@ async def streaming_block(
         *,
         resource: resources.Resource,
         namespace: Optional[str],
-        freeze_mode: Optional[primitives.Toggle],
+        freeze_checker: Optional[primitives.ToggleSet],
 ) -> AsyncIterator[aiotasks.Future]:
     """
     Block the execution until the freeze is off; signal when it is on again.
@@ -104,16 +104,16 @@ async def streaming_block(
     """
 
     # Block until unfrozen before even starting the API communication.
-    if freeze_mode is not None and freeze_mode.is_on():
+    if freeze_checker is not None and freeze_checker.is_on():
         logger.debug("Freezing the watch-stream for %r", resource)
-        await freeze_mode.wait_for(False)
+        await freeze_checker.wait_for(False)
         logger.debug("Resuming the watch-stream for %r", resource)
 
     # Create the signalling future that the freeze is on again.
     freeze_waiter: aiotasks.Future
-    if freeze_mode is not None:
+    if freeze_checker is not None:
         freeze_waiter = aiotasks.create_task(
-            freeze_mode.wait_for(True),
+            freeze_checker.wait_for(True),
             name=f'freeze-waiter for {resource.name} @ {namespace or "cluster-wide"}')
     else:
         freeze_waiter = asyncio.Future()  # a dummy just to have it
