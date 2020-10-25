@@ -76,9 +76,9 @@ def test_with_no_hints(mocker, cause_factory):
     cause = cause_factory()
 
     registry = SimpleRegistry()
-    with pytest.deprecated_call(match=r"registry.register\(\) is deprecated"):
+    with pytest.deprecated_call(match=r"use @kopf.on"):
         registry.register(some_fn)
-    with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_cause_handlers(cause)
 
     assert get_fn_id.called
@@ -94,9 +94,9 @@ def test_with_prefix(mocker, cause_factory):
     cause = cause_factory()
 
     registry = SimpleRegistry()
-    with pytest.deprecated_call(match=r"registry.register\(\) is deprecated"):
+    with pytest.deprecated_call(match=r"use @kopf.on"):
         registry.register(some_fn)
-    with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_cause_handlers(cause)
 
     assert get_fn_id.called
@@ -113,9 +113,9 @@ def test_with_suffix(mocker, field, cause_factory):
     cause = cause_factory(old=old, new=new, body=new)
 
     registry = SimpleRegistry()
-    with pytest.deprecated_call(match=r"registry.register\(\) is deprecated"):
+    with pytest.deprecated_call(match=r"use @kopf.on"):
         registry.register(some_fn, field=field)
-    with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_cause_handlers(cause)
 
     assert get_fn_id.called
@@ -132,9 +132,9 @@ def test_with_prefix_and_suffix(mocker, field, cause_factory):
     cause = cause_factory(diff=diff)
 
     registry = SimpleRegistry(prefix='some-prefix')
-    with pytest.deprecated_call(match=r"registry.register\(\) is deprecated"):
+    with pytest.deprecated_call(match=r"use @kopf.on"):
         registry.register(some_fn, field=field)
-    with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_cause_handlers(cause)
 
     assert get_fn_id.called
@@ -151,9 +151,9 @@ def test_with_explicit_id_and_prefix_and_suffix(mocker, field, cause_factory):
     cause = cause_factory(diff=diff)
 
     registry = SimpleRegistry(prefix='some-prefix')
-    with pytest.deprecated_call(match=r"registry.register\(\) is deprecated"):
+    with pytest.deprecated_call(match=r"use @kopf.on"):
         registry.register(some_fn, id='explicit-id', field=field)
-    with pytest.deprecated_call(match=r"get_cause_handlers\(\) is deprecated"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_cause_handlers(cause)
 
     assert not get_fn_id.called

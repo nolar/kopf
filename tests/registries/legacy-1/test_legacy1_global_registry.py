@@ -14,9 +14,9 @@ def some_fn():
 def test_resources():
     registry = GlobalRegistry()
 
-    with pytest.deprecated_call(match=r"use OperatorRegistry.register_resource_changing_handler"):
+    with pytest.deprecated_call(match=r"use @kopf.on"):
         registry.register_cause_handler('group1', 'version1', 'plural1', some_fn)
-    with pytest.deprecated_call(match=r"use OperatorRegistry.register_resource_changing_handler"):
+    with pytest.deprecated_call(match=r"use @kopf.on"):
         registry.register_cause_handler('group2', 'version2', 'plural2', some_fn)
 
     resources = registry.resources

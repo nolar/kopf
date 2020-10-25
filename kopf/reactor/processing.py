@@ -136,7 +136,7 @@ async def process_resource_causes(
         patch=patch,
         body=body,
         memo=memory.memo,
-    ) if registry.resource_watching_handlers[resource] else None
+    ) if registry.resource_watching_handlers[resource].has_handlers() else None
 
     resource_spawning_cause = causation.detect_resource_spawning_cause(
         resource=resource,
@@ -145,7 +145,7 @@ async def process_resource_causes(
         body=body,
         memo=memory.memo,
         reset=bool(diff),  # only essential changes reset idling, not every event
-    ) if registry.resource_spawning_handlers[resource] else None
+    ) if registry.resource_spawning_handlers[resource].has_handlers() else None
 
     resource_changing_cause = causation.detect_resource_changing_cause(
         finalizer=finalizer,
@@ -159,7 +159,7 @@ async def process_resource_causes(
         diff=diff,
         memo=memory.memo,
         initial=memory.noticed_by_listing and not memory.fully_handled_once,
-    ) if registry.resource_changing_handlers[resource] else None
+    ) if registry.resource_changing_handlers[resource].has_handlers() else None
 
     # If there are any handlers for this resource kind in general, but not for this specific object
     # due to filters, then be blind to it, store no state, and log nothing about the handling cycle.

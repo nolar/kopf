@@ -21,7 +21,7 @@ async def test_skipped_with_no_handlers(
     event_body = {'metadata': {'finalizers': []}}
     cause_mock.reason = cause_type
 
-    assert not registry.resource_changing_handlers[resource]  # prerequisite
+    assert not registry.resource_changing_handlers[resource].has_handlers()  # prerequisite
     registry.resource_changing_handlers[resource].append(ResourceChangingHandler(
         reason='a-non-existent-cause-type',
         fn=lambda **_: None, id='id',
@@ -76,7 +76,7 @@ async def test_stealth_mode_with_mismatching_handlers(
     event_body = {'metadata': {'finalizers': []}}
     cause_mock.reason = cause_type
 
-    assert not registry.resource_changing_handlers[resource]  # prerequisite
+    assert not registry.resource_changing_handlers[resource].has_handlers()  # prerequisite
     registry.resource_changing_handlers[resource].append(ResourceChangingHandler(
         reason=None,
         fn=lambda **_: None, id='id',
