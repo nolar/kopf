@@ -2,7 +2,7 @@ import collections
 from unittest.mock import Mock
 
 from kopf.reactor.registries import OperatorRegistry
-from kopf.structs.resources import Resource
+from kopf.structs.references import Resource
 
 
 def test_resources():

@@ -6,12 +6,12 @@ from typing import Optional
 import aiohttp
 
 from kopf.clients import auth, errors
-from kopf.structs import bodies, resources
+from kopf.structs import bodies, references
 
 logger = logging.getLogger(__name__)
 
-EVENTS_V1BETA1_CRD = resources.Resource('events.k8s.io', 'v1beta1', 'events')
-EVENTS_CORE_V1_CRD = resources.Resource('', 'v1', 'events')
+EVENTS_V1BETA1_CRD = references.Resource('events.k8s.io', 'v1beta1', 'events')
+EVENTS_CORE_V1_CRD = references.Resource('', 'v1', 'events')
 
 MAX_MESSAGE_LENGTH = 1024
 CUT_MESSAGE_INFIX = '...'

@@ -26,7 +26,7 @@ from typing import Any, Optional, TypeVar, Union
 
 from kopf.storage import finalizers
 from kopf.structs import bodies, configuration, containers, diffs, \
-                         handlers, patches, primitives, resources
+                         handlers, patches, primitives, references
 
 
 @dataclasses.dataclass
@@ -42,7 +42,7 @@ class ActivityCause(BaseCause):
 
 @dataclasses.dataclass
 class ResourceCause(BaseCause):
-    resource: resources.Resource
+    resource: references.Resource
     patch: patches.Patch
     body: bodies.Body
     memo: containers.Memo

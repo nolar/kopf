@@ -20,7 +20,7 @@ from kopf.engines.loggers import ObjectPrefixingTextFormatter, configure
 from kopf.engines.posting import settings_var
 from kopf.structs.configuration import OperatorSettings
 from kopf.structs.credentials import ConnectionInfo, Vault, VaultKey
-from kopf.structs.resources import Resource
+from kopf.structs.references import Resource
 
 
 def pytest_configure(config):

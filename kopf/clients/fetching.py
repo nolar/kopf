@@ -2,11 +2,11 @@ import enum
 from typing import Collection, List, Optional, Tuple, TypeVar, Union, cast
 
 from kopf.clients import auth, discovery, errors
-from kopf.structs import bodies, resources
+from kopf.structs import bodies, references
 
 _T = TypeVar('_T')
 
-CRD_CRD = resources.Resource('apiextensions.k8s.io', 'v1beta1', 'customresourcedefinitions')
+CRD_CRD = references.Resource('apiextensions.k8s.io', 'v1beta1', 'customresourcedefinitions')
 
 
 class _UNSET(enum.Enum):
@@ -16,7 +16,7 @@ class _UNSET(enum.Enum):
 @auth.reauthenticated_request
 async def read_obj(
         *,
-        resource: resources.Resource,
+        resource: references.Resource,
         namespace: Optional[str],
         name: Optional[str],
         default: Union[_T, _UNSET] = _UNSET.token,
@@ -42,7 +42,7 @@ async def read_obj(
 @auth.reauthenticated_request
 async def list_objs_rv(
         *,
-        resource: resources.Resource,
+        resource: references.Resource,
         namespace: Optional[str] = None,
         context: Optional[auth.APIContext] = None,  # injected by the decorator
 ) -> Tuple[Collection[bodies.RawBody], str]:

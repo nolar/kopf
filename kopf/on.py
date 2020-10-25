@@ -16,7 +16,7 @@ import warnings
 from typing import Any, Callable, Optional
 
 from kopf.reactor import handling, registries
-from kopf.structs import callbacks, dicts, filters, handlers, resources
+from kopf.structs import callbacks, dicts, filters, handlers, references
 
 ActivityDecorator = Callable[[callbacks.ActivityFn], callbacks.ActivityFn]
 ResourceWatchingDecorator = Callable[[callbacks.ResourceWatchingFn], callbacks.ResourceWatchingFn]
@@ -156,7 +156,7 @@ def resume(  # lgtm[py/similar-function]
         _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value)
         real_registry = registry if registry is not None else registries.get_default_registry()
-        real_resource = resources.Resource(group, version, plural)
+        real_resource = references.Resource(group, version, plural)
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ResourceChangingHandler(
@@ -196,7 +196,7 @@ def create(  # lgtm[py/similar-function]
         _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value)
         real_registry = registry if registry is not None else registries.get_default_registry()
-        real_resource = resources.Resource(group, version, plural)
+        real_resource = references.Resource(group, version, plural)
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ResourceChangingHandler(
@@ -238,7 +238,7 @@ def update(  # lgtm[py/similar-function]
         _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value, old, new)
         real_registry = registry if registry is not None else registries.get_default_registry()
-        real_resource = resources.Resource(group, version, plural)
+        real_resource = references.Resource(group, version, plural)
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ResourceChangingHandler(
@@ -279,7 +279,7 @@ def delete(  # lgtm[py/similar-function]
         _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value)
         real_registry = registry if registry is not None else registries.get_default_registry()
-        real_resource = resources.Resource(group, version, plural)
+        real_resource = references.Resource(group, version, plural)
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ResourceChangingHandler(
@@ -327,7 +327,7 @@ def field(  # lgtm[py/similar-function]
         _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value, old, new)
         real_registry = registry if registry is not None else registries.get_default_registry()
-        real_resource = resources.Resource(group, version, plural)
+        real_resource = references.Resource(group, version, plural)
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         handler = handlers.ResourceChangingHandler(
@@ -362,7 +362,7 @@ def event(  # lgtm[py/similar-function]
         _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value)
         real_registry = registry if registry is not None else registries.get_default_registry()
-        real_resource = resources.Resource(group, version, plural)
+        real_resource = references.Resource(group, version, plural)
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ResourceWatchingHandler(
@@ -404,7 +404,7 @@ def daemon(  # lgtm[py/similar-function]
         _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value)
         real_registry = registry if registry is not None else registries.get_default_registry()
-        real_resource = resources.Resource(group, version, plural)
+        real_resource = references.Resource(group, version, plural)
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ResourceDaemonHandler(
@@ -450,7 +450,7 @@ def timer(  # lgtm[py/similar-function]
         _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value)
         real_registry = registry if registry is not None else registries.get_default_registry()
-        real_resource = resources.Resource(group, version, plural)
+        real_resource = references.Resource(group, version, plural)
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ResourceTimerHandler(

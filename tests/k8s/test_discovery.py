@@ -2,7 +2,7 @@ import aiohttp.web
 import pytest
 
 from kopf.clients.discovery import discover, is_namespaced, is_status_subresource
-from kopf.structs.resources import Resource
+from kopf.structs.references import Resource
 
 
 async def test_discovery_of_existing_resource(

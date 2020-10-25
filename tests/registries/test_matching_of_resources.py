@@ -1,7 +1,7 @@
 from unittest.mock import Mock
 
 from kopf.reactor.registries import _matches_resource
-from kopf.structs.resources import Resource
+from kopf.structs.references import Resource
 
 
 def test_different_resource():

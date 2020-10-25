@@ -40,14 +40,14 @@ from typing import Any, Dict, Iterable, Mapping, NewType, NoReturn, Optional, ca
 import iso8601
 
 from kopf.clients import fetching, patching
-from kopf.structs import bodies, configuration, patches, primitives, resources
+from kopf.structs import bodies, configuration, patches, primitives, references
 from kopf.utilities import hostnames
 
 logger = logging.getLogger(__name__)
 
 # The CRD info on the special sync-object.
-CLUSTER_PEERING_RESOURCE = resources.Resource('zalando.org', 'v1', 'clusterkopfpeerings')
-NAMESPACED_PEERING_RESOURCE = resources.Resource('zalando.org', 'v1', 'kopfpeerings')
+CLUSTER_PEERING_RESOURCE = references.Resource('zalando.org', 'v1', 'clusterkopfpeerings')
+NAMESPACED_PEERING_RESOURCE = references.Resource('zalando.org', 'v1', 'kopfpeerings')
 
 Identity = NewType('Identity', str)
 
@@ -279,5 +279,5 @@ def detect_own_id(*, manual: bool) -> Identity:
     return Identity(f'{user}@{host}' if manual else f'{user}@{host}/{now}/{rnd}')
 
 
-def guess_resource(namespace: Optional[str]) -> resources.Resource:
+def guess_resource(namespace: Optional[str]) -> references.Resource:
     return CLUSTER_PEERING_RESOURCE if namespace is None else NAMESPACED_PEERING_RESOURCE

@@ -21,7 +21,7 @@ from kopf.engines import loggers, posting
 from kopf.reactor import causation, daemons, effects, handling, lifecycles, registries
 from kopf.storage import finalizers, states
 from kopf.structs import bodies, configuration, containers, diffs, \
-                         handlers as handlers_, patches, resources
+                         handlers as handlers_, patches, references
 
 
 async def process_resource_event(
@@ -29,7 +29,7 @@ async def process_resource_event(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         memories: containers.ResourceMemories,
-        resource: resources.Resource,
+        resource: references.Resource,
         raw_event: bodies.RawEvent,
         replenished: asyncio.Event,
         event_queue: posting.K8sEventQueue,
@@ -109,7 +109,7 @@ async def process_resource_causes(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
-        resource: resources.Resource,
+        resource: references.Resource,
         raw_event: bodies.RawEvent,
         body: bodies.Body,
         patch: patches.Patch,

@@ -2,7 +2,7 @@ import pytest
 
 import kopf
 from kopf.structs.handlers import HANDLER_REASONS, Reason
-from kopf.structs.resources import Resource
+from kopf.structs.references import Resource
 
 
 @pytest.mark.parametrize('deleted', [True, False])
