@@ -171,8 +171,9 @@ async def spawn_tasks(
     vault = vault if vault is not None else global_vault
     vault = vault if vault is not None else credentials.Vault()
     event_queue: posting.K8sEventQueue = asyncio.Queue()
+    freeze_name = f"{peering_name!r}@{namespace}" if namespace else f"cluster-wide {peering_name!r}"
     freeze_checker = primitives.ToggleSet()
-    freeze_toggle = await freeze_checker.make_toggle()
+    freeze_toggle = await freeze_checker.make_toggle(name=freeze_name)
     signal_flag: aiotasks.Future = asyncio.Future()
     started_flag: asyncio.Event = asyncio.Event()
     tasks: MutableSequence[aiotasks.Task] = []

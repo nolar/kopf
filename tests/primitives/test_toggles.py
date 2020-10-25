@@ -94,3 +94,27 @@ async def test_secures_against_usage_as_a_boolean():
     toggle = Toggle()
     with pytest.raises(NotImplementedError):
         bool(toggle)
+
+
+async def test_repr_when_unnamed_and_off():
+    toggle = Toggle(False)
+    assert toggle.name is None
+    assert repr(toggle) == "<Toggle: off>"
+
+
+async def test_repr_when_unnamed_and_on():
+    toggle = Toggle(True)
+    assert toggle.name is None
+    assert repr(toggle) == "<Toggle: on>"
+
+
+async def test_repr_when_named_and_off():
+    toggle = Toggle(False, name='xyz')
+    assert toggle.name == 'xyz'
+    assert repr(toggle) == "<Toggle: xyz: off>"
+
+
+async def test_repr_when_named_and_on():
+    toggle = Toggle(True, name='xyz')
+    assert toggle.name == 'xyz'
+    assert repr(toggle) == "<Toggle: xyz: on>"

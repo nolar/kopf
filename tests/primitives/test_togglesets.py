@@ -187,3 +187,32 @@ async def test_secures_against_usage_as_a_boolean():
     toggle = ToggleSet()
     with pytest.raises(NotImplementedError):
         bool(toggle)
+
+
+async def test_repr_when_empty():
+    toggleset = ToggleSet()
+    assert repr(toggleset) == "set()"
+
+
+async def test_repr_when_unnamed_and_off():
+    toggleset = ToggleSet()
+    await toggleset.make_toggle(False)
+    assert repr(toggleset) == "{<Toggle: off>}"
+
+
+async def test_repr_when_unnamed_and_on():
+    toggleset = ToggleSet()
+    await toggleset.make_toggle(True)
+    assert repr(toggleset) == "{<Toggle: on>}"
+
+
+async def test_repr_when_named_and_off():
+    toggleset = ToggleSet()
+    await toggleset.make_toggle(False, name='xyz')
+    assert repr(toggleset) == "{<Toggle: xyz: off>}"
+
+
+async def test_repr_when_named_and_on():
+    toggleset = ToggleSet()
+    await toggleset.make_toggle(True, name='xyz')
+    assert repr(toggleset) == "{<Toggle: xyz: on>}"

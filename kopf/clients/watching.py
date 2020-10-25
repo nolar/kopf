@@ -57,22 +57,28 @@ async def infinite_watch(
     a new one is recreated, and the stream continues.
     It only exits with unrecoverable exceptions.
     """
-    while _iterations is None or _iterations > 0:  # equivalent to `while True` in non-test mode.
-        _iterations = None if _iterations is None else _iterations - 1
-        async with streaming_block(
+    how = ' (frozen)' if freeze_checker is not None and freeze_checker.is_on() else ''
+    where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
+    logger.debug(f"Starting the watch-stream for {resource} {where}{how}.")
+    try:
+        while _iterations is None or _iterations > 0:  # equivalent to `while True` in non-test mode
+            _iterations = None if _iterations is None else _iterations - 1
+            async with streaming_block(
                 namespace=namespace,
                 resource=resource,
                 freeze_checker=freeze_checker,
-        ) as freeze_waiter:
-            stream = continuous_watch(
-                settings=settings,
-                resource=resource,
-                namespace=namespace,
-                freeze_waiter=freeze_waiter,
-            )
-            async for raw_event in stream:
-                yield raw_event
-        await asyncio.sleep(settings.watching.reconnect_backoff)
+            ) as freeze_waiter:
+                stream = continuous_watch(
+                    settings=settings,
+                    resource=resource,
+                    namespace=namespace,
+                    freeze_waiter=freeze_waiter,
+                )
+                async for raw_event in stream:
+                    yield raw_event
+            await asyncio.sleep(settings.watching.reconnect_backoff)
+    finally:
+        logger.debug(f"Stopping the watch-stream for {resource} {where}.")
 
 
 @contextlib.asynccontextmanager
@@ -102,19 +108,26 @@ async def streaming_block(
     The freeze can be managed in any other ways: as an imaginary edge case,
     imagine a operator with UI with a "pause" button that freezes the operator.
     """
+    where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
 
     # Block until unfrozen before even starting the API communication.
     if freeze_checker is not None and freeze_checker.is_on():
-        logger.debug("Freezing the watch-stream for %r", resource)
+        names = {toggle.name for toggle in freeze_checker if toggle.is_on() and toggle.name}
+        freezing_reason = f" (blockers: {', '.join(names)})" if names else ""
+        logger.debug(f"Freezing the watch-stream for {resource} {where}{freezing_reason}.")
+
         await freeze_checker.wait_for(False)
-        logger.debug("Resuming the watch-stream for %r", resource)
+
+        names = {toggle.name for toggle in freeze_checker if toggle.is_on() and toggle.name}
+        resuming_reason = f" (resolved: {', '.join(names)})" if names else ""
+        logger.debug(f"Resuming the watch-stream for {resource} {where}{resuming_reason}.")
 
     # Create the signalling future that the freeze is on again.
     freeze_waiter: aiotasks.Future
     if freeze_checker is not None:
         freeze_waiter = aiotasks.create_task(
             freeze_checker.wait_for(True),
-            name=f'freeze-waiter for {resource.name} @ {namespace or "cluster-wide"}')
+            name=f"freeze-waiter for {resource}")
     else:
         freeze_waiter = asyncio.Future()  # a dummy just to have it
 
@@ -161,7 +174,8 @@ async def continuous_watch(
             # The resource versions are lost by k8s after few minutes (5, as per the official doc).
             # The error occurs when there is nothing happening for few minutes. This is normal.
             if raw_type == 'ERROR' and cast(bodies.RawError, raw_object)['code'] == 410:
-                logger.debug("Restarting the watch-stream for %r", resource)
+                where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
+                logger.debug(f"Restarting the watch-stream for {resource} {where}.")
                 return  # out of the regular stream, to the infinite stream.
 
             # Other watch errors should be fatal for the operator.
