@@ -12,9 +12,10 @@ Kopf provides some tools to simplify connecting these objects together.
     It does not provide any means to manipulate the Kubernetes objects
     or to talk to the Kubernetes API.
     Use any of the existing libraries for that purpose,
-    such as the official `kubernetes client`_ or pykube-ng_.
+    such as the official `kubernetes client`_, pykorm_, or pykube-ng_.
 
 .. _kubernetes client: https://github.com/kubernetes-client/python
+.. _pykorm: https://github.com/Frankkkkk/pykorm
 .. _pykube-ng: https://github.com/hjacobs/pykube
 
 
