@@ -23,6 +23,16 @@ To set the operator's priority, use :option:`--priority`:
 
     kopf run --priority=100 ...
 
+Or:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.peering.priority = 100
+
 As a shortcut, there is a :option:`--dev` option, which sets
 the priority to ``666``, and is intended for the development mode.
 
@@ -74,11 +84,27 @@ The operator can be instructed to use alternative peering objects::
     kopf run --peering=example ...
     kopf run --peering=example --namespace=some-ns ...
 
+Or:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.peering.name = "example"
+        settings.peering.mandatory = True
+
 Depending on :option:`--namespace`, either ``ClusterKopfPeering``
 or ``KopfPeering`` will be used (in the operator's namespace).
 
 If the peering object does not exist, the operator will fail to start.
-Using :option:`--peering` assumes that the peering is required.
+Using :option:`--peering` assumes that the peering is mandatory.
+
+Please note that in the startup handler, this is not exactly the same:
+the mandatory mode must be set explicitly. Otherwise, the operator will try
+to auto-detect the presence of the custom peering object, but will not fail
+if it is absent -- unlike with the ``--peering=`` CLI option.
 
 The operators from different peering objects do not see each other.
 
@@ -93,6 +119,16 @@ To prevent an operator from peering and talking to other operators,
 the standalone mode can be enabled::
 
     kopf run --standalone ...
+
+Or:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.peering.standalone = True
 
 In that case, the operator will not freeze if other operators with
 the higher priority will start handling the objects, which may lead
@@ -130,6 +166,17 @@ operator in the deployment or replicaset:
 .. code-block:: bash
 
     kopf run --priority=$RANDOM ...
+
+Or:
+
+.. code-block:: python
+
+    import random
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.peering.priority = random.randint(0, 32767)
 
 ``$RANDOM`` is a feature of bash
 (if you use another shell, see its man page for an equivalent).

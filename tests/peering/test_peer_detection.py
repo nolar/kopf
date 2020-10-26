@@ -2,199 +2,93 @@ import re
 
 import pytest
 
-from kopf.engines.peering import CLUSTER_PEERING_RESOURCE, NAMESPACED_PEERING_RESOURCE, \
-                                 PEERING_DEFAULT_NAME, Peer
+from kopf.engines.peering import CLUSTER_PEERING_RESOURCE, \
+                                 NAMESPACED_PEERING_RESOURCE, detect_presence
 
 
 @pytest.fixture()
-def with_cluster_default(hostname, aresponses):
-    url = CLUSTER_PEERING_RESOURCE.get_url(name=PEERING_DEFAULT_NAME)
+def with_cluster_cr(hostname, aresponses):
+    url = CLUSTER_PEERING_RESOURCE.get_url(namespace=None, name='existent')
     aresponses.add(hostname, url, 'get', {'spec': {}})
 
 
 @pytest.fixture()
-def with_cluster_specific(hostname, aresponses):
-    url = CLUSTER_PEERING_RESOURCE.get_url(name='peering-name')
+def with_namespaced_cr(hostname, aresponses):
+    url = NAMESPACED_PEERING_RESOURCE.get_url(namespace='namespace', name='existent')
     aresponses.add(hostname, url, 'get', {'spec': {}})
 
 
-@pytest.fixture()
-def with_namespaced_default(hostname, aresponses):
-    url = NAMESPACED_PEERING_RESOURCE.get_url(namespace='namespace', name=PEERING_DEFAULT_NAME)
-    aresponses.add(hostname, url, 'get', {'spec': {}})
+@pytest.mark.usefixtures('with_namespaced_cr')
+@pytest.mark.usefixtures('with_cluster_cr')
+@pytest.mark.usefixtures('with_both_crds')
+@pytest.mark.parametrize('name', ['existent', 'absent'])
+@pytest.mark.parametrize('namespace', [None, 'namespace'], ids=['cluster', 'namespaced'])
+@pytest.mark.parametrize('mandatory', [False, True], ids=['optional', 'mandatory'])
+async def test_standalone(mandatory, namespace, name, settings):
+    settings.peering.standalone = True
+    settings.peering.mandatory = mandatory
+    settings.peering.name = name
+    peering = await detect_presence(settings=settings, namespace=namespace)
+    assert peering is None
 
 
-@pytest.fixture()
-def with_namespaced_specific(hostname, aresponses):
-    url = NAMESPACED_PEERING_RESOURCE.get_url(namespace='namespace', name='peering-name')
-    aresponses.add(hostname, url, 'get', {'spec': {}})
+@pytest.mark.usefixtures('with_cluster_cr')
+@pytest.mark.usefixtures('with_cluster_crd')
+@pytest.mark.parametrize('mandatory', [False, True], ids=['optional', 'mandatory'])
+async def test_cluster_scoped_when_existent(mandatory, settings):
+    settings.peering.mandatory = mandatory
+    settings.peering.name = 'existent'
+    peering = await detect_presence(settings=settings, namespace=None)
+    assert peering is True
 
 
-#
-# Parametrization via fixtures (it does not work from tests).
-#
-@pytest.fixture(params=[
-    pytest.param(None, id='no-crds'),
-    pytest.param('with_both_crds', id='both-crds'),
-    pytest.param('with_cluster_crd', id='only-cluster-crd'),
-    pytest.param('with_namespaced_crd', id='only-namespaced-crd'),
-])
-def all_crd_modes(request):
-    return request.getfixturevalue(request.param) if request.param else None
+@pytest.mark.usefixtures('with_namespaced_cr')
+@pytest.mark.usefixtures('with_namespaced_crd')
+@pytest.mark.parametrize('mandatory', [False, True], ids=['optional', 'mandatory'])
+async def test_namespace_scoped_when_existent(mandatory, settings):
+    settings.peering.mandatory = mandatory
+    settings.peering.name = 'existent'
+    peering = await detect_presence(settings=settings, namespace='namespace')
+    assert peering is True
 
 
-@pytest.fixture(params=[
-    pytest.param('with_both_crds', id='both-crds'),
-    pytest.param('with_cluster_crd', id='only-cluster-crd'),
-])
-def all_crd_modes_with_cluster_scoped_crd(request):
-    return request.getfixturevalue(request.param) if request.param else None
-
-
-@pytest.fixture(params=[
-    pytest.param('with_both_crds', id='both-crds'),
-    pytest.param('with_namespaced_crd', id='only-namespaced-crd'),
-])
-def all_crd_modes_with_namespace_scoped_crd(request):
-    return request.getfixturevalue(request.param) if request.param else None
-
-
-@pytest.fixture(params=[
-    pytest.param(True, id='with-cluster-default'),
-    pytest.param(False, id='without-cluster-default')
-])
-def both_cluster_default_modes(request):
-    return request.getfixturevalue('with_cluster_default') if request.param else None
-
-
-@pytest.fixture(params=[
-    pytest.param(True, id='with-cluster-specific'),
-    pytest.param(False, id='without-cluster-specific')
-])
-def both_cluster_specific_modes(request):
-    return request.getfixturevalue('with_cluster_specific') if request.param else None
-
-
-@pytest.fixture(params=[
-    pytest.param(True, id='with-namespaced-default'),
-    pytest.param(False, id='without-namespaced-default')
-])
-def both_namespaced_default_modes(request):
-    return request.getfixturevalue('with_namespaced_default') if request.param else None
-
-
-@pytest.fixture(params=[
-    pytest.param(True, id='with-namespaced-specific'),
-    pytest.param(False, id='without-namespaced-specific')
-])
-def both_namespaced_specific_modes(request):
-    return request.getfixturevalue('with_namespaced_specific') if request.param else None
-
-
-#
-# Actual tests: only the action & assertions.
-#
-@pytest.mark.usefixtures('both_namespaced_specific_modes')
-@pytest.mark.usefixtures('both_namespaced_default_modes')
-@pytest.mark.usefixtures('both_cluster_specific_modes')
-@pytest.mark.usefixtures('both_cluster_default_modes')
-@pytest.mark.usefixtures('all_crd_modes')
-@pytest.mark.parametrize('name', [None, 'name'])
-@pytest.mark.parametrize('namespace', [None, 'namespaced'])
-async def test_standalone(namespace, name):
-    peer = await Peer.detect(standalone=True, namespace=namespace, name=name)
-    assert peer is None
-
-
-@pytest.mark.usefixtures('both_namespaced_specific_modes')
-@pytest.mark.usefixtures('both_namespaced_default_modes')
-@pytest.mark.usefixtures('both_cluster_specific_modes')
-@pytest.mark.usefixtures('with_cluster_default')
-@pytest.mark.usefixtures('all_crd_modes_with_cluster_scoped_crd')
-async def test_cluster_scoped_with_default_name():
-    peer = await Peer.detect(id='id', standalone=False, namespace=None, name=None)
-    assert peer.name == PEERING_DEFAULT_NAME
-    assert peer.namespace is None
-
-
-@pytest.mark.usefixtures('both_namespaced_specific_modes')
-@pytest.mark.usefixtures('with_namespaced_default')
-@pytest.mark.usefixtures('both_cluster_specific_modes')
-@pytest.mark.usefixtures('both_cluster_default_modes')
-@pytest.mark.usefixtures('all_crd_modes_with_namespace_scoped_crd')
-async def test_namespace_scoped_with_default_name():
-    peer = await Peer.detect(id='id', standalone=False, namespace='namespace', name=None)
-    assert peer.name == PEERING_DEFAULT_NAME
-    assert peer.namespace == 'namespace'
-
-
-@pytest.mark.usefixtures('both_namespaced_specific_modes')
-@pytest.mark.usefixtures('both_namespaced_default_modes')
-@pytest.mark.usefixtures('with_cluster_specific')
-@pytest.mark.usefixtures('both_cluster_default_modes')
-@pytest.mark.usefixtures('all_crd_modes_with_cluster_scoped_crd')
-async def test_cluster_scoped_with_specific_name():
-    peer = await Peer.detect(id='id', standalone=False, namespace=None, name='peering-name')
-    assert peer.name == 'peering-name'
-    assert peer.namespace is None
-
-
-@pytest.mark.usefixtures('with_namespaced_specific')
-@pytest.mark.usefixtures('both_namespaced_default_modes')
-@pytest.mark.usefixtures('both_cluster_specific_modes')
-@pytest.mark.usefixtures('both_cluster_default_modes')
-@pytest.mark.usefixtures('all_crd_modes_with_namespace_scoped_crd')
-async def test_namespace_scoped_with_specific_name():
-    peer = await Peer.detect(id='id', standalone=False, namespace='namespace', name='peering-name')
-    assert peer.name == 'peering-name'
-    assert peer.namespace == 'namespace'
-
-
-@pytest.mark.usefixtures('both_namespaced_specific_modes')
-@pytest.mark.usefixtures('both_namespaced_default_modes')
-@pytest.mark.usefixtures('both_cluster_specific_modes')
-@pytest.mark.usefixtures('both_cluster_default_modes')
-@pytest.mark.usefixtures('all_crd_modes_with_cluster_scoped_crd')
-async def test_cluster_scoped_with_absent_name(hostname, aresponses):
+@pytest.mark.usefixtures('with_cluster_crd')
+async def test_cluster_scoped_when_absent(hostname, aresponses, settings):
+    settings.peering.mandatory = True
+    settings.peering.name = 'absent'
     aresponses.add(hostname, re.compile(r'.*'), 'get', aresponses.Response(status=404), repeat=999)
-    with pytest.raises(Exception, match=r"The peering 'absent-name' was not found") as e:
-        await Peer.detect(id='id', standalone=False, namespace=None, name='absent-name')
+    with pytest.raises(Exception, match=r"The mandatory peering 'absent' was not found") as e:
+        await detect_presence(settings=settings, namespace=None)
 
 
-@pytest.mark.usefixtures('both_namespaced_specific_modes')
-@pytest.mark.usefixtures('both_namespaced_default_modes')
-@pytest.mark.usefixtures('both_cluster_specific_modes')
-@pytest.mark.usefixtures('both_cluster_default_modes')
-@pytest.mark.usefixtures('all_crd_modes_with_namespace_scoped_crd')
-async def test_namespace_scoped_with_absent_name(hostname, aresponses):
+@pytest.mark.usefixtures('with_namespaced_crd')
+async def test_namespace_scoped_when_absent(hostname, aresponses, settings):
+    settings.peering.mandatory = True
+    settings.peering.name = 'absent'
     aresponses.add(hostname, re.compile(r'.*'), 'get', aresponses.Response(status=404), repeat=999)
-    with pytest.raises(Exception, match=r"The peering 'absent-name' was not found") as e:
-        await Peer.detect(id='id', standalone=False, namespace='namespace', name='absent-name')
+    with pytest.raises(Exception, match=r"The mandatory peering 'absent' was not found") as e:
+        await detect_presence(settings=settings, namespace='namespace')
 
 
-# NB: without cluster-default peering.
-@pytest.mark.usefixtures('both_namespaced_specific_modes')
-@pytest.mark.usefixtures('both_namespaced_default_modes')
-@pytest.mark.usefixtures('both_cluster_specific_modes')
-@pytest.mark.usefixtures('all_crd_modes_with_cluster_scoped_crd')
-async def test_cluster_scoped_with_warning(hostname, aresponses, assert_logs, caplog):
+@pytest.mark.usefixtures('with_cluster_crd')
+async def test_fallback_with_cluster_scoped(hostname, aresponses, assert_logs, caplog, settings):
+    settings.peering.mandatory = False
+    settings.peering.name = 'absent'
     aresponses.add(hostname, re.compile(r'.*'), 'get', aresponses.Response(status=404), repeat=999)
-    peer = await Peer.detect(id='id', standalone=False, namespace=None, name=None)
-    assert peer is None
+    peering = await detect_presence(settings=settings, namespace=None)
+    assert peering is False
     assert_logs([
         "Default peering object not found, falling back to the standalone mode."
     ])
 
 
-# NB: without namespaced-default peering.
-@pytest.mark.usefixtures('both_namespaced_specific_modes')
-@pytest.mark.usefixtures('both_cluster_specific_modes')
-@pytest.mark.usefixtures('both_cluster_default_modes')
-@pytest.mark.usefixtures('all_crd_modes_with_namespace_scoped_crd')
-async def test_namespace_scoped_with_warning(hostname, aresponses, assert_logs, caplog):
+@pytest.mark.usefixtures('with_namespaced_crd')
+async def test_fallback_with_namespace_scoped(hostname, aresponses, assert_logs, caplog, settings):
+    settings.peering.mandatory = False
+    settings.peering.name = 'absent'
     aresponses.add(hostname, re.compile(r'.*'), 'get', aresponses.Response(status=404), repeat=999)
-    peer = await Peer.detect(id='id', standalone=False, namespace='namespace', name=None)
-    assert peer is None
+    peering = await detect_presence(settings=settings, namespace='namespace')
+    assert peering is False
     assert_logs([
         "Default peering object not found, falling back to the standalone mode."
     ])

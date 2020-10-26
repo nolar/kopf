@@ -186,6 +186,15 @@ async def spawn_tasks(
     ready_flag = ready_flag if ready_flag is not None else asyncio.Event()
     tasks: MutableSequence[asyncio_Task] = []
 
+    # Map kwargs into the settings object.
+    if peering_name is not None:
+        settings.peering.mandatory = True
+        settings.peering.name = peering_name
+    if standalone is not None:
+        settings.peering.standalone = standalone
+    if priority is not None:
+        settings.peering.priority = priority
+
     # Global credentials store for this operator, also for CRD-reading & peering mode detection.
     auth.vault_var.set(vault)
 
@@ -245,23 +254,24 @@ async def spawn_tasks(
                 endpoint=liveness_endpoint)))
 
     # Monitor the peers, unless explicitly disabled.
-    ourselves: Optional[peering.Peer] = await peering.Peer.detect(
-        id=peering.detect_own_id(manual=False), priority=priority,
-        standalone=standalone, namespace=namespace, name=peering_name,
-    )
-    if ourselves:
+    if await peering.detect_presence(namespace=namespace, settings=settings):
+        identity = peering.detect_own_id(manual=False)
         tasks.append(_create_checked_root_task(
             name="peering keepalive", ready_flag=ready_flag,
-            coro=peering.peers_keepalive(
-                ourselves=ourselves)))
+            coro=peering.keepalive(
+                namespace=namespace,
+                settings=settings,
+                identity=identity)))
         tasks.append(_create_checked_root_task(
             name="watcher of peering", ready_flag=ready_flag,
             coro=queueing.watcher(
                 namespace=namespace,
                 settings=settings,
-                resource=ourselves.resource,
+                resource=peering.guess_resource(namespace=namespace),
                 processor=functools.partial(peering.process_peering_event,
-                                            ourselves=ourselves,
+                                            namespace=namespace,
+                                            settings=settings,
+                                            identity=identity,
                                             freeze_mode=freeze_mode))))
 
     # Resource event handling, only once for every known resource (de-duplicated).

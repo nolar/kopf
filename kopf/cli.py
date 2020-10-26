@@ -121,21 +121,22 @@ def freeze(
         priority: int,
 ) -> None:
     """ Freeze the resource handling in the cluster. """
-    ourserlves = peering.Peer(
-        id=id or peering.detect_own_id(manual=True),
-        name=peering_name,
-        namespace=namespace,
-        priority=priority,
-        lifetime=lifetime,
-    )
+    identity = peering.Identity(id) if id else peering.detect_own_id(manual=True)
     registry = registries.SmartOperatorRegistry()
     settings = configuration.OperatorSettings()
+    settings.peering.name = peering_name
+    settings.peering.priority = priority
     vault = credentials.Vault()
     auth.vault_var.set(vault)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(asyncio.wait({
         activities.authenticate(registry=registry, settings=settings, vault=vault),
-        ourserlves.keepalive(),
+        peering.touch(
+            identity=identity,
+            settings=settings,
+            namespace=namespace,
+            lifetime=lifetime,
+        ),
     }))
 
 
@@ -150,17 +151,19 @@ def resume(
         peering_name: str,
 ) -> None:
     """ Resume the resource handling in the cluster. """
-    ourselves = peering.Peer(
-        id=id or peering.detect_own_id(manual=True),
-        name=peering_name,
-        namespace=namespace,
-    )
+    identity = peering.Identity(id) if id else peering.detect_own_id(manual=True)
     registry = registries.SmartOperatorRegistry()
     settings = configuration.OperatorSettings()
+    settings.peering.name = peering_name
     vault = credentials.Vault()
     auth.vault_var.set(vault)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(asyncio.wait({
         activities.authenticate(registry=registry, settings=settings, vault=vault),
-        ourselves.disappear(),
+        peering.touch(
+            identity=identity,
+            settings=settings,
+            namespace=namespace,
+            lifetime=0,
+        ),
     }))
