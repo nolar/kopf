@@ -141,6 +141,7 @@ def exception(
 
 
 async def poster(
+        *,
         event_queue: K8sEventQueue,
 ) -> NoReturn:
     """

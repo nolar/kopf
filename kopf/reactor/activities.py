@@ -1,5 +1,5 @@
 """
-An every-running tasks to keep the operator functional.
+Supporting tasks for startup/cleanup and to keep the operator functional.
 
 Consumes a credentials vault, and monitors that it has enough credentials.
 When the credentials are invalidated (i.e. excluded), run the re-authentication

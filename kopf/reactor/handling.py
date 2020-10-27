@@ -32,7 +32,7 @@ class TemporaryError(Exception):
             self,
             __msg: Optional[str] = None,
             delay: Optional[float] = DEFAULT_RETRY_DELAY,
-    ):
+    ) -> None:
         super().__init__(__msg)
         self.delay = delay
 
