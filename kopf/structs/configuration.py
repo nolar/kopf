@@ -91,6 +91,20 @@ class PeeringSettings:
     i.e. operators in one of them are not visible to operators in others.
     """
 
+    stealth: bool = False
+    """
+    Should this operator log its keep-alives?
+    
+    In some cases, it might be undesired to log regular keep-alives while
+    they actually happen (to keep the logs clean and readable).
+
+    Note that some occasions are logged unconditionally: 
+    
+    * those affecting the operator's behaviour, such as freezes/resumes;
+    * those requiring human intervention, such as absence of a peering object
+      in the auto-detection mode (to make the peering mandatory or standalone). 
+    """
+
     priority: int = 0
     """
     The operator's priority to use. The operators with lower priority freeze

@@ -196,9 +196,10 @@ async def touch(
     patch.update({'status': {identity: None if peer.is_dead else peer.as_dict()}})
     rsp = await patching.patch_obj(resource=resource, namespace=namespace, name=name, patch=patch)
 
-    where = f'in {namespace!r}' if namespace else 'cluster-wide'
-    result = "not found" if rsp is None else "ok"
-    logger.debug(f"Keep-alive in {name!r} {where}: {result}.")
+    if not settings.peering.stealth or rsp is None:
+        where = f"in {namespace!r}" if namespace else "cluster-wide"
+        result = "not found" if rsp is None else "ok"
+        logger.debug(f"Keep-alive in {name!r} {where}: {result}.")
 
 
 async def clean(

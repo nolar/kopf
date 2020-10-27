@@ -185,3 +185,27 @@ With high probability, 2-3 pods will get their unique priorities.
 
 You can also use the pod's IP address in its numeric form as the priority,
 or any other source of integers.
+
+
+Stealth keep-alives
+===================
+
+Every few seconds (60 by default), the operator will send a keep-alive update
+to the chosen peering, showing that it is still functioning. Other operators
+will notice that and make decisions on their freezing or resuming.
+
+The operator also logs a keep-alive activity to its own logs. This can be
+distracting. To disable:
+
+.. code-block:: python
+
+    import random
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.peering.stealth = True
+
+There is no equivalent CLI option for that.
+
+Please note that it only affects logging. The keep-alive are sent anyway.
