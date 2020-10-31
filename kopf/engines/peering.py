@@ -231,7 +231,7 @@ async def detect_presence(
     if settings.peering.mandatory and obj is None:
         raise Exception(f"The mandatory peering {name!r} was not found.")
     elif obj is None:
-        logger.warning(f"Default peering object not found, falling back to the standalone mode.")
+        logger.warning(f"Default peering object is not found, falling back to the standalone mode.")
         return False
     else:
         return True

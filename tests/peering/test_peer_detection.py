@@ -78,7 +78,7 @@ async def test_fallback_with_cluster_scoped(hostname, aresponses, assert_logs, c
     peering = await detect_presence(settings=settings, namespace=None)
     assert peering is False
     assert_logs([
-        "Default peering object not found, falling back to the standalone mode."
+        "Default peering object is not found, falling back to the standalone mode."
     ])
 
 
@@ -90,5 +90,5 @@ async def test_fallback_with_namespace_scoped(hostname, aresponses, assert_logs,
     peering = await detect_presence(settings=settings, namespace='namespace')
     assert peering is False
     assert_logs([
-        "Default peering object not found, falling back to the standalone mode."
+        "Default peering object is not found, falling back to the standalone mode."
     ])
