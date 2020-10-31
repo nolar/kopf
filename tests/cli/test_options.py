@@ -22,7 +22,7 @@ def test_options_passed_to_preload(invoke, options, envvars, kwarg, value, prelo
 
 
 @pytest.mark.parametrize('kwarg, value, options, envvars', [
-    ('standalone', False, [], {}),
+    ('standalone', None, [], {}),
     ('standalone', True, ['--standalone'], {}),
     ('standalone', True, [], {'KOPF_RUN_STANDALONE': 'true'}),
 
@@ -36,7 +36,7 @@ def test_options_passed_to_preload(invoke, options, envvars, kwarg, value, prelo
     ('peering_name', 'peer', ['--peering=peer'], {}),
     ('peering_name', 'peer', [], {'KOPF_RUN_PEERING': 'peer'}),
 
-    ('priority', 0, [], {}),
+    ('priority', None, [], {}),
     ('priority', 123, ['-p', '123'], {}),
     ('priority', 123, ['--priority=123'], {}),
     ('priority', 123, [], {'KOPF_RUN_PRIORITY': '123'}),
