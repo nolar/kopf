@@ -32,6 +32,7 @@ Kopf: Kubernetes Operators Framework
    kwargs
    async
    loading
+   resources
    filters
    results
    errors
