@@ -92,7 +92,7 @@ class Peer:
 async def process_peering_event(
         *,
         raw_event: bodies.RawEvent,
-        namespace: Optional[str],
+        namespace: references.Namespace,
         identity: Identity,
         settings: configuration.OperatorSettings,
         autoclean: bool = True,
@@ -156,7 +156,7 @@ async def process_peering_event(
 
 async def keepalive(
         *,
-        namespace: Optional[str],
+        namespace: references.Namespace,
         identity: Identity,
         settings: configuration.OperatorSettings,
 ) -> NoReturn:
@@ -191,7 +191,7 @@ async def touch(
         *,
         identity: Identity,
         settings: configuration.OperatorSettings,
-        namespace: Optional[str],
+        namespace: references.Namespace,
         lifetime: Optional[int] = None,
 ) -> None:
     name = settings.peering.name
@@ -217,7 +217,7 @@ async def clean(
         *,
         peers: Iterable[Peer],
         settings: configuration.OperatorSettings,
-        namespace: Optional[str],
+        namespace: references.Namespace,
 ) -> None:
     name = settings.peering.name
     resource = guess_resource(namespace=namespace)
@@ -230,7 +230,7 @@ async def clean(
 async def detect_presence(
         *,
         settings: configuration.OperatorSettings,
-        namespace: Optional[str],
+        namespace: references.Namespace,
 ) -> Optional[bool]:
 
     if settings.peering.standalone:
@@ -279,5 +279,5 @@ def detect_own_id(*, manual: bool) -> Identity:
     return Identity(f'{user}@{host}' if manual else f'{user}@{host}/{now}/{rnd}')
 
 
-def guess_resource(namespace: Optional[str]) -> references.Resource:
+def guess_resource(namespace: references.Namespace) -> references.Resource:
     return CLUSTER_PEERING_RESOURCE if namespace is None else NAMESPACED_PEERING_RESOURCE

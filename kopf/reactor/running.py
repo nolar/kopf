@@ -9,7 +9,7 @@ from typing import Any, Collection, Coroutine, MutableSequence, Optional, Sequen
 from kopf.clients import auth
 from kopf.engines import peering, posting, probing
 from kopf.reactor import activities, daemons, lifecycles, processing, queueing, registries
-from kopf.structs import configuration, containers, credentials, handlers, primitives
+from kopf.structs import configuration, containers, credentials, handlers, primitives, references
 from kopf.utilities import aiotasks
 
 logger = logging.getLogger(__name__)
@@ -70,7 +70,7 @@ def run(
         priority: Optional[int] = None,
         peering_name: Optional[str] = None,
         liveness_endpoint: Optional[str] = None,
-        namespace: Optional[str] = None,
+        namespace: Optional[references.Namespace] = None,
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
@@ -110,7 +110,7 @@ async def operator(
         priority: Optional[int] = None,
         peering_name: Optional[str] = None,
         liveness_endpoint: Optional[str] = None,
-        namespace: Optional[str] = None,
+        namespace: Optional[references.Namespace] = None,
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
@@ -151,7 +151,7 @@ async def spawn_tasks(
         priority: Optional[int] = None,
         peering_name: Optional[str] = None,
         liveness_endpoint: Optional[str] = None,
-        namespace: Optional[str] = None,
+        namespace: Optional[references.Namespace] = None,
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,

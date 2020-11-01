@@ -8,7 +8,7 @@ import click
 from kopf.clients import auth
 from kopf.engines import loggers, peering
 from kopf.reactor import activities, registries, running
-from kopf.structs import configuration, credentials, primitives
+from kopf.structs import configuration, credentials, primitives, references
 from kopf.utilities import loaders
 
 
@@ -79,7 +79,7 @@ def run(
         peering_name: Optional[str],
         priority: Optional[int],
         standalone: Optional[bool],
-        namespace: Optional[str],
+        namespace: references.Namespace,
         liveness_endpoint: Optional[str],
 ) -> None:
     """ Start an operator process and handle all the requests. """
@@ -116,7 +116,7 @@ def freeze(
         id: Optional[str],
         message: Optional[str],
         lifetime: int,
-        namespace: Optional[str],
+        namespace: references.Namespace,
         peering_name: str,
         priority: int,
 ) -> None:
@@ -147,7 +147,7 @@ def freeze(
 @click.option('-P', '--peering', 'peering_name', required=True, envvar='KOPF_RESUME_PEERING')
 def resume(
         id: Optional[str],
-        namespace: Optional[str],
+        namespace: references.Namespace,
         peering_name: str,
 ) -> None:
     """ Resume the resource handling in the cluster. """

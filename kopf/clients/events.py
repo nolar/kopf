@@ -38,7 +38,8 @@ async def post_event(
 
     # See #164. For cluster-scoped objects, use the current namespace from the current context.
     # It could be "default", but in some systems, we are limited to one specific namespace only.
-    namespace: str = ref.get('namespace') or context.default_namespace or 'default'
+    namespace_name: str = ref.get('namespace') or context.default_namespace or 'default'
+    namespace = references.NamespaceName(namespace_name)
     full_ref: bodies.ObjectReference = copy.copy(ref)
     full_ref['namespace'] = namespace
 

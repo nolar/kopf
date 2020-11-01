@@ -45,7 +45,7 @@ from typing import Any, List, Mapping, MutableMapping, Optional, Union, cast
 
 from typing_extensions import Literal, TypedDict
 
-from kopf.structs import dicts
+from kopf.structs import dicts, references
 
 #
 # Everything marked "raw" is a plain unwrapped unprocessed data as JSON-decoded
@@ -152,8 +152,8 @@ class Meta(dicts.MappingView[str, Any]):
         return cast(Optional[str], self.get('name'))
 
     @property
-    def namespace(self) -> Optional[str]:
-        return cast(Optional[str], self.get('namespace'))
+    def namespace(self) -> references.Namespace:
+        return cast(references.Namespace, self.get('namespace'))
 
     @property
     def creation_timestamp(self) -> Optional[str]:
