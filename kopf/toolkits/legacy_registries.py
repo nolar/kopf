@@ -106,10 +106,11 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[
         real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         handler = LegacyAllPurposeResourcerHandler(
             id=real_id, fn=fn,  # type: ignore
-            reason=reason, field=real_field,
+            reason=reason,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
             labels=labels, annotations=annotations, when=when,
+            field=real_field, value=None, old=None, new=None, field_needs_change=None,
         )
         self.append(handler)
         return fn

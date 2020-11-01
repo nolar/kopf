@@ -13,6 +13,7 @@ of the handlers to be executed on each reaction cycle.
 """
 import abc
 import collections
+import enum
 import functools
 import warnings
 from types import FunctionType, MethodType
@@ -20,7 +21,7 @@ from typing import Any, Callable, Collection, Container, FrozenSet, Generic, Ite
                    List, Mapping, MutableMapping, Optional, Sequence, Set, TypeVar, Union, cast
 
 from kopf.reactor import causation, invocation
-from kopf.structs import callbacks, dicts, diffs, filters, handlers, resources as resources_
+from kopf.structs import callbacks, dicts, filters, handlers, resources as resources_
 from kopf.utilities import piggybacking
 
 # We only type-check for known classes of handlers/callbacks, and ignore any custom subclasses.
@@ -249,10 +250,11 @@ class ResourceChangingRegistry(ResourceRegistry[
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         handler = handlers.ResourceChangingHandler(
-            id=real_id, fn=fn, reason=reason, field=real_field,
+            id=real_id, fn=fn, reason=reason,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
             labels=labels, annotations=annotations, when=when,
+            field=real_field, value=None, old=None, new=None, field_needs_change=None,
         )
 
         self.append(handler)
@@ -639,18 +641,6 @@ def match(
     ])
 
 
-def _matches_field(
-        handler: handlers.ResourceHandler,
-        cause: causation.ResourceCause,
-        kwargs: MutableMapping[str, Any],
-) -> bool:
-    return (not isinstance(handler, handlers.ResourceChangingHandler) or
-            not isinstance(cause, causation.ResourceChangingCause) or
-            not handler.field or (
-                bool(diffs.reduce(cause.diff, handler.field))
-            ))
-
-
 def _matches_labels(
         handler: handlers.ResourceHandler,
         cause: causation.ResourceCause,
@@ -703,6 +693,75 @@ def _matches_metadata(
     return True
 
 
+def _matches_field(
+        handler: handlers.ResourceHandler,
+        cause: causation.ResourceCause,
+        kwargs: MutableMapping[str, Any],
+) -> bool:
+    return (not isinstance(handler, handlers.ResourceChangingHandler) or
+            not isinstance(cause, causation.ResourceChangingCause) or
+            (
+                _matches_field_values(handler, cause, kwargs) and
+                _matches_field_changes(handler, cause, kwargs)
+            ))
+
+
+def _matches_field_values(
+        handler: handlers.ResourceChangingHandler,
+        cause: causation.ResourceChangingCause,
+        kwargs: MutableMapping[str, Any],
+) -> bool:
+    if not handler.field:
+        return True
+
+    if not kwargs:
+        kwargs.update(invocation.build_kwargs(cause=cause))
+
+    absent = _UNSET.token  # or any other identifyable object
+    old = dicts.resolve(cause.old, handler.field, absent)
+    new = dicts.resolve(cause.new, handler.field, absent)
+    values = [new, old]  # keep "new" first, to avoid "old" callbacks if "new" works.
+    return (
+        (handler.value is None and any(value is not absent for value in values)) or
+        (handler.value is filters.PRESENT and any(value is not absent for value in values)) or
+        (handler.value is filters.ABSENT and any(value is absent for value in values)) or
+        (callable(handler.value) and any(handler.value(value, **kwargs) for value in values)) or
+        (any(handler.value == value for value in values))
+    )
+
+
+def _matches_field_changes(
+        handler: handlers.ResourceChangingHandler,
+        cause: causation.ResourceChangingCause,
+        kwargs: MutableMapping[str, Any],
+) -> bool:
+    if not handler.field:
+        return True
+
+    if not kwargs:
+        kwargs.update(invocation.build_kwargs(cause=cause))
+
+    absent = _UNSET.token  # or any other identifyable object
+    old = dicts.resolve(cause.old, handler.field, absent)
+    new = dicts.resolve(cause.new, handler.field, absent)
+    return ((
+        not handler.field_needs_change or
+        old != new  # ... or there IS a change.
+    ) and (
+        (handler.old is None) or
+        (handler.old is filters.ABSENT and old is absent) or
+        (handler.old is filters.PRESENT and old is not absent) or
+        (callable(handler.old) and handler.old(old, **kwargs)) or
+        (handler.old == old)
+    ) and (
+        (handler.new is None) or
+        (handler.new is filters.ABSENT and new is absent) or
+        (handler.new is filters.PRESENT and new is not absent) or
+        (callable(handler.new) and handler.new(new, **kwargs)) or
+        (handler.new == new)
+    ))
+
+
 def _matches_filter_callback(
         handler: handlers.ResourceHandler,
         cause: causation.ResourceCause,
@@ -713,6 +772,10 @@ def _matches_filter_callback(
     if not kwargs:
         kwargs.update(invocation.build_kwargs(cause=cause))
     return handler.when(**kwargs)
+
+
+class _UNSET(enum.Enum):
+    token = enum.auto()
 
 
 _default_registry: Optional[OperatorRegistry] = None

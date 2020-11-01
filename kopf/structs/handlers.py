@@ -123,10 +123,14 @@ class ResourceWatchingHandler(ResourceHandler):
 class ResourceChangingHandler(ResourceHandler):
     fn: callbacks.ResourceChangingFn  # type clarification
     reason: Optional[Reason]
-    field: Optional[dicts.FieldPath]
     initial: Optional[bool]
     deleted: Optional[bool]  # used for mixed-in (initial==True) @on.resume handlers only.
     requires_finalizer: Optional[bool]
+    field_needs_change: Optional[bool]  # to identify on-field/on-update with support for old=/new=.
+    field: Optional[dicts.FieldPath]
+    value: Optional[filters.ValueFilter]
+    old: Optional[filters.ValueFilter]
+    new: Optional[filters.ValueFilter]
 
     @property
     def event(self) -> Optional[Reason]:
