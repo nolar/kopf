@@ -26,7 +26,7 @@ from typing import AsyncIterator, Dict, Optional, cast
 
 import aiohttp
 
-from kopf.clients import auth, discovery, errors, fetching
+from kopf.clients import auth, errors, fetching
 from kopf.structs import bodies, configuration, primitives, references
 from kopf.utilities import aiotasks
 
@@ -221,9 +221,6 @@ async def watch_objs(
     """
     if context is None:
         raise RuntimeError("API instance is not injected by the decorator.")
-
-    is_namespaced = await discovery.is_namespaced(resource=resource, context=context)
-    namespace = namespace if is_namespaced else None
 
     params: Dict[str, str] = {}
     params['watch'] = 'true'

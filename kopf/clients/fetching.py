@@ -1,40 +1,7 @@
-import enum
-from typing import Collection, List, Optional, Tuple, TypeVar, Union, cast
+from typing import Collection, List, Optional, Tuple
 
-from kopf.clients import auth, discovery, errors
+from kopf.clients import auth, errors
 from kopf.structs import bodies, references
-
-_T = TypeVar('_T')
-
-
-class _UNSET(enum.Enum):
-    token = enum.auto()
-
-
-@auth.reauthenticated_request
-async def read_obj(
-        *,
-        resource: references.Resource,
-        namespace: references.Namespace,
-        name: Optional[str],
-        default: Union[_T, _UNSET] = _UNSET.token,
-        context: Optional[auth.APIContext] = None,  # injected by the decorator
-) -> Union[bodies.RawBody, _T]:
-    if context is None:
-        raise RuntimeError("API instance is not injected by the decorator.")
-
-    is_namespaced = await discovery.is_namespaced(resource=resource, context=context)
-    namespace = namespace if is_namespaced else None
-
-    try:
-        url = resource.get_url(server=context.server, namespace=namespace, name=name)
-        rsp = await errors.parse_response(await context.session.get(url))
-        return cast(bodies.RawBody, rsp)
-
-    except (errors.APINotFoundError, errors.APIForbiddenError):
-        if not isinstance(default, _UNSET):
-            return default
-        raise
 
 
 @auth.reauthenticated_request
@@ -58,9 +25,6 @@ async def list_objs_rv(
     """
     if context is None:
         raise RuntimeError("API instance is not injected by the decorator.")
-
-    is_namespaced = await discovery.is_namespaced(resource=resource, context=context)
-    namespace = namespace if is_namespaced else None
 
     url = resource.get_url(server=context.server, namespace=namespace)
     rsp = await errors.parse_response(await context.session.get(url))

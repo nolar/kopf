@@ -79,7 +79,7 @@ def run(
         peering_name: Optional[str],
         priority: Optional[int],
         standalone: Optional[bool],
-        namespaces: Collection[references.NamespaceName],
+        namespaces: Collection[references.NamespacePattern],
         clusterwide: bool,
         liveness_endpoint: Optional[str],
 ) -> None:
@@ -123,23 +123,25 @@ def freeze(
         id: Optional[str],
         message: Optional[str],
         lifetime: int,
-        namespaces: Collection[references.NamespaceName],
+        namespaces: Collection[references.NamespacePattern],
         clusterwide: bool,
         peering_name: str,
         priority: int,
 ) -> None:
     """ Freeze the resource handling in the cluster. """
     identity = peering.Identity(id) if id else peering.detect_own_id(manual=True)
+    insights = references.Insights()
     settings = configuration.OperatorSettings()
     settings.peering.name = peering_name
     settings.peering.priority = priority
     return running.run(
         clusterwide=clusterwide,
         namespaces=namespaces,
+        insights=insights,
+        identity=identity,
         settings=settings,
         _command=peering.touch_command(
-            clusterwide=clusterwide,
-            namespaces=namespaces,
+            insights=insights,
             identity=identity,
             settings=settings,
             lifetime=lifetime))
@@ -153,19 +155,23 @@ def freeze(
 @click.option('-P', '--peering', 'peering_name', required=True, envvar='KOPF_RESUME_PEERING')
 def resume(
         id: Optional[str],
-        namespaces: Collection[references.NamespaceName],
+        namespaces: Collection[references.NamespacePattern],
         clusterwide: bool,
         peering_name: str,
 ) -> None:
     """ Resume the resource handling in the cluster. """
     identity = peering.Identity(id) if id else peering.detect_own_id(manual=True)
+    insights = references.Insights()
     settings = configuration.OperatorSettings()
     settings.peering.name = peering_name
     return running.run(
+        clusterwide=clusterwide,
+        namespaces=namespaces,
+        insights=insights,
+        identity=identity,
         settings=settings,
         _command=peering.touch_command(
-            clusterwide=clusterwide,
-            namespaces=namespaces,
+            insights=insights,
             identity=identity,
             settings=settings,
             lifetime=0))

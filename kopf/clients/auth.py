@@ -1,4 +1,3 @@
-import asyncio
 import base64
 import functools
 import os
@@ -103,8 +102,6 @@ class APIContext:
 
     # Temporary caches of the information retrieved for and from the environment.
     _tempfiles: "_TempFiles"
-    _discovery_lock: asyncio.Lock
-    _discovered_resources: Dict[str, Dict[str, Dict[str, object]]]  # ['group/version']['plural']
 
     def __init__(
             self,
@@ -197,8 +194,6 @@ class APIContext:
 
         # For purging on garbage collection.
         self._tempfiles = tempfiles
-        self._discovery_lock = asyncio.Lock()
-        self._discovered_resources = {}
 
     async def close(self) -> None:
 
