@@ -9,8 +9,13 @@ from kopf.engines.peering import process_peering_event
 from kopf.structs import bodies, primitives
 from kopf.structs.references import Resource
 
-NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings')
-CLUSTER_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'clusterkopfpeerings')
+DEFAULTS = dict(
+    kind='...', singular='...', namespaced=True, preferred=True,
+    shortcuts=[], categories=[], subresources=[],
+    verbs=['list', 'watch', 'patch'],
+)
+
+NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings', **DEFAULTS)
 
 
 @dataclasses.dataclass(frozen=True, eq=False)
@@ -35,44 +40,30 @@ async def replenished(mocker):
     return replenished
 
 
-@pytest.mark.parametrize('our_name, our_namespace, their_name, their_namespace', [
-    ['our-name', 'our-namespace', 'their-name', 'their-namespace'],
-    ['our-name', 'our-namespace', 'their-name', 'our-namespace'],
-    ['our-name', 'our-namespace', 'their-name', None],
-    ['our-name', 'our-namespace', 'our-name', 'their-namespace'],
-    ['our-name', 'our-namespace', 'our-name', None],
-    ['our-name', None, 'their-name', 'their-namespace'],
-    ['our-name', None, 'their-name', 'our-namespace'],
-    ['our-name', None, 'their-name', None],
-    ['our-name', None, 'our-name', 'their-namespace'],
-    ['our-name', None, 'their-name', 'our-namespace'],
-])
-@pytest.mark.parametrize('peering_resource', [NAMESPACED_PEERING_RESOURCE, CLUSTER_PEERING_RESOURCE])
 async def test_other_peering_objects_are_ignored(
-        mocker, k8s_mocked, settings, replenished,
-        peering_resource, our_name, our_namespace, their_name, their_namespace):
+        mocker, k8s_mocked, settings, replenished):
 
     status = mocker.Mock()
     status.items.side_effect = Exception("This should not be called.")
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
         object={
-            'metadata': {'name': their_name, 'namespace': their_namespace},
+            'metadata': {'name': 'their-name'},
             'status': status,
         })
 
     wait_for = mocker.patch('asyncio.wait_for')
 
-    settings.peering.name = our_name
+    settings.peering.name = 'our-name'
     await process_peering_event(
         raw_event=event,
         freeze_toggle=primitives.Toggle(),
         replenished=replenished,
         autoclean=False,
         identity='id',
-        resource=peering_resource,
         settings=settings,
-        namespace=our_namespace,
+        namespace='namespace',
+        resource=NAMESPACED_PEERING_RESOURCE,
     )
     assert not status.items.called
     assert not k8s_mocked.patch_obj.called

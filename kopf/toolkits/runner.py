@@ -33,7 +33,7 @@ class KopfRunner(_AbstractKopfRunner):
 
         from kopf.testing import KopfRunner
 
-        with KopfRunner(['run', '--verbose', 'examples/01-minimal/example.py']) as runner:
+        with KopfRunner(['run', '-A', '--verbose', 'examples/01-minimal/example.py']) as runner:
             # do something while the operator is running.
             time.sleep(3)
 

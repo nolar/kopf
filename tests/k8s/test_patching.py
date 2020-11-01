@@ -1,3 +1,5 @@
+import dataclasses
+
 import aiohttp.web
 import pytest
 
@@ -40,7 +42,8 @@ async def test_namespaced(
 
 
 async def test_status_as_subresource_with_combined_payload(
-        resp_mocker, aresponses, hostname, resource, version_api_with_substatus):
+        resp_mocker, aresponses, hostname, resource):
+    resource = dataclasses.replace(resource, subresources=['status'])
 
     # Simulate Kopf's initial state and intention.
     patch = Patch({'spec': {'x': 'y'}, 'status': {'s': 't'}})
@@ -76,7 +79,8 @@ async def test_status_as_subresource_with_combined_payload(
 
 
 async def test_status_as_subresource_with_object_fields_only(
-        resp_mocker, aresponses, hostname, resource, version_api_with_substatus):
+        resp_mocker, aresponses, hostname, resource):
+    resource = dataclasses.replace(resource, subresources=['status'])
 
     # Simulate Kopf's initial state and intention.
     patch = Patch({'spec': {'x': 'y'}})
@@ -109,7 +113,8 @@ async def test_status_as_subresource_with_object_fields_only(
 
 
 async def test_status_as_subresource_with_status_fields_only(
-        resp_mocker, aresponses, hostname, resource, version_api_with_substatus):
+        resp_mocker, aresponses, hostname, resource):
+    resource = dataclasses.replace(resource, subresources=['status'])
 
     # Simulate Kopf's initial state and intention.
     patch = Patch({'status': {'s': 't'}})

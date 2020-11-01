@@ -43,7 +43,10 @@ def test_all_examples_are_runnable(mocker, settings, with_crd, exampledir, caplo
     settings.watching.server_timeout = 10
 
     # Run an operator and simulate some activity with the operated resource.
-    with KopfRunner(['run', '--standalone', '--verbose', str(example_py)], timeout=60) as runner:
+    with KopfRunner(
+        ['run', '--all-namespaces', '--standalone', '--verbose', str(example_py)],
+        timeout=60,
+    ) as runner:
 
         # Give it some time to start.
         _sleep_till_stopword(caplog=caplog,
