@@ -149,7 +149,7 @@ class ResourceRegistry(
         # check whether the body matches a deletion handler
         for handler in self._handlers:
             if handler.id not in excluded:
-                if handler.requires_finalizer and match(handler=handler, cause=cause):
+                if handler.requires_finalizer and prematch(handler=handler, cause=cause):
                     return True
         return False
 
@@ -193,7 +193,7 @@ class ResourceWatchingRegistry(ResourceRegistry[
     ) -> Iterator[handlers.ResourceWatchingHandler]:
         for handler in self._handlers:
             if handler.id not in excluded:
-                if match(handler=handler, cause=cause, ignore_fields=True):
+                if match(handler=handler, cause=cause):
                     yield handler
 
 
@@ -278,7 +278,7 @@ class ResourceChangingRegistry(ResourceRegistry[
             cause: causation.ResourceChangingCause,
     ) -> bool:
         for handler in self._handlers:
-            if match(handler=handler, cause=cause, ignore_fields=True):
+            if prematch(handler=handler, cause=cause):
                 return True
         return False
 
@@ -612,15 +612,27 @@ def _deduplicated(
             yield handler
 
 
-def match(
+def prematch(
         handler: handlers.ResourceHandler,
         cause: causation.ResourceCause,
-        ignore_fields: bool = False,
 ) -> bool:
     # Kwargs are lazily evaluated on the first _actual_ use, and shared for all filters since then.
     kwargs: MutableMapping[str, Any] = {}
     return all([
-        _matches_field(handler, cause, ignore_fields),
+        _matches_labels(handler, cause, kwargs),
+        _matches_annotations(handler, cause, kwargs),
+        _matches_filter_callback(handler, cause, kwargs),
+    ])
+
+
+def match(
+        handler: handlers.ResourceHandler,
+        cause: causation.ResourceCause,
+) -> bool:
+    # Kwargs are lazily evaluated on the first _actual_ use, and shared for all filters since then.
+    kwargs: MutableMapping[str, Any] = {}
+    return all([
+        _matches_field(handler, cause, kwargs),
         _matches_labels(handler, cause, kwargs),
         _matches_annotations(handler, cause, kwargs),
         _matches_filter_callback(handler, cause, kwargs),
@@ -630,12 +642,11 @@ def match(
 def _matches_field(
         handler: handlers.ResourceHandler,
         cause: causation.ResourceCause,
-        ignore_fields: bool = False,
+        kwargs: MutableMapping[str, Any],
 ) -> bool:
-    return (ignore_fields or
-            not isinstance(handler, handlers.ResourceChangingHandler) or
+    return (not isinstance(handler, handlers.ResourceChangingHandler) or
+            not isinstance(cause, causation.ResourceChangingCause) or
             not handler.field or (
-                isinstance(cause, causation.ResourceChangingCause) and
                 bool(diffs.reduce(cause.diff, handler.field))
             ))
 

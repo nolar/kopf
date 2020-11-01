@@ -153,7 +153,7 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[
         for handler in self._handlers:
             if not isinstance(handler, handlers.ResourceWatchingHandler):
                 pass
-            elif registries.match(handler=handler, cause=cause, ignore_fields=True):
+            elif registries.match(handler=handler, cause=cause):
                 yield handler
 
     def iter_cause_handlers(
