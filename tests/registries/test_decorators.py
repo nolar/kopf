@@ -159,7 +159,7 @@ def test_on_field_minimal(cause_factory):
     diff = [('op', ('field', 'subfield'), 'old', 'new')]
     cause = cause_factory(resource=resource, reason=Reason.UPDATE, diff=diff)
 
-    @kopf.on.field('group', 'version', 'plural', 'field.subfield')
+    @kopf.on.field('group', 'version', 'plural', field='field.subfield')
     def fn(**_):
         pass
 
@@ -175,6 +175,22 @@ def test_on_field_minimal(cause_factory):
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
     assert handlers[0].when is None
+
+
+def test_on_field_warns_with_positional(cause_factory):
+    registry = kopf.get_default_registry()
+    resource = Resource('group', 'version', 'plural')
+    diff = [('op', ('field', 'subfield'), 'old', 'new')]
+    cause = cause_factory(resource=resource, reason=Reason.UPDATE, diff=diff)
+
+    with pytest.deprecated_call(match=r"Positional field name is deprecated"):
+        @kopf.on.field('group', 'version', 'plural', 'field.subfield')
+        def fn(**_):
+            pass
+
+    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    assert len(handlers) == 1
+    assert handlers[0].field == ('field', 'subfield')
 
 
 def test_on_field_fails_without_field():
@@ -390,7 +406,7 @@ def test_on_field_with_all_kwargs(mocker, cause_factory):
 
     when = lambda **_: False
 
-    @kopf.on.field('group', 'version', 'plural', 'field.subfield',
+    @kopf.on.field('group', 'version', 'plural', field='field.subfield',
                    id='id', registry=registry,
                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                    labels={'somelabel': 'somevalue'},

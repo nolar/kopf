@@ -183,7 +183,7 @@ def test_on_field_minimal(
     diff = [('op', ('field', 'subfield'), 'old', 'new')]
     cause = cause_factory(resource=resource, reason=Reason.UPDATE, diff=diff)
 
-    @kopf.on.field('group', 'version', 'plural', 'field.subfield')
+    @kopf.on.field('group', 'version', 'plural', field='field.subfield')
     def fn(**_):
         pass
 
@@ -440,7 +440,7 @@ def test_on_field_with_all_kwargs(
 
     when = lambda **_: False
 
-    @kopf.on.field('group', 'version', 'plural', 'field.subfield',
+    @kopf.on.field('group', 'version', 'plural', field='field.subfield',
                    id='id', registry=registry,
                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                    labels={'somelabel': 'somevalue'},

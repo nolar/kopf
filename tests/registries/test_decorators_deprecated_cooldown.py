@@ -150,7 +150,7 @@ def test_on_field_with_cooldown(mocker, cause_factory):
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
     with pytest.deprecated_call(match=r"use backoff="):
-        @kopf.on.field('group', 'version', 'plural', 'field.subfield', cooldown=78)
+        @kopf.on.field('group', 'version', 'plural', field='field.subfield', cooldown=78)
         def fn(**_):
             pass
 
