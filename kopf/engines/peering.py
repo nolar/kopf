@@ -35,12 +35,12 @@ import getpass
 import logging
 import os
 import random
-from typing import Any, Dict, Iterable, Mapping, NoReturn, Optional, Union, cast
+from typing import Any, Dict, Iterable, Mapping, NewType, NoReturn, Optional, Union, cast
 
 import iso8601
 
 from kopf.clients import fetching, patching
-from kopf.structs import bodies, patches, primitives, resources
+from kopf.structs import bodies, configuration, patches, primitives, resources
 from kopf.utilities import hostnames
 
 logger = logging.getLogger(__name__)
@@ -48,8 +48,8 @@ logger = logging.getLogger(__name__)
 # The CRD info on the special sync-object.
 CLUSTER_PEERING_RESOURCE = resources.Resource('zalando.org', 'v1', 'clusterkopfpeerings')
 NAMESPACED_PEERING_RESOURCE = resources.Resource('zalando.org', 'v1', 'kopfpeerings')
-LEGACY_PEERING_RESOURCE = resources.Resource('zalando.org', 'v1', 'kopfpeerings')
-PEERING_DEFAULT_NAME = 'default'
+
+Identity = NewType('Identity', str)
 
 
 # The class used to represent a peer in the parsed peers list (for convenience).
@@ -58,20 +58,15 @@ class Peer:
 
     def __init__(
             self,
-            id: str,
             *,
-            name: str,
+            identity: Identity,
             priority: int = 0,
             lastseen: Optional[Union[str, datetime.datetime]] = None,
             lifetime: Union[int, datetime.timedelta] = 60,
-            namespace: Optional[str] = None,
-            legacy: bool = False,
             **_: Any,  # for the forward-compatibility with the new fields
     ):
         super().__init__()
-        self.id = id
-        self.name = name
-        self.namespace = namespace
+        self.identity = identity
         self.priority = priority
         self.lifetime = (lifetime if isinstance(lifetime, datetime.timedelta) else
                          datetime.timedelta(seconds=int(lifetime)))
@@ -81,126 +76,26 @@ class Peer:
         self.lastseen = self.lastseen.replace(tzinfo=None)  # only the naive utc -- for comparison
         self.deadline = self.lastseen + self.lifetime
         self.is_dead = self.deadline <= datetime.datetime.utcnow()
-        self.legacy = legacy
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.id}, namespace={self.namespace}, priority={self.priority}, lastseen={self.lastseen}, lifetime={self.lifetime})"
-
-    @property
-    def resource(self) -> resources.Resource:
-        return LEGACY_PEERING_RESOURCE if self.legacy else CLUSTER_PEERING_RESOURCE if self.namespace is None else NAMESPACED_PEERING_RESOURCE
-
-    @classmethod
-    async def detect(
-            cls,
-            standalone: bool,
-            namespace: Optional[str],
-            name: Optional[str],
-            **kwargs: Any,
-    ) -> Optional["Peer"]:
-
-        if standalone:
-            return None
-
-        if name:
-            if await Peer._is_peering_exist(name, namespace=namespace):
-                return cls(name=name, namespace=namespace, **kwargs)
-            elif await Peer._is_peering_legacy(name, namespace=namespace):
-                return cls(name=name, namespace=namespace, legacy=True, **kwargs)
-            else:
-                raise Exception(f"The peering {name!r} was not found")
-
-        if await Peer._is_peering_exist(name=PEERING_DEFAULT_NAME, namespace=namespace):
-            return cls(name=PEERING_DEFAULT_NAME, namespace=namespace, **kwargs)
-        elif await Peer._is_peering_legacy(name=PEERING_DEFAULT_NAME, namespace=namespace):
-            return cls(name=PEERING_DEFAULT_NAME, namespace=namespace, legacy=True, **kwargs)
-
-        logger.warning(f"Default peering object not found, falling back to the standalone mode.")
-        return None
+        return f"{self.__class__.__name__}(identity={self.identity}, priority={self.priority}, lastseen={self.lastseen}, lifetime={self.lifetime})"
 
     def as_dict(self) -> Dict[str, Any]:
         # Only the non-calculated and non-identifying fields.
         return {
-            'namespace': self.namespace,
             'priority': self.priority,
             'lastseen': self.lastseen.isoformat(),
             'lifetime': self.lifetime.total_seconds(),
         }
-
-    def touch(self, *, lifetime: Optional[int] = None) -> None:
-        self.lastseen = datetime.datetime.utcnow()
-        self.lifetime = (self.lifetime if lifetime is None else
-                         lifetime if isinstance(lifetime, datetime.timedelta) else
-                         datetime.timedelta(seconds=int(lifetime)))
-        self.deadline = self.lastseen + self.lifetime
-        self.is_dead = self.deadline <= datetime.datetime.utcnow()
-
-    async def keepalive(self) -> None:
-        """
-        Add a peer to the peers, and update its alive status.
-        """
-        self.touch()
-        await apply_peers([self], name=self.name, namespace=self.namespace, legacy=self.legacy)
-
-    async def disappear(self) -> None:
-        """
-        Remove a peer from the peers (gracefully).
-        """
-        self.touch(lifetime=0)
-        await apply_peers([self], name=self.name, namespace=self.namespace, legacy=self.legacy)
-
-    @staticmethod
-    async def _is_peering_exist(name: str, namespace: Optional[str]) -> bool:
-        resource = CLUSTER_PEERING_RESOURCE if namespace is None else NAMESPACED_PEERING_RESOURCE
-        obj = await fetching.read_obj(resource=resource, namespace=namespace, name=name, default=None)
-        return obj is not None
-
-    @staticmethod
-    async def _is_peering_legacy(name: str, namespace: Optional[str]) -> bool:
-        """
-        Legacy mode for the peering: cluster-scoped KopfPeering (new mode: namespaced).
-
-        .. deprecated:: 1.0
-
-            This logic will be removed since 1.0.
-            Deploy ``ClusterKopfPeering`` as per documentation, and use it normally.
-        """
-        crd = await fetching.read_crd(resource=LEGACY_PEERING_RESOURCE, default=None)
-        if crd is None:
-            return False
-
-        if str(crd.get('spec', {}).get('scope', '')).lower() != 'cluster':
-            return False  # no legacy mode detected
-
-        obj = await fetching.read_obj(resource=LEGACY_PEERING_RESOURCE, name=name, default=None)
-        return obj is not None
-
-
-async def apply_peers(
-        peers: Iterable[Peer],
-        name: str,
-        namespace: Union[None, str],
-        legacy: bool = False,
-) -> None:
-    """
-    Apply the changes in the peers to the sync-object.
-
-    The dead peers are removed, the new or alive peers are stored.
-    Note: this does NOT change their `lastseen` field, so do it explicitly with ``touch()``.
-    """
-    patch = patches.Patch()
-    patch.update({'status': {peer.id: None if peer.is_dead else peer.as_dict() for peer in peers}})
-    resource = (LEGACY_PEERING_RESOURCE if legacy else
-                CLUSTER_PEERING_RESOURCE if namespace is None else
-                NAMESPACED_PEERING_RESOURCE)
-    await patching.patch_obj(resource=resource, namespace=namespace, name=name, patch=patch)
 
 
 async def process_peering_event(
         *,
         raw_event: bodies.RawEvent,
         freeze_mode: primitives.Toggle,
-        ourselves: Peer,
+        namespace: Optional[str],
+        identity: Identity,
+        settings: configuration.OperatorSettings,
         autoclean: bool = True,
         replenished: asyncio.Event,
 ) -> None:
@@ -214,24 +109,23 @@ async def process_peering_event(
     and to all the resource handlers to check its value when the events arrive
     (see `create_tasks` and `run` functions).
     """
+    body: bodies.RawBody = raw_event['object']
+    meta: bodies.RawMeta = raw_event['object']['metadata']
 
     # Silently ignore the peering objects which are not ours to worry.
-    body = raw_event['object']
-    name = body.get('metadata', {}).get('name', None)
-    namespace = body.get('metadata', {}).get('namespace', None)
-    if namespace != ourselves.namespace or name != ourselves.name or name is None:
+    if meta.get('namespace') != namespace or meta.get('name') != settings.peering.name:
         return
 
     # Find if we are still the highest priority operator.
     pairs = cast(Mapping[str, Mapping[str, object]], body.get('status', {}))
-    peers = [Peer(id=opid, name=name, **opinfo) for opid, opinfo in pairs.items()]
+    peers = [Peer(identity=Identity(opid), **opinfo) for opid, opinfo in pairs.items()]
     dead_peers = [peer for peer in peers if peer.is_dead]
-    prio_peers = [peer for peer in peers if not peer.is_dead and peer.priority > ourselves.priority]
-    same_peers = [peer for peer in peers if not peer.is_dead and peer.priority == ourselves.priority and peer.id != ourselves.id]
+    live_peers = [peer for peer in peers if not peer.is_dead and peer.identity != identity]
+    prio_peers = [peer for peer in live_peers if peer.priority > settings.peering.priority]
+    same_peers = [peer for peer in live_peers if peer.priority == settings.peering.priority]
 
     if autoclean and dead_peers:
-        # NB: sync and blocking, but this is fine.
-        await apply_peers(dead_peers, name=ourselves.name, namespace=ourselves.namespace, legacy=ourselves.legacy)
+        await clean(peers=dead_peers, settings=settings, namespace=namespace)
 
     if prio_peers:
         if freeze_mode.is_off():
@@ -248,32 +142,102 @@ async def process_peering_event(
             await freeze_mode.turn_off()
 
 
-async def peers_keepalive(
+async def keepalive(
         *,
-        ourselves: Peer,
+        namespace: Optional[str],
+        identity: Identity,
+        settings: configuration.OperatorSettings,
 ) -> NoReturn:
     """
     An ever-running coroutine to regularly send our own keep-alive status for the peers.
     """
     try:
         while True:
-            logger.debug(f"Peering keep-alive update for {ourselves.id} (priority {ourselves.priority})")
-            await ourselves.keepalive()
+            await touch(
+                identity=identity,
+                settings=settings,
+                namespace=namespace,
+            )
 
             # How often do we update. Keep limited to avoid k8s api flooding.
             # Should be slightly less than the lifetime, enough for a patch request to finish.
-            await asyncio.sleep(max(1, int(ourselves.lifetime.total_seconds() - 10)))
+            await asyncio.sleep(max(1, int(settings.peering.lifetime - 10)))
     finally:
         try:
-            await asyncio.shield(ourselves.disappear())
+            await asyncio.shield(touch(
+                identity=identity,
+                settings=settings,
+                namespace=namespace,
+                lifetime=0,
+            ))
         except asyncio.CancelledError:
-            # It is the cancellation of `keepalive()`, not of the shielded `disappear()`.
             pass
         except Exception:
             logger.exception(f"Couldn't remove self from the peering. Ignoring.")
 
 
-def detect_own_id(*, manual: bool) -> str:
+async def touch(
+        *,
+        identity: Identity,
+        settings: configuration.OperatorSettings,
+        namespace: Optional[str],
+        lifetime: Optional[int] = None,
+) -> None:
+    name = settings.peering.name
+    resource = guess_resource(namespace=namespace)
+
+    peer = Peer(
+        identity=identity,
+        priority=settings.peering.priority,
+        lifetime=settings.peering.lifetime if lifetime is None else lifetime,
+    )
+
+    patch = patches.Patch()
+    patch.update({'status': {identity: None if peer.is_dead else peer.as_dict()}})
+    rsp = await patching.patch_obj(resource=resource, namespace=namespace, name=name, patch=patch)
+
+    if not settings.peering.stealth or rsp is None:
+        where = f"in {namespace!r}" if namespace else "cluster-wide"
+        result = "not found" if rsp is None else "ok"
+        logger.debug(f"Keep-alive in {name!r} {where}: {result}.")
+
+
+async def clean(
+        *,
+        peers: Iterable[Peer],
+        settings: configuration.OperatorSettings,
+        namespace: Optional[str],
+) -> None:
+    name = settings.peering.name
+    resource = guess_resource(namespace=namespace)
+
+    patch = patches.Patch()
+    patch.update({'status': {peer.identity: None for peer in peers}})
+    await patching.patch_obj(resource=resource, namespace=namespace, name=name, patch=patch)
+
+
+async def detect_presence(
+        *,
+        settings: configuration.OperatorSettings,
+        namespace: Optional[str],
+) -> Optional[bool]:
+
+    if settings.peering.standalone:
+        return None
+
+    resource = guess_resource(namespace=namespace)
+    name = settings.peering.name
+    obj = await fetching.read_obj(resource=resource, namespace=namespace, name=name, default=None)
+    if settings.peering.mandatory and obj is None:
+        raise Exception(f"The mandatory peering {name!r} was not found.")
+    elif obj is None:
+        logger.warning(f"Default peering object is not found, falling back to the standalone mode.")
+        return False
+    else:
+        return True
+
+
+def detect_own_id(*, manual: bool) -> Identity:
     """
     Detect or generate the id for ourselves, i.e. the execute operator.
 
@@ -295,10 +259,14 @@ def detect_own_id(*, manual: bool) -> str:
 
     pod = os.environ.get('POD_ID', None)
     if pod is not None:
-        return pod
+        return Identity(pod)
 
     user = getpass.getuser()
     host = hostnames.get_descriptive_hostname()
     now = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
     rnd = ''.join(random.choices('abcdefhijklmnopqrstuvwxyz0123456789', k=3))
-    return f'{user}@{host}' if manual else f'{user}@{host}/{now}/{rnd}'
+    return Identity(f'{user}@{host}' if manual else f'{user}@{host}/{now}/{rnd}')
+
+
+def guess_resource(namespace: Optional[str]) -> resources.Resource:
+    return CLUSTER_PEERING_RESOURCE if namespace is None else NAMESPACED_PEERING_RESOURCE

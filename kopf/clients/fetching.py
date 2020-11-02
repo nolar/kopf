@@ -16,30 +16,6 @@ class _UNSET(enum.Enum):
 
 
 @auth.reauthenticated_request
-async def read_crd(
-        *,
-        resource: resources.Resource,
-        default: Union[_T, _UNSET] = _UNSET.token,
-        context: Optional[auth.APIContext] = None,  # injected by the decorator
-) -> Union[bodies.RawBody, _T]:
-    if context is None:
-        raise RuntimeError("API instance is not injected by the decorator.")
-
-    try:
-        response = await context.session.get(
-            url=CRD_CRD.get_url(server=context.server, name=resource.name),
-        )
-        await errors.check_response(response)
-        respdata = await response.json()
-        return cast(bodies.RawBody, respdata)
-
-    except aiohttp.ClientResponseError as e:
-        if e.status in [403, 404] and not isinstance(default, _UNSET):
-            return default
-        raise
-
-
-@auth.reauthenticated_request
 async def read_obj(
         *,
         resource: resources.Resource,

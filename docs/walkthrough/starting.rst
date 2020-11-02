@@ -38,7 +38,7 @@ The output looks like this:
 .. code-block:: none
 
     [2019-05-31 10:42:11,870] kopf.config          [DEBUG   ] configured via kubeconfig file
-    [2019-05-31 10:42:11,913] kopf.reactor.peering [WARNING ] Default peering object not found, falling back to the standalone mode.
+    [2019-05-31 10:42:11,913] kopf.reactor.peering [WARNING ] Default peering object is not found, falling back to the standalone mode.
     [2019-05-31 10:42:12,037] kopf.reactor.handlin [DEBUG   ] [default/my-claim] First appearance: {'apiVersion': 'zalando.org/v1', 'kind': 'EphemeralVolumeClaim', 'metadata': {'annotations': {'kubectl.kubernetes.io/last-applied-configuration': '{"apiVersion":"zalando.org/v1","kind":"EphemeralVolumeClaim","metadata":{"annotations":{},"name":"my-claim","namespace":"default"}}\n'}, 'creationTimestamp': '2019-05-29T00:41:57Z', 'generation': 1, 'name': 'my-claim', 'namespace': 'default', 'resourceVersion': '47720', 'selfLink': '/apis/zalando.org/v1/namespaces/default/ephemeralvolumeclaims/my-claim', 'uid': '904c2b9b-81aa-11e9-a202-a6e6b278a294'}}
     [2019-05-31 10:42:12,038] kopf.reactor.handlin [DEBUG   ] [default/my-claim] Adding the finalizer, thus preventing the actual deletion.
     [2019-05-31 10:42:12,038] kopf.reactor.handlin [DEBUG   ] [default/my-claim] Patching with: {'metadata': {'finalizers': ['KopfFinalizerMarker']}}

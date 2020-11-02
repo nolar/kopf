@@ -23,6 +23,16 @@ To set the operator's priority, use :option:`--priority`:
 
     kopf run --priority=100 ...
 
+Or:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.peering.priority = 100
+
 As a shortcut, there is a :option:`--dev` option, which sets
 the priority to ``666``, and is intended for the development mode.
 
@@ -59,25 +69,11 @@ Create the peering objects as needed with one of:
 
 .. note::
 
-    Previously, ``KopfPeering`` was the only CRD, and it was cluster-scoped.
-    Now, it is namespaced. For the new users, it all will be fine and working.
-
-    If the old ``KopfPeering`` CRD is already deployed to your cluster,
-    it will also continue to work as before without re-configuration:
-    though there will be no namespace isolation as documented here ---
-    it will be cluster peering regardless of :option:`--namespace`
-    (as it was before the changes).
-
-    When possible (but strictly after the Kopf's version upgrade),
-    please delete the old CRD, and re-create from scratch:
-
-    .. code-block:: bash
-
-        kubectl delete crd kopfpeerings.zalando.org
-        # give it 1-2 minutes to cleanup, or repeat until succeeded:
-        kubectl create -f peering.yaml
-
-    Then re-deploy your custom peering objects of your apps.
+    In ``kopf<0.11`` (until May'2019), ``KopfPeering`` was the only CRD,
+    and it was cluster-scoped. In ``kopf>=0.11,<0.29`` (until Oct'2020),
+    this mode was deprecated but supported if the old CRD existed.
+    Since ``kopf>=0.29`` (Nov'2020), it is not supported anymore.
+    To upgrade, delete and re-create the peering CRDs to the new ones.
 
 
 Custom peering
@@ -88,11 +84,27 @@ The operator can be instructed to use alternative peering objects::
     kopf run --peering=example ...
     kopf run --peering=example --namespace=some-ns ...
 
+Or:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.peering.name = "example"
+        settings.peering.mandatory = True
+
 Depending on :option:`--namespace`, either ``ClusterKopfPeering``
 or ``KopfPeering`` will be used (in the operator's namespace).
 
 If the peering object does not exist, the operator will fail to start.
-Using :option:`--peering` assumes that the peering is required.
+Using :option:`--peering` assumes that the peering is mandatory.
+
+Please note that in the startup handler, this is not exactly the same:
+the mandatory mode must be set explicitly. Otherwise, the operator will try
+to auto-detect the presence of the custom peering object, but will not fail
+if it is absent -- unlike with the ``--peering=`` CLI option.
 
 The operators from different peering objects do not see each other.
 
@@ -107,6 +119,16 @@ To prevent an operator from peering and talking to other operators,
 the standalone mode can be enabled::
 
     kopf run --standalone ...
+
+Or:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.peering.standalone = True
 
 In that case, the operator will not freeze if other operators with
 the higher priority will start handling the objects, which may lead
@@ -145,6 +167,17 @@ operator in the deployment or replicaset:
 
     kopf run --priority=$RANDOM ...
 
+Or:
+
+.. code-block:: python
+
+    import random
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.peering.priority = random.randint(0, 32767)
+
 ``$RANDOM`` is a feature of bash
 (if you use another shell, see its man page for an equivalent).
 It returns a random integer in the range 0..32767.
@@ -152,3 +185,27 @@ With high probability, 2-3 pods will get their unique priorities.
 
 You can also use the pod's IP address in its numeric form as the priority,
 or any other source of integers.
+
+
+Stealth keep-alives
+===================
+
+Every few seconds (60 by default), the operator will send a keep-alive update
+to the chosen peering, showing that it is still functioning. Other operators
+will notice that and make decisions on their freezing or resuming.
+
+The operator also logs a keep-alive activity to its own logs. This can be
+distracting. To disable:
+
+.. code-block:: python
+
+    import random
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.peering.stealth = True
+
+There is no equivalent CLI option for that.
+
+Please note that it only affects logging. The keep-alive are sent anyway.
