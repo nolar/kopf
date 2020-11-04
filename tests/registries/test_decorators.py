@@ -156,8 +156,9 @@ def test_on_delete_minimal(cause_factory):
 def test_on_field_minimal(cause_factory):
     registry = kopf.get_default_registry()
     resource = Resource('group', 'version', 'plural')
-    diff = [('op', ('field', 'subfield'), 'old', 'new')]
-    cause = cause_factory(resource=resource, reason=Reason.UPDATE, diff=diff)
+    old = {'field': {'subfield': 'old'}}
+    new = {'field': {'subfield': 'new'}}
+    cause = cause_factory(resource=resource, reason=Reason.UPDATE, old=old, new=new, body=new)
 
     @kopf.on.field('group', 'version', 'plural', field='field.subfield')
     def fn(**_):
@@ -167,7 +168,6 @@ def test_on_field_minimal(cause_factory):
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
-    assert handlers[0].field == ('field', 'subfield')
     assert handlers[0].errors is None
     assert handlers[0].timeout is None
     assert handlers[0].retries is None
@@ -175,13 +175,18 @@ def test_on_field_minimal(cause_factory):
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
     assert handlers[0].when is None
+    assert handlers[0].field == ('field', 'subfield')
+    assert handlers[0].value is None
+    assert handlers[0].old is None
+    assert handlers[0].new is None
 
 
 def test_on_field_warns_with_positional(cause_factory):
     registry = kopf.get_default_registry()
     resource = Resource('group', 'version', 'plural')
-    diff = [('op', ('field', 'subfield'), 'old', 'new')]
-    cause = cause_factory(resource=resource, reason=Reason.UPDATE, diff=diff)
+    old = {'field': {'subfield': 'old'}}
+    new = {'field': {'subfield': 'new'}}
+    cause = cause_factory(resource=resource, reason=Reason.UPDATE, old=old, new=new, body=new)
 
     with pytest.deprecated_call(match=r"Positional field name is deprecated"):
         @kopf.on.field('group', 'version', 'plural', 'field.subfield')
@@ -400,8 +405,9 @@ def test_on_delete_with_all_kwargs(mocker, cause_factory, optional):
 def test_on_field_with_all_kwargs(mocker, cause_factory):
     registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
-    diff = [('op', ('field', 'subfield'), 'old', 'new')]
-    cause = cause_factory(resource=resource, reason=Reason.UPDATE, diff=diff)
+    old = {'field': {'subfield': 'old'}}
+    new = {'field': {'subfield': 'new'}}
+    cause = cause_factory(resource=resource, reason=Reason.UPDATE, old=old, new=new, body=new)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
     when = lambda **_: False
@@ -411,7 +417,8 @@ def test_on_field_with_all_kwargs(mocker, cause_factory):
                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                    labels={'somelabel': 'somevalue'},
                    annotations={'someanno': 'somevalue'},
-                   when=when)
+                   when=when,
+                   value='value')
     def fn(**_):
         pass
 
@@ -419,7 +426,6 @@ def test_on_field_with_all_kwargs(mocker, cause_factory):
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
-    assert handlers[0].field ==('field', 'subfield')
     assert handlers[0].id == 'id/field.subfield'
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
@@ -428,6 +434,10 @@ def test_on_field_with_all_kwargs(mocker, cause_factory):
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert handlers[0].when == when
+    assert handlers[0].field == ('field', 'subfield')
+    assert handlers[0].value == 'value'
+    assert handlers[0].old is None
+    assert handlers[0].new is None
 
 
 def test_subhandler_fails_with_no_parent_handler():

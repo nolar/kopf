@@ -41,7 +41,6 @@ def test_resource_handler_with_deprecated_cooldown_instead_of_backoff(mocker):
     fn = mocker.Mock()
     id = mocker.Mock()
     reason = mocker.Mock()
-    field = mocker.Mock()
     errors = mocker.Mock()
     timeout = mocker.Mock()
     retries = mocker.Mock()
@@ -51,6 +50,11 @@ def test_resource_handler_with_deprecated_cooldown_instead_of_backoff(mocker):
     labels = mocker.Mock()
     annotations = mocker.Mock()
     when = mocker.Mock()
+    field = mocker.Mock()
+    value = mocker.Mock()
+    old = mocker.Mock()
+    new = mocker.Mock()
+    field_needs_change = mocker.Mock()
     requires_finalizer = mocker.Mock()
 
     with pytest.deprecated_call(match=r"use backoff="):
@@ -58,7 +62,6 @@ def test_resource_handler_with_deprecated_cooldown_instead_of_backoff(mocker):
             fn=fn,
             id=id,
             reason=reason,
-            field=field,
             errors=errors,
             timeout=timeout,
             retries=retries,
@@ -69,13 +72,17 @@ def test_resource_handler_with_deprecated_cooldown_instead_of_backoff(mocker):
             labels=labels,
             annotations=annotations,
             when=when,
+            field=field,
+            value=value,
+            old=old,
+            new=new,
+            field_needs_change=field_needs_change,
             requires_finalizer=requires_finalizer,
         )
 
     assert handler.fn is fn
     assert handler.id is id
     assert handler.reason is reason
-    assert handler.field is field
     assert handler.errors is errors
     assert handler.timeout is timeout
     assert handler.retries is retries
@@ -85,4 +92,9 @@ def test_resource_handler_with_deprecated_cooldown_instead_of_backoff(mocker):
     assert handler.labels is labels
     assert handler.annotations is annotations
     assert handler.when is when
+    assert handler.field is field
+    assert handler.value is value
+    assert handler.old is old
+    assert handler.new is new
+    assert handler.field_needs_change is field_needs_change
     assert handler.requires_finalizer is requires_finalizer

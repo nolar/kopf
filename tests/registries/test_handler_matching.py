@@ -4,10 +4,8 @@ import pytest
 
 import kopf
 from kopf import OperatorRegistry
-from kopf.reactor.causation import ResourceChangingCause
 from kopf.structs.bodies import Body
 from kopf.structs.dicts import parse_field
-from kopf.structs.diffs import EMPTY, Diff, DiffItem, DiffOperation
 from kopf.structs.filters import MetaFilterToken
 from kopf.structs.handlers import ALL_REASONS, Reason, ResourceChangingHandler
 
@@ -59,7 +57,8 @@ def handler_factory(registry, resource):
             fn=some_fn, id='a',
             errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
             initial=None, deleted=None, requires_finalizer=None,
-            annotations=None, labels=None, when=None, field=None,
+            annotations=None, labels=None, when=None,
+            field=None, value=None, old=None, new=None, field_needs_change=None,
             reason=None,
         ), **kwargs))
         registry.resource_changing_handlers[resource].append(handler)
@@ -68,28 +67,42 @@ def handler_factory(registry, resource):
 
 
 @pytest.fixture(params=[
-    pytest.param([], id='with-empty-diff'),
+    # The original no-diff was equivalent to no-field until body/old/new were added to the check.
+    pytest.param(dict(old={}, new={}, body={}, diff=[]), id='with-empty-diff'),
 ])
 def cause_no_diff(request, cause_factory):
-    body = {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}}
-    return cause_factory(diff=request.param, body=body)
+    request.param['body'].update(
+        {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}})
+    cause = cause_factory(**request.param)
+    return cause
 
 
 @pytest.fixture(params=[
-    pytest.param([('op', ('some-field',), 'old', 'new')], id='with-field-diff'),
+    pytest.param(dict(old={'some-field': 'old'},
+                      new={'some-field': 'new'},
+                      body={'some-field': 'new'},
+                      diff=[('op', ('some-field',), 'old', 'new')]), id='with-field-diff'),
 ])
 def cause_with_diff(request, cause_factory):
-    body = {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}}
-    return cause_factory(diff=request.param, body=body)
+    request.param['body'].update(
+        {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}})
+    cause = cause_factory(**request.param)
+    return cause
 
 
 @pytest.fixture(params=[
-    pytest.param([], id='with-empty-diff'),
-    pytest.param([('op', ('some-field',), 'old', 'new')], id='with-field-diff'),
+    # The original no-diff was equivalent to no-field until body/old/new were added to the check.
+    pytest.param(dict(old={}, new={}, body={}, diff=[]), id='with-empty-diff'),
+    pytest.param(dict(old={'some-field': 'old'},
+                      new={'some-field': 'new'},
+                      body={'some-field': 'new'},
+                      diff=[('op', ('some-field',), 'old', 'new')]), id='with-field-diff'),
 ])
 def cause_any_diff(request, cause_factory):
-    body = {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}}
-    return cause_factory(diff=request.param, body=body)
+    request.param['body'].update(
+        {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}})
+    cause = cause_factory(**request.param)
+    return cause
 
 
 #
@@ -660,7 +673,9 @@ def test_field_same_as_diff(cause_with_diff, registry, resource):
 
     cause = cause_with_diff
     cause.reason = Reason.UPDATE
-    cause.diff = [DiffItem(DiffOperation.CHANGE, ('level1', 'level2'), 'old', 'new')]
+    cause.old = {'level1': {'level2': 'old'}}
+    cause.new = {'level1': {'level2': 'new'}}
+    cause.body = Body({'level1': {'level2': 'new'}})
     handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert handlers
 
@@ -673,7 +688,9 @@ def test_field_shorter_than_diff(cause_with_diff, registry, resource):
 
     cause = cause_with_diff
     cause.reason = Reason.UPDATE
-    cause.diff = [DiffItem(DiffOperation.CHANGE, ('level1', 'level2'), 'old', 'new')]
+    cause.old = {'level1': {'level2': 'old'}}
+    cause.new = {'level1': {'level2': 'new'}}
+    cause.body = Body({'level1': {'level2': 'new'}})
     handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert handlers
 
@@ -686,7 +703,9 @@ def test_field_longer_than_diff_for_wrong_field(cause_with_diff, registry, resou
 
     cause = cause_with_diff
     cause.reason = Reason.UPDATE
-    cause.diff = [DiffItem(DiffOperation.CHANGE, ('level1', 'level2'), 'old', 'new')]
+    cause.old = {'level1': {'level2': 'old'}}
+    cause.new = {'level1': {'level2': 'new'}}
+    cause.body = Body({'level1': {'level2': 'new'}})
     handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert not handlers
 
@@ -708,7 +727,9 @@ def test_field_longer_than_diff_for_right_field(cause_with_diff, registry, resou
 
     cause = cause_with_diff
     cause.reason = Reason.UPDATE
-    cause.diff = [DiffItem(DiffOperation.CHANGE, ('level1', 'level2'), old, new)]
+    cause.old = {'level1': {'level2': old}} if old is not None else {'level1': {'level2': {}}}
+    cause.new = {'level1': {'level2': new}} if new is not None else {'level1': {'level2': {}}}
+    cause.body = Body(cause.new)
     handlers = registry.resource_changing_handlers[cause.resource].get_handlers(cause)
     assert handlers
 

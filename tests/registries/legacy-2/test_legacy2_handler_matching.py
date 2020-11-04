@@ -30,28 +30,42 @@ def register_fn(registry, resource):
 
 
 @pytest.fixture(params=[
-    pytest.param([], id='with-empty-diff'),
+    # The original no-diff was equivalent to no-field until body/old/new were added to the check.
+    pytest.param(dict(old={}, new={}, body={}, diff=[]), id='with-empty-diff'),
 ])
 def cause_no_diff(request, cause_factory):
-    body = {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}}
-    return cause_factory(diff=request.param, body=body)
+    request.param['body'].update(
+        {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}})
+    cause = cause_factory(**request.param)
+    return cause
 
 
 @pytest.fixture(params=[
-    pytest.param([('op', ('some-field',), 'old', 'new')], id='with-field-diff'),
+    pytest.param(dict(old={'some-field': 'old'},
+                      new={'some-field': 'new'},
+                      body={'some-field': 'new'},
+                      diff=[('op', ('some-field',), 'old', 'new')]), id='with-field-diff'),
 ])
 def cause_with_diff(request, cause_factory):
-    body = {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}}
-    return cause_factory(diff=request.param, body=body)
+    request.param['body'].update(
+        {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}})
+    cause = cause_factory(**request.param)
+    return cause
 
 
 @pytest.fixture(params=[
-    pytest.param([], id='with-empty-diff'),
-    pytest.param([('op', ('some-field',), 'old', 'new')], id='with-field-diff'),
+    # The original no-diff was equivalent to no-field until body/old/new were added to the check.
+    pytest.param(dict(old={}, new={}, body={}, diff=[]), id='with-empty-diff'),
+    pytest.param(dict(old={'some-field': 'old'},
+                      new={'some-field': 'new'},
+                      body={'some-field': 'new'},
+                      diff=[('op', ('some-field',), 'old', 'new')]), id='with-field-diff'),
 ])
 def cause_any_diff(request, cause_factory):
-    body = {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}}
-    return cause_factory(diff=request.param, body=body)
+    request.param['body'].update(
+        {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}})
+    cause = cause_factory(**request.param)
+    return cause
 
 
 #

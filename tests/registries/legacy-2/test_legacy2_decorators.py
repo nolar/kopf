@@ -180,8 +180,9 @@ def test_on_field_minimal(
 
     registry = kopf.get_default_registry()
     resource = Resource('group', 'version', 'plural')
-    diff = [('op', ('field', 'subfield'), 'old', 'new')]
-    cause = cause_factory(resource=resource, reason=Reason.UPDATE, diff=diff)
+    old = {'field': {'subfield': 'old'}}
+    new = {'field': {'subfield': 'new'}}
+    cause = cause_factory(resource=resource, reason=Reason.UPDATE, old=old, new=new, body=new)
 
     @kopf.on.field('group', 'version', 'plural', field='field.subfield')
     def fn(**_):

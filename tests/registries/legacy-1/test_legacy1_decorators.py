@@ -77,8 +77,9 @@ def test_on_delete_minimal(cause_factory):
 def test_on_field_minimal(cause_factory):
     registry = kopf.get_default_registry()
     resource = Resource('group', 'version', 'plural')
-    diff = [('op', ('field', 'subfield'), 'old', 'new')]
-    cause = cause_factory(resource=resource, reason=Reason.UPDATE, diff=diff)
+    old = {'field': {'subfield': 'old'}}
+    new = {'field': {'subfield': 'new'}}
+    cause = cause_factory(resource=resource, reason=Reason.UPDATE, old=old, new=new, body=new)
 
     @kopf.on.field('group', 'version', 'plural', field='field.subfield')
     def fn(**_):
@@ -200,8 +201,9 @@ def test_on_delete_with_all_kwargs(mocker, optional, cause_factory):
 def test_on_field_with_all_kwargs(mocker, cause_factory):
     registry = GlobalRegistry()
     resource = Resource('group', 'version', 'plural')
-    diff = [('op', ('field', 'subfield'), 'old', 'new')]
-    cause = cause_factory(resource=resource, reason=Reason.UPDATE, diff=diff)
+    old = {'field': {'subfield': 'old'}}
+    new = {'field': {'subfield': 'new'}}
+    cause = cause_factory(resource=resource, reason=Reason.UPDATE, old=old, new=new, body=new)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
     when = lambda **_: False
