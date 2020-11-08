@@ -2,78 +2,76 @@
 Filtering
 =========
 
-.. highlight:: python
+Handlers can be restricted to only the resources that match certain criteria.
 
-It is possible to only execute handlers when the object that triggers a handler
-matches certain criteria.
+Multiple criteria are joined with AND, i.e. they all must be satisfied.
 
-The following filters are available for all resource-related handlers
-(event-watching and change-detecting):
+Unless stated otherwise, the described filters are available for all handlers:
+resuming, creation, deletion, updating, event-watching, timers, daemons,
+or even to sub-handlers (thus eliminating some checks in its parent's code).
 
+There are only a few kinds of checks:
 
-By labels
-=========
+* Specific values -- expressed with Python literals such as ``"a string"``.
+* Presence of values -- with special markers ``kopf.PRESENT/kopf.ABSENT``.
+* Per-value callbacks -- with anything callable and evaluatable to true/false.
+* Whole-body callbacks -- with anything callable and evaluatable to true/false.
 
-* Match an object's label and value::
-
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
-                    labels={'some-label': 'somevalue'})
-    def my_handler(spec, **_):
-        pass
-
-* Match on the existence of an object's label::
-
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
-                    labels={'some-label': kopf.PRESENT})
-    def my_handler(spec, **_):
-        pass
-
-* Match on the absence of an object's label::
-
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
-                    labels={'some-label': kopf.ABSENT})
-    def my_handler(spec, **_):
-        pass
+But there are multiple places where these checks can be applied,
+each has its own specifics.
 
 
-By annotations
-==============
+Metadata filters
+================
 
-* Match on object's annotation and value::
+Metadata is the most commonly filtered aspect of the resources.
+
+Match only when the resource's label or annotation has a specific value:
+
+.. code-block:: python
 
     @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
+                    labels={'some-label': 'somevalue'},
                     annotations={'some-annotation': 'somevalue'})
     def my_handler(spec, **_):
         pass
 
-* Match on the existence of an object's annotation::
+Match only when the resource has a label or an annotation with any value:
+
+.. code-block:: python
 
     @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
+                    labels={'some-label': kopf.PRESENT},
                     annotations={'some-annotation': kopf.PRESENT})
     def my_handler(spec, **_):
         pass
 
-* Match on the absence of an object's annotation::
+Match only when the resource has no label or annotation with that name:
+
+.. code-block:: python
 
     @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
+                    labels={'some-label': kopf.ABSENT},
                     annotations={'some-annotation': kopf.ABSENT})
     def my_handler(spec, **_):
         pass
 
+Note that empty strings in labels and annotations are treated as regular values,
+i.e. they are considered as present on the resource.
 
-By arbitrary callbacks
-======================
 
-* Check on any field on the body with a when callback.
-  The filter callback takes the same args as a handler (see :doc:`kwargs`)::
+Value callbacks
+===============
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
-                    when=lambda spec, **_: spec.get('my-field') == 'somevalue')
-    def my_handler(spec, **_):
-        pass
+Instead of specific values or special markers, all the value-based filters can
+use arbitrary per-value callbacks (as an advanced use-case for advanced logic).
 
-* Check on labels/annotations with an arbitrary callback for individual values
-  (the value comes as the first positional argument, plus usual :doc:`kwargs`)::
+The value callbacks must receive the same :doc:`keyword arguments <kwargs>`
+as the respective handlers (with ``**kwargs/**_`` for forward compatibility),
+plus one *positional* (not keyword!) argument with the value being checked.
+The passed value will be ``None`` if the value is absent in the resource.
+
+.. code-block:: python
 
     def check_value(value, spec, **_):
         return value == 'some-value' and spec.get('field') is not None
@@ -84,8 +82,41 @@ By arbitrary callbacks
     def my_handler(spec, **_):
         pass
 
-Kopf provides few helpers to combine multiple callbacks into one
-(the semantics is the same as for Python's built-in functions)::
+
+Callback filters
+================
+
+The resource callbacks must receive the same :doc:`keyword arguments <kwargs>`
+as the respective handlers (with ``**kwargs/**_`` for forward compatibility).
+
+.. code-block:: python
+
+    def is_good_enough(spec, **_):
+        return spec.get('field') in spec.get('items', [])
+
+    @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
+                    when=is_good_enough)
+    def my_handler(spec, **_):
+        pass
+
+    @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
+                    when=lambda spec, **_: spec.get('field') in spec.get('items', []))
+    def my_handler(spec, **_):
+        pass
+
+There is no need for the callback filters to only check the resource's content.
+They can filter by any kwarg data, e.g. by a :kwarg:`reason` of this invocation,
+remembered :kwarg:`memo` values, etc. However, it is highly recommended that
+the filters do not modify the state of the operator -- keep it for handlers.
+
+
+Callback helpers
+================
+
+Kopf provides several helpers to combine multiple callbacks into one
+(the semantics is the same as for Python's built-in functions):
+
+.. code-block:: python
 
     import kopf
 
