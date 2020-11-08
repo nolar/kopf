@@ -351,6 +351,8 @@ def event(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
+        field: Optional[dicts.FieldSpec] = None,
+        value: Optional[filters.ValueFilter] = None,
 ) -> ResourceWatchingDecorator:
     """ ``@kopf.on.event()`` handler for the silent spies on the events. """
     def decorator(  # lgtm[py/similar-function]
@@ -358,13 +360,15 @@ def event(  # lgtm[py/similar-function]
     ) -> callbacks.ResourceWatchingFn:
         _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
+        _warn_conflicting_values(field, value)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
+        real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ResourceWatchingHandler(
             fn=fn, id=real_id,
             errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
-            labels=labels, annotations=annotations, when=when,
+            labels=labels, annotations=annotations, when=when, field=real_field, value=value,
         )
         real_registry.resource_watching_handlers[real_resource].append(handler)
         return fn
@@ -384,6 +388,8 @@ def daemon(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
+        field: Optional[dicts.FieldSpec] = None,
+        value: Optional[filters.ValueFilter] = None,
         initial_delay: Optional[float] = None,
         cancellation_backoff: Optional[float] = None,
         cancellation_timeout: Optional[float] = None,
@@ -395,13 +401,15 @@ def daemon(  # lgtm[py/similar-function]
     ) -> callbacks.ResourceDaemonFn:
         _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
+        _warn_conflicting_values(field, value)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
+        real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ResourceDaemonHandler(
             fn=fn, id=real_id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            labels=labels, annotations=annotations, when=when,
+            labels=labels, annotations=annotations, when=when, field=real_field, value=value,
             initial_delay=initial_delay, requires_finalizer=True,
             cancellation_backoff=cancellation_backoff,
             cancellation_timeout=cancellation_timeout,
@@ -425,6 +433,8 @@ def timer(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
+        field: Optional[dicts.FieldSpec] = None,
+        value: Optional[filters.ValueFilter] = None,
         initial_delay: Optional[float] = None,
         sharp: Optional[bool] = None,
         idle: Optional[float] = None,
@@ -436,13 +446,15 @@ def timer(  # lgtm[py/similar-function]
     ) -> callbacks.ResourceTimerFn:
         _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
+        _warn_conflicting_values(field, value)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_resource = resources.Resource(group, version, plural)
+        real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ResourceTimerHandler(
             fn=fn, id=real_id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            labels=labels, annotations=annotations, when=when,
+            labels=labels, annotations=annotations, when=when, field=real_field, value=value,
             initial_delay=initial_delay, requires_finalizer=True,
             sharp=sharp, idle=idle, interval=interval,
         )

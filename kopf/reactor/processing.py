@@ -118,7 +118,10 @@ async def process_resource_causes(
 ) -> Tuple[Collection[float], bool]:
 
     finalizer = settings.persistence.finalizer
-    extra_fields = registry.resource_changing_handlers[resource].get_extra_fields()
+    extra_fields = (
+        registry.resource_watching_handlers[resource].get_extra_fields() |
+        registry.resource_changing_handlers[resource].get_extra_fields() |
+        registry.resource_spawning_handlers[resource].get_extra_fields())
     old = settings.persistence.diffbase_storage.fetch(body=body)
     new = settings.persistence.diffbase_storage.build(body=body, extra_fields=extra_fields)
     old = settings.persistence.progress_storage.clear(essence=old) if old is not None else None

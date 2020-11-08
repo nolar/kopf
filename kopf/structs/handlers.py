@@ -112,6 +112,8 @@ class ResourceHandler(BaseHandler):
     labels: Optional[filters.MetaFilter]
     annotations: Optional[filters.MetaFilter]
     when: Optional[callbacks.WhenFilterFn]
+    field: Optional[dicts.FieldPath]
+    value: Optional[filters.ValueFilter]
 
 
 @dataclasses.dataclass
@@ -127,8 +129,6 @@ class ResourceChangingHandler(ResourceHandler):
     deleted: Optional[bool]  # used for mixed-in (initial==True) @on.resume handlers only.
     requires_finalizer: Optional[bool]
     field_needs_change: Optional[bool]  # to identify on-field/on-update with support for old=/new=.
-    field: Optional[dicts.FieldPath]
-    value: Optional[filters.ValueFilter]
     old: Optional[filters.ValueFilter]
     new: Optional[filters.ValueFilter]
 

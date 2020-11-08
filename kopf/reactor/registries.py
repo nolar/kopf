@@ -182,7 +182,7 @@ class ResourceWatchingRegistry(ResourceRegistry[
         handler = handlers.ResourceWatchingHandler(
             id=real_id, fn=fn,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            labels=labels, annotations=annotations, when=when,
+            labels=labels, annotations=annotations, when=when, field=None, value=None,
         )
         self.append(handler)
         return fn
@@ -491,7 +491,10 @@ class OperatorRegistry:
         warnings.warn("registry.get_extra_fields() is deprecated; "
                       "use registry.resource_changing_handlers[resource].get_extra_fields().",
                       DeprecationWarning)
-        return self.resource_changing_handlers[resource].get_extra_fields()
+        return (
+            self.resource_watching_handlers[resource].get_extra_fields() |
+            self.resource_changing_handlers[resource].get_extra_fields() |
+            self.resource_spawning_handlers[resource].get_extra_fields())
 
     def iter_extra_fields(
             self,
@@ -500,7 +503,9 @@ class OperatorRegistry:
         warnings.warn("registry.iter_extra_fields() is deprecated; "
                       "use registry.resource_changing_handlers[resource].iter_extra_fields().",
                       DeprecationWarning)
+        yield from self.resource_watching_handlers[resource].iter_extra_fields()
         yield from self.resource_changing_handlers[resource].iter_extra_fields()
+        yield from self.resource_spawning_handlers[resource].iter_extra_fields()
 
     def requires_finalizer(
             self,
@@ -623,6 +628,7 @@ def prematch(
     return all([
         _matches_labels(handler, cause, kwargs),
         _matches_annotations(handler, cause, kwargs),
+        _matches_field_values(handler, cause, kwargs),
         _matches_filter_callback(handler, cause, kwargs),
     ])
 
@@ -634,9 +640,10 @@ def match(
     # Kwargs are lazily evaluated on the first _actual_ use, and shared for all filters since then.
     kwargs: MutableMapping[str, Any] = {}
     return all([
-        _matches_field(handler, cause, kwargs),
         _matches_labels(handler, cause, kwargs),
         _matches_annotations(handler, cause, kwargs),
+        _matches_field_values(handler, cause, kwargs),
+        _matches_field_changes(handler, cause, kwargs),
         _matches_filter_callback(handler, cause, kwargs),
     ])
 
@@ -693,22 +700,9 @@ def _matches_metadata(
     return True
 
 
-def _matches_field(
+def _matches_field_values(
         handler: handlers.ResourceHandler,
         cause: causation.ResourceCause,
-        kwargs: MutableMapping[str, Any],
-) -> bool:
-    return (not isinstance(handler, handlers.ResourceChangingHandler) or
-            not isinstance(cause, causation.ResourceChangingCause) or
-            (
-                _matches_field_values(handler, cause, kwargs) and
-                _matches_field_changes(handler, cause, kwargs)
-            ))
-
-
-def _matches_field_values(
-        handler: handlers.ResourceChangingHandler,
-        cause: causation.ResourceChangingCause,
         kwargs: MutableMapping[str, Any],
 ) -> bool:
     if not handler.field:
@@ -718,9 +712,15 @@ def _matches_field_values(
         kwargs.update(invocation.build_kwargs(cause=cause))
 
     absent = _UNSET.token  # or any other identifyable object
-    old = dicts.resolve(cause.old, handler.field, absent)
-    new = dicts.resolve(cause.new, handler.field, absent)
-    values = [new, old]  # keep "new" first, to avoid "old" callbacks if "new" works.
+    if isinstance(cause, causation.ResourceChangingCause):
+        # For on.update/on.field, so as for on.create/resume/delete for uniformity and simplicity:
+        old = dicts.resolve(cause.old, handler.field, absent)
+        new = dicts.resolve(cause.new, handler.field, absent)
+        values = [new, old]  # keep "new" first, to avoid "old" callbacks if "new" works.
+    else:
+        # For event-watching, timers/daemons (could also work for on.create/resume/delete):
+        val = dicts.resolve(cause.body, handler.field, absent)
+        values = [val]
     return (
         (handler.value is None and any(value is not absent for value in values)) or
         (handler.value is filters.PRESENT and any(value is not absent for value in values)) or
@@ -731,10 +731,14 @@ def _matches_field_values(
 
 
 def _matches_field_changes(
-        handler: handlers.ResourceChangingHandler,
-        cause: causation.ResourceChangingCause,
+        handler: handlers.ResourceHandler,
+        cause: causation.ResourceCause,
         kwargs: MutableMapping[str, Any],
 ) -> bool:
+    if not isinstance(handler, handlers.ResourceChangingHandler):
+        return True
+    if not isinstance(cause, causation.ResourceChangingCause):
+        return True
     if not handler.field:
         return True
 
