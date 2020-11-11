@@ -3,10 +3,11 @@ import logging
 import pytest
 
 from kopf import GlobalRegistry, SimpleRegistry  # deprecated, but tested
-from kopf.reactor.causation import ActivityCause, ResourceCause, \
-                                   ResourceChangingCause, ResourceWatchingCause
+from kopf.reactor.causation import ActivityCause, ResourceCause, ResourceChangingCause, \
+                                   ResourceSpawningCause, ResourceWatchingCause
 from kopf.reactor.registries import ActivityRegistry, OperatorRegistry, ResourceChangingRegistry, \
-                                    ResourceRegistry, ResourceWatchingRegistry
+                                    ResourceRegistry, ResourceSpawningRegistry, \
+                                    ResourceWatchingRegistry
 from kopf.structs.bodies import Body
 from kopf.structs.containers import Memo
 from kopf.structs.diffs import Diff, DiffItem
@@ -133,6 +134,15 @@ def cause_factory(resource):
                 new=new,
                 initial=initial,
                 reason=reason,
+            )
+        if cls is ResourceSpawningCause or cls is ResourceSpawningRegistry:
+            return ResourceSpawningCause(
+                logger=logging.getLogger('kopf.test.fake.logger'),
+                resource=resource,
+                patch=Patch(),
+                memo=Memo(),
+                body=Body(body if body is not None else {}),
+                reset=False,
             )
         raise TypeError(f"Cause/registry type {cls} is not supported by this fixture.")
     return make_cause

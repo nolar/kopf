@@ -1,3 +1,4 @@
+import copy
 from unittest.mock import Mock
 
 import pytest
@@ -30,6 +31,9 @@ matching_reason_and_decorator = pytest.mark.parametrize('reason, decorator', [
 ])
 
 matching_reason_and_decorator_with_field = pytest.mark.parametrize('reason, decorator', [
+    (Reason.CREATE, kopf.on.create),
+    (Reason.UPDATE, kopf.on.update),
+    (Reason.DELETE, kopf.on.delete),
     (Reason.CREATE, kopf.on.field),
     (Reason.UPDATE, kopf.on.field),
     (Reason.DELETE, kopf.on.field),
@@ -66,9 +70,10 @@ def handler_factory(registry, resource):
     pytest.param(dict(old={}, new={}, body={}, diff=[]), id='with-empty-diff'),
 ])
 def cause_no_diff(request, cause_factory):
-    request.param['body'].update(
-        {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}})
-    cause = cause_factory(**request.param)
+    kwargs = copy.deepcopy(request.param)
+    kwargs['body'].update({'metadata': {'labels': {'somelabel': 'somevalue'},
+                                        'annotations': {'someannotation': 'somevalue'}}})
+    cause = cause_factory(**kwargs)
     return cause
 
 
@@ -79,9 +84,10 @@ def cause_no_diff(request, cause_factory):
                       diff=[('op', ('some-field',), 'old', 'new')]), id='with-field-diff'),
 ])
 def cause_with_diff(request, cause_factory):
-    request.param['body'].update(
-        {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}})
-    cause = cause_factory(**request.param)
+    kwargs = copy.deepcopy(request.param)
+    kwargs['body'].update({'metadata': {'labels': {'somelabel': 'somevalue'},
+                                        'annotations': {'someannotation': 'somevalue'}}})
+    cause = cause_factory(**kwargs)
     return cause
 
 
@@ -94,9 +100,10 @@ def cause_with_diff(request, cause_factory):
                       diff=[('op', ('some-field',), 'old', 'new')]), id='with-field-diff'),
 ])
 def cause_any_diff(request, cause_factory):
-    request.param['body'].update(
-        {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}})
-    cause = cause_factory(**request.param)
+    kwargs = copy.deepcopy(request.param)
+    kwargs['body'].update({'metadata': {'labels': {'somelabel': 'somevalue'},
+                                        'annotations': {'someannotation': 'somevalue'}}})
+    cause = cause_factory(**kwargs)
     return cause
 
 
@@ -660,14 +667,15 @@ def test_irrelevant_handlers_with_when_callback_not_satisfied(
 # Special case for nested fields with shorter/longer diffs.
 #
 
-def test_field_same_as_diff(cause_with_diff, registry, resource):
+@matching_reason_and_decorator_with_field
+def test_field_same_as_diff(cause_with_diff, registry, resource, reason, decorator):
 
-    @kopf.on.field(resource.group, resource.version, resource.plural, registry=registry,
-                   field='level1.level2')
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+               field='level1.level2')
     def some_fn(**_): ...
 
     cause = cause_with_diff
-    cause.reason = Reason.UPDATE
+    cause.reason = reason
     cause.old = {'level1': {'level2': 'old'}}
     cause.new = {'level1': {'level2': 'new'}}
     cause.body = Body({'level1': {'level2': 'new'}})
@@ -675,14 +683,15 @@ def test_field_same_as_diff(cause_with_diff, registry, resource):
     assert handlers
 
 
-def test_field_shorter_than_diff(cause_with_diff, registry, resource):
+@matching_reason_and_decorator_with_field
+def test_field_shorter_than_diff(cause_with_diff, registry, resource, reason, decorator):
 
-    @kopf.on.field(resource.group, resource.version, resource.plural, registry=registry,
-                   field='level1')
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+               field='level1')
     def some_fn(**_): ...
 
     cause = cause_with_diff
-    cause.reason = Reason.UPDATE
+    cause.reason = reason
     cause.old = {'level1': {'level2': 'old'}}
     cause.new = {'level1': {'level2': 'new'}}
     cause.body = Body({'level1': {'level2': 'new'}})
@@ -690,14 +699,15 @@ def test_field_shorter_than_diff(cause_with_diff, registry, resource):
     assert handlers
 
 
-def test_field_longer_than_diff_for_wrong_field(cause_with_diff, registry, resource):
+@matching_reason_and_decorator_with_field
+def test_field_longer_than_diff_for_wrong_field(cause_with_diff, registry, resource, reason, decorator):
 
-    @kopf.on.field(resource.group, resource.version, resource.plural, registry=registry,
-                   field='level1.level2.level3')
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+               field='level1.level2.level3')
     def some_fn(**_): ...
 
     cause = cause_with_diff
-    cause.reason = Reason.UPDATE
+    cause.reason = reason
     cause.old = {'level1': {'level2': 'old'}}
     cause.new = {'level1': {'level2': 'new'}}
     cause.body = Body({'level1': {'level2': 'new'}})
@@ -714,14 +724,15 @@ def test_field_longer_than_diff_for_wrong_field(cause_with_diff, registry, resou
     pytest.param({}, {'level3': 'new'}, id='empty2struct'),
     pytest.param({'level3': 'old'}, {}, id='struct2empty'),
 ])
-def test_field_longer_than_diff_for_right_field(cause_with_diff, registry, resource, old, new):
+@matching_reason_and_decorator_with_field
+def test_field_longer_than_diff_for_right_field(cause_with_diff, registry, resource, old, new, reason, decorator):
 
-    @kopf.on.field(resource.group, resource.version, resource.plural, registry=registry,
-                   field='level1.level2.level3')
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+               field='level1.level2.level3')
     def some_fn(**_): ...
 
     cause = cause_with_diff
-    cause.reason = Reason.UPDATE
+    cause.reason = reason
     cause.old = {'level1': {'level2': old}} if old is not None else {'level1': {'level2': {}}}
     cause.new = {'level1': {'level2': new}} if new is not None else {'level1': {'level2': {}}}
     cause.body = Body(cause.new)

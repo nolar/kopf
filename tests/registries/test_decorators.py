@@ -82,6 +82,9 @@ def test_on_resume_minimal(reason, cause_factory):
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
     assert handlers[0].when is None
+    assert handlers[0].field is None
+    assert handlers[0].old is None
+    assert handlers[0].new is None
 
 
 def test_on_create_minimal(cause_factory):
@@ -105,6 +108,9 @@ def test_on_create_minimal(cause_factory):
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
     assert handlers[0].when is None
+    assert handlers[0].field is None
+    assert handlers[0].old is None
+    assert handlers[0].new is None
 
 
 def test_on_update_minimal(cause_factory):
@@ -128,6 +134,9 @@ def test_on_update_minimal(cause_factory):
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
     assert handlers[0].when is None
+    assert handlers[0].field is None
+    assert handlers[0].old is None
+    assert handlers[0].new is None
 
 
 def test_on_delete_minimal(cause_factory):
@@ -151,6 +160,9 @@ def test_on_delete_minimal(cause_factory):
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
     assert handlers[0].when is None
+    assert handlers[0].field is None
+    assert handlers[0].old is None
+    assert handlers[0].new is None
 
 
 def test_on_field_minimal(cause_factory):
@@ -267,7 +279,7 @@ def test_on_probe_with_all_kwargs(mocker):
 
 # Resume handlers are mixed-in into all resource-changing reactions with initial listing.
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
-def test_on_resume_with_all_kwargs(mocker, reason, cause_factory):
+def test_on_resume_with_most_kwargs(mocker, reason, cause_factory):
     registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
     cause = cause_factory(resource=resource, reason=reason, initial=True)
@@ -289,7 +301,6 @@ def test_on_resume_with_all_kwargs(mocker, reason, cause_factory):
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
-    assert handlers[0].field is None
     assert handlers[0].id == 'id'
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
@@ -299,9 +310,13 @@ def test_on_resume_with_all_kwargs(mocker, reason, cause_factory):
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert handlers[0].when == when
+    assert handlers[0].field is None
+    assert handlers[0].value is None
+    assert handlers[0].old is None
+    assert handlers[0].new is None
 
 
-def test_on_create_with_all_kwargs(mocker, cause_factory):
+def test_on_create_with_most_kwargs(mocker, cause_factory):
     registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
     cause = cause_factory(resource=resource, reason=Reason.CREATE)
@@ -322,7 +337,6 @@ def test_on_create_with_all_kwargs(mocker, cause_factory):
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.CREATE
-    assert handlers[0].field is None
     assert handlers[0].id == 'id'
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
@@ -331,9 +345,13 @@ def test_on_create_with_all_kwargs(mocker, cause_factory):
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert handlers[0].when == when
+    assert handlers[0].field is None
+    assert handlers[0].value is None
+    assert handlers[0].old is None
+    assert handlers[0].new is None
 
 
-def test_on_update_with_all_kwargs(mocker, cause_factory):
+def test_on_update_with_most_kwargs(mocker, cause_factory):
     registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
     cause = cause_factory(resource=resource, reason=Reason.UPDATE)
@@ -354,7 +372,6 @@ def test_on_update_with_all_kwargs(mocker, cause_factory):
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.UPDATE
-    assert handlers[0].field is None
     assert handlers[0].id == 'id'
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
@@ -363,13 +380,17 @@ def test_on_update_with_all_kwargs(mocker, cause_factory):
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert handlers[0].when == when
+    assert handlers[0].field is None
+    assert handlers[0].value is None
+    assert handlers[0].old is None
+    assert handlers[0].new is None
 
 
 @pytest.mark.parametrize('optional', [
     pytest.param(True, id='optional'),
     pytest.param(False, id='mandatory'),
 ])
-def test_on_delete_with_all_kwargs(mocker, cause_factory, optional):
+def test_on_delete_with_most_kwargs(mocker, cause_factory, optional):
     registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
     cause = cause_factory(resource=resource, reason=Reason.DELETE)
@@ -391,7 +412,6 @@ def test_on_delete_with_all_kwargs(mocker, cause_factory, optional):
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.DELETE
-    assert handlers[0].field is None
     assert handlers[0].id == 'id'
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
@@ -400,9 +420,13 @@ def test_on_delete_with_all_kwargs(mocker, cause_factory, optional):
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert handlers[0].when == when
+    assert handlers[0].field is None
+    assert handlers[0].value is None
+    assert handlers[0].old is None
+    assert handlers[0].new is None
 
 
-def test_on_field_with_all_kwargs(mocker, cause_factory):
+def test_on_field_with_most_kwargs(mocker, cause_factory):
     registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
     old = {'field': {'subfield': 'old'}}
@@ -417,8 +441,7 @@ def test_on_field_with_all_kwargs(mocker, cause_factory):
                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                    labels={'somelabel': 'somevalue'},
                    annotations={'someanno': 'somevalue'},
-                   when=when,
-                   value='value')
+                   when=when)
     def fn(**_):
         pass
 
@@ -435,7 +458,7 @@ def test_on_field_with_all_kwargs(mocker, cause_factory):
     assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert handlers[0].when == when
     assert handlers[0].field == ('field', 'subfield')
-    assert handlers[0].value == 'value'
+    assert handlers[0].value is None
     assert handlers[0].old is None
     assert handlers[0].new is None
 
@@ -521,3 +544,108 @@ def test_annotations_filter_with_nones(resource, decorator, kwargs):
                    annotations={'x': None})
         def fn(**_):
             pass
+
+
+@pytest.mark.parametrize('decorator, causeargs, handlers_prop', [
+    pytest.param(kopf.on.event, dict(), 'resource_watching_handlers', id='on-event'),
+    pytest.param(kopf.on.resume, dict(reason=None, initial=True), 'resource_changing_handlers', id='on-resume'),
+    pytest.param(kopf.on.create, dict(reason=Reason.CREATE), 'resource_changing_handlers', id='on-create'),
+    pytest.param(kopf.on.update, dict(reason=Reason.UPDATE), 'resource_changing_handlers', id='on-update'),
+    pytest.param(kopf.on.delete, dict(reason=Reason.DELETE), 'resource_changing_handlers', id='on-delete'),
+    pytest.param(kopf.on.field, dict(reason=Reason.UPDATE), 'resource_changing_handlers', id='on-field'),
+    pytest.param(kopf.daemon, dict(), 'resource_spawning_handlers', id='on-daemon'),
+    pytest.param(kopf.timer, dict(), 'resource_spawning_handlers', id='on-timer'),
+])
+def test_field_with_value(mocker, cause_factory, decorator, causeargs, handlers_prop):
+    registry = OperatorRegistry()
+    resource = Resource('group', 'version', 'plural')
+    old = {'field': {'subfield': 'old'}}
+    new = {'field': {'subfield': 'new'}}
+    cause = cause_factory(resource=resource, old=old, new=new, body=new, **causeargs)
+    mocker.patch('kopf.reactor.registries.match', return_value=True)
+
+    @decorator('group', 'version', 'plural', registry=registry,
+               field='spec.field', value='value')
+    def fn(**_):
+        pass
+
+    handlers_registry = getattr(registry, handlers_prop)
+    handlers = handlers_registry[resource].get_handlers(cause)
+    assert len(handlers) == 1
+    assert handlers[0].field == ('spec', 'field')
+    assert handlers[0].value == 'value'
+
+
+@pytest.mark.parametrize('decorator, causeargs, handlers_prop', [
+    pytest.param(kopf.on.update, dict(reason=Reason.UPDATE), 'resource_changing_handlers', id='on-update'),
+    pytest.param(kopf.on.field, dict(reason=Reason.UPDATE), 'resource_changing_handlers', id='on-field'),
+])
+def test_field_with_oldnew(mocker, cause_factory, decorator, causeargs, handlers_prop):
+    registry = OperatorRegistry()
+    resource = Resource('group', 'version', 'plural')
+    cause = cause_factory(resource=resource, **causeargs)
+    mocker.patch('kopf.reactor.registries.match', return_value=True)
+
+    @decorator('group', 'version', 'plural', registry=registry,
+               field='spec.field', old='old', new='new')
+    def fn(**_):
+        pass
+
+    handlers_registry = getattr(registry, handlers_prop)
+    handlers = handlers_registry[resource].get_handlers(cause)
+    assert len(handlers) == 1
+    assert handlers[0].field == ('spec', 'field')
+    assert handlers[0].value is None
+    assert handlers[0].old == 'old'
+    assert handlers[0].new == 'new'
+
+
+@pytest.mark.parametrize('decorator', [
+    pytest.param(kopf.on.event, id='on-event'),
+    pytest.param(kopf.on.resume, id='on-resume'),
+    pytest.param(kopf.on.create, id='on-create'),
+    pytest.param(kopf.on.update, id='on-update'),
+    pytest.param(kopf.on.delete, id='on-delete'),
+    pytest.param(kopf.daemon, id='on-daemon'),
+    pytest.param(kopf.timer, id='on-timer'),
+])
+def test_missing_field_with_specified_value(resource, decorator):
+    with pytest.raises(TypeError, match="without a mandatory field"):
+        @decorator(resource.group, resource.version, resource.plural, value='v')
+        def fn(**_):
+            pass
+
+
+@pytest.mark.parametrize('kwargs', [
+    pytest.param(dict(field='f', value='v', old='x'), id='value-vs-old'),
+    pytest.param(dict(field='f', value='v', new='x'), id='value-vs-new'),
+])
+@pytest.mark.parametrize('decorator', [
+    pytest.param(kopf.on.update, id='on-update'),
+    pytest.param(kopf.on.field, id='on-field'),
+])
+def test_conflicts_of_values_vs_oldnew(resource, decorator, kwargs):
+    with pytest.raises(TypeError, match="Either value= or old=/new="):
+        @decorator(resource.group, resource.version, resource.plural, **kwargs)
+        def fn(**_):
+            pass
+
+
+@pytest.mark.parametrize('decorator', [
+    pytest.param(kopf.on.resume, id='on-resume'),
+    pytest.param(kopf.on.create, id='on-create'),
+    pytest.param(kopf.on.delete, id='on-delete'),
+])
+def test_invalid_oldnew_for_inappropriate_subhandlers(resource, decorator, registry):
+
+    @decorator(resource.group, resource.version, resource.plural)
+    def fn(**_):
+        @kopf.on.this(field='f', old='x')
+        def fn2(**_):
+            pass
+
+    subregistry = ResourceChangingRegistry()
+    handler = registry.resource_changing_handlers[resource].get_all_handlers()[0]
+    with context([(handler_var, handler), (subregistry_var, subregistry)]):
+        with pytest.raises(TypeError, match="can only be used in update handlers"):
+            handler.fn()
