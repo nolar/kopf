@@ -1,8 +1,6 @@
 import enum
 from typing import Collection, List, Optional, Tuple, TypeVar, Union, cast
 
-import aiohttp
-
 from kopf.clients import auth, discovery, errors
 from kopf.structs import bodies, resources
 
@@ -31,15 +29,12 @@ async def read_obj(
     namespace = namespace if is_namespaced else None
 
     try:
-        response = await context.session.get(
-            url=resource.get_url(server=context.server, namespace=namespace, name=name),
-        )
-        await errors.check_response(response)
-        respdata = await response.json()
-        return cast(bodies.RawBody, respdata)
+        url = resource.get_url(server=context.server, namespace=namespace, name=name)
+        rsp = await errors.parse_response(await context.session.get(url))
+        return cast(bodies.RawBody, rsp)
 
-    except aiohttp.ClientResponseError as e:
-        if e.status in [403, 404] and not isinstance(default, _UNSET):
+    except (errors.APINotFoundError, errors.APIForbiddenError):
+        if not isinstance(default, _UNSET):
             return default
         raise
 
@@ -69,11 +64,8 @@ async def list_objs_rv(
     is_namespaced = await discovery.is_namespaced(resource=resource, context=context)
     namespace = namespace if is_namespaced else None
 
-    response = await context.session.get(
-        url=resource.get_url(server=context.server, namespace=namespace),
-    )
-    await errors.check_response(response)
-    rsp = await response.json()
+    url = resource.get_url(server=context.server, namespace=namespace)
+    rsp = await errors.parse_response(await context.session.get(url))
 
     items: List[bodies.RawBody] = []
     resource_version = rsp.get('metadata', {}).get('resourceVersion', None)

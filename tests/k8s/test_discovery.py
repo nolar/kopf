@@ -36,7 +36,7 @@ async def test_discovery_of_unexisting_resource(
 async def test_discovery_of_unexisting_group_or_version(
         resp_mocker, aresponses, hostname, status):
 
-    list_mock = resp_mocker(return_value=aresponses.Response(status=status, reason="boo!"))
+    list_mock = resp_mocker(return_value=aresponses.Response(status=status))
     aresponses.add(hostname, '/apis/some-group.org/someversion', 'get', list_mock)
 
     resource = Resource('some-group.org', 'someversion', 'someresources')

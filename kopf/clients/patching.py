@@ -1,7 +1,5 @@
 from typing import Optional, cast
 
-import aiohttp
-
 from kopf.clients import auth, discovery, errors
 from kopf.structs import bodies, patches, resources
 
@@ -70,8 +68,7 @@ async def patch_obj(
                 headers={'Content-Type': 'application/merge-patch+json'},
                 json=body_patch,
             )
-            await errors.check_response(response)
-            patched_body = await response.json()
+            patched_body = await errors.parse_response(response)
 
         if status_patch:
             response = await context.session.patch(
@@ -80,13 +77,9 @@ async def patch_obj(
                 headers={'Content-Type': 'application/merge-patch+json'},
                 json={'status': status_patch},
             )
-            await errors.check_response(response)
-            patched_body['status'] = await response.json()
+            patched_body['status'] = await errors.parse_response(response)
 
         return patched_body
 
-    except aiohttp.ClientResponseError as e:
-        if e.status == 404:
-            return None
-        else:
-            raise
+    except errors.APINotFoundError:
+        return None

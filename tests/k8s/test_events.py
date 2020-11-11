@@ -60,7 +60,7 @@ async def test_type_is_v1_not_v1beta1(
 async def test_api_errors_logged_but_suppressed(
         resp_mocker, aresponses, hostname, assert_logs):
 
-    post_mock = resp_mocker(return_value=aresponses.Response(status=555, reason='boo!'))
+    post_mock = resp_mocker(return_value=aresponses.Response(status=555))
     aresponses.add(hostname, EVENTS_CORE_V1_CRD.get_url(namespace='ns'), 'post', post_mock)
 
     obj = {'apiVersion': 'group/version',
@@ -72,9 +72,7 @@ async def test_api_errors_logged_but_suppressed(
     await post_event(ref=ref, type='type', reason='reason', message='message')
 
     assert post_mock.called
-    assert_logs([
-        "Failed to post an event.*boo!",
-    ])
+    assert_logs(["Failed to post an event."])
 
 
 async def test_regular_errors_escalate(
@@ -122,7 +120,7 @@ async def test_message_is_cut_to_max_length(
 async def test_headers_are_not_leaked(
         resp_mocker, aresponses, hostname, assert_logs, status):
 
-    post_mock = resp_mocker(return_value=aresponses.Response(status=status, reason='boo!'))
+    post_mock = resp_mocker(return_value=aresponses.Response(status=status))
     aresponses.add(hostname, EVENTS_CORE_V1_CRD.get_url(namespace='ns'), 'post', post_mock)
 
     obj = {'apiVersion': 'group/version',
@@ -134,7 +132,7 @@ async def test_headers_are_not_leaked(
     await post_event(ref=ref, type='type', reason='reason', message='message')
 
     assert_logs([
-        f"Failed to post an event. .* Status: {status}. Message: boo!",
+        "Failed to post an event.",
     ], prohibited=[
         "ClientResponseError",
         "RequestInfo",
