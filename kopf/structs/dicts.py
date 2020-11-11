@@ -45,33 +45,44 @@ def resolve(
         d: Optional[Mapping[Any, Any]],
         field: FieldSpec,
         default: Union[_T, _UNSET] = _UNSET.token,
-        *,
-        assume_empty: bool = False,
-        ignore_wrong: bool = False,
 ) -> Union[Any, _T]:
     """
     Retrieve a nested sub-field from a dict.
 
-    If ``assume_empty`` is set, then the non-existent path keys are assumed
-    to be empty dictionaries, and then the ``default`` is returned.
+    If ``default`` is provided, then all non-existent and non-mapping values
+    are assumed to be empty dictionaries, and ``default`` is returned.
 
-    if ``ignore_wrong`` is set, then the non-dictionaries are assumed to
-    not exist, since we cannot dive deep into non-dictionary values.
-    This is used in the diff reduction.
+    Otherwise (with no default), attempts to get the inexistent keys will
+    raise either a ``TypeError`` or ``KeyError``:
 
-    Otherwise (by default), any attempt to get a key from ``None``
-    leads to a ``TypeError`` -- same as in Python: ``None['key']``.
+    * ``KeyError`` for actual absence of keys while the structures are correct.
+    * ``TypeError`` for attempting to get a key for a non-dictionary:
+      e.g. ``None['key']``, ``"string"['key']``, ``123['key']``, etc.
+
+    This essentially means the "safe" mode of resolution, where the obvious
+    errors are silenced, as we cannot dive deep into non-dictionary values.
+
+    Silencing errors goes against The Zen of Python, but we need this for K8s:
+    if the resources are corrupted externally (e.g. by editing manually),
+    we ignore that corrupted data as if there is no data at all,
+    and continue running instead of unrecoverably failing the processing.
+
+    Examples of data that can be corrupted:
+
+    * diff-base and progress in the status stanza (``status.kopf.progress``);
+      this does not apply to annotations, as their structure is ensured by K8s.
+    * field-specific handers for fields (e.g. ``spec.struct.field``)
+      when the parent structure (``spec.struct`` or even ``spec``)
+      is not a mapping or absent.
     """
     path = parse_field(field)
     try:
         result = d
         for key in path:
-            if result is None and assume_empty and not isinstance(default, _UNSET):
-                return default
-            elif isinstance(result, collections.abc.Mapping):
+            if isinstance(result, collections.abc.Mapping):
                 result = result[key]
-            elif ignore_wrong:
-                result = None
+            elif not isinstance(default, _UNSET):
+                return default
             else:
                 raise TypeError(f"The structure is not a dict with field {key!r}: {result!r}")
         return result
@@ -229,10 +240,10 @@ class MappingView(Mapping[_K, _V], Generic[_K, _V]):
         return repr(dict(self))
 
     def __len__(self) -> int:
-        return len(resolve(self._src, self._path, {}, assume_empty=True))
+        return len(resolve(self._src, self._path, {}))
 
     def __iter__(self) -> Iterator[Any]:
-        return iter(resolve(self._src, self._path, {}, assume_empty=True))
+        return iter(resolve(self._src, self._path, {}))
 
     def __getitem__(self, item: _K) -> _V:
         return resolve(self._src, self._path + (item,))

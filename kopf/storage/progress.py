@@ -181,7 +181,7 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
     ) -> Optional[ProgressRecord]:
         for full_key in self.make_keys(key):
             key_field = ['metadata', 'annotations', full_key]
-            encoded = dicts.resolve(body, key_field, None, assume_empty=True)
+            encoded = dicts.resolve(body, key_field, None)
             decoded = json.loads(encoded) if encoded is not None else None
             if decoded is not None:
                 return cast(ProgressRecord, decoded)
@@ -212,8 +212,8 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
         absent = object()
         for full_key in self.make_keys(key):
             key_field = ['metadata', 'annotations', full_key]
-            body_value = dicts.resolve(body, key_field, absent, assume_empty=True)
-            patch_value = dicts.resolve(patch, key_field, absent, assume_empty=True)
+            body_value = dicts.resolve(body, key_field, absent)
+            patch_value = dicts.resolve(patch, key_field, absent)
             if body_value is not absent:
                 dicts.ensure(patch, key_field, None)
             elif patch_value is not absent:
@@ -228,7 +228,7 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
     ) -> None:
         for full_key in self.make_keys(self.touch_key):
             key_field = ['metadata', 'annotations', full_key]
-            body_value = dicts.resolve(body, key_field, None, assume_empty=True)
+            body_value = dicts.resolve(body, key_field, None)
             if body_value != value:  # also covers absent-vs-None cases.
                 dicts.ensure(patch, key_field, value)
                 self._store_marker(prefix=self.prefix, patch=patch, body=body)
@@ -340,8 +340,8 @@ class StatusProgressStorage(ProgressStorage):
     ) -> None:
         absent = object()
         key_field = self.field + (key,)
-        body_value = dicts.resolve(body, key_field, absent, assume_empty=True)
-        patch_value = dicts.resolve(patch, key_field, absent, assume_empty=True)
+        body_value = dicts.resolve(body, key_field, absent)
+        patch_value = dicts.resolve(patch, key_field, absent)
         if body_value is not absent:
             dicts.ensure(patch, key_field, None)
         elif patch_value is not absent:
@@ -355,7 +355,7 @@ class StatusProgressStorage(ProgressStorage):
             value: Optional[str],
     ) -> None:
         key_field = self.touch_field
-        body_value = dicts.resolve(body, key_field, None, assume_empty=True)
+        body_value = dicts.resolve(body, key_field, None)
         if body_value != value:  # also covers absent-vs-None cases.
             dicts.ensure(patch, key_field, value)
 
