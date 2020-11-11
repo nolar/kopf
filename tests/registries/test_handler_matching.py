@@ -46,11 +46,6 @@ mismatching_reason_and_decorator = pytest.mark.parametrize('reason, decorator', 
 
 
 @pytest.fixture()
-def registry():
-    return OperatorRegistry()
-
-
-@pytest.fixture()
 def handler_factory(registry, resource):
     def factory(**kwargs):
         handler = ResourceChangingHandler(**dict(dict(

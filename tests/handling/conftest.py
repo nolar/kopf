@@ -60,11 +60,6 @@ def k8s_mocked(mocker, resp_mocker):
     )
 
 
-@pytest.fixture()
-def registry(clear_default_registry):
-    return clear_default_registry
-
-
 @dataclasses.dataclass(frozen=True, eq=False, order=False)
 class HandlersContainer:
     event_mock: Mock
