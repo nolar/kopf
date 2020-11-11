@@ -22,20 +22,15 @@ import asyncio
 import contextlib
 import json
 import logging
-from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, Optional, cast
+from typing import AsyncIterator, Dict, Optional, cast
 
 import aiohttp
 
 from kopf.clients import auth, discovery, errors, fetching
 from kopf.structs import bodies, configuration, primitives, resources
-from kopf.utilities import backports
+from kopf.utilities import aiotasks
 
 logger = logging.getLogger(__name__)
-
-if TYPE_CHECKING:
-    asyncio_Future = asyncio.Future[Any]
-else:
-    asyncio_Future = asyncio.Future
 
 
 class WatchingError(Exception):
@@ -93,9 +88,9 @@ async def streaming_watch(
     # A stop-feature is a client-specific way of terminating the streaming HTTPS connection
     # when a freeze-mode is turned on. The low-level API call attaches its `response.close()`
     # to the future's callbacks, and a background task triggers it when the mode is turned on.
-    freeze_waiter: asyncio_Future
+    freeze_waiter: aiotasks.Future
     if freeze_mode is not None:
-        freeze_waiter = backports.create_task(
+        freeze_waiter = aiotasks.create_task(
             freeze_mode.wait_for_on(),
             name=f'freeze-waiter for {resource.name} @ {namespace or "cluster-wide"}')
     else:
@@ -120,7 +115,7 @@ async def continuous_watch(
         settings: configuration.OperatorSettings,
         resource: resources.Resource,
         namespace: Optional[str],
-        freeze_waiter: asyncio_Future,
+        freeze_waiter: aiotasks.Future,
 ) -> AsyncIterator[bodies.RawEvent]:
 
     # First, list the resources regularly, and get the list's resource version.
@@ -178,7 +173,7 @@ async def watch_objs(
         timeout: Optional[float] = None,
         since: Optional[str] = None,
         context: Optional[auth.APIContext] = None,  # injected by the decorator
-        freeze_waiter: asyncio_Future,
+        freeze_waiter: aiotasks.Future,
 ) -> AsyncIterator[bodies.RawInput]:
     """
     Watch objects of a specific resource type.

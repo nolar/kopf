@@ -10,6 +10,7 @@ pytest-cov
 pytest>=6.0.0
 aresponses
 asynctest
+async-timeout
 freezegun
 codecov
 coveralls
