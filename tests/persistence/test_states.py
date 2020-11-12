@@ -242,7 +242,7 @@ def test_set_awake_time(storage, handler, expected, body, delay):
     patch = Patch()
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler])
-    state = state.with_outcomes(outcomes={handler.id: HandlerOutcome(final=False, delay=delay)})
+    state = state.with_outcomes(outcomes={handler.id: HandlerOutcome(final=False, handler=handler, delay=delay)})
     state.store(patch=patch, body=Body(body), storage=storage)
     assert patch['status']['kopf']['progress']['some-id'].get('delayed') == expected
 
@@ -265,7 +265,7 @@ def test_set_retry_time(storage, handler, expected_retries, expected_delayed, bo
     patch = Patch()
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler])
-    state = state.with_outcomes(outcomes={handler.id: HandlerOutcome(final=False, delay=delay)})
+    state = state.with_outcomes(outcomes={handler.id: HandlerOutcome(final=False, handler=handler, delay=delay)})
     state.store(patch=patch, body=Body(body), storage=storage)
     assert patch['status']['kopf']['progress']['some-id']['retries'] == expected_retries
     assert patch['status']['kopf']['progress']['some-id']['delayed'] == expected_delayed
@@ -276,7 +276,7 @@ def test_subrefs_added_to_empty_state(storage, handler):
     patch = Patch()
     outcome_subrefs = ['sub2/b', 'sub2/a', 'sub2', 'sub1', 'sub3']
     expected_subrefs = ['sub1', 'sub2', 'sub2/a', 'sub2/b', 'sub3']
-    outcome = HandlerOutcome(final=True, subrefs=outcome_subrefs)
+    outcome = HandlerOutcome(final=True, handler=handler, subrefs=outcome_subrefs)
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler])
     state = state.with_outcomes(outcomes={handler.id: outcome})
@@ -289,7 +289,7 @@ def test_subrefs_added_to_preexisting_subrefs(storage, handler):
     patch = Patch()
     outcome_subrefs = ['sub2/b', 'sub2/a', 'sub2', 'sub1', 'sub3']
     expected_subrefs = ['sub1', 'sub2', 'sub2/a', 'sub2/b', 'sub3', 'sub9/1', 'sub9/2']
-    outcome = HandlerOutcome(final=True, subrefs=outcome_subrefs)
+    outcome = HandlerOutcome(final=True, handler=handler, subrefs=outcome_subrefs)
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler])
     state = state.with_outcomes(outcomes={handler.id: outcome})
@@ -300,7 +300,7 @@ def test_subrefs_added_to_preexisting_subrefs(storage, handler):
 def test_subrefs_ignored_when_not_specified(storage, handler):
     body = {}
     patch = Patch()
-    outcome = HandlerOutcome(final=True, subrefs=[])
+    outcome = HandlerOutcome(final=True, handler=handler, subrefs=[])
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler])
     state = state.with_outcomes(outcomes={handler.id: outcome})
@@ -318,7 +318,7 @@ def test_store_failure(storage, handler, expected_retries, expected_stopped, bod
     patch = Patch()
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler])
-    state = state.with_outcomes(outcomes={handler.id: HandlerOutcome(final=True, exception=error)})
+    state = state.with_outcomes(outcomes={handler.id: HandlerOutcome(final=True, handler=handler, exception=error)})
     state.store(patch=patch, body=Body(body), storage=storage)
     assert patch['status']['kopf']['progress']['some-id']['success'] is False
     assert patch['status']['kopf']['progress']['some-id']['failure'] is True
@@ -336,7 +336,7 @@ def test_store_success(storage, handler, expected_retries, expected_stopped, bod
     patch = Patch()
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler])
-    state = state.with_outcomes(outcomes={handler.id: HandlerOutcome(final=True)})
+    state = state.with_outcomes(outcomes={handler.id: HandlerOutcome(final=True, handler=handler)})
     state.store(patch=patch, body=Body(body), storage=storage)
     assert patch['status']['kopf']['progress']['some-id']['success'] is True
     assert patch['status']['kopf']['progress']['some-id']['failure'] is False
@@ -352,7 +352,7 @@ def test_store_success(storage, handler, expected_retries, expected_stopped, bod
 ])
 def test_store_result(handler, expected_patch, result):
     patch = Patch()
-    outcomes = {handler.id: HandlerOutcome(final=True, result=result)}
+    outcomes = {handler.id: HandlerOutcome(final=True, handler=handler, result=result)}
     deliver_results(outcomes=outcomes, patch=patch)
     assert patch == expected_patch
 

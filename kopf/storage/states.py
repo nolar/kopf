@@ -34,6 +34,7 @@ class HandlerOutcome:
     possibly after few executions, and consisting of simple data types
     (for YAML/JSON serialisation) rather than the actual in-memory objects.
     """
+    handler: handlers_.BaseHandler
     final: bool
     delay: Optional[float] = None
     result: Optional[callbacks.Result] = None

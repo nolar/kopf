@@ -51,6 +51,7 @@ def test_resource_handler_with_all_args(mocker):
     annotations = mocker.Mock()
     when = mocker.Mock()
     requires_finalizer = mocker.Mock()
+    status_prefix = mocker.Mock()
     handler = ResourceChangingHandler(
         fn=fn,
         id=id,
@@ -67,6 +68,7 @@ def test_resource_handler_with_all_args(mocker):
         annotations=annotations,
         when=when,
         requires_finalizer=requires_finalizer,
+        status_prefix=status_prefix,
     )
     assert handler.fn is fn
     assert handler.id is id
@@ -82,6 +84,7 @@ def test_resource_handler_with_all_args(mocker):
     assert handler.annotations is annotations
     assert handler.when is when
     assert handler.requires_finalizer is requires_finalizer
+    assert handler.status_prefix is status_prefix
 
     with pytest.deprecated_call(match=r"use handler.reason"):
         assert handler.event is reason

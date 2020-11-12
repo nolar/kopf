@@ -109,7 +109,7 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[
             reason=reason, field=real_field,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
-            labels=labels, annotations=annotations, when=when,
+            labels=labels, annotations=annotations, when=when, status_prefix=True,
         )
         self.append(handler)
         return fn

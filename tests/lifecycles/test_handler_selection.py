@@ -98,9 +98,9 @@ def test_asap_takes_the_least_retried(mocker):
 
     # Set the pre-existing state, and verify that it was set properly.
     state = State.from_scratch().with_handlers([handler1, handler2, handler3])
-    state = state.with_outcomes({handler1.id: HandlerOutcome(final=False)})
-    state = state.with_outcomes({handler1.id: HandlerOutcome(final=False)})
-    state = state.with_outcomes({handler3.id: HandlerOutcome(final=False)})
+    state = state.with_outcomes({handler1.id: HandlerOutcome(final=False, handler=handler1)})
+    state = state.with_outcomes({handler1.id: HandlerOutcome(final=False, handler=handler1)})
+    state = state.with_outcomes({handler3.id: HandlerOutcome(final=False, handler=handler3)})
     assert state[handler1.id].retries == 2
     assert state[handler2.id].retries == 0
     assert state[handler3.id].retries == 1

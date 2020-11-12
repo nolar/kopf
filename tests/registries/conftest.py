@@ -59,7 +59,7 @@ def parent_handler():
         errors=None, retries=None, timeout=None, backoff=None, cooldown=None,
         labels=None, annotations=None, when=None,
         initial=None, deleted=None, requires_finalizer=None,
-        reason=None, field=None,
+        reason=None, field=None, status_prefix=None,
     )
 
 

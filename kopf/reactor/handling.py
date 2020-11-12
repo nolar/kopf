@@ -281,36 +281,36 @@ async def execute_handler_once(
     # Unfinished children cause the regular retry, but with less logging and event reporting.
     except HandlerChildrenRetry as e:
         logger.debug(f"{handler} has unfinished sub-handlers. Will retry soon.")
-        return states.HandlerOutcome(final=False, exception=e, delay=e.delay, subrefs=subrefs)
+        return states.HandlerOutcome(final=False, exception=e, delay=e.delay, subrefs=subrefs, handler=handler)
 
     # Definitely a temporary error, regardless of the error strictness.
     except TemporaryError as e:
         logger.error(f"{handler} failed temporarily: %s", str(e) or repr(e))
-        return states.HandlerOutcome(final=False, exception=e, delay=e.delay, subrefs=subrefs)
+        return states.HandlerOutcome(final=False, exception=e, delay=e.delay, subrefs=subrefs, handler=handler)
 
     # Same as permanent errors below, but with better logging for our internal cases.
     except HandlerTimeoutError as e:
         logger.error(f"%s", str(e) or repr(e))  # already formatted
-        return states.HandlerOutcome(final=True, exception=e, subrefs=subrefs)
+        return states.HandlerOutcome(final=True, exception=e, subrefs=subrefs, handler=handler)
         # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
     # Definitely a permanent error, regardless of the error strictness.
     except PermanentError as e:
         logger.error(f"{handler} failed permanently: %s", str(e) or repr(e))
-        return states.HandlerOutcome(final=True, exception=e, subrefs=subrefs)
+        return states.HandlerOutcome(final=True, exception=e, subrefs=subrefs, handler=handler)
         # TODO: report the handling failure somehow (beside logs/events). persistent status?
 
     # Regular errors behave as either temporary or permanent depending on the error strictness.
     except Exception as e:
         if errors_mode == handlers_.ErrorsMode.IGNORED:
             logger.exception(f"{handler} failed with an exception. Will ignore.")
-            return states.HandlerOutcome(final=True, subrefs=subrefs)
+            return states.HandlerOutcome(final=True, subrefs=subrefs, handler=handler)
         elif errors_mode == handlers_.ErrorsMode.TEMPORARY:
             logger.exception(f"{handler} failed with an exception. Will retry.")
-            return states.HandlerOutcome(final=False, exception=e, delay=backoff, subrefs=subrefs)
+            return states.HandlerOutcome(final=False, exception=e, delay=backoff, subrefs=subrefs, handler=handler)
         elif errors_mode == handlers_.ErrorsMode.PERMANENT:
             logger.exception(f"{handler} failed with an exception. Will stop.")
-            return states.HandlerOutcome(final=True, exception=e, subrefs=subrefs)
+            return states.HandlerOutcome(final=True, exception=e, subrefs=subrefs, handler=handler)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?
         else:
             raise RuntimeError(f"Unknown mode for errors: {errors_mode!r}")
@@ -318,7 +318,7 @@ async def execute_handler_once(
     # No errors means the handler should be excluded from future runs in this reaction cycle.
     else:
         logger.info(f"{handler} succeeded.")
-        return states.HandlerOutcome(final=True, result=result, subrefs=subrefs)
+        return states.HandlerOutcome(final=True, result=result, subrefs=subrefs, handler=handler)
 
 
 async def invoke_handler(

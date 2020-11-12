@@ -52,6 +52,7 @@ def test_resource_handler_with_deprecated_cooldown_instead_of_backoff(mocker):
     annotations = mocker.Mock()
     when = mocker.Mock()
     requires_finalizer = mocker.Mock()
+    status_prefix = mocker.Mock()
 
     with pytest.deprecated_call(match=r"use backoff="):
         handler = ResourceChangingHandler(
@@ -70,6 +71,7 @@ def test_resource_handler_with_deprecated_cooldown_instead_of_backoff(mocker):
             annotations=annotations,
             when=when,
             requires_finalizer=requires_finalizer,
+            status_prefix=status_prefix
         )
 
     assert handler.fn is fn
@@ -86,3 +88,4 @@ def test_resource_handler_with_deprecated_cooldown_instead_of_backoff(mocker):
     assert handler.annotations is annotations
     assert handler.when is when
     assert handler.requires_finalizer is requires_finalizer
+    assert handler.status_prefix is status_prefix

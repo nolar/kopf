@@ -59,7 +59,7 @@ def handler_factory(registry, resource):
             fn=some_fn, id='a',
             errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
             initial=None, deleted=None, requires_finalizer=None,
-            annotations=None, labels=None, when=None, field=None,
+            annotations=None, labels=None, when=None, field=None, status_prefix=None,
             reason=None,
         ), **kwargs))
         registry.resource_changing_handlers[resource].append(handler)
