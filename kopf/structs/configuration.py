@@ -117,8 +117,13 @@ class PeeringSettings:
     For how long (in seconds) the operator's record is considered actual
     by other operators before assuming that the corresponding operator
     is not functioning and the freeze mode should be re-evaluated.
+
     The peered operators will update their records as long as they are running,
     slightly faster than their records expires (5-10 seconds earlier).
+
+    Note that it is the lifetime of the current operator. For operators that
+    do not communicate their lifetime (broken?), it is always assumed to be
+    60 seconds regardless of this operator's configuration (a hard-coded value).
     """
 
     mandatory: bool = False
