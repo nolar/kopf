@@ -36,6 +36,7 @@ Kopf: Kubernetes Operators Framework
    results
    errors
    scopes
+   status
 
 .. toctree::
    :maxdepth: 2
