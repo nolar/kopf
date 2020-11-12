@@ -35,7 +35,7 @@ import getpass
 import logging
 import os
 import random
-from typing import Any, Dict, Iterable, Mapping, NewType, NoReturn, Optional, Union, cast
+from typing import Any, Dict, Iterable, Mapping, NewType, NoReturn, Optional, cast
 
 import iso8601
 
@@ -61,31 +61,31 @@ class Peer:
             *,
             identity: Identity,
             priority: int = 0,
-            lastseen: Optional[Union[str, datetime.datetime]] = None,
-            lifetime: Union[int, datetime.timedelta] = 60,
+            lifetime: int = 60,
+            lastseen: Optional[str] = None,
             **_: Any,  # for the forward-compatibility with the new fields
     ):
         super().__init__()
         self.identity = identity
         self.priority = priority
-        self.lifetime = (lifetime if isinstance(lifetime, datetime.timedelta) else
-                         datetime.timedelta(seconds=int(lifetime)))
-        self.lastseen = (lastseen if isinstance(lastseen, datetime.datetime) else
-                         iso8601.parse_date(lastseen) if lastseen is not None else
+        self.lifetime = datetime.timedelta(seconds=int(lifetime))
+        self.lastseen = (iso8601.parse_date(lastseen) if lastseen is not None else
                          datetime.datetime.utcnow())
         self.lastseen = self.lastseen.replace(tzinfo=None)  # only the naive utc -- for comparison
         self.deadline = self.lastseen + self.lifetime
         self.is_dead = self.deadline <= datetime.datetime.utcnow()
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(identity={self.identity}, priority={self.priority}, lastseen={self.lastseen}, lifetime={self.lifetime})"
+        clsname = self.__class__.__name__
+        options = ", ".join(f"{key!s}={val!r}" for key, val in self.as_dict().items())
+        return f"<{clsname} {self.identity}: {options}>"
 
     def as_dict(self) -> Dict[str, Any]:
         # Only the non-calculated and non-identifying fields.
         return {
-            'priority': self.priority,
-            'lastseen': self.lastseen.isoformat(),
-            'lifetime': self.lifetime.total_seconds(),
+            'priority': int(self.priority),
+            'lifetime': int(self.lifetime.total_seconds()),
+            'lastseen': str(self.lastseen.isoformat()),
         }
 
 

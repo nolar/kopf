@@ -17,12 +17,7 @@ def test_defaults():
 def test_repr():
     peer = Peer(identity='some-id')
     text = repr(peer)
-    assert text.startswith('Peer(')
-    assert text.endswith(')')
-    assert 'identity=some-id' in text
-    assert 'priority=0' in text
-    assert 'lastseen=' in text
-    assert 'lifetime=' in text
+    assert text == "<Peer some-id: priority=0, lifetime=60, lastseen='2020-12-31T23:59:59.123456'>"
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
@@ -38,12 +33,6 @@ def test_priority_unspecified():
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
-def test_creation_with_lifetime_as_timedelta():
-    peer = Peer(identity='id', lifetime=datetime.timedelta(seconds=123))
-    assert peer.lifetime == datetime.timedelta(seconds=123)
-
-
-@freezegun.freeze_time('2020-12-31T23:59:59.123456')
 def test_creation_with_lifetime_as_number():
     peer = Peer(identity='id', lifetime=123)
     assert peer.lifetime == datetime.timedelta(seconds=123)
@@ -53,12 +42,6 @@ def test_creation_with_lifetime_as_number():
 def test_creation_with_lifetime_unspecified():
     peer = Peer(identity='id')
     assert peer.lifetime == datetime.timedelta(seconds=60)
-
-
-@freezegun.freeze_time('2020-12-31T23:59:59.123456')
-def test_creation_with_lastseen_as_datetime():
-    peer = Peer(identity='id', lastseen=datetime.datetime(2020, 1, 1, 12, 34, 56, 789123))
-    assert peer.lastseen == datetime.datetime(2020, 1, 1, 12, 34, 56, 789123)
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
