@@ -161,7 +161,10 @@ async def keepalive(
 
             # How often do we update. Keep limited to avoid k8s api flooding.
             # Should be slightly less than the lifetime, enough for a patch request to finish.
-            await asyncio.sleep(max(1, int(settings.peering.lifetime - 10)))
+            # A little jitter is added to evenly distribute the keep-alives over time.
+            lifetime = settings.peering.lifetime
+            duration = min(lifetime, max(1, lifetime - random.randint(5, 10)))
+            await asyncio.sleep(max(1, duration))
     finally:
         try:
             await asyncio.shield(touch(
