@@ -82,6 +82,7 @@ def test_on_resume_minimal(reason, cause_factory):
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
     assert handlers[0].when is None
+    assert handlers[0].status_prefix == True
 
 
 def test_on_create_minimal(cause_factory):
@@ -105,6 +106,7 @@ def test_on_create_minimal(cause_factory):
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
     assert handlers[0].when is None
+    assert handlers[0].status_prefix == True
 
 
 def test_on_update_minimal(cause_factory):
@@ -128,6 +130,7 @@ def test_on_update_minimal(cause_factory):
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
     assert handlers[0].when is None
+    assert handlers[0].status_prefix == True
 
 
 def test_on_delete_minimal(cause_factory):
@@ -151,6 +154,7 @@ def test_on_delete_minimal(cause_factory):
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
     assert handlers[0].when is None
+    assert handlers[0].status_prefix == True
 
 
 def test_on_field_minimal(cause_factory):
@@ -175,6 +179,7 @@ def test_on_field_minimal(cause_factory):
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
     assert handlers[0].when is None
+    assert handlers[0].status_prefix == True
 
 
 def test_on_field_fails_without_field():
@@ -260,7 +265,7 @@ def test_on_resume_with_all_kwargs(mocker, reason, cause_factory):
                     deleted=True,
                     labels={'somelabel': 'somevalue'},
                     annotations={'someanno': 'somevalue'},
-                    when=when)
+                    when=when, status_prefix=False)
     def fn(**_):
         pass
 
@@ -278,6 +283,7 @@ def test_on_resume_with_all_kwargs(mocker, reason, cause_factory):
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert handlers[0].when == when
+    assert handlers[0].status_prefix == False
 
 
 def test_on_create_with_all_kwargs(mocker, cause_factory):
@@ -293,7 +299,7 @@ def test_on_create_with_all_kwargs(mocker, cause_factory):
                     errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     labels={'somelabel': 'somevalue'},
                     annotations={'someanno': 'somevalue'},
-                    when=when)
+                    when=when, status_prefix=False)
     def fn(**_):
         pass
 
@@ -310,6 +316,7 @@ def test_on_create_with_all_kwargs(mocker, cause_factory):
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert handlers[0].when == when
+    assert handlers[0].status_prefix == False
 
 
 def test_on_update_with_all_kwargs(mocker, cause_factory):
@@ -325,7 +332,7 @@ def test_on_update_with_all_kwargs(mocker, cause_factory):
                     errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     labels={'somelabel': 'somevalue'},
                     annotations={'someanno': 'somevalue'},
-                    when=when)
+                    when=when, status_prefix=False)
     def fn(**_):
         pass
 
@@ -342,6 +349,7 @@ def test_on_update_with_all_kwargs(mocker, cause_factory):
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert handlers[0].when == when
+    assert handlers[0].status_prefix == False
 
 
 @pytest.mark.parametrize('optional', [
@@ -362,7 +370,7 @@ def test_on_delete_with_all_kwargs(mocker, cause_factory, optional):
                     optional=optional,
                     labels={'somelabel': 'somevalue'},
                     annotations={'someanno': 'somevalue'},
-                    when=when)
+                    when=when, status_prefix=False)
     def fn(**_):
         pass
 
@@ -379,6 +387,7 @@ def test_on_delete_with_all_kwargs(mocker, cause_factory, optional):
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert handlers[0].when == when
+    assert handlers[0].status_prefix == False
 
 
 def test_on_field_with_all_kwargs(mocker, cause_factory):
@@ -395,7 +404,7 @@ def test_on_field_with_all_kwargs(mocker, cause_factory):
                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                    labels={'somelabel': 'somevalue'},
                    annotations={'someanno': 'somevalue'},
-                   when=when)
+                   when=when, status_prefix=False)
     def fn(**_):
         pass
 
@@ -412,6 +421,7 @@ def test_on_field_with_all_kwargs(mocker, cause_factory):
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert handlers[0].when == when
+    assert handlers[0].status_prefix == False
 
 
 def test_subhandler_fails_with_no_parent_handler():
@@ -444,6 +454,7 @@ def test_subhandler_declaratively(parent_handler, cause_factory):
     handlers = registry.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
+    assert handlers[0].status_prefix == parent_handler.status_prefix
 
 
 def test_subhandler_imperatively(parent_handler, cause_factory):
@@ -461,6 +472,23 @@ def test_subhandler_imperatively(parent_handler, cause_factory):
     handlers = registry.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
+
+
+def test_subhandler_with_all_kwargs(parent_handler, cause_factory):
+    cause = cause_factory(reason=Reason.UPDATE)
+
+    registry = ResourceChangingRegistry()
+    subregistry_var.set(registry)
+
+    with context([(handler_var, parent_handler)]):
+        @kopf.on.this(status_prefix = False)
+        def fn(**_):
+            pass
+
+    handlers = registry.get_handlers(cause)
+    assert len(handlers) == 1
+    assert handlers[0].fn is fn
+    assert handlers[0].status_prefix == False
 
 
 @pytest.mark.parametrize('decorator, kwargs', [

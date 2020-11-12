@@ -127,6 +127,7 @@ class ResourceChangingHandler(ResourceHandler):
     initial: Optional[bool]
     deleted: Optional[bool]  # used for mixed-in (initial==True) @on.resume handlers only.
     requires_finalizer: Optional[bool]
+    status_prefix: Optional[bool]
 
     @property
     def event(self) -> Optional[Reason]:

@@ -145,6 +145,7 @@ def resume(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
+        status_prefix: bool = True,
 ) -> ResourceChangingDecorator:
     """ ``@kopf.on.resume()`` handler for the object resuming on operator (re)start. """
     def decorator(  # lgtm[py/similar-function]
@@ -161,6 +162,7 @@ def resume(  # lgtm[py/similar-function]
             labels=labels, annotations=annotations, when=when,
             initial=True, deleted=deleted, requires_finalizer=None,
             reason=None,
+            status_prefix=status_prefix,
         )
         real_registry.resource_changing_handlers[real_resource].append(handler)
         return fn
@@ -180,6 +182,7 @@ def create(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
+        status_prefix: bool = True,
 ) -> ResourceChangingDecorator:
     """ ``@kopf.on.create()`` handler for the object creation. """
     def decorator(  # lgtm[py/similar-function]
@@ -196,6 +199,7 @@ def create(  # lgtm[py/similar-function]
             labels=labels, annotations=annotations, when=when,
             initial=None, deleted=None, requires_finalizer=None,
             reason=handlers.Reason.CREATE,
+            status_prefix=status_prefix,
         )
         real_registry.resource_changing_handlers[real_resource].append(handler)
         return fn
@@ -215,6 +219,7 @@ def update(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
+        status_prefix: bool = True,
 ) -> ResourceChangingDecorator:
     """ ``@kopf.on.update()`` handler for the object update or change. """
     def decorator(  # lgtm[py/similar-function]
@@ -231,6 +236,7 @@ def update(  # lgtm[py/similar-function]
             labels=labels, annotations=annotations, when=when,
             initial=None, deleted=None, requires_finalizer=None,
             reason=handlers.Reason.UPDATE,
+            status_prefix=status_prefix,
         )
         real_registry.resource_changing_handlers[real_resource].append(handler)
         return fn
@@ -251,6 +257,7 @@ def delete(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
+        status_prefix: bool = True,
 ) -> ResourceChangingDecorator:
     """ ``@kopf.on.delete()`` handler for the object deletion. """
     def decorator(  # lgtm[py/similar-function]
@@ -267,6 +274,7 @@ def delete(  # lgtm[py/similar-function]
             labels=labels, annotations=annotations, when=when,
             initial=None, deleted=None, requires_finalizer=bool(not optional),
             reason=handlers.Reason.DELETE,
+            status_prefix=status_prefix,
         )
         real_registry.resource_changing_handlers[real_resource].append(handler)
         return fn
@@ -287,6 +295,7 @@ def field(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
+        status_prefix: bool = True,
 ) -> ResourceChangingDecorator:
     """ ``@kopf.on.field()`` handler for the individual field changes. """
     def decorator(  # lgtm[py/similar-function]
@@ -304,6 +313,7 @@ def field(  # lgtm[py/similar-function]
             labels=labels, annotations=annotations, when=when,
             initial=None, deleted=None, requires_finalizer=None,
             reason=None,
+            status_prefix=status_prefix,
         )
         real_registry.resource_changing_handlers[real_resource].append(handler)
         return fn
@@ -318,6 +328,7 @@ def event(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
+        status_prefix: bool = True,
 ) -> ResourceWatchingDecorator:
     """ ``@kopf.on.event()`` handler for the silent spies on the events. """
     def decorator(  # lgtm[py/similar-function]
@@ -396,6 +407,7 @@ def timer(  # lgtm[py/similar-function]
         sharp: Optional[bool] = None,
         idle: Optional[float] = None,
         interval: Optional[float] = None,
+        status_prefix: bool = True,
 ) -> ResourceTimerDecorator:
     """ ``@kopf.timer()`` handler for the regular events. """
     def decorator(  # lgtm[py/similar-function]
@@ -432,6 +444,7 @@ def this(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
+        status_prefix: Optional[bool] = None,
 ) -> ResourceChangingDecorator:
     """
     ``@kopf.on.this()`` decorator for the dynamically generated sub-handlers.
@@ -471,12 +484,14 @@ def this(  # lgtm[py/similar-function]
         real_registry = registry if registry is not None else handling.subregistry_var.get()
         real_id = registries.generate_id(fn=fn, id=id,
                                          prefix=parent_handler.id if parent_handler else None)
+        handler_status_prefix = status_prefix if status_prefix is not None else parent_handler.status_prefix if parent_handler else True
         handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id, field=None,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             labels=labels, annotations=annotations, when=when,
             initial=None, deleted=None, requires_finalizer=None,
             reason=None,
+            status_prefix=handler_status_prefix,
         )
         real_registry.append(handler)
         return fn
