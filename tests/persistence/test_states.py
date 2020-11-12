@@ -30,7 +30,7 @@ def storage(request):
 
 @pytest.fixture()
 def handler():
-    return Mock(id='some-id', spec_set=['id'])
+    return Mock(id='some-id', status_prefix=True, spec_set=['id', 'status_prefix'])
 
 
 @freezegun.freeze_time(TS0)
@@ -351,6 +351,19 @@ def test_store_success(storage, handler, expected_retries, expected_stopped, bod
     ({'field': 'value'}, {'status': {'some-id': {'field': 'value'}}}),
 ])
 def test_store_result(handler, expected_patch, result):
+    patch = Patch()
+    outcomes = {handler.id: HandlerOutcome(final=True, handler=handler, result=result)}
+    deliver_results(outcomes=outcomes, patch=patch)
+    assert patch == expected_patch
+
+
+@pytest.mark.parametrize('result, expected_patch', [
+    (None, {}),
+    ('string', {'status': {'string': {}}}),
+    ({'field': 'value'}, {'status': {'field': 'value'}}),
+])
+def test_store_resule_no_prefix(handler, expected_patch, result):
+    handler.status_prefix = False
     patch = Patch()
     outcomes = {handler.id: HandlerOutcome(final=True, handler=handler, result=result)}
     deliver_results(outcomes=outcomes, patch=patch)

@@ -305,9 +305,16 @@ def deliver_results(
             pass
         elif isinstance(outcome.result, collections.abc.Mapping):
             # TODO: merge recursively (patch-merge), do not overwrite the keys if they are present.
-            patch.setdefault('status', {}).setdefault(handler_id, {}).update(outcome.result)
+            if hasattr(outcome.handler, 'status_prefix') and not outcome.handler.status_prefix:
+                base = patch.setdefault('status', {})
+            else:
+                base = patch.setdefault('status', {}).setdefault(handler_id, {})
+            base.update(outcome.result)
         else:
-            patch.setdefault('status', {})[handler_id] = copy.deepcopy(outcome.result)
+            if hasattr(outcome.handler, 'status_prefix') and not outcome.handler.status_prefix:
+                patch.setdefault('status', {})[copy.deepcopy(outcome.result)] = {}
+            else:
+                patch.setdefault('status', {})[handler_id] = copy.deepcopy(outcome.result)
 
 
 @overload
