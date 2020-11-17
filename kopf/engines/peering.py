@@ -141,6 +141,18 @@ async def process_peering_event(
             logger.info(f"Resuming operations after the freeze. Conflicting operators with the same priority are gone.")
             await freeze_mode.turn_off()
 
+    # Either wait for external updates (and exit when they arrive), or until the blocking peers
+    # are expected to expire, and force the immediate re-evaluation by a certain change of self.
+    # This incurs an extra PATCH request besides usual keepalives, but in the complete silence
+    # from other peers that existed a moment earlier, this should not be a problem.
+    now = datetime.datetime.utcnow()
+    delay = max([0] + [(peer.deadline - now).total_seconds() for peer in same_peers + prio_peers])
+    if delay:
+        try:
+            await asyncio.wait_for(replenished.wait(), timeout=delay)
+        except asyncio.TimeoutError:
+            await touch(identity=identity, settings=settings, namespace=namespace)
+
 
 async def keepalive(
         *,
@@ -153,11 +165,7 @@ async def keepalive(
     """
     try:
         while True:
-            await touch(
-                identity=identity,
-                settings=settings,
-                namespace=namespace,
-            )
+            await touch(identity=identity, settings=settings, namespace=namespace)
 
             # How often do we update. Keep limited to avoid k8s api flooding.
             # Should be slightly less than the lifetime, enough for a patch request to finish.
