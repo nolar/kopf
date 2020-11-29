@@ -1,0 +1,171 @@
+# The thorough tests run only on the master branch after everything is merged,
+# and regularly by time —- on order to detect bugs and incompatibility with
+# the new versions of freshly released software (e.g. K8s, K3s, Python libs).
+# The first part fully includes the CI workflow, with more versions of K3d/K3s.
+# The second part is unique to the thorough tests.
+name: Thorough tests
+on:
+  push:
+    branches:
+      - master
+      - release/**
+  schedule:
+    - cron: "13 3 * * 6"
+  workflow_dispatch: {}
+
+jobs:
+  linters:
+    name: Linting and static analysis
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+      - run: pip install -r requirements.txt
+      - run: isort . --check --diff
+        continue-on-error: true
+      - run: isort examples --settings=examples --check --diff
+        continue-on-error: true
+
+  unit-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [ "3.7", "3.8", "3.9" ]
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - run: pip install -r requirements.txt
+      - run: mypy kopf --strict --pretty
+      - run: pytest --color=yes --cov=kopf --cov-branch --junit-xml=junit.xml
+
+      - name: Publish coverage to Coveralls.io
+        if: success()
+        run: coveralls  # NB: Coveralls GitHub Action does not work: it wants an LCOV file.
+        env:
+          GITHUB_TOKEN: ${{ secrets.github_token }}
+      - name: Publish coverage to CodeCov.io
+        uses: codecov/codecov-action@v1
+        if: success()
+        env:
+          PYTHON: ${{ matrix.python-version }}
+        with:
+          flags: unit
+          env_vars: PYTHON
+      - name: Publish unit test results
+        uses: EnricoMi/publish-unit-test-result-action@v1.5
+        if: always()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          comment_on_pr: false
+          files: junit.xml
+
+  functional:
+    strategy:
+      fail-fast: false
+      matrix:
+        k3s: [latest, v1.19.4+k3s1, v1.18.12+k3s1, v1.17.14+k3s2, v1.16.15+k3s1]
+        client: [true, false]
+        crdapi: ["", v1beta1]
+        exclude:
+          - client: true
+          - crdapi: v1beta1
+        include:
+          - k3s: v1.16.15+k3s1
+            crdapi: v1beta1
+            client: false
+          - k3s: latest
+            crdapi: ""
+            client: true
+    name: >-
+      K3s ${{matrix.k3s}}
+      ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
+      ${{matrix.client && '+client' || ''}}
+    runs-on: ubuntu-20.04
+    env:
+      K3S: ${{ matrix.k3s }}
+      CLIENT: ${{ matrix.client || '' }}
+      CRDAPI: ${{ matrix.crdapi || '' }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+      - run: tools/install-clients.sh
+      - run: tools/install-k3d-k3s.sh
+      - run: pip install -r requirements.txt
+      - run: pytest --color=yes --only-e2e
+
+  full-scale-crd-v1:
+    strategy:
+      fail-fast: false
+      matrix:
+        k8s: [latest, v1.19.4, v1.18.12, v1.17.14, v1.16.15]
+        client: [true, false]
+        crdapi: [""]
+        exclude:
+          - client: true
+        include:
+          - k8s: latest
+            client: true
+    name: >-
+      K8s ${{matrix.k8s}}
+      ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
+      ${{matrix.client && '+client' || ''}}
+    runs-on: ubuntu-20.04
+    env:
+      K8S: ${{ matrix.k8s }}
+      CLIENT: ${{ matrix.client || '' }}
+      CRDAPI: ${{ matrix.crdapi || '' }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+      - run: tools/install-clients.sh
+      - run: tools/install-minikube.sh
+      - run: pip install -r requirements.txt
+      - run: pytest --color=yes --only-e2e
+
+  full-scale-crd-v1beta1:
+    strategy:
+      fail-fast: false
+      matrix:
+        k8s: [v1.16.15, v1.15.12, v1.14.10, v1.13.12]
+        client: [false]
+        crdapi: [v1beta1]
+    name: >-
+      K8s ${{matrix.k8s}}
+      ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
+      ${{matrix.client && '+client' || ''}}
+    runs-on: ubuntu-20.04
+    env:
+      K8S: ${{ matrix.k8s }}
+      CLIENT: ${{ matrix.client || '' }}
+      CRDAPI: ${{ matrix.crdapi || '' }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+      - run: tools/install-clients.sh
+      - run: tools/install-minikube.sh
+      - run: pip install -r requirements.txt
+      - run: pytest --color=yes --only-e2e
+
+  coveralls-finish:
+    name: Finalize coveralls.io
+    needs: [unit-tests, functional]
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/setup-python@v2
+      - run: pip install coveralls
+      - run: coveralls --finish
+        env:
+          GITHUB_TOKEN: ${{ secrets.github_token }}

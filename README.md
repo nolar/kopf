@@ -1,6 +1,6 @@
 # Kubernetes Operator Pythonic Framework (Kopf)
 
-[![Build Status](https://travis-ci.org/nolar/kopf.svg?branch=master)](https://travis-ci.org/nolar/kopf)
+[![CI](https://github.com/nolar/kopf/workflows/CI/badge.svg)](https://github.com/nolar/kopf/actions)
 [![codecov](https://codecov.io/gh/nolar/kopf/branch/master/graph/badge.svg)](https://codecov.io/gh/nolar/kopf)
 [![Coverage Status](https://coveralls.io/repos/github/nolar/kopf/badge.svg?branch=master)](https://coveralls.io/github/nolar/kopf?branch=master)
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/nolar/kopf.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/nolar/kopf/alerts/)
