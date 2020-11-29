@@ -70,24 +70,26 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        k3s: [v1.19.4+k3s1, v1.18.12+k3s1, v1.17.14+k3s2, v1.16.15+k3s1]
+        k3s: [v1.19, v1.18, v1.17, v1.16]
         crdapi: ["", v1beta1]
         exclude:
           - crdapi: v1beta1
         include:
-          - k3s: v1.16.15+k3s1
+          - k3s: v1.16
             crdapi: v1beta1
     name: K3s ${{matrix.k3s}} ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
     runs-on: ubuntu-20.04
     env:
-      K3S: ${{ matrix.k3s }}
       CRDAPI: ${{ matrix.crdapi || '' }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
           python-version: "3.9"
-      - run: tools/install-k3d-k3s.sh
+      - uses: nolar/setup-k3d-k3s@v1
+        with:
+          version: ${{ matrix.k3s }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - run: pip install -r requirements.txt
       - run: pytest --color=yes --only-e2e
 
