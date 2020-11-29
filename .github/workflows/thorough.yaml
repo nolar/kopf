@@ -71,33 +71,22 @@ jobs:
       fail-fast: false
       matrix:
         k3s: [latest, v1.19.4+k3s1, v1.18.12+k3s1, v1.17.14+k3s2, v1.16.15+k3s1]
-        client: [true, false]
         crdapi: ["", v1beta1]
         exclude:
-          - client: true
           - crdapi: v1beta1
         include:
           - k3s: v1.16.15+k3s1
             crdapi: v1beta1
-            client: false
-          - k3s: latest
-            crdapi: ""
-            client: true
-    name: >-
-      K3s ${{matrix.k3s}}
-      ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
-      ${{matrix.client && '+client' || ''}}
+    name: K3s ${{matrix.k3s}} ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
     runs-on: ubuntu-20.04
     env:
       K3S: ${{ matrix.k3s }}
-      CLIENT: ${{ matrix.client || '' }}
       CRDAPI: ${{ matrix.crdapi || '' }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
           python-version: "3.9"
-      - run: tools/install-clients.sh
       - run: tools/install-k3d-k3s.sh
       - run: pip install -r requirements.txt
       - run: pytest --color=yes --only-e2e
@@ -107,28 +96,17 @@ jobs:
       fail-fast: false
       matrix:
         k8s: [latest, v1.19.4, v1.18.12, v1.17.14, v1.16.15]
-        client: [true, false]
         crdapi: [""]
-        exclude:
-          - client: true
-        include:
-          - k8s: latest
-            client: true
-    name: >-
-      K8s ${{matrix.k8s}}
-      ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
-      ${{matrix.client && '+client' || ''}}
+    name: K8s ${{matrix.k8s}} ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
     runs-on: ubuntu-20.04
     env:
       K8S: ${{ matrix.k8s }}
-      CLIENT: ${{ matrix.client || '' }}
       CRDAPI: ${{ matrix.crdapi || '' }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
           python-version: "3.9"
-      - run: tools/install-clients.sh
       - run: tools/install-minikube.sh
       - run: pip install -r requirements.txt
       - run: pytest --color=yes --only-e2e
@@ -138,23 +116,17 @@ jobs:
       fail-fast: false
       matrix:
         k8s: [v1.16.15, v1.15.12, v1.14.10, v1.13.12]
-        client: [false]
         crdapi: [v1beta1]
-    name: >-
-      K8s ${{matrix.k8s}}
-      ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
-      ${{matrix.client && '+client' || ''}}
+    name: K8s ${{matrix.k8s}} ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
     runs-on: ubuntu-20.04
     env:
       K8S: ${{ matrix.k8s }}
-      CLIENT: ${{ matrix.client || '' }}
       CRDAPI: ${{ matrix.crdapi || '' }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
           python-version: "3.9"
-      - run: tools/install-clients.sh
       - run: tools/install-minikube.sh
       - run: pip install -r requirements.txt
       - run: pytest --color=yes --only-e2e

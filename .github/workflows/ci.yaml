@@ -77,9 +77,7 @@ jobs:
         include:
           - k3s: v1.16.15+k3s1
             crdapi: v1beta1
-    name: >-
-      K3s ${{matrix.k3s}}
-      ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
+    name: K3s ${{matrix.k3s}} ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
     runs-on: ubuntu-20.04
     env:
       K3S: ${{ matrix.k3s }}
