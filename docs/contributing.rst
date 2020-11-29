@@ -105,23 +105,3 @@ Code reviews
   You can use one of the existing or closed issues that match your topic best.
 * The PRs can be reviewed and commented by anyone,
   but can be approved only by the project maintainers.
-
-
-Private CI/CD
-=============
-
-The existing setup runs the Travis CI builds on every push
-to the existing pull requests of the upstream repository.
-
-In case you do not want to create a pull request yet,
-but want to run the builds for your branch,
-enable Travis CI for your own fork:
-
-* Create a `Travis CI <https://travis-ci.org/>`_ account.
-* Find your fork in the list of repos.
-* Click the toggle.
-* Push a feature branch to ``origin`` (see above).
-* Observe how Travis runs the tests in Travis CI in your account.
-
-When ready, create a PR to the upstream repository.
-This will run the tests in the upstream's Travis account.
