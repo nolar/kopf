@@ -11,7 +11,7 @@ example_py = os.path.relpath(os.path.join(os.path.dirname(__file__), 'example.py
 
 @pytest.fixture(scope='session')
 def crd_yaml():
-    crd_api = os.environ.get('CRDAPI', 'v1')
+    crd_api = os.environ.get('CRDAPI') or 'v1'
     crd_file = 'crd.yaml' if crd_api == 'v1' else f'crd-{crd_api}.yaml'
     return os.path.relpath(os.path.join(os.path.dirname(__file__), '..', crd_file))
 
