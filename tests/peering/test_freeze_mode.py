@@ -1,10 +1,33 @@
 import asyncio
+import dataclasses
+from unittest.mock import Mock
 
 import freezegun
 import pytest
 
 from kopf.engines.peering import process_peering_event
 from kopf.structs import bodies, primitives
+
+
+@dataclasses.dataclass(frozen=True, eq=False)
+class K8sMocks:
+    patch_obj: Mock
+
+
+@pytest.fixture(autouse=True)
+def k8s_mocked(mocker, resp_mocker):
+    # We mock on the level of our own K8s API wrappers, not the K8s client.
+    return K8sMocks(
+        patch_obj=mocker.patch('kopf.clients.patching.patch_obj', return_value={}),
+    )
+
+
+@pytest.fixture
+async def replenished():
+    # Make sure that freeze-sleeps are not actually executed, i.e. exit instantly.
+    replenished = asyncio.Event()
+    replenished.set()
+    return replenished
 
 
 @pytest.mark.parametrize('our_name, our_namespace, their_name, their_namespace', [
@@ -20,7 +43,8 @@ from kopf.structs import bodies, primitives
     ['our-name', None, 'their-name', 'our-namespace'],
 ])
 async def test_other_peering_objects_are_ignored(
-        mocker, settings, our_name, our_namespace, their_name, their_namespace):
+        mocker, k8s_mocked, settings, replenished,
+        our_name, our_namespace, their_name, their_namespace):
 
     status = mocker.Mock()
     status.items.side_effect = Exception("This should not be called.")
@@ -31,22 +55,26 @@ async def test_other_peering_objects_are_ignored(
             'status': status,
         })
 
+    wait_for = mocker.patch('asyncio.wait_for')
+
     settings.peering.name = our_name
     await process_peering_event(
         raw_event=event,
         freeze_mode=primitives.Toggle(),
-        replenished=asyncio.Event(),
+        replenished=replenished,
         autoclean=False,
         identity='id',
         settings=settings,
         namespace=our_namespace,
     )
     assert not status.items.called
+    assert not k8s_mocked.patch_obj.called
+    assert wait_for.call_count == 0
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
 async def test_toggled_on_for_higher_priority_peer_when_initially_off(
-        caplog, assert_logs, settings):
+        mocker, k8s_mocked, replenished, caplog, assert_logs, settings):
 
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
@@ -63,8 +91,8 @@ async def test_toggled_on_for_higher_priority_peer_when_initially_off(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    replenished = asyncio.Event()
     freeze_mode = primitives.Toggle(False)
+    wait_for = mocker.patch('asyncio.wait_for')
 
     caplog.set_level(0)
     assert freeze_mode.is_off()
@@ -78,6 +106,9 @@ async def test_toggled_on_for_higher_priority_peer_when_initially_off(
         settings=settings,
     )
     assert freeze_mode.is_on()
+    assert wait_for.call_count == 1
+    assert 9 < wait_for.call_args[1]['timeout'] < 10
+    assert not k8s_mocked.patch_obj.called
     assert_logs(["Freezing operations in favour of"], prohibited=[
         "Possibly conflicting operators",
         "Freezing all operators, including self",
@@ -87,7 +118,7 @@ async def test_toggled_on_for_higher_priority_peer_when_initially_off(
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
 async def test_ignored_for_higher_priority_peer_when_already_on(
-        caplog, assert_logs, settings):
+        mocker, k8s_mocked, replenished, caplog, assert_logs, settings):
 
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
@@ -104,8 +135,8 @@ async def test_ignored_for_higher_priority_peer_when_already_on(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    replenished = asyncio.Event()
     freeze_mode = primitives.Toggle(True)
+    wait_for = mocker.patch('asyncio.wait_for')
 
     caplog.set_level(0)
     assert freeze_mode.is_on()
@@ -119,6 +150,9 @@ async def test_ignored_for_higher_priority_peer_when_already_on(
         settings=settings,
     )
     assert freeze_mode.is_on()
+    assert wait_for.call_count == 1
+    assert 9 < wait_for.call_args[1]['timeout'] < 10
+    assert not k8s_mocked.patch_obj.called
     assert_logs([], prohibited=[
         "Possibly conflicting operators",
         "Freezing all operators, including self",
@@ -129,7 +163,7 @@ async def test_ignored_for_higher_priority_peer_when_already_on(
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
 async def test_toggled_off_for_lower_priority_peer_when_initially_on(
-        caplog, assert_logs, settings):
+        mocker, k8s_mocked, replenished, caplog, assert_logs, settings):
 
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
@@ -146,8 +180,8 @@ async def test_toggled_off_for_lower_priority_peer_when_initially_on(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    replenished = asyncio.Event()
     freeze_mode = primitives.Toggle(True)
+    wait_for = mocker.patch('asyncio.wait_for')
 
     caplog.set_level(0)
     assert freeze_mode.is_on()
@@ -161,6 +195,8 @@ async def test_toggled_off_for_lower_priority_peer_when_initially_on(
         settings=settings,
     )
     assert freeze_mode.is_off()
+    assert wait_for.call_count == 0
+    assert not k8s_mocked.patch_obj.called
     assert_logs(["Resuming operations after the freeze"], prohibited=[
         "Possibly conflicting operators",
         "Freezing all operators, including self",
@@ -170,7 +206,7 @@ async def test_toggled_off_for_lower_priority_peer_when_initially_on(
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
 async def test_ignored_for_lower_priority_peer_when_already_off(
-        caplog, assert_logs, settings):
+        mocker, k8s_mocked, replenished, caplog, assert_logs, settings):
 
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
@@ -187,8 +223,8 @@ async def test_ignored_for_lower_priority_peer_when_already_off(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    replenished = asyncio.Event()
     freeze_mode = primitives.Toggle(False)
+    wait_for = mocker.patch('asyncio.wait_for')
 
     caplog.set_level(0)
     assert freeze_mode.is_off()
@@ -202,6 +238,8 @@ async def test_ignored_for_lower_priority_peer_when_already_off(
         settings=settings,
     )
     assert freeze_mode.is_off()
+    assert wait_for.call_count == 0
+    assert not k8s_mocked.patch_obj.called
     assert_logs([], prohibited=[
         "Possibly conflicting operators",
         "Freezing all operators, including self",
@@ -212,7 +250,7 @@ async def test_ignored_for_lower_priority_peer_when_already_off(
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
 async def test_toggled_on_for_same_priority_peer_when_initially_off(
-        caplog, assert_logs, settings):
+        mocker, k8s_mocked, replenished, caplog, assert_logs, settings):
 
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
@@ -229,8 +267,8 @@ async def test_toggled_on_for_same_priority_peer_when_initially_off(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    replenished = asyncio.Event()
     freeze_mode = primitives.Toggle(False)
+    wait_for = mocker.patch('asyncio.wait_for')
 
     caplog.set_level(0)
     assert freeze_mode.is_off()
@@ -244,6 +282,9 @@ async def test_toggled_on_for_same_priority_peer_when_initially_off(
         settings=settings,
     )
     assert freeze_mode.is_on()
+    assert wait_for.call_count == 1
+    assert 9 < wait_for.call_args[1]['timeout'] < 10
+    assert not k8s_mocked.patch_obj.called
     assert_logs([
         "Possibly conflicting operators",
         "Freezing all operators, including self",
@@ -255,7 +296,7 @@ async def test_toggled_on_for_same_priority_peer_when_initially_off(
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
 async def test_ignored_for_same_priority_peer_when_already_on(
-        caplog, assert_logs, settings):
+        mocker, k8s_mocked, replenished, caplog, assert_logs, settings):
 
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
@@ -272,8 +313,8 @@ async def test_ignored_for_same_priority_peer_when_already_on(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    replenished = asyncio.Event()
     freeze_mode = primitives.Toggle(True)
+    wait_for = mocker.patch('asyncio.wait_for')
 
     caplog.set_level(0)
     assert freeze_mode.is_on()
@@ -287,6 +328,9 @@ async def test_ignored_for_same_priority_peer_when_already_on(
         settings=settings,
     )
     assert freeze_mode.is_on()
+    assert wait_for.call_count == 1
+    assert 9 < wait_for.call_args[1]['timeout'] < 10
+    assert not k8s_mocked.patch_obj.called
     assert_logs([
         "Possibly conflicting operators",
     ], prohibited=[
@@ -294,3 +338,43 @@ async def test_ignored_for_same_priority_peer_when_already_on(
         "Freezing operations in favour of",
         "Resuming operations after the freeze",
     ])
+
+
+@freezegun.freeze_time('2020-12-31T23:59:59.123456')
+@pytest.mark.parametrize('priority', [100, 101])
+async def test_resumes_immediately_on_expiration_of_blocking_peers(
+        mocker, k8s_mocked, replenished, caplog, assert_logs, settings, priority):
+
+    event = bodies.RawEvent(
+        type='ADDED',  # irrelevant
+        object={
+            'metadata': {'name': 'name', 'namespace': 'namespace'},  # for matching
+            'status': {
+                'higher-prio': {
+                    'priority': priority,
+                    'lifetime': 10,
+                    'lastseen': '2020-12-31T23:59:59'
+                },
+            },
+        })
+    settings.peering.name = 'name'
+    settings.peering.priority = 100
+
+    freeze_mode = primitives.Toggle(True)
+    wait_for = mocker.patch('asyncio.wait_for', side_effect=asyncio.TimeoutError)
+
+    caplog.set_level(0)
+    assert freeze_mode.is_on()
+    await process_peering_event(
+        raw_event=event,
+        freeze_mode=freeze_mode,
+        replenished=replenished,
+        autoclean=False,
+        namespace='namespace',
+        identity='id',
+        settings=settings,
+    )
+    assert freeze_mode.is_on()
+    assert wait_for.call_count == 1
+    assert 9 < wait_for.call_args[1]['timeout'] < 10
+    assert k8s_mocked.patch_obj.called
