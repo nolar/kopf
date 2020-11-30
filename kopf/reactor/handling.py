@@ -104,7 +104,8 @@ async def execute(
                 errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
                 labels=None, annotations=None, when=None,
                 initial=None, deleted=None, requires_finalizer=None,
-                reason=None, field=None,
+                reason=None, field=None, value=None, old=None, new=None,
+                field_needs_change=None,
             )
             subregistry.append(handler)
 
@@ -117,7 +118,8 @@ async def execute(
                 errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
                 labels=None, annotations=None, when=None,
                 initial=None, deleted=None, requires_finalizer=None,
-                reason=None, field=None,
+                reason=None, field=None, value=None, old=None, new=None,
+                field_needs_change=None,
             )
             subregistry.append(handler)
 

@@ -57,3 +57,36 @@ def create_with_filter_satisfied(logger, **kwargs):
 @kopf.on.create('zalando.org', 'v1', 'kopfexamples', when=lambda body, **_: False)
 def create_with_filter_not_satisfied(logger, **kwargs):
     logger.info("Filter not satisfied.")
+
+
+@kopf.on.create('zalando.org', 'v1', 'kopfexamples', field='spec.field', value='value')
+def create_with_field_value_satisfied(logger, **kwargs):
+    logger.info("Field value is satisfied.")
+
+
+@kopf.on.create('zalando.org', 'v1', 'kopfexamples', field='spec.field', value='something-else')
+def create_with_field_value_not_satisfied(logger, **kwargs):
+    logger.info("Field value is not satisfied.")
+
+
+@kopf.on.create('zalando.org', 'v1', 'kopfexamples', field='spec.field', value=kopf.PRESENT)
+def create_with_field_presence_satisfied(logger, **kwargs):
+    logger.info("Field presence is satisfied.")
+
+
+@kopf.on.create('zalando.org', 'v1', 'kopfexamples', field='spec.inexistent', value=kopf.PRESENT)
+def create_with_field_presence_not_satisfied(logger, **kwargs):
+    logger.info("Field presence is not satisfied.")
+
+
+@kopf.on.update('zalando.org', 'v1', 'kopfexamples',
+                field='spec.field', old='value', new='changed')
+def update_with_field_change_satisfied(logger, **kwargs):
+    logger.info("Field change is satisfied.")
+
+
+@kopf.daemon('zalando.org', 'v1', 'kopfexamples', field='spec.field', value='value')
+def daemon_with_field(stopped, logger, **kwargs):
+    while not stopped:
+        logger.info("Field daemon is satisfied.")
+        stopped.wait(1)

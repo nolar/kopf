@@ -108,8 +108,9 @@ def test_with_prefix(mocker, cause_factory):
 
 def test_with_suffix(mocker, field, cause_factory):
     get_fn_id = mocker.patch('kopf.reactor.registries.get_callable_id', return_value='some-id')
-    diff = [('add', ('some-field', 'sub-field'), 'old', 'new')]
-    cause = cause_factory(diff=diff)
+    old = {'some-field': {'sub-field': 'old'}}
+    new = {'some-field': {'sub-field': 'new'}}
+    cause = cause_factory(old=old, new=new, body=new)
 
     registry = SimpleRegistry()
     with pytest.deprecated_call(match=r"registry.register\(\) is deprecated"):

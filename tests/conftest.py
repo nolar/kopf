@@ -128,6 +128,11 @@ def clear_default_registry():
         kopf.set_default_registry(old_registry)
 
 
+@pytest.fixture()
+def registry(clear_default_registry):
+    return clear_default_registry
+
+
 #
 # Mocks for Kubernetes API clients (any of them). Reasons:
 # 1. We do not test the clients, we test the layers on top of them,

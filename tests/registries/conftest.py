@@ -3,10 +3,11 @@ import logging
 import pytest
 
 from kopf import GlobalRegistry, SimpleRegistry  # deprecated, but tested
-from kopf.reactor.causation import ActivityCause, ResourceCause, \
-                                   ResourceChangingCause, ResourceWatchingCause
+from kopf.reactor.causation import ActivityCause, ResourceCause, ResourceChangingCause, \
+                                   ResourceSpawningCause, ResourceWatchingCause
 from kopf.reactor.registries import ActivityRegistry, OperatorRegistry, ResourceChangingRegistry, \
-                                    ResourceRegistry, ResourceWatchingRegistry
+                                    ResourceRegistry, ResourceSpawningRegistry, \
+                                    ResourceWatchingRegistry
 from kopf.structs.bodies import Body
 from kopf.structs.containers import Memo
 from kopf.structs.diffs import Diff, DiffItem
@@ -58,8 +59,9 @@ def parent_handler():
         fn=parent_fn, id=HandlerId('parent_fn'),
         errors=None, retries=None, timeout=None, backoff=None, cooldown=None,
         labels=None, annotations=None, when=None,
+        field=None, value=None, old=None, new=None, field_needs_change=None,
         initial=None, deleted=None, requires_finalizer=None,
-        reason=None, field=None,
+        reason=None,
     )
 
 
@@ -89,6 +91,8 @@ def cause_factory(resource):
             raw=None,
             body=None,
             diff=(),
+            old=None,
+            new=None,
             reason='some-reason',
             initial=False,
             activity=None,
@@ -126,8 +130,19 @@ def cause_factory(resource):
                 memo=Memo(),
                 body=Body(body if body is not None else {}),
                 diff=Diff(DiffItem(*d) for d in diff),
+                old=old,
+                new=new,
                 initial=initial,
                 reason=reason,
+            )
+        if cls is ResourceSpawningCause or cls is ResourceSpawningRegistry:
+            return ResourceSpawningCause(
+                logger=logging.getLogger('kopf.test.fake.logger'),
+                resource=resource,
+                patch=Patch(),
+                memo=Memo(),
+                body=Body(body if body is not None else {}),
+                reset=False,
             )
         raise TypeError(f"Cause/registry type {cls} is not supported by this fixture.")
     return make_cause

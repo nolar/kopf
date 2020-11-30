@@ -155,7 +155,7 @@ class WhenFilterFn(Protocol):
 class MetaFilterFn(Protocol):
     def __call__(  # lgtm[py/similar-function]
             self,
-            value: Optional[str],  # because it is either labels or annotations, nothing else.
+            value: Any,
             *args: Any,
             body: bodies.Body,
             meta: bodies.Meta,
