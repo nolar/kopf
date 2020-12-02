@@ -81,7 +81,7 @@ async def patch_obj(
                 json={'status': status_patch},
             )
             await errors.check_response(response)
-            patched_body['status'] = await response.json()
+            patched_body['status'] = (await response.json()).get('status')
 
         return patched_body
 

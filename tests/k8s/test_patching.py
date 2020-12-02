@@ -85,7 +85,7 @@ async def test_status_as_subresource_with_combined_payload(
     object_response = {'metadata': {'namespace': 'ns1', 'name': 'name1', 'extra': '123'},
                        'spec': {'x': 'y', 'extra': '456'},
                        'status': '...'}
-    status_response = {'s': 't', 'extra': '789'}
+    status_response = {'status': {'s': 't', 'extra': '789'}}
 
     object_url = resource.get_url(namespace='ns1', name='name1')
     status_url = resource.get_url(namespace='ns1', name='name1', subresource='status')
@@ -122,7 +122,7 @@ async def test_status_as_subresource_with_object_fields_only(
     object_response = {'metadata': {'namespace': 'ns1', 'name': 'name1', 'extra': '123'},
                        'spec': {'x': 'y', 'extra': '456'},
                        'status': '...'}
-    status_response = {'s': 't', 'extra': '789'}
+    status_response = {'status': {'s': 't', 'extra': '789'}}
 
     object_url = resource.get_url(namespace='ns1', name='name1')
     status_url = resource.get_url(namespace='ns1', name='name1', subresource='status')
@@ -156,7 +156,7 @@ async def test_status_as_subresource_with_status_fields_only(
     object_response = {'metadata': {'namespace': 'ns1', 'name': 'name1', 'extra': '123'},
                        'spec': {'x': 'y', 'extra': '456'},
                        'status': '...'}
-    status_response = {'s': 't', 'extra': '789'}
+    status_response = {'status': {'s': 't', 'extra': '789'}}
 
     object_url = resource.get_url(namespace='ns1', name='name1')
     status_url = resource.get_url(namespace='ns1', name='name1', subresource='status')
