@@ -19,7 +19,7 @@ if [[ "$K8S" == latest ]] ; then
     K8S="$( curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt )"
 fi
 
-curl -Lo ./kind https://kind.sigs.k8s.io/dl/"$KIND"/kind-linux-"$TRAVIS_CPU_ARCH"
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/"$KIND"/kind-linux-amd64
 chmod +x ./kind
 sudo mv ./kind /usr/local/bin/
 

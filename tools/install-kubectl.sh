@@ -13,6 +13,6 @@ if [[ "$K8S" == latest ]] ; then
     K8S="$( curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt )"
 fi
 
-curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/"$K8S"/bin/linux/"$TRAVIS_CPU_ARCH"/kubectl
+curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/"$K8S"/bin/linux/amd64/kubectl
 chmod +x kubectl
 sudo mv kubectl /usr/local/bin/
