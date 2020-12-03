@@ -18,14 +18,14 @@ def exampledir(request):
 
 @pytest.fixture(scope='session')
 def peering_yaml():
-    crd_api = os.environ.get('CRDAPI', 'v1')
+    crd_api = os.environ.get('CRDAPI') or 'v1'
     crd_file = 'peering.yaml' if crd_api == 'v1' else f'peering-{crd_api}.yaml'
     return f'{crd_file}'
 
 
 @pytest.fixture(scope='session')
 def crd_yaml():
-    crd_api = os.environ.get('CRDAPI', 'v1')
+    crd_api = os.environ.get('CRDAPI') or 'v1'
     crd_file = 'crd.yaml' if crd_api == 'v1' else f'crd-{crd_api}.yaml'
     return f'examples/{crd_file}'
 

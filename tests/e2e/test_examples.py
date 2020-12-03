@@ -36,11 +36,6 @@ def test_all_examples_are_runnable(mocker, settings, with_crd, exampledir, caplo
         if m.group(2):
             requires_finalizer = not eval(m.group(3))
 
-    # Skip the e2e test if the framework-optional but test-required library is missing.
-    m = re.search(r'import kubernetes', example_py.read_text(), re.M)
-    if m:
-        pytest.importorskip('kubernetes')
-
     # To prevent lengthy sleeps on the simulated retries.
     mocker.patch('kopf.reactor.handling.DEFAULT_RETRY_DELAY', 1)
 
