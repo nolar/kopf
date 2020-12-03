@@ -21,7 +21,7 @@ Starting the main app.
 
 [DEBUG   ] Pykube is configured via kubeconfig file.
 [DEBUG   ] Client is configured via kubeconfig file.
-[WARNING ] Default peering object not found, falling back to the standalone mode.
+[WARNING ] Default peering object is not found, falling back to the standalone mode.
 [WARNING ] OS signals are ignored: running not in the main thread.
 
 Do the main app activity here. Step 1/3.

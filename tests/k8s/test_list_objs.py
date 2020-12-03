@@ -1,6 +1,7 @@
 import aiohttp.web
 import pytest
 
+from kopf.clients.errors import APIError
 from kopf.clients.fetching import list_objs_rv
 
 
@@ -37,10 +38,10 @@ async def test_when_successful_namespaced(
 async def test_raises_api_error(
         resp_mocker, aresponses, hostname, resource, namespace, status):
 
-    list_mock = resp_mocker(return_value=aresponses.Response(status=status, reason="boo!"))
+    list_mock = resp_mocker(return_value=aresponses.Response(status=status))
     aresponses.add(hostname, resource.get_url(namespace=None), 'get', list_mock)
     aresponses.add(hostname, resource.get_url(namespace='ns1'), 'get', list_mock)
 
-    with pytest.raises(aiohttp.ClientResponseError) as e:
+    with pytest.raises(APIError) as e:
         await list_objs_rv(resource=resource, namespace=namespace)
     assert e.value.status == status

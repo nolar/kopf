@@ -106,10 +106,11 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[
         real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         handler = LegacyAllPurposeResourcerHandler(
             id=real_id, fn=fn,  # type: ignore
-            reason=reason, field=real_field,
+            reason=reason,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
             labels=labels, annotations=annotations, when=when,
+            field=real_field, value=None, old=None, new=None, field_needs_change=None,
         )
         self.append(handler)
         return fn
@@ -153,7 +154,7 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[
         for handler in self._handlers:
             if not isinstance(handler, handlers.ResourceWatchingHandler):
                 pass
-            elif registries.match(handler=handler, cause=cause, ignore_fields=True):
+            elif registries.match(handler=handler, cause=cause):
                 yield handler
 
     def iter_cause_handlers(

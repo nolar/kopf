@@ -82,6 +82,10 @@ async def post_event(
 
     # Events are helpful but auxiliary, they should not fail the handling cycle.
     # Yet we want to notice that something went wrong (in logs).
+    except errors.APIError as e:
+        logger.warning(f"Failed to post an event. Ignoring and continuing. "
+                       f"Code: {e.code}. Message: {e.message}. Details: {e.details}"
+                       f"Event: type={type!r}, reason={reason!r}, message={message!r}.")
     except aiohttp.ClientResponseError as e:
         logger.warning(f"Failed to post an event. Ignoring and continuing. "
                        f"Status: {e.status}. Message: {e.message}. "
@@ -90,6 +94,6 @@ async def post_event(
         logger.warning(f"Failed to post an event. Ignoring and continuing. "
                        f"Message: {e.message}. "
                        f"Event: type={type!r}, reason={reason!r}, message={message!r}.")
-    except aiohttp.ClientOSError as e:
+    except aiohttp.ClientOSError:
         logger.warning(f"Failed to post an event. Ignoring and continuing. "
                        f"Event: type={type!r}, reason={reason!r}, message={message!r}.")

@@ -122,8 +122,8 @@ def reduce_iter(
         # Generate a new diff, with new ops, for the resolved sub-field.
         elif tuple(field) == tuple(path[:len(field)]):
             tail = path[len(field):]
-            old_tail = dicts.resolve(old, tail, default=None, assume_empty=True, ignore_wrong=True)
-            new_tail = dicts.resolve(new, tail, default=None, assume_empty=True, ignore_wrong=True)
+            old_tail = dicts.resolve(old, tail, default=None)
+            new_tail = dicts.resolve(new, tail, default=None)
             yield from diff_iter(old_tail, new_tail)
 
 

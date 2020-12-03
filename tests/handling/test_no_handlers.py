@@ -26,7 +26,8 @@ async def test_skipped_with_no_handlers(
         reason='a-non-existent-cause-type',
         fn=lambda **_: None, id='id',
         errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
-        annotations=None, labels=None, when=None, field=None,
+        annotations=None, labels=None, when=None,
+        field=None, value=None, old=None, new=None, field_needs_change=None,
         deleted=None, initial=None, requires_finalizer=None,
     ))
 
@@ -80,7 +81,8 @@ async def test_stealth_mode_with_mismatching_handlers(
         reason=None,
         fn=lambda **_: None, id='id',
         errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
-        annotations=annotations, labels=labels, when=when, field=None,
+        annotations=annotations, labels=labels, when=when,
+        field=None, value=None, old=None, new=None, field_needs_change=None,
         deleted=deleted, initial=initial, requires_finalizer=None,
     ))
 

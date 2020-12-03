@@ -1,6 +1,7 @@
 import aiohttp.web
 import pytest
 
+from kopf.clients.errors import APIError
 from kopf.clients.patching import patch_obj
 from kopf.structs.bodies import Body
 from kopf.structs.patches import Patch
@@ -261,7 +262,7 @@ async def test_raises_when_body_conflicts_with_ids(
 async def test_ignores_absent_objects(
         resp_mocker, aresponses, hostname, resource, namespace, status):
 
-    patch_mock = resp_mocker(return_value=aresponses.Response(status=status, reason="boo!"))
+    patch_mock = resp_mocker(return_value=aresponses.Response(status=status))
     aresponses.add(hostname, resource.get_url(namespace=None, name='name1'), 'patch', patch_mock)
     aresponses.add(hostname, resource.get_url(namespace='ns1', name='name1'), 'patch', patch_mock)
 
@@ -277,12 +278,12 @@ async def test_ignores_absent_objects(
 async def test_raises_api_errors(
         resp_mocker, aresponses, hostname, resource, namespace, status):
 
-    patch_mock = resp_mocker(return_value=aresponses.Response(status=status, reason="boo!"))
+    patch_mock = resp_mocker(return_value=aresponses.Response(status=status))
     aresponses.add(hostname, resource.get_url(namespace=None, name='name1'), 'patch', patch_mock)
     aresponses.add(hostname, resource.get_url(namespace='ns1', name='name1'), 'patch', patch_mock)
 
     patch = {'x': 'y'}
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
-    with pytest.raises(aiohttp.ClientResponseError) as e:
+    with pytest.raises(APIError) as e:
         await patch_obj(resource=resource, body=body, patch=patch)
     assert e.value.status == status

@@ -104,7 +104,8 @@ async def execute(
                 errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
                 labels=None, annotations=None, when=None,
                 initial=None, deleted=None, requires_finalizer=None,
-                reason=None, field=None,
+                reason=None, field=None, value=None, old=None, new=None,
+                field_needs_change=None,
             )
             subregistry.append(handler)
 
@@ -117,7 +118,8 @@ async def execute(
                 errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
                 labels=None, annotations=None, when=None,
                 initial=None, deleted=None, requires_finalizer=None,
-                reason=None, field=None,
+                reason=None, field=None, value=None, old=None, new=None,
+                field_needs_change=None,
             )
             subregistry.append(handler)
 
@@ -344,8 +346,8 @@ async def invoke_handler(
             isinstance(cause, causation.ResourceChangingCause) and
             isinstance(handler, handlers_.ResourceHandler) and
             handler.field is not None):
-        old = dicts.resolve(cause.old, handler.field, None, assume_empty=True)
-        new = dicts.resolve(cause.new, handler.field, None, assume_empty=True)
+        old = dicts.resolve(cause.old, handler.field, None)
+        new = dicts.resolve(cause.new, handler.field, None)
         diff = diffs.reduce(cause.diff, handler.field)
         cause = causation.enrich_cause(cause=cause, old=old, new=new, diff=diff)
 

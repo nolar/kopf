@@ -82,6 +82,67 @@ class PostingSettings:
 
 
 @dataclasses.dataclass
+class PeeringSettings:
+
+    name: str = 'default'
+    """
+    The name of the peering object to use.
+    Distinct peering objects are isolated peering neighbourhoods,
+    i.e. operators in one of them are not visible to operators in others.
+    """
+
+    stealth: bool = False
+    """
+    Should this operator log its keep-alives?
+    
+    In some cases, it might be undesired to log regular keep-alives while
+    they actually happen (to keep the logs clean and readable).
+
+    Note that some occasions are logged unconditionally: 
+    
+    * those affecting the operator's behaviour, such as freezes/resumes;
+    * those requiring human intervention, such as absence of a peering object
+      in the auto-detection mode (to make the peering mandatory or standalone). 
+    """
+
+    priority: int = 0
+    """
+    The operator's priority to use. The operators with lower priority freeze
+    when they see operators with higher or the same priority --
+    to avoid double-processing and double-handling of the resources.
+    """
+
+    lifetime: int = 60
+    """
+    For how long (in seconds) the operator's record is considered actual
+    by other operators before assuming that the corresponding operator
+    is not functioning and the freeze mode should be re-evaluated.
+
+    The peered operators will update their records as long as they are running,
+    slightly faster than their records expires (5-10 seconds earlier).
+
+    Note that it is the lifetime of the current operator. For operators that
+    do not communicate their lifetime (broken?), it is always assumed to be
+    60 seconds regardless of this operator's configuration (a hard-coded value).
+    """
+
+    mandatory: bool = False
+    """
+    Is peering mandatory for this operator, or optional? If it is mandatory,
+    the operator will fail to run in the absence of the peering CRD or object.
+    If optional, it will continue in the standalone mode (i.e. without peering).
+    """
+
+    standalone: bool = False
+    """
+    Should the operator be forced to run without peering even if it exists?
+    Normally, operator automatically detect the peering objects named "default",
+    and run with peering enabled if they exist, or standalone if absent.
+    But they can be forced to either mode (standalone or mandatory peering).
+    """
+
+
+@dataclasses.dataclass
 class WatchingSettings:
 
     server_timeout: Optional[float] = dataclasses.field(
@@ -285,6 +346,7 @@ class BackgroundSettings:
 class OperatorSettings:
     process: ProcessSettings = dataclasses.field(default_factory=ProcessSettings)
     posting: PostingSettings = dataclasses.field(default_factory=PostingSettings)
+    peering: PeeringSettings = dataclasses.field(default_factory=PeeringSettings)
     watching: WatchingSettings = dataclasses.field(default_factory=WatchingSettings)
     batching: BatchingSettings = dataclasses.field(default_factory=BatchingSettings)
     execution: ExecutionSettings = dataclasses.field(default_factory=ExecutionSettings)

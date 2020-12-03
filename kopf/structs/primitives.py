@@ -6,14 +6,11 @@ import concurrent.futures
 import enum
 import threading
 import time
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import Any, Optional, Union
 
-if TYPE_CHECKING:
-    asyncio_Future = asyncio.Future[Any]
-else:
-    asyncio_Future = asyncio.Future
+from kopf.utilities import aiotasks
 
-Flag = Union[asyncio_Future, asyncio.Event, concurrent.futures.Future, threading.Event]
+Flag = Union[aiotasks.Future, asyncio.Event, concurrent.futures.Future, threading.Event]
 
 
 async def wait_flag(
