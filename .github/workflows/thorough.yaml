@@ -43,7 +43,7 @@ jobs:
 
       - run: pip install -r requirements.txt
       - run: mypy kopf --strict --pretty
-      - run: pytest --color=yes --cov=kopf --cov-branch --junit-xml=junit.xml
+      - run: pytest --color=yes --cov=kopf --cov-branch
 
       - name: Publish coverage to Coveralls.io
         if: success()
@@ -58,13 +58,6 @@ jobs:
         with:
           flags: unit
           env_vars: PYTHON
-      - name: Publish unit test results
-        uses: EnricoMi/publish-unit-test-result-action@v1.5
-        if: always()
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          comment_on_pr: false
-          files: junit.xml
 
   functional:
     strategy:
