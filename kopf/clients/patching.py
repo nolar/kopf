@@ -77,7 +77,7 @@ async def patch_obj(
                 headers={'Content-Type': 'application/merge-patch+json'},
                 json={'status': status_patch},
             )
-            patched_body['status'] = await errors.parse_response(response)
+            patched_body['status'] = (await errors.parse_response(response)).get('status')
 
         return patched_body
 
