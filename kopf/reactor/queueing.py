@@ -76,6 +76,53 @@ ObjectRef = Tuple[resources.Resource, ObjectUid]
 Streams = MutableMapping[ObjectRef, Stream]
 
 
+def get_uid(raw_event: bodies.RawEvent) -> ObjectUid:
+    """
+    Retrieve or simulate an identifier of an object unique both in time & space.
+
+    It is used as a key in mappings of framework-internal system resources,
+    such as tasks and queues. It is never exposed to the users, even in logs.
+    The keys are only persistent during a lifetime of a single process.
+    They can be safely changed across different versions.
+
+    In most cases, UIDs are sufficient -- as populated by K8s itself.
+    However, some resources have no UIDs: e.g. ``v1/ComponentStatus``:
+
+    .. code-block:: yaml
+
+        apiVersion: v1
+        kind: ComponentStatus
+        metadata:
+          creationTimestamp: null
+          name: controller-manager
+          selfLink: /api/v1/componentstatuses/controller-manager
+        conditions:
+        - message: ok
+          status: "True"
+          type: Healthy
+
+    Note that ``selfLink`` is deprecated and will stop being populated
+    since K8s 1.20. Other fields are not always sufficient to ensure uniqueness
+    both in space and time: in the example above, the creation time is absent.
+
+    In this function, we do our best to provide a fallback scenario in case
+    UIDs are absent. All in all, having slightly less unique identifiers
+    is better than failing the whole resource handling completely.
+    """
+    if 'uid' in raw_event['object']['metadata']:
+        uid = raw_event['object']['metadata']['uid']
+    else:
+        ids = [
+            raw_event['object'].get('kind'),
+            raw_event['object'].get('apiVersion'),
+            raw_event['object']['metadata'].get('name'),
+            raw_event['object']['metadata'].get('namespace'),
+            raw_event['object']['metadata'].get('creationTimestamp'),
+        ]
+        uid = '//'.join([s or '-' for s in ids])
+    return ObjectUid(uid)
+
+
 async def watcher(
         namespace: Union[None, str],
         settings: configuration.OperatorSettings,
@@ -126,7 +173,7 @@ async def watcher(
             freeze_mode=freeze_mode,
         )
         async for raw_event in stream:
-            key = cast(ObjectRef, (resource, raw_event['object']['metadata']['uid']))
+            key: ObjectRef = (resource, get_uid(raw_event))
             try:
                 streams[key].replenished.set()  # interrupt current sleeps, if any.
                 await streams[key].watchevents.put(raw_event)

@@ -145,23 +145,23 @@ class Meta(dicts.MappingView[str, Any]):
 
     @property
     def uid(self) -> Optional[str]:
-        return cast(Optional[str], self.get('uid', None))
+        return cast(Optional[str], self.get('uid'))
 
     @property
     def name(self) -> Optional[str]:
-        return cast(Optional[str], self.get('name', None))
+        return cast(Optional[str], self.get('name'))
 
     @property
     def namespace(self) -> Optional[str]:
-        return cast(Optional[str], self.get('namespace', None))
+        return cast(Optional[str], self.get('namespace'))
 
     @property
     def creation_timestamp(self) -> Optional[str]:
-        return cast(Optional[str], self.get('creationTimestamp', None))
+        return cast(Optional[str], self.get('creationTimestamp'))
 
     @property
     def deletion_timestamp(self) -> Optional[str]:
-        return cast(Optional[str], self.get('deletionTimestamp', None))
+        return cast(Optional[str], self.get('deletionTimestamp'))
 
 
 class Spec(dicts.MappingView[str, Any]):
