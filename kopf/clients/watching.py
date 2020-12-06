@@ -169,7 +169,7 @@ async def watch_objs(
         *,
         settings: configuration.OperatorSettings,
         resource: resources.Resource,
-        namespace: Optional[str] = None,
+        namespace: Optional[str],
         timeout: Optional[float] = None,
         since: Optional[str] = None,
         context: Optional[auth.APIContext] = None,  # injected by the decorator
