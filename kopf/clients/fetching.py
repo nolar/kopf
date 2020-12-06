@@ -17,8 +17,8 @@ class _UNSET(enum.Enum):
 async def read_obj(
         *,
         resource: resources.Resource,
-        namespace: Optional[str] = None,
-        name: Optional[str] = None,
+        namespace: Optional[str],
+        name: Optional[str],
         default: Union[_T, _UNSET] = _UNSET.token,
         context: Optional[auth.APIContext] = None,  # injected by the decorator
 ) -> Union[bodies.RawBody, _T]:

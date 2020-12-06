@@ -117,7 +117,12 @@ async def patch_and_check(
     """
     if patch:
         logger.debug(f"Patching with: {patch!r}")
-        resulting_body = await patching.patch_obj(resource=resource, patch=patch, body=body)
+        resulting_body = await patching.patch_obj(
+            resource=resource,
+            namespace=body.metadata.namespace,
+            name=body.metadata.name,
+            patch=patch,
+        )
         inconsistencies = diffs.diff(patch, resulting_body, scope=diffs.DiffScope.LEFT)
         inconsistencies = diffs.Diff(
             diffs.DiffItem(op, field, old, new)
