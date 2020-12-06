@@ -22,7 +22,6 @@ in case the events are for any reason delayed by Kubernetes.
 The conversion of the low-level watch-events to the high-level causes
 is done in the `kopf.reactor.handling` routines.
 """
-
 import asyncio
 import enum
 import logging
@@ -124,6 +123,7 @@ def get_uid(raw_event: bodies.RawEvent) -> ObjectUid:
 
 
 async def watcher(
+        *,
         namespace: Union[None, str],
         settings: configuration.OperatorSettings,
         resource: resources.Resource,

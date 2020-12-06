@@ -282,7 +282,7 @@ async def spawn_tasks(
                                             resource=resource,
                                             event_queue=event_queue))))
 
-    # On Ctrl+C or pod termination, cancel all tasks gracefully if possible.
+    # On Ctrl+C or pod termination, cancel all tasks gracefully.
     if threading.current_thread() is threading.main_thread():
         # Handle NotImplementedError when ran on Windows since asyncio only supports Unix signals
         try:
