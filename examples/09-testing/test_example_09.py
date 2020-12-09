@@ -55,5 +55,5 @@ def test_resource_lifecycle():
     assert runner.exit_code == 0
 
     # There are usually more than these messages, but we only check for the certain ones.
-    assert '[default/kopf-example-1] Creation event:' in runner.stdout
+    assert '[default/kopf-example-1] Creation is in progress:' in runner.stdout
     assert '[default/kopf-example-1] Something was logged here.' in runner.stdout

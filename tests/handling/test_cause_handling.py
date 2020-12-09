@@ -46,10 +46,10 @@ async def test_create(registry, settings, handlers, resource, cause_mock, event_
     assert LAST_SEEN_ANNOTATION in patch['metadata']['annotations']
 
     assert_logs([
-        "Creation event:",
+        "Creation is in progress:",
         "Handler 'create_fn' is invoked",
         "Handler 'create_fn' succeeded",
-        "Creation event is processed:",
+        "Creation is processed:",
         "Patching with",
     ])
 
@@ -86,10 +86,10 @@ async def test_update(registry, settings, handlers, resource, cause_mock, event_
     assert LAST_SEEN_ANNOTATION in patch['metadata']['annotations']
 
     assert_logs([
-        "Update event:",
+        "Updating is in progress:",
         "Handler 'update_fn' is invoked",
         "Handler 'update_fn' succeeded",
-        "Update event is processed:",
+        "Updating is processed:",
         "Patching with",
     ])
 
@@ -123,10 +123,10 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
     assert not event_queue.empty()
 
     assert_logs([
-        "Deletion event",
+        "Deletion is in progress:",
         "Handler 'delete_fn' is invoked",
         "Handler 'delete_fn' succeeded",
-        "Deletion event is processed:",
+        "Deletion is processed:",
         "Removing the finalizer",
         "Patching with",
     ])
@@ -193,7 +193,7 @@ async def test_free(registry, settings, handlers, resource, cause_mock, event_ty
     assert event_queue.empty()
 
     assert_logs([
-        "Deletion event, but we are done with it",
+        "Deletion, but we are done with it",
     ])
 
 

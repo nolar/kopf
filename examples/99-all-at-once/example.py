@@ -12,7 +12,7 @@ import yaml
 # Marks for the e2e tests (see tests/e2e/test_examples.py):
 E2E_STARTUP_STOP_WORDS = ['Served by the background task.']
 E2E_CLEANUP_STOP_WORDS = ['Hung tasks', 'Root tasks']
-E2E_CREATION_STOP_WORDS = ['Creation event is processed:']
+E2E_CREATION_STOP_WORDS = ['Creation is processed:']
 E2E_DELETION_STOP_WORDS = ['Deleted, really deleted']
 E2E_SUCCESS_COUNTS = {'create_1': 1, 'create_2': 1, 'create_pod': 1, 'delete': 1, 'startup_fn_simple': 1, 'startup_fn_retried': 1, 'cleanup_fn': 1}
 E2E_FAILURE_COUNTS = {}
