@@ -54,6 +54,7 @@ class ProgressRecord(TypedDict, total=True):
     started: Optional[str]
     stopped: Optional[str]
     delayed: Optional[str]
+    purpose: Optional[str]
     retries: Optional[int]
     success: Optional[bool]
     failure: Optional[bool]
