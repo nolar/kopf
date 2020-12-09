@@ -5,8 +5,9 @@ import freezegun
 import pytest
 
 from kopf.storage.progress import SmartProgressStorage, StatusProgressStorage
-from kopf.storage.states import HandlerOutcome, State, deliver_results
+from kopf.storage.states import HandlerOutcome, State, StateCounters, deliver_results
 from kopf.structs.bodies import Body
+from kopf.structs.handlers import HANDLER_REASONS, Reason
 from kopf.structs.patches import Patch
 
 # Timestamps: time zero (0), before (B), after (A), and time zero+1s (1).
@@ -33,22 +34,242 @@ def handler():
     return Mock(id='some-id', spec_set=['id'])
 
 
-@freezegun.freeze_time(TS0)
-def test_created_empty_from_scratch(storage, handler):
+#
+# State creation from scratch and from storage; basic properties checks:
+#
+
+
+def test_created_empty_from_scratch():
     state = State.from_scratch()
     assert len(state) == 0
+    assert state.purpose is None
+    assert state.done == True
+    assert state.delay is None
+    assert state.delays == []
+    assert state.counts == StateCounters(success=0, failure=0, running=0)
+    assert state.extras == {}
 
 
-@pytest.mark.parametrize('expected, body', [
-    (TS0_ISO, {}),
-    (TS0_ISO, {'status': {}}),
-    (TS0_ISO, {'status': {'kopf': {}}}),
-    (TS0_ISO, {'status': {'kopf': {'progress': {}}}}),
+@pytest.mark.parametrize('body', [
+    ({}),
+    ({'status': {}}),
+    ({'status': {'kopf': {}}}),
+    ({'status': {'kopf': {'progress': {}}}}),
 ])
-@freezegun.freeze_time(TS0)
-def test_created_empty_from_empty_storage(storage, handler, body, expected):
+def test_created_empty_from_empty_storage_with_handlers(storage, handler, body):
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     assert len(state) == 0
+    assert state.purpose is None
+    assert state.done == True
+    assert state.delay is None
+    assert state.delays == []
+    assert state.counts == StateCounters(success=0, failure=0, running=0)
+    assert state.extras == {}
+
+
+@pytest.mark.parametrize('body', [
+    ({'status': {'kopf': {'progress': {'some-id': {}}}}}),
+    ({'status': {'kopf': {'progress': {'some-id': {'success': True}}}}}),
+    ({'status': {'kopf': {'progress': {'some-id': {'failure': True}}}}}),
+])
+def test_created_empty_from_filled_storage_without_handlers(storage, handler, body):
+    state = State.from_storage(body=Body(body), handlers=[], storage=storage)
+    assert len(state) == 0
+    assert state.purpose is None
+    assert state.done == True
+    assert state.delay is None
+    assert state.delays == []
+    assert state.counts == StateCounters(success=0, failure=0, running=0)
+    assert state.extras == {}
+
+
+#
+# Purpose propagation and re-purposing of the states (overall and per-handler):
+#
+
+
+def test_created_from_purposeless_storage(storage, handler):
+    body = {'status': {'kopf': {'progress': {'some-id': {'purpose': None}}}}}
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    assert len(state) == 1
+    assert state.purpose is None
+    assert state['some-id'].purpose is None
+
+
+@pytest.mark.parametrize('reason', HANDLER_REASONS)
+def test_created_from_purposeful_storage(storage, handler, reason):
+    body = {'status': {'kopf': {'progress': {'some-id': {'purpose': reason.value}}}}}
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    assert len(state) == 1
+    assert state.purpose is None
+    assert state['some-id'].purpose is reason
+
+
+@pytest.mark.parametrize('reason', HANDLER_REASONS)
+def test_enriched_with_handlers_keeps_the_original_purpose(handler, reason):
+    state = State.from_scratch()
+    state = state.with_purpose(reason)
+    state = state.with_handlers([handler])
+    assert state.purpose is reason
+
+
+@pytest.mark.parametrize('reason', HANDLER_REASONS)
+def test_enriched_with_outcomes_keeps_the_original_purpose(reason):
+    state = State.from_scratch()
+    state = state.with_purpose(reason)
+    state = state.with_outcomes({})
+    assert state.purpose is reason
+
+
+@pytest.mark.parametrize('reason', HANDLER_REASONS)
+def test_repurposed_before_handlers(handler, reason):
+    state = State.from_scratch()
+    state = state.with_purpose(reason).with_handlers([handler])
+    assert len(state) == 1
+    assert state.purpose is reason
+    assert state['some-id'].purpose is reason
+
+
+@pytest.mark.parametrize('reason', HANDLER_REASONS)
+def test_repurposed_after_handlers(handler, reason):
+    state = State.from_scratch()
+    state = state.with_handlers([handler]).with_purpose(reason)
+    assert len(state) == 1
+    assert state.purpose is reason
+    assert state['some-id'].purpose is None
+
+
+@pytest.mark.parametrize('reason', HANDLER_REASONS)
+def test_repurposed_with_handlers(handler, reason):
+    state = State.from_scratch()
+    state = state.with_handlers([handler]).with_purpose(reason, handlers=[handler])
+    assert len(state) == 1
+    assert state.purpose is reason
+    assert state['some-id'].purpose is reason
+
+
+@pytest.mark.parametrize('reason', HANDLER_REASONS)
+def test_repurposed_not_affecting_the_existing_handlers_from_scratch(handler, reason):
+    state = State.from_scratch()
+    state = state.with_handlers([handler]).with_purpose(reason).with_handlers([handler])
+    assert len(state) == 1
+    assert state.purpose is reason
+    assert state['some-id'].purpose is None
+
+
+@pytest.mark.parametrize('reason', HANDLER_REASONS)
+def test_repurposed_not_affecting_the_existing_handlers_from_storage(storage, handler, reason):
+    body = {'status': {'kopf': {'progress': {'some-id': {'purpose': None}}}}}
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    state = state.with_handlers([handler]).with_purpose(reason).with_handlers([handler])
+    assert len(state) == 1
+    assert state.purpose is reason
+    assert state['some-id'].purpose is None
+
+
+#
+# Counts & extras calculation with different combinations of purposes:
+#
+
+
+@pytest.mark.parametrize('expected_extras, body', [
+    # (success, failure, running)
+    (StateCounters(0, 0, 1), {'status': {'kopf': {'progress': {'some-id': {}}}}}),
+    (StateCounters(0, 1, 0), {'status': {'kopf': {'progress': {'some-id': {'failure': True}}}}}),
+    (StateCounters(1, 0, 0), {'status': {'kopf': {'progress': {'some-id': {'success': True}}}}}),
+])
+@pytest.mark.parametrize('stored_reason, processed_reason', [
+    # All combinations except for same-to-same (it is not an "extra" then).
+    (a, b) for a in HANDLER_REASONS for b in HANDLER_REASONS if a != b
+])
+def test_with_handlers_irrelevant_to_the_purpose(
+        storage, handler, body, expected_extras, stored_reason, processed_reason):
+    body['status']['kopf']['progress']['some-id']['purpose'] = stored_reason.value
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    state = state.with_purpose(processed_reason)
+    assert len(state) == 1
+    assert state.extras[stored_reason] == expected_extras
+    assert state.counts == StateCounters(success=0, failure=0, running=0)
+    assert state.done == True
+    assert state.delays == []
+
+
+@pytest.mark.parametrize('expected_counts, expected_done, expected_delays, body', [
+    # (success, failure)
+    (StateCounters(0, 0, 1), False, [0.0], {'status': {'kopf': {'progress': {'some-id': {}}}}}),
+    (StateCounters(0, 1, 0), True, [], {'status': {'kopf': {'progress': {'some-id': {'failure': True}}}}}),
+    (StateCounters(1, 0, 0), True, [], {'status': {'kopf': {'progress': {'some-id': {'success': True}}}}}),
+])
+@pytest.mark.parametrize('reason', HANDLER_REASONS)
+def test_with_handlers_relevant_to_the_purpose(
+        storage, handler, body, expected_counts, expected_done, expected_delays, reason):
+    body['status']['kopf']['progress']['some-id']['purpose'] = reason.value
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    state = state.with_purpose(reason)
+    assert len(state) == 1
+    assert state.extras == {}
+    assert state.counts == expected_counts
+    assert state.done == expected_done
+    assert state.delays == expected_delays
+
+
+@pytest.mark.parametrize('expected_counts, expected_done, expected_delays, body', [
+    (StateCounters(0, 0, 1), False, [1.0], {'status': {'kopf': {'progress': {'some-id': {}}}}}),
+    (StateCounters(0, 1, 0), True, [], {'status': {'kopf': {'progress': {'some-id': {'failure': True}}}}}),
+    (StateCounters(1, 0, 0), True, [], {'status': {'kopf': {'progress': {'some-id': {'success': True}}}}}),
+])
+@pytest.mark.parametrize('reason', HANDLER_REASONS)
+@freezegun.freeze_time(TS0)
+def test_with_handlers_relevant_to_the_purpose_and_delayed(
+        storage, handler, body, expected_counts, expected_done, expected_delays, reason):
+    body['status']['kopf']['progress']['some-id']['delayed'] = TS1_ISO
+    body['status']['kopf']['progress']['some-id']['purpose'] = reason.value
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    state = state.with_purpose(reason)
+    assert len(state) == 1
+    assert state.extras == {}
+    assert state.counts == expected_counts
+    assert state.done == expected_done
+    assert state.delays == expected_delays
+
+
+@pytest.mark.parametrize('reason', [Reason.CREATE, Reason.UPDATE, Reason.RESUME])
+@freezegun.freeze_time(TS0)
+def test_issue_601_deletion_supersedes_other_processing(storage, reason):
+
+    body = {'status': {'kopf': {'progress': {
+        'fn1': {'purpose': reason.value, 'failure': True},
+        'fn2': {'purpose': reason.value, 'success': True},
+        'fn3': {'purpose': reason.value, 'delayed': TS1_ISO},
+    }}}}
+    create_handler1 = Mock(id='fn1', spec_set=['id'])
+    create_handler2 = Mock(id='fn2', spec_set=['id'])
+    create_handler3 = Mock(id='fn3', spec_set=['id'])
+    delete_handler9 = Mock(id='delete_fn', spec_set=['id'])
+    owned_handlers = [create_handler1, create_handler2, create_handler3, delete_handler9]
+    cause_handlers = [delete_handler9]
+
+    state = State.from_storage(body=Body(body), handlers=owned_handlers, storage=storage)
+    state = state.with_purpose(Reason.DELETE)
+    state = state.with_handlers(cause_handlers)
+
+    assert len(state) == 4
+    assert state.extras == {reason: StateCounters(success=1, failure=1, running=1)}
+    assert state.counts == StateCounters(success=0, failure=0, running=1)
+    assert state.done == False
+    assert state.delays == [0.0]
+
+    state = state.with_outcomes({'delete_fn': HandlerOutcome(final=True)})
+
+    assert state.extras == {reason: StateCounters(success=1, failure=1, running=1)}
+    assert state.counts == StateCounters(success=1, failure=0, running=0)
+    assert state.done == True
+    assert state.delays == []
+
+
+#
+# Handlers' time-based states: starting, running, retrying, finishing, etc.
+#
 
 
 @freezegun.freeze_time(TS0)
@@ -271,6 +492,11 @@ def test_set_retry_time(storage, handler, expected_retries, expected_delayed, bo
     assert patch['status']['kopf']['progress']['some-id']['delayed'] == expected_delayed
 
 
+#
+# Sub-handlers ids persistence for later purging of them.
+#
+
+
 def test_subrefs_added_to_empty_state(storage, handler):
     body = {}
     patch = Patch()
@@ -306,6 +532,11 @@ def test_subrefs_ignored_when_not_specified(storage, handler):
     state = state.with_outcomes(outcomes={handler.id: outcome})
     state.store(patch=patch, body=Body(body), storage=storage)
     assert patch['status']['kopf']['progress']['some-id']['subrefs'] is None
+
+
+#
+# Persisting outcomes: successes, failures, results, exceptions, etc.
+#
 
 
 @pytest.mark.parametrize('expected_retries, expected_stopped, body', [
@@ -355,6 +586,11 @@ def test_store_result(handler, expected_patch, result):
     outcomes = {handler.id: HandlerOutcome(final=True, result=result)}
     deliver_results(outcomes=outcomes, patch=patch)
     assert patch == expected_patch
+
+
+#
+# Purging the state in the storage.
+#
 
 
 def test_purge_progress_when_exists_in_body(storage, handler):
