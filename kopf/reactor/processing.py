@@ -340,9 +340,6 @@ async def process_resource_changing_cause(
     # Regular causes invoke the handlers.
     if cause.reason in handlers_.HANDLER_REASONS:
         title = handlers_.TITLES.get(cause.reason, repr(cause.reason))
-        logger.debug(f"{title.capitalize()} is in progress: %r", body)
-        if cause.diff and cause.old is not None and cause.new is not None:
-            logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
 
         resource_registry = registry.resource_changing_handlers[cause.resource]
         cause_handlers = resource_registry.get_handlers(cause=cause)
@@ -350,6 +347,13 @@ async def process_resource_changing_cause(
         storage = settings.persistence.progress_storage
         state = states.State.from_storage(body=cause.body, storage=storage, handlers=owned_handlers)
         state = state.with_handlers(cause_handlers)
+
+        # Inform on the current cause/event on every processing cycle. Even if there are
+        # no handlers -- to show what has happened and why the diff-base is patched.
+        logger.debug(f"{title.capitalize()} is in progress: %r", body)
+        if cause.diff and cause.old is not None and cause.new is not None:
+            logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
+
         if cause_handlers:
             outcomes = await handling.execute_handlers_once(
                 lifecycle=lifecycle,
