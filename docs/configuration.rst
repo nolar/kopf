@@ -47,7 +47,7 @@ The following log formats are supported on CLI:
     .. code-block:: console
 
         [2019-11-04 17:49:25,365] kopf.reactor.activit [INFO    ] Initial authentication has been initiated.
-        [2019-11-04 17:49:25,650] kopf.objects         [DEBUG   ] [default/kopf-example-1] Resuming event: ...
+        [2019-11-04 17:49:25,650] kopf.objects         [DEBUG   ] [default/kopf-example-1] Resuming is in progress: ...
 
 * Plain logs, with only the message:
 
@@ -58,7 +58,7 @@ The following log formats are supported on CLI:
     .. code-block:: console
 
         Initial authentication has been initiated.
-        [default/kopf-example-1] Resuming event: ...
+        [default/kopf-example-1] Resuming is in progress: ...
 
   For non-JSON logs, the object prefix can be disabled to make the logs
   completely flat (as in JSON logs):
@@ -70,7 +70,7 @@ The following log formats are supported on CLI:
     .. code-block:: console
 
         Initial authentication has been initiated.
-        Resuming event: ...
+        Resuming is in progress: ...
 
 * JSON logs, with only the message:
 
@@ -81,7 +81,7 @@ The following log formats are supported on CLI:
     .. code-block:: console
 
         {"message": "Initial authentication has been initiated.", "severity": "info", "timestamp": "2020-12-31T23:59:59.123456"}
-        {"message": "Resuming event: ...", "object": {"apiVersion": "zalando.org/v1", "kind": "KopfExample", "name": "kopf-example-1", "uid": "...", "namespace": "default"}, "severity": "debug", "timestamp": "2020-12-31T23:59:59.123456"}
+        {"message": "Resuming is in progress: ...", "object": {"apiVersion": "zalando.org/v1", "kind": "KopfExample", "name": "kopf-example-1", "uid": "...", "namespace": "default"}, "severity": "debug", "timestamp": "2020-12-31T23:59:59.123456"}
 
   For JSON logs, the object reference key can be configured to match
   the log parsers (if used) -- instead of the default ``"object"``:
@@ -93,7 +93,7 @@ The following log formats are supported on CLI:
     .. code-block:: console
 
         {"message": "Initial authentication has been initiated.", "severity": "info", "timestamp": "2020-12-31T23:59:59.123456"}
-        {"message": "Resuming event: ...", "k8s-obj": {...}, "severity": "debug", "timestamp": "2020-12-31T23:59:59.123456"}
+        {"message": "Resuming is in progress: ...", "k8s-obj": {...}, "severity": "debug", "timestamp": "2020-12-31T23:59:59.123456"}
 
     Note that the object prefixing is disabled for JSON logs by default, as the
     identifying information is available in the ref-keys. The prefixing can be
@@ -106,7 +106,7 @@ The following log formats are supported on CLI:
     .. code-block:: console
 
         {"message": "Initial authentication has been initiated.", "severity": "info", "timestamp": "2020-12-31T23:59:59.123456"}
-        {"message": "[default/kopf-example-1] Resuming event: ...", "object": {...}, "severity": "debug", "timestamp": "2020-12-31T23:59:59.123456"}
+        {"message": "[default/kopf-example-1] Resuming is in progress: ...", "object": {...}, "severity": "debug", "timestamp": "2020-12-31T23:59:59.123456"}
 
 .. note::
 

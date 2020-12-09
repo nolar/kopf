@@ -340,7 +340,7 @@ async def process_resource_changing_cause(
     # Regular causes invoke the handlers.
     if cause.reason in handlers_.HANDLER_REASONS:
         title = handlers_.TITLES.get(cause.reason, repr(cause.reason))
-        logger.debug(f"{title.capitalize()} event: %r", body)
+        logger.debug(f"{title.capitalize()} is in progress: %r", body)
         if cause.diff and cause.old is not None and cause.new is not None:
             logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
 
@@ -364,7 +364,7 @@ async def process_resource_changing_cause(
 
             if state.done:
                 success_count, failure_count = state.counts
-                logger.info(f"{title.capitalize()} event is processed: "
+                logger.info(f"{title.capitalize()} is processed: "
                             f"{success_count} succeeded; "
                             f"{failure_count} failed.")
                 state.purge(body=cause.body, patch=cause.patch,
@@ -389,7 +389,7 @@ async def process_resource_changing_cause(
         logger.debug("Deleted, really deleted, and we are notified.")
 
     if cause.reason == handlers_.Reason.FREE:
-        logger.debug("Deletion event, but we are done with it, and we do not care.")
+        logger.debug("Deletion, but we are done with it, and we do not care.")
 
     if cause.reason == handlers_.Reason.NOOP:
         logger.debug("Something has changed, but we are not interested (the essence is the same).")

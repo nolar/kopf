@@ -17,9 +17,9 @@ def test_pods_reacted():
     assert runner.exception is None
     assert runner.exit_code == 0
 
-    assert f'[default/{name}] Creation event:' in runner.stdout
+    assert f'[default/{name}] Creation is in progress:' in runner.stdout
     assert f'[default/{name}] === Pod killing happens in 30s.' in runner.stdout
-    assert f'[default/{name}] Deletion event:' in runner.stdout
+    assert f'[default/{name}] Deletion is in progress:' in runner.stdout
     assert f'[default/{name}] === Pod killing is cancelled!' in runner.stdout
 
 

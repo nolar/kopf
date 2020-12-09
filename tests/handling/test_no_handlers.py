@@ -52,10 +52,10 @@ async def test_skipped_with_no_handlers(
     assert set(patch['metadata']['annotations'].keys()) == {LAST_SEEN_ANNOTATION}
 
     assert_logs([
-        ".* event:",
+        "(Creation|Updating|Resuming|Deletion) is in progress:",
         "Patching with:",
     ], prohibited=[
-        "event is processed:",
+        "(Creation|Updating|Resuming|Deletion) is processed:",
     ])
 
 

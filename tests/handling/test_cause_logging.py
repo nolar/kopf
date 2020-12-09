@@ -57,8 +57,8 @@ async def test_diffs_logged_if_present(registry, settings, resource, handlers,
         event_queue=asyncio.Queue(),
     )
     assert_logs([
-        " event: ",
-        " diff: "
+        "(Creation|Updating|Resuming|Deletion) is in progress: ",
+        "(Creation|Updating|Resuming|Deletion) diff: "
     ])
 
 
@@ -87,7 +87,7 @@ async def test_diffs_not_logged_if_absent(registry, settings, resource, handlers
         event_queue=asyncio.Queue(),
     )
     assert_logs([
-        " event: ",
+        "(Creation|Updating|Resuming|Deletion) is in progress: ",
     ], prohibited=[
         " diff: "
     ])
