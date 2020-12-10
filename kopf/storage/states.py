@@ -15,7 +15,8 @@ import collections.abc
 import copy
 import dataclasses
 import datetime
-from typing import Any, Collection, Dict, Iterable, Iterator, Mapping, Optional, Tuple, overload
+from typing import Any, Collection, Dict, Iterable, Iterator, \
+                   Mapping, NamedTuple, Optional, overload
 
 from kopf.storage import progress
 from kopf.structs import bodies, callbacks, handlers as handlers_, patches
@@ -52,6 +53,7 @@ class HandlerState:
     started: Optional[datetime.datetime] = None  # None means this information was lost.
     stopped: Optional[datetime.datetime] = None  # None means it is still running (e.g. delayed).
     delayed: Optional[datetime.datetime] = None  # None means it is finished (succeeded/failed).
+    purpose: Optional[handlers_.Reason] = None  # None is a catch-all marker for upgrades/rollbacks.
     retries: int = 0
     success: bool = False
     failure: bool = False
@@ -60,9 +62,10 @@ class HandlerState:
     _origin: Optional[progress.ProgressRecord] = None  # to check later if it has actually changed.
 
     @classmethod
-    def from_scratch(cls) -> "HandlerState":
+    def from_scratch(cls, *, purpose: Optional[handlers_.Reason] = None) -> "HandlerState":
         return cls(
             started=datetime.datetime.utcnow(),
+            purpose=purpose,
         )
 
     @classmethod
@@ -71,6 +74,7 @@ class HandlerState:
             started=_datetime_fromisoformat(__d.get('started')) or datetime.datetime.utcnow(),
             stopped=_datetime_fromisoformat(__d.get('stopped')),
             delayed=_datetime_fromisoformat(__d.get('delayed')),
+            purpose=handlers_.Reason(__d.get('purpose')) if __d.get('purpose') else None,
             retries=__d.get('retries') or 0,
             success=__d.get('success') or False,
             failure=__d.get('failure') or False,
@@ -84,6 +88,7 @@ class HandlerState:
             started=None if self.started is None else _datetime_toisoformat(self.started),
             stopped=None if self.stopped is None else _datetime_toisoformat(self.stopped),
             delayed=None if self.delayed is None else _datetime_toisoformat(self.delayed),
+            purpose=None if self.purpose is None else str(self.purpose.value),
             retries=None if self.retries is None else int(self.retries),
             success=None if self.success is None else bool(self.success),
             failure=None if self.failure is None else bool(self.failure),
@@ -95,6 +100,12 @@ class HandlerState:
         # Nones are not stored by Kubernetes, so we filter them out for comparison.
         return {key: val for key, val in self.for_storage().items() if val is not None}
 
+    def with_purpose(
+            self,
+            purpose: Optional[handlers_.Reason],
+    ) -> "HandlerState":
+        return dataclasses.replace(self, purpose=purpose)
+
     def with_outcome(
             self,
             outcome: HandlerOutcome,
@@ -102,6 +113,7 @@ class HandlerState:
         now = datetime.datetime.utcnow()
         cls = type(self)
         return cls(
+            purpose=self.purpose,
             started=self.started if self.started else now,
             stopped=self.stopped if self.stopped else now if outcome.final else None,
             delayed=now + datetime.timedelta(seconds=outcome.delay) if outcome.delay is not None else None,
@@ -133,6 +145,12 @@ class HandlerState:
         return now - (self.started if self.started else now)
 
 
+class StateCounters(NamedTuple):
+    success: int
+    failure: int
+    running: int
+
+
 class State(Mapping[handlers_.HandlerId, HandlerState]):
     """
     A state of selected handlers, as persisted in the object's status.
@@ -149,9 +167,12 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
     def __init__(
             self,
             __src: Mapping[handlers_.HandlerId, HandlerState],
+            *,
+            purpose: Optional[handlers_.Reason] = None,
     ):
         super().__init__()
         self._states = dict(__src)
+        self.purpose = purpose
 
     @classmethod
     def from_scratch(cls) -> "State":
@@ -173,17 +194,27 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
                 handler_states[handler_id] = HandlerState.from_storage(content)
         return cls(handler_states)
 
+    def with_purpose(
+            self,
+            purpose: Optional[handlers_.Reason],
+            handlers: Iterable[handlers_.BaseHandler] = (),  # to be re-purposed
+    ) -> "State":
+        handler_states: Dict[handlers_.HandlerId, HandlerState] = dict(self)
+        for handler in handlers:
+            handler_states[handler.id] = handler_states[handler.id].with_purpose(purpose)
+        cls = type(self)
+        return cls(handler_states, purpose=purpose)
+
     def with_handlers(
             self,
             handlers: Iterable[handlers_.BaseHandler],
     ) -> "State":
-        handler_ids = {handler.id for handler in handlers}
         handler_states: Dict[handlers_.HandlerId, HandlerState] = dict(self)
-        for handler_id in handler_ids:
-            if handler_id not in handler_states:
-                handler_states[handler_id] = HandlerState.from_scratch()
+        for handler in handlers:
+            if handler.id not in handler_states:
+                handler_states[handler.id] = HandlerState.from_scratch(purpose=self.purpose)
         cls = type(self)
-        return cls(handler_states)
+        return cls(handler_states, purpose=self.purpose)
 
     def with_outcomes(
             self,
@@ -198,7 +229,7 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
             handler_id: (handler_state if handler_id not in outcomes else
                          handler_state.with_outcome(outcomes[handler_id]))
             for handler_id, handler_state in self.items()
-        })
+        }, purpose=self.purpose)
 
     def store(
             self,
@@ -245,13 +276,39 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
     @property
     def done(self) -> bool:
         # In particular, no handlers means that it is "done" even before doing.
-        return all(handler_state.finished for handler_state in self._states.values())
+        return all(
+            handler_state.finished for handler_state in self._states.values()
+            if self.purpose is None or handler_state.purpose is None
+               or handler_state.purpose == self.purpose
+        )
 
     @property
-    def counts(self) -> Tuple[int, int]:
-        return (
-            len([1 for handler_state in self._states.values() if handler_state.success]),
-            len([1 for handler_state in self._states.values() if handler_state.failure]),
+    def extras(self) -> Mapping[handlers_.Reason, StateCounters]:
+        return {
+            reason: StateCounters(
+                success=len([1 for handler_state in self._states.values()
+                            if handler_state.purpose == reason and handler_state.success]),
+                failure=len([1 for handler_state in self._states.values()
+                            if handler_state.purpose == reason and handler_state.failure]),
+                running=len([1 for handler_state in self._states.values()
+                            if handler_state.purpose == reason and not handler_state.finished]),
+            )
+            for reason in handlers_.HANDLER_REASONS
+            if self.purpose is not None and reason != self.purpose
+            if any(handler_state.purpose == reason for handler_state in self._states.values())
+        }
+
+    @property
+    def counts(self) -> StateCounters:
+        purposeful_states = [
+            handler_state for handler_state in self._states.values()
+            if self.purpose is None or handler_state.purpose is None
+               or handler_state.purpose == self.purpose
+        ]
+        return StateCounters(
+            success=len([1 for handler_state in purposeful_states if handler_state.success]),
+            failure=len([1 for handler_state in purposeful_states if handler_state.failure]),
+            running=len([1 for handler_state in purposeful_states if not handler_state.finished]),
         )
 
     @property
@@ -273,6 +330,8 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
             max(0, (handler_state.delayed - now).total_seconds()) if handler_state.delayed else 0
             for handler_state in self._states.values()
             if not handler_state.finished
+            if self.purpose is None or handler_state.purpose is None
+               or handler_state.purpose == self.purpose
         ]
 
 
