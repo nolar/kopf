@@ -340,16 +340,38 @@ async def process_resource_changing_cause(
     # Regular causes invoke the handlers.
     if cause.reason in handlers_.HANDLER_REASONS:
         title = handlers_.TITLES.get(cause.reason, repr(cause.reason))
+
+        resource_registry = registry.resource_changing_handlers[cause.resource]
+        owned_handlers = resource_registry.get_all_handlers()
+        cause_handlers = resource_registry.get_handlers(cause=cause)
+        storage = settings.persistence.progress_storage
+        state = states.State.from_storage(body=cause.body, storage=storage, handlers=owned_handlers)
+        state = state.with_purpose(cause.reason).with_handlers(cause_handlers)
+
+        # Report the causes that have been superseded (intercepted, overridden) by the current one.
+        # The mix-in causes (i.e. resuming) is re-purposed if its handlers are still selected.
+        # To the next cycle, all extras are purged or re-purposed, so the message does not repeat.
+        for extra_reason, counters in state.extras.items():  # usually 0..1 items, rarely 2+.
+            extra_title = handlers_.TITLES.get(extra_reason, repr(extra_reason))
+            logger.info(f"{extra_title.capitalize()} is superseded by {title.lower()}: "
+                        f"{counters.success} succeeded; "
+                        f"{counters.failure} failed; "
+                        f"{counters.running} left to the moment.")
+            state = state.with_purpose(purpose=cause.reason, handlers=cause_handlers)
+
+        # Purge the now-irrelevant handlers if they were not re-purposed (extras are recalculated!).
+        # The current cause continues afterwards, and overrides its own pre-purged handler states.
+        # TODO: purge only the handlers that fell out of current purpose; but it is not critical
+        if state.extras:
+            state.purge(body=cause.body, patch=cause.patch,
+                        storage=storage, handlers=owned_handlers)
+
+        # Inform on the current cause/event on every processing cycle. Even if there are
+        # no handlers -- to show what has happened and why the diff-base is patched.
         logger.debug(f"{title.capitalize()} is in progress: %r", body)
         if cause.diff and cause.old is not None and cause.new is not None:
             logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
 
-        resource_registry = registry.resource_changing_handlers[cause.resource]
-        cause_handlers = resource_registry.get_handlers(cause=cause)
-        owned_handlers = resource_registry.get_all_handlers()
-        storage = settings.persistence.progress_storage
-        state = states.State.from_storage(body=cause.body, storage=storage, handlers=owned_handlers)
-        state = state.with_handlers(cause_handlers)
         if cause_handlers:
             outcomes = await handling.execute_handlers_once(
                 lifecycle=lifecycle,
@@ -363,10 +385,10 @@ async def process_resource_changing_cause(
             states.deliver_results(outcomes=outcomes, patch=cause.patch)
 
             if state.done:
-                success_count, failure_count = state.counts
+                counters = state.counts  # calculate only once
                 logger.info(f"{title.capitalize()} is processed: "
-                            f"{success_count} succeeded; "
-                            f"{failure_count} failed.")
+                            f"{counters.success} succeeded; "
+                            f"{counters.failure} failed.")
                 state.purge(body=cause.body, patch=cause.patch,
                             storage=storage, handlers=owned_handlers)
 

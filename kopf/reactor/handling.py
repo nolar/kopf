@@ -155,7 +155,7 @@ async def execute(
     cause_handlers = subregistry.get_handlers(cause=cause)
     storage = settings.persistence.progress_storage
     state = states.State.from_storage(body=cause.body, storage=storage, handlers=owned_handlers)
-    state = state.with_handlers(cause_handlers)
+    state = state.with_purpose(cause.reason).with_handlers(cause_handlers)
     outcomes = await execute_handlers_once(
         lifecycle=lifecycle,
         settings=settings,
