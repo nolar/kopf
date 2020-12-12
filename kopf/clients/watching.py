@@ -106,14 +106,14 @@ async def streaming_block(
     # Block until unfrozen before even starting the API communication.
     if freeze_mode is not None and freeze_mode.is_on():
         logger.debug("Freezing the watch-stream for %r", resource)
-        await freeze_mode.wait_for_off()
+        await freeze_mode.wait_for(False)
         logger.debug("Resuming the watch-stream for %r", resource)
 
     # Create the signalling future that the freeze is on again.
     freeze_waiter: aiotasks.Future
     if freeze_mode is not None:
         freeze_waiter = aiotasks.create_task(
-            freeze_mode.wait_for_on(),
+            freeze_mode.wait_for(True),
             name=f'freeze-waiter for {resource.name} @ {namespace or "cluster-wide"}')
     else:
         freeze_waiter = asyncio.Future()  # a dummy just to have it

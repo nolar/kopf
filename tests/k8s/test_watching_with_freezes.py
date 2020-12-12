@@ -62,7 +62,7 @@ async def test_freezing_waits_until_resumed(
 
     async def delayed_resuming(delay: float):
         await asyncio.sleep(delay)
-        await freeze_mode.turn_off()
+        await freeze_mode.turn_to(False)
 
     async with timer, async_timeout.timeout(1.0) as timeout:
         asyncio.create_task(delayed_resuming(0.2))

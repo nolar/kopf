@@ -182,7 +182,7 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
 
             # Whether on the 1st run, or during the active re-authentication,
             # ensure that the items are ready before yielding them.
-            await self._ready.wait_for_on()
+            await self._ready.wait_for(True)
 
             # Select the items to yield and let it (i.e. a consumer) work.
             async with self._lock:
@@ -247,8 +247,8 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
 
         # Initiate a re-authentication activity, and block until it is finished.
         if need_reauth:
-            await self._ready.turn_off()
-            await self._ready.wait_for_on()
+            await self._ready.turn_to(False)
+            await self._ready.wait_for(True)
 
         # If the re-auth has failed, re-raise the original exception in the current stack.
         # If the original exception is unknown, raise normally on the next iteration's yield.
@@ -278,13 +278,13 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
 
         # Notify the consuming tasks (client wrappers) that new credentials are ready to be used.
         # Those tasks can be blocked in `vault.invalidate()` if there are no credentials left.
-        await self._ready.turn_on()
+        await self._ready.turn_to(True)
 
     async def wait_for_readiness(self) -> None:
-        await self._ready.wait_for_on()
+        await self._ready.wait_for(True)
 
     async def wait_for_emptiness(self) -> None:
-        await self._ready.wait_for_off()
+        await self._ready.wait_for(False)
 
     async def close(self) -> None:
         """
