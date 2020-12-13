@@ -360,8 +360,7 @@ def fake_vault(mocker, hostname):
     info = ConnectionInfo(server=f'https://{hostname}')
     vault = Vault({key: info})
     token = auth.vault_var.set(vault)
-    mocker.patch.object(vault._ready, 'wait_for_on')
-    mocker.patch.object(vault._ready, 'wait_for_off')
+    mocker.patch.object(vault._ready, 'wait_for')
     try:
         yield vault
     finally:

@@ -128,7 +128,7 @@ async def watcher(
         settings: configuration.OperatorSettings,
         resource: resources.Resource,
         processor: WatchStreamProcessor,
-        freeze_mode: Optional[primitives.Toggle] = None,
+        freeze_checker: Optional[primitives.ToggleSet] = None,
 ) -> None:
     """
     The watchers watches for the resource events via the API, and spawns the workers for every object.
@@ -170,7 +170,7 @@ async def watcher(
         stream = watching.infinite_watch(
             settings=settings,
             resource=resource, namespace=namespace,
-            freeze_mode=freeze_mode,
+            freeze_checker=freeze_checker,
         )
         async for raw_event in stream:
             key: ObjectRef = (resource, get_uid(raw_event))

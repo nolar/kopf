@@ -6,7 +6,7 @@ import concurrent.futures
 import enum
 import threading
 import time
-from typing import Any, Optional, Union
+from typing import Any, Collection, Iterator, Optional, Set, Union
 
 from kopf.utilities import aiotasks
 
@@ -81,6 +81,7 @@ def check_flag(
         raise TypeError(f"Unsupported type of a flag: {flag!r}")
 
 
+# Mind the value: it can be bool-evaluatable but non-bool -- always convert it.
 class Toggle:
     """
     An synchronisation primitive that can be awaited both until set or cleared.
@@ -90,53 +91,121 @@ class Toggle:
 
     The bi-directional toggles are needed in some places in the code, such as
     in the population/depletion of a `Vault`, or as an operator's freeze-mode.
+
+    The optional name is used only for hinting in reprs. It can be used when
+    there are many toggles, and they need to be distinguished somehow.
     """
 
     def __init__(
             self,
-            __val: bool = False,
+            __state: bool = False,
+            *,
+            name: Optional[str] = None,
+            condition: Optional[asyncio.Condition] = None,
     ) -> None:
         super().__init__()
-        self._condition = asyncio.Condition()
-        self._state: bool = bool(__val)
+        self._condition = condition if condition is not None else asyncio.Condition()
+        self._state: bool = bool(__state)
+        self._name = name
+
+    def __repr__(self) -> str:
+        clsname = self.__class__.__name__
+        toggled = 'on' if self._state else 'off'
+        if self._name is None:
+            return f'<{clsname}: {toggled}>'
+        else:
+            return f'<{clsname}: {self._name}: {toggled}>'
 
     def __bool__(self) -> bool:
-        """
-        In the boolean context, a toggle evaluates to its current on/off state.
-
-        An equivalent of `.is_on` / `.is_off`.
-        """
-        return bool(self._state)
+        raise NotImplementedError  # to protect against accidental misuse
 
     def is_on(self) -> bool:
-        """ Check if the toggle is currently on (opposite of `.is_off`). """
-        return bool(self._state)
+        return self._state
 
     def is_off(self) -> bool:
-        """ Check if the toggle is currently off (opposite of `.is_on`). """
-        return bool(not self._state)
+        return not self._state
 
-    async def turn_on(self) -> None:
-        """ Turn the toggle on, and wake up the tasks waiting for that. """
+    async def turn_to(self, __state: bool) -> None:
+        """ Turn the toggle on/off, and wake up the tasks waiting for that. """
         async with self._condition:
-            self._state = True
+            self._state = bool(__state)
             self._condition.notify_all()
 
-    async def turn_off(self) -> None:
-        """ Turn the toggle off, and wake up the tasks waiting for that. """
+    async def wait_for(self, __state: bool) -> None:
+        """ Wait until the toggle is turned on/off as expected (if not yet). """
         async with self._condition:
-            self._state = False
+            await self._condition.wait_for(lambda: self._state == bool(__state))
+
+    @property
+    def name(self) -> Optional[str]:
+        return self._name
+
+
+class ToggleSet(Collection[Toggle]):
+    """
+    A read-only checker for multiple toggles.
+
+    The toggle-checker does not have its own state to be turned on/off.
+    It is "on" when at least one child toggle is "on",
+    and it is "off" when all children toggles are "off",
+    or if it has no children toggles at all.
+
+    The multi-toggle is used mostly in peering, where every individual peering
+    identified by name and namespace has its own individual toggle to manage,
+    but the whole set of toggles of all names & namespaces is used for freezing
+    the operators as one single logical toggle.
+
+    Note: the set can only contain toggles that were produced by the set;
+    externally produced toggles cannot be added, since they do not share
+    the same condition object, which is used for synchronisation/notifications.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._condition = asyncio.Condition()
+        self._toggles: Set[Toggle] = set()
+
+    def __repr__(self) -> str:
+        return repr(self._toggles)
+
+    def __len__(self) -> int:
+        return len(self._toggles)
+
+    def __iter__(self) -> Iterator[Toggle]:
+        return iter(self._toggles)
+
+    def __contains__(self, toggle: object) -> bool:
+        return toggle in self._toggles
+
+    def __bool__(self) -> bool:
+        raise NotImplementedError  # to protect against accidental misuse
+
+    def is_on(self) -> bool:
+        return any(toggle.is_on() for toggle in self._toggles)
+
+    def is_off(self) -> bool:
+        return all(toggle.is_off() for toggle in self._toggles)
+
+    async def wait_for(self, __state: bool) -> None:
+        async with self._condition:
+            await self._condition.wait_for(lambda: self.is_on() == bool(__state))
+
+    async def make_toggle(
+            self,
+            __val: bool = False,
+            *,
+            name: Optional[str] = None,
+    ) -> Toggle:
+        toggle = Toggle(__val, name=name, condition=self._condition)
+        async with self._condition:
+            self._toggles.add(toggle)
             self._condition.notify_all()
+        return toggle
 
-    async def wait_for_on(self) -> None:
-        """ Wait until the toggle is turned on (if not yet). """
+    async def drop_toggle(self, toggle: Toggle) -> None:
         async with self._condition:
-            await self._condition.wait_for(lambda: self._state)
-
-    async def wait_for_off(self) -> None:
-        """ Wait until the toggle is turned off (if not yet). """
-        async with self._condition:
-            await self._condition.wait_for(lambda: not self._state)
+            self._toggles.discard(toggle)
+            self._condition.notify_all()
 
 
 class DaemonStoppingReason(enum.Flag):

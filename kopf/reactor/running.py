@@ -171,7 +171,9 @@ async def spawn_tasks(
     vault = vault if vault is not None else global_vault
     vault = vault if vault is not None else credentials.Vault()
     event_queue: posting.K8sEventQueue = asyncio.Queue()
-    freeze_mode: primitives.Toggle = primitives.Toggle()
+    freeze_name = f"{peering_name!r}@{namespace}" if namespace else f"cluster-wide {peering_name!r}"
+    freeze_checker = primitives.ToggleSet()
+    freeze_toggle = await freeze_checker.make_toggle(name=freeze_name)
     signal_flag: aiotasks.Future = asyncio.Future()
     started_flag: asyncio.Event = asyncio.Event()
     tasks: MutableSequence[aiotasks.Task] = []
@@ -263,7 +265,7 @@ async def spawn_tasks(
                                             namespace=namespace,
                                             settings=settings,
                                             identity=identity,
-                                            freeze_mode=freeze_mode))))
+                                            freeze_toggle=freeze_toggle))))
 
     # Resource event handling, only once for every known resource (de-duplicated).
     for resource in registry.resources:
@@ -273,7 +275,7 @@ async def spawn_tasks(
                 namespace=namespace,
                 settings=settings,
                 resource=resource,
-                freeze_mode=freeze_mode,
+                freeze_checker=freeze_checker,
                 processor=functools.partial(processing.process_resource_event,
                                             lifecycle=lifecycle,
                                             registry=registry,
