@@ -497,6 +497,12 @@ class Timer(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._te = time.perf_counter()
 
+    async def __aenter__(self):
+        return self.__enter__()
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        return self.__exit__(exc_type, exc_val, exc_tb)
+
     def __int__(self):
         return int(self.seconds)
 

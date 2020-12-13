@@ -1,6 +1,7 @@
 import asyncio
 import logging
 
+import async_timeout
 import pytest
 from asynctest import call
 
@@ -36,10 +37,10 @@ async def test_poster_polls_and_posts(mocker):
             raise asyncio.CancelledError()
     post_event = mocker.patch('kopf.clients.events.post_event', side_effect=_cancel)
 
-    # A way to cancel `whole True` cycle by timing, event if routines are not called.
+    # A way to cancel a `while True` cycle by timing, even if the routines are not called.
     with pytest.raises(asyncio.CancelledError):
-        await asyncio.wait_for(
-            poster(event_queue=event_queue), timeout=0.5)
+        async with async_timeout.timeout(0.5):
+            await poster(event_queue=event_queue)
 
     assert post_event.call_count == 2
     assert post_event.await_count == 2

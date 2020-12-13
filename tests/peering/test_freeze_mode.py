@@ -23,10 +23,11 @@ def k8s_mocked(mocker, resp_mocker):
 
 
 @pytest.fixture
-async def replenished():
+async def replenished(mocker):
     # Make sure that freeze-sleeps are not actually executed, i.e. exit instantly.
     replenished = asyncio.Event()
     replenished.set()
+    mocker.patch.object(replenished, 'wait')  # to avoid RuntimeWarnings for unwaited coroutines
     return replenished
 
 
