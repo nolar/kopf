@@ -1,13 +1,11 @@
 import asyncio
-import dataclasses
-from typing import List
+import functools
 
 import pytest
 from asynctest import CoroutineMock
 
-from kopf.clients.watching import streaming_watch
+from kopf.clients.watching import infinite_watch
 from kopf.reactor.queueing import watcher, worker as original_worker
-from kopf.structs.configuration import OperatorSettings
 
 
 @pytest.fixture(autouse=True)
@@ -35,9 +33,11 @@ def worker_mock(mocker):
 
 
 @pytest.fixture()
-def watcher_limited(mocker):
+def watcher_limited(mocker, settings):
     """ Make event streaming finite, watcher exits after depletion. """
-    mocker.patch('kopf.clients.watching.infinite_watch', new=streaming_watch)
+    settings.watching.reconnect_backoff = 0
+    mocker.patch('kopf.clients.watching.infinite_watch',
+                 new=functools.partial(infinite_watch, _iterations=1))
 
 
 @pytest.fixture()

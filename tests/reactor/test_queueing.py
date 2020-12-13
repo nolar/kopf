@@ -2,7 +2,7 @@
 Only the tests from the watching (simulated) to the handling (substituted).
 
 Excluded: the watching-streaming routines
-(see ``tests_streaming.py`` and ``test_watching.py``).
+(see ``tests_streaming.py`` and ``test_watching_*.py``).
 
 Excluded: the causation and handling routines
 (to be done later).

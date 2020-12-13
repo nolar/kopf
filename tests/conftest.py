@@ -271,7 +271,7 @@ def stream(fake_vault, resp_mocker, aresponses, hostname, resource, version_api)
     # TODO: One day, find a better way to terminate a ``while-true`` reconnection cycle.
     def close(*, namespace=None):
         """
-        A way to stop `streaming_watch` from reconnecting: say it the resource version is gone
+        A way to stop the stream from reconnecting: say it that the resource version is gone
         (we know a priori that it stops on this condition, and escalates to `infinite_stream`).
         """
         feed([{'type': 'ERROR', 'object': {'code': 410}}], namespace=namespace)
