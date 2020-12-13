@@ -65,7 +65,7 @@ def test_operator_registry_with_activity_via_iter(
     assert not isinstance(iterator, collections.abc.Container)
     assert not isinstance(iterator, (list, tuple))
 
-    with pytest.deprecated_call(match=r"use registry.activity_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = list(iterator)
     assert not handlers
 
@@ -82,7 +82,7 @@ def test_operator_registry_with_resource_watching_via_iter(
     assert not isinstance(iterator, collections.abc.Container)
     assert not isinstance(iterator, (list, tuple))
 
-    with pytest.deprecated_call(match=r"use registry.resource_watching_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = list(iterator)
     assert not handlers
 
@@ -99,7 +99,7 @@ def test_operator_registry_with_resource_changing_via_iter(
     assert not isinstance(iterator, collections.abc.Container)
     assert not isinstance(iterator, (list, tuple))
 
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = list(iterator)
     assert not handlers
 
@@ -109,7 +109,7 @@ def test_operator_registry_with_activity_via_list(
         operator_registry_cls, activity):
 
     registry = operator_registry_cls()
-    with pytest.deprecated_call(match=r"use registry.activity_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_activity_handlers(activity=activity)
 
     assert isinstance(handlers, collections.abc.Iterable)
@@ -124,7 +124,7 @@ def test_operator_registry_with_resource_watching_via_list(
     cause = cause_factory(ResourceWatchingCause)
     registry = operator_registry_cls()
 
-    with pytest.deprecated_call(match=r"use registry.resource_watching_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_watching_handlers(cause)
 
     assert isinstance(handlers, collections.abc.Iterable)
@@ -139,7 +139,7 @@ def test_operator_registry_with_resource_changing_via_list(
     cause = cause_factory(ResourceChangingCause)
     registry = operator_registry_cls()
 
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
 
     assert isinstance(handlers, collections.abc.Iterable)
@@ -155,7 +155,7 @@ def test_operator_registry_with_activity_with_minimal_signature(
     registry = operator_registry_cls()
     with pytest.deprecated_call(match=r"use @kopf.on"):
         registry.register_activity_handler(some_fn)
-    with pytest.deprecated_call(match=r"use registry.activity_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_activity_handlers(activity=activity)
 
     assert len(handlers) == 1
@@ -170,7 +170,7 @@ def test_operator_registry_with_resource_watching_with_minimal_signature(
 
     with pytest.deprecated_call(match=r"use @kopf.on"):
         registry.register_resource_watching_handler(resource.group, resource.version, resource.plural, some_fn)
-    with pytest.deprecated_call(match=r"use registry.resource_watching_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_watching_handlers(cause)
 
     assert len(handlers) == 1
@@ -185,7 +185,7 @@ def test_operator_registry_with_resource_changing_with_minimal_signature(
 
     with pytest.deprecated_call(match=r"use @kopf.on"):
         registry.register_resource_changing_handler(resource.group, resource.version, resource.plural, some_fn)
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
 
     assert len(handlers) == 1

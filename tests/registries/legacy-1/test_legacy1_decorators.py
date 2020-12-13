@@ -17,7 +17,7 @@ def test_on_create_minimal(cause_factory):
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use OperatorRegistry.get_resource_changing_handlers\(\)"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_cause_handlers(cause)
 
     assert len(handlers) == 1
@@ -39,7 +39,7 @@ def test_on_update_minimal(cause_factory):
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use OperatorRegistry.get_resource_changing_handlers\(\)"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_cause_handlers(cause)
 
     assert len(handlers) == 1
@@ -61,7 +61,7 @@ def test_on_delete_minimal(cause_factory):
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use OperatorRegistry.get_resource_changing_handlers\(\)"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_cause_handlers(cause)
 
     assert len(handlers) == 1
@@ -85,7 +85,7 @@ def test_on_field_minimal(cause_factory):
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use OperatorRegistry.get_resource_changing_handlers\(\)"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_cause_handlers(cause)
 
     assert len(handlers) == 1
@@ -121,7 +121,7 @@ def test_on_create_with_all_kwargs(mocker, cause_factory):
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use OperatorRegistry.get_resource_changing_handlers\(\)"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_cause_handlers(cause)
 
     assert len(handlers) == 1
@@ -150,7 +150,7 @@ def test_on_update_with_all_kwargs(mocker, cause_factory):
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use OperatorRegistry.get_resource_changing_handlers\(\)"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_cause_handlers(cause)
 
     assert len(handlers) == 1
@@ -184,7 +184,7 @@ def test_on_delete_with_all_kwargs(mocker, optional, cause_factory):
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use OperatorRegistry.get_resource_changing_handlers\(\)"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_cause_handlers(cause)
 
     assert len(handlers) == 1
@@ -216,7 +216,7 @@ def test_on_field_with_all_kwargs(mocker, cause_factory):
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use OperatorRegistry.get_resource_changing_handlers\(\)"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_cause_handlers(cause)
 
     assert len(handlers) == 1
@@ -257,7 +257,7 @@ def test_subhandler_declaratively(parent_handler, cause_factory):
         def fn(**_):
             pass
 
-    with pytest.deprecated_call(match=r"use ResourceChangingRegistry.get_handlers\(\)"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_cause_handlers(cause)
 
     assert len(handlers) == 1
@@ -276,7 +276,7 @@ def test_subhandler_imperatively(parent_handler, cause_factory):
     with context([(handler_var, parent_handler)]):
         kopf.register(fn)
 
-    with pytest.deprecated_call(match=r"use ResourceChangingRegistry.get_handlers\(\)"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_cause_handlers(cause)
 
     assert len(handlers) == 1

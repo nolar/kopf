@@ -21,7 +21,7 @@ def test_simple_registry_via_iter(cause_factory):
     assert not isinstance(iterator, collections.abc.Container)
     assert not isinstance(iterator, (list, tuple))
 
-    with pytest.deprecated_call(match=r"use ResourceChangingRegistry.iter_handlers\(\)"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = list(iterator)
     assert not handlers
 
@@ -30,7 +30,7 @@ def test_simple_registry_via_list(cause_factory):
 
     cause = cause_factory()
     registry = SimpleRegistry()
-    with pytest.deprecated_call(match=r"use ResourceChangingRegistry.get_handlers\(\)"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_cause_handlers(cause)
 
     assert isinstance(handlers, collections.abc.Iterable)
@@ -43,9 +43,9 @@ def test_simple_registry_with_minimal_signature(cause_factory):
 
     cause = cause_factory()
     registry = SimpleRegistry()
-    with pytest.deprecated_call(match=r"registry.register\(\) is deprecated"):
+    with pytest.deprecated_call(match=r"use @kopf.on"):
         registry.register(some_fn)
-    with pytest.deprecated_call(match=r"use ResourceChangingRegistry.get_handlers\(\)"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_cause_handlers(cause)
 
     assert len(handlers) == 1
@@ -63,7 +63,7 @@ def test_global_registry_via_iter(cause_factory):
     assert not isinstance(iterator, collections.abc.Container)
     assert not isinstance(iterator, (list, tuple))
 
-    with pytest.deprecated_call(match=r"use OperatorRegistry.iter_resource_changing_handlers\(\)"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = list(iterator)
     assert not handlers
 
@@ -72,7 +72,7 @@ def test_global_registry_via_list(cause_factory):
 
     cause = cause_factory()
     registry = GlobalRegistry()
-    with pytest.deprecated_call(match=r"use OperatorRegistry.get_resource_changing_handlers\(\)"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_cause_handlers(cause)
 
     assert isinstance(handlers, collections.abc.Iterable)
@@ -85,9 +85,9 @@ def test_global_registry_with_minimal_signature(cause_factory, resource):
 
     cause = cause_factory()
     registry = GlobalRegistry()
-    with pytest.deprecated_call(match=r"use OperatorRegistry.register_resource_changing_handler\(\)"):
+    with pytest.deprecated_call(match=r"use @kopf.on"):
         registry.register_cause_handler(resource.group, resource.version, resource.plural, some_fn)
-    with pytest.deprecated_call(match=r"use OperatorRegistry.get_resource_changing_handlers\(\)"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_cause_handlers(cause)
 
     assert len(handlers) == 1

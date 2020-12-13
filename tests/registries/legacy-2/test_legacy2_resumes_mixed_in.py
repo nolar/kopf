@@ -17,7 +17,7 @@ def test_resumes_ignored_for_non_initial_causes(reason, deleted, cause_factory):
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
     assert len(handlers) == 0
 
@@ -32,7 +32,7 @@ def test_resumes_selected_for_initial_non_deletions(reason, cause_factory):
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
@@ -49,7 +49,7 @@ def test_resumes_ignored_for_initial_deletions_by_default(reason, cause_factory)
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
     assert len(handlers) == 0
 
@@ -65,7 +65,7 @@ def test_resumes_selected_for_initial_deletions_when_explicitly_marked(reason, c
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn

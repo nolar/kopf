@@ -15,7 +15,7 @@ def test_on_startup_minimal():
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use registry.activity_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_activity_handlers(activity=Activity.STARTUP)
 
     assert len(handlers) == 1
@@ -34,7 +34,7 @@ def test_on_cleanup_minimal():
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use registry.activity_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_activity_handlers(activity=Activity.CLEANUP)
 
     assert len(handlers) == 1
@@ -53,7 +53,7 @@ def test_on_probe_minimal():
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use registry.activity_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_activity_handlers(activity=Activity.PROBE)
 
     assert len(handlers) == 1
@@ -78,7 +78,7 @@ def test_on_resume_minimal(
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
 
     assert len(handlers) == 1
@@ -105,7 +105,7 @@ def test_on_create_minimal(
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
 
     assert len(handlers) == 1
@@ -132,7 +132,7 @@ def test_on_update_minimal(
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
 
     assert len(handlers) == 1
@@ -159,7 +159,7 @@ def test_on_delete_minimal(
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
 
     assert len(handlers) == 1
@@ -188,7 +188,7 @@ def test_on_field_minimal(
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
 
     assert len(handlers) == 1
@@ -220,7 +220,7 @@ def test_on_startup_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use registry.activity_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_activity_handlers(activity=Activity.STARTUP)
 
     assert len(handlers) == 1
@@ -242,7 +242,7 @@ def test_on_cleanup_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use registry.activity_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_activity_handlers(activity=Activity.CLEANUP)
 
     assert len(handlers) == 1
@@ -264,7 +264,7 @@ def test_on_probe_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use registry.activity_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_activity_handlers(activity=Activity.PROBE)
 
     assert len(handlers) == 1
@@ -299,7 +299,7 @@ def test_on_resume_with_all_kwargs(
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
 
     assert len(handlers) == 1
@@ -336,7 +336,7 @@ def test_on_create_with_all_kwargs(
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
 
     assert len(handlers) == 1
@@ -372,7 +372,7 @@ def test_on_update_with_all_kwargs(
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
 
     assert len(handlers) == 1
@@ -413,7 +413,7 @@ def test_on_delete_with_all_kwargs(
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
 
     assert len(handlers) == 1
@@ -450,7 +450,7 @@ def test_on_field_with_all_kwargs(
     def fn(**_):
         pass
 
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
 
     assert len(handlers) == 1
