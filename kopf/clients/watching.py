@@ -45,6 +45,7 @@ async def infinite_watch(
         resource: resources.Resource,
         namespace: Optional[str],
         freeze_mode: Optional[primitives.Toggle] = None,
+        _iterations: Optional[int] = None,  # used in tests/mocks/fixtures
 ) -> AsyncIterator[bodies.RawEvent]:
     """
     Stream the watch-events infinitely.
@@ -56,7 +57,8 @@ async def infinite_watch(
     a new one is recreated, and the stream continues.
     It only exits with unrecoverable exceptions.
     """
-    while True:
+    while _iterations is None or _iterations > 0:  # equivalent to `while True` in non-test mode.
+        _iterations = None if _iterations is None else _iterations - 1
         stream = streaming_watch(
             settings=settings,
             resource=resource,
