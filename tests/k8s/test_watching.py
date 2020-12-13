@@ -11,7 +11,7 @@ They are NOT part of the public interface of the framework.
 import asyncio
 import logging
 
-import aiohttp
+import async_timeout
 import pytest
 
 from kopf.clients.errors import APIError
@@ -157,6 +157,7 @@ async def test_exception_escalates(
 
 async def test_freezing_is_ignored_if_turned_off(
         settings, resource, stream, namespace, timer, caplog, assert_logs):
+    caplog.set_level(logging.DEBUG)
 
     stream.feed(STREAM_WITH_NORMAL_EVENTS, namespace=namespace)
     stream.close(namespace=namespace)
@@ -171,12 +172,12 @@ async def test_freezing_is_ignored_if_turned_off(
                                            freeze_mode=freeze_mode):
             events.append(event)
 
-    caplog.set_level(logging.DEBUG)
-    with timer:
-        await asyncio.wait_for(read_stream(), timeout=0.5)
+    async with timer, async_timeout.timeout(0.5) as timeout:
+        await read_stream()
 
     assert len(events) == 2
     assert timer.seconds < 0.2  # no waits, exits as soon as possible
+    assert not timeout.expired
     assert_logs([], prohibited=[
         r"Freezing the watch-stream for",
         r"Resuming the watch-stream for",
@@ -185,6 +186,7 @@ async def test_freezing_is_ignored_if_turned_off(
 
 async def test_freezing_waits_forever_if_not_resumed(
         settings, resource, stream, namespace, timer, caplog, assert_logs):
+    caplog.set_level(logging.DEBUG)
 
     stream.feed(STREAM_WITH_NORMAL_EVENTS, namespace=namespace)
     stream.close(namespace=namespace)
@@ -199,13 +201,13 @@ async def test_freezing_waits_forever_if_not_resumed(
                                            freeze_mode=freeze_mode):
             events.append(event)
 
-    caplog.set_level(logging.DEBUG)
-    with timer:
-        with pytest.raises(asyncio.TimeoutError):
-            await asyncio.wait_for(read_stream(), timeout=0.5)
+    with pytest.raises(asyncio.TimeoutError):
+        async with timer, async_timeout.timeout(0.5) as timeout:
+            await read_stream()
 
     assert len(events) == 0
     assert timer.seconds >= 0.5
+    assert timeout.expired
     assert_logs([
         r"Freezing the watch-stream for",
     ], prohibited=[
@@ -234,13 +236,14 @@ async def test_freezing_waits_until_resumed(
             events.append(event)
 
     caplog.set_level(logging.DEBUG)
-    with timer:
+    async with timer, async_timeout.timeout(0.5) as timeout:
         asyncio.create_task(delayed_resuming(0.2))
-        await asyncio.wait_for(read_stream(), timeout=1.0)
+        await read_stream()
 
     assert len(events) == 2
     assert timer.seconds >= 0.2
     assert timer.seconds <= 0.5
+    assert not timeout.expired
     assert_logs([
         r"Freezing the watch-stream for",
         r"Resuming the watch-stream for",

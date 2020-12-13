@@ -41,7 +41,7 @@ async def test_stop_immediately_with_finishing(assert_logs, caplog):
     caplog.set_level(0)
     task1 = create_task(simple())
     task2 = create_task(simple())
-    with async_timeout.timeout(1):
+    async with async_timeout.timeout(1):  # extra test safety
         done, pending = await stop([task1, task2], title='sample', logger=logger, cancelled=False)
     assert done
     assert not pending
@@ -55,7 +55,7 @@ async def test_stop_immediately_with_cancelling(assert_logs, caplog):
     caplog.set_level(0)
     task1 = create_task(simple())
     task2 = create_task(simple())
-    with async_timeout.timeout(1):
+    async with async_timeout.timeout(1):  # extra test safety
         done, pending = await stop([task1, task2], title='sample', logger=logger, cancelled=True)
     assert done
     assert not pending
@@ -72,7 +72,7 @@ async def test_stop_iteratively(assert_logs, caplog, cancelled):
     task2 = create_task(stuck())
     stask = create_task(stop([task1, task2], title='sample', logger=logger, interval=0.01, cancelled=cancelled))
 
-    with async_timeout.timeout(1):
+    async with async_timeout.timeout(1):  # extra test safety
         done, pending = await asyncio.wait({stask}, timeout=0.011)
     assert not done
     assert task1.done()
@@ -80,7 +80,7 @@ async def test_stop_iteratively(assert_logs, caplog, cancelled):
 
     task2.cancel()
 
-    with async_timeout.timeout(1):
+    async with async_timeout.timeout(1):  # extra test safety
         done, pending = await asyncio.wait({stask}, timeout=0.011)
     assert done
     assert task1.done()
@@ -100,7 +100,7 @@ async def test_stop_itself_is_cancelled(assert_logs, caplog, cancelled):
     task2 = create_task(stuck())
     stask = create_task(stop([task1, task2], title='sample', logger=logger, interval=0.01, cancelled=cancelled))
 
-    with async_timeout.timeout(1):
+    async with async_timeout.timeout(1):  # extra test safety
         done, pending = await asyncio.wait({stask}, timeout=0.011)
     assert not done
     assert task1.done()
@@ -108,7 +108,7 @@ async def test_stop_itself_is_cancelled(assert_logs, caplog, cancelled):
 
     stask.cancel()
 
-    with async_timeout.timeout(1):
+    async with async_timeout.timeout(1):  # extra test safety
         done, pending = await asyncio.wait({stask}, timeout=0.011)
     assert done
     assert task1.done()
@@ -122,7 +122,7 @@ async def test_stop_itself_is_cancelled(assert_logs, caplog, cancelled):
     ])
 
     task2.cancel()
-    with async_timeout.timeout(1):
+    async with async_timeout.timeout(1):  # extra test safety
         done, pending = await asyncio.wait({task1, task2})
     assert done
     assert task1.done()
