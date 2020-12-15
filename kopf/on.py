@@ -418,9 +418,7 @@ def timer(  # lgtm[py/similar-function]
     return decorator
 
 
-# TODO: find a better name: `@kopf.on.this` is confusing and does not fully
-# TODO: match with the `@kopf.on.{cause}` pattern, where cause is create/update/delete.
-def this(  # lgtm[py/similar-function]
+def subhandler(  # lgtm[py/similar-function]
         *,
         id: Optional[str] = None,
         errors: Optional[handlers.ErrorsMode] = None,
@@ -434,7 +432,7 @@ def this(  # lgtm[py/similar-function]
         when: Optional[callbacks.WhenFilterFn] = None,
 ) -> ResourceChangingDecorator:
     """
-    ``@kopf.on.this()`` decorator for the dynamically generated sub-handlers.
+    ``@kopf.subhandler()`` decorator for the dynamically generated sub-handlers.
 
     Can be used only inside of the handler function.
     It is efficiently a syntax sugar to look like all other handlers::
@@ -444,9 +442,8 @@ def this(  # lgtm[py/similar-function]
 
             for task in spec.get('tasks', []):
 
-                @kopf.on.this(id=f'task_{task}')
+                @kopf.subhandler(id=f'task_{task}')
                 def create_task(*, spec, task=task, **kwargs):
-
                     pass
 
     In this example, having spec.tasks set to ``[abc, def]``, this will create
@@ -517,16 +514,20 @@ def register(  # lgtm[py/similar-function]
         def create_it(spec, **kwargs):
             for task in spec.get('tasks', []):
 
-                @kopf.on.this(id=task)
+                @kopf.subhandler(id=task)
                 def create_single_task(task=task, **_):
                     pass
     """
-    decorator = this(
+    decorator = subhandler(
         id=id, registry=registry,
         errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
         labels=labels, annotations=annotations, when=when,
     )
     return decorator(fn)
+
+
+# DEPRECATED: for backward compatibility, the original name of @kopf.on.this() is kept.
+this = subhandler
 
 
 def _warn_deprecated_signatures(
