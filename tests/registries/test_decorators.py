@@ -425,7 +425,7 @@ def test_subhandler_fails_with_no_parent_handler():
 
     # Check the actual behaviour of the decorator.
     with pytest.raises(LookupError):
-        @kopf.on.this()
+        @kopf.subhandler()
         def fn(**_):
             pass
 
@@ -437,7 +437,7 @@ def test_subhandler_declaratively(parent_handler, cause_factory):
     subregistry_var.set(registry)
 
     with context([(handler_var, parent_handler)]):
-        @kopf.on.this()
+        @kopf.subhandler()
         def fn(**_):
             pass
 
