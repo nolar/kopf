@@ -235,24 +235,25 @@ partials (`functools.partial`), or the inner functions in the closures:
         - item1
         - item2
 
-Sub-handlers can be implemented either imperatively::
+Sub-handlers can be implemented either imperatively
+(where it requires :doc:`asynchronous handlers <async>` and ``async/await``)::
 
     import functools
     import kopf
 
     @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
-    def create_fn(spec, **_):
+    async def create_fn(spec, **_):
         fns = {}
 
         for item in spec.get('items', []):
             fns[item] = functools.partial(handle_item, item=item)
 
-       kopf.execute(fns)
+       await kopf.execute(fns=fns)
 
     def handle_item(item, *, spec, **_):
         pass
 
-Or decoratively::
+Or declaratively with decorators::
 
     import kopf
 
@@ -263,7 +264,6 @@ Or decoratively::
 
             @kopf.on.this(id=item)
             def handle_item(item=item, **_):
-
                 pass
 
 Both of these ways are equivalent.
