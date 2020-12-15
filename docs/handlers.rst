@@ -262,7 +262,7 @@ Or declaratively with decorators::
 
         for item in spec.get('items', []):
 
-            @kopf.on.this(id=item)
+            @kopf.subhandler(id=item)
             def handle_item(item=item, **_):
                 pass
 

@@ -4,8 +4,8 @@ Idempotence
 
 Kopf provides tools to make the handlers idempotent.
 
-`kopf.register` function and `kopf.on.this` decorator allow to schedule
-arbitrary sub-handlers for the execution in the current cycle.
+The `kopf.register` function and the `kopf.subhandler` decorator allow
+to schedule arbitrary sub-handlers for the execution in the current cycle.
 
 `kopf.execute` coroutine executes arbitrary sub-handlers
 directly in the place of invocation, and returns when all they have succeeded.

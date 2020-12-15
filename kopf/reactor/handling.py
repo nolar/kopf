@@ -50,7 +50,7 @@ class HandlerChildrenRetry(TemporaryError):
 
 
 # The task-local context; propagated down the stack instead of multiple kwargs.
-# Used in `@kopf.on.this` and `kopf.execute()` to add/get the sub-handlers.
+# Used in `@kopf.subhandler` and `kopf.execute()` to add/get the sub-handlers.
 sublifecycle_var: ContextVar[Optional[lifecycles.LifeCycleFn]] = ContextVar('sublifecycle_var')
 subregistry_var: ContextVar[registries.ResourceChangingRegistry] = ContextVar('subregistry_var')
 subsettings_var: ContextVar[configuration.OperatorSettings] = ContextVar('subsettings_var')
@@ -77,7 +77,7 @@ async def execute(
 
     If no explicit functions or handlers or registry are passed,
     the sub-handlers of the current handler are assumed, as accumulated
-    in the per-handler registry with ``@kopf.on.this``.
+    in the per-handler registry with ``@kopf.subhandler``.
 
     If the call to this method for the sub-handlers is not done explicitly
     in the handler, it is done implicitly after the handler is exited.
@@ -137,7 +137,7 @@ async def execute(
     elif subexecuted_var.get():
         return
 
-    # If no explicit args were passed, implicitly use the accumulated handlers from `@kopf.on.this`.
+    # If no explicit args were passed, use the accumulated handlers from `@kopf.subhandler`.
     else:
         subexecuted_var.set(True)
         subregistry = subregistry_var.get()
@@ -336,7 +336,7 @@ async def invoke_handler(
 
     Ensure the global context for this asyncio task is set to the handler and
     its cause -- for proper population of the sub-handlers via the decorators
-    (see `@kopf.on.this`).
+    (see `@kopf.subhandler`).
     """
 
     # For the field-handlers, the old/new/diff values must match the field, not the whole object.
@@ -349,7 +349,7 @@ async def invoke_handler(
         diff = diffs.reduce(cause.diff, handler.field)
         cause = causation.enrich_cause(cause=cause, old=old, new=new, diff=diff)
 
-    # Store the context of the current resource-object-event-handler, to be used in `@kopf.on.this`,
+    # Store the context of the current handler, to be used in `@kopf.subhandler`,
     # and maybe other places, and consumed in the recursive `execute()` calls for the children.
     # This replaces the multiple kwargs passing through the whole call stack (easy to forget).
     with invocation.context([
