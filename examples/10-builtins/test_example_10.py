@@ -25,22 +25,24 @@ def test_pods_reacted():
 
 def _create_pod():
     api = pykube.HTTPClient(pykube.KubeConfig.from_file())
-    pod = pykube.Pod(api, {
-        'apiVersion': 'v1',
-        'kind': 'Pod',
-        'metadata': {'generateName': 'kopf-pod-', 'namespace': 'default'},
-        'spec': {
-            'containers': [{
-                'name': 'the-only-one',
-                'image': 'busybox',
-                'command': ["sh", "-x", "-c", "sleep 1"],
-            }]},
-    })
-    pod.create()
-    return pod.name
+    with api.session:
+        pod = pykube.Pod(api, {
+            'apiVersion': 'v1',
+            'kind': 'Pod',
+            'metadata': {'generateName': 'kopf-pod-', 'namespace': 'default'},
+            'spec': {
+                'containers': [{
+                    'name': 'the-only-one',
+                    'image': 'busybox',
+                    'command': ["sh", "-x", "-c", "sleep 1"],
+                }]},
+        })
+        pod.create()
+        return pod.name
 
 
 def _delete_pod(name):
     api = pykube.HTTPClient(pykube.KubeConfig.from_file())
-    pod = pykube.Pod.objects(api, namespace='default').get_by_name(name)
-    pod.delete()
+    with api.session:
+        pod = pykube.Pod.objects(api, namespace='default').get_by_name(name)
+        pod.delete()
