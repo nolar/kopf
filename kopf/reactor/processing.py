@@ -119,9 +119,9 @@ async def process_resource_causes(
 
     finalizer = settings.persistence.finalizer
     extra_fields = (
-        registry.resource_watching_handlers[resource].get_extra_fields() |
-        registry.resource_changing_handlers[resource].get_extra_fields() |
-        registry.resource_spawning_handlers[resource].get_extra_fields())
+        registry.resource_watching_handlers.get_extra_fields(resource=resource) |
+        registry.resource_changing_handlers.get_extra_fields(resource=resource) |
+        registry.resource_spawning_handlers.get_extra_fields(resource=resource))
     old = settings.persistence.diffbase_storage.fetch(body=body)
     new = settings.persistence.diffbase_storage.build(body=body, extra_fields=extra_fields)
     old = settings.persistence.progress_storage.clear(essence=old) if old is not None else None
@@ -136,7 +136,7 @@ async def process_resource_causes(
         patch=patch,
         body=body,
         memo=memory.memo,
-    ) if registry.resource_watching_handlers[resource].has_handlers() else None
+    ) if registry.resource_watching_handlers.has_handlers(resource=resource) else None
 
     resource_spawning_cause = causation.detect_resource_spawning_cause(
         resource=resource,
@@ -145,7 +145,7 @@ async def process_resource_causes(
         body=body,
         memo=memory.memo,
         reset=bool(diff),  # only essential changes reset idling, not every event
-    ) if registry.resource_spawning_handlers[resource].has_handlers() else None
+    ) if registry.resource_spawning_handlers.has_handlers(resource=resource) else None
 
     resource_changing_cause = causation.detect_resource_changing_cause(
         finalizer=finalizer,
@@ -159,12 +159,12 @@ async def process_resource_causes(
         diff=diff,
         memo=memory.memo,
         initial=memory.noticed_by_listing and not memory.fully_handled_once,
-    ) if registry.resource_changing_handlers[resource].has_handlers() else None
+    ) if registry.resource_changing_handlers.has_handlers(resource=resource) else None
 
     # If there are any handlers for this resource kind in general, but not for this specific object
     # due to filters, then be blind to it, store no state, and log nothing about the handling cycle.
     if (resource_changing_cause is not None and
-        not registry.resource_changing_handlers[resource].prematch(cause=resource_changing_cause)):
+        not registry.resource_changing_handlers.prematch(cause=resource_changing_cause)):
         resource_changing_cause = None
 
     # Block the object from deletion if we have anything to do in its end of life:
@@ -175,13 +175,13 @@ async def process_resource_causes(
     deletion_is_blocked = finalizers.is_deletion_blocked(body=body, finalizer=finalizer)
     deletion_must_be_blocked = (
         (resource_spawning_cause is not None and
-         registry.resource_spawning_handlers[resource].requires_finalizer(
+         registry.resource_spawning_handlers.requires_finalizer(
              cause=resource_spawning_cause,
              excluded=memory.forever_stopped,
          ))
         or
         (resource_changing_cause is not None and
-         registry.resource_changing_handlers[resource].requires_finalizer(
+         registry.resource_changing_handlers.requires_finalizer(
              cause=resource_changing_cause,
          )))
 
@@ -253,7 +253,7 @@ async def process_resource_watching_cause(
     Note: K8s-event posting is skipped for `kopf.on.event` handlers,
     as they should be silent. Still, the messages are logged normally.
     """
-    handlers = registry.resource_watching_handlers[cause.resource].get_handlers(cause=cause)
+    handlers = registry.resource_watching_handlers.get_handlers(cause=cause)
     outcomes = await handling.execute_handlers_once(
         lifecycle=lifecycle,
         settings=settings,
@@ -301,7 +301,7 @@ async def process_resource_spawning_cause(
         return stopping_delays
 
     else:
-        handlers = registry.resource_spawning_handlers[cause.resource].get_handlers(
+        handlers = registry.resource_spawning_handlers.get_handlers(
             cause=cause,
             excluded=memory.forever_stopped,
         )
@@ -341,8 +341,8 @@ async def process_resource_changing_cause(
     if cause.reason in handlers_.HANDLER_REASONS:
         title = handlers_.TITLES.get(cause.reason, repr(cause.reason))
 
-        resource_registry = registry.resource_changing_handlers[cause.resource]
-        owned_handlers = resource_registry.get_all_handlers()
+        resource_registry = registry.resource_changing_handlers
+        owned_handlers = resource_registry.get_resource_handlers(resource=cause.resource)
         cause_handlers = resource_registry.get_handlers(cause=cause)
         storage = settings.persistence.progress_storage
         state = states.State.from_storage(body=cause.body, storage=storage, handlers=owned_handlers)
