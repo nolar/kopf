@@ -31,11 +31,10 @@ from kopf.engines.posting import (
     exception,
 )
 from kopf.on import (
+    subhandler,
+    register,
     daemon,
     timer,
-)
-from kopf.on import (
-    register,
 )
 from kopf.reactor import (
     lifecycles,  # as a separate name on the public namespace

@@ -15,7 +15,7 @@ def test_with_parent(
     registry = resource_registry_cls()
 
     with context([(handler_var, parent_handler)]):
-        kopf.on.this(registry=registry)(child_fn)
+        kopf.subhandler(registry=registry)(child_fn)
 
     handlers = registry.get_handlers(cause)
     assert len(handlers) == 1

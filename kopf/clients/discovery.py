@@ -14,7 +14,9 @@ async def discover(
     if context is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 
-    if resource.api_version not in context._discovered_resources:
+    name = resource.plural if subresource is None else f'{resource.plural}/{subresource}'
+
+    if not context._discovered_resources.get(resource.api_version, {}).get(name):
         async with context._discovery_lock:
             if resource.api_version not in context._discovered_resources:
                 context._discovered_resources[resource.api_version] = {}
@@ -31,7 +33,6 @@ async def discover(
                 except (errors.APINotFoundError, errors.APIForbiddenError):
                     pass
 
-    name = resource.plural if subresource is None else f'{resource.plural}/{subresource}'
     return context._discovered_resources[resource.api_version].get(name, None)
 
 
