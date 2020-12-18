@@ -1,9 +1,11 @@
+import dataclasses
 import urllib.parse
-from typing import List, Mapping, NamedTuple, Optional
+from typing import List, Mapping, Optional
 
 
 # An immutable reference to a custom resource definition.
-class Resource(NamedTuple):
+@dataclasses.dataclass(frozen=True)
+class Resource:
     group: str
     version: str
     plural: str
