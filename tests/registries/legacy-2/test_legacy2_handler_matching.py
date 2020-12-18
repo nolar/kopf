@@ -30,28 +30,42 @@ def register_fn(registry, resource):
 
 
 @pytest.fixture(params=[
-    pytest.param([], id='with-empty-diff'),
+    # The original no-diff was equivalent to no-field until body/old/new were added to the check.
+    pytest.param(dict(old={}, new={}, body={}, diff=[]), id='with-empty-diff'),
 ])
 def cause_no_diff(request, cause_factory):
-    body = {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}}
-    return cause_factory(diff=request.param, body=body)
+    request.param['body'].update(
+        {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}})
+    cause = cause_factory(**request.param)
+    return cause
 
 
 @pytest.fixture(params=[
-    pytest.param([('op', ('some-field',), 'old', 'new')], id='with-field-diff'),
+    pytest.param(dict(old={'some-field': 'old'},
+                      new={'some-field': 'new'},
+                      body={'some-field': 'new'},
+                      diff=[('op', ('some-field',), 'old', 'new')]), id='with-field-diff'),
 ])
 def cause_with_diff(request, cause_factory):
-    body = {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}}
-    return cause_factory(diff=request.param, body=body)
+    request.param['body'].update(
+        {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}})
+    cause = cause_factory(**request.param)
+    return cause
 
 
 @pytest.fixture(params=[
-    pytest.param([], id='with-empty-diff'),
-    pytest.param([('op', ('some-field',), 'old', 'new')], id='with-field-diff'),
+    # The original no-diff was equivalent to no-field until body/old/new were added to the check.
+    pytest.param(dict(old={}, new={}, body={}, diff=[]), id='with-empty-diff'),
+    pytest.param(dict(old={'some-field': 'old'},
+                      new={'some-field': 'new'},
+                      body={'some-field': 'new'},
+                      diff=[('op', ('some-field',), 'old', 'new')]), id='with-field-diff'),
 ])
 def cause_any_diff(request, cause_factory):
-    body = {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}}
-    return cause_factory(diff=request.param, body=body)
+    request.param['body'].update(
+        {'metadata': {'labels': {'somelabel': 'somevalue'}, 'annotations': {'someannotation': 'somevalue'}}})
+    cause = cause_factory(**request.param)
+    return cause
 
 
 #
@@ -60,21 +74,21 @@ def cause_any_diff(request, cause_factory):
 
 def test_catchall_handlers_without_field_found(cause_any_diff, registry, register_fn):
     register_fn(some_fn, reason=None, field=None)
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_any_diff)
     assert handlers
 
 
 def test_catchall_handlers_with_field_found(cause_with_diff, registry, register_fn):
     register_fn(some_fn, reason=None, field='some-field')
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_with_diff)
     assert handlers
 
 
 def test_catchall_handlers_with_field_ignored(cause_no_diff, registry, register_fn):
     register_fn(some_fn, reason=None, field='some-field')
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_no_diff)
     assert not handlers
 
@@ -87,7 +101,7 @@ def test_catchall_handlers_with_labels_satisfied(
         cause_factory, registry, register_fn, resource, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     register_fn(some_fn, reason=None, field=None, labels={'somelabel': 'somevalue'})
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
     assert handlers
 
@@ -101,7 +115,7 @@ def test_catchall_handlers_with_labels_not_satisfied(
         cause_factory, registry, register_fn, resource, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     register_fn(some_fn, reason=None, field=None, labels={'somelabel': 'somevalue'})
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
     assert not handlers
 
@@ -114,7 +128,7 @@ def test_catchall_handlers_with_labels_exist(
         cause_factory, registry, register_fn, resource, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     register_fn(some_fn, reason=None, field=None, labels={'somelabel': None})
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
     assert handlers
 
@@ -127,7 +141,7 @@ def test_catchall_handlers_with_labels_not_exist(
         cause_factory, registry, register_fn, resource, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     register_fn(some_fn, reason=None, field=None, labels={'somelabel': None})
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
     assert not handlers
 
@@ -143,7 +157,7 @@ def test_catchall_handlers_without_labels(
         cause_factory, registry, register_fn, resource, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     register_fn(some_fn, reason=None, field=None, labels=None)
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
     assert handlers
 
@@ -156,7 +170,7 @@ def test_catchall_handlers_with_annotations_satisfied(
         cause_factory, registry, register_fn, resource, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
     register_fn(some_fn, reason=None, field=None, annotations={'someannotation': 'somevalue'})
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
     assert handlers
 
@@ -170,7 +184,7 @@ def test_catchall_handlers_with_annotations_not_satisfied(
         cause_factory, registry, register_fn, resource, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
     register_fn(some_fn, reason=None, field=None, annotations={'someannotation': 'somevalue'})
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
     assert not handlers
 
@@ -183,7 +197,7 @@ def test_catchall_handlers_with_annotations_exist(
         cause_factory, registry, register_fn, resource, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
     register_fn(some_fn, reason=None, field=None, annotations={'someannotation': None})
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
     assert handlers
 
@@ -196,7 +210,7 @@ def test_catchall_handlers_with_annotations_not_exist(
         cause_factory, registry, register_fn, resource, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
     register_fn(some_fn, reason=None, field=None, annotations={'someannotation': None})
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
     assert not handlers
 
@@ -212,7 +226,7 @@ def test_catchall_handlers_without_annotations(
         cause_factory, registry, register_fn, resource, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
     register_fn(some_fn, reason=None, field=None, annotations=None)
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
     assert handlers
 
@@ -227,7 +241,7 @@ def test_catchall_handlers_with_labels_and_annotations_satisfied(
         cause_factory, registry, register_fn, resource, labels, annotations):
     cause = cause_factory(body={'metadata': {'labels': labels, 'annotations': annotations}})
     register_fn(some_fn, reason=None, field=None, labels={'somelabel': 'somevalue'}, annotations={'someannotation': 'somevalue'})
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
     assert handlers
 
@@ -243,7 +257,7 @@ def test_catchall_handlers_with_labels_and_annotations_not_satisfied(
         cause_factory, registry, register_fn, resource, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     register_fn(some_fn, reason=None, field=None, labels={'somelabel': 'somevalue'}, annotations={'someannotation': 'somevalue'})
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
     assert not handlers
 
@@ -257,7 +271,7 @@ def test_catchall_handlers_with_when_match(
         cause_factory, registry, register_fn, resource, when):
     cause = cause_factory(body={'spec': {'name': 'test'}})
     register_fn(some_fn, reason=None, field=None, when=when)
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
     assert handlers
 
@@ -270,7 +284,7 @@ def test_catchall_handlers_with_when_not_match(
         cause_factory, registry, register_fn, resource, when):
     cause = cause_factory(body={'spec': {'name': 'test'}})
     register_fn(some_fn, reason=None, field=None, when=when)
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause)
     assert not handlers
 
@@ -284,119 +298,119 @@ def test_catchall_handlers_with_when_not_match(
 
 def test_relevant_handlers_without_field_found(cause_any_diff, registry, register_fn):
     register_fn(some_fn, reason='some-reason')
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_any_diff)
     assert handlers
 
 
 def test_relevant_handlers_with_field_found(cause_with_diff, registry, register_fn):
     register_fn(some_fn, reason='some-reason', field='some-field')
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_with_diff)
     assert handlers
 
 
 def test_relevant_handlers_with_field_ignored(cause_no_diff, registry, register_fn):
     register_fn(some_fn, reason='some-reason', field='some-field')
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_no_diff)
     assert not handlers
 
 
 def test_relevant_handlers_with_labels_satisfied(cause_any_diff, registry, register_fn):
     register_fn(some_fn, reason='some-reason', labels={'somelabel': None})
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_any_diff)
     assert handlers
 
 
 def test_relevant_handlers_with_labels_not_satisfied(cause_any_diff, registry, register_fn):
     register_fn(some_fn, reason='some-reason', labels={'otherlabel': None})
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_any_diff)
     assert not handlers
 
 
 def test_relevant_handlers_with_annotations_satisfied(cause_any_diff, registry, register_fn):
     register_fn(some_fn, reason='some-reason', annotations={'someannotation': None})
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_any_diff)
     assert handlers
 
 
 def test_relevant_handlers_with_annotations_not_satisfied(cause_any_diff, registry, register_fn):
     register_fn(some_fn, reason='some-reason', annotations={'otherannotation': None})
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_any_diff)
     assert not handlers
 
 
 def test_relevant_handlers_with_filter_satisfied(cause_any_diff, registry, register_fn):
     register_fn(some_fn, reason='some-reason', when=lambda **_: True)
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_any_diff)
     assert handlers
 
 
 def test_relevant_handlers_with_filter_not_satisfied(cause_any_diff, registry, register_fn):
     register_fn(some_fn, reason='some-reason', when=lambda **_: False)
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_any_diff)
     assert not handlers
 
 
 def test_irrelevant_handlers_without_field_ignored(cause_any_diff, registry, register_fn):
     register_fn(some_fn, reason='another-reason')
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_any_diff)
     assert not handlers
 
 
 def test_irrelevant_handlers_with_field_ignored(cause_any_diff, registry, register_fn):
     register_fn(some_fn, reason='another-reason', field='another-field')
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_any_diff)
     assert not handlers
 
 
 def test_irrelevant_handlers_with_labels_satisfied(cause_any_diff, registry, register_fn):
     register_fn(some_fn, reason='another-reason', labels={'somelabel': None})
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_any_diff)
     assert not handlers
 
 
 def test_irrelevant_handlers_with_labels_not_satisfied(cause_any_diff, registry, register_fn):
     register_fn(some_fn, reason='another-reason', labels={'otherlabel': None})
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_any_diff)
     assert not handlers
 
 
 def test_irrelevant_handlers_with_annotations_satisfied(cause_any_diff, registry, register_fn):
     register_fn(some_fn, reason='another-reason', annotations={'someannotation': None})
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_any_diff)
     assert not handlers
 
 
 def test_irrelevant_handlers_with_annotations_not_satisfied(cause_any_diff, registry, register_fn):
     register_fn(some_fn, reason='another-reason', annotations={'otherannotation': None})
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_any_diff)
     assert not handlers
 
 
 def test_irrelevant_handlers_with_when_satisfied(cause_any_diff, registry, register_fn):
     register_fn(some_fn, reason='another-reason', when=lambda **_: True)
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_any_diff)
     assert not handlers
 
 
 def test_irrelevant_handlers_with_when_not_satisfied(cause_any_diff, registry, register_fn):
     register_fn(some_fn, reason='another-reason', when=lambda **_: False)
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_any_diff)
     assert not handlers
 
@@ -412,7 +426,7 @@ def test_order_persisted_a(cause_with_diff, registry, register_fn):
     register_fn(functools.partial(some_fn, 4), reason=None, field='filtered-out-reason')
     register_fn(functools.partial(some_fn, 5), reason=None, field='some-field')
 
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_with_diff)
 
     # Order must be preserved -- same as registered.
@@ -432,7 +446,7 @@ def test_order_persisted_b(cause_with_diff, registry, register_fn):
     register_fn(functools.partial(some_fn, 4), reason='some-reason')
     register_fn(functools.partial(some_fn, 5), reason=None)
 
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_with_diff)
 
     # Order must be preserved -- same as registered.
@@ -453,7 +467,7 @@ def test_deduplicated(cause_with_diff, registry, register_fn):
     register_fn(some_fn, reason=None, id='a')
     register_fn(some_fn, reason=None, id='b')
 
-    with pytest.deprecated_call(match=r"use registry.resource_changing_handlers"):
+    with pytest.deprecated_call(match=r"cease using the internal registries"):
         handlers = registry.get_resource_changing_handlers(cause_with_diff)
 
     assert len(handlers) == 1

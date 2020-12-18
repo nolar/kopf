@@ -57,7 +57,7 @@ ALL_REASONS = HANDLER_REASONS + REACTOR_REASONS
 # The human-readable names of these causes. Will be capitalised when needed.
 TITLES = {
     Reason.CREATE: 'creation',
-    Reason.UPDATE: 'update',
+    Reason.UPDATE: 'updating',
     Reason.DELETE: 'deletion',
     Reason.RESUME: 'resuming',
 }
@@ -112,6 +112,8 @@ class ResourceHandler(BaseHandler):
     labels: Optional[filters.MetaFilter]
     annotations: Optional[filters.MetaFilter]
     when: Optional[callbacks.WhenFilterFn]
+    field: Optional[dicts.FieldPath]
+    value: Optional[filters.ValueFilter]
 
 
 @dataclasses.dataclass
@@ -123,10 +125,12 @@ class ResourceWatchingHandler(ResourceHandler):
 class ResourceChangingHandler(ResourceHandler):
     fn: callbacks.ResourceChangingFn  # type clarification
     reason: Optional[Reason]
-    field: Optional[dicts.FieldPath]
     initial: Optional[bool]
     deleted: Optional[bool]  # used for mixed-in (initial==True) @on.resume handlers only.
     requires_finalizer: Optional[bool]
+    field_needs_change: Optional[bool]  # to identify on-field/on-update with support for old=/new=.
+    old: Optional[filters.ValueFilter]
+    new: Optional[filters.ValueFilter]
 
     @property
     def event(self) -> Optional[Reason]:

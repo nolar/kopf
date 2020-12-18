@@ -60,8 +60,8 @@ async def test_diffs_logged_if_present(registry, settings, resource, handlers,
         event_queue=asyncio.Queue(),
     )
     assert_logs([
-        " event: ",
-        " diff: "
+        "(Creation|Updating|Resuming|Deletion) is in progress: ",
+        "(Creation|Updating|Resuming|Deletion) diff: "
     ])
 
 
@@ -90,7 +90,7 @@ async def test_diffs_not_logged_if_absent(registry, settings, resource, handlers
         event_queue=asyncio.Queue(),
     )
     assert_logs([
-        " event: ",
+        "(Creation|Updating|Resuming|Deletion) is in progress: ",
     ], prohibited=[
         " diff: "
     ])
@@ -133,7 +133,7 @@ async def test_supersession_is_logged(
         event_queue=asyncio.Queue(),
     )
     assert_logs([
-        "(Creation|Update|Resuming|Deletion) event is superseded by (creation|update|resuming|deletion): ",
-        "(Creation|Update|Resuming|Deletion) event: ",
-        "(Creation|Update|Resuming|Deletion) event is processed: ",
+        "(Creation|Updating|Resuming|Deletion) is superseded by (creation|updating|resuming|deletion): ",
+        "(Creation|Updating|Resuming|Deletion) is in progress: ",
+        "(Creation|Updating|Resuming|Deletion) is processed: ",
     ])

@@ -106,10 +106,11 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[
         real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         handler = LegacyAllPurposeResourcerHandler(
             id=real_id, fn=fn,  # type: ignore
-            reason=reason, field=real_field,
+            reason=reason,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
             labels=labels, annotations=annotations, when=when,
+            field=real_field, value=None, old=None, new=None, field_needs_change=None,
         )
         self.append(handler)
         return fn
@@ -128,8 +129,9 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[
             resource: resources_.Resource,
             event: bodies.RawEvent,
     ) -> Sequence[handlers.ResourceWatchingHandler]:
-        warnings.warn("SimpleRegistry.get_event_handlers() is deprecated; use "
-                      "ResourceWatchingRegistry.get_handlers().", DeprecationWarning)
+        warnings.warn("SimpleRegistry.get_event_handlers() is deprecated; "
+                      "please cease using the internal registries directly.",
+                      DeprecationWarning)
         return list(registries._deduplicated(self.iter_event_handlers(
             resource=resource, event=event)))
 
@@ -137,8 +139,9 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[
             self,
             cause: causation.ResourceChangingCause,
     ) -> Sequence[handlers.ResourceChangingHandler]:
-        warnings.warn("SimpleRegistry.get_cause_handlers() is deprecated; use "
-                      "ResourceChangingRegistry.get_handlers().", DeprecationWarning)
+        warnings.warn("SimpleRegistry.get_cause_handlers() is deprecated; "
+                      "please cease using the internal registries directly.",
+                      DeprecationWarning)
         return list(registries._deduplicated(self.iter_cause_handlers(cause=cause)))
 
     def iter_event_handlers(
@@ -146,22 +149,24 @@ class SimpleRegistry(BaseRegistry, registries.ResourceRegistry[
             resource: resources_.Resource,
             event: bodies.RawEvent,
     ) -> Iterator[handlers.ResourceWatchingHandler]:
-        warnings.warn("SimpleRegistry.iter_event_handlers() is deprecated; use "
-                      "ResourceWatchingRegistry.iter_handlers().", DeprecationWarning)
+        warnings.warn("SimpleRegistry.iter_event_handlers() is deprecated; "
+                      "please cease using the internal registries directly.",
+                      DeprecationWarning)
 
         cause = _create_watching_cause(resource, event)
         for handler in self._handlers:
             if not isinstance(handler, handlers.ResourceWatchingHandler):
                 pass
-            elif registries.match(handler=handler, cause=cause, ignore_fields=True):
+            elif registries.match(handler=handler, cause=cause):
                 yield handler
 
     def iter_cause_handlers(
             self,
             cause: causation.ResourceChangingCause,
     ) -> Iterator[handlers.ResourceChangingHandler]:
-        warnings.warn("SimpleRegistry.iter_cause_handlers() is deprecated; use "
-                      "ResourceChangingRegistry.iter_handlers().", DeprecationWarning)
+        warnings.warn("SimpleRegistry.iter_cause_handlers() is deprecated; "
+                      "please cease using the internal registries directly.",
+                      DeprecationWarning)
 
         for handler in self._handlers:
             if not isinstance(handler, handlers.ResourceChangingHandler):
@@ -181,23 +186,27 @@ class GlobalRegistry(BaseRegistry, registries.OperatorRegistry):
     """
 
     def register_event_handler(self, *args: Any, **kwargs: Any) -> Any:
-        warnings.warn("GlobalRegistry.register_event_handler() is deprecated; use "
-                      "OperatorRegistry.register_resource_watching_handler().", DeprecationWarning)
+        warnings.warn("GlobalRegistry.register_event_handler() is deprecated; "
+                      "use @kopf.on... decorators with registry= kwarg.",
+                      DeprecationWarning)
         return self.register_resource_watching_handler(*args, **kwargs)
 
     def register_cause_handler(self, *args: Any, **kwargs: Any) -> Any:
-        warnings.warn("GlobalRegistry.register_cause_handler() is deprecated; use "
-                      "OperatorRegistry.register_resource_changing_handler().", DeprecationWarning)
+        warnings.warn("GlobalRegistry.register_cause_handler() is deprecated; "
+                      "use @kopf.on... decorators with registry= kwarg.",
+                      DeprecationWarning)
         return self.register_resource_changing_handler(*args, **kwargs)
 
     def has_event_handlers(self, *args: Any, **kwargs: Any) -> Any:
-        warnings.warn("GlobalRegistry.has_event_handlers() is deprecated; use "
-                      "OperatorRegistry.has_resource_watching_handlers().", DeprecationWarning)
+        warnings.warn("GlobalRegistry.has_event_handlers() is deprecated; "
+                      "please cease using the internal registries directly.",
+                      DeprecationWarning)
         return self.has_resource_watching_handlers(*args, **kwargs)
 
     def has_cause_handlers(self, *args: Any, **kwargs: Any) -> Any:
-        warnings.warn("GlobalRegistry.has_cause_handlers() is deprecated; use "
-                      "OperatorRegistry.has_resource_changing_handlers().", DeprecationWarning)
+        warnings.warn("GlobalRegistry.has_cause_handlers() is deprecated; "
+                      "please cease using the internal registries directly.",
+                      DeprecationWarning)
         return self.has_resource_changing_handlers(*args, **kwargs)
 
     def get_event_handlers(
@@ -205,8 +214,9 @@ class GlobalRegistry(BaseRegistry, registries.OperatorRegistry):
             resource: resources_.Resource,
             event: bodies.RawEvent,
     ) -> Sequence[handlers.ResourceWatchingHandler]:
-        warnings.warn("GlobalRegistry.get_event_handlers() is deprecated; use "
-                      "OperatorRegistry.get_resource_watching_handlers().", DeprecationWarning)
+        warnings.warn("GlobalRegistry.get_event_handlers() is deprecated; "
+                      "please cease using the internal registries directly.",
+                      DeprecationWarning)
         cause = _create_watching_cause(resource=resource, event=event)
         return self.get_resource_watching_handlers(cause=cause)
 
@@ -214,8 +224,9 @@ class GlobalRegistry(BaseRegistry, registries.OperatorRegistry):
             self,
             cause: causation.ResourceChangingCause,
     ) -> Sequence[handlers.ResourceChangingHandler]:
-        warnings.warn("GlobalRegistry.get_cause_handlers() is deprecated; use "
-                      "OperatorRegistry.get_resource_changing_handlers().", DeprecationWarning)
+        warnings.warn("GlobalRegistry.get_cause_handlers() is deprecated; "
+                      "please cease using the internal registries directly.",
+                      DeprecationWarning)
         return self.get_resource_changing_handlers(cause=cause)
 
     def iter_event_handlers(
@@ -223,8 +234,9 @@ class GlobalRegistry(BaseRegistry, registries.OperatorRegistry):
             resource: resources_.Resource,
             event: bodies.RawEvent,
     ) -> Iterator[handlers.ResourceWatchingHandler]:
-        warnings.warn("GlobalRegistry.iter_event_handlers() is deprecated; use "
-                      "OperatorRegistry.iter_resource_watching_handlers().", DeprecationWarning)
+        warnings.warn("GlobalRegistry.iter_event_handlers() is deprecated; "
+                      "please cease using the internal registries directly.",
+                      DeprecationWarning)
         cause = _create_watching_cause(resource=resource, event=event)
         yield from self.iter_resource_watching_handlers(cause=cause)
 
@@ -232,8 +244,9 @@ class GlobalRegistry(BaseRegistry, registries.OperatorRegistry):
             self,
             cause: causation.ResourceChangingCause,
     ) -> Iterator[handlers.ResourceChangingHandler]:
-        warnings.warn("GlobalRegistry.iter_cause_handlers() is deprecated; use "
-                      "OperatorRegistry.iter_resource_changing_handlers().", DeprecationWarning)
+        warnings.warn("GlobalRegistry.iter_cause_handlers() is deprecated; "
+                      "please cease using the internal registries directly.",
+                      DeprecationWarning)
         yield from self.iter_resource_changing_handlers(cause=cause)
 
 

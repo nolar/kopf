@@ -22,20 +22,15 @@ import asyncio
 import contextlib
 import json
 import logging
-from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, Optional, cast
+from typing import AsyncIterator, Dict, Optional, cast
 
 import aiohttp
 
 from kopf.clients import auth, discovery, errors, fetching
 from kopf.structs import bodies, configuration, primitives, resources
-from kopf.utilities import backports
+from kopf.utilities import aiotasks
 
 logger = logging.getLogger(__name__)
-
-if TYPE_CHECKING:
-    asyncio_Future = asyncio.Future[Any]
-else:
-    asyncio_Future = asyncio.Future
 
 
 class WatchingError(Exception):
@@ -49,7 +44,8 @@ async def infinite_watch(
         settings: configuration.OperatorSettings,
         resource: resources.Resource,
         namespace: Optional[str],
-        freeze_mode: Optional[primitives.Toggle] = None,
+        freeze_checker: Optional[primitives.ToggleSet] = None,
+        _iterations: Optional[int] = None,  # used in tests/mocks/fixtures
 ) -> AsyncIterator[bodies.RawEvent]:
     """
     Stream the watch-events infinitely.
@@ -61,54 +57,83 @@ async def infinite_watch(
     a new one is recreated, and the stream continues.
     It only exits with unrecoverable exceptions.
     """
-    while True:
-        stream = streaming_watch(
-            settings=settings,
-            resource=resource,
-            namespace=namespace,
-            freeze_mode=freeze_mode,
-        )
-        async for raw_event in stream:
-            yield raw_event
-        await asyncio.sleep(settings.watching.reconnect_backoff)
+    how = ' (frozen)' if freeze_checker is not None and freeze_checker.is_on() else ''
+    where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
+    logger.debug(f"Starting the watch-stream for {resource} {where}{how}.")
+    try:
+        while _iterations is None or _iterations > 0:  # equivalent to `while True` in non-test mode
+            _iterations = None if _iterations is None else _iterations - 1
+            async with streaming_block(
+                namespace=namespace,
+                resource=resource,
+                freeze_checker=freeze_checker,
+            ) as freeze_waiter:
+                stream = continuous_watch(
+                    settings=settings,
+                    resource=resource,
+                    namespace=namespace,
+                    freeze_waiter=freeze_waiter,
+                )
+                async for raw_event in stream:
+                    yield raw_event
+            await asyncio.sleep(settings.watching.reconnect_backoff)
+    finally:
+        logger.debug(f"Stopping the watch-stream for {resource} {where}.")
 
 
-async def streaming_watch(
+@contextlib.asynccontextmanager
+async def streaming_block(
         *,
-        settings: configuration.OperatorSettings,
         resource: resources.Resource,
         namespace: Optional[str],
-        freeze_mode: Optional[primitives.Toggle] = None,
-) -> AsyncIterator[bodies.RawEvent]:
+        freeze_checker: Optional[primitives.ToggleSet],
+) -> AsyncIterator[aiotasks.Future]:
+    """
+    Block the execution until the freeze is off; signal when it is on again.
 
-    # Prevent both watching and listing while the freeze mode is on, until it is off.
-    # Specifically, the watch-stream closes its connection once the freeze mode is on,
-    # so the while-true & for-event-in-stream cycles exit, and this coroutine is started
-    # again by the `infinite_stream()` (the watcher timeout is swallowed by the freeze time).
-    if freeze_mode is not None and freeze_mode.is_on():
-        logger.debug("Freezing the watch-stream for %r", resource)
-        await freeze_mode.wait_for_off()
-        logger.debug("Resuming the watch-stream for %r", resource)
+    This prevents both watching and listing while the freeze mode is on,
+    until it is off. Specifically, the watch-stream closes its connection
+    once the freeze mode is on, so the while-true & for-event-in-stream cycles
+    exit, and the streaming coroutine is started again by `infinite_stream()`
+    (the watcher timeout is swallowed by the freeze time).
 
-    # A stop-feature is a client-specific way of terminating the streaming HTTPS connection
-    # when a freeze-mode is turned on. The low-level API call attaches its `response.close()`
-    # to the future's callbacks, and a background task triggers it when the mode is turned on.
-    freeze_waiter: asyncio_Future
-    if freeze_mode is not None:
-        freeze_waiter = backports.create_task(
-            freeze_mode.wait_for_on(),
-            name=f'freeze-waiter for {resource.name} @ {namespace or "cluster-wide"}')
+    Returns a future (or a task) that is set when the freeze is turned on again.
+
+    A stop-future is a client-specific way of terminating the streaming HTTPS
+    connections when the freeze is turned back on. The low-level streaming API
+    call attaches its `response.close()` to the future's "done" callback,
+    so that the stream is closed once the freeze is turned back on.
+
+    Note: this routine belongs to watching and does not belong to peering.
+    The freeze can be managed in any other ways: as an imaginary edge case,
+    imagine a operator with UI with a "pause" button that freezes the operator.
+    """
+    where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
+
+    # Block until unfrozen before even starting the API communication.
+    if freeze_checker is not None and freeze_checker.is_on():
+        names = {toggle.name for toggle in freeze_checker if toggle.is_on() and toggle.name}
+        freezing_reason = f" (blockers: {', '.join(names)})" if names else ""
+        logger.debug(f"Freezing the watch-stream for {resource} {where}{freezing_reason}.")
+
+        await freeze_checker.wait_for(False)
+
+        names = {toggle.name for toggle in freeze_checker if toggle.is_on() and toggle.name}
+        resuming_reason = f" (resolved: {', '.join(names)})" if names else ""
+        logger.debug(f"Resuming the watch-stream for {resource} {where}{resuming_reason}.")
+
+    # Create the signalling future that the freeze is on again.
+    freeze_waiter: aiotasks.Future
+    if freeze_checker is not None:
+        freeze_waiter = aiotasks.create_task(
+            freeze_checker.wait_for(True),
+            name=f"freeze-waiter for {resource}")
     else:
-        freeze_waiter = asyncio.Future()  # a dummy just ot have it
+        freeze_waiter = asyncio.Future()  # a dummy just to have it
 
+    # Go for the streaming with the prepared freezing/unfreezing setup.
     try:
-        stream = continuous_watch(
-            settings=settings,
-            resource=resource, namespace=namespace,
-            freeze_waiter=freeze_waiter,
-        )
-        async for raw_event in stream:
-            yield raw_event
+        yield freeze_waiter
     finally:
         with contextlib.suppress(asyncio.CancelledError):
             freeze_waiter.cancel()
@@ -120,7 +145,7 @@ async def continuous_watch(
         settings: configuration.OperatorSettings,
         resource: resources.Resource,
         namespace: Optional[str],
-        freeze_waiter: asyncio_Future,
+        freeze_waiter: aiotasks.Future,
 ) -> AsyncIterator[bodies.RawEvent]:
 
     # First, list the resources regularly, and get the list's resource version.
@@ -149,7 +174,8 @@ async def continuous_watch(
             # The resource versions are lost by k8s after few minutes (5, as per the official doc).
             # The error occurs when there is nothing happening for few minutes. This is normal.
             if raw_type == 'ERROR' and cast(bodies.RawError, raw_object)['code'] == 410:
-                logger.debug("Restarting the watch-stream for %r", resource)
+                where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
+                logger.debug(f"Restarting the watch-stream for {resource} {where}.")
                 return  # out of the regular stream, to the infinite stream.
 
             # Other watch errors should be fatal for the operator.
@@ -174,11 +200,11 @@ async def watch_objs(
         *,
         settings: configuration.OperatorSettings,
         resource: resources.Resource,
-        namespace: Optional[str] = None,
+        namespace: Optional[str],
         timeout: Optional[float] = None,
         since: Optional[str] = None,
         context: Optional[auth.APIContext] = None,  # injected by the decorator
-        freeze_waiter: asyncio_Future,
+        freeze_waiter: aiotasks.Future,
 ) -> AsyncIterator[bodies.RawInput]:
     """
     Watch objects of a specific resource type.

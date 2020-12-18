@@ -66,6 +66,15 @@ We can see that with kubectl:
         pvc-name: my-claim
       kopf: {}
 
+.. note::
+    If the above change causes ``Patching failed with inconsistencies`` 
+    debug warnings and/or your EVC yaml doesn't show a ``.status`` field, make sure
+    you have set the ``x-kubernetes-preserve-unknown-fields: true`` field in your CRD
+    on either the entire object or just the ``.status`` field as detailed in :doc:`resources`. 
+    Without setting this field, Kubernetes will prune the ``.status`` field when Kopf tries to 
+    update it. For more info on field pruning, see `the Kubernetes docs  
+    <https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#field-pruning>`_.
+
 Let's add a yet another handler, but for the "update" cause.
 This handler gets this stored PVC name from the creation handler,
 and patches the PVC with the new size from the EVC::

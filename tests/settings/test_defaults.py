@@ -6,6 +6,12 @@ import kopf
 async def test_declared_public_interface_and_promised_defaults():
     settings = kopf.OperatorSettings()
     assert settings.posting.level == logging.INFO
+    assert settings.peering.name == "default"
+    assert settings.peering.stealth == False
+    assert settings.peering.priority == 0
+    assert settings.peering.lifetime == 60
+    assert settings.peering.mandatory == False
+    assert settings.peering.standalone == False
     assert settings.watching.reconnect_backoff == 0.1
     assert settings.watching.connect_timeout is None
     assert settings.watching.server_timeout is None

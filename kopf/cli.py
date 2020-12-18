@@ -5,8 +5,9 @@ from typing import Any, Callable, List, Optional
 
 import click
 
+from kopf.clients import auth
 from kopf.engines import loggers, peering
-from kopf.reactor import registries, running
+from kopf.reactor import activities, registries, running
 from kopf.structs import configuration, credentials, primitives
 from kopf.utilities import loaders
 
@@ -63,11 +64,11 @@ def main() -> None:
 @main.command()
 @logging_options
 @click.option('-n', '--namespace', default=None)
-@click.option('--standalone', is_flag=True, default=False)
+@click.option('--standalone', is_flag=True, default=None)
 @click.option('--dev', 'priority', type=int, is_flag=True, flag_value=666)
 @click.option('-L', '--liveness', 'liveness_endpoint', type=str)
-@click.option('-P', '--peering', 'peering_name', type=str, default=None, envvar='KOPF_RUN_PEERING')
-@click.option('-p', '--priority', type=int, default=0)
+@click.option('-P', '--peering', 'peering_name', type=str, envvar='KOPF_RUN_PEERING')
+@click.option('-p', '--priority', type=int)
 @click.option('-m', '--module', 'modules', multiple=True)
 @click.argument('paths', nargs=-1)
 @click.make_pass_decorator(CLIControls, ensure=True)
@@ -76,8 +77,8 @@ def run(
         paths: List[str],
         modules: List[str],
         peering_name: Optional[str],
-        priority: int,
-        standalone: bool,
+        priority: Optional[int],
+        standalone: Optional[bool],
         namespace: Optional[str],
         liveness_endpoint: Optional[str],
 ) -> None:
@@ -107,7 +108,7 @@ def run(
 @click.option('-n', '--namespace', default=None)
 @click.option('-i', '--id', type=str, default=None)
 @click.option('--dev', 'priority', flag_value=666)
-@click.option('-P', '--peering', 'peering_name', type=str, required=True, envvar='KOPF_FREEZE_PEERING')
+@click.option('-P', '--peering', 'peering_name', required=True, envvar='KOPF_FREEZE_PEERING')
 @click.option('-p', '--priority', type=int, default=100, required=True)
 @click.option('-t', '--lifetime', type=int, required=True)
 @click.option('-m', '--message', type=str)
@@ -120,32 +121,49 @@ def freeze(
         priority: int,
 ) -> None:
     """ Freeze the resource handling in the cluster. """
-    ourserlves = peering.Peer(
-        id=id or peering.detect_own_id(),
-        name=peering_name,
-        namespace=namespace,
-        priority=priority,
-        lifetime=lifetime,
-    )
+    identity = peering.Identity(id) if id else peering.detect_own_id(manual=True)
+    registry = registries.SmartOperatorRegistry()
+    settings = configuration.OperatorSettings()
+    settings.peering.name = peering_name
+    settings.peering.priority = priority
+    vault = credentials.Vault()
+    auth.vault_var.set(vault)
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(ourserlves.keepalive())
+    loop.run_until_complete(asyncio.wait({
+        activities.authenticate(registry=registry, settings=settings, vault=vault),
+        peering.touch(
+            identity=identity,
+            settings=settings,
+            namespace=namespace,
+            lifetime=lifetime,
+        ),
+    }))
 
 
 @main.command()
 @logging_options
 @click.option('-n', '--namespace', default=None)
 @click.option('-i', '--id', type=str, default=None)
-@click.option('-P', '--peering', 'peering_name', type=str, required=True, envvar='KOPF_RESUME_PEERING')
+@click.option('-P', '--peering', 'peering_name', required=True, envvar='KOPF_RESUME_PEERING')
 def resume(
         id: Optional[str],
         namespace: Optional[str],
         peering_name: str,
 ) -> None:
     """ Resume the resource handling in the cluster. """
-    ourselves = peering.Peer(
-        id=id or peering.detect_own_id(),
-        name=peering_name,
-        namespace=namespace,
-    )
+    identity = peering.Identity(id) if id else peering.detect_own_id(manual=True)
+    registry = registries.SmartOperatorRegistry()
+    settings = configuration.OperatorSettings()
+    settings.peering.name = peering_name
+    vault = credentials.Vault()
+    auth.vault_var.set(vault)
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(ourselves.disappear())
+    loop.run_until_complete(asyncio.wait({
+        activities.authenticate(registry=registry, settings=settings, vault=vault),
+        peering.touch(
+            identity=identity,
+            settings=settings,
+            namespace=namespace,
+            lifetime=0,
+        ),
+    }))

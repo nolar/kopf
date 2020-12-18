@@ -21,12 +21,13 @@ async def test_skipped_with_no_handlers(
     event_body = {'metadata': {'finalizers': []}}
     cause_mock.reason = cause_type
 
-    assert not registry.resource_changing_handlers[resource]  # prerequisite
+    assert not registry.resource_changing_handlers[resource].has_handlers()  # prerequisite
     registry.resource_changing_handlers[resource].append(ResourceChangingHandler(
         reason='a-non-existent-cause-type',
         fn=lambda **_: None, id='id',
         errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
-        annotations=None, labels=None, when=None, field=None,
+        annotations=None, labels=None, when=None,
+        field=None, value=None, old=None, new=None, field_needs_change=None,
         deleted=None, initial=None, requires_finalizer=None,
     ))
 
@@ -51,10 +52,10 @@ async def test_skipped_with_no_handlers(
     assert set(patch['metadata']['annotations'].keys()) == {LAST_SEEN_ANNOTATION}
 
     assert_logs([
-        ".* event:",
+        "(Creation|Updating|Resuming|Deletion) is in progress:",
         "Patching with:",
     ], prohibited=[
-        "event is processed:",
+        "(Creation|Updating|Resuming|Deletion) is processed:",
     ])
 
 
@@ -75,12 +76,13 @@ async def test_stealth_mode_with_mismatching_handlers(
     event_body = {'metadata': {'finalizers': []}}
     cause_mock.reason = cause_type
 
-    assert not registry.resource_changing_handlers[resource]  # prerequisite
+    assert not registry.resource_changing_handlers[resource].has_handlers()  # prerequisite
     registry.resource_changing_handlers[resource].append(ResourceChangingHandler(
         reason=None,
         fn=lambda **_: None, id='id',
         errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
-        annotations=annotations, labels=labels, when=when, field=None,
+        annotations=annotations, labels=labels, when=when,
+        field=None, value=None, old=None, new=None, field_needs_change=None,
         deleted=deleted, initial=initial, requires_finalizer=None,
     ))
 

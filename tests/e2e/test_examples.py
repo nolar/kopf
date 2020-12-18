@@ -78,9 +78,9 @@ def test_all_examples_are_runnable(mocker, settings, with_crd, exampledir, caplo
     if requires_finalizer:
         assert '[default/kopf-example-1] Adding the finalizer' in runner.stdout
     if e2e_test_creation:
-        assert '[default/kopf-example-1] Creation event:' in runner.stdout
+        assert '[default/kopf-example-1] Creation is in progress:' in runner.stdout
     if requires_finalizer:
-        assert '[default/kopf-example-1] Deletion event:' in runner.stdout
+        assert '[default/kopf-example-1] Deletion is in progress:' in runner.stdout
     if e2e_test_highlevel:
         assert '[default/kopf-example-1] Deleted, really deleted' in runner.stdout
     if not e2e_tracebacks:

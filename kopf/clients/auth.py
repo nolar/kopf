@@ -10,6 +10,7 @@ from typing import Any, Callable, Dict, Iterator, Mapping, Optional, TypeVar, ca
 
 import aiohttp
 
+from kopf.clients import errors
 from kopf.structs import credentials
 
 # Per-operator storage and exchange point for authentication methods.
@@ -43,11 +44,8 @@ def reauthenticated_request(fn: _F) -> _F:
         async for key, info, context in vault.extended(APIContext, 'contexts'):
             try:
                 return await fn(*args, **kwargs, context=context)
-            except aiohttp.ClientResponseError as e:
-                if e.status == 401:
-                    await vault.invalidate(key, exc=e)
-                else:
-                    raise
+            except errors.APIUnauthorizedError as e:
+                await vault.invalidate(key, exc=e)
         raise credentials.LoginError("Ran out of connection credentials.")
     return cast(_F, wrapper)
 
@@ -78,11 +76,8 @@ def reauthenticated_stream(fn: _F) -> _F:
                 async for item in fn(*args, **kwargs, context=context):
                     yield item
                 return
-            except aiohttp.ClientResponseError as e:
-                if e.status == 401:
-                    await vault.invalidate(key, exc=e)
-                else:
-                    raise
+            except errors.APIUnauthorizedError as e:
+                await vault.invalidate(key, exc=e)
         raise credentials.LoginError("Ran out of connection credentials.")
     return cast(_F, wrapper)
 

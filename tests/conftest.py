@@ -128,6 +128,11 @@ def clear_default_registry():
         kopf.set_default_registry(old_registry)
 
 
+@pytest.fixture()
+def registry(clear_default_registry):
+    return clear_default_registry
+
+
 #
 # Mocks for Kubernetes API clients (any of them). Reasons:
 # 1. We do not test the clients, we test the layers on top of them,
@@ -266,7 +271,7 @@ def stream(fake_vault, resp_mocker, aresponses, hostname, resource, version_api)
     # TODO: One day, find a better way to terminate a ``while-true`` reconnection cycle.
     def close(*, namespace=None):
         """
-        A way to stop `streaming_watch` from reconnecting: say it the resource version is gone
+        A way to stop the stream from reconnecting: say it that the resource version is gone
         (we know a priori that it stops on this condition, and escalates to `infinite_stream`).
         """
         feed([{'type': 'ERROR', 'object': {'code': 410}}], namespace=namespace)
@@ -355,8 +360,7 @@ def fake_vault(mocker, hostname):
     info = ConnectionInfo(server=f'https://{hostname}')
     vault = Vault({key: info})
     token = auth.vault_var.set(vault)
-    mocker.patch.object(vault._ready, 'wait_for_on')
-    mocker.patch.object(vault._ready, 'wait_for_off')
+    mocker.patch.object(vault._ready, 'wait_for')
     try:
         yield vault
     finally:
@@ -491,6 +495,12 @@ class Timer(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._te = time.perf_counter()
+
+    async def __aenter__(self):
+        return self.__enter__()
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        return self.__exit__(exc_type, exc_val, exc_tb)
 
     def __int__(self):
         return int(self.seconds)

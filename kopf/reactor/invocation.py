@@ -9,15 +9,11 @@ import asyncio
 import contextlib
 import contextvars
 import functools
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Optional, Tuple, cast
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, cast
 
 from kopf.reactor import causation
 from kopf.structs import callbacks, configuration
-
-if TYPE_CHECKING:
-    asyncio_Future = asyncio.Future[Any]
-else:
-    asyncio_Future = asyncio.Future
+from kopf.utilities import aiotasks
 
 
 @contextlib.contextmanager
@@ -140,7 +136,7 @@ async def invoke(
         # Note: the docs say the result is a future, but typesheds say it is a coroutine => cast()!
         loop = asyncio.get_event_loop()
         executor = settings.execution.executor if settings is not None else None
-        future = cast(asyncio_Future, loop.run_in_executor(executor, real_fn))
+        future = cast(aiotasks.Future, loop.run_in_executor(executor, real_fn))
         cancellation: Optional[asyncio.CancelledError] = None
         while not future.done():
             try:

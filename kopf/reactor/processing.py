@@ -118,7 +118,10 @@ async def process_resource_causes(
 ) -> Tuple[Collection[float], bool]:
 
     finalizer = settings.persistence.finalizer
-    extra_fields = registry.resource_changing_handlers[resource].get_extra_fields()
+    extra_fields = (
+        registry.resource_watching_handlers[resource].get_extra_fields() |
+        registry.resource_changing_handlers[resource].get_extra_fields() |
+        registry.resource_spawning_handlers[resource].get_extra_fields())
     old = settings.persistence.diffbase_storage.fetch(body=body)
     new = settings.persistence.diffbase_storage.build(body=body, extra_fields=extra_fields)
     old = settings.persistence.progress_storage.clear(essence=old) if old is not None else None
@@ -133,7 +136,7 @@ async def process_resource_causes(
         patch=patch,
         body=body,
         memo=memory.memo,
-    ) if registry.resource_watching_handlers[resource] else None
+    ) if registry.resource_watching_handlers[resource].has_handlers() else None
 
     resource_spawning_cause = causation.detect_resource_spawning_cause(
         resource=resource,
@@ -142,7 +145,7 @@ async def process_resource_causes(
         body=body,
         memo=memory.memo,
         reset=bool(diff),  # only essential changes reset idling, not every event
-    ) if registry.resource_spawning_handlers[resource] else None
+    ) if registry.resource_spawning_handlers[resource].has_handlers() else None
 
     resource_changing_cause = causation.detect_resource_changing_cause(
         finalizer=finalizer,
@@ -156,7 +159,7 @@ async def process_resource_causes(
         diff=diff,
         memo=memory.memo,
         initial=memory.noticed_by_listing and not memory.fully_handled_once,
-    ) if registry.resource_changing_handlers[resource] else None
+    ) if registry.resource_changing_handlers[resource].has_handlers() else None
 
     # If there are any handlers for this resource kind in general, but not for this specific object
     # due to filters, then be blind to it, store no state, and log nothing about the handling cycle.
@@ -350,7 +353,7 @@ async def process_resource_changing_cause(
         # To the next cycle, all extras are purged or re-purposed, so the message does not repeat.
         for extra_reason, counters in state.extras.items():  # usually 0..1 items, rarely 2+.
             extra_title = handlers_.TITLES.get(extra_reason, repr(extra_reason))
-            logger.info(f"{extra_title.capitalize()} event is superseded by {title.lower()}: "
+            logger.info(f"{extra_title.capitalize()} is superseded by {title.lower()}: "
                         f"{counters.success} succeeded; "
                         f"{counters.failure} failed; "
                         f"{counters.running} left to the moment.")
@@ -365,7 +368,7 @@ async def process_resource_changing_cause(
 
         # Inform on the current cause/event on every processing cycle. Even if there are
         # no handlers -- to show what has happened and why the diff-base is patched.
-        logger.debug(f"{title.capitalize()} event: %r", body)
+        logger.debug(f"{title.capitalize()} is in progress: %r", body)
         if cause.diff and cause.old is not None and cause.new is not None:
             logger.debug(f"{title.capitalize()} diff: %r", cause.diff)
 
@@ -383,7 +386,7 @@ async def process_resource_changing_cause(
 
             if state.done:
                 counters = state.counts  # calculate only once
-                logger.info(f"{title.capitalize()} event is processed: "
+                logger.info(f"{title.capitalize()} is processed: "
                             f"{counters.success} succeeded; "
                             f"{counters.failure} failed.")
                 state.purge(body=cause.body, patch=cause.patch,
@@ -408,7 +411,7 @@ async def process_resource_changing_cause(
         logger.debug("Deleted, really deleted, and we are notified.")
 
     if cause.reason == handlers_.Reason.FREE:
-        logger.debug("Deletion event, but we are done with it, and we do not care.")
+        logger.debug("Deletion, but we are done with it, and we do not care.")
 
     if cause.reason == handlers_.Reason.NOOP:
         logger.debug("Something has changed, but we are not interested (the essence is the same).")
