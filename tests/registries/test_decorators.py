@@ -70,7 +70,7 @@ def test_on_resume_minimal(reason, cause_factory):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry.resource_changing_handlers.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
@@ -96,7 +96,7 @@ def test_on_create_minimal(cause_factory):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry.resource_changing_handlers.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.CREATE
@@ -122,7 +122,7 @@ def test_on_update_minimal(cause_factory):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry.resource_changing_handlers.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.UPDATE
@@ -148,7 +148,7 @@ def test_on_delete_minimal(cause_factory):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry.resource_changing_handlers.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.DELETE
@@ -176,7 +176,7 @@ def test_on_field_minimal(cause_factory):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry.resource_changing_handlers.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
@@ -205,7 +205,7 @@ def test_on_field_warns_with_positional(cause_factory):
         def fn(**_):
             pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry.resource_changing_handlers.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].field == ('field', 'subfield')
 
@@ -297,7 +297,7 @@ def test_on_resume_with_most_kwargs(mocker, reason, cause_factory):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry.resource_changing_handlers.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
@@ -333,7 +333,7 @@ def test_on_create_with_most_kwargs(mocker, cause_factory):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry.resource_changing_handlers.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.CREATE
@@ -368,7 +368,7 @@ def test_on_update_with_most_kwargs(mocker, cause_factory):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry.resource_changing_handlers.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.UPDATE
@@ -408,7 +408,7 @@ def test_on_delete_with_most_kwargs(mocker, cause_factory, optional):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry.resource_changing_handlers.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.DELETE
@@ -445,7 +445,7 @@ def test_on_field_with_most_kwargs(mocker, cause_factory):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry.resource_changing_handlers.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
@@ -570,7 +570,7 @@ def test_field_with_value(mocker, cause_factory, decorator, causeargs, handlers_
         pass
 
     handlers_registry = getattr(registry, handlers_prop)
-    handlers = handlers_registry[resource].get_handlers(cause)
+    handlers = handlers_registry.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].field == ('spec', 'field')
     assert handlers[0].value == 'value'
@@ -592,7 +592,7 @@ def test_field_with_oldnew(mocker, cause_factory, decorator, causeargs, handlers
         pass
 
     handlers_registry = getattr(registry, handlers_prop)
-    handlers = handlers_registry[resource].get_handlers(cause)
+    handlers = handlers_registry.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].field == ('spec', 'field')
     assert handlers[0].value is None
@@ -645,7 +645,7 @@ def test_invalid_oldnew_for_inappropriate_subhandlers(resource, decorator, regis
             pass
 
     subregistry = ResourceChangingRegistry()
-    handler = registry.resource_changing_handlers[resource].get_all_handlers()[0]
+    handler = registry.resource_changing_handlers.get_all_handlers()[0]
     with context([(handler_var, handler), (subregistry_var, subregistry)]):
         with pytest.raises(TypeError, match="can only be used in update handlers"):
             handler.fn()

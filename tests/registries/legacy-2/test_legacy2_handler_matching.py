@@ -98,7 +98,7 @@ def test_catchall_handlers_with_field_ignored(cause_no_diff, registry, register_
     pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, id='with-extra-label'),
 ])
 def test_catchall_handlers_with_labels_satisfied(
-        cause_factory, registry, register_fn, resource, labels):
+        cause_factory, registry, register_fn, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     register_fn(some_fn, reason=None, field=None, labels={'somelabel': 'somevalue'})
     with pytest.deprecated_call(match=r"cease using the internal registries"):
@@ -112,7 +112,7 @@ def test_catchall_handlers_with_labels_satisfied(
     pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
 ])
 def test_catchall_handlers_with_labels_not_satisfied(
-        cause_factory, registry, register_fn, resource, labels):
+        cause_factory, registry, register_fn, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     register_fn(some_fn, reason=None, field=None, labels={'somelabel': 'somevalue'})
     with pytest.deprecated_call(match=r"cease using the internal registries"):
@@ -125,7 +125,7 @@ def test_catchall_handlers_with_labels_not_satisfied(
     pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
 ])
 def test_catchall_handlers_with_labels_exist(
-        cause_factory, registry, register_fn, resource, labels):
+        cause_factory, registry, register_fn, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     register_fn(some_fn, reason=None, field=None, labels={'somelabel': None})
     with pytest.deprecated_call(match=r"cease using the internal registries"):
@@ -138,7 +138,7 @@ def test_catchall_handlers_with_labels_exist(
     pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
 ])
 def test_catchall_handlers_with_labels_not_exist(
-        cause_factory, registry, register_fn, resource, labels):
+        cause_factory, registry, register_fn, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     register_fn(some_fn, reason=None, field=None, labels={'somelabel': None})
     with pytest.deprecated_call(match=r"cease using the internal registries"):
@@ -154,7 +154,7 @@ def test_catchall_handlers_with_labels_not_exist(
     pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, id='with-extra-label'),
 ])
 def test_catchall_handlers_without_labels(
-        cause_factory, registry, register_fn, resource, labels):
+        cause_factory, registry, register_fn, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     register_fn(some_fn, reason=None, field=None, labels=None)
     with pytest.deprecated_call(match=r"cease using the internal registries"):
@@ -167,7 +167,7 @@ def test_catchall_handlers_without_labels(
     pytest.param({'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-extra-annotation'),
 ])
 def test_catchall_handlers_with_annotations_satisfied(
-        cause_factory, registry, register_fn, resource, annotations):
+        cause_factory, registry, register_fn, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
     register_fn(some_fn, reason=None, field=None, annotations={'someannotation': 'somevalue'})
     with pytest.deprecated_call(match=r"cease using the internal registries"):
@@ -181,7 +181,7 @@ def test_catchall_handlers_with_annotations_satisfied(
     pytest.param({'otherannotation': 'othervalue'}, id='with-other-annotation'),
 ])
 def test_catchall_handlers_with_annotations_not_satisfied(
-        cause_factory, registry, register_fn, resource, annotations):
+        cause_factory, registry, register_fn, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
     register_fn(some_fn, reason=None, field=None, annotations={'someannotation': 'somevalue'})
     with pytest.deprecated_call(match=r"cease using the internal registries"):
@@ -194,7 +194,7 @@ def test_catchall_handlers_with_annotations_not_satisfied(
     pytest.param({'someannotation': 'othervalue'}, id='with-other-value'),
 ])
 def test_catchall_handlers_with_annotations_exist(
-        cause_factory, registry, register_fn, resource, annotations):
+        cause_factory, registry, register_fn, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
     register_fn(some_fn, reason=None, field=None, annotations={'someannotation': None})
     with pytest.deprecated_call(match=r"cease using the internal registries"):
@@ -207,7 +207,7 @@ def test_catchall_handlers_with_annotations_exist(
     pytest.param({'otherannotation': 'othervalue'}, id='with-other-annotation'),
 ])
 def test_catchall_handlers_with_annotations_not_exist(
-        cause_factory, registry, register_fn, resource, annotations):
+        cause_factory, registry, register_fn, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
     register_fn(some_fn, reason=None, field=None, annotations={'someannotation': None})
     with pytest.deprecated_call(match=r"cease using the internal registries"):
@@ -223,7 +223,7 @@ def test_catchall_handlers_with_annotations_not_exist(
     pytest.param({'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-extra-annotation'),
 ])
 def test_catchall_handlers_without_annotations(
-        cause_factory, registry, register_fn, resource, annotations):
+        cause_factory, registry, register_fn, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
     register_fn(some_fn, reason=None, field=None, annotations=None)
     with pytest.deprecated_call(match=r"cease using the internal registries"):
@@ -238,7 +238,7 @@ def test_catchall_handlers_without_annotations(
     pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, {'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-extra-label-extra-annotation'),
 ])
 def test_catchall_handlers_with_labels_and_annotations_satisfied(
-        cause_factory, registry, register_fn, resource, labels, annotations):
+        cause_factory, registry, register_fn, labels, annotations):
     cause = cause_factory(body={'metadata': {'labels': labels, 'annotations': annotations}})
     register_fn(some_fn, reason=None, field=None, labels={'somelabel': 'somevalue'}, annotations={'someannotation': 'somevalue'})
     with pytest.deprecated_call(match=r"cease using the internal registries"):
@@ -254,7 +254,7 @@ def test_catchall_handlers_with_labels_and_annotations_satisfied(
     pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, id='with-extra-label'),
 ])
 def test_catchall_handlers_with_labels_and_annotations_not_satisfied(
-        cause_factory, registry, register_fn, resource, labels):
+        cause_factory, registry, register_fn, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     register_fn(some_fn, reason=None, field=None, labels={'somelabel': 'somevalue'}, annotations={'someannotation': 'somevalue'})
     with pytest.deprecated_call(match=r"cease using the internal registries"):
@@ -268,7 +268,7 @@ def test_catchall_handlers_with_labels_and_annotations_not_satisfied(
     pytest.param(lambda **_: True, id='with-other-when'),
 ])
 def test_catchall_handlers_with_when_match(
-        cause_factory, registry, register_fn, resource, when):
+        cause_factory, registry, register_fn, when):
     cause = cause_factory(body={'spec': {'name': 'test'}})
     register_fn(some_fn, reason=None, field=None, when=when)
     with pytest.deprecated_call(match=r"cease using the internal registries"):
@@ -281,7 +281,7 @@ def test_catchall_handlers_with_when_match(
     pytest.param(lambda **_: False, id='with-other-when'),
 ])
 def test_catchall_handlers_with_when_not_match(
-        cause_factory, registry, register_fn, resource, when):
+        cause_factory, registry, register_fn, when):
     cause = cause_factory(body={'spec': {'name': 'test'}})
     register_fn(some_fn, reason=None, field=None, when=when)
     with pytest.deprecated_call(match=r"cease using the internal registries"):

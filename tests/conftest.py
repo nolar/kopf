@@ -168,7 +168,7 @@ async def enforced_session(enforced_context: APIContext):
 # Note: Unused `fake_vault` is to ensure that the client wrappers have the credentials.
 # Note: Unused `enforced_session` is to ensure that the session is closed for every test.
 @pytest.fixture()
-def resp_mocker(fake_vault, enforced_session, resource, aresponses):
+def resp_mocker(fake_vault, enforced_session, aresponses):
     """
     A factory of server-side callbacks for `aresponses` with mocking/spying.
 

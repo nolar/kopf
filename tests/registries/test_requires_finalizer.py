@@ -1,7 +1,6 @@
 import pytest
 
 import kopf
-from kopf.reactor.causation import ResourceCause
 from kopf.reactor.registries import OperatorRegistry
 from kopf.structs.filters import MetaFilterToken
 from kopf.structs.resources import Resource
@@ -20,28 +19,22 @@ OBJECT_BODY = {
     }
 }
 
-CAUSE = ResourceCause(
-    logger=None,
-    resource=None,
-    patch=None,
-    body=OBJECT_BODY,
-    memo=None
-)
 
 @pytest.mark.parametrize('optional, expected', [
     pytest.param(True, False, id='optional'),
     pytest.param(False, True, id='mandatory'),
 ])
-def test_requires_finalizer_deletion_handler(optional, expected):
+def test_requires_finalizer_deletion_handler(optional, expected, cause_factory):
     registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
+    cause = cause_factory(resource=resource, body=OBJECT_BODY)
 
     @kopf.on.delete('group', 'version', 'plural',
                     registry=registry, optional=optional)
     def fn(**_):
         pass
 
-    requires_finalizer = registry.resource_changing_handlers[resource].requires_finalizer(CAUSE)
+    requires_finalizer = registry.resource_changing_handlers.requires_finalizer(cause)
     assert requires_finalizer == expected
 
 
@@ -49,9 +42,10 @@ def test_requires_finalizer_deletion_handler(optional, expected):
     pytest.param(True, False, id='optional'),
     pytest.param(False, True, id='mandatory'),
 ])
-def test_requires_finalizer_multiple_handlers(optional, expected):
+def test_requires_finalizer_multiple_handlers(optional, expected, cause_factory):
     registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
+    cause = cause_factory(resource=resource, body=OBJECT_BODY)
 
     @kopf.on.create('group', 'version', 'plural',
                     registry=registry)
@@ -63,20 +57,21 @@ def test_requires_finalizer_multiple_handlers(optional, expected):
     def fn2(**_):
         pass
 
-    requires_finalizer = registry.resource_changing_handlers[resource].requires_finalizer(CAUSE)
+    requires_finalizer = registry.resource_changing_handlers.requires_finalizer(cause)
     assert requires_finalizer == expected
 
 
-def test_requires_finalizer_no_deletion_handler():
+def test_requires_finalizer_no_deletion_handler(cause_factory):
     registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
+    cause = cause_factory(resource=resource, body=OBJECT_BODY)
 
     @kopf.on.create('group', 'version', 'plural',
                     registry=registry)
     def fn1(**_):
         pass
 
-    requires_finalizer = registry.resource_changing_handlers[resource].requires_finalizer(CAUSE)
+    requires_finalizer = registry.resource_changing_handlers.requires_finalizer(cause)
     assert requires_finalizer is False
 
 
@@ -88,9 +83,10 @@ def test_requires_finalizer_no_deletion_handler():
     pytest.param({'key': 'value'}, id='value-matches'),
     pytest.param({'key': MetaFilterToken.PRESENT}, id='key-exists'),
 ])
-def test_requires_finalizer_deletion_handler_matches_labels(labels, optional, expected):
+def test_requires_finalizer_deletion_handler_matches_labels(labels, optional, expected, cause_factory):
     registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
+    cause = cause_factory(resource=resource, body=OBJECT_BODY)
 
     @kopf.on.delete('group', 'version', 'plural',
                     labels=labels,
@@ -98,7 +94,7 @@ def test_requires_finalizer_deletion_handler_matches_labels(labels, optional, ex
     def fn(**_):
         pass
 
-    requires_finalizer = registry.resource_changing_handlers[resource].requires_finalizer(CAUSE)
+    requires_finalizer = registry.resource_changing_handlers.requires_finalizer(cause)
     assert requires_finalizer == expected
 
 
@@ -110,9 +106,10 @@ def test_requires_finalizer_deletion_handler_matches_labels(labels, optional, ex
     pytest.param({'key': 'othervalue'}, id='value-mismatch'),
     pytest.param({'otherkey': MetaFilterToken.PRESENT}, id='key-doesnt-exist'),
 ])
-def test_requires_finalizer_deletion_handler_mismatches_labels(labels, optional, expected):
+def test_requires_finalizer_deletion_handler_mismatches_labels(labels, optional, expected, cause_factory):
     registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
+    cause = cause_factory(resource=resource, body=OBJECT_BODY)
 
     @kopf.on.delete('group', 'version', 'plural',
                     labels=labels,
@@ -120,7 +117,7 @@ def test_requires_finalizer_deletion_handler_mismatches_labels(labels, optional,
     def fn(**_):
         pass
 
-    requires_finalizer = registry.resource_changing_handlers[resource].requires_finalizer(CAUSE)
+    requires_finalizer = registry.resource_changing_handlers.requires_finalizer(cause)
     assert requires_finalizer == expected
 
 
@@ -132,9 +129,10 @@ def test_requires_finalizer_deletion_handler_mismatches_labels(labels, optional,
     pytest.param({'key': 'value'}, id='value-matches'),
     pytest.param({'key': MetaFilterToken.PRESENT}, id='key-exists'),
 ])
-def test_requires_finalizer_deletion_handler_matches_annotations(annotations, optional, expected):
+def test_requires_finalizer_deletion_handler_matches_annotations(annotations, optional, expected, cause_factory):
     registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
+    cause = cause_factory(resource=resource, body=OBJECT_BODY)
 
     @kopf.on.delete('group', 'version', 'plural',
                     annotations=annotations,
@@ -142,7 +140,7 @@ def test_requires_finalizer_deletion_handler_matches_annotations(annotations, op
     def fn(**_):
         pass
 
-    requires_finalizer = registry.resource_changing_handlers[resource].requires_finalizer(CAUSE)
+    requires_finalizer = registry.resource_changing_handlers.requires_finalizer(cause)
     assert requires_finalizer == expected
 
 
@@ -154,9 +152,10 @@ def test_requires_finalizer_deletion_handler_matches_annotations(annotations, op
     pytest.param({'key': 'othervalue'}, id='value-mismatch'),
     pytest.param({'otherkey': MetaFilterToken.PRESENT}, id='key-doesnt-exist'),
 ])
-def test_requires_finalizer_deletion_handler_mismatches_annotations(annotations, optional, expected):
+def test_requires_finalizer_deletion_handler_mismatches_annotations(annotations, optional, expected, cause_factory):
     registry = OperatorRegistry()
     resource = Resource('group', 'version', 'plural')
+    cause = cause_factory(resource=resource, body=OBJECT_BODY)
 
     @kopf.on.delete('group', 'version', 'plural',
                     annotations=annotations,
@@ -164,5 +163,5 @@ def test_requires_finalizer_deletion_handler_mismatches_annotations(annotations,
     def fn(**_):
         pass
 
-    requires_finalizer = registry.resource_changing_handlers[resource].requires_finalizer(CAUSE)
+    requires_finalizer = registry.resource_changing_handlers.requires_finalizer(cause)
     assert requires_finalizer == expected

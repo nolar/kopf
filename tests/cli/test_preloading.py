@@ -15,8 +15,7 @@ def test_one_file(invoke, real_run):
 
     registry = kopf.get_default_registry()
     assert len(registry.resources) == 1
-    resource = list(registry.resources)[0]
-    handlers = registry.resource_changing_handlers[resource]._handlers
+    handlers = registry.resource_changing_handlers.get_all_handlers()
     assert len(handlers) == 1
     assert handlers[0].id == 'create_fn'
 
@@ -27,8 +26,7 @@ def test_two_files(invoke, real_run):
 
     registry = kopf.get_default_registry()
     assert len(registry.resources) == 1
-    resource = list(registry.resources)[0]
-    handlers = registry.resource_changing_handlers[resource]._handlers
+    handlers = registry.resource_changing_handlers.get_all_handlers()
     assert len(handlers) == 2
     assert handlers[0].id == 'create_fn'
     assert handlers[1].id == 'update_fn'
@@ -40,8 +38,7 @@ def test_one_module(invoke, real_run):
 
     registry = kopf.get_default_registry()
     assert len(registry.resources) == 1
-    resource = list(registry.resources)[0]
-    handlers = registry.resource_changing_handlers[resource]._handlers
+    handlers = registry.resource_changing_handlers.get_all_handlers()
     assert len(handlers) == 1
     assert handlers[0].id == 'create_fn'
 
@@ -52,8 +49,7 @@ def test_two_modules(invoke, real_run):
 
     registry = kopf.get_default_registry()
     assert len(registry.resources) == 1
-    resource = list(registry.resources)[0]
-    handlers = registry.resource_changing_handlers[resource]._handlers
+    handlers = registry.resource_changing_handlers.get_all_handlers()
     assert len(handlers) == 2
     assert handlers[0].id == 'create_fn'
     assert handlers[1].id == 'update_fn'
@@ -65,8 +61,7 @@ def test_mixed_sources(invoke, real_run):
 
     registry = kopf.get_default_registry()
     assert len(registry.resources) == 1
-    resource = list(registry.resources)[0]
-    handlers = registry.resource_changing_handlers[resource]._handlers
+    handlers = registry.resource_changing_handlers.get_all_handlers()
     assert len(handlers) == 2
     assert handlers[0].id == 'create_fn'
     assert handlers[1].id == 'update_fn'
