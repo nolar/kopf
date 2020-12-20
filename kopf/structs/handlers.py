@@ -3,7 +3,7 @@ import enum
 import warnings
 from typing import Any, NewType, Optional
 
-from kopf.structs import callbacks, dicts, filters
+from kopf.structs import callbacks, dicts, filters, resources
 
 # Strings are taken from the users, but then tainted as this type for stricter type-checking:
 # to prevent usage of some other strings (e.g. operator id) as the handlers ids.
@@ -109,6 +109,7 @@ class ActivityHandler(BaseHandler):
 
 @dataclasses.dataclass
 class ResourceHandler(BaseHandler):
+    resource: Optional[resources.Resource]  # None is used only in sub-handlers & LegacyAllPurposeResourcerHandler
     labels: Optional[filters.MetaFilter]
     annotations: Optional[filters.MetaFilter]
     when: Optional[callbacks.WhenFilterFn]

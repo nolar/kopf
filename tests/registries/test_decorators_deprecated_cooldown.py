@@ -69,7 +69,7 @@ def test_on_resume_with_cooldown(mocker, reason, cause_factory):
         def fn(**_):
             pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry.resource_changing_handlers.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].backoff == 78
@@ -89,7 +89,7 @@ def test_on_create_with_cooldown(mocker, cause_factory):
         def fn(**_):
             pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry.resource_changing_handlers.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].backoff == 78
@@ -109,7 +109,7 @@ def test_on_update_with_cooldown(mocker, cause_factory):
         def fn(**_):
             pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry.resource_changing_handlers.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].backoff == 78
@@ -133,7 +133,7 @@ def test_on_delete_with_cooldown(mocker, optional, cause_factory):
         def fn(**_):
             pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry.resource_changing_handlers.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].backoff == 78
@@ -154,7 +154,7 @@ def test_on_field_with_cooldown(mocker, cause_factory):
         def fn(**_):
             pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry.resource_changing_handlers.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].backoff == 78

@@ -162,12 +162,12 @@ def resume(  # lgtm[py/similar-function]
         handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            labels=labels, annotations=annotations, when=when,
+            resource=real_resource, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=None, new=None, field_needs_change=False,
             initial=True, deleted=deleted, requires_finalizer=None,
             reason=None,
         )
-        real_registry.resource_changing_handlers[real_resource].append(handler)
+        real_registry.resource_changing_handlers.append(handler)
         return fn
     return decorator
 
@@ -202,12 +202,12 @@ def create(  # lgtm[py/similar-function]
         handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            labels=labels, annotations=annotations, when=when,
+            resource=real_resource, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=None, new=None, field_needs_change=False,
             initial=None, deleted=None, requires_finalizer=None,
             reason=handlers.Reason.CREATE,
         )
-        real_registry.resource_changing_handlers[real_resource].append(handler)
+        real_registry.resource_changing_handlers.append(handler)
         return fn
     return decorator
 
@@ -244,12 +244,12 @@ def update(  # lgtm[py/similar-function]
         handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            labels=labels, annotations=annotations, when=when,
+            resource=real_resource, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=old, new=new, field_needs_change=True,
             initial=None, deleted=None, requires_finalizer=None,
             reason=handlers.Reason.UPDATE,
         )
-        real_registry.resource_changing_handlers[real_resource].append(handler)
+        real_registry.resource_changing_handlers.append(handler)
         return fn
     return decorator
 
@@ -285,12 +285,12 @@ def delete(  # lgtm[py/similar-function]
         handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            labels=labels, annotations=annotations, when=when,
+            resource=real_resource, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=None, new=None, field_needs_change=False,
             initial=None, deleted=None, requires_finalizer=bool(not optional),
             reason=handlers.Reason.DELETE,
         )
-        real_registry.resource_changing_handlers[real_resource].append(handler)
+        real_registry.resource_changing_handlers.append(handler)
         return fn
     return decorator
 
@@ -333,12 +333,12 @@ def field(  # lgtm[py/similar-function]
         handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            labels=labels, annotations=annotations, when=when,
+            resource=real_resource, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=old, new=new, field_needs_change=True,
             initial=None, deleted=None, requires_finalizer=None,
             reason=None,
         )
-        real_registry.resource_changing_handlers[real_resource].append(handler)
+        real_registry.resource_changing_handlers.append(handler)
         return fn
     return decorator
 
@@ -368,9 +368,10 @@ def event(  # lgtm[py/similar-function]
         handler = handlers.ResourceWatchingHandler(
             fn=fn, id=real_id,
             errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
-            labels=labels, annotations=annotations, when=when, field=real_field, value=value,
+            resource=real_resource, labels=labels, annotations=annotations, when=when,
+            field=real_field, value=value,
         )
-        real_registry.resource_watching_handlers[real_resource].append(handler)
+        real_registry.resource_watching_handlers.append(handler)
         return fn
     return decorator
 
@@ -409,13 +410,14 @@ def daemon(  # lgtm[py/similar-function]
         handler = handlers.ResourceDaemonHandler(
             fn=fn, id=real_id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            labels=labels, annotations=annotations, when=when, field=real_field, value=value,
+            resource=real_resource, labels=labels, annotations=annotations, when=when,
+            field=real_field, value=value,
             initial_delay=initial_delay, requires_finalizer=True,
             cancellation_backoff=cancellation_backoff,
             cancellation_timeout=cancellation_timeout,
             cancellation_polling=cancellation_polling,
         )
-        real_registry.resource_spawning_handlers[real_resource].append(handler)
+        real_registry.resource_spawning_handlers.append(handler)
         return fn
     return decorator
 
@@ -454,11 +456,12 @@ def timer(  # lgtm[py/similar-function]
         handler = handlers.ResourceTimerHandler(
             fn=fn, id=real_id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            labels=labels, annotations=annotations, when=when, field=real_field, value=value,
+            resource=real_resource, labels=labels, annotations=annotations, when=when,
+            field=real_field, value=value,
             initial_delay=initial_delay, requires_finalizer=True,
             sharp=sharp, idle=idle, interval=interval,
         )
-        real_registry.resource_spawning_handlers[real_resource].append(handler)
+        real_registry.resource_spawning_handlers.append(handler)
         return fn
     return decorator
 
@@ -525,7 +528,7 @@ def subhandler(  # lgtm[py/similar-function]
         handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            labels=labels, annotations=annotations, when=when,
+            resource=None, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=old, new=new,
             field_needs_change=parent_handler.field_needs_change, # inherit dymaically
             initial=None, deleted=None, requires_finalizer=None,

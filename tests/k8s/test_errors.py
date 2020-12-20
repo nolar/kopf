@@ -35,7 +35,7 @@ def test_exception_with_payload():
 
 @pytest.mark.parametrize('status', [200, 202, 300, 304])
 async def test_no_error_on_success(
-        resp_mocker, aresponses, hostname, resource, status):
+        resp_mocker, aresponses, hostname, status):
 
     resp = aresponses.Response(
         status=status,
@@ -56,7 +56,7 @@ async def test_no_error_on_success(
     (666, APIError),
 ])
 async def test_error_with_payload(
-        resp_mocker, aresponses, hostname, resource, status, exctype):
+        resp_mocker, aresponses, hostname, status, exctype):
 
     resp = aresponses.Response(
         status=status,
@@ -78,7 +78,7 @@ async def test_error_with_payload(
 
 @pytest.mark.parametrize('status', [400, 500, 666])
 async def test_error_with_nonjson_payload(
-        resp_mocker, aresponses, hostname, resource, status):
+        resp_mocker, aresponses, hostname, status):
 
     resp = aresponses.Response(
         status=status,
@@ -98,7 +98,7 @@ async def test_error_with_nonjson_payload(
 
 @pytest.mark.parametrize('status', [400, 500, 666])
 async def test_error_with_parseable_nonk8s_payload(
-        resp_mocker, aresponses, hostname, resource, status):
+        resp_mocker, aresponses, hostname, status):
 
     resp = aresponses.Response(
         status=status,

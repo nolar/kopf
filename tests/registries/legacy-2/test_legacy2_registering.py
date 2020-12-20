@@ -40,6 +40,7 @@ def test_generic_registry_via_list(
     assert not handlers
 
 
+@pytest.mark.skip("Impossible since resource-registries require a resource-kwarg.")
 def test_generic_registry_with_minimal_signature(
         generic_registry_cls, cause_factory):
 

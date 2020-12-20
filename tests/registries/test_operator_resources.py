@@ -6,16 +6,16 @@ from kopf.structs.resources import Resource
 
 
 def test_resources():
-    handler = Mock()
-
     resource1 = Resource('group1', 'version1', 'plural1')
     resource2 = Resource('group2', 'version2', 'plural2')
+    handler1 = Mock(resource=resource1)
+    handler2 = Mock(resource=resource2)
 
     registry = OperatorRegistry()
-    registry.resource_watching_handlers[resource1].append(handler)
-    registry.resource_changing_handlers[resource2].append(handler)
-    registry.resource_watching_handlers[resource2].append(handler)
-    registry.resource_changing_handlers[resource1].append(handler)
+    registry.resource_watching_handlers.append(handler1)
+    registry.resource_changing_handlers.append(handler2)
+    registry.resource_watching_handlers.append(handler2)
+    registry.resource_changing_handlers.append(handler1)
 
     resources = registry.resources
 

@@ -102,7 +102,7 @@ async def execute(
             handler = handlers_.ResourceChangingHandler(
                 fn=fn, id=real_id,
                 errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
-                labels=None, annotations=None, when=None,
+                resource=None, labels=None, annotations=None, when=None,
                 initial=None, deleted=None, requires_finalizer=None,
                 reason=None, field=None, value=None, old=None, new=None,
                 field_needs_change=None,
@@ -116,7 +116,7 @@ async def execute(
             handler = handlers_.ResourceChangingHandler(
                 fn=fn, id=real_id,
                 errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
-                labels=None, annotations=None, when=None,
+                resource=None, labels=None, annotations=None, when=None,
                 initial=None, deleted=None, requires_finalizer=None,
                 reason=None, field=None, value=None, old=None, new=None,
                 field_needs_change=None,
@@ -151,7 +151,7 @@ async def execute(
 
     # Execute the real handlers (all or few or one of them, as per the lifecycle).
     settings: configuration.OperatorSettings = subsettings_var.get()
-    owned_handlers = subregistry.get_all_handlers()
+    owned_handlers = subregistry.get_resource_handlers(resource=cause.resource)
     cause_handlers = subregistry.get_handlers(cause=cause)
     storage = settings.persistence.progress_storage
     state = states.State.from_storage(body=cause.body, storage=storage, handlers=owned_handlers)

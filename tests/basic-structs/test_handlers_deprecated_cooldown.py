@@ -40,6 +40,7 @@ def test_activity_handler_with_deprecated_cooldown_instead_of_backoff(mocker):
 def test_resource_handler_with_deprecated_cooldown_instead_of_backoff(mocker):
     fn = mocker.Mock()
     id = mocker.Mock()
+    resource = mocker.Mock()
     reason = mocker.Mock()
     errors = mocker.Mock()
     timeout = mocker.Mock()
@@ -61,6 +62,7 @@ def test_resource_handler_with_deprecated_cooldown_instead_of_backoff(mocker):
         handler = ResourceChangingHandler(
             fn=fn,
             id=id,
+            resource=resource,
             reason=reason,
             errors=errors,
             timeout=timeout,
@@ -82,6 +84,7 @@ def test_resource_handler_with_deprecated_cooldown_instead_of_backoff(mocker):
 
     assert handler.fn is fn
     assert handler.id is id
+    assert handler.resource is resource
     assert handler.reason is reason
     assert handler.errors is errors
     assert handler.timeout is timeout

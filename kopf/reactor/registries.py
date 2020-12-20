@@ -12,7 +12,6 @@ Both are used in the `kopf.reactor.handling` to retrieve the list
 of the handlers to be executed on each reaction cycle.
 """
 import abc
-import collections
 import enum
 import functools
 import warnings
@@ -117,8 +116,12 @@ class ResourceRegistry(
 
     def has_handlers(
             self,
+            resource: resources_.Resource,
     ) -> bool:
-        return bool(self._handlers)
+        for handler in self._handlers:
+            if _matches_resource(handler, resource):
+                return True
+        return False
 
     def get_handlers(
             self,
@@ -137,15 +140,18 @@ class ResourceRegistry(
 
     def get_extra_fields(
             self,
+            resource: resources_.Resource,
     ) -> Set[dicts.FieldPath]:
-        return set(self.iter_extra_fields())
+        return set(self.iter_extra_fields(resource=resource))
 
     def iter_extra_fields(
             self,
+            resource: resources_.Resource,
     ) -> Iterator[dicts.FieldPath]:
         for handler in self._handlers:
-            if handler.field:
-                yield handler.field
+            if _matches_resource(handler, resource):
+                if handler.field:
+                    yield handler.field
 
     def requires_finalizer(
             self,
@@ -162,6 +168,23 @@ class ResourceRegistry(
                     return True
         return False
 
+    # DEPRECATED (all mapping-like methods below): used to maintain the illusion of per-resource
+    # registries in the all-resource registries in the OperatorRegistry, which is the public API.
+    def __len__(self) -> int:
+        warnings.warn("Direct usage of registries is deprecated.", DeprecationWarning)
+        return len({h.resource for h in self._handlers if h.resource})
+
+    def __iter__(self) -> Iterator[resources_.Resource]:
+        warnings.warn("Direct usage of registries is deprecated.", DeprecationWarning)
+        return iter({h.resource for h in self._handlers if h.resource})
+
+    def __getitem__(
+            self: "ResourceRegistry[CauseT, HandlerFnT, ResourceHandlerT]",
+            _: resources_.Resource,
+    ) -> "ResourceRegistry[CauseT, HandlerFnT, ResourceHandlerT]":
+        warnings.warn("Direct usage of registries is deprecated.", DeprecationWarning)
+        return self
+
 
 class ResourceWatchingRegistry(ResourceRegistry[
         causation.ResourceWatchingCause,
@@ -172,6 +195,7 @@ class ResourceWatchingRegistry(ResourceRegistry[
             self,
             fn: callbacks.ResourceWatchingFn,
             *,
+            resource: resources_.Resource,
             id: Optional[str] = None,
             errors: Optional[handlers.ErrorsMode] = None,
             timeout: Optional[float] = None,
@@ -190,7 +214,8 @@ class ResourceWatchingRegistry(ResourceRegistry[
         handler = handlers.ResourceWatchingHandler(
             id=real_id, fn=fn,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            labels=labels, annotations=annotations, when=when, field=None, value=None,
+            resource=resource, labels=labels, annotations=annotations, when=when,
+            field=None, value=None,
         )
         self.append(handler)
         return fn
@@ -211,7 +236,6 @@ class ResourceSpawningRegistry(ResourceRegistry[
         callbacks.ResourceSpawningFn,
         handlers.ResourceSpawningHandler]):
 
-    @abc.abstractmethod
     def iter_handlers(
             self,
             cause: causation.ResourceSpawningCause,
@@ -232,6 +256,7 @@ class ResourceChangingRegistry(ResourceRegistry[
             self,
             fn: callbacks.ResourceChangingFn,
             *,
+            resource: resources_.Resource,
             id: Optional[str] = None,
             reason: Optional[handlers.Reason] = None,
             event: Optional[str] = None,  # deprecated, use `reason`
@@ -261,7 +286,7 @@ class ResourceChangingRegistry(ResourceRegistry[
             id=real_id, fn=fn, reason=reason,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
-            labels=labels, annotations=annotations, when=when,
+            resource=resource, labels=labels, annotations=annotations, when=when,
             field=real_field, value=None, old=None, new=None, field_needs_change=None,
         )
 
@@ -292,6 +317,16 @@ class ResourceChangingRegistry(ResourceRegistry[
                 return True
         return False
 
+    def get_resource_handlers(
+            self,
+            resource: resources_.Resource,
+    ) -> Sequence[handlers.ResourceChangingHandler]:
+        found_handlers: List[handlers.ResourceChangingHandler] = []
+        for handler in self._handlers:
+            if _matches_resource(handler, resource):
+                found_handlers.append(handler)
+        return list(_deduplicated(found_handlers))
+
 
 class OperatorRegistry:
     """
@@ -301,23 +336,25 @@ class OperatorRegistry:
     be explicitly created and used in the embedded operators.
     """
     activity_handlers: ActivityRegistry
-    resource_watching_handlers: MutableMapping[resources_.Resource, ResourceWatchingRegistry]
-    resource_spawning_handlers: MutableMapping[resources_.Resource, ResourceSpawningRegistry]
-    resource_changing_handlers: MutableMapping[resources_.Resource, ResourceChangingRegistry]
+    resource_watching_handlers: ResourceWatchingRegistry
+    resource_spawning_handlers: ResourceSpawningRegistry
+    resource_changing_handlers: ResourceChangingRegistry
 
     def __init__(self) -> None:
         super().__init__()
         self.activity_handlers = ActivityRegistry()
-        self.resource_watching_handlers = collections.defaultdict(ResourceWatchingRegistry)
-        self.resource_spawning_handlers = collections.defaultdict(ResourceSpawningRegistry)
-        self.resource_changing_handlers = collections.defaultdict(ResourceChangingRegistry)
+        self.resource_watching_handlers = ResourceWatchingRegistry()
+        self.resource_spawning_handlers = ResourceSpawningRegistry()
+        self.resource_changing_handlers = ResourceChangingRegistry()
 
     @property
     def resources(self) -> FrozenSet[resources_.Resource]:
         """ All known resources in the registry. """
-        return (frozenset(self.resource_watching_handlers) |
-                frozenset(self.resource_spawning_handlers) |
-                frozenset(self.resource_changing_handlers))
+        return frozenset(
+            {h.resource for h in self.resource_watching_handlers.get_all_handlers() if h.resource} |
+            {h.resource for h in self.resource_spawning_handlers.get_all_handlers() if h.resource} |
+            {h.resource for h in self.resource_changing_handlers.get_all_handlers() if h.resource}
+        )
 
     #
     # Everything below is deprecated and will be removed in the next major release.
@@ -363,9 +400,9 @@ class OperatorRegistry:
                       "use @kopf.on... decorators with registry= kwarg.",
                       DeprecationWarning)
         resource = resources_.Resource(group, version, plural)
-        return self.resource_watching_handlers[resource].register(
+        return self.resource_watching_handlers.register(
             fn=fn, id=id,
-            labels=labels, annotations=annotations, when=when,
+            resource=resource, labels=labels, annotations=annotations, when=when,
         )
 
     def register_resource_changing_handler(
@@ -397,11 +434,11 @@ class OperatorRegistry:
                       "use @kopf.on... decorators with registry= kwarg.",
                       DeprecationWarning)
         resource = resources_.Resource(group, version, plural)
-        return self.resource_changing_handlers[resource].register(
+        return self.resource_changing_handlers.register(
             reason=reason, event=event, field=field, fn=fn, id=id,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
-            labels=labels, annotations=annotations, when=when,
+            resource=resource, labels=labels, annotations=annotations, when=when,
         )
 
     def has_activity_handlers(
@@ -419,7 +456,7 @@ class OperatorRegistry:
         warnings.warn("registry.has_resource_watching_handlers() is deprecated; "
                       "please cease using the internal registries directly.",
                       DeprecationWarning)
-        return self.resource_watching_handlers[resource].has_handlers()
+        return self.resource_watching_handlers.has_handlers(resource=resource)
 
     def has_resource_changing_handlers(
             self,
@@ -428,7 +465,7 @@ class OperatorRegistry:
         warnings.warn("registry.has_resource_changing_handlers() is deprecated; "
                       "please cease using the internal registries directly.",
                       DeprecationWarning)
-        return self.resource_changing_handlers[resource].has_handlers()
+        return self.resource_changing_handlers.has_handlers(resource=resource)
 
     def get_activity_handlers(
             self,
@@ -447,7 +484,7 @@ class OperatorRegistry:
         warnings.warn("registry.get_resource_watching_handlers() is deprecated; "
                       "please cease using the internal registries directly.",
                       DeprecationWarning)
-        return self.resource_watching_handlers[cause.resource].get_handlers(cause=cause)
+        return self.resource_watching_handlers.get_handlers(cause=cause)
 
     def get_resource_changing_handlers(
             self,
@@ -456,7 +493,7 @@ class OperatorRegistry:
         warnings.warn("registry.get_resource_changing_handlers() is deprecated; "
                       "please cease using the internal registries directly.",
                       DeprecationWarning)
-        return self.resource_changing_handlers[cause.resource].get_handlers(cause=cause)
+        return self.resource_changing_handlers.get_handlers(cause=cause)
 
     def iter_activity_handlers(
             self,
@@ -478,7 +515,7 @@ class OperatorRegistry:
         warnings.warn("registry.iter_resource_watching_handlers() is deprecated; "
                       "please cease using the internal registries directly.",
                       DeprecationWarning)
-        yield from self.resource_watching_handlers[cause.resource].iter_handlers(cause=cause)
+        yield from self.resource_watching_handlers.iter_handlers(cause=cause)
 
     def iter_resource_changing_handlers(
             self,
@@ -490,7 +527,7 @@ class OperatorRegistry:
         warnings.warn("registry.iter_resource_changing_handlers() is deprecated; "
                       "please cease using the internal registries directly.",
                       DeprecationWarning)
-        yield from self.resource_changing_handlers[cause.resource].iter_handlers(cause=cause)
+        yield from self.resource_changing_handlers.iter_handlers(cause=cause)
 
     def get_extra_fields(
             self,
@@ -500,9 +537,9 @@ class OperatorRegistry:
                       "please cease using the internal registries directly.",
                       DeprecationWarning)
         return (
-            self.resource_watching_handlers[resource].get_extra_fields() |
-            self.resource_changing_handlers[resource].get_extra_fields() |
-            self.resource_spawning_handlers[resource].get_extra_fields())
+            self.resource_watching_handlers.get_extra_fields(resource=resource) |
+            self.resource_changing_handlers.get_extra_fields(resource=resource) |
+            self.resource_spawning_handlers.get_extra_fields(resource=resource))
 
     def iter_extra_fields(
             self,
@@ -511,9 +548,9 @@ class OperatorRegistry:
         warnings.warn("registry.iter_extra_fields() is deprecated; "
                       "please cease using the internal registries directly.",
                       DeprecationWarning)
-        yield from self.resource_watching_handlers[resource].iter_extra_fields()
-        yield from self.resource_changing_handlers[resource].iter_extra_fields()
-        yield from self.resource_spawning_handlers[resource].iter_extra_fields()
+        yield from self.resource_watching_handlers.iter_extra_fields(resource=resource)
+        yield from self.resource_changing_handlers.iter_extra_fields(resource=resource)
+        yield from self.resource_spawning_handlers.iter_extra_fields(resource=resource)
 
     def requires_finalizer(
             self,
@@ -526,7 +563,7 @@ class OperatorRegistry:
         warnings.warn("registry.requires_finalizer() is deprecated; "
                       "please cease using the internal registries directly.",
                       DeprecationWarning)
-        return self.resource_changing_handlers[resource].requires_finalizer(cause=cause)
+        return self.resource_changing_handlers.requires_finalizer(cause=cause)
 
 
 class SmartOperatorRegistry(OperatorRegistry):
@@ -634,6 +671,7 @@ def prematch(
     # Kwargs are lazily evaluated on the first _actual_ use, and shared for all filters since then.
     kwargs: MutableMapping[str, Any] = {}
     return all([
+        _matches_resource(handler, cause.resource),
         _matches_labels(handler, cause, kwargs),
         _matches_annotations(handler, cause, kwargs),
         _matches_field_values(handler, cause, kwargs),
@@ -648,12 +686,21 @@ def match(
     # Kwargs are lazily evaluated on the first _actual_ use, and shared for all filters since then.
     kwargs: MutableMapping[str, Any] = {}
     return all([
+        _matches_resource(handler, cause.resource),
         _matches_labels(handler, cause, kwargs),
         _matches_annotations(handler, cause, kwargs),
         _matches_field_values(handler, cause, kwargs),
         _matches_field_changes(handler, cause, kwargs),
         _matches_filter_callback(handler, cause, kwargs),
     ])
+
+
+def _matches_resource(
+        handler: handlers.ResourceHandler,
+        resource: resources_.Resource,
+) -> bool:
+    return (handler.resource is None or
+            handler.resource == resource)
 
 
 def _matches_labels(

@@ -163,7 +163,7 @@ def extrahandlers(clear_default_registry, handlers):
 
 
 @pytest.fixture()
-def cause_mock(mocker, settings, resource):
+def cause_mock(mocker, settings):
     """
     Mock the resulting _cause_ of the resource change detection logic.
 
