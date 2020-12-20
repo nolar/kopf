@@ -17,7 +17,7 @@ class _UNSET(enum.Enum):
 async def read_obj(
         *,
         resource: references.Resource,
-        namespace: Optional[str],
+        namespace: references.Namespace,
         name: Optional[str],
         default: Union[_T, _UNSET] = _UNSET.token,
         context: Optional[auth.APIContext] = None,  # injected by the decorator
@@ -43,7 +43,7 @@ async def read_obj(
 async def list_objs_rv(
         *,
         resource: references.Resource,
-        namespace: Optional[str] = None,
+        namespace: references.Namespace,
         context: Optional[auth.APIContext] = None,  # injected by the decorator
 ) -> Tuple[Collection[bodies.RawBody], str]:
     """

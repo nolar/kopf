@@ -8,7 +8,7 @@ from kopf.structs import bodies, patches, references
 async def patch_obj(
         *,
         resource: references.Resource,
-        namespace: Optional[str],
+        namespace: references.Namespace,
         name: Optional[str],
         patch: patches.Patch,
         context: Optional[auth.APIContext] = None,  # injected by the decorator

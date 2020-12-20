@@ -43,7 +43,7 @@ async def infinite_watch(
         *,
         settings: configuration.OperatorSettings,
         resource: references.Resource,
-        namespace: Optional[str],
+        namespace: references.Namespace,
         freeze_checker: Optional[primitives.ToggleSet] = None,
         _iterations: Optional[int] = None,  # used in tests/mocks/fixtures
 ) -> AsyncIterator[bodies.RawEvent]:
@@ -85,7 +85,7 @@ async def infinite_watch(
 async def streaming_block(
         *,
         resource: references.Resource,
-        namespace: Optional[str],
+        namespace: references.Namespace,
         freeze_checker: Optional[primitives.ToggleSet],
 ) -> AsyncIterator[aiotasks.Future]:
     """
@@ -144,7 +144,7 @@ async def continuous_watch(
         *,
         settings: configuration.OperatorSettings,
         resource: references.Resource,
-        namespace: Optional[str],
+        namespace: references.Namespace,
         freeze_waiter: aiotasks.Future,
 ) -> AsyncIterator[bodies.RawEvent]:
 
@@ -161,7 +161,8 @@ async def continuous_watch(
         # Then, watch the resources starting from the list's resource version.
         stream = watch_objs(
             settings=settings,
-            resource=resource, namespace=namespace,
+            resource=resource,
+            namespace=namespace,
             timeout=settings.watching.server_timeout,
             since=resource_version,
             freeze_waiter=freeze_waiter,
@@ -200,7 +201,7 @@ async def watch_objs(
         *,
         settings: configuration.OperatorSettings,
         resource: references.Resource,
-        namespace: Optional[str],
+        namespace: references.Namespace,
         timeout: Optional[float] = None,
         since: Optional[str] = None,
         context: Optional[auth.APIContext] = None,  # injected by the decorator
