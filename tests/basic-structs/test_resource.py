@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.structs.resources import Resource
+from kopf.structs.references import Resource
 
 
 def test_creation_with_no_args():

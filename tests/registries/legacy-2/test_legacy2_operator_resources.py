@@ -3,7 +3,7 @@ import collections
 import pytest
 
 from kopf.reactor.registries import OperatorRegistry
-from kopf.structs.resources import Resource
+from kopf.structs.references import Resource
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.

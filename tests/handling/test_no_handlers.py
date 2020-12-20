@@ -13,7 +13,7 @@ LAST_SEEN_ANNOTATION = 'kopf.zalando.org/last-handled-configuration'
 
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_skipped_with_no_handlers(
-        registry, settings, resource, cause_mock, cause_type,
+        registry, settings, selector, resource, cause_mock, cause_type,
         caplog, assert_logs, k8s_mocked):
     caplog.set_level(logging.DEBUG)
 
@@ -26,7 +26,7 @@ async def test_skipped_with_no_handlers(
         reason='a-non-existent-cause-type',
         fn=lambda **_: None, id='id',
         errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
-        resource=resource, annotations=None, labels=None, when=None,
+        selector=selector, annotations=None, labels=None, when=None,
         field=None, value=None, old=None, new=None, field_needs_change=None,
         deleted=None, initial=None, requires_finalizer=None,
     ))
@@ -68,7 +68,7 @@ async def test_skipped_with_no_handlers(
     (None, None, lambda **_: False),
 ])
 async def test_stealth_mode_with_mismatching_handlers(
-        registry, settings, resource, cause_mock, cause_type,
+        registry, settings, selector, resource, cause_mock, cause_type,
         caplog, assert_logs, k8s_mocked, annotations, labels, when, deleted, initial):
     caplog.set_level(logging.DEBUG)
 
@@ -81,7 +81,7 @@ async def test_stealth_mode_with_mismatching_handlers(
         reason=None,
         fn=lambda **_: None, id='id',
         errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
-        resource=resource, annotations=annotations, labels=labels, when=when,
+        selector=selector, annotations=annotations, labels=labels, when=when,
         field=None, value=None, old=None, new=None, field_needs_change=None,
         deleted=deleted, initial=initial, requires_finalizer=None,
     ))

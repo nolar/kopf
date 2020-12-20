@@ -5,7 +5,7 @@ from kopf import GlobalRegistry, SimpleRegistry
 from kopf.reactor.handling import handler_var, subregistry_var
 from kopf.reactor.invocation import context
 from kopf.structs.handlers import Reason
-from kopf.structs.resources import Resource
+from kopf.structs.references import Resource
 
 
 def test_on_create_minimal(cause_factory):

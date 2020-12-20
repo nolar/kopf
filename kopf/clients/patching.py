@@ -1,13 +1,13 @@
 from typing import Optional
 
 from kopf.clients import auth, discovery, errors
-from kopf.structs import bodies, patches, resources
+from kopf.structs import bodies, patches, references
 
 
 @auth.reauthenticated_request
 async def patch_obj(
         *,
-        resource: resources.Resource,
+        resource: references.Resource,
         namespace: Optional[str],
         name: Optional[str],
         patch: patches.Patch,

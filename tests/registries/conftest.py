@@ -13,6 +13,7 @@ from kopf.structs.containers import Memo
 from kopf.structs.diffs import Diff, DiffItem
 from kopf.structs.handlers import HandlerId, ResourceChangingHandler
 from kopf.structs.patches import Patch
+from kopf.structs.references import Selector
 
 
 @pytest.fixture(params=[
@@ -50,7 +51,7 @@ def operator_registry_cls(request):
 
 
 @pytest.fixture()
-def parent_handler(resource):
+def parent_handler(selector):
 
     def parent_fn(**_):
         pass
@@ -58,7 +59,7 @@ def parent_handler(resource):
     return ResourceChangingHandler(
         fn=parent_fn, id=HandlerId('parent_fn'),
         errors=None, retries=None, timeout=None, backoff=None, cooldown=None,
-        resource=resource, labels=None, annotations=None, when=None,
+        selector=selector, labels=None, annotations=None, when=None,
         field=None, value=None, old=None, new=None, field_needs_change=None,
         initial=None, deleted=None, requires_finalizer=None,
         reason=None,

@@ -2,7 +2,7 @@ import pytest
 
 import kopf
 from kopf.structs.handlers import HANDLER_REASONS, Activity, Reason
-from kopf.structs.resources import Resource
+from kopf.structs.references import Resource
 
 
 def test_on_startup_with_cooldown():

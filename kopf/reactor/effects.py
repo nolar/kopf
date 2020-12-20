@@ -29,7 +29,7 @@ from typing import AsyncGenerator, Collection, Iterable, Optional, Tuple, Type, 
 from kopf.clients import patching
 from kopf.engines import loggers
 from kopf.structs import bodies, configuration, containers, dicts, \
-                         diffs, patches, primitives, resources
+                         diffs, patches, primitives, references
 
 # How often to wake up from the long sleep, to show liveness in the logs.
 WAITING_KEEPALIVE_INTERVAL = 10 * 60
@@ -45,7 +45,7 @@ KNOWN_INCONSISTENCIES = (
 async def apply(
         *,
         settings: configuration.OperatorSettings,
-        resource: resources.Resource,
+        resource: references.Resource,
         body: bodies.Body,
         patch: patches.Patch,
         delays: Collection[float],
@@ -96,7 +96,7 @@ async def apply(
 
 async def patch_and_check(
         *,
-        resource: resources.Resource,
+        resource: references.Resource,
         body: bodies.Body,
         patch: patches.Patch,
         logger: Union[logging.Logger, logging.LoggerAdapter],

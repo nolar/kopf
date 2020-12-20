@@ -31,7 +31,7 @@ import aiojobs
 from typing_extensions import Protocol, TypedDict
 
 from kopf.clients import watching
-from kopf.structs import bodies, configuration, primitives, resources
+from kopf.structs import bodies, configuration, primitives, references
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +71,7 @@ class Stream(NamedTuple):
 
 
 ObjectUid = NewType('ObjectUid', str)
-ObjectRef = Tuple[resources.Resource, ObjectUid]
+ObjectRef = Tuple[references.Resource, ObjectUid]
 Streams = MutableMapping[ObjectRef, Stream]
 
 
@@ -126,7 +126,7 @@ async def watcher(
         *,
         namespace: Union[None, str],
         settings: configuration.OperatorSettings,
-        resource: resources.Resource,
+        resource: references.Resource,
         processor: WatchStreamProcessor,
         freeze_checker: Optional[primitives.ToggleSet] = None,
 ) -> None:

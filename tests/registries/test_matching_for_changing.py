@@ -7,6 +7,7 @@ from kopf.structs.bodies import Body
 from kopf.structs.dicts import parse_field
 from kopf.structs.filters import MetaFilterToken
 from kopf.structs.handlers import ALL_REASONS, Reason, ResourceChangingHandler
+from kopf.structs.references import Selector
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.
@@ -48,13 +49,13 @@ mismatching_reason_and_decorator = pytest.mark.parametrize('reason, decorator', 
 
 
 @pytest.fixture()
-def handler_factory(registry, resource):
+def handler_factory(registry, selector):
     def factory(**kwargs):
         handler = ResourceChangingHandler(**dict(dict(
             fn=some_fn, id='a',
             errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
             initial=None, deleted=None, requires_finalizer=None,
-            resource=resource, annotations=None, labels=None, when=None,
+            selector=selector, annotations=None, labels=None, when=None,
             field=None, value=None, old=None, new=None, field_needs_change=None,
             reason=None,
         ), **kwargs))

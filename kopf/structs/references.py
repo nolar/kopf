@@ -1,9 +1,10 @@
+import dataclasses
 import urllib.parse
-from typing import List, Mapping, NamedTuple, Optional
+from typing import List, Mapping, Optional
 
 
-# An immutable reference to a custom resource definition.
-class Resource(NamedTuple):
+@dataclasses.dataclass(frozen=True)
+class Resource:
     group: str
     version: str
     plural: str
@@ -62,3 +63,18 @@ class Resource(NamedTuple):
         path = '/'.join([part for part in parts if part])
         url = path + ('?' if query else '') + query
         return url if server is None else server.rstrip('/') + '/' + url.lstrip('/')
+
+
+@dataclasses.dataclass(frozen=True)
+class Selector:
+    group: str
+    version: str
+    plural: str
+
+    def check(
+            self,
+            resource: Resource,
+    ) -> bool:
+        self_tuple = (self.group, self.version, self.plural)
+        other_tuple = (resource.group, resource.version, resource.plural)
+        return self_tuple == other_tuple

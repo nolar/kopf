@@ -1,13 +1,13 @@
 from typing import Dict, Optional, cast
 
 from kopf.clients import auth, errors
-from kopf.structs import resources
+from kopf.structs import references
 
 
 @auth.reauthenticated_request
 async def discover(
         *,
-        resource: resources.Resource,
+        resource: references.Resource,
         subresource: Optional[str] = None,
         context: Optional[auth.APIContext] = None,  # injected by the decorator
 ) -> Optional[Dict[str, object]]:
@@ -39,7 +39,7 @@ async def discover(
 @auth.reauthenticated_request
 async def is_namespaced(
         *,
-        resource: resources.Resource,
+        resource: references.Resource,
         context: Optional[auth.APIContext] = None,  # injected by the decorator
 ) -> bool:
     if context is None:
@@ -52,7 +52,7 @@ async def is_namespaced(
 @auth.reauthenticated_request
 async def is_status_subresource(
         *,
-        resource: resources.Resource,
+        resource: references.Resource,
         context: Optional[auth.APIContext] = None,  # injected by the decorator
 ) -> bool:
     if context is None:
