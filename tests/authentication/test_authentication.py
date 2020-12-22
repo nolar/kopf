@@ -30,7 +30,7 @@ async def test_noreturn_handler_produces_no_credentials(settings):
         pass
 
     # NB: id auto-detection does not work, as it is local to the test function.
-    registry.activity_handlers.append(ActivityHandler(
+    registry._activities.append(ActivityHandler(
         fn=login_fn, id='login_fn', activity=Activity.AUTHENTICATION,
         errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
     ))
@@ -56,7 +56,7 @@ async def test_single_credentials_provided_to_vault(settings):
         return info
 
     # NB: id auto-detection does not work, as it is local to the test function.
-    registry.activity_handlers.append(ActivityHandler(
+    registry._activities.append(ActivityHandler(
         fn=login_fn, id='login_fn', activity=Activity.AUTHENTICATION,
         errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
     ))

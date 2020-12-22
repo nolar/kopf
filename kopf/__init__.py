@@ -51,10 +51,6 @@ from kopf.reactor.lifecycles import (
     set_default_lifecycle,
 )
 from kopf.reactor.registries import (
-    ActivityRegistry,  # deprecated
-    ResourceRegistry,  # deprecated
-    ResourceWatchingRegistry,  # deprecated
-    ResourceChangingRegistry,  # deprecated
     OperatorRegistry,
     get_default_registry,
     set_default_registry,
@@ -176,10 +172,6 @@ __all__ = [
     'TemporaryError', 'HandlerRetryError',
     'HandlerTimeoutError',
     'HandlerRetriesError',
-    'ActivityRegistry',  # deprecated
-    'ResourceRegistry',  # deprecated
-    'ResourceWatchingRegistry',  # deprecated
-    'ResourceChangingRegistry',  # deprecated
     'OperatorRegistry',
     'get_default_registry',
     'set_default_registry',

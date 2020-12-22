@@ -45,7 +45,7 @@ def test_operator_registry_with_activity_via_iter(
         operator_registry_cls, activity):
 
     registry = operator_registry_cls()
-    iterator = registry.activity_handlers.iter_handlers(activity=activity)
+    iterator = registry._activities.iter_handlers(activity=activity)
 
     assert isinstance(iterator, collections.abc.Iterator)
     assert not isinstance(iterator, collections.abc.Collection)
@@ -61,7 +61,7 @@ def test_operator_registry_with_resource_watching_via_iter(
 
     cause = cause_factory(ResourceWatchingCause)
     registry = operator_registry_cls()
-    iterator = registry.resource_watching_handlers.iter_handlers(cause)
+    iterator = registry._resource_watching.iter_handlers(cause)
 
     assert isinstance(iterator, collections.abc.Iterator)
     assert not isinstance(iterator, collections.abc.Collection)
@@ -77,7 +77,7 @@ def test_operator_registry_with_resource_changing_via_iter(
 
     cause = cause_factory(ResourceChangingCause)
     registry = operator_registry_cls()
-    iterator = registry.resource_changing_handlers.iter_handlers(cause)
+    iterator = registry._resource_changing.iter_handlers(cause)
 
     assert isinstance(iterator, collections.abc.Iterator)
     assert not isinstance(iterator, collections.abc.Collection)
@@ -93,7 +93,7 @@ def test_operator_registry_with_activity_via_list(
         operator_registry_cls, activity):
 
     registry = operator_registry_cls()
-    handlers = registry.activity_handlers.get_handlers(activity=activity)
+    handlers = registry._activities.get_handlers(activity=activity)
 
     assert isinstance(handlers, collections.abc.Iterable)
     assert isinstance(handlers, collections.abc.Container)
@@ -106,7 +106,7 @@ def test_operator_registry_with_resource_watching_via_list(
 
     cause = cause_factory(ResourceWatchingCause)
     registry = operator_registry_cls()
-    handlers = registry.resource_watching_handlers.get_handlers(cause)
+    handlers = registry._resource_watching.get_handlers(cause)
 
     assert isinstance(handlers, collections.abc.Iterable)
     assert isinstance(handlers, collections.abc.Container)
@@ -119,7 +119,7 @@ def test_operator_registry_with_resource_changing_via_list(
 
     cause = cause_factory(ResourceChangingCause)
     registry = operator_registry_cls()
-    handlers = registry.resource_changing_handlers.get_handlers(cause)
+    handlers = registry._resource_changing.get_handlers(cause)
 
     assert isinstance(handlers, collections.abc.Iterable)
     assert isinstance(handlers, collections.abc.Container)

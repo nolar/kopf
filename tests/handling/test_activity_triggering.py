@@ -30,11 +30,11 @@ async def test_results_are_returned_on_success(settings, activity):
         return 456
 
     registry = OperatorRegistry()
-    registry.activity_handlers.append(ActivityHandler(
+    registry._activities.append(ActivityHandler(
         fn=sample_fn1, id='id1', activity=activity,
         errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
     ))
-    registry.activity_handlers.append(ActivityHandler(
+    registry._activities.append(ActivityHandler(
         fn=sample_fn2, id='id2', activity=activity,
         errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
     ))
@@ -61,11 +61,11 @@ async def test_errors_are_raised_aggregated(settings, activity):
         raise PermanentError("boo!456")
 
     registry = OperatorRegistry()
-    registry.activity_handlers.append(ActivityHandler(
+    registry._activities.append(ActivityHandler(
         fn=sample_fn1, id='id1', activity=activity,
         errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
     ))
-    registry.activity_handlers.append(ActivityHandler(
+    registry._activities.append(ActivityHandler(
         fn=sample_fn2, id='id2', activity=activity,
         errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
     ))
@@ -98,7 +98,7 @@ async def test_errors_are_cascaded_from_one_of_the_originals(settings, activity)
         raise PermanentError("boo!")
 
     registry = OperatorRegistry()
-    registry.activity_handlers.append(ActivityHandler(
+    registry._activities.append(ActivityHandler(
         fn=sample_fn, id='id', activity=activity,
         errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
     ))
@@ -125,7 +125,7 @@ async def test_retries_are_simulated(settings, activity, mocker):
         raise TemporaryError('to be retried', delay=0)
 
     registry = OperatorRegistry()
-    registry.activity_handlers.append(ActivityHandler(
+    registry._activities.append(ActivityHandler(
         fn=sample_fn, id='id', activity=activity,
         errors=None, timeout=None, retries=3, backoff=None, cooldown=None,
     ))
@@ -149,7 +149,7 @@ async def test_delays_are_simulated(settings, activity, mocker):
         raise TemporaryError('to be retried', delay=123)
 
     registry = OperatorRegistry()
-    registry.activity_handlers.append(ActivityHandler(
+    registry._activities.append(ActivityHandler(
         fn=sample_fn, id='id', activity=activity,
         errors=None, timeout=None, retries=3, backoff=None, cooldown=None,
     ))

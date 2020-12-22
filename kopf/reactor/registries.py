@@ -225,30 +225,23 @@ class OperatorRegistry:
     It is usually populated by the ``@kopf.on...`` decorators, but can also
     be explicitly created and used in the embedded operators.
     """
-    activity_handlers: ActivityRegistry
-    resource_watching_handlers: ResourceWatchingRegistry
-    resource_spawning_handlers: ResourceSpawningRegistry
-    resource_changing_handlers: ResourceChangingRegistry
-
     def __init__(self) -> None:
         super().__init__()
-        self.activity_handlers = ActivityRegistry()
-        self.resource_watching_handlers = ResourceWatchingRegistry()
-        self.resource_spawning_handlers = ResourceSpawningRegistry()
-        self.resource_changing_handlers = ResourceChangingRegistry()
+        self._activities = ActivityRegistry()
+        self._resource_watching = ResourceWatchingRegistry()
+        self._resource_spawning = ResourceSpawningRegistry()
+        self._resource_changing = ResourceChangingRegistry()
 
 
 class SmartOperatorRegistry(OperatorRegistry):
-
     def __init__(self) -> None:
         super().__init__()
-
         try:
             import pykube
         except ImportError:
             pass
         else:
-            self.activity_handlers.append(handlers.ActivityHandler(
+            self._activities.append(handlers.ActivityHandler(
                 id=handlers.HandlerId('login_via_pykube'),
                 fn=cast(callbacks.ActivityFn, piggybacking.login_via_pykube),
                 activity=handlers.Activity.AUTHENTICATION,
@@ -261,7 +254,7 @@ class SmartOperatorRegistry(OperatorRegistry):
         except ImportError:
             pass
         else:
-            self.activity_handlers.append(handlers.ActivityHandler(
+            self._activities.append(handlers.ActivityHandler(
                 id=handlers.HandlerId('login_via_client'),
                 fn=cast(callbacks.ActivityFn, piggybacking.login_via_client),
                 activity=handlers.Activity.AUTHENTICATION,

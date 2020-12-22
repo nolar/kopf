@@ -46,7 +46,7 @@ def startup(  # lgtm[py/similar-function]
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             activity=handlers.Activity.STARTUP,
         )
-        real_registry.activity_handlers.append(handler)
+        real_registry._activities.append(handler)
         return fn
     return decorator
 
@@ -72,7 +72,7 @@ def cleanup(  # lgtm[py/similar-function]
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             activity=handlers.Activity.CLEANUP,
         )
-        real_registry.activity_handlers.append(handler)
+        real_registry._activities.append(handler)
         return fn
     return decorator
 
@@ -99,7 +99,7 @@ def login(  # lgtm[py/similar-function]
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             activity=handlers.Activity.AUTHENTICATION,
         )
-        real_registry.activity_handlers.append(handler)
+        real_registry._activities.append(handler)
         return fn
     return decorator
 
@@ -126,7 +126,7 @@ def probe(  # lgtm[py/similar-function]
             errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
             activity=handlers.Activity.PROBE,
         )
-        real_registry.activity_handlers.append(handler)
+        real_registry._activities.append(handler)
         return fn
     return decorator
 
@@ -167,7 +167,7 @@ def resume(  # lgtm[py/similar-function]
             initial=True, deleted=deleted, requires_finalizer=None,
             reason=None,
         )
-        real_registry.resource_changing_handlers.append(handler)
+        real_registry._resource_changing.append(handler)
         return fn
     return decorator
 
@@ -207,7 +207,7 @@ def create(  # lgtm[py/similar-function]
             initial=None, deleted=None, requires_finalizer=None,
             reason=handlers.Reason.CREATE,
         )
-        real_registry.resource_changing_handlers.append(handler)
+        real_registry._resource_changing.append(handler)
         return fn
     return decorator
 
@@ -249,7 +249,7 @@ def update(  # lgtm[py/similar-function]
             initial=None, deleted=None, requires_finalizer=None,
             reason=handlers.Reason.UPDATE,
         )
-        real_registry.resource_changing_handlers.append(handler)
+        real_registry._resource_changing.append(handler)
         return fn
     return decorator
 
@@ -290,7 +290,7 @@ def delete(  # lgtm[py/similar-function]
             initial=None, deleted=None, requires_finalizer=bool(not optional),
             reason=handlers.Reason.DELETE,
         )
-        real_registry.resource_changing_handlers.append(handler)
+        real_registry._resource_changing.append(handler)
         return fn
     return decorator
 
@@ -338,7 +338,7 @@ def field(  # lgtm[py/similar-function]
             initial=None, deleted=None, requires_finalizer=None,
             reason=None,
         )
-        real_registry.resource_changing_handlers.append(handler)
+        real_registry._resource_changing.append(handler)
         return fn
     return decorator
 
@@ -371,7 +371,7 @@ def event(  # lgtm[py/similar-function]
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value,
         )
-        real_registry.resource_watching_handlers.append(handler)
+        real_registry._resource_watching.append(handler)
         return fn
     return decorator
 
@@ -417,7 +417,7 @@ def daemon(  # lgtm[py/similar-function]
             cancellation_timeout=cancellation_timeout,
             cancellation_polling=cancellation_polling,
         )
-        real_registry.resource_spawning_handlers.append(handler)
+        real_registry._resource_spawning.append(handler)
         return fn
     return decorator
 
@@ -461,7 +461,7 @@ def timer(  # lgtm[py/similar-function]
             initial_delay=initial_delay, requires_finalizer=True,
             sharp=sharp, idle=idle, interval=interval,
         )
-        real_registry.resource_spawning_handlers.append(handler)
+        real_registry._resource_spawning.append(handler)
         return fn
     return decorator
 

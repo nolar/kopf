@@ -55,11 +55,11 @@ async def test_liveness_with_reporting(liveness_url, liveness_registry):
     def fn2(**kwargs):
         return {'y': '200'}
 
-    liveness_registry.activity_handlers.append(ActivityHandler(
+    liveness_registry._activities.append(ActivityHandler(
         fn=fn1, id='id1', activity=Activity.PROBE,
         errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
     ))
-    liveness_registry.activity_handlers.append(ActivityHandler(
+    liveness_registry._activities.append(ActivityHandler(
         fn=fn2, id='id2', activity=Activity.PROBE,
         errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
     ))
@@ -79,7 +79,7 @@ async def test_liveness_data_is_cached(liveness_url, liveness_registry):
         counter += 1
         return {'counter': counter}
 
-    liveness_registry.activity_handlers.append(ActivityHandler(
+    liveness_registry._activities.append(ActivityHandler(
         fn=fn1, id='id1', activity=Activity.PROBE,
         errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
     ))

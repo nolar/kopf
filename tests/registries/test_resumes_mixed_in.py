@@ -19,7 +19,7 @@ def test_resumes_ignored_for_non_initial_causes(
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers.get_handlers(cause)
+    handlers = registry._resource_changing.get_handlers(cause)
     assert len(handlers) == 0
 
 
@@ -35,7 +35,7 @@ def test_resumes_selected_for_initial_non_deletions(
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers.get_handlers(cause)
+    handlers = registry._resource_changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
 
@@ -53,7 +53,7 @@ def test_resumes_ignored_for_initial_deletions_by_default(
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers.get_handlers(cause)
+    handlers = registry._resource_changing.get_handlers(cause)
     assert len(handlers) == 0
 
 
@@ -70,6 +70,6 @@ def test_resumes_selected_for_initial_deletions_when_explicitly_marked(
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers.get_handlers(cause)
+    handlers = registry._resource_changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
