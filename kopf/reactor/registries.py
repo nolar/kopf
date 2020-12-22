@@ -81,6 +81,16 @@ class ResourceRegistry(
         GenericRegistry[HandlerFnT, ResourceHandlerT],
         Generic[CauseT, HandlerFnT, ResourceHandlerT]):
 
+    @property
+    def resources(self) -> FrozenSet[references.Resource]:
+        # It is a convertion point between the operator's specification (at handlers registration)
+        # and the operator's runtime (watching & streaming of events for specific resources).
+        selectors = {h.selector for h in self.get_all_handlers() if h.selector is not None}
+        return frozenset({
+            references.Resource(selector.group, selector.version, selector.plural)
+            for selector in selectors
+        })
+
     def has_handlers(
             self,
             resource: references.Resource,
@@ -226,21 +236,6 @@ class OperatorRegistry:
         self.resource_watching_handlers = ResourceWatchingRegistry()
         self.resource_spawning_handlers = ResourceSpawningRegistry()
         self.resource_changing_handlers = ResourceChangingRegistry()
-
-    @property
-    def resources(self) -> FrozenSet[references.Resource]:
-        """ All known resources in the registry. """
-        # It is a convertion point between the operator's specification (at handlers registration)
-        # and the operator's runtime (watching & streaming of events for specific resources).
-        selectors: FrozenSet[references.Selector] = frozenset(
-            {h.selector for h in self.resource_watching_handlers.get_all_handlers() if h.selector} |
-            {h.selector for h in self.resource_spawning_handlers.get_all_handlers() if h.selector} |
-            {h.selector for h in self.resource_changing_handlers.get_all_handlers() if h.selector}
-        )
-        return frozenset({
-            references.Resource(selector.group, selector.version, selector.plural)
-            for selector in selectors
-        })
 
 
 class SmartOperatorRegistry(OperatorRegistry):

@@ -268,7 +268,10 @@ async def spawn_tasks(
                                             freeze_toggle=freeze_toggle))))
 
     # Resource event handling, only once for every known resource (de-duplicated).
-    for resource in registry.resources:
+    resources = (registry.resource_watching_handlers.resources |
+                 registry.resource_spawning_handlers.resources |
+                 registry.resource_changing_handlers.resources)
+    for resource in resources:
         tasks.append(aiotasks.create_guarded_task(
             name=f"watcher of {resource.name}", flag=started_flag, logger=logger,
             coro=queueing.watcher(
