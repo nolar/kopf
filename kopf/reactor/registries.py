@@ -31,8 +31,7 @@ HandlerFnT = TypeVar('HandlerFnT',
                      callbacks.ActivityFn,
                      callbacks.ResourceWatchingFn,
                      callbacks.ResourceSpawningFn,
-                     callbacks.ResourceChangingFn,
-                     Union[callbacks.ResourceWatchingFn, callbacks.ResourceChangingFn])  # DEPRECATED: for legacy_registries
+                     callbacks.ResourceChangingFn)
 
 
 class GenericRegistry(Generic[HandlerFnT, HandlerT]):
@@ -854,9 +853,7 @@ def get_default_registry() -> OperatorRegistry:
     """
     global _default_registry
     if _default_registry is None:
-        # TODO: Deprecated registry to ensure backward-compatibility until removal:
-        from kopf.toolkits.legacy_registries import SmartGlobalRegistry
-        _default_registry = SmartGlobalRegistry()
+        _default_registry = SmartOperatorRegistry()
     return _default_registry
 
 

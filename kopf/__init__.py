@@ -148,11 +148,6 @@ from kopf.toolkits.hierarchies import (
     append_owner_reference,
     remove_owner_reference,
 )
-from kopf.toolkits.legacy_registries import (
-    BaseRegistry,
-    SimpleRegistry,
-    GlobalRegistry,
-)
 from kopf.utilities.piggybacking import (
     login_via_pykube,
     login_via_client,
@@ -181,9 +176,6 @@ __all__ = [
     'TemporaryError', 'HandlerRetryError',
     'HandlerTimeoutError',
     'HandlerRetriesError',
-    'BaseRegistry',  # deprecated
-    'SimpleRegistry',  # deprecated
-    'GlobalRegistry',  # deprecated
     'ActivityRegistry',  # deprecated
     'ResourceRegistry',  # deprecated
     'ResourceWatchingRegistry',  # deprecated

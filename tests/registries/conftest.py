@@ -2,7 +2,6 @@ import logging
 
 import pytest
 
-from kopf import GlobalRegistry, SimpleRegistry  # deprecated, but tested
 from kopf.reactor.causation import ActivityCause, ResourceCause, ResourceChangingCause, \
                                    ResourceSpawningCause, ResourceWatchingCause
 from kopf.reactor.registries import ActivityRegistry, OperatorRegistry, ResourceChangingRegistry, \
@@ -20,7 +19,6 @@ from kopf.structs.references import Selector
     pytest.param(ActivityRegistry, id='activity-registry'),
     pytest.param(ResourceWatchingRegistry, id='resource-watching-registry'),
     pytest.param(ResourceChangingRegistry, id='resource-changing-registry'),
-    pytest.param(SimpleRegistry, id='simple-registry'),  # deprecated
 ])
 def generic_registry_cls(request):
     return request.param
@@ -36,7 +34,6 @@ def activity_registry_cls(request):
 @pytest.fixture(params=[
     pytest.param(ResourceWatchingRegistry, id='resource-watching-registry'),
     pytest.param(ResourceChangingRegistry, id='resource-changing-registry'),
-    pytest.param(SimpleRegistry, id='simple-registry'),  # deprecated
 ])
 def resource_registry_cls(request):
     return request.param
@@ -44,7 +41,6 @@ def resource_registry_cls(request):
 
 @pytest.fixture(params=[
     pytest.param(OperatorRegistry, id='operator-registry'),
-    pytest.param(GlobalRegistry, id='global-registry'),  # deprecated
 ])
 def operator_registry_cls(request):
     return request.param
@@ -105,7 +101,7 @@ def cause_factory(resource):
                 activity=activity,
                 settings=settings,
             )
-        if cls is ResourceCause or cls is ResourceRegistry or cls is SimpleRegistry:
+        if cls is ResourceCause or cls is ResourceRegistry:
             return ResourceCause(
                 logger=logging.getLogger('kopf.test.fake.logger'),
                 resource=resource,
