@@ -14,10 +14,9 @@ of the handlers to be executed on each reaction cycle.
 import abc
 import enum
 import functools
-import warnings
 from types import FunctionType, MethodType
 from typing import Any, Callable, Collection, Container, FrozenSet, Generic, Iterable, Iterator, \
-                   List, Mapping, MutableMapping, Optional, Sequence, Set, TypeVar, Union, cast
+                   List, Mapping, MutableMapping, Optional, Sequence, Set, TypeVar, cast
 
 from kopf.reactor import causation, invocation
 from kopf.structs import callbacks, dicts, filters, handlers, references
@@ -42,12 +41,6 @@ class GenericRegistry(Generic[HandlerFnT, HandlerT]):
         super().__init__()
         self._handlers = []
 
-    def __bool__(self) -> bool:
-        warnings.warn("bool(registry) is deprecated; "
-                      "please cease using the internal registries directly.",
-                      DeprecationWarning)
-        return bool(self._handlers)
-
     def append(self, handler: HandlerT) -> None:
         self._handlers.append(handler)
 
@@ -58,31 +51,6 @@ class GenericRegistry(Generic[HandlerFnT, HandlerT]):
 class ActivityRegistry(GenericRegistry[
         callbacks.ActivityFn,
         handlers.ActivityHandler]):
-
-    def register(
-            self,
-            fn: callbacks.ActivityFn,
-            *,
-            id: Optional[str] = None,
-            errors: Optional[handlers.ErrorsMode] = None,
-            timeout: Optional[float] = None,
-            retries: Optional[int] = None,
-            backoff: Optional[float] = None,
-            cooldown: Optional[float] = None,  # deprecated, use `backoff`
-            activity: Optional[handlers.Activity] = None,
-            _fallback: bool = False,
-    ) -> callbacks.ActivityFn:
-        warnings.warn("registry.register() is deprecated; "
-                      "use @kopf.on... decorators with registry= kwarg.",
-                      DeprecationWarning)
-        real_id = generate_id(fn=fn, id=id)
-        handler = handlers.ActivityHandler(
-            id=real_id, fn=fn, activity=activity,
-            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            _fallback=_fallback,
-        )
-        self.append(handler)
-        return fn
 
     def get_handlers(
             self,
@@ -111,7 +79,6 @@ class ActivityRegistry(GenericRegistry[
 
 class ResourceRegistry(
         GenericRegistry[HandlerFnT, ResourceHandlerT],
-        Mapping[Union[references.Resource, references.Selector], "ResourceRegistry[CauseT, HandlerFnT, ResourceHandlerT]"],  # deprecated
         Generic[CauseT, HandlerFnT, ResourceHandlerT]):
 
     def has_handlers(
@@ -168,57 +135,11 @@ class ResourceRegistry(
                     return True
         return False
 
-    # DEPRECATED (all mapping-like methods below): used to maintain the illusion of per-resource
-    # registries in the all-resource registries in the OperatorRegistry, which is the public API.
-    def __len__(self) -> int:
-        warnings.warn("Direct usage of registries is deprecated.", DeprecationWarning)
-        return len({h.selector for h in self._handlers if h.selector})
-
-    def __iter__(self) -> Iterator[Union[references.Resource, references.Selector]]:
-        warnings.warn("Direct usage of registries is deprecated.", DeprecationWarning)
-        return iter({h.selector for h in self._handlers if h.selector})
-
-    def __getitem__(
-            self: "ResourceRegistry[CauseT, HandlerFnT, ResourceHandlerT]",
-            _: Union[references.Resource, references.Selector],
-    ) -> "ResourceRegistry[CauseT, HandlerFnT, ResourceHandlerT]":
-        warnings.warn("Direct usage of registries is deprecated.", DeprecationWarning)
-        return self
-
 
 class ResourceWatchingRegistry(ResourceRegistry[
         causation.ResourceWatchingCause,
         callbacks.ResourceWatchingFn,
         handlers.ResourceWatchingHandler]):
-
-    def register(
-            self,
-            fn: callbacks.ResourceWatchingFn,
-            *,
-            resource: references.Selector,
-            id: Optional[str] = None,
-            errors: Optional[handlers.ErrorsMode] = None,
-            timeout: Optional[float] = None,
-            retries: Optional[int] = None,
-            backoff: Optional[float] = None,
-            cooldown: Optional[float] = None,  # deprecated, use `backoff`
-            labels: Optional[filters.MetaFilter] = None,
-            annotations: Optional[filters.MetaFilter] = None,
-            when: Optional[callbacks.WhenFilterFn] = None,
-    ) -> callbacks.ResourceWatchingFn:
-        warnings.warn("registry.register() is deprecated; "
-                      "use @kopf.on... decorators with registry= kwarg.",
-                      DeprecationWarning)
-
-        real_id = generate_id(fn=fn, id=id)
-        handler = handlers.ResourceWatchingHandler(
-            id=real_id, fn=fn,
-            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            selector=resource, labels=labels, annotations=annotations, when=when,
-            field=None, value=None,
-        )
-        self.append(handler)
-        return fn
 
     def iter_handlers(
             self,
@@ -251,47 +172,6 @@ class ResourceChangingRegistry(ResourceRegistry[
         causation.ResourceChangingCause,
         callbacks.ResourceChangingFn,
         handlers.ResourceChangingHandler]):
-
-    def register(
-            self,
-            fn: callbacks.ResourceChangingFn,
-            *,
-            resource: references.Selector,
-            id: Optional[str] = None,
-            reason: Optional[handlers.Reason] = None,
-            event: Optional[str] = None,  # deprecated, use `reason`
-            field: Optional[dicts.FieldSpec] = None,
-            errors: Optional[handlers.ErrorsMode] = None,
-            timeout: Optional[float] = None,
-            retries: Optional[int] = None,
-            backoff: Optional[float] = None,
-            cooldown: Optional[float] = None,  # deprecated, use `backoff`
-            initial: Optional[bool] = None,
-            deleted: Optional[bool] = None,
-            requires_finalizer: bool = False,
-            labels: Optional[filters.MetaFilter] = None,
-            annotations: Optional[filters.MetaFilter] = None,
-            when: Optional[callbacks.WhenFilterFn] = None,
-    ) -> callbacks.ResourceChangingFn:
-        warnings.warn("registry.register() is deprecated; "
-                      "use @kopf.on... decorators with registry= kwarg.",
-                      DeprecationWarning)
-
-        if reason is None and event is not None:
-            reason = handlers.Reason(event)
-
-        real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
-        real_id = generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
-        handler = handlers.ResourceChangingHandler(
-            id=real_id, fn=fn, reason=reason,
-            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
-            selector=resource, labels=labels, annotations=annotations, when=when,
-            field=real_field, value=None, old=None, new=None, field_needs_change=None,
-        )
-
-        self.append(handler)
-        return fn
 
     def iter_handlers(
             self,
@@ -361,215 +241,6 @@ class OperatorRegistry:
             references.Resource(selector.group, selector.version, selector.plural)
             for selector in selectors
         })
-
-    #
-    # Everything below is deprecated and will be removed in the next major release.
-    #
-
-    def register_activity_handler(
-            self,
-            fn: callbacks.ActivityFn,
-            *,
-            id: Optional[str] = None,
-            errors: Optional[handlers.ErrorsMode] = None,
-            timeout: Optional[float] = None,
-            retries: Optional[int] = None,
-            backoff: Optional[float] = None,
-            cooldown: Optional[float] = None,  # deprecated, use `backoff`
-            activity: Optional[handlers.Activity] = None,
-            _fallback: bool = False,
-    ) -> callbacks.ActivityFn:
-        warnings.warn("registry.register_activity_handler() is deprecated; "
-                      "use @kopf.on... decorators with registry= kwarg.",
-                      DeprecationWarning)
-        return self.activity_handlers.register(
-            fn=fn, id=id, activity=activity,
-            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            _fallback=_fallback,
-        )
-
-    def register_resource_watching_handler(
-            self,
-            group: str,
-            version: str,
-            plural: str,
-            fn: callbacks.ResourceWatchingFn,
-            id: Optional[str] = None,
-            labels: Optional[filters.MetaFilter] = None,
-            annotations: Optional[filters.MetaFilter] = None,
-            when: Optional[callbacks.WhenFilterFn] = None,
-    ) -> callbacks.ResourceWatchingFn:
-        """
-        Register an additional handler function for low-level events.
-        """
-        warnings.warn("registry.register_resource_watching_handler() is deprecated; "
-                      "use @kopf.on... decorators with registry= kwarg.",
-                      DeprecationWarning)
-        return self.resource_watching_handlers.register(
-            fn=fn, id=id,
-            labels=labels, annotations=annotations, when=when,
-            resource=references.Selector(group, version, plural),
-        )
-
-    def register_resource_changing_handler(
-            self,
-            group: str,
-            version: str,
-            plural: str,
-            fn: callbacks.ResourceChangingFn,
-            id: Optional[str] = None,
-            reason: Optional[handlers.Reason] = None,
-            event: Optional[str] = None,  # deprecated, use `reason`
-            field: Optional[dicts.FieldSpec] = None,
-            errors: Optional[handlers.ErrorsMode] = None,
-            timeout: Optional[float] = None,
-            retries: Optional[int] = None,
-            backoff: Optional[float] = None,
-            cooldown: Optional[float] = None,  # deprecated, use `backoff`
-            initial: Optional[bool] = None,
-            deleted: Optional[bool] = None,
-            requires_finalizer: bool = False,
-            labels: Optional[filters.MetaFilter] = None,
-            annotations: Optional[filters.MetaFilter] = None,
-            when: Optional[callbacks.WhenFilterFn] = None,
-    ) -> callbacks.ResourceChangingFn:
-        """
-        Register an additional handler function for the specific resource and specific reason.
-        """
-        warnings.warn("registry.register_resource_changing_handler() is deprecated; "
-                      "use @kopf.on... decorators with registry= kwarg.",
-                      DeprecationWarning)
-        return self.resource_changing_handlers.register(
-            reason=reason, event=event, field=field, fn=fn, id=id,
-            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
-            initial=initial, deleted=deleted, requires_finalizer=requires_finalizer,
-            labels=labels, annotations=annotations, when=when,
-            resource=references.Selector(group, version, plural),
-        )
-
-    def has_activity_handlers(
-            self,
-    ) -> bool:
-        warnings.warn("registry.has_activity_handlers() is deprecated; "
-                      "please cease using the internal registries directly.",
-                      DeprecationWarning)
-        return bool(self.activity_handlers)
-
-    def has_resource_watching_handlers(
-            self,
-            resource: references.Resource,
-    ) -> bool:
-        warnings.warn("registry.has_resource_watching_handlers() is deprecated; "
-                      "please cease using the internal registries directly.",
-                      DeprecationWarning)
-        return self.resource_watching_handlers.has_handlers(resource=resource)
-
-    def has_resource_changing_handlers(
-            self,
-            resource: references.Resource,
-    ) -> bool:
-        warnings.warn("registry.has_resource_changing_handlers() is deprecated; "
-                      "please cease using the internal registries directly.",
-                      DeprecationWarning)
-        return self.resource_changing_handlers.has_handlers(resource=resource)
-
-    def get_activity_handlers(
-            self,
-            *,
-            activity: handlers.Activity,
-    ) -> Sequence[handlers.ActivityHandler]:
-        warnings.warn("registry.get_activity_handlers() is deprecated; "
-                      "please cease using the internal registries directly.",
-                      DeprecationWarning)
-        return self.activity_handlers.get_handlers(activity=activity)
-
-    def get_resource_watching_handlers(
-            self,
-            cause: causation.ResourceWatchingCause,
-    ) -> Sequence[handlers.ResourceWatchingHandler]:
-        warnings.warn("registry.get_resource_watching_handlers() is deprecated; "
-                      "please cease using the internal registries directly.",
-                      DeprecationWarning)
-        return self.resource_watching_handlers.get_handlers(cause=cause)
-
-    def get_resource_changing_handlers(
-            self,
-            cause: causation.ResourceChangingCause,
-    ) -> Sequence[handlers.ResourceChangingHandler]:
-        warnings.warn("registry.get_resource_changing_handlers() is deprecated; "
-                      "please cease using the internal registries directly.",
-                      DeprecationWarning)
-        return self.resource_changing_handlers.get_handlers(cause=cause)
-
-    def iter_activity_handlers(
-            self,
-            *,
-            activity: handlers.Activity,
-    ) -> Iterator[handlers.ActivityHandler]:
-        warnings.warn("registry.iter_activity_handlers() is deprecated; "
-                      "please cease using the internal registries directly.",
-                      DeprecationWarning)
-        yield from self.activity_handlers.iter_handlers(activity=activity)
-
-    def iter_resource_watching_handlers(
-            self,
-            cause: causation.ResourceWatchingCause,
-    ) -> Iterator[handlers.ResourceWatchingHandler]:
-        """
-        Iterate all handlers for the low-level events.
-        """
-        warnings.warn("registry.iter_resource_watching_handlers() is deprecated; "
-                      "please cease using the internal registries directly.",
-                      DeprecationWarning)
-        yield from self.resource_watching_handlers.iter_handlers(cause=cause)
-
-    def iter_resource_changing_handlers(
-            self,
-            cause: causation.ResourceChangingCause,
-    ) -> Iterator[handlers.ResourceChangingHandler]:
-        """
-        Iterate all handlers that match this cause/event, in the order they were registered (even if mixed).
-        """
-        warnings.warn("registry.iter_resource_changing_handlers() is deprecated; "
-                      "please cease using the internal registries directly.",
-                      DeprecationWarning)
-        yield from self.resource_changing_handlers.iter_handlers(cause=cause)
-
-    def get_extra_fields(
-            self,
-            resource: references.Resource,
-    ) -> Set[dicts.FieldPath]:
-        warnings.warn("registry.get_extra_fields() is deprecated; "
-                      "please cease using the internal registries directly.",
-                      DeprecationWarning)
-        return (
-            self.resource_watching_handlers.get_extra_fields(resource=resource) |
-            self.resource_changing_handlers.get_extra_fields(resource=resource) |
-            self.resource_spawning_handlers.get_extra_fields(resource=resource))
-
-    def iter_extra_fields(
-            self,
-            resource: references.Resource,
-    ) -> Iterator[dicts.FieldPath]:
-        warnings.warn("registry.iter_extra_fields() is deprecated; "
-                      "please cease using the internal registries directly.",
-                      DeprecationWarning)
-        yield from self.resource_watching_handlers.iter_extra_fields(resource=resource)
-        yield from self.resource_changing_handlers.iter_extra_fields(resource=resource)
-        yield from self.resource_spawning_handlers.iter_extra_fields(resource=resource)
-
-    def requires_finalizer(
-            self,
-            resource: references.Resource,
-            cause: causation.ResourceCause,
-    ) -> bool:
-        """
-        Check whether a finalizer should be added to the given resource or not.
-        """
-        warnings.warn("registry.requires_finalizer() is deprecated; "
-                      "please cease using the internal registries directly.",
-                      DeprecationWarning)
-        return self.resource_changing_handlers.requires_finalizer(cause=cause)
 
 
 class SmartOperatorRegistry(OperatorRegistry):
