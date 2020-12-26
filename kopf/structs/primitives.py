@@ -6,7 +6,7 @@ import concurrent.futures
 import enum
 import threading
 import time
-from typing import Any, Collection, Iterator, Optional, Set, Union
+from typing import Any, Collection, Iterable, Iterator, Optional, Set, Union
 
 from kopf.utilities import aiotasks
 
@@ -205,6 +205,11 @@ class ToggleSet(Collection[Toggle]):
     async def drop_toggle(self, toggle: Toggle) -> None:
         async with self._condition:
             self._toggles.discard(toggle)
+            self._condition.notify_all()
+
+    async def drop_toggles(self, toggles: Iterable[Toggle]) -> None:
+        async with self._condition:
+            self._toggles.difference_update(toggles)
             self._condition.notify_all()
 
 
