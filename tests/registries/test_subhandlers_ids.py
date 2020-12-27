@@ -1,5 +1,5 @@
 import kopf
-from kopf.reactor.handling import handler_var
+from kopf.reactor.handling import handler_var, subregistry_var
 from kopf.reactor.invocation import context
 
 
@@ -14,8 +14,8 @@ def test_with_parent(
     cause = cause_factory(resource_registry_cls)
     registry = resource_registry_cls()
 
-    with context([(handler_var, parent_handler)]):
-        kopf.subhandler(registry=registry)(child_fn)
+    with context([(handler_var, parent_handler), (subregistry_var, registry)]):
+        kopf.subhandler()(child_fn)
 
     handlers = registry.get_handlers(cause)
     assert len(handlers) == 1

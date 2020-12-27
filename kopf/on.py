@@ -474,7 +474,6 @@ def subhandler(  # lgtm[py/similar-function]
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
         cooldown: Optional[float] = None,  # deprecated, use `backoff`
-        registry: Optional[registries.ResourceChangingRegistry] = None,
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
@@ -521,7 +520,7 @@ def subhandler(  # lgtm[py/similar-function]
         _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value, old, new)
-        real_registry = registry if registry is not None else handling.subregistry_var.get()
+        real_registry = handling.subregistry_var.get()
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id,
                                          prefix=parent_handler.id if parent_handler else None)
@@ -548,7 +547,6 @@ def register(  # lgtm[py/similar-function]
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
         cooldown: Optional[float] = None,  # deprecated, use `backoff`
-        registry: Optional[registries.ResourceChangingRegistry] = None,
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
@@ -578,7 +576,7 @@ def register(  # lgtm[py/similar-function]
                     pass
     """
     decorator = subhandler(
-        id=id, registry=registry,
+        id=id,
         errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
         labels=labels, annotations=annotations, when=when,
     )
