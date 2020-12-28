@@ -33,7 +33,7 @@ replaced; in some cases, they will be cut and hash-suffixed.
 import base64
 import hashlib
 import warnings
-from typing import Any, Collection, Iterable, Optional, Set
+from typing import Any, Collection, Iterable, Set
 
 from kopf.structs import bodies, patches
 
@@ -90,7 +90,7 @@ class StorageKeyFormingConvention:
     def __init__(
             self,
             *args: Any,
-            prefix: Optional[str],
+            prefix: str,
             v1: bool,
             **kwargs: Any,
     ) -> None:
@@ -101,17 +101,11 @@ class StorageKeyFormingConvention:
         self.v1 = v1
 
         if not self.prefix:
-            warnings.warn("Non-prefixed storages are deprecated. "
-                          "Please, add any prefix or use the default one.", DeprecationWarning)
+            raise ValueError("Annotations storages must be prefixed.")
 
         # 253 is the max length, 63 is the most lengthy name part, 1 is for the "/" separator.
         if len(self.prefix or '') > 253 - 63 - 1:
             warnings.warn("The annotations prefix is too long. It can cause errors when PATCHing.")
-
-    def make_key(self, key: str, max_length: int = 63) -> str:
-        warnings.warn("make_key() is deprecated; use make_v1_key(), make_v2_key(), make_keys(), "
-                      "or avoid making the keys directly at all.", DeprecationWarning)
-        return self.make_v1_key(key, max_length=max_length)
 
     def make_keys(self, key: str) -> Iterable[str]:
         v2_keys = [self.make_v2_key(key)]
@@ -207,7 +201,7 @@ class StorageKeyMarkingConvention:
 
     def _store_marker(
             self,
-            prefix: Optional[str],
+            prefix: str,
             patch: patches.Patch,
             body: bodies.Body,
     ) -> None:

@@ -25,7 +25,7 @@ is done in the `kopf.reactor.handling` routines.
 import asyncio
 import enum
 import logging
-from typing import TYPE_CHECKING, MutableMapping, NamedTuple, NewType, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, MutableMapping, NamedTuple, NewType, Optional, Tuple, Union
 
 import aiojobs
 from typing_extensions import Protocol, TypedDict

@@ -57,7 +57,6 @@ class ResourceChangingFn(Protocol):
     def __call__(  # lgtm[py/similar-function]
             self,
             *args: Any,
-            event: str,  # DEPRECATED
             body: bodies.Body,
             meta: bodies.Meta,
             spec: bodies.Spec,
@@ -135,7 +134,7 @@ class WhenFilterFn(Protocol):
             self,
             *args: Any,
             type: str,
-            event: Union[str, bodies.RawEvent],
+            event: bodies.RawEvent,
             body: bodies.Body,
             meta: bodies.Meta,
             spec: bodies.Spec,

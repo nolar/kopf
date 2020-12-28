@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.storage.finalizers import LEGACY_FINALIZER, allow_deletion, block_deletion, \
+from kopf.storage.finalizers import allow_deletion, block_deletion, \
                                     is_deletion_blocked, is_deletion_ongoing
 
 
@@ -26,7 +26,6 @@ def test_is_deleted(expected, body):
     pytest.param(False, {'metadata': {'finalizers': ['other']}}, id='others'),
     pytest.param(True, {'metadata': {'finalizers': ['fin']}}, id='normal'),
     pytest.param(True, {'metadata': {'finalizers': ['other', 'fin']}}, id='mixed'),
-    pytest.param(True, {'metadata': {'finalizers': [LEGACY_FINALIZER]}}, id='legacy'),
 ])
 def test_has_finalizers(expected, body):
     result = is_deletion_blocked(body=body, finalizer='fin')
@@ -55,7 +54,6 @@ def test_append_finalizers_when_present():
 
 
 @pytest.mark.parametrize('finalizer', [
-    pytest.param(LEGACY_FINALIZER, id='legacy'),
     pytest.param('fin', id='normal'),
 ])
 def test_remove_finalizers_keeps_others(finalizer):

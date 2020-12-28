@@ -34,7 +34,6 @@ CONTENT_JSON = json.dumps(CONTENT_DATA, separators=(',', ':'))
 COMMON_KEYS = [
     # For character replacements (only those that happen in our own ids, not all of them).
     ['my-operator.example.com', 'a_b.c-d/e', 'my-operator.example.com/a_b.c-d.e'],
-    [None, 'a_b.c-d/e', 'a_b.c-d.e'],
 ]
 
 V1_KEYS = [
@@ -45,16 +44,10 @@ V1_KEYS = [
     ['my-operator.example.com', 'x' * 40, 'my-operator.example.com/' + 'x' * 30 + 'xx-tEokcg'],
     ['my-operator.example.com', 'y' * 40, 'my-operator.example.com/' + 'y' * 30 + 'yy-VZlvhw'],
     ['my-operator.example.com', 'z' * 40, 'my-operator.example.com/' + 'z' * 30 + 'zz-LlPQyA'],
-    [None, 'x', 'x'],
-    [None, 'x' * 63, 'x' * 63],
-    [None, 'x' * 64, 'x' * 54 + 'xx-SItAqA'],  # base64: SItAqA==
-    [None, 'y' * 64, 'y' * 54 + 'yy-0d251g'],  # base64: 0d251g==
-    [None, 'z' * 64, 'z' * 54 + 'zz-E7wvIA'],  # base64: E7wvIA==
 
     # For special chars in base64 encoding ("+" and "/"), which are not compatible with K8s.
     # The numbers are found empirically so that both "/" and "+" are found in the base64'ed digest.
     ['my-operator.example.com', 'fn' * 323, 'my-operator.example.com/' + 'fn' * 15 + 'fn-Az-r.g'],
-    [None, 'fn' * 323, 'fn' * 27 + 'fn-Az-r.g'],  # base64: Az-r.g==
 ]
 
 V2_KEYS = [
@@ -65,28 +58,11 @@ V2_KEYS = [
     ['my-operator.example.com', 'x' * 64, 'my-operator.example.com/' + 'x' * 54 + 'xx-SItAqA'],
     ['my-operator.example.com', 'y' * 64, 'my-operator.example.com/' + 'y' * 54 + 'yy-0d251g'],
     ['my-operator.example.com', 'z' * 64, 'my-operator.example.com/' + 'z' * 54 + 'zz-E7wvIA'],
-    [None, 'x', 'x'],
-    [None, 'x' * 63, 'x' * 63],
-    [None, 'x' * 64, 'x' * 54 + 'xx-SItAqA'],  # base64: SItAqA==
-    [None, 'y' * 64, 'y' * 54 + 'yy-0d251g'],  # base64: 0d251g==
-    [None, 'z' * 64, 'z' * 54 + 'zz-E7wvIA'],  # base64: E7wvIA==
 
     # For special chars in base64 encoding ("+" and "/"), which are not compatible with K8s.
     # The numbers are found empirically so that both "/" and "+" are found in the base64'ed digest.
     ['my-operator.example.com', 'fn' * 323, 'my-operator.example.com/' + 'fn' * 27 + 'fn-Az-r.g'],
-    [None, 'fn' * 323, 'fn' * 27 + 'fn-Az-r.g'],  # base64: Az-r.g==
 ]
-
-pytestmark = pytest.mark.filterwarnings("ignore:Non-prefixed storages are deprecated")
-
-
-@pytest.mark.parametrize('cls', STORAGE_KEY_FORMING_CLASSES)
-def test_unversioned_keys_are_depecated(cls):
-    storage = cls(v1=True, prefix='kopf.zalando.org')
-    v1_key = storage.make_v1_key('...')
-    with pytest.deprecated_call(match=r"make_key\(\) is deprecated"):
-        returned_key = storage.make_key('...')
-    assert returned_key == v1_key
 
 
 @pytest.mark.parametrize('cls', STORAGE_KEY_FORMING_CLASSES)

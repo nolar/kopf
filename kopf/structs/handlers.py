@@ -1,7 +1,6 @@
 import dataclasses
 import enum
-import warnings
-from typing import Any, NewType, Optional
+from typing import NewType, Optional
 
 from kopf.structs import callbacks, dicts, filters, references
 
@@ -75,22 +74,6 @@ class BaseHandler:
     timeout: Optional[float]
     retries: Optional[int]
     backoff: Optional[float]
-    cooldown: dataclasses.InitVar[Optional[float]]  # deprecated, use `backoff`
-
-    def __post_init__(self, cooldown: Optional[float]) -> None:
-        if self.backoff is not None and cooldown is not None:
-            raise TypeError("Either backoff or cooldown can be set, not both.")
-        elif cooldown is not None:
-            warnings.warn("cooldown=... is deprecated, use backoff=...", DeprecationWarning)
-            self.backoff = cooldown
-
-    # @property cannot be used due to a data field definition with the same name.
-    def __getattribute__(self, name: str) -> Any:
-        if name == 'cooldown':
-            warnings.warn("handler.cooldown is deprecated, use handler.backoff", DeprecationWarning)
-            return self.backoff
-        else:
-            return super().__getattribute__(name)
 
     # Used in the logs. Overridden in some (but not all) handler types for better log messages.
     def __str__(self) -> str:
@@ -132,11 +115,6 @@ class ResourceChangingHandler(ResourceHandler):
     field_needs_change: Optional[bool]  # to identify on-field/on-update with support for old=/new=.
     old: Optional[filters.ValueFilter]
     new: Optional[filters.ValueFilter]
-
-    @property
-    def event(self) -> Optional[Reason]:
-        warnings.warn("handler.event is deprecated; use handler.reason.", DeprecationWarning)
-        return self.reason
 
 
 @dataclasses.dataclass

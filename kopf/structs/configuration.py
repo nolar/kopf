@@ -27,9 +27,9 @@ the root object, while keeping the legacy names for backward compatibility.
 """
 import concurrent.futures
 import dataclasses
+import logging
 from typing import Iterable, Optional
 
-from kopf import config  # for legacy defaults only
 from kopf.storage import diffbase, progress
 
 
@@ -70,8 +70,7 @@ class PostingSettings:
     (``kopf.info()``, ``kopf.warn()``, ``kopf.exception()``).
     """
 
-    level: int = dataclasses.field(
-        default_factory=lambda: config.EventsConfig.events_loglevel)
+    level: int = logging.INFO
     """
     A minimal level of logging events that will be posted as K8s Events.
     The default is ``logging.INFO`` (i.e. all info, warning, errors are posted).
@@ -145,15 +144,13 @@ class PeeringSettings:
 @dataclasses.dataclass
 class WatchingSettings:
 
-    server_timeout: Optional[float] = dataclasses.field(
-        default_factory=lambda: config.WatchersConfig.default_stream_timeout)
+    server_timeout: Optional[float] = None
     """
     The maximum duration of one streaming request. Patched in some tests.
     If ``None``, then obey the server-side timeouts (they seem to be random).
     """
 
-    client_timeout: Optional[float] = dataclasses.field(
-        default_factory=lambda: config.WatchersConfig.session_timeout)
+    client_timeout: Optional[float] = None
     """
     An HTTP/HTTPS session timeout to use in watch requests.
     """
@@ -163,8 +160,7 @@ class WatchingSettings:
     An HTTP/HTTPS connection timeout to use in watch requests.
     """
     
-    reconnect_backoff: float = dataclasses.field(
-        default_factory=lambda: config.WatchersConfig.watcher_retry_delay)
+    reconnect_backoff: float = 0.1
     """
     How long should a pause be between watch requests (to prevent API flooding).
     """
@@ -176,28 +172,24 @@ class BatchingSettings:
     Settings for how raw events are batched and processed.
     """
 
-    worker_limit: Optional[int] = dataclasses.field(
-        default_factory=lambda: config.WorkersConfig.queue_workers_limit)
+    worker_limit: Optional[int] = None
     """
     How many workers can be running simultaneously on per-object event queue.
     If ``None``, there is no limit to the number of workers (as many as needed).
     """
 
-    idle_timeout: float = dataclasses.field(
-        default_factory=lambda: config.WorkersConfig.worker_idle_timeout)
+    idle_timeout: float = 5.0
     """
     How soon an idle worker is exited and garbage-collected if no events arrive.
     """
 
-    batch_window: float = dataclasses.field(
-        default_factory=lambda: config.WorkersConfig.worker_batch_window)
+    batch_window: float = 0.1
     """
     How fast/slow does a worker deplete the queue when an event is received.
     All events arriving within this window will be ignored except the last one.
     """
 
-    exit_timeout: float = dataclasses.field(
-        default_factory=lambda: config.WorkersConfig.worker_exit_timeout)
+    exit_timeout: float = 2.0
     """
     How soon a worker is cancelled when the parent watcher is going to exit.
     This is the time given to the worker to deplete and process the queue.
@@ -237,8 +229,7 @@ class ExecutionSettings:
     handlers (specific invocations) will continue with their original executors.
     """
 
-    _max_workers: Optional[int] = dataclasses.field(
-        default_factory=lambda: config.WorkersConfig.synchronous_tasks_threadpool_limit)
+    _max_workers: Optional[int] = None
 
     @property
     def max_workers(self) -> Optional[int]:

@@ -10,14 +10,6 @@ The main Kopf module for all the exported functions & classes.
 from kopf import (
     on,  # as a separate name on the public namespace
 )
-from kopf.config import (
-    LOGLEVEL_INFO,  # deprecated
-    LOGLEVEL_WARNING,  # deprecated
-    LOGLEVEL_ERROR,  # deprecated
-    LOGLEVEL_CRITICAL,  # deprecated
-    EventsConfig,  # deprecated
-    WorkersConfig,  # deprecated
-)
 from kopf.engines.loggers import (
     configure,
     LogFormat,
@@ -60,8 +52,6 @@ from kopf.reactor.running import (
     run_tasks,
     operator,
     run,
-    login,  # deprecated
-    create_tasks,  # deprecated
 )
 from kopf.storage.diffbase import (
     DiffBaseStorage,
@@ -149,16 +139,12 @@ from kopf.utilities.piggybacking import (
     login_via_client,
 )
 
-HandlerFatalError = PermanentError  # a backward-compatibility alias
-HandlerRetryError = TemporaryError  # a backward-compatibility alias
-
 __all__ = [
     'on', 'lifecycles', 'register', 'execute', 'daemon', 'timer',
     'configure', 'LogFormat',
-    'login', 'LoginError', 'ConnectionInfo',
-    'login_via_pykube', 'login_via_client',
+    'login_via_pykube', 'login_via_client', 'LoginError', 'ConnectionInfo',
     'event', 'info', 'warn', 'exception',
-    'spawn_tasks', 'run_tasks', 'operator', 'run', 'create_tasks',
+    'spawn_tasks', 'run_tasks', 'operator', 'run',
     'adopt', 'label',
     'not_',
     'all_',
@@ -168,8 +154,8 @@ __all__ = [
     'build_object_reference', 'build_owner_reference',
     'append_owner_reference', 'remove_owner_reference',
     'ErrorsMode',
-    'PermanentError', 'HandlerFatalError',
-    'TemporaryError', 'HandlerRetryError',
+    'PermanentError',
+    'TemporaryError',
     'HandlerTimeoutError',
     'HandlerRetriesError',
     'OperatorRegistry',

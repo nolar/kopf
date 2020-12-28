@@ -7,8 +7,6 @@ to "release" the object (e.g. cleanups; delete-handlers in our case).
 """
 from kopf.structs import bodies, patches
 
-LEGACY_FINALIZER = 'KopfFinalizerMarker'
-
 
 def is_deletion_ongoing(
         body: bodies.Body,
@@ -21,7 +19,7 @@ def is_deletion_blocked(
         finalizer: str,
 ) -> bool:
     finalizers = body.get('metadata', {}).get('finalizers', [])
-    return finalizer in finalizers or LEGACY_FINALIZER in finalizers
+    return finalizer in finalizers
 
 
 def block_deletion(
@@ -45,7 +43,5 @@ def allow_deletion(
     if is_deletion_blocked(body=body, finalizer=finalizer):
         finalizers = body.get('metadata', {}).get('finalizers', [])
         patch.setdefault('metadata', {}).setdefault('finalizers', list(finalizers))
-        if LEGACY_FINALIZER in patch['metadata']['finalizers']:
-            patch['metadata']['finalizers'].remove(LEGACY_FINALIZER)
         if finalizer in patch['metadata']['finalizers']:
             patch['metadata']['finalizers'].remove(finalizer)

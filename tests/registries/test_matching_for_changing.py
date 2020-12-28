@@ -53,7 +53,7 @@ def handler_factory(registry, selector):
     def factory(**kwargs):
         handler = ResourceChangingHandler(**dict(dict(
             fn=some_fn, id='a',
-            errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+            errors=None, timeout=None, retries=None, backoff=None,
             initial=None, deleted=None, requires_finalizer=None,
             selector=selector, annotations=None, labels=None, when=None,
             field=None, value=None, old=None, new=None, field_needs_change=None,

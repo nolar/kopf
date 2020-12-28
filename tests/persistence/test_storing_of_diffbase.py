@@ -55,34 +55,16 @@ ESSENCE_JSON_2 = json.dumps(ESSENCE_DATA_2, separators=(',', ':'))
 #
 
 
-def test_annotations_store_deprecates_name():
-    with pytest.deprecated_call(match=r'name= is deprecated'):
-        storage = AnnotationsDiffBaseStorage(name='my-operator.my-company.com/diff-base')
-    assert storage.prefix == 'my-operator.my-company.com'
-    assert storage.key == 'diff-base'
-    assert storage.name == 'my-operator.my-company.com/diff-base'
-
-
-def test_annotations_store_deprecates_nonprefixed():
-    with pytest.deprecated_call(match=r'Non-prefixed storages are deprecated'):
-        storage = AnnotationsDiffBaseStorage(prefix=None, key='diff-base')
-    assert storage.prefix is None
-    assert storage.key == 'diff-base'
-    assert storage.name == 'diff-base'
-
-
 def test_annotations_store_with_defaults():
     storage = AnnotationsDiffBaseStorage()
     assert storage.prefix == 'kopf.zalando.org'
     assert storage.key == 'last-handled-configuration'
-    assert storage.name == 'kopf.zalando.org/last-handled-configuration'
 
 
 def test_annotations_storage_with_prefix_and_key():
     storage = AnnotationsDiffBaseStorage(prefix='my-operator.my-company.com', key='diff-base')
     assert storage.prefix == 'my-operator.my-company.com'
     assert storage.key == 'diff-base'
-    assert storage.name == 'my-operator.my-company.com/diff-base'
 
 
 def test_status_storage_with_field():

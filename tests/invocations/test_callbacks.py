@@ -189,8 +189,6 @@ async def test_special_kwargs_added(fn, resource):
     assert fn.call_count == 1
 
     assert len(fn.call_args[1]) >= 2
-    assert fn.call_args[1]['cause'] is cause
-    assert fn.call_args[1]['event'] is cause.reason  # deprecated
     assert fn.call_args[1]['reason'] is cause.reason
     assert fn.call_args[1]['body'] is cause.body
     assert fn.call_args[1]['spec'] == cause.body['spec']
