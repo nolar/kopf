@@ -11,7 +11,6 @@ This module is a part of the framework's public interface.
 """
 
 # TODO: add cluster=True support (different API methods)
-import inspect
 import warnings
 from typing import Any, Callable, Optional
 
@@ -37,7 +36,6 @@ def startup(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ActivityFn,
     ) -> callbacks.ActivityFn:
-        _warn_deprecated_signatures(fn)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
@@ -62,7 +60,6 @@ def cleanup(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ActivityFn,
     ) -> callbacks.ActivityFn:
-        _warn_deprecated_signatures(fn)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
@@ -88,7 +85,6 @@ def login(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ActivityFn,
     ) -> callbacks.ActivityFn:
-        _warn_deprecated_signatures(fn)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
@@ -114,7 +110,6 @@ def probe(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ActivityFn,
     ) -> callbacks.ActivityFn:
-        _warn_deprecated_signatures(fn)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
@@ -147,7 +142,6 @@ def resume(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ResourceChangingFn,
     ) -> callbacks.ResourceChangingFn:
-        _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -186,7 +180,6 @@ def create(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ResourceChangingFn,
     ) -> callbacks.ResourceChangingFn:
-        _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -227,7 +220,6 @@ def update(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ResourceChangingFn,
     ) -> callbacks.ResourceChangingFn:
-        _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value, old, new)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -267,7 +259,6 @@ def delete(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ResourceChangingFn,
     ) -> callbacks.ResourceChangingFn:
-        _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -314,7 +305,6 @@ def field(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ResourceChangingFn,
     ) -> callbacks.ResourceChangingFn:
-        _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value, old, new)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -349,7 +339,6 @@ def event(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ResourceWatchingFn,
     ) -> callbacks.ResourceWatchingFn:
-        _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -390,7 +379,6 @@ def daemon(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ResourceDaemonFn,
     ) -> callbacks.ResourceDaemonFn:
-        _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -435,7 +423,6 @@ def timer(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ResourceTimerFn,
     ) -> callbacks.ResourceTimerFn:
-        _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -505,7 +492,6 @@ def subhandler(  # lgtm[py/similar-function]
         if not isinstance(parent_handler, handlers.ResourceChangingHandler):
             raise TypeError("Sub-handlers are only supported for resource-changing handlers.")
         _warn_incompatible_parent_with_oldnew(parent_handler, old, new)
-        _warn_deprecated_signatures(fn)
         _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value, old, new)
         real_registry = handling.subregistry_var.get()
@@ -572,14 +558,6 @@ def register(  # lgtm[py/similar-function]
 
 # DEPRECATED: for backward compatibility, the original name of @kopf.on.this() is kept.
 this = subhandler
-
-
-def _warn_deprecated_signatures(
-        fn: Callable[..., Any],
-) -> None:
-    argspec = inspect.getfullargspec(fn)
-    if 'cause' in argspec.args or 'cause' in argspec.kwonlyargs:
-        warnings.warn("`cause` kwarg is deprecated; use kwargs directly.", DeprecationWarning)
 
 
 def _warn_deprecated_filters(

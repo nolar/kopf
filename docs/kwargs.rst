@@ -147,14 +147,10 @@ for those changes (not for every event coming from the Kubernetes API).
 Few extra kwargs are provided for these handlers, exposing the detected changes:
 
 
-.. kwarg:: cause
 .. kwarg:: reason
 
 Causation
 ---------
-
-**DEPRECATED:**
-``cause`` is the processed cause of the handler as detected by the framework (create/update/delete).
 
 ``reason`` is a type of change detection (creation, update, deletion, resuming).
 It is generally reflected in the handler decorator used, but can be useful for
