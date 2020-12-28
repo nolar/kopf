@@ -165,7 +165,7 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
     def __init__(
             self,
             *,
-            prefix: Optional[str] = 'kopf.zalando.org',
+            prefix: str = 'kopf.zalando.org',
             verbose: bool = False,
             touch_key: str = 'touch-dummy',  # NB: not dotted, but dashed
             v1: bool = True,  # will be switched to False a few releases later

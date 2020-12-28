@@ -62,12 +62,6 @@ def test_status_storage_with_field():
     assert storage.touch_field == ('status', 'my-dummy')
 
 
-def test_annotations_store_deprecates_nonprefixed():
-    with pytest.deprecated_call(match=r'Non-prefixed storages are deprecated'):
-        storage = AnnotationsProgressStorage(prefix=None)
-    assert storage.prefix is None
-
-
 def test_annotations_storage_with_defaults():
     storage = AnnotationsProgressStorage()
     assert storage.prefix == 'kopf.zalando.org'

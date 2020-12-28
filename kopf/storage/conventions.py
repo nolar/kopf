@@ -33,7 +33,7 @@ replaced; in some cases, they will be cut and hash-suffixed.
 import base64
 import hashlib
 import warnings
-from typing import Any, Collection, Iterable, Optional, Set
+from typing import Any, Collection, Iterable, Set
 
 from kopf.structs import bodies, patches
 
@@ -90,7 +90,7 @@ class StorageKeyFormingConvention:
     def __init__(
             self,
             *args: Any,
-            prefix: Optional[str],
+            prefix: str,
             v1: bool,
             **kwargs: Any,
     ) -> None:
@@ -101,8 +101,7 @@ class StorageKeyFormingConvention:
         self.v1 = v1
 
         if not self.prefix:
-            warnings.warn("Non-prefixed storages are deprecated. "
-                          "Please, add any prefix or use the default one.", DeprecationWarning)
+            raise ValueError("Annotations storages must be prefixed.")
 
         # 253 is the max length, 63 is the most lengthy name part, 1 is for the "/" separator.
         if len(self.prefix or '') > 253 - 63 - 1:
@@ -202,7 +201,7 @@ class StorageKeyMarkingConvention:
 
     def _store_marker(
             self,
-            prefix: Optional[str],
+            prefix: str,
             patch: patches.Patch,
             body: bodies.Body,
     ) -> None:
