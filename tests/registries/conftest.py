@@ -12,7 +12,6 @@ from kopf.structs.containers import Memo
 from kopf.structs.diffs import Diff, DiffItem
 from kopf.structs.handlers import HandlerId, ResourceChangingHandler
 from kopf.structs.patches import Patch
-from kopf.structs.references import Selector
 
 
 @pytest.fixture(params=[

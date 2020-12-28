@@ -11,7 +11,6 @@ This module is a part of the framework's public interface.
 """
 
 # TODO: add cluster=True support (different API methods)
-import warnings
 from typing import Any, Callable, Optional
 
 from kopf.reactor import handling, registries

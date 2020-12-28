@@ -3,8 +3,7 @@ import functools
 import logging
 import signal
 import threading
-import warnings
-from typing import Any, Collection, Coroutine, MutableSequence, Optional, Sequence
+from typing import Collection, MutableSequence, Optional, Sequence
 
 from kopf.clients import auth
 from kopf.engines import peering, posting, probing

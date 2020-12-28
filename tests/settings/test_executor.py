@@ -3,7 +3,6 @@ import threading
 from unittest.mock import MagicMock
 
 import kopf
-from kopf.engines.posting import settings_var
 from kopf.reactor.invocation import invoke
 
 
