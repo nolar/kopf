@@ -80,7 +80,6 @@ def build_kwargs(
         )
     if isinstance(cause, causation.ResourceChangingCause):
         new_kwargs.update(
-            event=cause.reason,  # deprecated; kept for backward-compatibility
             reason=cause.reason,
             diff=cause.diff,
             old=cause.old,

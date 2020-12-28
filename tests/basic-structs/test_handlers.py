@@ -95,6 +95,3 @@ def test_resource_handler_with_all_args(mocker):
     assert handler.new is new
     assert handler.field_needs_change is field_needs_change
     assert handler.requires_finalizer is requires_finalizer
-
-    with pytest.deprecated_call(match=r"use handler.reason"):
-        assert handler.event is reason

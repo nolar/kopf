@@ -21,7 +21,6 @@ could execute on the yet-existing object (and its children, if created).
 """
 import dataclasses
 import logging
-import warnings
 from typing import Any, Optional, TypeVar, Union
 
 from kopf.storage import finalizers
@@ -83,11 +82,6 @@ class ResourceChangingCause(ResourceCause):
     diff: diffs.Diff = diffs.EMPTY
     old: Optional[bodies.BodyEssence] = None
     new: Optional[bodies.BodyEssence] = None
-
-    @property
-    def event(self) -> handlers.Reason:
-        warnings.warn("cause.event is deprecated; use cause.reason.", DeprecationWarning)
-        return self.reason
 
     @property
     def deleted(self) -> bool:

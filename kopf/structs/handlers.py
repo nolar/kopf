@@ -1,6 +1,5 @@
 import dataclasses
 import enum
-import warnings
 from typing import NewType, Optional
 
 from kopf.structs import callbacks, dicts, filters, references
@@ -116,11 +115,6 @@ class ResourceChangingHandler(ResourceHandler):
     field_needs_change: Optional[bool]  # to identify on-field/on-update with support for old=/new=.
     old: Optional[filters.ValueFilter]
     new: Optional[filters.ValueFilter]
-
-    @property
-    def event(self) -> Optional[Reason]:
-        warnings.warn("handler.event is deprecated; use handler.reason.", DeprecationWarning)
-        return self.reason
 
 
 @dataclasses.dataclass
