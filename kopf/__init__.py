@@ -11,10 +11,6 @@ from kopf import (
     on,  # as a separate name on the public namespace
 )
 from kopf.config import (
-    LOGLEVEL_INFO,  # deprecated
-    LOGLEVEL_WARNING,  # deprecated
-    LOGLEVEL_ERROR,  # deprecated
-    LOGLEVEL_CRITICAL,  # deprecated
     EventsConfig,  # deprecated
     WorkersConfig,  # deprecated
 )
