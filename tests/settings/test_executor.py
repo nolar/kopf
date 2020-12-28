@@ -57,17 +57,3 @@ async def test_synchronous_executor_limit_is_applied():
 
     assert settings.execution.max_workers == 123456
     assert settings.execution.executor._max_workers == 123456
-
-
-async def test_synchronous_executor_limit_is_applied_legacy_way():
-    settings = kopf.OperatorSettings()
-    assert hasattr(settings.execution.executor, '_max_workers')  # prerequisite
-
-    assert settings.execution.max_workers is None  # as in "unset by us, assume defaults"
-    assert settings.execution.executor._max_workers is not None  # usually CPU count * N.
-
-    settings_var.set(settings)  # an assumption on the implementation
-    kopf.config.WorkersConfig.set_synchronous_tasks_threadpool_limit(123456)
-
-    assert settings.execution.max_workers == 123456
-    assert settings.execution.executor._max_workers == 123456

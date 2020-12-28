@@ -10,10 +10,6 @@ The main Kopf module for all the exported functions & classes.
 from kopf import (
     on,  # as a separate name on the public namespace
 )
-from kopf.config import (
-    EventsConfig,  # deprecated
-    WorkersConfig,  # deprecated
-)
 from kopf.engines.loggers import (
     configure,
     LogFormat,
