@@ -142,8 +142,8 @@ def resume(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ResourceChangingFn,
     ) -> callbacks.ResourceChangingFn:
-        _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value)
+        _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id)
@@ -180,8 +180,8 @@ def create(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ResourceChangingFn,
     ) -> callbacks.ResourceChangingFn:
-        _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value)
+        _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id)
@@ -220,8 +220,8 @@ def update(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ResourceChangingFn,
     ) -> callbacks.ResourceChangingFn:
-        _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value, old, new)
+        _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id)
@@ -259,8 +259,8 @@ def delete(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ResourceChangingFn,
     ) -> callbacks.ResourceChangingFn:
-        _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value)
+        _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id)
@@ -305,8 +305,8 @@ def field(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ResourceChangingFn,
     ) -> callbacks.ResourceChangingFn:
-        _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value, old, new)
+        _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
@@ -339,8 +339,8 @@ def event(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ResourceWatchingFn,
     ) -> callbacks.ResourceWatchingFn:
-        _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value)
+        _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id)
@@ -379,8 +379,8 @@ def daemon(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ResourceDaemonFn,
     ) -> callbacks.ResourceDaemonFn:
-        _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value)
+        _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id)
@@ -423,8 +423,8 @@ def timer(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ResourceTimerFn,
     ) -> callbacks.ResourceTimerFn:
-        _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value)
+        _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id)
@@ -492,8 +492,8 @@ def subhandler(  # lgtm[py/similar-function]
         if not isinstance(parent_handler, handlers.ResourceChangingHandler):
             raise TypeError("Sub-handlers are only supported for resource-changing handlers.")
         _warn_incompatible_parent_with_oldnew(parent_handler, old, new)
-        _warn_deprecated_filters(labels, annotations)
         _warn_conflicting_values(field, value, old, new)
+        _verify_filters(labels, annotations)
         real_registry = handling.subregistry_var.get()
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id,
@@ -560,22 +560,20 @@ def register(  # lgtm[py/similar-function]
 this = subhandler
 
 
-def _warn_deprecated_filters(
+def _verify_filters(
         labels: Optional[filters.MetaFilter],
         annotations: Optional[filters.MetaFilter],
 ) -> None:
     if labels is not None:
         for key, val in labels.items():
             if val is None:
-                warnings.warn(
-                    f"`None` for label filters is deprecated; use kopf.PRESENT.",
-                    DeprecationWarning, stacklevel=2)
+                raise ValueError("`None` for label filters is not supported; "
+                                 "use kopf.PRESENT or kopf.ABSENT.")
     if annotations is not None:
         for key, val in annotations.items():
             if val is None:
-                warnings.warn(
-                    f"`None` for annotation filters is deprecated; use kopf.PRESENT.",
-                    DeprecationWarning, stacklevel=2)
+                raise ValueError("`None` for annotation filters is not supported; "
+                                 "use kopf.PRESENT or kopf.ABSENT.")
 
 
 def _warn_deprecated_positional_field(

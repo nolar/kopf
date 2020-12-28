@@ -402,8 +402,6 @@ def _matches_metadata(
             continue
         elif value is filters.MetaFilterToken.PRESENT and key in content:
             continue
-        elif value is None and key in content:  # deprecated; warned in @kopf.on
-            continue
         elif callable(value):
             if not kwargs:
                 kwargs.update(invocation.build_kwargs(cause=cause))
