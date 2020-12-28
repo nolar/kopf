@@ -140,9 +140,6 @@ from kopf.utilities.piggybacking import (
     login_via_client,
 )
 
-HandlerFatalError = PermanentError  # a backward-compatibility alias
-HandlerRetryError = TemporaryError  # a backward-compatibility alias
-
 __all__ = [
     'on', 'lifecycles', 'register', 'execute', 'daemon', 'timer',
     'configure', 'LogFormat',
@@ -158,8 +155,8 @@ __all__ = [
     'build_object_reference', 'build_owner_reference',
     'append_owner_reference', 'remove_owner_reference',
     'ErrorsMode',
-    'PermanentError', 'HandlerFatalError',
-    'TemporaryError', 'HandlerRetryError',
+    'PermanentError',
+    'TemporaryError',
     'HandlerTimeoutError',
     'HandlerRetriesError',
     'OperatorRegistry',
