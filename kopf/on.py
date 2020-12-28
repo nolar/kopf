@@ -278,13 +278,8 @@ def delete(  # lgtm[py/similar-function]
     return decorator
 
 
-# Used only until the positional field is deleted -- for easier type checking without extra enums.
-__UNSET = 'a.deprecation.marker.that.is.never.going.to.go.beyond.decorators.and.deprecation.checks'
-
-
 def field(  # lgtm[py/similar-function]
         group: str, version: str, plural: str,
-        __field: dicts.FieldSpec = __UNSET,  # deprecated (as positional)
         *,
         id: Optional[str] = None,
         errors: Optional[handlers.ErrorsMode] = None,
@@ -295,13 +290,12 @@ def field(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
-        field: dicts.FieldSpec = __UNSET,  # TODO: when positional __field is removed, remove the value.
+        field: dicts.FieldSpec,
         value: Optional[filters.ValueFilter] = None,
         old: Optional[filters.ValueFilter] = None,
         new: Optional[filters.ValueFilter] = None,
 ) -> ResourceChangingDecorator:
     """ ``@kopf.on.field()`` handler for the individual field changes. """
-    field = _warn_deprecated_positional_field(__field, field)
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ResourceChangingFn,
     ) -> callbacks.ResourceChangingFn:
@@ -574,21 +568,6 @@ def _verify_filters(
             if val is None:
                 raise ValueError("`None` for annotation filters is not supported; "
                                  "use kopf.PRESENT or kopf.ABSENT.")
-
-
-def _warn_deprecated_positional_field(
-        __field: dicts.FieldSpec,
-        field: dicts.FieldSpec,
-) -> dicts.FieldSpec:
-    if field == __UNSET and __field == __UNSET:
-        raise TypeError("Field is not specified; use field= kwarg explicitly.")
-    elif field != __UNSET and __field != __UNSET:
-        raise TypeError("Field is ambiguous; use field= kwarg only, not a positional.")
-    elif field == __UNSET and __field != __UNSET:
-        warnings.warn("Positional field name is deprecated, use field= kwarg.",
-                      DeprecationWarning)
-        field = __field
-    return field
 
 
 def _warn_conflicting_values(

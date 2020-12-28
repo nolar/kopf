@@ -193,23 +193,6 @@ def test_on_field_minimal(cause_factory):
     assert handlers[0].new is None
 
 
-def test_on_field_warns_with_positional(cause_factory):
-    registry = kopf.get_default_registry()
-    resource = Resource('group', 'version', 'plural')
-    old = {'field': {'subfield': 'old'}}
-    new = {'field': {'subfield': 'new'}}
-    cause = cause_factory(resource=resource, reason=Reason.UPDATE, old=old, new=new, body=new)
-
-    with pytest.deprecated_call(match=r"Positional field name is deprecated"):
-        @kopf.on.field('group', 'version', 'plural', 'field.subfield')
-        def fn(**_):
-            pass
-
-    handlers = registry._resource_changing.get_handlers(cause)
-    assert len(handlers) == 1
-    assert handlers[0].field == ('field', 'subfield')
-
-
 def test_on_field_fails_without_field():
     with pytest.raises(TypeError):
         @kopf.on.field('group', 'version', 'plural')
