@@ -344,7 +344,7 @@ async def invoke_handler(
     # For the field-handlers, the old/new/diff values must match the field, not the whole object.
     if (True and  # for readable indenting
             isinstance(cause, causation.ResourceChangingCause) and
-            isinstance(handler, handlers_.ResourceHandler) and
+            isinstance(handler, handlers_.ResourceChangingHandler) and
             handler.field is not None):
         old = dicts.resolve(cause.old, handler.field, None)
         new = dicts.resolve(cause.new, handler.field, None)
