@@ -623,7 +623,7 @@ def test_invalid_oldnew_for_inappropriate_subhandlers(resource, decorator, regis
 
     @decorator(resource.group, resource.version, resource.plural)
     def fn(**_):
-        @kopf.on.this(field='f', old='x')
+        @kopf.subhandler(field='f', old='x')
         def fn2(**_):
             pass
 

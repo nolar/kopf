@@ -550,10 +550,6 @@ def register(  # lgtm[py/similar-function]
     return decorator(fn)
 
 
-# DEPRECATED: for backward compatibility, the original name of @kopf.on.this() is kept.
-this = subhandler
-
-
 def _verify_filters(
         labels: Optional[filters.MetaFilter],
         annotations: Optional[filters.MetaFilter],
