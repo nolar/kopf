@@ -4,7 +4,6 @@ import functools
 import os
 import ssl
 import tempfile
-import warnings
 from contextvars import ContextVar
 from typing import Any, Callable, Dict, Iterator, Mapping, Optional, TypeVar, cast
 
@@ -247,12 +246,3 @@ class _TempFiles(Mapping[bytes, str]):
             except OSError:
                 pass
         self._paths.clear()
-
-
-# DEPRECATED: Should be removed with login()/get_pykube_cfg()/get_pykube_api().
-# Previously, in some cases, get_pykube_cfg() was monkey-patched to inject
-# custom authentication methods. Support these hacks as long as possible.
-# See: piggybacking.login_via_pykube() for the usage of this monkey-patched function.
-def get_pykube_cfg() -> Any:
-    warnings.warn("get_pykube_cfg() is deprecated and unused.", DeprecationWarning)
-    raise NotImplementedError("get_pykube_cfg() is not supported unless monkey-patched.")
