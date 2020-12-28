@@ -130,21 +130,6 @@ class ResourceRegistry(
                 if handler.field:
                     yield handler.field
 
-    def requires_finalizer(
-            self,
-            cause: causation.ResourceCause,
-            excluded: Container[handlers.HandlerId] = frozenset(),
-    ) -> bool:
-        """
-        Check whether a finalizer should be added to the given resource or not.
-        """
-        # check whether the body matches a deletion handler
-        for handler in self._handlers:
-            if handler.id not in excluded:
-                if handler.requires_finalizer and prematch(handler=handler, cause=cause):
-                    return True
-        return False
-
 
 class ResourceWatchingRegistry(ResourceRegistry[
         causation.ResourceWatchingCause,
@@ -177,6 +162,21 @@ class ResourceSpawningRegistry(ResourceRegistry[
                 if match(handler=handler, cause=cause):
                     yield handler
 
+    def requires_finalizer(
+            self,
+            cause: causation.ResourceSpawningCause,
+            excluded: Container[handlers.HandlerId] = frozenset(),
+    ) -> bool:
+        """
+        Check whether a finalizer should be added to the given resource or not.
+        """
+        # check whether the body matches a deletion handler
+        for handler in self._handlers:
+            if handler.id not in excluded:
+                if handler.requires_finalizer and match(handler=handler, cause=cause):
+                    return True
+        return False
+
 
 class ResourceChangingRegistry(ResourceRegistry[
         causation.ResourceChangingCause,
@@ -197,6 +197,21 @@ class ResourceChangingRegistry(ResourceRegistry[
                         pass  # skip initial handlers on deletion, unless explicitly marked as used.
                     elif match(handler=handler, cause=cause):
                         yield handler
+
+    def requires_finalizer(
+            self,
+            cause: causation.ResourceCause,
+            excluded: Container[handlers.HandlerId] = frozenset(),
+    ) -> bool:
+        """
+        Check whether a finalizer should be added to the given resource or not.
+        """
+        # check whether the body matches a deletion handler
+        for handler in self._handlers:
+            if handler.id not in excluded:
+                if handler.requires_finalizer and prematch(handler=handler, cause=cause):
+                    return True
+        return False
 
     def prematch(
             self,
