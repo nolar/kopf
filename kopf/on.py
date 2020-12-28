@@ -32,7 +32,6 @@ def startup(  # lgtm[py/similar-function]
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
-        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityDecorator:
     def decorator(  # lgtm[py/similar-function]
@@ -43,7 +42,7 @@ def startup(  # lgtm[py/similar-function]
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
             fn=fn, id=real_id,
-            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             activity=handlers.Activity.STARTUP,
         )
         real_registry._activities.append(handler)
@@ -58,7 +57,6 @@ def cleanup(  # lgtm[py/similar-function]
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
-        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityDecorator:
     def decorator(  # lgtm[py/similar-function]
@@ -69,7 +67,7 @@ def cleanup(  # lgtm[py/similar-function]
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
             fn=fn, id=real_id,
-            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             activity=handlers.Activity.CLEANUP,
         )
         real_registry._activities.append(handler)
@@ -84,7 +82,6 @@ def login(  # lgtm[py/similar-function]
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
-        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityDecorator:
     """ ``@kopf.on.login()`` handler for custom (re-)authentication. """
@@ -96,7 +93,7 @@ def login(  # lgtm[py/similar-function]
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
             fn=fn, id=real_id,
-            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             activity=handlers.Activity.AUTHENTICATION,
         )
         real_registry._activities.append(handler)
@@ -111,7 +108,6 @@ def probe(  # lgtm[py/similar-function]
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
-        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityDecorator:
     """ ``@kopf.on.probe()`` handler for arbitrary liveness metrics. """
@@ -123,7 +119,7 @@ def probe(  # lgtm[py/similar-function]
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
             fn=fn, id=real_id,
-            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             activity=handlers.Activity.PROBE,
         )
         real_registry._activities.append(handler)
@@ -139,7 +135,6 @@ def resume(  # lgtm[py/similar-function]
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
-        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
         deleted: Optional[bool] = None,
         labels: Optional[filters.MetaFilter] = None,
@@ -161,7 +156,7 @@ def resume(  # lgtm[py/similar-function]
         selector = references.Selector(group, version, plural)
         handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id,
-            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=None, new=None, field_needs_change=False,
             initial=True, deleted=deleted, requires_finalizer=None,
@@ -180,7 +175,6 @@ def create(  # lgtm[py/similar-function]
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
-        cooldown: Optional[float] = None,  # deprecated; use backoff.
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
@@ -201,7 +195,7 @@ def create(  # lgtm[py/similar-function]
         selector = references.Selector(group, version, plural)
         handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id,
-            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=None, new=None, field_needs_change=False,
             initial=None, deleted=None, requires_finalizer=None,
@@ -220,7 +214,6 @@ def update(  # lgtm[py/similar-function]
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
-        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
@@ -243,7 +236,7 @@ def update(  # lgtm[py/similar-function]
         selector = references.Selector(group, version, plural)
         handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id,
-            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=old, new=new, field_needs_change=True,
             initial=None, deleted=None, requires_finalizer=None,
@@ -262,7 +255,6 @@ def delete(  # lgtm[py/similar-function]
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
-        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
         optional: Optional[bool] = None,
         labels: Optional[filters.MetaFilter] = None,
@@ -284,7 +276,7 @@ def delete(  # lgtm[py/similar-function]
         selector = references.Selector(group, version, plural)
         handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id,
-            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=None, new=None, field_needs_change=False,
             initial=None, deleted=None, requires_finalizer=bool(not optional),
@@ -308,7 +300,6 @@ def field(  # lgtm[py/similar-function]
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
-        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
@@ -332,7 +323,7 @@ def field(  # lgtm[py/similar-function]
         selector = references.Selector(group, version, plural)
         handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id,
-            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=old, new=new, field_needs_change=True,
             initial=None, deleted=None, requires_finalizer=None,
@@ -367,7 +358,7 @@ def event(  # lgtm[py/similar-function]
         selector = references.Selector(group, version, plural)
         handler = handlers.ResourceWatchingHandler(
             fn=fn, id=real_id,
-            errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+            errors=None, timeout=None, retries=None, backoff=None,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value,
         )
@@ -384,7 +375,6 @@ def daemon(  # lgtm[py/similar-function]
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
-        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
@@ -409,7 +399,7 @@ def daemon(  # lgtm[py/similar-function]
         selector = references.Selector(group, version, plural)
         handler = handlers.ResourceDaemonHandler(
             fn=fn, id=real_id,
-            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value,
             initial_delay=initial_delay, requires_finalizer=True,
@@ -430,7 +420,6 @@ def timer(  # lgtm[py/similar-function]
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
-        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         registry: Optional[registries.OperatorRegistry] = None,
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
@@ -455,7 +444,7 @@ def timer(  # lgtm[py/similar-function]
         selector = references.Selector(group, version, plural)
         handler = handlers.ResourceTimerHandler(
             fn=fn, id=real_id,
-            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value,
             initial_delay=initial_delay, requires_finalizer=True,
@@ -473,7 +462,6 @@ def subhandler(  # lgtm[py/similar-function]
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
-        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
@@ -526,7 +514,7 @@ def subhandler(  # lgtm[py/similar-function]
                                          prefix=parent_handler.id if parent_handler else None)
         handler = handlers.ResourceChangingHandler(
             fn=fn, id=real_id,
-            errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=None, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=old, new=new,
             field_needs_change=parent_handler.field_needs_change, # inherit dymaically
@@ -546,7 +534,6 @@ def register(  # lgtm[py/similar-function]
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
-        cooldown: Optional[float] = None,  # deprecated, use `backoff`
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
@@ -577,7 +564,7 @@ def register(  # lgtm[py/similar-function]
     """
     decorator = subhandler(
         id=id,
-        errors=errors, timeout=timeout, retries=retries, backoff=backoff, cooldown=cooldown,
+        errors=errors, timeout=timeout, retries=retries, backoff=backoff,
         labels=labels, annotations=annotations, when=when,
     )
     return decorator(fn)

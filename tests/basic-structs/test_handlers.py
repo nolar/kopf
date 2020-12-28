@@ -24,7 +24,6 @@ def test_activity_handler_with_all_args(mocker):
         timeout=timeout,
         retries=retries,
         backoff=backoff,
-        cooldown=None,  # deprecated, but still required
         activity=activity,
     )
     assert handler.fn is fn
@@ -65,7 +64,6 @@ def test_resource_handler_with_all_args(mocker):
         timeout=timeout,
         retries=retries,
         backoff=backoff,
-        cooldown=None,  # deprecated, but still required
         initial=initial,
         deleted=deleted,
         labels=labels,
@@ -100,6 +98,3 @@ def test_resource_handler_with_all_args(mocker):
 
     with pytest.deprecated_call(match=r"use handler.reason"):
         assert handler.event is reason
-
-    with pytest.deprecated_call(match=r"use handler.backoff"):
-        assert handler.cooldown is backoff

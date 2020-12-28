@@ -101,7 +101,7 @@ async def execute(
             real_id = registries.generate_id(fn=fn, id=id, prefix=parent_prefix)
             handler = handlers_.ResourceChangingHandler(
                 fn=fn, id=real_id,
-                errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+                errors=None, timeout=None, retries=None, backoff=None,
                 selector=None, labels=None, annotations=None, when=None,
                 initial=None, deleted=None, requires_finalizer=None,
                 reason=None, field=None, value=None, old=None, new=None,
@@ -115,7 +115,7 @@ async def execute(
             real_id = registries.generate_id(fn=fn, id=None, prefix=parent_prefix)
             handler = handlers_.ResourceChangingHandler(
                 fn=fn, id=real_id,
-                errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+                errors=None, timeout=None, retries=None, backoff=None,
                 selector=None, labels=None, annotations=None, when=None,
                 initial=None, deleted=None, requires_finalizer=None,
                 reason=None, field=None, value=None, old=None, new=None,

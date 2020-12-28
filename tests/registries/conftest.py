@@ -54,7 +54,7 @@ def parent_handler(selector):
 
     return ResourceChangingHandler(
         fn=parent_fn, id=HandlerId('parent_fn'),
-        errors=None, retries=None, timeout=None, backoff=None, cooldown=None,
+        errors=None, retries=None, timeout=None, backoff=None,
         selector=selector, labels=None, annotations=None, when=None,
         field=None, value=None, old=None, new=None, field_needs_change=None,
         initial=None, deleted=None, requires_finalizer=None,
