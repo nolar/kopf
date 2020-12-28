@@ -15,7 +15,7 @@ def test_on_startup_minimal():
     def fn(**_):
         pass
 
-    handlers = registry.activity_handlers.get_handlers(activity=Activity.STARTUP)
+    handlers = registry._activities.get_handlers(activity=Activity.STARTUP)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].activity == Activity.STARTUP
@@ -32,7 +32,7 @@ def test_on_cleanup_minimal():
     def fn(**_):
         pass
 
-    handlers = registry.activity_handlers.get_handlers(activity=Activity.CLEANUP)
+    handlers = registry._activities.get_handlers(activity=Activity.CLEANUP)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].activity == Activity.CLEANUP
@@ -49,7 +49,7 @@ def test_on_probe_minimal():
     def fn(**_):
         pass
 
-    handlers = registry.activity_handlers.get_handlers(activity=Activity.PROBE)
+    handlers = registry._activities.get_handlers(activity=Activity.PROBE)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].activity == Activity.PROBE
@@ -70,7 +70,7 @@ def test_on_resume_minimal(reason, cause_factory):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers.get_handlers(cause)
+    handlers = registry._resource_changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
@@ -96,7 +96,7 @@ def test_on_create_minimal(cause_factory):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers.get_handlers(cause)
+    handlers = registry._resource_changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.CREATE
@@ -122,7 +122,7 @@ def test_on_update_minimal(cause_factory):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers.get_handlers(cause)
+    handlers = registry._resource_changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.UPDATE
@@ -148,7 +148,7 @@ def test_on_delete_minimal(cause_factory):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers.get_handlers(cause)
+    handlers = registry._resource_changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.DELETE
@@ -176,7 +176,7 @@ def test_on_field_minimal(cause_factory):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers.get_handlers(cause)
+    handlers = registry._resource_changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
@@ -205,7 +205,7 @@ def test_on_field_warns_with_positional(cause_factory):
         def fn(**_):
             pass
 
-    handlers = registry.resource_changing_handlers.get_handlers(cause)
+    handlers = registry._resource_changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].field == ('field', 'subfield')
 
@@ -226,7 +226,7 @@ def test_on_startup_with_all_kwargs():
     def fn(**_):
         pass
 
-    handlers = registry.activity_handlers.get_handlers(activity=Activity.STARTUP)
+    handlers = registry._activities.get_handlers(activity=Activity.STARTUP)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].activity == Activity.STARTUP
@@ -246,7 +246,7 @@ def test_on_cleanup_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.activity_handlers.get_handlers(activity=Activity.CLEANUP)
+    handlers = registry._activities.get_handlers(activity=Activity.CLEANUP)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].activity == Activity.CLEANUP
@@ -266,7 +266,7 @@ def test_on_probe_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.activity_handlers.get_handlers(activity=Activity.PROBE)
+    handlers = registry._activities.get_handlers(activity=Activity.PROBE)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].activity == Activity.PROBE
@@ -297,7 +297,7 @@ def test_on_resume_with_most_kwargs(mocker, reason, cause_factory):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers.get_handlers(cause)
+    handlers = registry._resource_changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
@@ -333,7 +333,7 @@ def test_on_create_with_most_kwargs(mocker, cause_factory):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers.get_handlers(cause)
+    handlers = registry._resource_changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.CREATE
@@ -368,7 +368,7 @@ def test_on_update_with_most_kwargs(mocker, cause_factory):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers.get_handlers(cause)
+    handlers = registry._resource_changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.UPDATE
@@ -408,7 +408,7 @@ def test_on_delete_with_most_kwargs(mocker, cause_factory, optional):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers.get_handlers(cause)
+    handlers = registry._resource_changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.DELETE
@@ -445,7 +445,7 @@ def test_on_field_with_most_kwargs(mocker, cause_factory):
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers.get_handlers(cause)
+    handlers = registry._resource_changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
@@ -547,14 +547,14 @@ def test_annotations_filter_with_nones(resource, decorator, kwargs):
 
 
 @pytest.mark.parametrize('decorator, causeargs, handlers_prop', [
-    pytest.param(kopf.on.event, dict(), 'resource_watching_handlers', id='on-event'),
-    pytest.param(kopf.on.resume, dict(reason=None, initial=True), 'resource_changing_handlers', id='on-resume'),
-    pytest.param(kopf.on.create, dict(reason=Reason.CREATE), 'resource_changing_handlers', id='on-create'),
-    pytest.param(kopf.on.update, dict(reason=Reason.UPDATE), 'resource_changing_handlers', id='on-update'),
-    pytest.param(kopf.on.delete, dict(reason=Reason.DELETE), 'resource_changing_handlers', id='on-delete'),
-    pytest.param(kopf.on.field, dict(reason=Reason.UPDATE), 'resource_changing_handlers', id='on-field'),
-    pytest.param(kopf.daemon, dict(), 'resource_spawning_handlers', id='on-daemon'),
-    pytest.param(kopf.timer, dict(), 'resource_spawning_handlers', id='on-timer'),
+    pytest.param(kopf.on.event, dict(), '_resource_watching', id='on-event'),
+    pytest.param(kopf.on.resume, dict(reason=None, initial=True), '_resource_changing', id='on-resume'),
+    pytest.param(kopf.on.create, dict(reason=Reason.CREATE), '_resource_changing', id='on-create'),
+    pytest.param(kopf.on.update, dict(reason=Reason.UPDATE), '_resource_changing', id='on-update'),
+    pytest.param(kopf.on.delete, dict(reason=Reason.DELETE), '_resource_changing', id='on-delete'),
+    pytest.param(kopf.on.field, dict(reason=Reason.UPDATE), '_resource_changing', id='on-field'),
+    pytest.param(kopf.daemon, dict(), '_resource_spawning', id='on-daemon'),
+    pytest.param(kopf.timer, dict(), '_resource_spawning', id='on-timer'),
 ])
 def test_field_with_value(mocker, cause_factory, decorator, causeargs, handlers_prop):
     registry = OperatorRegistry()
@@ -577,8 +577,8 @@ def test_field_with_value(mocker, cause_factory, decorator, causeargs, handlers_
 
 
 @pytest.mark.parametrize('decorator, causeargs, handlers_prop', [
-    pytest.param(kopf.on.update, dict(reason=Reason.UPDATE), 'resource_changing_handlers', id='on-update'),
-    pytest.param(kopf.on.field, dict(reason=Reason.UPDATE), 'resource_changing_handlers', id='on-field'),
+    pytest.param(kopf.on.update, dict(reason=Reason.UPDATE), '_resource_changing', id='on-update'),
+    pytest.param(kopf.on.field, dict(reason=Reason.UPDATE), '_resource_changing', id='on-field'),
 ])
 def test_field_with_oldnew(mocker, cause_factory, decorator, causeargs, handlers_prop):
     registry = OperatorRegistry()
@@ -645,7 +645,7 @@ def test_invalid_oldnew_for_inappropriate_subhandlers(resource, decorator, regis
             pass
 
     subregistry = ResourceChangingRegistry()
-    handler = registry.resource_changing_handlers.get_all_handlers()[0]
+    handler = registry._resource_changing.get_all_handlers()[0]
     with context([(handler_var, handler), (subregistry_var, subregistry)]):
         with pytest.raises(TypeError, match="can only be used in update handlers"):
             handler.fn()

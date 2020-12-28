@@ -1,4 +1,4 @@
-from kopf import ActivityRegistry, OperatorRegistry, ResourceRegistry
+from kopf.reactor.registries import ActivityRegistry, OperatorRegistry, ResourceRegistry
 
 
 def test_activity_registry(activity_registry_cls):

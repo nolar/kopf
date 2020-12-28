@@ -109,7 +109,7 @@ class ActivityHandler(BaseHandler):
 
 @dataclasses.dataclass
 class ResourceHandler(BaseHandler):
-    selector: Optional[references.Selector]  # None is used only in sub-handlers & LegacyAllPurposeResourcerHandler
+    selector: Optional[references.Selector]  # None is used only in sub-handlers
     labels: Optional[filters.MetaFilter]
     annotations: Optional[filters.MetaFilter]
     when: Optional[callbacks.WhenFilterFn]

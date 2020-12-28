@@ -34,7 +34,7 @@ def test_requires_finalizer_deletion_handler(optional, expected, cause_factory):
     def fn(**_):
         pass
 
-    requires_finalizer = registry.resource_changing_handlers.requires_finalizer(cause)
+    requires_finalizer = registry._resource_changing.requires_finalizer(cause)
     assert requires_finalizer == expected
 
 
@@ -57,7 +57,7 @@ def test_requires_finalizer_multiple_handlers(optional, expected, cause_factory)
     def fn2(**_):
         pass
 
-    requires_finalizer = registry.resource_changing_handlers.requires_finalizer(cause)
+    requires_finalizer = registry._resource_changing.requires_finalizer(cause)
     assert requires_finalizer == expected
 
 
@@ -71,7 +71,7 @@ def test_requires_finalizer_no_deletion_handler(cause_factory):
     def fn1(**_):
         pass
 
-    requires_finalizer = registry.resource_changing_handlers.requires_finalizer(cause)
+    requires_finalizer = registry._resource_changing.requires_finalizer(cause)
     assert requires_finalizer is False
 
 
@@ -94,7 +94,7 @@ def test_requires_finalizer_deletion_handler_matches_labels(labels, optional, ex
     def fn(**_):
         pass
 
-    requires_finalizer = registry.resource_changing_handlers.requires_finalizer(cause)
+    requires_finalizer = registry._resource_changing.requires_finalizer(cause)
     assert requires_finalizer == expected
 
 
@@ -117,7 +117,7 @@ def test_requires_finalizer_deletion_handler_mismatches_labels(labels, optional,
     def fn(**_):
         pass
 
-    requires_finalizer = registry.resource_changing_handlers.requires_finalizer(cause)
+    requires_finalizer = registry._resource_changing.requires_finalizer(cause)
     assert requires_finalizer == expected
 
 
@@ -140,7 +140,7 @@ def test_requires_finalizer_deletion_handler_matches_annotations(annotations, op
     def fn(**_):
         pass
 
-    requires_finalizer = registry.resource_changing_handlers.requires_finalizer(cause)
+    requires_finalizer = registry._resource_changing.requires_finalizer(cause)
     assert requires_finalizer == expected
 
 
@@ -163,5 +163,5 @@ def test_requires_finalizer_deletion_handler_mismatches_annotations(annotations,
     def fn(**_):
         pass
 
-    requires_finalizer = registry.resource_changing_handlers.requires_finalizer(cause)
+    requires_finalizer = registry._resource_changing.requires_finalizer(cause)
     assert requires_finalizer == expected
