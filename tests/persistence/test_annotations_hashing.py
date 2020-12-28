@@ -81,15 +81,6 @@ pytestmark = pytest.mark.filterwarnings("ignore:Non-prefixed storages are deprec
 
 
 @pytest.mark.parametrize('cls', STORAGE_KEY_FORMING_CLASSES)
-def test_unversioned_keys_are_depecated(cls):
-    storage = cls(v1=True, prefix='kopf.zalando.org')
-    v1_key = storage.make_v1_key('...')
-    with pytest.deprecated_call(match=r"make_key\(\) is deprecated"):
-        returned_key = storage.make_key('...')
-    assert returned_key == v1_key
-
-
-@pytest.mark.parametrize('cls', STORAGE_KEY_FORMING_CLASSES)
 def test_keys_for_all_versions(cls):
     storage = cls(v1=True, prefix='kopf.zalando.org')
     v1_key = storage.make_v1_key('.' * 64)

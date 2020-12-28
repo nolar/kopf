@@ -108,11 +108,6 @@ class StorageKeyFormingConvention:
         if len(self.prefix or '') > 253 - 63 - 1:
             warnings.warn("The annotations prefix is too long. It can cause errors when PATCHing.")
 
-    def make_key(self, key: str, max_length: int = 63) -> str:
-        warnings.warn("make_key() is deprecated; use make_v1_key(), make_v2_key(), make_keys(), "
-                      "or avoid making the keys directly at all.", DeprecationWarning)
-        return self.make_v1_key(key, max_length=max_length)
-
     def make_keys(self, key: str) -> Iterable[str]:
         v2_keys = [self.make_v2_key(key)]
         v1_keys = [self.make_v1_key(key)] if self.v1 else []
