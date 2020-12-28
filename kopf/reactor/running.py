@@ -439,20 +439,3 @@ async def _startup_cleanup_activities(
     except asyncio.CancelledError:
         logger.warning("Cleanup activity is only partially executed due to cancellation.")
         raise
-
-
-def create_tasks(
-        loop: asyncio.AbstractEventLoop,
-        *arg: Any,
-        **kwargs: Any,
-) -> Collection[aiotasks.Task]:
-    """
-    .. deprecated:: 1.0
-        This is a synchronous interface to `spawn_tasks`.
-        It is only kept for backward compatibility, as it was exposed
-        via the public interface of the framework.
-    """
-    warnings.warn("kopf.create_tasks() is deprecated: "
-                  "use kopf.spawn_tasks() or kopf.operator().",
-                  DeprecationWarning)
-    return loop.run_until_complete(spawn_tasks(*arg, **kwargs))

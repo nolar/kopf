@@ -52,7 +52,6 @@ from kopf.reactor.running import (
     run_tasks,
     operator,
     run,
-    create_tasks,  # deprecated
 )
 from kopf.storage.diffbase import (
     DiffBaseStorage,
@@ -145,7 +144,7 @@ __all__ = [
     'configure', 'LogFormat',
     'login_via_pykube', 'login_via_client', 'LoginError', 'ConnectionInfo',
     'event', 'info', 'warn', 'exception',
-    'spawn_tasks', 'run_tasks', 'operator', 'run', 'create_tasks',
+    'spawn_tasks', 'run_tasks', 'operator', 'run',
     'adopt', 'label',
     'not_',
     'all_',

@@ -107,7 +107,7 @@ async def process_peering_event(
 
     The freeze object is passed both to the peers handler to set/clear it,
     and to all the resource handlers to check its value when the events arrive
-    (see `create_tasks` and `run` functions).
+    (see :func:`spawn_tasks`).
     """
     body: bodies.RawBody = raw_event['object']
     meta: bodies.RawMeta = raw_event['object']['metadata']
