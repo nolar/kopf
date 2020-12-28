@@ -14,50 +14,6 @@ from kopf.utilities import aiotasks
 
 logger = logging.getLogger(__name__)
 
-# An exchange point between login() and run()/operator().
-# DEPRECATED: As soon as login() is removed, this global variable is not needed.
-global_vault: Optional[credentials.Vault] = None
-
-
-def login(
-        verify: bool = False,  # DEPRECATED: kept for backward compatibility
-        *,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
-) -> None:
-    """
-    Login to Kubernetes cluster, locally or remotely.
-
-    Keep the logged in state or config object in the global variable,
-    so that it is available for future operator runs.
-    """
-    warnings.warn("kopf.login() is deprecated; the operator now authenticates "
-                  "internally; cease using kopf.login().", DeprecationWarning)
-
-    # Remember the credentials store for later usage in the actual operator.
-    # Set the global vault for the legacy login()->run() scenario.
-    global global_vault
-    global_vault = credentials.Vault()
-
-    # Perform the initial one-time authentication in presumably the same loop.
-    loop = loop if loop is not None else asyncio.get_event_loop()
-    registry = registries.get_default_registry()
-    settings = configuration.OperatorSettings()
-    try:
-        loop.run_until_complete(activities.authenticate(
-            registry=registry,
-            settings=settings,
-            vault=global_vault,
-        ))
-    except asyncio.CancelledError:
-        pass
-    except activities.ActivityError as e:
-        # Detect and re-raise the original LoginErrors, not the general activity error.
-        # This is only needed for the legacy one-shot login, not for a background job.
-        for outcome in e.outcomes.values():
-            if isinstance(outcome.exception, credentials.LoginError):
-                raise outcome.exception
-        raise
-
 
 def run(
         *,
@@ -168,7 +124,6 @@ async def spawn_tasks(
     registry = registry if registry is not None else registries.get_default_registry()
     settings = settings if settings is not None else configuration.OperatorSettings()
     memories = memories if memories is not None else containers.ResourceMemories()
-    vault = vault if vault is not None else global_vault
     vault = vault if vault is not None else credentials.Vault()
     event_queue: posting.K8sEventQueue = asyncio.Queue()
     freeze_name = f"{peering_name!r}@{namespace}" if namespace else f"cluster-wide {peering_name!r}"

@@ -56,7 +56,6 @@ from kopf.reactor.running import (
     run_tasks,
     operator,
     run,
-    login,  # deprecated
     create_tasks,  # deprecated
 )
 from kopf.storage.diffbase import (
@@ -151,8 +150,7 @@ HandlerRetryError = TemporaryError  # a backward-compatibility alias
 __all__ = [
     'on', 'lifecycles', 'register', 'execute', 'daemon', 'timer',
     'configure', 'LogFormat',
-    'login', 'LoginError', 'ConnectionInfo',
-    'login_via_pykube', 'login_via_client',
+    'login_via_pykube', 'login_via_client', 'LoginError', 'ConnectionInfo',
     'event', 'info', 'warn', 'exception',
     'spawn_tasks', 'run_tasks', 'operator', 'run', 'create_tasks',
     'adopt', 'label',
