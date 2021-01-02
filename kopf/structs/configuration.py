@@ -140,6 +140,26 @@ class PeeringSettings:
     But they can be forced to either mode (standalone or mandatory peering).
     """
 
+    clusterwide: bool = False
+    """
+    Should the peering be clusterwide or namespaced?
+
+    Usually, the peering has the same mode as the operator, using the peering
+    objects either in the served namespaces or cluster-wide accordingly.
+
+    In exceptional cases, the peering can mismatch the operator's mode:
+    e.g. using the cluster-wide peering while the operator is namespaced.
+    """
+
+    @property
+    def namespaced(self) -> bool:
+        """ An inverse of ``clusterwide``, for code readability. """
+        return not self.clusterwide
+
+    @namespaced.setter
+    def namespaced(self, value: bool) -> None:
+        self.clusterwide = not value
+
 
 @dataclasses.dataclass
 class WatchingSettings:

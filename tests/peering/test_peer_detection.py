@@ -17,27 +17,13 @@ def with_namespaced_cr(hostname, aresponses):
     aresponses.add(hostname, url, 'get', {'spec': {}})
 
 
-@pytest.mark.usefixtures('with_namespaced_cr')
-@pytest.mark.usefixtures('with_cluster_cr')
-@pytest.mark.usefixtures('with_both_crds')
-@pytest.mark.parametrize('name', ['existent', 'absent'])
-@pytest.mark.parametrize('namespace', [None, 'namespace'], ids=['cluster', 'namespaced'])
-@pytest.mark.parametrize('mandatory', [False, True], ids=['optional', 'mandatory'])
-async def test_standalone(mandatory, namespace, name, settings):
-    settings.peering.standalone = True
-    settings.peering.mandatory = mandatory
-    settings.peering.name = name
-    peering = await detect(settings=settings, namespace=namespace)
-    assert peering is None
-
-
 @pytest.mark.usefixtures('with_cluster_cr')
 @pytest.mark.usefixtures('with_cluster_crd')
 @pytest.mark.parametrize('mandatory', [False, True], ids=['optional', 'mandatory'])
 async def test_cluster_scoped_when_existent(mandatory, settings):
     settings.peering.mandatory = mandatory
     settings.peering.name = 'existent'
-    peering = await detect(settings=settings, namespace=None)
+    peering = await detect(settings=settings, namespace=None, resource=CLUSTER_PEERING_RESOURCE)
     assert peering is True
 
 
@@ -47,7 +33,7 @@ async def test_cluster_scoped_when_existent(mandatory, settings):
 async def test_namespace_scoped_when_existent(mandatory, settings):
     settings.peering.mandatory = mandatory
     settings.peering.name = 'existent'
-    peering = await detect(settings=settings, namespace='namespace')
+    peering = await detect(settings=settings, namespace='namespace', resource=NAMESPACED_PEERING_RESOURCE)
     assert peering is True
 
 
@@ -57,7 +43,7 @@ async def test_cluster_scoped_when_absent(hostname, aresponses, settings):
     settings.peering.name = 'absent'
     aresponses.add(hostname, re.compile(r'.*'), 'get', aresponses.Response(status=404), repeat=999)
     with pytest.raises(Exception, match=r"The mandatory peering 'absent' was not found") as e:
-        await detect(settings=settings, namespace=None)
+        await detect(settings=settings, namespace=None, resource=CLUSTER_PEERING_RESOURCE)
 
 
 @pytest.mark.usefixtures('with_namespaced_crd')
@@ -66,7 +52,7 @@ async def test_namespace_scoped_when_absent(hostname, aresponses, settings):
     settings.peering.name = 'absent'
     aresponses.add(hostname, re.compile(r'.*'), 'get', aresponses.Response(status=404), repeat=999)
     with pytest.raises(Exception, match=r"The mandatory peering 'absent' was not found") as e:
-        await detect(settings=settings, namespace='namespace')
+        await detect(settings=settings, namespace='namespace', resource=NAMESPACED_PEERING_RESOURCE)
 
 
 @pytest.mark.usefixtures('with_cluster_crd')
@@ -74,7 +60,7 @@ async def test_fallback_with_cluster_scoped(hostname, aresponses, assert_logs, c
     settings.peering.mandatory = False
     settings.peering.name = 'absent'
     aresponses.add(hostname, re.compile(r'.*'), 'get', aresponses.Response(status=404), repeat=999)
-    peering = await detect(settings=settings, namespace=None)
+    peering = await detect(settings=settings, namespace=None, resource=CLUSTER_PEERING_RESOURCE)
     assert peering is False
     assert_logs([
         "Default peering object is not found, falling back to the standalone mode."
@@ -86,7 +72,7 @@ async def test_fallback_with_namespace_scoped(hostname, aresponses, assert_logs,
     settings.peering.mandatory = False
     settings.peering.name = 'absent'
     aresponses.add(hostname, re.compile(r'.*'), 'get', aresponses.Response(status=404), repeat=999)
-    peering = await detect(settings=settings, namespace='namespace')
+    peering = await detect(settings=settings, namespace='namespace', resource=NAMESPACED_PEERING_RESOURCE)
     assert peering is False
     assert_logs([
         "Default peering object is not found, falling back to the standalone mode."

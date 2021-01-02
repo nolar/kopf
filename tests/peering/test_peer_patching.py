@@ -25,7 +25,7 @@ async def test_cleaning_peers_purges_them(
     aresponses.add(hostname, url, 'patch', patch_mock)
 
     peer = Peer(identity='id1', lastseen=lastseen)
-    await clean(peers=[peer], settings=settings, namespace=namespace)
+    await clean(peers=[peer], resource=peering_resource, settings=settings, namespace=namespace)
 
     assert patch_mock.called
     patch = await patch_mock.call_args_list[0][0][0].json()
@@ -47,7 +47,7 @@ async def test_touching_a_peer_stores_it(
     url = peering_resource.get_url(name='name0', namespace=namespace)
     aresponses.add(hostname, url, 'patch', patch_mock)
 
-    await touch(identity='id1', settings=settings, namespace=namespace)
+    await touch(identity='id1', resource=peering_resource, settings=settings, namespace=namespace)
 
     assert patch_mock.called
     patch = await patch_mock.call_args_list[0][0][0].json()
@@ -71,7 +71,7 @@ async def test_expiring_a_peer_purges_it(
     url = peering_resource.get_url(name='name0', namespace=namespace)
     aresponses.add(hostname, url, 'patch', patch_mock)
 
-    await touch(identity='id1', settings=settings, namespace=namespace, lifetime=0)
+    await touch(identity='id1', resource=peering_resource, settings=settings, namespace=namespace, lifetime=0)
 
     assert patch_mock.called
     patch = await patch_mock.call_args_list[0][0][0].json()
@@ -96,7 +96,7 @@ async def test_logs_are_skipped_in_stealth_mode(
     url = peering_resource.get_url(name='name0', namespace=namespace)
     aresponses.add(hostname, url, 'patch', patch_mock)
 
-    await touch(identity='id1', settings=settings, namespace=namespace)
+    await touch(identity='id1', resource=peering_resource, settings=settings, namespace=namespace)
 
     assert_logs([], prohibited=[
         "Keep-alive in",
@@ -119,7 +119,7 @@ async def test_logs_are_logged_in_exposed_mode(
     url = peering_resource.get_url(name='name0', namespace=namespace)
     aresponses.add(hostname, url, 'patch', patch_mock)
 
-    await touch(identity='id1', settings=settings, namespace=namespace)
+    await touch(identity='id1', resource=peering_resource, settings=settings, namespace=namespace)
 
     assert_logs([
         r"Keep-alive in 'name0' (in 'ns'|cluster-wide): ok",
@@ -143,7 +143,7 @@ async def test_logs_are_logged_when_absent(
     url = peering_resource.get_url(name='name0', namespace=namespace)
     aresponses.add(hostname, url, 'patch', patch_mock)
 
-    await touch(identity='id1', settings=settings, namespace=namespace)
+    await touch(identity='id1', resource=peering_resource, settings=settings, namespace=namespace)
 
     assert_logs([
         r"Keep-alive in 'name0' (in 'ns'|cluster-wide): not found",

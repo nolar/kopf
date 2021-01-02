@@ -7,6 +7,10 @@ import pytest
 
 from kopf.engines.peering import process_peering_event
 from kopf.structs import bodies, primitives
+from kopf.structs.references import Resource
+
+NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings')
+CLUSTER_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'clusterkopfpeerings')
 
 
 @dataclasses.dataclass(frozen=True, eq=False)
@@ -43,9 +47,10 @@ async def replenished(mocker):
     ['our-name', None, 'our-name', 'their-namespace'],
     ['our-name', None, 'their-name', 'our-namespace'],
 ])
+@pytest.mark.parametrize('peering_resource', [NAMESPACED_PEERING_RESOURCE, CLUSTER_PEERING_RESOURCE])
 async def test_other_peering_objects_are_ignored(
         mocker, k8s_mocked, settings, replenished,
-        our_name, our_namespace, their_name, their_namespace):
+        peering_resource, our_name, our_namespace, their_name, their_namespace):
 
     status = mocker.Mock()
     status.items.side_effect = Exception("This should not be called.")
@@ -65,6 +70,7 @@ async def test_other_peering_objects_are_ignored(
         replenished=replenished,
         autoclean=False,
         identity='id',
+        resource=peering_resource,
         settings=settings,
         namespace=our_namespace,
     )
@@ -103,6 +109,7 @@ async def test_toggled_on_for_higher_priority_peer_when_initially_off(
         replenished=replenished,
         autoclean=False,
         namespace='namespace',
+        resource=NAMESPACED_PEERING_RESOURCE,
         identity='id',
         settings=settings,
     )
@@ -147,6 +154,7 @@ async def test_ignored_for_higher_priority_peer_when_already_on(
         replenished=replenished,
         autoclean=False,
         namespace='namespace',
+        resource=NAMESPACED_PEERING_RESOURCE,
         identity='id',
         settings=settings,
     )
@@ -192,6 +200,7 @@ async def test_toggled_off_for_lower_priority_peer_when_initially_on(
         replenished=replenished,
         autoclean=False,
         namespace='namespace',
+        resource=NAMESPACED_PEERING_RESOURCE,
         identity='id',
         settings=settings,
     )
@@ -235,6 +244,7 @@ async def test_ignored_for_lower_priority_peer_when_already_off(
         replenished=replenished,
         autoclean=False,
         namespace='namespace',
+        resource=NAMESPACED_PEERING_RESOURCE,
         identity='id',
         settings=settings,
     )
@@ -279,6 +289,7 @@ async def test_toggled_on_for_same_priority_peer_when_initially_off(
         replenished=replenished,
         autoclean=False,
         namespace='namespace',
+        resource=NAMESPACED_PEERING_RESOURCE,
         identity='id',
         settings=settings,
     )
@@ -325,6 +336,7 @@ async def test_ignored_for_same_priority_peer_when_already_on(
         replenished=replenished,
         autoclean=False,
         namespace='namespace',
+        resource=NAMESPACED_PEERING_RESOURCE,
         identity='id',
         settings=settings,
     )
@@ -372,6 +384,7 @@ async def test_resumes_immediately_on_expiration_of_blocking_peers(
         replenished=replenished,
         autoclean=False,
         namespace='namespace',
+        resource=NAMESPACED_PEERING_RESOURCE,
         identity='id',
         settings=settings,
     )
