@@ -45,10 +45,6 @@ from kopf.utilities import aiotasks, hostnames
 
 logger = logging.getLogger(__name__)
 
-# The CRD info on the special sync-object.
-CLUSTER_PEERING_RESOURCE = references.Resource('zalando.org', 'v1', 'clusterkopfpeerings')
-NAMESPACED_PEERING_RESOURCE = references.Resource('zalando.org', 'v1', 'kopfpeerings')
-
 Identity = NewType('Identity', str)
 
 
@@ -290,9 +286,9 @@ def guess_resource(settings: configuration.OperatorSettings) -> Optional[referen
     if settings.peering.standalone:
         return None
     elif settings.peering.clusterwide:
-        return CLUSTER_PEERING_RESOURCE
+        return references.CLUSTER_PEERING_RESOURCE
     elif settings.peering.namespaced:
-        return NAMESPACED_PEERING_RESOURCE
+        return references.NAMESPACED_PEERING_RESOURCE
     else:
         raise TypeError("Unidentified peering mode (none of standalone/cluster/namespaced).")
 

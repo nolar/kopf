@@ -6,8 +6,6 @@ from kopf.structs import bodies, references
 
 _T = TypeVar('_T')
 
-CRD_CRD = references.Resource('apiextensions.k8s.io', 'v1beta1', 'customresourcedefinitions')
-
 
 class _UNSET(enum.Enum):
     token = enum.auto()

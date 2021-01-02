@@ -85,3 +85,9 @@ class Selector:
         self_tuple = (self.group, self.version, self.plural)
         other_tuple = (resource.group, resource.version, resource.plural)
         return self_tuple == other_tuple
+
+
+# Some predefined API endpoints that we use in the framework itself (not exposed to the operators).
+EVENTS_RESOURCE = Resource('', 'v1', 'events')
+CLUSTER_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'clusterkopfpeerings')
+NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings')

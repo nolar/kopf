@@ -1,7 +1,7 @@
 import aiohttp.web
 import pytest
 
-from kopf.clients.events import EVENTS_CORE_V1_CRD, EVENTS_V1BETA1_CRD, post_event
+from kopf.clients.events import EVENTS_RESOURCE, post_event
 from kopf.structs.bodies import build_object_reference
 
 
@@ -9,7 +9,7 @@ async def test_posting(
         resp_mocker, aresponses, hostname):
 
     post_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
-    aresponses.add(hostname, EVENTS_CORE_V1_CRD.get_url(namespace='ns'), 'post', post_mock)
+    aresponses.add(hostname, EVENTS_RESOURCE.get_url(namespace='ns'), 'post', post_mock)
 
     obj = {'apiVersion': 'group/version',
            'kind': 'kind',
@@ -37,31 +37,11 @@ async def test_posting(
     assert data['involvedObject']['uid'] == 'uid'
 
 
-async def test_type_is_v1_not_v1beta1(
-        resp_mocker, aresponses, hostname):
-
-    core_v1_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
-    v1beta1_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
-    aresponses.add(hostname, EVENTS_CORE_V1_CRD.get_url(namespace='ns'), 'post', core_v1_mock)
-    aresponses.add(hostname, EVENTS_V1BETA1_CRD.get_url(namespace='ns'), 'post', v1beta1_mock)
-
-    obj = {'apiVersion': 'group/version',
-           'kind': 'kind',
-           'metadata': {'namespace': 'ns',
-                        'name': 'name',
-                        'uid': 'uid'}}
-    ref = build_object_reference(obj)
-    await post_event(ref=ref, type='type', reason='reason', message='message')
-
-    assert core_v1_mock.called
-    assert not v1beta1_mock.called
-
-
 async def test_api_errors_logged_but_suppressed(
         resp_mocker, aresponses, hostname, assert_logs):
 
     post_mock = resp_mocker(return_value=aresponses.Response(status=555))
-    aresponses.add(hostname, EVENTS_CORE_V1_CRD.get_url(namespace='ns'), 'post', post_mock)
+    aresponses.add(hostname, EVENTS_RESOURCE.get_url(namespace='ns'), 'post', post_mock)
 
     obj = {'apiVersion': 'group/version',
            'kind': 'kind',
@@ -98,7 +78,7 @@ async def test_message_is_cut_to_max_length(
         resp_mocker, aresponses, hostname):
 
     post_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
-    aresponses.add(hostname, EVENTS_CORE_V1_CRD.get_url(namespace='ns'), 'post', post_mock)
+    aresponses.add(hostname, EVENTS_RESOURCE.get_url(namespace='ns'), 'post', post_mock)
 
     obj = {'apiVersion': 'group/version',
            'kind': 'kind',
@@ -121,7 +101,7 @@ async def test_headers_are_not_leaked(
         resp_mocker, aresponses, hostname, assert_logs, status):
 
     post_mock = resp_mocker(return_value=aresponses.Response(status=status))
-    aresponses.add(hostname, EVENTS_CORE_V1_CRD.get_url(namespace='ns'), 'post', post_mock)
+    aresponses.add(hostname, EVENTS_RESOURCE.get_url(namespace='ns'), 'post', post_mock)
 
     obj = {'apiVersion': 'group/version',
            'kind': 'kind',
