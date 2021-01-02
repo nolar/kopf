@@ -3,7 +3,7 @@ import pykube
 import yaml
 
 
-@kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+@kopf.on.create('kopfexamples')
 def create_fn(spec, **kwargs):
 
     # Render the pod yaml with some spec fields used in the template.

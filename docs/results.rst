@@ -42,7 +42,7 @@ restore in case of operator failures & restarts:
     import kopf
     import pykube
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     def create_job(status, **_):
         if not status.get('create_pvc', {}):
             raise kopf.TemporaryError("PVC is not created yet.", delay=10)
@@ -54,7 +54,7 @@ restore in case of operator failures & restarts:
         obj.create()
         return {'name': obj.name}
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     def create_pvc(**_):
         api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         obj = pykube.PersistentVolumeClaim(api, {...})

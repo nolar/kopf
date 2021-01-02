@@ -40,7 +40,7 @@ async def cleanup_fn(logger, **kwargs):
     await asyncio.sleep(3)
 
 
-@kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+@kopf.on.create('kopfexamples')
 def create_1(body, meta, spec, status, **kwargs):
     children = _create_children(owner=body)
 
@@ -51,7 +51,7 @@ def create_1(body, meta, spec, status, **kwargs):
     return {'job1-status': 100}
 
 
-@kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+@kopf.on.create('kopfexamples')
 def create_2(body, meta, spec, status, retry=None, **kwargs):
     wait_for_something()  # specific for job2, e.g. an external API poller
 
@@ -62,18 +62,18 @@ def create_2(body, meta, spec, status, retry=None, **kwargs):
     return {'job2-status': 100}
 
 
-@kopf.on.update('zalando.org', 'v1', 'kopfexamples')
+@kopf.on.update('kopfexamples')
 def update(body, meta, spec, status, old, new, diff, **kwargs):
     print('Handling the diff')
     pprint.pprint(list(diff))
 
 
-@kopf.on.field('zalando.org', 'v1', 'kopfexamples', field='spec.lst')
+@kopf.on.field('kopfexamples', field='spec.lst')
 def update_lst(body, meta, spec, status, old, new, **kwargs):
     print(f'Handling the FIELD = {old} -> {new}')
 
 
-@kopf.on.delete('zalando.org', 'v1', 'kopfexamples')
+@kopf.on.delete('kopfexamples')
 def delete(body, meta, spec, status, **kwargs):
     pass
 
@@ -87,7 +87,7 @@ def wait_for_something():
     time.sleep(1)
 
 
-@kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+@kopf.on.create('kopfexamples')
 def create_pod(**kwargs):
 
     # Render the pod yaml with some spec fields used in the template.
@@ -112,6 +112,6 @@ def create_pod(**kwargs):
     api.session.close()
 
 
-@kopf.on.event('', 'v1', 'pods', labels={'application': 'kopf-example-10'})
+@kopf.on.event('pods', labels={'application': 'kopf-example-10'})
 def example_pod_change(logger, **kwargs):
     logger.info("This pod is special for us.")

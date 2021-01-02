@@ -18,7 +18,7 @@ In case the operators are also type-checked, type casting can be used
     class MyMeta(kopf.Meta):
         unknownField: str
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     def create_fn(*args, meta: kopf.Meta, **kwargs):
         meta = cast(MyMeta, meta)
         print(meta['unknownField'])

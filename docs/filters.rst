@@ -30,7 +30,7 @@ Match only when the resource's label or annotation has a specific value:
 
 .. code-block:: python
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
+    @kopf.on.create('kopfexamples',
                     labels={'some-label': 'somevalue'},
                     annotations={'some-annotation': 'somevalue'})
     def my_handler(spec, **_):
@@ -40,7 +40,7 @@ Match only when the resource has a label or an annotation with any value:
 
 .. code-block:: python
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
+    @kopf.on.create('kopfexamples',
                     labels={'some-label': kopf.PRESENT},
                     annotations={'some-annotation': kopf.PRESENT})
     def my_handler(spec, **_):
@@ -50,7 +50,7 @@ Match only when the resource has no label or annotation with that name:
 
 .. code-block:: python
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
+    @kopf.on.create('kopfexamples',
                     labels={'some-label': kopf.ABSENT},
                     annotations={'some-annotation': kopf.ABSENT})
     def my_handler(spec, **_):
@@ -68,18 +68,15 @@ similar to the metadata filters:
 
 .. code-block:: python
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', field='spec.field',
-                    value='world')
+    @kopf.on.create('kopfexamples', field='spec.field', value='world')
     def created_with_world_in_field(**_):
         pass
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', field='spec.field',
-                    value=kopf.PRESENT)
+    @kopf.on.create('kopfexamples', field='spec.field', value=kopf.PRESENT)
     def created_with_field(**_):
         pass
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', field='spec.no-field',
-                    value=kopf.ABSENT)
+    @kopf.on.create('kopfexamples', field='spec.no-field', value=kopf.ABSENT)
     def created_without_field(**_):
         pass
 
@@ -89,11 +86,11 @@ with any value (for update handlers: present before or after the change).
 
 .. code-block:: python
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', field='spec.field')
+    @kopf.on.create('kopfexamples', field='spec.field')
     def created_with_field(**_):
         pass
 
-    @kopf.on.update('zalando.org', 'v1', 'kopfexamples', field='spec.field')
+    @kopf.on.update('kopfexamples', field='spec.field')
     def field_is_affected(old, new, **_):
         pass
 
@@ -154,18 +151,15 @@ with the same filtering methods/markers as all other filters.
 
 .. code-block:: python
 
-    @kopf.on.update('zalando.org', 'v1', 'kopfexamples', field='spec.field',
-                    old='x', new='y')
+    @kopf.on.update('kopfexamples', field='spec.field', old='x', new='y')
     def field_is_edited(**_):
         pass
 
-    @kopf.on.update('zalando.org', 'v1', 'kopfexamples', field='spec.field',
-                    old=kopf.ABSENT, new=kopf.PRESENT)
+    @kopf.on.update('kopfexamples', field='spec.field', old=kopf.ABSENT, new=kopf.PRESENT)
     def field_is_added(**_):
         pass
 
-    @kopf.on.update('zalando.org', 'v1', 'kopfexamples', field='spec.field',
-                    old=kopf.PRESENT, new=kopf.ABSENT)
+    @kopf.on.update('kopfexamples', field='spec.field', old=kopf.PRESENT, new=kopf.ABSENT)
     def field_is_removed(**_):
         pass
 
@@ -177,8 +171,7 @@ to it or by adding it to the resource (i.e. regardless of the old value):*
 
 .. code-block:: python
 
-    @kopf.on.update('zalando.org', 'v1', 'kopfexamples', field='spec.field',
-                    new='world')
+    @kopf.on.update('kopfexamples', field='spec.field', new='world')
     def hello_world(**_):
         pass
 
@@ -187,8 +180,7 @@ to something else, or by removing the field from the resource:*
 
 .. code-block:: python
 
-    @kopf.on.update('zalando.org', 'v1', 'kopfexamples', field='spec.field',
-                    old='world')
+    @kopf.on.update('kopfexamples', field='spec.field', old='world')
     def goodbye_world(**_):
         pass
 
@@ -225,7 +217,7 @@ The passed value will be ``None`` if the value is absent in the resource.
     def check_value(value, spec, **_):
         return value == 'some-value' and spec.get('field') is not None
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
+    @kopf.on.create('kopfexamples',
                     labels={'some-label': check_value},
                     annotations={'some-annotation': check_value})
     def my_handler(spec, **_):
@@ -243,13 +235,11 @@ as the respective handlers (with ``**kwargs/**_`` for forward compatibility).
     def is_good_enough(spec, **_):
         return spec.get('field') in spec.get('items', [])
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
-                    when=is_good_enough)
+    @kopf.on.create('kopfexamples', when=is_good_enough)
     def my_handler(spec, **_):
         pass
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
-                    when=lambda spec, **_: spec.get('field') in spec.get('items', []))
+    @kopf.on.create('kopfexamples', when=lambda spec, **_: spec.get('field') in spec.get('items', []))
     def my_handler(spec, **_):
         pass
 
@@ -274,13 +264,13 @@ Kopf provides several helpers to combine multiple callbacks into one
     def value_fn1(value, **_): return value.startswith('some')
     def value_fn2(value, **_): return value.endswith('label')
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
+    @kopf.on.create('kopfexamples',
                     when=kopf.all_([whole_fn1, whole_fn2]),
                     labels={'somelabel': kopf.all_([value_fn1, value_fn2])})
     def create_fn1(**_):
         pass
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples',
+    @kopf.on.create('kopfexamples',
                     when=kopf.any_([whole_fn1, whole_fn2]),
                     labels={'somelabel': kopf.any_([value_fn1, value_fn2])})
     def create_fn2(**_):

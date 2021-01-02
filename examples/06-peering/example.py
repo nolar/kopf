@@ -1,6 +1,6 @@
 import kopf
 
 
-@kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+@kopf.on.create('kopfexamples')
 def create_fn(**kwargs):
     pass

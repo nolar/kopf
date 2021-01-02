@@ -3,7 +3,7 @@ The decorators for the event handlers. Usually used as::
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     def creation_handler(**kwargs):
         pass
 
@@ -592,7 +592,7 @@ def subhandler(  # lgtm[py/similar-function]
     Can be used only inside of the handler function.
     It is efficiently a syntax sugar to look like all other handlers::
 
-        @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+        @kopf.on.create('kopfexamples')
         def create(*, spec, **kwargs):
 
             for task in spec.get('tasks', []):
@@ -660,7 +660,7 @@ def register(  # lgtm[py/similar-function]
 
     Example::
 
-        @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+        @kopf.on.create('kopfexamples')
         def create_it(spec, **kwargs):
             for task in spec.get('tasks', []):
 
@@ -671,7 +671,7 @@ def register(  # lgtm[py/similar-function]
 
     This is efficiently an equivalent for::
 
-        @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+        @kopf.on.create('kopfexamples')
         def create_it(spec, **kwargs):
             for task in spec.get('tasks', []):
 

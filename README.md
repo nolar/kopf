@@ -84,7 +84,7 @@ A minimalistic operator can look like this:
 ```python
 import kopf
 
-@kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+@kopf.on.create('kopfexamples')
 def create_fn(spec, name, meta, status, **kwargs):
     print(f"And here we are! Created {name} with spec: {spec}")
 ```
@@ -99,7 +99,7 @@ To run a non-exiting function for every resource as long as it exists:
 import time
 import kopf
 
-@kopf.daemon('zalando.org', 'v1', 'kopfexamples')
+@kopf.daemon('kopfexamples')
 def my_daemon(spec, stopped, **kwargs):
     while not stopped:
         print(f"Object's spec: {spec}")
@@ -111,7 +111,7 @@ Or the same with the timers:
 ```python
 import kopf
 
-@kopf.timer('zalando.org', 'v1', 'kopfexamples', interval=1)
+@kopf.timer('kopfexamples', interval=1)
 def my_timer(spec, **kwargs):
     print(f"Object's spec: {spec}")
 ```

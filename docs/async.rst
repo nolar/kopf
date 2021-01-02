@@ -9,7 +9,7 @@ Kopf supports asynchronous handler functions::
     import asyncio
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     async def create_fn(spec, **_):
         await asyncio.sleep(1.0)
 

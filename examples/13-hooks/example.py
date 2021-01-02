@@ -72,7 +72,7 @@ async def monitored_objects(**kwargs):
     return {namespace: sorted([name for name in STOPPERS[namespace]]) for namespace in STOPPERS}
 
 
-@kopf.on.event('', 'v1', 'pods')
+@kopf.on.event('pods')
 async def pod_task(namespace, name, logger, **_):
     async with LOCK:
         if namespace not in STOPPERS or name not in STOPPERS[namespace]:
