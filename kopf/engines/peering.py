@@ -41,7 +41,7 @@ import iso8601
 
 from kopf.clients import fetching, patching
 from kopf.structs import bodies, configuration, patches, primitives, references
-from kopf.utilities import hostnames
+from kopf.utilities import aiotasks, hostnames
 
 logger = logging.getLogger(__name__)
 
@@ -281,3 +281,22 @@ def detect_own_id(*, manual: bool) -> Identity:
 
 def guess_resource(namespace: references.Namespace) -> references.Resource:
     return CLUSTER_PEERING_RESOURCE if namespace is None else NAMESPACED_PEERING_RESOURCE
+
+
+async def touch_command(
+        *,
+        namespace: references.Namespace,
+        lifetime: Optional[int],
+        identity: Identity,
+        settings: configuration.OperatorSettings,
+) -> None:
+    await aiotasks.wait({
+        aiotasks.create_guarded_task(
+            name="peering command", finishable=True, logger=logger,
+            coro=touch(
+                namespace=namespace,
+                identity=identity,
+                settings=settings,
+                lifetime=lifetime),
+        )
+    })

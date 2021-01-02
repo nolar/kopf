@@ -3,7 +3,7 @@ import functools
 import logging
 import signal
 import threading
-from typing import Collection, MutableSequence, Optional, Sequence
+from typing import Collection, Coroutine, MutableSequence, Optional, Sequence
 
 from kopf.clients import auth
 from kopf.engines import peering, posting, probing
@@ -29,6 +29,7 @@ def run(
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
+        _command: Optional[Coroutine[None, None, None]] = None,
 ) -> None:
     """
     Run the whole operator synchronously.
@@ -50,6 +51,7 @@ def run(
             stop_flag=stop_flag,
             ready_flag=ready_flag,
             vault=vault,
+            _command=_command,
         ))
     except asyncio.CancelledError:
         pass
@@ -69,6 +71,7 @@ async def operator(
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
+        _command: Optional[Coroutine[None, None, None]] = None,
 ) -> None:
     """
     Run the whole operator asynchronously.
@@ -92,6 +95,7 @@ async def operator(
         stop_flag=stop_flag,
         ready_flag=ready_flag,
         vault=vault,
+        _command=_command,
     )
     await run_tasks(operator_tasks, ignored=existing_tasks)
 
@@ -110,6 +114,7 @@ async def spawn_tasks(
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
+        _command: Optional[Coroutine[None, None, None]] = None,
 ) -> Collection[aiotasks.Task]:
     """
     Spawn all the tasks needed to run the operator.
@@ -200,46 +205,54 @@ async def spawn_tasks(
                 settings=settings,
                 endpoint=liveness_endpoint)))
 
-    # Monitor the peers, unless explicitly disabled.
-    if await peering.detect_presence(namespace=namespace, settings=settings):
-        identity = peering.detect_own_id(manual=False)
+    # Explicit command is a hack for the CLI to run coroutines in an operator-like environment.
+    # If not specified, then use the normal resource processing. It is not exposed publicly (yet).
+    if _command is not None:
         tasks.append(aiotasks.create_guarded_task(
-            name="peering keepalive", flag=started_flag, logger=logger,
-            coro=peering.keepalive(
-                namespace=namespace,
-                settings=settings,
-                identity=identity)))
-        tasks.append(aiotasks.create_guarded_task(
-            name="watcher of peering", flag=started_flag, logger=logger,
-            coro=queueing.watcher(
-                namespace=namespace,
-                settings=settings,
-                resource=peering.guess_resource(namespace=namespace),
-                processor=functools.partial(peering.process_peering_event,
-                                            namespace=namespace,
-                                            settings=settings,
-                                            identity=identity,
-                                            freeze_toggle=freeze_toggle))))
+            name="the command", flag=started_flag, logger=logger, finishable=True,
+            coro=_command))
+    else:
 
-    # Resource event handling, only once for every known resource (de-duplicated).
-    resources = (registry._resource_watching.resources |
-                 registry._resource_spawning.resources |
-                 registry._resource_changing.resources)
-    for resource in resources:
-        tasks.append(aiotasks.create_guarded_task(
-            name=f"watcher of {resource.name}", flag=started_flag, logger=logger,
-            coro=queueing.watcher(
-                namespace=namespace,
-                settings=settings,
-                resource=resource,
-                freeze_checker=freeze_checker,
-                processor=functools.partial(processing.process_resource_event,
-                                            lifecycle=lifecycle,
-                                            registry=registry,
-                                            settings=settings,
-                                            memories=memories,
-                                            resource=resource,
-                                            event_queue=event_queue))))
+        # Monitor the peers, unless explicitly disabled.
+        if await peering.detect_presence(namespace=namespace, settings=settings):
+            identity = peering.detect_own_id(manual=False)
+            tasks.append(aiotasks.create_guarded_task(
+                name="peering keepalive", flag=started_flag, logger=logger,
+                coro=peering.keepalive(
+                    namespace=namespace,
+                    settings=settings,
+                    identity=identity)))
+            tasks.append(aiotasks.create_guarded_task(
+                name="watcher of peering", flag=started_flag, logger=logger,
+                coro=queueing.watcher(
+                    namespace=namespace,
+                    settings=settings,
+                    resource=peering.guess_resource(namespace=namespace),
+                    processor=functools.partial(peering.process_peering_event,
+                                                namespace=namespace,
+                                                settings=settings,
+                                                identity=identity,
+                                                freeze_toggle=freeze_toggle))))
+
+        # Resource event handling, only once for every known resource (de-duplicated).
+        resources = (registry._resource_watching.resources |
+                     registry._resource_spawning.resources |
+                     registry._resource_changing.resources)
+        for resource in resources:
+            tasks.append(aiotasks.create_guarded_task(
+                name=f"watcher of {resource.name}", flag=started_flag, logger=logger,
+                coro=queueing.watcher(
+                    namespace=namespace,
+                    settings=settings,
+                    resource=resource,
+                    freeze_checker=freeze_checker,
+                    processor=functools.partial(processing.process_resource_event,
+                                                lifecycle=lifecycle,
+                                                registry=registry,
+                                                settings=settings,
+                                                memories=memories,
+                                                resource=resource,
+                                                event_queue=event_queue))))
 
     # On Ctrl+C or pod termination, cancel all tasks gracefully.
     if threading.current_thread() is threading.main_thread():

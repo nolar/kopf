@@ -1,13 +1,11 @@
-import asyncio
 import dataclasses
 import functools
 from typing import Any, Callable, List, Optional
 
 import click
 
-from kopf.clients import auth
 from kopf.engines import loggers, peering
-from kopf.reactor import activities, registries, running
+from kopf.reactor import registries, running
 from kopf.structs import configuration, credentials, primitives, references
 from kopf.utilities import loaders
 
@@ -122,22 +120,17 @@ def freeze(
 ) -> None:
     """ Freeze the resource handling in the cluster. """
     identity = peering.Identity(id) if id else peering.detect_own_id(manual=True)
-    registry = registries.SmartOperatorRegistry()
     settings = configuration.OperatorSettings()
     settings.peering.name = peering_name
     settings.peering.priority = priority
-    vault = credentials.Vault()
-    auth.vault_var.set(vault)
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(asyncio.wait({
-        activities.authenticate(registry=registry, settings=settings, vault=vault),
-        peering.touch(
+    return running.run(
+        namespace=namespace,
+        settings=settings,
+        _command=peering.touch_command(
+            namespace=namespace,
             identity=identity,
             settings=settings,
-            namespace=namespace,
-            lifetime=lifetime,
-        ),
-    }))
+            lifetime=lifetime))
 
 
 @main.command()
@@ -152,18 +145,13 @@ def resume(
 ) -> None:
     """ Resume the resource handling in the cluster. """
     identity = peering.Identity(id) if id else peering.detect_own_id(manual=True)
-    registry = registries.SmartOperatorRegistry()
     settings = configuration.OperatorSettings()
     settings.peering.name = peering_name
-    vault = credentials.Vault()
-    auth.vault_var.set(vault)
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(asyncio.wait({
-        activities.authenticate(registry=registry, settings=settings, vault=vault),
-        peering.touch(
+    return running.run(
+        namespace=namespace,
+        settings=settings,
+        _command=peering.touch_command(
+            namespace=namespace,
             identity=identity,
             settings=settings,
-            namespace=namespace,
-            lifetime=0,
-        ),
-    }))
+            lifetime=0))
