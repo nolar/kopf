@@ -1,6 +1,9 @@
 import pytest
 
-from kopf.engines.peering import CLUSTER_PEERING_RESOURCE, NAMESPACED_PEERING_RESOURCE
+from kopf.structs.references import Resource
+
+NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings')
+CLUSTER_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'clusterkopfpeerings')
 
 
 @pytest.fixture(autouse=True)

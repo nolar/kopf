@@ -1,6 +1,9 @@
 import pytest
 
-from kopf.engines.peering import Peer, keepalive
+from kopf.engines.peering import keepalive
+from kopf.structs.references import Resource
+
+NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings')
 
 
 class StopInfiniteCycleException(Exception):
@@ -18,7 +21,8 @@ async def test_background_task_runs(mocker, settings):
 
     settings.peering.lifetime = 33
     with pytest.raises(StopInfiniteCycleException):
-        await keepalive(settings=settings, identity='id', namespace='namespace')
+        await keepalive(settings=settings, identity='id',
+                        resource=NAMESPACED_PEERING_RESOURCE, namespace='namespace')
 
     assert randint_mock.call_count == 3  # only to be sure that we test the right thing
     assert sleep_mock.call_count == 3

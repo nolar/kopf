@@ -21,7 +21,7 @@ from contextvars import ContextVar
 from typing import TYPE_CHECKING, Iterable, Iterator, NamedTuple, NoReturn, Optional, Union, cast
 
 from kopf.clients import events
-from kopf.structs import bodies, configuration, dicts
+from kopf.structs import bodies, configuration, dicts, references
 
 if TYPE_CHECKING:
     K8sEventQueue = asyncio.Queue["K8sEvent"]
@@ -159,10 +159,13 @@ async def poster(
     This task is defined in this module only because all other tasks are here,
     so we keep all forever-running tasks together.
     """
+    selector = references.EVENTS
+    resource = references.Resource(selector.group, selector.version, selector.plural)
     while True:
         posted_event = await event_queue.get()
         await events.post_event(
             ref=posted_event.ref,
             type=posted_event.type,
             reason=posted_event.reason,
-            message=posted_event.message)
+            message=posted_event.message,
+            resource=resource)

@@ -3,7 +3,7 @@ import functools
 import logging
 import signal
 import threading
-from typing import Collection, Coroutine, MutableSequence, Optional, Sequence
+from typing import Collection, Coroutine, Iterable, MutableSequence, Optional, Sequence
 
 from kopf.clients import auth
 from kopf.engines import peering, posting, probing
@@ -130,9 +130,6 @@ async def spawn_tasks(
     memories = memories if memories is not None else containers.ResourceMemories()
     vault = vault if vault is not None else credentials.Vault()
     event_queue: posting.K8sEventQueue = asyncio.Queue()
-    freeze_name = f"{peering_name!r}@{namespace}" if namespace else f"cluster-wide {peering_name!r}"
-    freeze_checker = primitives.ToggleSet()
-    freeze_toggle = await freeze_checker.make_toggle(name=freeze_name)
     signal_flag: aiotasks.Future = asyncio.Future()
     started_flag: asyncio.Event = asyncio.Event()
     tasks: MutableSequence[aiotasks.Task] = []
@@ -141,6 +138,8 @@ async def spawn_tasks(
     if peering_name is not None:
         settings.peering.mandatory = True
         settings.peering.name = peering_name
+    if namespace is None:
+        settings.peering.clusterwide = True
     if standalone is not None:
         settings.peering.standalone = standalone
     if priority is not None:
@@ -212,27 +211,35 @@ async def spawn_tasks(
             name="the command", flag=started_flag, logger=logger, finishable=True,
             coro=_command))
     else:
+        resources: Iterable[references.Resource]
 
         # Monitor the peers, unless explicitly disabled.
-        if await peering.detect_presence(namespace=namespace, settings=settings):
-            identity = peering.detect_own_id(manual=False)
-            tasks.append(aiotasks.create_guarded_task(
-                name="peering keepalive", flag=started_flag, logger=logger,
-                coro=peering.keepalive(
-                    namespace=namespace,
-                    settings=settings,
-                    identity=identity)))
-            tasks.append(aiotasks.create_guarded_task(
-                name="watcher of peering", flag=started_flag, logger=logger,
-                coro=queueing.watcher(
-                    namespace=namespace,
-                    settings=settings,
-                    resource=peering.guess_resource(namespace=namespace),
-                    processor=functools.partial(peering.process_peering_event,
-                                                namespace=namespace,
-                                                settings=settings,
-                                                identity=identity,
-                                                freeze_toggle=freeze_toggle))))
+        freeze_checker = primitives.ToggleSet()
+        identity = peering.detect_own_id(manual=False)
+        resource = peering.guess_resource(settings=settings)
+        resources = {resource} if resource is not None else ()
+        for resource in resources:
+            if await peering.detect(namespace=namespace, resource=resource, settings=settings):
+                freeze_toggle = await freeze_checker.make_toggle(name=f"{peering_name!r}")
+                tasks.append(aiotasks.create_guarded_task(
+                    name="peering keepalive", flag=started_flag, logger=logger,
+                    coro=peering.keepalive(
+                        namespace=namespace,
+                        settings=settings,
+                        resource=resource,
+                        identity=identity)))
+                tasks.append(aiotasks.create_guarded_task(
+                    name="watcher of peering", flag=started_flag, logger=logger,
+                    coro=queueing.watcher(
+                        namespace=namespace,
+                        settings=settings,
+                        resource=resource,
+                        processor=functools.partial(peering.process_peering_event,
+                                                    namespace=namespace,
+                                                    settings=settings,
+                                                    resource=resource,
+                                                    identity=identity,
+                                                    freeze_toggle=freeze_toggle))))
 
         # Resource event handling, only once for every known resource (de-duplicated).
         resources = (registry._resource_watching.resources |
