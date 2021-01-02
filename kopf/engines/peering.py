@@ -35,7 +35,7 @@ import getpass
 import logging
 import os
 import random
-from typing import Any, Dict, Iterable, Mapping, NewType, NoReturn, Optional, cast
+from typing import Any, Collection, Dict, Iterable, Mapping, NewType, NoReturn, Optional, cast
 
 import iso8601
 
@@ -303,7 +303,8 @@ def guess_resource(settings: configuration.OperatorSettings) -> Optional[referen
 
 async def touch_command(
         *,
-        namespace: references.Namespace,
+        clusterwide: bool,
+        namespaces: Collection[references.Namespace] = (),
         lifetime: Optional[int],
         identity: Identity,
         settings: configuration.OperatorSettings,
@@ -321,4 +322,5 @@ async def touch_command(
                 settings=settings,
                 lifetime=lifetime),
         )
+        for namespace in ({None} if clusterwide else namespaces)
     })

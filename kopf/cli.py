@@ -1,6 +1,7 @@
 import dataclasses
 import functools
-from typing import Any, Callable, List, Optional
+import os
+from typing import Any, Callable, Collection, List, Optional
 
 import click
 
@@ -61,7 +62,8 @@ def main() -> None:
 
 @main.command()
 @logging_options
-@click.option('-n', '--namespace', default=None)
+@click.option('-A', '--all-namespaces', 'clusterwide', is_flag=True)
+@click.option('-n', '--namespace', 'namespaces', multiple=True)
 @click.option('--standalone', is_flag=True, default=None)
 @click.option('--dev', 'priority', type=int, is_flag=True, flag_value=666)
 @click.option('-L', '--liveness', 'liveness_endpoint', type=str)
@@ -77,10 +79,15 @@ def run(
         peering_name: Optional[str],
         priority: Optional[int],
         standalone: Optional[bool],
-        namespace: references.Namespace,
+        namespaces: Collection[references.NamespaceName],
+        clusterwide: bool,
         liveness_endpoint: Optional[str],
 ) -> None:
     """ Start an operator process and handle all the requests. """
+    if os.environ.get('KOPF_RUN_NAMESPACE'):  # legacy for single-namespace mode
+        namespaces = tuple(namespaces) + (os.environ.get('KOPF_RUN_NAMESPACE'),)
+    if namespaces and clusterwide:
+        raise click.UsageError("Either --namespace or --all-namespaces can be used, not both.")
     if __controls.registry is not None:
         registries.set_default_registry(__controls.registry)
     loaders.preload(
@@ -89,7 +96,8 @@ def run(
     )
     return running.run(
         standalone=standalone,
-        namespace=namespace,
+        namespaces=namespaces,
+        clusterwide=clusterwide,
         priority=priority,
         peering_name=peering_name,
         liveness_endpoint=liveness_endpoint,
@@ -103,7 +111,8 @@ def run(
 
 @main.command()
 @logging_options
-@click.option('-n', '--namespace', default=None)
+@click.option('-n', '--namespace', 'namespaces', multiple=True)
+@click.option('-A', '--all-namespaces', 'clusterwide', is_flag=True)
 @click.option('-i', '--id', type=str, default=None)
 @click.option('--dev', 'priority', flag_value=666)
 @click.option('-P', '--peering', 'peering_name', required=True, envvar='KOPF_FREEZE_PEERING')
@@ -114,7 +123,8 @@ def freeze(
         id: Optional[str],
         message: Optional[str],
         lifetime: int,
-        namespace: references.Namespace,
+        namespaces: Collection[references.NamespaceName],
+        clusterwide: bool,
         peering_name: str,
         priority: int,
 ) -> None:
@@ -124,10 +134,12 @@ def freeze(
     settings.peering.name = peering_name
     settings.peering.priority = priority
     return running.run(
-        namespace=namespace,
+        clusterwide=clusterwide,
+        namespaces=namespaces,
         settings=settings,
         _command=peering.touch_command(
-            namespace=namespace,
+            clusterwide=clusterwide,
+            namespaces=namespaces,
             identity=identity,
             settings=settings,
             lifetime=lifetime))
@@ -135,12 +147,14 @@ def freeze(
 
 @main.command()
 @logging_options
-@click.option('-n', '--namespace', default=None)
+@click.option('-n', '--namespace', 'namespaces', multiple=True)
+@click.option('-A', '--all-namespaces', 'clusterwide', is_flag=True)
 @click.option('-i', '--id', type=str, default=None)
 @click.option('-P', '--peering', 'peering_name', required=True, envvar='KOPF_RESUME_PEERING')
 def resume(
         id: Optional[str],
-        namespace: references.Namespace,
+        namespaces: Collection[references.NamespaceName],
+        clusterwide: bool,
         peering_name: str,
 ) -> None:
     """ Resume the resource handling in the cluster. """
@@ -148,10 +162,10 @@ def resume(
     settings = configuration.OperatorSettings()
     settings.peering.name = peering_name
     return running.run(
-        namespace=namespace,
         settings=settings,
         _command=peering.touch_command(
-            namespace=namespace,
+            clusterwide=clusterwide,
+            namespaces=namespaces,
             identity=identity,
             settings=settings,
             lifetime=0))

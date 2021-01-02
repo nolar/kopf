@@ -1,8 +1,10 @@
 import asyncio
 import functools
+import itertools
 import logging
 import signal
 import threading
+import warnings
 from typing import Collection, Coroutine, Iterable, MutableSequence, Optional, Sequence
 
 from kopf.clients import auth
@@ -25,7 +27,9 @@ def run(
         priority: Optional[int] = None,
         peering_name: Optional[str] = None,
         liveness_endpoint: Optional[str] = None,
-        namespace: Optional[references.Namespace] = None,
+        clusterwide: bool = False,
+        namespaces: Collection[references.Namespace] = (),
+        namespace: Optional[references.Namespace] = None,  # deprecated
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
@@ -44,6 +48,8 @@ def run(
             settings=settings,
             memories=memories,
             standalone=standalone,
+            clusterwide=clusterwide,
+            namespaces=namespaces,
             namespace=namespace,
             priority=priority,
             peering_name=peering_name,
@@ -67,7 +73,9 @@ async def operator(
         priority: Optional[int] = None,
         peering_name: Optional[str] = None,
         liveness_endpoint: Optional[str] = None,
-        namespace: Optional[references.Namespace] = None,
+        clusterwide: bool = False,
+        namespaces: Collection[references.Namespace] = (),
+        namespace: Optional[references.Namespace] = None,  # deprecated
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
@@ -88,6 +96,8 @@ async def operator(
         settings=settings,
         memories=memories,
         standalone=standalone,
+        clusterwide=clusterwide,
+        namespaces=namespaces,
         namespace=namespace,
         priority=priority,
         peering_name=peering_name,
@@ -110,7 +120,9 @@ async def spawn_tasks(
         priority: Optional[int] = None,
         peering_name: Optional[str] = None,
         liveness_endpoint: Optional[str] = None,
-        namespace: Optional[references.Namespace] = None,
+        clusterwide: bool = False,
+        namespaces: Collection[references.Namespace] = (),
+        namespace: Optional[references.Namespace] = None,  # deprecated
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
@@ -122,6 +134,22 @@ async def spawn_tasks(
     The tasks are properly inter-connected with the synchronisation primitives.
     """
     loop = asyncio.get_running_loop()
+
+    if namespaces and namespace:
+        raise TypeError("Either namespaces= or namespace= can be passed. Got both.")
+    elif namespace:
+        warnings.warn("namespace= is deprecated; use namespaces=[...]", DeprecationWarning)
+        namespaces = [namespace]
+
+    if clusterwide and namespaces:
+        raise TypeError("The operator can be either cluster-wide or namespaced, not both.")
+    if not clusterwide and not namespaces:
+        warnings.warn("Absence of either namespaces or cluster-wide flag will become an error soon."
+                      " For now, switching to the cluster-wide mode for backward compatibility.",
+                      FutureWarning)
+        clusterwide = True
+    if clusterwide:
+        namespaces = {None}
 
     # The freezer and the registry are scoped to this whole task-set, to sync them all.
     lifecycle = lifecycle if lifecycle is not None else lifecycles.get_default_lifecycle()
@@ -135,11 +163,10 @@ async def spawn_tasks(
     tasks: MutableSequence[aiotasks.Task] = []
 
     # Map kwargs into the settings object.
+    settings.peering.clusterwide = clusterwide
     if peering_name is not None:
         settings.peering.mandatory = True
         settings.peering.name = peering_name
-    if namespace is None:
-        settings.peering.clusterwide = True
     if standalone is not None:
         settings.peering.standalone = standalone
     if priority is not None:
@@ -218,18 +245,20 @@ async def spawn_tasks(
         identity = peering.detect_own_id(manual=False)
         resource = peering.guess_resource(settings=settings)
         resources = {resource} if resource is not None else ()
-        for resource in resources:
+        for namespace, resource in itertools.product(namespaces, resources):
             if await peering.detect(namespace=namespace, resource=resource, settings=settings):
-                freeze_toggle = await freeze_checker.make_toggle(name=f"{peering_name!r}")
+                what = f"{settings.peering.name!r}"
+                where = f"in {namespace!r}" if namespace else "cluster-wide"
+                freeze_toggle = await freeze_checker.make_toggle(name=f"{what} {where}")
                 tasks.append(aiotasks.create_guarded_task(
-                    name="peering keepalive", flag=started_flag, logger=logger,
+                    name=f"peering keepalive {where}", flag=started_flag, logger=logger,
                     coro=peering.keepalive(
                         namespace=namespace,
                         settings=settings,
                         resource=resource,
                         identity=identity)))
                 tasks.append(aiotasks.create_guarded_task(
-                    name="watcher of peering", flag=started_flag, logger=logger,
+                    name=f"watcher of peering {where}", flag=started_flag, logger=logger,
                     coro=queueing.watcher(
                         namespace=namespace,
                         settings=settings,
@@ -245,9 +274,9 @@ async def spawn_tasks(
         resources = (registry._resource_watching.resources |
                      registry._resource_spawning.resources |
                      registry._resource_changing.resources)
-        for resource in resources:
+        for namespace, resource in itertools.product(namespaces, resources):
             tasks.append(aiotasks.create_guarded_task(
-                name=f"watcher of {resource.name}", flag=started_flag, logger=logger,
+                name=f"watcher of {resource.name}@{namespace}", flag=started_flag, logger=logger,
                 coro=queueing.watcher(
                     namespace=namespace,
                     settings=settings,

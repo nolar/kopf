@@ -26,10 +26,14 @@ def test_options_passed_to_preload(invoke, options, envvars, kwarg, value, prelo
     ('standalone', True, ['--standalone'], {}),
     ('standalone', True, [], {'KOPF_RUN_STANDALONE': 'true'}),
 
-    ('namespace', None, [], {}),
-    ('namespace', 'ns', ['-n', 'ns'], {}),
-    ('namespace', 'ns', ['--namespace=ns'], {}),
-    ('namespace', 'ns', [], {'KOPF_RUN_NAMESPACE': 'ns'}),
+    ('namespaces', (), [], {}),
+    ('namespaces', ('ns',), ['-n', 'ns'], {}),
+    ('namespaces', ('ns',), ['--namespace=ns'], {}),
+    ('namespaces', ('ns',), [], {'KOPF_RUN_NAMESPACE': 'ns'}),
+    ('namespaces', ('ns',), [], {'KOPF_RUN_NAMESPACES': 'ns'}),
+
+    ('namespaces', ('ns1', 'ns2'), ['--namespace=ns1', '-n', 'ns2'], {}),
+    ('namespaces', ('ns1', 'ns2'), [], {'KOPF_RUN_NAMESPACES': 'ns1 ns2'}),
 
     ('peering_name', None, [], {}),
     ('peering_name', 'peer', ['-P', 'peer'], {}),
@@ -43,7 +47,8 @@ def test_options_passed_to_preload(invoke, options, envvars, kwarg, value, prelo
     ('priority', 666, ['--dev'], {}),
 ], ids=[
     'default-standalone', 'opt-long-standalone', 'env-standalone',
-    'default-namespace', 'opt-short-n', 'opt-long-namespace', 'env-namespace',
+    'default-namespace', 'opt-short-n', 'opt-long-namespace', 'env1-namespace', 'env2-namespace',
+    'opt-multi-namespaces', 'env-multi-namespaces',
     'default-peering', 'opt-short-P', 'opt-long-peering', 'env-peering',
     'default-priority', 'opt-short-p', 'opt-long-priority', 'env-priority', 'opt-long-dev',
 ])
