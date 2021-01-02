@@ -88,6 +88,6 @@ class Selector:
 
 
 # Some predefined API endpoints that we use in the framework itself (not exposed to the operators).
-EVENTS_RESOURCE = Resource('', 'v1', 'events')
-CLUSTER_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'clusterkopfpeerings')
-NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings')
+EVENTS = Selector('', 'v1', 'events')
+CLUSTER_PEERINGS = Selector('zalando.org', 'v1', 'clusterkopfpeerings')
+NAMESPACED_PEERINGS = Selector('zalando.org', 'v1', 'kopfpeerings')

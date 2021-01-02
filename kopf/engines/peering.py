@@ -282,15 +282,23 @@ def detect_own_id(*, manual: bool) -> Identity:
     return Identity(f'{user}@{host}' if manual else f'{user}@{host}/{now}/{rnd}')
 
 
-def guess_resource(settings: configuration.OperatorSettings) -> Optional[references.Resource]:
+def guess_selector(settings: configuration.OperatorSettings) -> Optional[references.Selector]:
     if settings.peering.standalone:
         return None
     elif settings.peering.clusterwide:
-        return references.CLUSTER_PEERING_RESOURCE
+        return references.CLUSTER_PEERINGS
     elif settings.peering.namespaced:
-        return references.NAMESPACED_PEERING_RESOURCE
+        return references.NAMESPACED_PEERINGS
     else:
         raise TypeError("Unidentified peering mode (none of standalone/cluster/namespaced).")
+
+
+def guess_resource(settings: configuration.OperatorSettings) -> Optional[references.Resource]:
+    selector = guess_selector(settings=settings)
+    if selector is not None:
+        return references.Resource(selector.group, selector.version, selector.plural)
+    else:
+        return None
 
 
 async def touch_command(

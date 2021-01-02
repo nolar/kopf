@@ -159,7 +159,8 @@ async def poster(
     This task is defined in this module only because all other tasks are here,
     so we keep all forever-running tasks together.
     """
-    resource = references.EVENTS_RESOURCE
+    selector = references.EVENTS
+    resource = references.Resource(selector.group, selector.version, selector.plural)
     while True:
         posted_event = await event_queue.get()
         await events.post_event(

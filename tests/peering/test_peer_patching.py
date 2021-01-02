@@ -2,8 +2,11 @@ import aiohttp.web
 import freezegun
 import pytest
 
-from kopf.engines.peering import CLUSTER_PEERING_RESOURCE, \
-                                 NAMESPACED_PEERING_RESOURCE, Peer, clean, touch
+from kopf.engines.peering import Peer, clean, touch
+from kopf.structs.references import Resource
+
+NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings')
+CLUSTER_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'clusterkopfpeerings')
 
 
 @pytest.mark.usefixtures('with_both_crds')
