@@ -214,7 +214,7 @@ async def spawn_tasks(
     else:
 
         # Monitor the peers, unless explicitly disabled.
-        if await peering.detect_presence(namespace=namespace, settings=settings):
+        if await peering.detect(namespace=namespace, settings=settings):
             identity = peering.detect_own_id(manual=False)
             tasks.append(aiotasks.create_guarded_task(
                 name="peering keepalive", flag=started_flag, logger=logger,

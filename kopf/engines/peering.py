@@ -227,7 +227,7 @@ async def clean(
     await patching.patch_obj(resource=resource, namespace=namespace, name=name, patch=patch)
 
 
-async def detect_presence(
+async def detect(
         *,
         settings: configuration.OperatorSettings,
         namespace: references.Namespace,
