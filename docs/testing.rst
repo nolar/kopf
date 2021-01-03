@@ -23,7 +23,7 @@ exit code, and output are available to the test (for additional assertions).
     from kopf.testing import KopfRunner
 
     def test_operator():
-        with KopfRunner(['run', '--verbose', 'examples/01-minimal/example.py']) as runner:
+        with KopfRunner(['run', '-A', '--verbose', 'examples/01-minimal/example.py']) as runner:
             # do something while the operator is running.
 
             subprocess.run("kubectl apply -f examples/obj.yaml", shell=True, check=True)

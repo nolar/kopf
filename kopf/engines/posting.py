@@ -143,6 +143,7 @@ def exception(
 async def poster(
         *,
         event_queue: K8sEventQueue,
+        backbone: references.Backbone,
 ) -> NoReturn:
     """
     Post events in the background as they are queued.
@@ -159,8 +160,7 @@ async def poster(
     This task is defined in this module only because all other tasks are here,
     so we keep all forever-running tasks together.
     """
-    selector = references.EVENTS
-    resource = references.Resource(selector.group, selector.version, selector.plural)
+    resource = await backbone.wait_for(references.EVENTS)
     while True:
         posted_event = await event_queue.get()
         await events.post_event(

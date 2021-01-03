@@ -18,7 +18,7 @@ The interval defines how often to trigger the handler (in seconds):
     import time
     import kopf
 
-    @kopf.timer('zalando.org', 'v1', 'kopfexamples', interval=1.0)
+    @kopf.timer('kopfexamples', interval=1.0)
     def ping_kex(spec, **kwargs):
         pass
 
@@ -37,7 +37,7 @@ every number of seconds sharp, no matter how long it takes to execute it:
     import time
     import kopf
 
-    @kopf.timer('zalando.org', 'v1', 'kopfexamples', interval=1.0, sharp=True)
+    @kopf.timer('kopfexamples', interval=1.0, sharp=True)
     def ping_kex(spec, **kwargs):
         time.sleep(0.3)
 
@@ -57,7 +57,7 @@ be invoked when it is stable for some time:
     import asyncio
     import kopf
 
-    @kopf.timer('zalando.org', 'v1', 'kopfexamples', idle=10)
+    @kopf.timer('kopfexamples', idle=10)
     def ping_kex(spec, **kwargs):
         print(f"FIELD={spec['field']}")
 
@@ -76,7 +76,7 @@ not change. Once changed, the timer will stop and wait for the new idling time:
     import asyncio
     import kopf
 
-    @kopf.timer('zalando.org', 'v1', 'kopfexamples', idle=10, interval=1)
+    @kopf.timer('kopfexamples', idle=10, interval=1)
     def ping_kex(spec, **kwargs):
         print(f"FIELD={spec['field']}")
 
@@ -95,7 +95,7 @@ It is possible to postpone the invocations:
     import time
     import kopf
 
-    @kopf.timer('zalando.org', 'v1', 'kopfexamples', interval=1, initial_delay=5)
+    @kopf.timer('kopfexamples', interval=1, initial_delay=5)
     def ping_kex(spec, **kwargs):
         print(f"FIELD={spec['field']}")
 
@@ -114,7 +114,7 @@ the resources every 10 seconds if they are unmodified for 10 minutes:
 
     import kopf
 
-    @kopf.timer('zalando.org', 'v1', 'kopfexamples',
+    @kopf.timer('kopfexamples',
                 initial_delay=60, interval=10, idle=600)
     def ping_kex(spec, **kwargs):
         pass
@@ -147,7 +147,7 @@ from the first execution to the end of the retrying cycle:
 
     import kopf
 
-    @kopf.timer('zalando.org', 'v1', 'kopfexamples',
+    @kopf.timer('kopfexamples',
                 errors=kopf.ErrorsMode.TEMPORARY, interval=10, backoff=5)
     def monitor_kex_by_time(name, retry, **kwargs):
         if retry < 3:
@@ -184,7 +184,7 @@ as a key.
     import random
     import kopf
 
-    @kopf.timer('zalando.org', 'v1', 'kopfexamples', interval=10)
+    @kopf.timer('kopfexamples', interval=10)
     def ping_kex(spec, **kwargs):
         return random.randint(0, 100)
 
@@ -204,7 +204,7 @@ It is also possible to use the existing :doc:`filters`:
 
     import kopf
 
-    @kopf.timer('zalando.org', 'v1', 'kopfexamples', interval=10,
+    @kopf.timer('kopfexamples', interval=10,
                 annotations={'some-annotation': 'some-value'},
                 labels={'some-label': 'some-value'},
                 when=lambda name, **_: 'some' in name)

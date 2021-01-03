@@ -1,6 +1,6 @@
 from typing import Optional
 
-from kopf.clients import auth, discovery, errors
+from kopf.clients import auth, errors
 from kopf.structs import bodies, patches, references
 
 
@@ -34,10 +34,7 @@ async def patch_obj(
     if context is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 
-    is_namespaced = await discovery.is_namespaced(resource=resource, context=context)
-    namespace = namespace if is_namespaced else None
-
-    as_subresource = await discovery.is_status_subresource(resource=resource, context=context)
+    as_subresource = 'status' in resource.subresources
     body_patch = dict(patch)  # shallow: for mutation of the top-level keys below.
     status_patch = body_patch.pop('status', None) if as_subresource else None
 

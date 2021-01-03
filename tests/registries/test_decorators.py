@@ -5,7 +5,6 @@ from kopf.reactor.handling import handler_var, subregistry_var
 from kopf.reactor.invocation import context
 from kopf.reactor.registries import OperatorRegistry, ResourceChangingRegistry
 from kopf.structs.handlers import HANDLER_REASONS, Activity, ErrorsMode, Reason
-from kopf.structs.references import Resource
 
 
 def test_on_startup_minimal():
@@ -61,12 +60,11 @@ def test_on_probe_minimal():
 
 # Resume handlers are mixed-in into all resource-changing reactions with initial listing.
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
-def test_on_resume_minimal(reason, cause_factory):
+def test_on_resume_minimal(reason, cause_factory, resource):
     registry = kopf.get_default_registry()
-    resource = Resource('group', 'version', 'plural')
     cause = cause_factory(resource=resource, reason=reason, initial=True)
 
-    @kopf.on.resume('group', 'version', 'plural')
+    @kopf.on.resume(resource.group, resource.version, resource.plural)
     def fn(**_):
         pass
 
@@ -87,12 +85,11 @@ def test_on_resume_minimal(reason, cause_factory):
     assert handlers[0].new is None
 
 
-def test_on_create_minimal(cause_factory):
+def test_on_create_minimal(cause_factory, resource):
     registry = kopf.get_default_registry()
-    resource = Resource('group', 'version', 'plural')
     cause = cause_factory(resource=resource, reason=Reason.CREATE)
 
-    @kopf.on.create('group', 'version', 'plural')
+    @kopf.on.create(resource.group, resource.version, resource.plural)
     def fn(**_):
         pass
 
@@ -113,12 +110,11 @@ def test_on_create_minimal(cause_factory):
     assert handlers[0].new is None
 
 
-def test_on_update_minimal(cause_factory):
+def test_on_update_minimal(cause_factory, resource):
     registry = kopf.get_default_registry()
-    resource = Resource('group', 'version', 'plural')
     cause = cause_factory(resource=resource, reason=Reason.UPDATE)
 
-    @kopf.on.update('group', 'version', 'plural')
+    @kopf.on.update(resource.group, resource.version, resource.plural)
     def fn(**_):
         pass
 
@@ -139,12 +135,11 @@ def test_on_update_minimal(cause_factory):
     assert handlers[0].new is None
 
 
-def test_on_delete_minimal(cause_factory):
+def test_on_delete_minimal(cause_factory, resource):
     registry = kopf.get_default_registry()
-    resource = Resource('group', 'version', 'plural')
     cause = cause_factory(resource=resource, reason=Reason.DELETE)
 
-    @kopf.on.delete('group', 'version', 'plural')
+    @kopf.on.delete(resource.group, resource.version, resource.plural)
     def fn(**_):
         pass
 
@@ -165,14 +160,13 @@ def test_on_delete_minimal(cause_factory):
     assert handlers[0].new is None
 
 
-def test_on_field_minimal(cause_factory):
+def test_on_field_minimal(cause_factory, resource):
     registry = kopf.get_default_registry()
-    resource = Resource('group', 'version', 'plural')
     old = {'field': {'subfield': 'old'}}
     new = {'field': {'subfield': 'new'}}
     cause = cause_factory(resource=resource, reason=Reason.UPDATE, old=old, new=new, body=new)
 
-    @kopf.on.field('group', 'version', 'plural', field='field.subfield')
+    @kopf.on.field(resource.group, resource.version, resource.plural, field='field.subfield')
     def fn(**_):
         pass
 
@@ -193,9 +187,9 @@ def test_on_field_minimal(cause_factory):
     assert handlers[0].new is None
 
 
-def test_on_field_fails_without_field():
+def test_on_field_fails_without_field(resource):
     with pytest.raises(TypeError):
-        @kopf.on.field('group', 'version', 'plural')
+        @kopf.on.field(resource.group, resource.version, resource.plural)
         def fn(**_):
             pass
 
@@ -262,15 +256,14 @@ def test_on_probe_with_all_kwargs(mocker):
 
 # Resume handlers are mixed-in into all resource-changing reactions with initial listing.
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
-def test_on_resume_with_most_kwargs(mocker, reason, cause_factory):
+def test_on_resume_with_most_kwargs(mocker, reason, cause_factory, resource):
     registry = OperatorRegistry()
-    resource = Resource('group', 'version', 'plural')
     cause = cause_factory(resource=resource, reason=reason, initial=True)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
     when = lambda **_: False
 
-    @kopf.on.resume('group', 'version', 'plural',
+    @kopf.on.resume(resource.group, resource.version, resource.plural,
                     id='id', registry=registry,
                     errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     deleted=True,
@@ -299,15 +292,14 @@ def test_on_resume_with_most_kwargs(mocker, reason, cause_factory):
     assert handlers[0].new is None
 
 
-def test_on_create_with_most_kwargs(mocker, cause_factory):
+def test_on_create_with_most_kwargs(mocker, cause_factory, resource):
     registry = OperatorRegistry()
-    resource = Resource('group', 'version', 'plural')
     cause = cause_factory(resource=resource, reason=Reason.CREATE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
     when = lambda **_: False
 
-    @kopf.on.create('group', 'version', 'plural',
+    @kopf.on.create(resource.group, resource.version, resource.plural,
                     id='id', registry=registry,
                     errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     labels={'somelabel': 'somevalue'},
@@ -334,15 +326,14 @@ def test_on_create_with_most_kwargs(mocker, cause_factory):
     assert handlers[0].new is None
 
 
-def test_on_update_with_most_kwargs(mocker, cause_factory):
+def test_on_update_with_most_kwargs(mocker, cause_factory, resource):
     registry = OperatorRegistry()
-    resource = Resource('group', 'version', 'plural')
     cause = cause_factory(resource=resource, reason=Reason.UPDATE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
     when = lambda **_: False
 
-    @kopf.on.update('group', 'version', 'plural',
+    @kopf.on.update(resource.group, resource.version, resource.plural,
                     id='id', registry=registry,
                     errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     labels={'somelabel': 'somevalue'},
@@ -373,15 +364,14 @@ def test_on_update_with_most_kwargs(mocker, cause_factory):
     pytest.param(True, id='optional'),
     pytest.param(False, id='mandatory'),
 ])
-def test_on_delete_with_most_kwargs(mocker, cause_factory, optional):
+def test_on_delete_with_most_kwargs(mocker, cause_factory, optional, resource):
     registry = OperatorRegistry()
-    resource = Resource('group', 'version', 'plural')
     cause = cause_factory(resource=resource, reason=Reason.DELETE)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
     when = lambda **_: False
 
-    @kopf.on.delete('group', 'version', 'plural',
+    @kopf.on.delete(resource.group, resource.version, resource.plural,
                     id='id', registry=registry,
                     errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     optional=optional,
@@ -409,9 +399,8 @@ def test_on_delete_with_most_kwargs(mocker, cause_factory, optional):
     assert handlers[0].new is None
 
 
-def test_on_field_with_most_kwargs(mocker, cause_factory):
+def test_on_field_with_most_kwargs(mocker, cause_factory, resource):
     registry = OperatorRegistry()
-    resource = Resource('group', 'version', 'plural')
     old = {'field': {'subfield': 'old'}}
     new = {'field': {'subfield': 'new'}}
     cause = cause_factory(resource=resource, reason=Reason.UPDATE, old=old, new=new, body=new)
@@ -419,7 +408,7 @@ def test_on_field_with_most_kwargs(mocker, cause_factory):
 
     when = lambda **_: False
 
-    @kopf.on.field('group', 'version', 'plural', field='field.subfield',
+    @kopf.on.field(resource.group, resource.version, resource.plural, field='field.subfield',
                    id='id', registry=registry,
                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                    labels={'somelabel': 'somevalue'},
@@ -539,15 +528,14 @@ def test_annotations_filter_with_nones(resource, decorator, kwargs):
     pytest.param(kopf.daemon, dict(), '_resource_spawning', id='on-daemon'),
     pytest.param(kopf.timer, dict(), '_resource_spawning', id='on-timer'),
 ])
-def test_field_with_value(mocker, cause_factory, decorator, causeargs, handlers_prop):
+def test_field_with_value(mocker, cause_factory, decorator, causeargs, handlers_prop, resource):
     registry = OperatorRegistry()
-    resource = Resource('group', 'version', 'plural')
     old = {'field': {'subfield': 'old'}}
     new = {'field': {'subfield': 'new'}}
     cause = cause_factory(resource=resource, old=old, new=new, body=new, **causeargs)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
-    @decorator('group', 'version', 'plural', registry=registry,
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
                field='spec.field', value='value')
     def fn(**_):
         pass
@@ -563,13 +551,12 @@ def test_field_with_value(mocker, cause_factory, decorator, causeargs, handlers_
     pytest.param(kopf.on.update, dict(reason=Reason.UPDATE), '_resource_changing', id='on-update'),
     pytest.param(kopf.on.field, dict(reason=Reason.UPDATE), '_resource_changing', id='on-field'),
 ])
-def test_field_with_oldnew(mocker, cause_factory, decorator, causeargs, handlers_prop):
+def test_field_with_oldnew(mocker, cause_factory, decorator, causeargs, handlers_prop, resource):
     registry = OperatorRegistry()
-    resource = Resource('group', 'version', 'plural')
     cause = cause_factory(resource=resource, **causeargs)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
-    @decorator('group', 'version', 'plural', registry=registry,
+    @decorator(resource.group, resource.version, resource.plural, registry=registry,
                field='spec.field', old='old', new='new')
     def fn(**_):
         pass

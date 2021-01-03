@@ -7,12 +7,12 @@ import kopf
 import pykube
 
 
-@kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+@kopf.on.create('kopfexamples')
 def create_fn(**_):
     pass
 
 
-@kopf.on.delete('zalando.org', 'v1', 'kopfexamples')
+@kopf.on.delete('kopfexamples')
 def delete_fn(**_):
     pass
 

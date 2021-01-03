@@ -21,7 +21,7 @@ for the handled objects as Kubernetes events::
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     def create_fn(body, **_):
         kopf.event(body,
                    type='SomeType',
@@ -38,7 +38,7 @@ For convenience, a few shortcuts are provided to mimic the Python's ``logging``:
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     def create_fn(body, **_):
         kopf.warn(body, reason='SomeReason', message='Some message')
         kopf.info(body, reason='SomeReason', message='Some message')
@@ -78,7 +78,7 @@ at the moment (and not event the children)::
     import kopf
     import kubernetes
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     def create_fn(name, namespace, uid, **_):
 
         pod = kubernetes.client.V1Pod()

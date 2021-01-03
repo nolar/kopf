@@ -8,7 +8,10 @@ import pykube
 def test_pods_reacted():
 
     example_py = os.path.join(os.path.dirname(__file__), 'example.py')
-    with kopf.testing.KopfRunner(['run', '--standalone', '--verbose', example_py], timeout=60) as runner:
+    with kopf.testing.KopfRunner(
+        ['run', '--all-namespaces', '--standalone', '--verbose', example_py],
+        timeout=60,
+    ) as runner:
         name = _create_pod()
         time.sleep(5)  # give it some time to react
         _delete_pod(name)

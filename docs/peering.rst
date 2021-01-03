@@ -47,7 +47,7 @@ There are two types of custom resources used for peering:
 
 Kopf automatically chooses which one to use, depending on whether
 the operator is restricted to a namespace with :option:`--namespace`,
-or it is running unrestricted and cluster-wide.
+or it is running cluster-wide with :option:`--all-namespaces`.
 
 Create the peering objects as needed with one of:
 
@@ -65,7 +65,6 @@ Create the peering objects as needed with one of:
     metadata:
       namespace: default
       name: example
-
 
 .. note::
 
@@ -95,15 +94,15 @@ Or:
         settings.peering.name = "example"
         settings.peering.mandatory = True
 
-Depending on :option:`--namespace`, either ``ClusterKopfPeering``
-or ``KopfPeering`` will be used (in the operator's namespace).
+Depending on :option:`--namespace` or :option:`--all-namespaces`,
+either ``ClusterKopfPeering`` or ``KopfPeering`` will be used automatically.
 
-If the peering object does not exist, the operator will fail to start.
+If the peering object does not exist, the operator will freeze at start.
 Using :option:`--peering` assumes that the peering is mandatory.
 
 Please note that in the startup handler, this is not exactly the same:
 the mandatory mode must be set explicitly. Otherwise, the operator will try
-to auto-detect the presence of the custom peering object, but will not fail
+to auto-detect the presence of the custom peering object, but will not freeze
 if it is absent -- unlike with the ``--peering=`` CLI option.
 
 The operators from different peering objects do not see each other.
@@ -140,11 +139,10 @@ Automatic peering
 =================
 
 If there is a peering object detected with name `default` (either
-cluster-scoped or namespace-scoped, depending on :option:`--namespace`),
-then it is used by default as the peering object.
+cluster-scoped or namespace-scoped), then it is used by default
+as the peering object.
 
-Otherwise, Kopf will issue a warning and will run the operator
-in the standalone mode.
+Otherwise, Kopf will run the operator in the standalone mode.
 
 
 Multi-pod operators

@@ -5,8 +5,14 @@ import pytest
 from kopf.engines.peering import Peer, clean, touch
 from kopf.structs.references import Resource
 
-NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings')
-CLUSTER_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'clusterkopfpeerings')
+DEFAULTS = dict(
+    kind='...', singular='...', namespaced=True, preferred=True,
+    shortcuts=[], categories=[], subresources=[],
+    verbs=['list', 'watch', 'patch'],
+)
+
+NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings', **DEFAULTS)
+CLUSTER_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'clusterkopfpeerings', **DEFAULTS)
 
 
 @pytest.mark.usefixtures('with_both_crds')

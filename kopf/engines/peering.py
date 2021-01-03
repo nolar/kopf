@@ -39,7 +39,7 @@ from typing import Any, Dict, Iterable, Mapping, NewType, NoReturn, Optional, ca
 
 import iso8601
 
-from kopf.clients import fetching, patching
+from kopf.clients import patching
 from kopf.structs import bodies, configuration, patches, primitives, references
 from kopf.utilities import aiotasks, hostnames
 
@@ -110,7 +110,7 @@ async def process_peering_event(
     meta: bodies.RawMeta = raw_event['object']['metadata']
 
     # Silently ignore the peering objects which are not ours to worry.
-    if meta.get('namespace') != namespace or meta.get('name') != settings.peering.name:
+    if meta.get('name') != settings.peering.name:
         return
 
     # Find if we are still the highest priority operator.
@@ -234,23 +234,6 @@ async def clean(
     await patching.patch_obj(resource=resource, namespace=namespace, name=name, patch=patch)
 
 
-async def detect(
-        *,
-        settings: configuration.OperatorSettings,
-        resource: references.Resource,
-        namespace: references.Namespace,
-) -> Optional[bool]:
-    name = settings.peering.name
-    obj = await fetching.read_obj(resource=resource, namespace=namespace, name=name, default=None)
-    if settings.peering.mandatory and obj is None:
-        raise Exception(f"The mandatory peering {name!r} was not found.")
-    elif obj is None:
-        logger.warning(f"Default peering object is not found, falling back to the standalone mode.")
-        return False
-    else:
-        return True
-
-
 def detect_own_id(*, manual: bool) -> Identity:
     """
     Detect or generate the id for ourselves, i.e. the execute operator.
@@ -293,24 +276,24 @@ def guess_selector(settings: configuration.OperatorSettings) -> Optional[referen
         raise TypeError("Unidentified peering mode (none of standalone/cluster/namespaced).")
 
 
-def guess_resource(settings: configuration.OperatorSettings) -> Optional[references.Resource]:
-    selector = guess_selector(settings=settings)
-    if selector is not None:
-        return references.Resource(selector.group, selector.version, selector.plural)
-    else:
-        return None
-
-
 async def touch_command(
         *,
-        namespace: references.Namespace,
         lifetime: Optional[int],
+        insights: references.Insights,
         identity: Identity,
         settings: configuration.OperatorSettings,
 ) -> None:
-    resource = guess_resource(settings=settings)
+
+    await asyncio.wait({
+        insights.ready_namespaces.wait(),
+        insights.ready_resources.wait(),
+    })
+
+    selector = guess_selector(settings=settings)
+    resource = insights.backbone.get(selector) if selector else None
     if resource is None:
-        raise RuntimeError(f"Cannot find the peering resource.")
+        raise RuntimeError(f"Cannot find the peering resource {selector}.")
+
     await aiotasks.wait({
         aiotasks.create_guarded_task(
             name="peering command", finishable=True, logger=logger,
@@ -321,4 +304,5 @@ async def touch_command(
                 settings=settings,
                 lifetime=lifetime),
         )
+        for namespace in insights.namespaces
     })

@@ -6,8 +6,8 @@ import pytest
 from asynctest import call
 
 from kopf import event, exception, info, warn
-from kopf.engines.posting import K8sEvent, event_queue_loop_var, \
-                                 event_queue_var, poster, settings_var
+from kopf.engines.posting import K8sEvent, event_queue_loop_var, event_queue_var, poster
+from kopf.structs.references import Backbone, Resource
 
 OBJ1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
         'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1'}}
@@ -17,6 +17,10 @@ OBJ2 = {'apiVersion': 'group2/version2', 'kind': 'Kind2',
         'metadata': {'uid': 'uid2', 'name': 'name2', 'namespace': 'ns2'}}
 REF2 = {'apiVersion': 'group2/version2', 'kind': 'Kind2',
         'uid': 'uid2', 'name': 'name2', 'namespace': 'ns2'}
+
+EVENTS = Resource('', 'v1', 'events',
+                  kind='...', singular='...', namespaced=True, preferred=True,
+                  shortcuts=[], categories=[], subresources=[], verbs=[])
 
 
 @pytest.fixture(autouse=True)
@@ -37,10 +41,13 @@ async def test_poster_polls_and_posts(mocker):
             raise asyncio.CancelledError()
     post_event = mocker.patch('kopf.clients.events.post_event', side_effect=_cancel)
 
+    backbone = Backbone()
+    await backbone.fill(resources=[EVENTS])
+
     # A way to cancel a `while True` cycle by timing, even if the routines are not called.
     with pytest.raises(asyncio.CancelledError):
         async with async_timeout.timeout(0.5):
-            await poster(event_queue=event_queue)
+            await poster(event_queue=event_queue, backbone=backbone)
 
     assert post_event.call_count == 2
     assert post_event.await_count == 2

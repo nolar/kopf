@@ -92,13 +92,18 @@ def enforce_asyncio_mocker():
 @pytest.fixture()
 def resource():
     """ The resource used in the tests. Usually mocked, so it does not matter. """
-    return Resource('zalando.org', 'v1', 'kopfexamples')
+    return Resource(
+        group='zalando.org', version='v1', namespaced=True, preferred=True,
+        plural='kopfexamples', singular='kopfexample', kind='KopfExample',
+        shortcuts=['kex'], categories=['kopf', 'all'], subresources=[],
+        verbs=['get', 'list', 'watch', 'patch', 'create', 'delete'],
+    )
 
 
 @pytest.fixture()
 def selector(resource):
     """ The selector used in the tests. Usually mocked, so it does not matter. """
-    return Selector(resource.group, resource.version, resource.plural)
+    return Selector(group=resource.group, version=resource.version, plural=resource.plural)
 
 
 @pytest.fixture()
@@ -222,24 +227,6 @@ def resp_mocker(fake_vault, enforced_session, aresponses):
 def version_api(resp_mocker, aresponses, hostname, resource):
     result = {'resources': [{
         'name': resource.plural,
-        'namespaced': True,
-    }]}
-    list_mock = resp_mocker(return_value=aiohttp.web.json_response(result))
-    aresponses.add(hostname, resource.get_version_url(), 'get', list_mock)
-
-
-@pytest.fixture()
-def version_api_with_substatus(resp_mocker, aresponses, hostname, resource, version_api):
-
-    # TODO: stop auto-using `version_api` in all /k8s/ tests, then such purging will not be needed.
-    # TODO: but it is so convenient for all other /k8s/ tests, that removing it is undesired.
-    aresponses._responses[:] = []
-
-    result = {'resources': [{
-        'name': resource.plural,
-        'namespaced': True,
-    }, {
-        'name': f'{resource.plural}/status',
         'namespaced': True,
     }]}
     list_mock = resp_mocker(return_value=aiohttp.web.json_response(result))

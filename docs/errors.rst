@@ -23,7 +23,7 @@ which can happen either immediately, or after some delay::
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     def create_fn(spec, **_):
         if not is_data_ready():
             raise kopf.TemporaryError("The data is not yet ready.", delay=60)
@@ -53,7 +53,7 @@ is no need to retry over time, as it will not become better::
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     def create_fn(spec, **_):
         valid_until = datetime.datetime.fromisoformat(spec['validUntil'])
         if valid_until <= datetime.datetime.utcnow():
@@ -78,7 +78,7 @@ The reaction to the arbitrary errors can be configured::
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', errors=kopf.ErrorsMode.PERMANENT)
+    @kopf.on.create('kopfexamples', errors=kopf.ErrorsMode.PERMANENT)
     def create_fn(spec, **_):
         raise Exception()
 
@@ -96,7 +96,7 @@ The overall runtime of the handler can be limited::
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', timeout=60*60)
+    @kopf.on.create('kopfexamples', timeout=60*60)
     def create_fn(spec, **_):
         raise kopf.TemporaryError(delay=60)
 
@@ -117,7 +117,7 @@ The number of retries can be limited too::
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', retries=3)
+    @kopf.on.create('kopfexamples', retries=3)
     def create_fn(spec, **_):
         raise Exception()
 
@@ -135,7 +135,7 @@ can be configured::
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', backoff=30)
+    @kopf.on.create('kopfexamples', backoff=30)
     def create_fn(spec, **_):
         raise Exception()
 

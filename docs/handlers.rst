@@ -43,7 +43,7 @@ To register a handler for an event, use the `kopf.on` decorator::
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     def my_handler(spec, **_):
         pass
 
@@ -63,7 +63,7 @@ The following event-handler is available::
 
     import kopf
 
-    @kopf.on.event('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.event('kopfexamples')
     def my_handler(event, **_):
         pass
 
@@ -101,15 +101,15 @@ The following 3 core cause-handlers are available::
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     def my_handler(spec, **_):
         pass
 
-    @kopf.on.update('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.update('kopfexamples')
     def my_handler(spec, old, new, diff, **_):
         pass
 
-    @kopf.on.delete('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.delete('kopfexamples')
     def my_handler(spec, **_):
         pass
 
@@ -130,7 +130,7 @@ Resuming handlers
 An special kind of handlers can be used for cases when the operator restarts
 and detects an object that existed before::
 
-    @kopf.on.resume('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.resume('kopfexamples')
     def my_handler(spec, **_):
         pass
 
@@ -150,8 +150,8 @@ pointing to the same function, so that this function is called either
 when an object is created ("started) while the operator is alive ("exists"), or
 when the operator is started ("created") when the object is existent ("alive")::
 
-    @kopf.on.resume('zalando.org', 'v1', 'kopfexamples')
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.resume('kopfexamples')
+    @kopf.on.create('kopfexamples')
     def my_handler(spec, **_):
         pass
 
@@ -167,13 +167,13 @@ For example::
 
     TASKS = {}
 
-    @kopf.on.delete('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.delete('kopfexamples')
     async def my_handler(spec, name, **_):
         if name in TASKS:
             TASKS[name].cancel()
 
-    @kopf.on.resume('zalando.org', 'v1', 'kopfexamples')
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.resume('kopfexamples')
+    @kopf.on.create('kopfexamples')
     def my_handler(spec, **_):
         if name not in TASKS:
             TASKS[name] = asyncio.create_task(some_coroutine(spec))
@@ -187,7 +187,7 @@ If the resume handlers are still desired during the deletion handling, they
 can be explicitly marked as compatible with the deleted state of the object
 with ``deleted=True`` option::
 
-    @kopf.on.resume('zalando.org', 'v1', 'kopfexamples', deleted=True)
+    @kopf.on.resume('kopfexamples', deleted=True)
     def my_handler(spec, **_):
         pass
 
@@ -202,7 +202,7 @@ Specific fields can be handled instead of the whole object::
 
     import kopf
 
-    @kopf.on.field('zalando.org', 'v1', 'kopfexamples', field='spec.somefield')
+    @kopf.on.field('kopfexamples', field='spec.somefield')
     def somefield_changed(old, new, **_):
         pass
 
@@ -241,7 +241,7 @@ Sub-handlers can be implemented either imperatively
     import functools
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     async def create_fn(spec, **_):
         fns = {}
 
@@ -257,7 +257,7 @@ Or declaratively with decorators::
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     def create_fn(spec, **_):
 
         for item in spec.get('items', []):

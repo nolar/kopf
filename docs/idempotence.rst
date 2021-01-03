@@ -18,7 +18,7 @@ within one handling cycle.
     import functools
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     async def create(spec, namespace, **kwargs):
         print("Entering create()!")  # executed ~7 times.
         await kopf.execute(fns={

@@ -23,7 +23,7 @@ the main application in the main thread.
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     def create_fn(**_):
         pass
 
@@ -85,7 +85,7 @@ in :mod:`contextvars` containers with values isolated per-loop and per-task.
 
     registry = kopf.OperatorRegistry()
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', registry=registry)
+    @kopf.on.create('kopfexamples', registry=registry)
     def create_fn(**_):
         pass
 

@@ -81,6 +81,19 @@ async def test_dropping_an_unexistent_toggle():
     assert toggleset.is_off()
 
 
+async def test_dropping_multiple_toggles():
+    toggleset = ToggleSet()
+    toggle1 = await toggleset.make_toggle(True)
+    toggle2 = Toggle()
+    await toggleset.drop_toggles([toggle1, toggle2])
+    assert len(toggleset) == 0
+    assert set(toggleset) == set()
+    assert toggle1 not in toggleset
+    assert toggle2 not in toggleset
+    assert not toggleset.is_on()
+    assert toggleset.is_off()
+
+
 async def test_turning_a_toggle_on_turns_the_toggleset_on():
     toggleset = ToggleSet()
     toggle = await toggleset.make_toggle(False)

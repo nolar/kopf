@@ -99,10 +99,18 @@ class ResourceHandler(BaseHandler):
     field: Optional[dicts.FieldPath]
     value: Optional[filters.ValueFilter]
 
+    @property
+    def requires_patching(self) -> bool:
+        return True  # all typical handlers except several ones with overrides
+
 
 @dataclasses.dataclass
 class ResourceWatchingHandler(ResourceHandler):
     fn: callbacks.ResourceWatchingFn  # type clarification
+
+    @property
+    def requires_patching(self) -> bool:
+        return False
 
 
 @dataclasses.dataclass

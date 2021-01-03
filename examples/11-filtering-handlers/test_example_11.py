@@ -40,8 +40,10 @@ def test_handler_filtering():
     settings.watching.server_timeout = 10
 
     # Run an operator and simulate some activity with the operated resource.
-    with kopf.testing.KopfRunner(['run', '--verbose', '--standalone', example_py],
-                                 settings=settings) as runner:
+    with kopf.testing.KopfRunner(
+        ['run', '--all-namespaces', '--verbose', '--standalone', example_py],
+        settings=settings,
+    ) as runner:
 
         subprocess.run(f"kubectl create -f {obj_yaml}",
                        shell=True, check=True, timeout=10, capture_output=True)

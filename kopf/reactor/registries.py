@@ -15,7 +15,7 @@ import abc
 import enum
 import functools
 from types import FunctionType, MethodType
-from typing import Any, Callable, Collection, Container, FrozenSet, Generic, Iterable, Iterator, \
+from typing import Any, Callable, Collection, Container, Generic, Iterable, Iterator, \
                    List, Mapping, MutableMapping, Optional, Sequence, Set, TypeVar, cast
 
 from kopf.reactor import causation, invocation
@@ -80,16 +80,6 @@ class ActivityRegistry(GenericRegistry[
 class ResourceRegistry(
         GenericRegistry[HandlerFnT, ResourceHandlerT],
         Generic[CauseT, HandlerFnT, ResourceHandlerT]):
-
-    @property
-    def resources(self) -> FrozenSet[references.Resource]:
-        # It is a convertion point between the operator's specification (at handlers registration)
-        # and the operator's runtime (watching & streaming of events for specific resources).
-        selectors = {h.selector for h in self.get_all_handlers() if h.selector is not None}
-        return frozenset({
-            references.Resource(selector.group, selector.version, selector.plural)
-            for selector in selectors
-        })
 
     def has_handlers(
             self,
