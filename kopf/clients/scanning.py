@@ -88,13 +88,15 @@ async def _read_version(
         # has been deleted, the whole group/version is gone, and we rescan it.
         return set()
     else:
+        # Note: builtins' singulars are empty strings in K3s (reasons unknown):
+        # fall back to the lowercased kind so that the selectors could match.
         return {
             references.Resource(
                 group=group,
                 version=version,
                 kind=resource['kind'],
                 plural=resource['name'],
-                singular=resource['singularName'],
+                singular=resource['singularName'] or resource['kind'].lower(),
                 shortcuts=frozenset(resource.get('shortNames', [])),
                 categories=frozenset(resource.get('categories', [])),
                 subresources=frozenset(

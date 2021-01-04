@@ -308,4 +308,32 @@ async def test_unknown_api_statuses_escalate_from_new_apis(
     assert status_mock.call_count == 1
 
 
+async def test_empty_singulars_fall_back_to_kinds(
+        resp_mocker, aresponses, hostname):
+
+    # Only one endpoint is enough, core v1 is easier to mock:
+    core_mock = resp_mocker(return_value=aiohttp.web.json_response({'versions': ['v1']}))
+    apis_mock = resp_mocker(return_value=aiohttp.web.json_response({'groups': []}))
+    scan_mock = resp_mocker(return_value=aiohttp.web.json_response({'resources': [
+        {
+            'kind': 'MultiWordKind',
+            'name': '...',
+            'singularName': '',  # as in K3s
+            'namespaced': True,
+            'categories': [],
+            'shortNames': [],
+            'verbs': [],
+        },
+    ]}))
+    aresponses.add(hostname, '/api', 'get', core_mock)
+    aresponses.add(hostname, '/apis', 'get', apis_mock)
+    aresponses.add(hostname, '/api/v1', 'get', scan_mock)
+
+    resources = await scan_resources(groups=[''])
+    assert len(resources) == 1
+
+    resource1 = list(resources)[0]
+    assert resource1.singular == 'multiwordkind'
+
+
 # TODO: LATER: test that the requests are done in parallel, and the total timing is the best possible.

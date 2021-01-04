@@ -133,11 +133,11 @@ async def test_followups_for_addition(registry, apis_mock, group1_mock, timer, e
             insights=insights, raw_event=e1, registry=registry, replenished=asyncio.Event())
 
     task = asyncio.create_task(delayed_injection(0.1))
-    async with timer, async_timeout.timeout(1):
+    async with timer, async_timeout.timeout(1.0):
         async with insights.revised:
             await insights.revised.wait()
     await task
-    assert 0.1 < timer.seconds < 0.2
+    assert 0.1 < timer.seconds < 1.0
     assert insights.resources == {r1}
     assert apis_mock.called
     assert group1_mock.called
@@ -157,11 +157,11 @@ async def test_followups_for_deletion_of_resource(registry, apis_mock, group1_em
             insights=insights, raw_event=e1, registry=registry, replenished=asyncio.Event())
 
     task = asyncio.create_task(delayed_injection(0.1))
-    async with timer, async_timeout.timeout(1):
+    async with timer, async_timeout.timeout(1.0):
         async with insights.revised:
             await insights.revised.wait()
     await task
-    assert 0.1 < timer.seconds < 0.2
+    assert 0.1 < timer.seconds < 1.0
     assert not insights.resources
     assert apis_mock.called
     assert group1_empty_mock.called
@@ -181,11 +181,11 @@ async def test_followups_for_deletion_of_group(registry, apis_mock, group1_404mo
             insights=insights, raw_event=e1, registry=registry, replenished=asyncio.Event())
 
     task = asyncio.create_task(delayed_injection(0.1))
-    async with timer, async_timeout.timeout(1):
+    async with timer, async_timeout.timeout(1.0):
         async with insights.revised:
             await insights.revised.wait()
     await task
-    assert 0.1 < timer.seconds < 0.2
+    assert 0.1 < timer.seconds < 1.0
     assert not insights.resources
     assert apis_mock.called
     assert group1_404mock.called
@@ -205,11 +205,11 @@ async def test_followups_for_deletion_of_group(registry, apis_mock, group1_404mo
             insights=insights, raw_event=e1, registry=registry, replenished=asyncio.Event())
 
     task = asyncio.create_task(delayed_injection(0.1))
-    async with timer, async_timeout.timeout(1):
+    async with timer, async_timeout.timeout(1.0):
         async with insights.revised:
             await insights.revised.wait()
     await task
-    assert 0.1 < timer.seconds < 0.2
+    assert 0.1 < timer.seconds < 1.0
     assert not insights.resources
     assert apis_mock.called
     assert group1_404mock.called
@@ -226,10 +226,10 @@ async def test_backbone_is_filled(registry, core_mock, corev1_mock, timer, etype
             insights=insights, raw_event=e1, registry=registry, replenished=asyncio.Event())
 
     task = asyncio.create_task(delayed_injection(0.1))
-    async with timer, async_timeout.timeout(1):
+    async with timer, async_timeout.timeout(1.0):
         await insights.backbone.wait_for(NAMESPACES)
     await task
-    assert 0.1 < timer.seconds < 0.2
+    assert 0.1 < timer.seconds < 1.0
     assert NAMESPACES in insights.backbone
     assert core_mock.called
     assert corev1_mock.called
