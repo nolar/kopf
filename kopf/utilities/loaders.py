@@ -29,11 +29,12 @@ def preload(
     Ensure the handlers are registered by loading/importing the files/modules.
     """
 
-    for path in paths:
+    for idx, path in enumerate(paths):
         sys.path.insert(0, os.path.abspath(os.path.dirname(path)))
-        name, _ = os.path.splitext(os.path.basename(path))
+        name = f'__kopf_script_{idx}__{path}'  # same pseudo-name as '__main__'
         spec = importlib.util.spec_from_file_location(name, path)
         module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
         spec.loader.exec_module(module)  # type: ignore
 
     for name in modules:
