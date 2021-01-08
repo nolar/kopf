@@ -34,6 +34,11 @@ async def post_event(
     if context is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 
+    # Prevent "event explosion", when core v1 events are handled and create other core v1 events.
+    # This can happen with `EVERYTHING` without additional filters, or by explicitly serving them.
+    if ref['apiVersion'] == 'v1' and ref['kind'] == 'Event':
+        return
+
     # See #164. For cluster-scoped objects, use the current namespace from the current context.
     # It could be "default", but in some systems, we are limited to one specific namespace only.
     namespace_name: str = ref.get('namespace') or context.default_namespace or 'default'
