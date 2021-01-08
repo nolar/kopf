@@ -133,6 +133,20 @@ Serving everything is better when it is used with filters:
     def fn(**_):
         pass
 
+.. note::
+
+    Core v1 events are excluded from ``EVERYTHING``: they are created during
+    handling of other resources in the implicit :doc:`events` from log messages,
+    so they would cause unnecessary handling cycles for every essential change.
+
+    To handle core v1 events, they must be named explicitly, e.g. like this:
+
+    .. code-block:: python
+
+        @kopf.on.event('v1', 'events')
+        def fn(**_):
+            pass
+
 The resource specifications do not support multiple values, masks or globs.
 To handle multiple independent resources, add multiple decorators
 to the same handler function -- as shown above.
