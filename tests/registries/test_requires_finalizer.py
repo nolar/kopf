@@ -26,7 +26,7 @@ def test_requires_finalizer_deletion_handler(
         optional, expected, cause_factory, resource, registry):
     cause = cause_factory(resource=resource, body=OBJECT_BODY)
 
-    @kopf.on.delete(resource.group, resource.version, resource.plural, optional=optional)
+    @kopf.on.delete(*resource, optional=optional)
     def fn(**_):
         pass
 
@@ -42,11 +42,11 @@ def test_requires_finalizer_multiple_handlers(
         optional, expected, cause_factory, resource, registry):
     cause = cause_factory(resource=resource, body=OBJECT_BODY)
 
-    @kopf.on.create(resource.group, resource.version, resource.plural)
+    @kopf.on.create(*resource)
     def fn1(**_):
         pass
 
-    @kopf.on.delete(resource.group, resource.version, resource.plural, optional=optional)
+    @kopf.on.delete(*resource, optional=optional)
     def fn2(**_):
         pass
 
@@ -58,7 +58,7 @@ def test_requires_finalizer_no_deletion_handler(
         cause_factory, resource, registry):
     cause = cause_factory(resource=resource, body=OBJECT_BODY)
 
-    @kopf.on.create(resource.group, resource.version, resource.plural)
+    @kopf.on.create(*resource)
     def fn1(**_):
         pass
 
@@ -78,7 +78,7 @@ def test_requires_finalizer_deletion_handler_matches_labels(
         labels, optional, expected, cause_factory, resource, registry):
     cause = cause_factory(resource=resource, body=OBJECT_BODY)
 
-    @kopf.on.delete(resource.group, resource.version, resource.plural, labels=labels, optional=optional)
+    @kopf.on.delete(*resource, labels=labels, optional=optional)
     def fn(**_):
         pass
 
@@ -98,7 +98,7 @@ def test_requires_finalizer_deletion_handler_mismatches_labels(
         labels, optional, expected, cause_factory, resource, registry):
     cause = cause_factory(resource=resource, body=OBJECT_BODY)
 
-    @kopf.on.delete(resource.group, resource.version, resource.plural, labels=labels, optional=optional)
+    @kopf.on.delete(*resource, labels=labels, optional=optional)
     def fn(**_):
         pass
 
@@ -118,7 +118,7 @@ def test_requires_finalizer_deletion_handler_matches_annotations(
         annotations, optional, expected, cause_factory, resource, registry):
     cause = cause_factory(resource=resource, body=OBJECT_BODY)
 
-    @kopf.on.delete(resource.group, resource.version, resource.plural, annotations=annotations, optional=optional)
+    @kopf.on.delete(*resource, annotations=annotations, optional=optional)
     def fn(**_):
         pass
 
@@ -138,7 +138,7 @@ def test_requires_finalizer_deletion_handler_mismatches_annotations(
         annotations, optional, expected, cause_factory, resource, registry):
     cause = cause_factory(resource=resource, body=OBJECT_BODY)
 
-    @kopf.on.delete(resource.group, resource.version, resource.plural, annotations=annotations, optional=optional)
+    @kopf.on.delete(*resource, annotations=annotations, optional=optional)
     def fn(**_):
         pass
 

@@ -392,8 +392,7 @@ def test_catchall_handlers_with_when_callback_mismatching(
 def test_decorator_without_field_found(
         cause_any_field, registry, resource, decorator):
 
-    @decorator(resource.group, resource.version, resource.plural,
-               field=None)
+    @decorator(*resource, field=None)
     def some_fn(**_): ...
 
     cause = cause_any_field
@@ -405,8 +404,7 @@ def test_decorator_without_field_found(
 def test_decorator_with_field_found(
         cause_with_field, registry, resource, decorator):
 
-    @decorator(resource.group, resource.version, resource.plural,
-               field='some-field')
+    @decorator(*resource, field='some-field')
     def some_fn(**_): ...
 
     cause = cause_with_field
@@ -418,8 +416,7 @@ def test_decorator_with_field_found(
 def test_decorator_with_field_ignored(
         cause_no_field, registry, resource, decorator):
 
-    @decorator(resource.group, resource.version, resource.plural,
-               field='some-field')
+    @decorator(*resource, field='some-field')
     def some_fn(**_): ...
 
     cause = cause_no_field
@@ -431,8 +428,7 @@ def test_decorator_with_field_ignored(
 def test_decorator_with_labels_satisfied(
         cause_any_field, registry, resource, decorator):
 
-    @decorator(resource.group, resource.version, resource.plural,
-               labels={'somelabel': PRESENT})
+    @decorator(*resource, labels={'somelabel': PRESENT})
     def some_fn(**_): ...
 
     cause = cause_any_field
@@ -444,8 +440,7 @@ def test_decorator_with_labels_satisfied(
 def test_decorator_with_labels_not_satisfied(
         cause_any_field, registry, resource, decorator):
 
-    @decorator(resource.group, resource.version, resource.plural,
-               labels={'otherlabel': PRESENT})
+    @decorator(*resource, labels={'otherlabel': PRESENT})
     def some_fn(**_): ...
 
     cause = cause_any_field
@@ -457,8 +452,7 @@ def test_decorator_with_labels_not_satisfied(
 def test_decorator_with_annotations_satisfied(
         cause_any_field, registry, resource, decorator):
 
-    @decorator(resource.group, resource.version, resource.plural,
-               annotations={'someannotation': PRESENT})
+    @decorator(*resource, annotations={'someannotation': PRESENT})
     def some_fn(**_): ...
 
     cause = cause_any_field
@@ -470,8 +464,7 @@ def test_decorator_with_annotations_satisfied(
 def test_decorator_with_annotations_not_satisfied(
         cause_any_field, registry, resource, decorator):
 
-    @decorator(resource.group, resource.version, resource.plural,
-               annotations={'otherannotation': PRESENT})
+    @decorator(*resource, annotations={'otherannotation': PRESENT})
     def some_fn(**_): ...
 
     cause = cause_any_field
@@ -483,8 +476,7 @@ def test_decorator_with_annotations_not_satisfied(
 def test_decorator_with_filter_satisfied(
         cause_any_field, registry, resource, decorator):
 
-    @decorator(resource.group, resource.version, resource.plural,
-               when=_always)
+    @decorator(*resource, when=_always)
     def some_fn(**_): ...
 
     cause = cause_any_field
@@ -496,8 +488,7 @@ def test_decorator_with_filter_satisfied(
 def test_decorator_with_filter_not_satisfied(
         cause_any_field, registry, resource, decorator):
 
-    @decorator(resource.group, resource.version, resource.plural,
-               when=_never)
+    @decorator(*resource, when=_never)
     def some_fn(**_): ...
 
     cause = cause_any_field

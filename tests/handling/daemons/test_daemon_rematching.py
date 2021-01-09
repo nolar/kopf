@@ -8,8 +8,7 @@ async def test_running_daemon_is_stopped_when_mismatches(
         resource, dummy, timer, mocker, caplog, assert_logs, k8s_mocked, simulate_cycle):
     caplog.set_level(logging.DEBUG)
 
-    @kopf.daemon(resource.group, resource.version, resource.plural, id='fn',
-                 when=lambda **_: is_matching)
+    @kopf.daemon(*resource, id='fn', when=lambda **_: is_matching)
     async def fn(**kwargs):
         dummy.mock()
         dummy.kwargs = kwargs

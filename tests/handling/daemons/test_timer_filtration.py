@@ -12,7 +12,7 @@ async def test_timer_filtration_satisfied(
         settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle):
     caplog.set_level(logging.DEBUG)
 
-    @kopf.timer(resource.group, resource.version, resource.plural, id='fn',
+    @kopf.timer(*resource, id='fn',
                 labels={'a': 'value', 'b': kopf.PRESENT, 'c': kopf.ABSENT},
                 annotations={'x': 'value', 'y': kopf.PRESENT, 'z': kopf.ABSENT})
     async def fn(**kwargs):
@@ -44,7 +44,7 @@ async def test_timer_filtration_mismatched(
     caplog.set_level(logging.DEBUG)
     spawn_resource_daemons = mocker.patch('kopf.reactor.daemons.spawn_resource_daemons')
 
-    @kopf.timer(resource.group, resource.version, resource.plural, id='fn',
+    @kopf.timer(*resource, id='fn',
                 labels={'a': 'value', 'b': kopf.PRESENT, 'c': kopf.ABSENT},
                 annotations={'x': 'value', 'y': kopf.PRESENT, 'z': kopf.ABSENT})
     async def fn(**kwargs):

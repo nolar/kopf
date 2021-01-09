@@ -13,7 +13,7 @@ def test_resumes_ignored_for_non_initial_causes(
     cause = cause_factory(resource=resource, reason=reason, initial=False,
                           body={'metadata': {'deletionTimestamp': '...'} if deleted else {}})
 
-    @kopf.on.resume(resource.group, resource.version, resource.plural)
+    @kopf.on.resume(*resource)
     def fn(**_):
         pass
 
@@ -28,7 +28,7 @@ def test_resumes_selected_for_initial_non_deletions(
     registry = kopf.get_default_registry()
     cause = cause_factory(resource=resource, reason=reason, initial=True)
 
-    @kopf.on.resume(resource.group, resource.version, resource.plural)
+    @kopf.on.resume(*resource)
     def fn(**_):
         pass
 
@@ -45,7 +45,7 @@ def test_resumes_ignored_for_initial_deletions_by_default(
     cause = cause_factory(resource=resource, reason=reason, initial=True,
                           body={'metadata': {'deletionTimestamp': '...'}})
 
-    @kopf.on.resume(resource.group, resource.version, resource.plural)
+    @kopf.on.resume(*resource)
     def fn(**_):
         pass
 
@@ -61,7 +61,7 @@ def test_resumes_selected_for_initial_deletions_when_explicitly_marked(
     cause = cause_factory(resource=resource, reason=reason, initial=True,
                           body={'metadata': {'deletionTimestamp': '...'}})
 
-    @kopf.on.resume(resource.group, resource.version, resource.plural, deleted=True)
+    @kopf.on.resume(*resource, deleted=True)
     def fn(**_):
         pass
 

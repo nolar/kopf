@@ -64,7 +64,7 @@ def test_on_resume_minimal(reason, cause_factory, resource):
     registry = kopf.get_default_registry()
     cause = cause_factory(resource=resource, reason=reason, initial=True)
 
-    @kopf.on.resume(resource.group, resource.version, resource.plural)
+    @kopf.on.resume(*resource)
     def fn(**_):
         pass
 
@@ -89,7 +89,7 @@ def test_on_create_minimal(cause_factory, resource):
     registry = kopf.get_default_registry()
     cause = cause_factory(resource=resource, reason=Reason.CREATE)
 
-    @kopf.on.create(resource.group, resource.version, resource.plural)
+    @kopf.on.create(*resource)
     def fn(**_):
         pass
 
@@ -114,7 +114,7 @@ def test_on_update_minimal(cause_factory, resource):
     registry = kopf.get_default_registry()
     cause = cause_factory(resource=resource, reason=Reason.UPDATE)
 
-    @kopf.on.update(resource.group, resource.version, resource.plural)
+    @kopf.on.update(*resource)
     def fn(**_):
         pass
 
@@ -139,7 +139,7 @@ def test_on_delete_minimal(cause_factory, resource):
     registry = kopf.get_default_registry()
     cause = cause_factory(resource=resource, reason=Reason.DELETE)
 
-    @kopf.on.delete(resource.group, resource.version, resource.plural)
+    @kopf.on.delete(*resource)
     def fn(**_):
         pass
 
@@ -166,7 +166,7 @@ def test_on_field_minimal(cause_factory, resource):
     new = {'field': {'subfield': 'new'}}
     cause = cause_factory(resource=resource, reason=Reason.UPDATE, old=old, new=new, body=new)
 
-    @kopf.on.field(resource.group, resource.version, resource.plural, field='field.subfield')
+    @kopf.on.field(*resource, field='field.subfield')
     def fn(**_):
         pass
 
@@ -189,7 +189,7 @@ def test_on_field_minimal(cause_factory, resource):
 
 def test_on_field_fails_without_field(resource):
     with pytest.raises(TypeError):
-        @kopf.on.field(resource.group, resource.version, resource.plural)
+        @kopf.on.field(*resource)
         def fn(**_):
             pass
 
@@ -263,7 +263,7 @@ def test_on_resume_with_most_kwargs(mocker, reason, cause_factory, resource):
 
     when = lambda **_: False
 
-    @kopf.on.resume(resource.group, resource.version, resource.plural,
+    @kopf.on.resume(*resource,
                     id='id', registry=registry,
                     errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     deleted=True,
@@ -299,7 +299,7 @@ def test_on_create_with_most_kwargs(mocker, cause_factory, resource):
 
     when = lambda **_: False
 
-    @kopf.on.create(resource.group, resource.version, resource.plural,
+    @kopf.on.create(*resource,
                     id='id', registry=registry,
                     errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     labels={'somelabel': 'somevalue'},
@@ -333,7 +333,7 @@ def test_on_update_with_most_kwargs(mocker, cause_factory, resource):
 
     when = lambda **_: False
 
-    @kopf.on.update(resource.group, resource.version, resource.plural,
+    @kopf.on.update(*resource,
                     id='id', registry=registry,
                     errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     labels={'somelabel': 'somevalue'},
@@ -371,7 +371,7 @@ def test_on_delete_with_most_kwargs(mocker, cause_factory, optional, resource):
 
     when = lambda **_: False
 
-    @kopf.on.delete(resource.group, resource.version, resource.plural,
+    @kopf.on.delete(*resource,
                     id='id', registry=registry,
                     errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     optional=optional,
@@ -408,7 +408,7 @@ def test_on_field_with_most_kwargs(mocker, cause_factory, resource):
 
     when = lambda **_: False
 
-    @kopf.on.field(resource.group, resource.version, resource.plural, field='field.subfield',
+    @kopf.on.field(*resource, field='field.subfield',
                    id='id', registry=registry,
                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                    labels={'somelabel': 'somevalue'},
@@ -495,8 +495,7 @@ def test_subhandler_imperatively(parent_handler, cause_factory):
 def test_labels_filter_with_nones(resource, decorator, kwargs):
 
     with pytest.raises(ValueError):
-        @decorator(resource.group, resource.version, resource.plural, **kwargs,
-                   labels={'x': None})
+        @decorator(*resource, **kwargs, labels={'x': None})
         def fn(**_):
             pass
 
@@ -512,8 +511,7 @@ def test_labels_filter_with_nones(resource, decorator, kwargs):
 def test_annotations_filter_with_nones(resource, decorator, kwargs):
 
     with pytest.raises(ValueError):
-        @decorator(resource.group, resource.version, resource.plural, **kwargs,
-                   annotations={'x': None})
+        @decorator(*resource, **kwargs, annotations={'x': None})
         def fn(**_):
             pass
 
@@ -534,8 +532,7 @@ def test_field_with_value(mocker, cause_factory, decorator, causeargs, handlers_
     cause = cause_factory(resource=resource, old=old, new=new, body=new, **causeargs)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
-    @decorator(resource.group, resource.version, resource.plural,
-               field='spec.field', value='value')
+    @decorator(*resource, field='spec.field', value='value')
     def fn(**_):
         pass
 
@@ -554,8 +551,7 @@ def test_field_with_oldnew(mocker, cause_factory, decorator, causeargs, handlers
     cause = cause_factory(resource=resource, **causeargs)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
-    @decorator(resource.group, resource.version, resource.plural,
-               field='spec.field', old='old', new='new')
+    @decorator(*resource, field='spec.field', old='old', new='new')
     def fn(**_):
         pass
 
@@ -579,7 +575,7 @@ def test_field_with_oldnew(mocker, cause_factory, decorator, causeargs, handlers
 ])
 def test_missing_field_with_specified_value(resource, decorator):
     with pytest.raises(TypeError, match="without a mandatory field"):
-        @decorator(resource.group, resource.version, resource.plural, value='v')
+        @decorator(*resource, value='v')
         def fn(**_):
             pass
 
@@ -594,7 +590,7 @@ def test_missing_field_with_specified_value(resource, decorator):
 ])
 def test_conflicts_of_values_vs_oldnew(resource, decorator, kwargs):
     with pytest.raises(TypeError, match="Either value= or old=/new="):
-        @decorator(resource.group, resource.version, resource.plural, **kwargs)
+        @decorator(*resource, **kwargs)
         def fn(**_):
             pass
 
@@ -606,7 +602,7 @@ def test_conflicts_of_values_vs_oldnew(resource, decorator, kwargs):
 ])
 def test_invalid_oldnew_for_inappropriate_subhandlers(resource, decorator, registry):
 
-    @decorator(resource.group, resource.version, resource.plural)
+    @decorator(*resource)
     def fn(**_):
         @kopf.subhandler(field='f', old='x')
         def fn2(**_):

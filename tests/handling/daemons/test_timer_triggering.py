@@ -7,8 +7,7 @@ async def test_timer_is_spawned_at_least_once(
         resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle):
     caplog.set_level(logging.DEBUG)
 
-    @kopf.timer(resource.group, resource.version, resource.plural, id='fn',
-                interval=1.0)
+    @kopf.timer(*resource, id='fn', interval=1.0)
     async def fn(**kwargs):
         dummy.mock()
         dummy.kwargs = kwargs
@@ -30,8 +29,7 @@ async def test_timer_initial_delay_obeyed(
         resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle):
     caplog.set_level(logging.DEBUG)
 
-    @kopf.timer(resource.group, resource.version, resource.plural, id='fn',
-                initial_delay=5.0, interval=1.0)
+    @kopf.timer(*resource, id='fn', initial_delay=5.0, interval=1.0)
     async def fn(**kwargs):
         dummy.mock()
         dummy.kwargs = kwargs
