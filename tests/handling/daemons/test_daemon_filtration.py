@@ -9,11 +9,10 @@ import kopf
 
 
 async def test_daemon_filtration_satisfied(
-        registry, settings, resource, dummy,
-        caplog, assert_logs, k8s_mocked, simulate_cycle):
+        settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle):
     caplog.set_level(logging.DEBUG)
 
-    @kopf.daemon(resource.group, resource.version, resource.plural, registry=registry, id='fn',
+    @kopf.daemon(resource.group, resource.version, resource.plural, id='fn',
                  labels={'a': 'value', 'b': kopf.PRESENT, 'c': kopf.ABSENT},
                  annotations={'x': 'value', 'y': kopf.PRESENT, 'z': kopf.ABSENT})
     async def fn(**kwargs):
@@ -41,12 +40,12 @@ async def test_daemon_filtration_satisfied(
     ({'a': 'value'}, {'x': 'value', 'y': '...'}),
 ])
 async def test_daemon_filtration_mismatched(
-        registry, settings, resource, mocker, labels, annotations,
+        settings, resource, mocker, labels, annotations,
         caplog, assert_logs, k8s_mocked, simulate_cycle):
     caplog.set_level(logging.DEBUG)
     spawn_resource_daemons = mocker.patch('kopf.reactor.daemons.spawn_resource_daemons')
 
-    @kopf.daemon(resource.group, resource.version, resource.plural, registry=registry, id='fn',
+    @kopf.daemon(resource.group, resource.version, resource.plural, id='fn',
                  labels={'a': 'value', 'b': kopf.PRESENT, 'c': kopf.ABSENT},
                  annotations={'x': 'value', 'y': kopf.PRESENT, 'z': kopf.ABSENT})
     async def fn(**kwargs):

@@ -528,14 +528,13 @@ def test_annotations_filter_with_nones(resource, decorator, kwargs):
     pytest.param(kopf.daemon, dict(), '_resource_spawning', id='on-daemon'),
     pytest.param(kopf.timer, dict(), '_resource_spawning', id='on-timer'),
 ])
-def test_field_with_value(mocker, cause_factory, decorator, causeargs, handlers_prop, resource):
-    registry = OperatorRegistry()
+def test_field_with_value(mocker, cause_factory, decorator, causeargs, handlers_prop, resource, registry):
     old = {'field': {'subfield': 'old'}}
     new = {'field': {'subfield': 'new'}}
     cause = cause_factory(resource=resource, old=old, new=new, body=new, **causeargs)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
-    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+    @decorator(resource.group, resource.version, resource.plural,
                field='spec.field', value='value')
     def fn(**_):
         pass
@@ -551,12 +550,11 @@ def test_field_with_value(mocker, cause_factory, decorator, causeargs, handlers_
     pytest.param(kopf.on.update, dict(reason=Reason.UPDATE), '_resource_changing', id='on-update'),
     pytest.param(kopf.on.field, dict(reason=Reason.UPDATE), '_resource_changing', id='on-field'),
 ])
-def test_field_with_oldnew(mocker, cause_factory, decorator, causeargs, handlers_prop, resource):
-    registry = OperatorRegistry()
+def test_field_with_oldnew(mocker, cause_factory, decorator, causeargs, handlers_prop, resource, registry):
     cause = cause_factory(resource=resource, **causeargs)
     mocker.patch('kopf.reactor.registries.match', return_value=True)
 
-    @decorator(resource.group, resource.version, resource.plural, registry=registry,
+    @decorator(resource.group, resource.version, resource.plural,
                field='spec.field', old='old', new='new')
     def fn(**_):
         pass
