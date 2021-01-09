@@ -69,22 +69,22 @@ def handler_factory(registry, selector):
 ])
 def cause_no_diff(request, cause_factory):
     kwargs = copy.deepcopy(request.param)
-    kwargs['body'].update({'metadata': {'labels': {'somelabel': 'somevalue'},
-                                        'annotations': {'someannotation': 'somevalue'}}})
+    kwargs['body'].update({'metadata': {'labels': {'known': 'value'},
+                                        'annotations': {'known': 'value'}}})
     cause = cause_factory(**kwargs)
     return cause
 
 
 @pytest.fixture(params=[
-    pytest.param(dict(old={'some-field': 'old'},
-                      new={'some-field': 'new'},
-                      body={'some-field': 'new'},
-                      diff=[('op', ('some-field',), 'old', 'new')]), id='with-field-diff'),
+    pytest.param(dict(old={'known-field': 'old'},
+                      new={'known-field': 'new'},
+                      body={'known-field': 'new'},
+                      diff=[('op', ('known-field',), 'old', 'new')]), id='with-field-diff'),
 ])
 def cause_with_diff(request, cause_factory):
     kwargs = copy.deepcopy(request.param)
-    kwargs['body'].update({'metadata': {'labels': {'somelabel': 'somevalue'},
-                                        'annotations': {'someannotation': 'somevalue'}}})
+    kwargs['body'].update({'metadata': {'labels': {'known': 'value'},
+                                        'annotations': {'known': 'value'}}})
     cause = cause_factory(**kwargs)
     return cause
 
@@ -92,15 +92,15 @@ def cause_with_diff(request, cause_factory):
 @pytest.fixture(params=[
     # The original no-diff was equivalent to no-field until body/old/new were added to the check.
     pytest.param(dict(old={}, new={}, body={}, diff=[]), id='with-empty-diff'),
-    pytest.param(dict(old={'some-field': 'old'},
-                      new={'some-field': 'new'},
-                      body={'some-field': 'new'},
-                      diff=[('op', ('some-field',), 'old', 'new')]), id='with-field-diff'),
+    pytest.param(dict(old={'known-field': 'old'},
+                      new={'known-field': 'new'},
+                      body={'known-field': 'new'},
+                      diff=[('op', ('known-field',), 'old', 'new')]), id='with-field-diff'),
 ])
 def cause_any_diff(request, cause_factory):
     kwargs = copy.deepcopy(request.param)
-    kwargs['body'].update({'metadata': {'labels': {'somelabel': 'somevalue'},
-                                        'annotations': {'someannotation': 'somevalue'}}})
+    kwargs['body'].update({'metadata': {'labels': {'known': 'value'},
+                                        'annotations': {'known': 'value'}}})
     cause = cause_factory(**kwargs)
     return cause
 
@@ -120,7 +120,7 @@ def test_catchall_handlers_without_field_found(
 def test_catchall_handlers_with_field_found(
         cause_with_diff, registry, handler_factory):
     cause = cause_with_diff
-    handler_factory(reason=None, field=parse_field('some-field'))
+    handler_factory(reason=None, field=parse_field('known-field'))
     handlers = registry._resource_changing.get_handlers(cause)
     assert handlers
 
@@ -128,116 +128,116 @@ def test_catchall_handlers_with_field_found(
 def test_catchall_handlers_with_field_ignored(
         cause_no_diff, registry, handler_factory):
     cause = cause_no_diff
-    handler_factory(reason=None, field=parse_field('some-field'))
+    handler_factory(reason=None, field=parse_field('known-field'))
     handlers = registry._resource_changing.get_handlers(cause)
     assert not handlers
 
 
 @pytest.mark.parametrize('labels', [
-    pytest.param({'somelabel': 'somevalue'}, id='with-label'),
-    pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, id='with-extra-label'),
+    pytest.param({'known': 'value'}, id='with-label'),
+    pytest.param({'known': 'value', 'extra': 'other'}, id='with-extra-label'),
 ])
 def test_catchall_handlers_with_exact_labels_satisfied(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
-    handler_factory(reason=None, labels={'somelabel': 'somevalue'})
+    handler_factory(reason=None, labels={'known': 'value'})
     handlers = registry._resource_changing.get_handlers(cause)
     assert handlers
 
 
 @pytest.mark.parametrize('labels', [
     pytest.param({}, id='without-label'),
-    pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
-    pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
+    pytest.param({'known': 'other'}, id='with-other-value'),
+    pytest.param({'extra': 'other'}, id='with-other-label'),
 ])
 def test_catchall_handlers_with_exact_labels_not_satisfied(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
-    handler_factory(reason=None, labels={'somelabel': 'somevalue'})
+    handler_factory(reason=None, labels={'known': 'value'})
     handlers = registry._resource_changing.get_handlers(cause)
     assert not handlers
 
 
 @pytest.mark.parametrize('labels', [
-    pytest.param({'somelabel': 'somevalue'}, id='with-label'),
-    pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
+    pytest.param({'known': 'value'}, id='with-label'),
+    pytest.param({'known': 'other'}, id='with-other-value'),
 ])
 def test_catchall_handlers_with_desired_labels_present(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
-    handler_factory(reason=None, labels={'somelabel': PRESENT})
+    handler_factory(reason=None, labels={'known': PRESENT})
     handlers = registry._resource_changing.get_handlers(cause)
     assert handlers
 
 
 @pytest.mark.parametrize('labels', [
     pytest.param({}, id='without-label'),
-    pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
+    pytest.param({'extra': 'other'}, id='with-other-label'),
 ])
 def test_catchall_handlers_with_desired_labels_absent(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
-    handler_factory(reason=None, labels={'somelabel': PRESENT})
+    handler_factory(reason=None, labels={'known': PRESENT})
     handlers = registry._resource_changing.get_handlers(cause)
     assert not handlers
 
 
 @pytest.mark.parametrize('labels', [
-    pytest.param({'somelabel': 'somevalue'}, id='with-label'),
-    pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
+    pytest.param({'known': 'value'}, id='with-label'),
+    pytest.param({'known': 'other'}, id='with-other-value'),
 ])
 def test_catchall_handlers_with_undesired_labels_present(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
-    handler_factory(reason=None, labels={'somelabel': ABSENT})
+    handler_factory(reason=None, labels={'known': ABSENT})
     handlers = registry._resource_changing.get_handlers(cause)
     assert not handlers
 
 
 @pytest.mark.parametrize('labels', [
     pytest.param({}, id='without-label'),
-    pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
+    pytest.param({'extra': 'other'}, id='with-other-label'),
 ])
 def test_catchall_handlers_with_undesired_labels_absent(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
-    handler_factory(reason=None, labels={'somelabel': ABSENT})
+    handler_factory(reason=None, labels={'known': ABSENT})
     handlers = registry._resource_changing.get_handlers(cause)
     assert handlers
 
 
 @pytest.mark.parametrize('labels', [
     pytest.param({}, id='without-label'),
-    pytest.param({'somelabel': 'somevalue'}, id='with-label'),
-    pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
+    pytest.param({'known': 'value'}, id='with-label'),
+    pytest.param({'known': 'other'}, id='with-other-value'),
 ])
 def test_catchall_handlers_with_labels_callback_says_true(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
-    handler_factory(reason=None, labels={'somelabel': _always})
+    handler_factory(reason=None, labels={'known': _always})
     handlers = registry._resource_changing.get_handlers(cause)
     assert handlers
 
 
 @pytest.mark.parametrize('labels', [
     pytest.param({}, id='without-label'),
-    pytest.param({'somelabel': 'somevalue'}, id='with-label'),
-    pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
+    pytest.param({'known': 'value'}, id='with-label'),
+    pytest.param({'known': 'other'}, id='with-other-value'),
 ])
 def test_catchall_handlers_with_labels_callback_says_false(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
-    handler_factory(reason=None, labels={'somelabel': _never})
+    handler_factory(reason=None, labels={'known': _never})
     handlers = registry._resource_changing.get_handlers(cause)
     assert not handlers
 
 
 @pytest.mark.parametrize('labels', [
     pytest.param({}, id='without-label'),
-    pytest.param({'somelabel': 'somevalue'}, id='with-label'),
-    pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
-    pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
-    pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, id='with-extra-label'),
+    pytest.param({'known': 'value'}, id='with-label'),
+    pytest.param({'known': 'other'}, id='with-other-value'),
+    pytest.param({'extra': 'other'}, id='with-other-label'),
+    pytest.param({'known': 'value', 'extra': 'other'}, id='with-extra-label'),
 ])
 def test_catchall_handlers_without_labels(
         cause_factory, registry, handler_factory, labels):
@@ -248,110 +248,110 @@ def test_catchall_handlers_without_labels(
 
 
 @pytest.mark.parametrize('annotations', [
-    pytest.param({'someannotation': 'somevalue'}, id='with-annotation'),
-    pytest.param({'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-extra-annotation'),
+    pytest.param({'known': 'value'}, id='with-annotation'),
+    pytest.param({'known': 'value', 'extra': 'other'}, id='with-extra-annotation'),
 ])
 def test_catchall_handlers_with_exact_annotations_satisfied(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
-    handler_factory(reason=None, annotations={'someannotation': 'somevalue'})
+    handler_factory(reason=None, annotations={'known': 'value'})
     handlers = registry._resource_changing.get_handlers(cause)
     assert handlers
 
 
 @pytest.mark.parametrize('annotations', [
     pytest.param({}, id='without-annotation'),
-    pytest.param({'someannotation': 'othervalue'}, id='with-other-value'),
-    pytest.param({'otherannotation': 'othervalue'}, id='with-other-annotation'),
+    pytest.param({'known': 'other'}, id='with-other-value'),
+    pytest.param({'extra': 'other'}, id='with-other-annotation'),
 ])
 def test_catchall_handlers_with_exact_annotations_not_satisfied(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
-    handler_factory(reason=None, annotations={'someannotation': 'somevalue'})
+    handler_factory(reason=None, annotations={'known': 'value'})
     handlers = registry._resource_changing.get_handlers(cause)
     assert not handlers
 
 
 @pytest.mark.parametrize('annotations', [
-    pytest.param({'someannotation': 'somevalue'}, id='with-annotation'),
-    pytest.param({'someannotation': 'othervalue'}, id='with-other-value'),
+    pytest.param({'known': 'value'}, id='with-annotation'),
+    pytest.param({'known': 'other'}, id='with-other-value'),
 ])
 def test_catchall_handlers_with_desired_annotations_present(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
-    handler_factory(reason=None, annotations={'someannotation': PRESENT})
+    handler_factory(reason=None, annotations={'known': PRESENT})
     handlers = registry._resource_changing.get_handlers(cause)
     assert handlers
 
 
 @pytest.mark.parametrize('annotations', [
     pytest.param({}, id='without-annotation'),
-    pytest.param({'otherannotation': 'othervalue'}, id='with-other-annotation'),
+    pytest.param({'extra': 'other'}, id='with-other-annotation'),
 ])
 def test_catchall_handlers_with_desired_annotations_absent(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
-    handler_factory(reason=None, annotations={'someannotation': PRESENT})
+    handler_factory(reason=None, annotations={'known': PRESENT})
     handlers = registry._resource_changing.get_handlers(cause)
     assert not handlers
 
 
 @pytest.mark.parametrize('annotations', [
-    pytest.param({'someannotation': 'somevalue'}, id='with-annotation'),
-    pytest.param({'someannotation': 'othervalue'}, id='with-other-value'),
+    pytest.param({'known': 'value'}, id='with-annotation'),
+    pytest.param({'known': 'other'}, id='with-other-value'),
 ])
 def test_catchall_handlers_with_undesired_annotations_present(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
-    handler_factory(reason=None, annotations={'someannotation': ABSENT})
+    handler_factory(reason=None, annotations={'known': ABSENT})
     handlers = registry._resource_changing.get_handlers(cause)
     assert not handlers
 
 
 @pytest.mark.parametrize('annotations', [
     pytest.param({}, id='without-annotation'),
-    pytest.param({'otherannotation': 'othervalue'}, id='with-other-annotation'),
+    pytest.param({'extra': 'other'}, id='with-other-annotation'),
 ])
 def test_catchall_handlers_with_undesired_annotations_absent(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
-    handler_factory(reason=None, annotations={'someannotation': ABSENT})
+    handler_factory(reason=None, annotations={'known': ABSENT})
     handlers = registry._resource_changing.get_handlers(cause)
     assert handlers
 
 
 @pytest.mark.parametrize('annotations', [
     pytest.param({}, id='without-annotation'),
-    pytest.param({'someannotation': 'somevalue'}, id='with-annotation'),
-    pytest.param({'someannotation': 'othervalue'}, id='with-other-value'),
+    pytest.param({'known': 'value'}, id='with-annotation'),
+    pytest.param({'known': 'other'}, id='with-other-value'),
 ])
 def test_catchall_handlers_with_annotations_callback_says_true(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
-    handler_factory(reason=None, annotations={'someannotation': _always})
+    handler_factory(reason=None, annotations={'known': _always})
     handlers = registry._resource_changing.get_handlers(cause)
     assert handlers
 
 
 @pytest.mark.parametrize('annotations', [
     pytest.param({}, id='without-annotation'),
-    pytest.param({'someannotation': 'somevalue'}, id='with-annotation'),
-    pytest.param({'someannotation': 'othervalue'}, id='with-other-value'),
+    pytest.param({'known': 'value'}, id='with-annotation'),
+    pytest.param({'known': 'other'}, id='with-other-value'),
 ])
 def test_catchall_handlers_with_annotations_callback_says_false(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
-    handler_factory(reason=None, annotations={'someannotation': _never})
+    handler_factory(reason=None, annotations={'known': _never})
     handlers = registry._resource_changing.get_handlers(cause)
     assert not handlers
 
 
 @pytest.mark.parametrize('annotations', [
     pytest.param({}, id='without-annotation'),
-    pytest.param({'someannotation': 'somevalue'}, id='with-annotation'),
-    pytest.param({'someannotation': 'othervalue'}, id='with-other-value'),
-    pytest.param({'otherannotation': 'othervalue'}, id='with-other-annotation'),
-    pytest.param({'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-extra-annotation'),
+    pytest.param({'known': 'value'}, id='with-annotation'),
+    pytest.param({'known': 'other'}, id='with-other-value'),
+    pytest.param({'extra': 'other'}, id='with-other-annotation'),
+    pytest.param({'known': 'value', 'extra': 'other'}, id='with-extra-annotation'),
 ])
 def test_catchall_handlers_without_annotations(
         cause_factory, registry, handler_factory, annotations):
@@ -362,30 +362,30 @@ def test_catchall_handlers_without_annotations(
 
 
 @pytest.mark.parametrize('labels, annotations', [
-    pytest.param({'somelabel': 'somevalue'}, {'someannotation': 'somevalue'}, id='with-label-annotation'),
-    pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, {'someannotation': 'somevalue'}, id='with-extra-label-annotation'),
-    pytest.param({'somelabel': 'somevalue'}, {'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-label-extra-annotation'),
-    pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, {'someannotation': 'somevalue', 'otherannotation': 'othervalue'}, id='with-extra-label-extra-annotation'),
+    pytest.param({'known': 'value'}, {'known': 'value'}, id='with-label-annotation'),
+    pytest.param({'known': 'value', 'extra': 'other'}, {'known': 'value'}, id='with-extra-label-annotation'),
+    pytest.param({'known': 'value'}, {'known': 'value', 'extra': 'other'}, id='with-label-extra-annotation'),
+    pytest.param({'known': 'value', 'extra': 'other'}, {'known': 'value', 'extra': 'other'}, id='with-extra-label-extra-annotation'),
 ])
 def test_catchall_handlers_with_labels_and_annotations_satisfied(
         cause_factory, registry, handler_factory, labels, annotations):
     cause = cause_factory(body={'metadata': {'labels': labels, 'annotations': annotations}})
-    handler_factory(reason=None, labels={'somelabel': 'somevalue'}, annotations={'someannotation': 'somevalue'})
+    handler_factory(reason=None, labels={'known': 'value'}, annotations={'known': 'value'})
     handlers = registry._resource_changing.get_handlers(cause)
     assert handlers
 
 
 @pytest.mark.parametrize('labels', [
     pytest.param({}, id='without-label'),
-    pytest.param({'somelabel': 'somevalue'}, id='with-label'),
-    pytest.param({'somelabel': 'othervalue'}, id='with-other-value'),
-    pytest.param({'otherlabel': 'othervalue'}, id='with-other-label'),
-    pytest.param({'somelabel': 'somevalue', 'otherlabel': 'othervalue'}, id='with-extra-label'),
+    pytest.param({'known': 'value'}, id='with-label'),
+    pytest.param({'known': 'other'}, id='with-other-value'),
+    pytest.param({'extra': 'other'}, id='with-other-label'),
+    pytest.param({'known': 'value', 'extra': 'other'}, id='with-extra-label'),
 ])
 def test_catchall_handlers_with_labels_and_annotations_not_satisfied(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
-    handler_factory(reason=None, labels={'somelabel': 'somevalue'}, annotations={'someannotation': 'somevalue'})
+    handler_factory(reason=None, labels={'known': 'value'}, annotations={'known': 'value'})
     handlers = registry._resource_changing.get_handlers(cause)
     assert not handlers
 
@@ -418,9 +418,9 @@ def test_catchall_handlers_with_when_callback_mismatching(
 
 #
 # Relevant handlers are those with reason matching the cause's reason.
-# In the per-field handlers, also with field == 'some-field' (not 'another-field').
-# In the label filtered handlers, the relevant handlers are those that ask for 'somelabel'.
-# In the annotation filtered handlers, the relevant handlers are those that ask for 'someannotation'.
+# In the per-field handlers, also with field == 'known-field' (not 'extra-field').
+# In the label filtered handlers, the relevant handlers are those that ask for 'known'.
+# In the annotation filtered handlers, the relevant handlers are those that ask for 'known'.
 #
 
 
@@ -441,7 +441,7 @@ def test_relevant_handlers_without_field_found(
 def test_relevant_handlers_with_field_found(
         cause_with_diff, registry, resource, reason, decorator):
 
-    @decorator(*resource, field='some-field')
+    @decorator(*resource, field='known-field')
     def some_fn(**_): ...
 
     cause = cause_with_diff
@@ -454,7 +454,7 @@ def test_relevant_handlers_with_field_found(
 def test_relevant_handlers_with_field_ignored(
         cause_no_diff, registry, resource, reason, decorator):
 
-    @decorator(*resource, field='some-field')
+    @decorator(*resource, field='known-field')
     def some_fn(**_): ...
 
     cause = cause_no_diff
@@ -467,7 +467,7 @@ def test_relevant_handlers_with_field_ignored(
 def test_relevant_handlers_with_labels_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
-    @decorator(*resource, labels={'somelabel': PRESENT})
+    @decorator(*resource, labels={'known': PRESENT})
     def some_fn(**_): ...
 
     cause = cause_any_diff
@@ -480,7 +480,7 @@ def test_relevant_handlers_with_labels_satisfied(
 def test_relevant_handlers_with_labels_not_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
-    @decorator(*resource, labels={'otherlabel': PRESENT})
+    @decorator(*resource, labels={'extra': PRESENT})
     def some_fn(**_): ...
 
     cause = cause_any_diff
@@ -493,7 +493,7 @@ def test_relevant_handlers_with_labels_not_satisfied(
 def test_relevant_handlers_with_annotations_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
-    @decorator(*resource, annotations={'someannotation': PRESENT})
+    @decorator(*resource, annotations={'known': PRESENT})
     def some_fn(**_): ...
 
     cause = cause_any_diff
@@ -506,7 +506,7 @@ def test_relevant_handlers_with_annotations_satisfied(
 def test_relevant_handlers_with_annotations_not_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
-    @decorator(*resource, annotations={'otherannotation': PRESENT})
+    @decorator(*resource, annotations={'extra': PRESENT})
     def some_fn(**_): ...
 
     cause = cause_any_diff
@@ -558,7 +558,7 @@ def test_irrelevant_handlers_without_field_ignored(
 def test_irrelevant_handlers_with_field_ignored(
         cause_any_diff, registry, resource, reason, decorator):
 
-    @decorator(*resource, field='another-field')
+    @decorator(*resource, field='extra-field')
     def some_fn(**_): ...
 
     cause = cause_any_diff
@@ -571,7 +571,7 @@ def test_irrelevant_handlers_with_field_ignored(
 def test_irrelevant_handlers_with_labels_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
-    @decorator(*resource, labels={'somelabel': PRESENT})
+    @decorator(*resource, labels={'known': PRESENT})
     def some_fn(**_): ...
 
     cause = cause_any_diff
@@ -584,7 +584,7 @@ def test_irrelevant_handlers_with_labels_satisfied(
 def test_irrelevant_handlers_with_labels_not_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
-    @decorator(*resource, labels={'otherlabel': PRESENT})
+    @decorator(*resource, labels={'extra': PRESENT})
     def some_fn(**_): ...
 
     cause = cause_any_diff
@@ -597,7 +597,7 @@ def test_irrelevant_handlers_with_labels_not_satisfied(
 def test_irrelevant_handlers_with_annotations_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
-    @decorator(*resource, annotations={'someannotation': PRESENT})
+    @decorator(*resource, annotations={'known': PRESENT})
     def some_fn(**_): ...
 
     cause = cause_any_diff
@@ -610,7 +610,7 @@ def test_irrelevant_handlers_with_annotations_satisfied(
 def test_irrelevant_handlers_with_annotations_not_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
-    @decorator(*resource, annotations={'otherannotation': PRESENT})
+    @decorator(*resource, annotations={'extra': PRESENT})
     def some_fn(**_): ...
 
     cause = cause_any_diff
@@ -737,7 +737,7 @@ def test_order_persisted_a(cause_with_diff, registry, resource):
     @kopf.on.field(*resource, field='filtered-out-field')
     def some_fn_4(**_): ...  # filtered out
 
-    @kopf.on.field(*resource, field='some-field')
+    @kopf.on.field(*resource, field='known-field')
     def some_fn_5(**_): ...  # used
 
     cause = cause_with_diff
@@ -753,7 +753,7 @@ def test_order_persisted_a(cause_with_diff, registry, resource):
 
 def test_order_persisted_b(cause_with_diff, registry, resource):
 
-    @kopf.on.field(*resource, field='some-field')
+    @kopf.on.field(*resource, field='known-field')
     def some_fn_1(**_): ...  # used
 
     @kopf.on.field(*resource, field='filtered-out-field')
