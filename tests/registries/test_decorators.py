@@ -214,7 +214,7 @@ def test_on_startup_with_all_kwargs():
     assert handlers[0].backoff == 78
 
 
-def test_on_cleanup_with_all_kwargs(mocker):
+def test_on_cleanup_with_all_kwargs():
     registry = OperatorRegistry()
 
     @kopf.on.cleanup(
@@ -234,7 +234,7 @@ def test_on_cleanup_with_all_kwargs(mocker):
     assert handlers[0].backoff == 78
 
 
-def test_on_probe_with_all_kwargs(mocker):
+def test_on_probe_with_all_kwargs():
     registry = OperatorRegistry()
 
     @kopf.on.probe(
