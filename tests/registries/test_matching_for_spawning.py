@@ -7,7 +7,6 @@ from kopf.reactor.causation import ResourceSpawningCause
 from kopf.structs.dicts import parse_field
 from kopf.structs.filters import MetaFilterToken
 from kopf.structs.handlers import ResourceSpawningHandler
-from kopf.structs.references import Selector
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.

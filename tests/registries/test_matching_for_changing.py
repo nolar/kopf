@@ -7,7 +7,6 @@ from kopf.structs.bodies import Body
 from kopf.structs.dicts import parse_field
 from kopf.structs.filters import MetaFilterToken
 from kopf.structs.handlers import ALL_REASONS, Reason, ResourceChangingHandler
-from kopf.structs.references import Selector
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.
