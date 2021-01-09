@@ -25,7 +25,7 @@ with one additional line:
     :caption: ephemeral.py
     :emphasize-lines: 24
 
-    @kopf.on.create('zalando.org', 'v1', 'ephemeralvolumeclaims')
+    @kopf.on.create('ephemeralvolumeclaims')
     def create_fn(spec, name, namespace, logger, **kwargs):
 
         size = spec.get('size')
@@ -79,7 +79,7 @@ Let's add a yet another handler, but for the "update" cause.
 This handler gets this stored PVC name from the creation handler,
 and patches the PVC with the new size from the EVC::
 
-    @kopf.on.update('zalando.org', 'v1', 'ephemeralvolumeclaims')
+    @kopf.on.update('ephemeralvolumeclaims')
     def update_fn(spec, status, namespace, logger, **kwargs):
 
         size = spec.get('size', None)

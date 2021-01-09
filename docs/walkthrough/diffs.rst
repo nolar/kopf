@@ -31,7 +31,7 @@ but we will use another feature of Kopf to track one specific field only:
     :caption: ephemeral.py
     :emphasize-lines: 1, 5
 
-    @kopf.on.field('zalando.org', 'v1', 'ephemeralvolumeclaims', field='metadata.labels')
+    @kopf.on.field('ephemeralvolumeclaims', field='metadata.labels')
     def relabel(old, new, status, namespace, **kwargs):
 
         pvc_name = status['create_fn']['pvc-name']
@@ -94,7 +94,7 @@ exactly as needed for the patch object (i.e. the field is present there):
     :caption: ephemeral.py
     :emphasize-lines: 4
 
-    @kopf.on.field('zalando.org', 'v1', 'ephemeralvolumeclaims', field='metadata.labels')
+    @kopf.on.field('ephemeralvolumeclaims', field='metadata.labels')
     def relabel(diff, status, namespace, **kwargs):
 
         labels_patch = {field[0]: new for op, field, old, new in diff}

@@ -16,10 +16,10 @@ For Kubernetes 1.15 and below:
     apiVersion: apiextensions.k8s.io/v1beta1
     kind: CustomResourceDefinition
     metadata:
-      name: ephemeralvolumeclaims.zalando.org
+      name: ephemeralvolumeclaims.kopf.dev
     spec:
       scope: Namespaced
-      group: zalando.org
+      group: kopf.dev
       names:
         kind: EphemeralVolumeClaim
         plural: ephemeralvolumeclaims
@@ -51,10 +51,10 @@ For Kubernetes 1.16 and above:
     apiVersion: apiextensions.k8s.io/v1
     kind: CustomResourceDefinition
     metadata:
-      name: ephemeralvolumeclaims.zalando.org
+      name: ephemeralvolumeclaims.kopf.dev
     spec:
       scope: Namespaced
-      group: zalando.org
+      group: kopf.dev
       names:
         kind: EphemeralVolumeClaim
         plural: ephemeralvolumeclaims
@@ -90,7 +90,7 @@ If you want to revert this operation (e.g., to try it again):
 
 .. code-block:: bash
 
-    kubectl delete crd ephemeralvolumeclaims.zalando.org
+    kubectl delete crd ephemeralvolumeclaims.kopf.dev
     kubectl delete -f crd.yaml
 
 
@@ -107,7 +107,7 @@ Let's make a sample object:
     :caption: obj.yaml
     :name: obj-yaml
 
-    apiVersion: zalando.org/v1
+    apiVersion: kopf.dev/v1
     kind: EphemeralVolumeClaim
     metadata:
       name: my-claim
