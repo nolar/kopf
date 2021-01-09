@@ -311,6 +311,8 @@ class Selector:
         """
         Check if a specific resources matches this resource specification.
         """
+        # Core v1 events are excluded from EVERYTHING: they are implicitly produced during handling,
+        # and thus trigger unnecessary handling cycles (even for other resources, not for events).
         return (
             (self.group is None or self.group == resource.group) and
             ((self.version is None and resource.preferred) or self.version == resource.version) and
@@ -320,11 +322,13 @@ class Selector:
             (self.category is None or self.category in resource.categories) and
             (self.shortcut is None or self.shortcut in resource.shortcuts) and
             (self.any_name is None or
-             self.any_name is Marker.EVERYTHING or
              self.any_name == resource.kind or
              self.any_name == resource.plural or
              self.any_name == resource.singular or
-             self.any_name in resource.shortcuts))
+             self.any_name in resource.shortcuts or
+             (self.any_name is Marker.EVERYTHING and
+              not EVENTS.check(resource) and
+              not EVENTS_K8S.check(resource))))
 
     def select(self, resources: Collection[Resource]) -> Collection[Resource]:
         result = {resource for resource in resources if self.check(resource)}
@@ -345,6 +349,7 @@ class Selector:
 # the fact of changes, so the schema does not matter, any cluster-preferred API version would work.
 CRDS = Selector('apiextensions.k8s.io', 'customresourcedefinitions')
 EVENTS = Selector('v1', 'events')
+EVENTS_K8S = Selector('events.k8s.io', 'events')  # only for exclusion from EVERYTHING
 NAMESPACES = Selector('v1', 'namespaces')
 CLUSTER_PEERINGS = Selector('zalando.org/v1', 'clusterkopfpeerings')
 NAMESPACED_PEERINGS = Selector('zalando.org/v1', 'kopfpeerings')

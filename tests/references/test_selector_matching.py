@@ -125,6 +125,45 @@ def test_catchall_versions_are_ignored_for_nonpreferred_resources():
     assert not matches
 
 
+@pytest.mark.parametrize('selector_args', [
+    pytest.param(['events'], id='only-name'),
+    pytest.param(['v1', 'events'], id='with-version'),
+    pytest.param(['', 'v1', 'events'], id='with-groupversion'),
+])
+def test_events_are_matched_when_explicitly_named(selector_args):
+    resource = Resource(
+        group='', version='v1', preferred=True, namespaced=True,
+        plural='events', singular='event', kind='Event',
+        shortcuts=[], categories=[], subresources=[], verbs=[],
+    )
+    selector = Selector(*selector_args)
+    matches = selector.check(resource)
+    assert matches
+
+
+@pytest.mark.parametrize('selector_args', [
+    pytest.param([EVERYTHING], id='only-marker'),
+    pytest.param(['v1', EVERYTHING], id='with-core-version'),
+    pytest.param(['', 'v1', EVERYTHING], id='with-core-groupversion'),
+    pytest.param(['events.k8s.io', EVERYTHING], id='with-k8sio-group'),
+    pytest.param(['events.k8s.io', 'v1beta1', EVERYTHING], id='with-k8sio-groupversion'),
+])
+@pytest.mark.parametrize('resource_kwargs', [
+    pytest.param(dict(group='', version='v1'), id='core-v1'),
+    pytest.param(dict(group='events.k8s.io', version='v1'), id='k8sio-v1'),
+    pytest.param(dict(group='events.k8s.io', version='v1beta1'), id='k8sio-v1beta1'),
+])
+def test_events_are_excluded_from_everything(resource_kwargs, selector_args):
+    resource = Resource(
+        **resource_kwargs, preferred=True, namespaced=True,
+        plural='events', singular='event', kind='Event',
+        shortcuts=[], categories=[], subresources=[], verbs=[],
+    )
+    selector = Selector(*selector_args)
+    matches = selector.check(resource)
+    assert not matches
+
+
 @pytest.mark.parametrize('kwarg, kwval', [
     ('kind', 'kind1'),
     ('plural', 'plural1'),

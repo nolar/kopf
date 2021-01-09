@@ -42,6 +42,23 @@ async def test_posting(
     assert data['involvedObject']['uid'] == 'uid'
 
 
+async def test_no_events_for_events(
+        resp_mocker, aresponses, hostname):
+
+    post_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
+    aresponses.add(hostname, '/api/v1/namespaces/ns/events', 'post', post_mock)
+
+    obj = {'apiVersion': 'v1',
+           'kind': 'Event',
+           'metadata': {'namespace': 'ns',
+                        'name': 'name',
+                        'uid': 'uid'}}
+    ref = build_object_reference(obj)
+    await post_event(ref=ref, type='type', reason='reason', message='message', resource=EVENTS)
+
+    assert not post_mock.called
+
+
 async def test_api_errors_logged_but_suppressed(
         resp_mocker, aresponses, hostname, assert_logs):
 
