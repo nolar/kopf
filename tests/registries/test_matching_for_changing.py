@@ -5,7 +5,7 @@ import pytest
 import kopf
 from kopf.structs.bodies import Body
 from kopf.structs.dicts import parse_field
-from kopf.structs.filters import MetaFilterToken
+from kopf.structs.filters import ABSENT, PRESENT
 from kopf.structs.handlers import ALL_REASONS, Reason, ResourceChangingHandler
 
 
@@ -165,7 +165,7 @@ def test_catchall_handlers_with_exact_labels_not_satisfied(
 def test_catchall_handlers_with_desired_labels_present(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
-    handler_factory(reason=None, labels={'somelabel': MetaFilterToken.PRESENT})
+    handler_factory(reason=None, labels={'somelabel': PRESENT})
     handlers = registry._resource_changing.get_handlers(cause)
     assert handlers
 
@@ -177,7 +177,7 @@ def test_catchall_handlers_with_desired_labels_present(
 def test_catchall_handlers_with_desired_labels_absent(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
-    handler_factory(reason=None, labels={'somelabel': MetaFilterToken.PRESENT})
+    handler_factory(reason=None, labels={'somelabel': PRESENT})
     handlers = registry._resource_changing.get_handlers(cause)
     assert not handlers
 
@@ -189,7 +189,7 @@ def test_catchall_handlers_with_desired_labels_absent(
 def test_catchall_handlers_with_undesired_labels_present(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
-    handler_factory(reason=None, labels={'somelabel': MetaFilterToken.ABSENT})
+    handler_factory(reason=None, labels={'somelabel': ABSENT})
     handlers = registry._resource_changing.get_handlers(cause)
     assert not handlers
 
@@ -201,7 +201,7 @@ def test_catchall_handlers_with_undesired_labels_present(
 def test_catchall_handlers_with_undesired_labels_absent(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
-    handler_factory(reason=None, labels={'somelabel': MetaFilterToken.ABSENT})
+    handler_factory(reason=None, labels={'somelabel': ABSENT})
     handlers = registry._resource_changing.get_handlers(cause)
     assert handlers
 
@@ -279,7 +279,7 @@ def test_catchall_handlers_with_exact_annotations_not_satisfied(
 def test_catchall_handlers_with_desired_annotations_present(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
-    handler_factory(reason=None, annotations={'someannotation': MetaFilterToken.PRESENT})
+    handler_factory(reason=None, annotations={'someannotation': PRESENT})
     handlers = registry._resource_changing.get_handlers(cause)
     assert handlers
 
@@ -291,7 +291,7 @@ def test_catchall_handlers_with_desired_annotations_present(
 def test_catchall_handlers_with_desired_annotations_absent(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
-    handler_factory(reason=None, annotations={'someannotation': MetaFilterToken.PRESENT})
+    handler_factory(reason=None, annotations={'someannotation': PRESENT})
     handlers = registry._resource_changing.get_handlers(cause)
     assert not handlers
 
@@ -303,7 +303,7 @@ def test_catchall_handlers_with_desired_annotations_absent(
 def test_catchall_handlers_with_undesired_annotations_present(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
-    handler_factory(reason=None, annotations={'someannotation': MetaFilterToken.ABSENT})
+    handler_factory(reason=None, annotations={'someannotation': ABSENT})
     handlers = registry._resource_changing.get_handlers(cause)
     assert not handlers
 
@@ -315,7 +315,7 @@ def test_catchall_handlers_with_undesired_annotations_present(
 def test_catchall_handlers_with_undesired_annotations_absent(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
-    handler_factory(reason=None, annotations={'someannotation': MetaFilterToken.ABSENT})
+    handler_factory(reason=None, annotations={'someannotation': ABSENT})
     handlers = registry._resource_changing.get_handlers(cause)
     assert handlers
 
@@ -471,7 +471,7 @@ def test_relevant_handlers_with_labels_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(resource.group, resource.version, resource.plural,
-               labels={'somelabel': MetaFilterToken.PRESENT})
+               labels={'somelabel': PRESENT})
     def some_fn(**_): ...
 
     cause = cause_any_diff
@@ -485,7 +485,7 @@ def test_relevant_handlers_with_labels_not_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(resource.group, resource.version, resource.plural,
-               labels={'otherlabel': MetaFilterToken.PRESENT})
+               labels={'otherlabel': PRESENT})
     def some_fn(**_): ...
 
     cause = cause_any_diff
@@ -499,7 +499,7 @@ def test_relevant_handlers_with_annotations_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(resource.group, resource.version, resource.plural,
-               annotations={'someannotation': MetaFilterToken.PRESENT})
+               annotations={'someannotation': PRESENT})
     def some_fn(**_): ...
 
     cause = cause_any_diff
@@ -513,7 +513,7 @@ def test_relevant_handlers_with_annotations_not_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(resource.group, resource.version, resource.plural,
-               annotations={'otherannotation': MetaFilterToken.PRESENT})
+               annotations={'otherannotation': PRESENT})
     def some_fn(**_): ...
 
     cause = cause_any_diff
@@ -582,7 +582,7 @@ def test_irrelevant_handlers_with_labels_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(resource.group, resource.version, resource.plural,
-               labels={'somelabel': MetaFilterToken.PRESENT})
+               labels={'somelabel': PRESENT})
     def some_fn(**_): ...
 
     cause = cause_any_diff
@@ -596,7 +596,7 @@ def test_irrelevant_handlers_with_labels_not_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(resource.group, resource.version, resource.plural,
-               labels={'otherlabel': MetaFilterToken.PRESENT})
+               labels={'otherlabel': PRESENT})
     def some_fn(**_): ...
 
     cause = cause_any_diff
@@ -610,7 +610,7 @@ def test_irrelevant_handlers_with_annotations_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(resource.group, resource.version, resource.plural,
-               annotations={'someannotation': MetaFilterToken.PRESENT})
+               annotations={'someannotation': PRESENT})
     def some_fn(**_): ...
 
     cause = cause_any_diff
@@ -624,7 +624,7 @@ def test_irrelevant_handlers_with_annotations_not_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(resource.group, resource.version, resource.plural,
-               annotations={'otherannotation': MetaFilterToken.PRESENT})
+               annotations={'otherannotation': PRESENT})
     def some_fn(**_): ...
 
     cause = cause_any_diff

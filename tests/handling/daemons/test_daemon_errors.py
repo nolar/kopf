@@ -1,6 +1,8 @@
 import logging
 
 import kopf
+from kopf.reactor.handling import PermanentError, TemporaryError
+from kopf.structs.handlers import ErrorsMode
 
 
 async def test_daemon_stopped_on_permanent_error(
@@ -13,7 +15,7 @@ async def test_daemon_stopped_on_permanent_error(
         dummy.mock()
         dummy.kwargs = kwargs
         dummy.steps['called'].set()
-        raise kopf.PermanentError("boo!")
+        raise PermanentError("boo!")
 
     finalizer = settings.persistence.finalizer
     event_object = {'metadata': {'finalizers': [finalizer]}}
@@ -39,7 +41,7 @@ async def test_daemon_stopped_on_arbitrary_errors_with_mode_permanent(
     caplog.set_level(logging.DEBUG)
 
     @kopf.daemon(resource.group, resource.version, resource.plural, id='fn',
-                 errors=kopf.ErrorsMode.PERMANENT, backoff=0.01)
+                 errors=ErrorsMode.PERMANENT, backoff=0.01)
     async def fn(**kwargs):
         dummy.mock()
         dummy.kwargs = kwargs
@@ -76,7 +78,7 @@ async def test_daemon_retried_on_temporary_error(
         dummy.kwargs = kwargs
         dummy.steps['called'].set()
         if not retry:
-            raise kopf.TemporaryError("boo!", delay=1.0)
+            raise TemporaryError("boo!", delay=1.0)
         else:
             dummy.steps['finish'].set()
 
@@ -103,7 +105,7 @@ async def test_daemon_retried_on_arbitrary_error_with_mode_temporary(
     caplog.set_level(logging.DEBUG)
 
     @kopf.daemon(resource.group, resource.version, resource.plural, id='fn',
-                 errors=kopf.ErrorsMode.TEMPORARY, backoff=1.0)
+                 errors=ErrorsMode.TEMPORARY, backoff=1.0)
     async def fn(retry, **kwargs):
         dummy.mock()
         dummy.kwargs = kwargs
@@ -140,7 +142,7 @@ async def test_daemon_retried_until_retries_limit(
     async def fn(**kwargs):
         dummy.kwargs = kwargs
         dummy.steps['called'].set()
-        raise kopf.TemporaryError("boo!", delay=1.0)
+        raise TemporaryError("boo!", delay=1.0)
 
     await simulate_cycle({})
     await dummy.steps['called'].wait()
@@ -161,7 +163,7 @@ async def test_daemon_retried_until_timeout(
     async def fn(**kwargs):
         dummy.kwargs = kwargs
         dummy.steps['called'].set()
-        raise kopf.TemporaryError("boo!", delay=1.0)
+        raise TemporaryError("boo!", delay=1.0)
 
     await simulate_cycle({})
     await dummy.steps['called'].wait()

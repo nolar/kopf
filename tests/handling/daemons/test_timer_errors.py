@@ -1,6 +1,8 @@
 import logging
 
 import kopf
+from kopf.reactor.handling import PermanentError, TemporaryError
+from kopf.structs.handlers import ErrorsMode
 
 
 async def test_timer_stopped_on_permanent_error(
@@ -14,7 +16,7 @@ async def test_timer_stopped_on_permanent_error(
         dummy.kwargs = kwargs
         dummy.steps['called'].set()
         kwargs['stopped']._stopper.set(reason=kopf.DaemonStoppingReason.NONE)  # to exit the cycle
-        raise kopf.PermanentError("boo!")
+        raise PermanentError("boo!")
 
     event_object = {'metadata': {'finalizers': [settings.persistence.finalizer]}}
     await simulate_cycle(event_object)
@@ -38,7 +40,7 @@ async def test_timer_stopped_on_arbitrary_errors_with_mode_permanent(
     caplog.set_level(logging.DEBUG)
 
     @kopf.timer(resource.group, resource.version, resource.plural, id='fn',
-                errors=kopf.ErrorsMode.PERMANENT, backoff=0.01, interval=1.0)
+                errors=ErrorsMode.PERMANENT, backoff=0.01, interval=1.0)
     async def fn(**kwargs):
         dummy.mock()
         dummy.kwargs = kwargs
@@ -75,7 +77,7 @@ async def test_timer_retried_on_temporary_error(
         dummy.kwargs = kwargs
         dummy.steps['called'].set()
         if not retry:
-            raise kopf.TemporaryError("boo!", delay=1.0)
+            raise TemporaryError("boo!", delay=1.0)
         else:
             kwargs['stopped']._stopper.set(reason=kopf.DaemonStoppingReason.NONE)  # to exit the cycle
             dummy.steps['finish'].set()
@@ -102,7 +104,7 @@ async def test_timer_retried_on_arbitrary_error_with_mode_temporary(
     caplog.set_level(logging.DEBUG)
 
     @kopf.timer(resource.group, resource.version, resource.plural, id='fn',
-                errors=kopf.ErrorsMode.TEMPORARY, backoff=1.0, interval=1.0)
+                errors=ErrorsMode.TEMPORARY, backoff=1.0, interval=1.0)
     async def fn(retry, **kwargs):
         dummy.mock()
         dummy.kwargs = kwargs
@@ -142,7 +144,7 @@ async def test_timer_retried_until_retries_limit(
         dummy.steps['called'].set()
         if dummy.mock.call_count >= 5:
             kwargs['stopped']._stopper.set(reason=kopf.DaemonStoppingReason.NONE)  # to exit the cycle
-        raise kopf.TemporaryError("boo!", delay=1.0)
+        raise TemporaryError("boo!", delay=1.0)
 
     await simulate_cycle({})
     await dummy.steps['called'].wait()
@@ -167,7 +169,7 @@ async def test_timer_retried_until_timeout(
         dummy.steps['called'].set()
         if dummy.mock.call_count >= 5:
             kwargs['stopped']._stopper.set(reason=kopf.DaemonStoppingReason.NONE)  # to exit the cycle
-        raise kopf.TemporaryError("boo!", delay=1.0)
+        raise TemporaryError("boo!", delay=1.0)
 
     await simulate_cycle({})
     await dummy.steps['called'].wait()
