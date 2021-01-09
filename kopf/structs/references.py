@@ -355,12 +355,14 @@ class Selector:
 # Some predefined API endpoints that we use in the framework itself (not exposed to the operators).
 # Note: the CRDs are versionless: we do not look into its ``spec`` stanza, we only watch for
 # the fact of changes, so the schema does not matter, any cluster-preferred API version would work.
+# Note: the peering resources are either zalando.org/v1 or kopf.dev/v1; both cannot co-exist because
+# they would share the names, so K8s will not let this. It is done for domain name transitioning.
 CRDS = Selector('apiextensions.k8s.io', 'customresourcedefinitions')
 EVENTS = Selector('v1', 'events')
 EVENTS_K8S = Selector('events.k8s.io', 'events')  # only for exclusion from EVERYTHING
 NAMESPACES = Selector('v1', 'namespaces')
-CLUSTER_PEERINGS = Selector('zalando.org/v1', 'clusterkopfpeerings')
-NAMESPACED_PEERINGS = Selector('zalando.org/v1', 'kopfpeerings')
+CLUSTER_PEERINGS = Selector('clusterkopfpeerings')
+NAMESPACED_PEERINGS = Selector('kopfpeerings')
 
 
 class Backbone(Mapping[Selector, Resource]):

@@ -12,7 +12,7 @@ metadata:
 rules:
 
   # Framework: knowing which other operators are running (i.e. peering).
-  - apiGroups: [zalando.org]
+  - apiGroups: [kopf.dev]
     resources: [clusterkopfpeerings]
     verbs: [list, watch, patch, get]
 
@@ -37,7 +37,7 @@ metadata:
 rules:
 
   # Framework: knowing which other operators are running (i.e. peering).
-  - apiGroups: [zalando.org]
+  - apiGroups: [kopf.dev]
     resources: [kopfpeerings]
     verbs: [list, watch, patch, get]
 

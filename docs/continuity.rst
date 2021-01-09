@@ -12,7 +12,8 @@ All information is retrieved and stored via Kubernetes API.
 Specifically:
 
 * The cross-operator exchange is performed via peering objects of type
-  ``KopfPeering`` or ``ClusterKopfPeering`` (API version: ``zalando.org/v1``).
+  ``KopfPeering`` or ``ClusterKopfPeering``
+  (API versions: either ``kopf.dev/v1`` or ``zalando.org/v1``).
   See :doc:`peering` for more info.
 * The last handled state of the object is stored in ``metadata.annotations``
   (the ``kopf.zalando.org/last-handled-configuration`` annotation).

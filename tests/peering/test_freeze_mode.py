@@ -7,9 +7,6 @@ import pytest
 
 from kopf.engines.peering import process_peering_event
 from kopf.structs import bodies, primitives
-from kopf.structs.references import Resource
-
-NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings', namespaced=True)
 
 
 @dataclasses.dataclass(frozen=True, eq=False)
@@ -35,7 +32,8 @@ async def replenished(mocker):
 
 
 async def test_other_peering_objects_are_ignored(
-        mocker, k8s_mocked, settings, replenished):
+        mocker, k8s_mocked, settings, replenished,
+        peering_resource, peering_namespace):
 
     status = mocker.Mock()
     status.items.side_effect = Exception("This should not be called.")
@@ -56,8 +54,8 @@ async def test_other_peering_objects_are_ignored(
         autoclean=False,
         identity='id',
         settings=settings,
-        namespace='namespace',
-        resource=NAMESPACED_PEERING_RESOURCE,
+        namespace=peering_namespace,
+        resource=peering_resource,
     )
     assert not status.items.called
     assert not k8s_mocked.patch_obj.called
@@ -66,12 +64,13 @@ async def test_other_peering_objects_are_ignored(
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
 async def test_toggled_on_for_higher_priority_peer_when_initially_off(
-        mocker, k8s_mocked, replenished, caplog, assert_logs, settings):
+        mocker, k8s_mocked, replenished, caplog, assert_logs, settings,
+        peering_resource, peering_namespace):
 
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
         object={
-            'metadata': {'name': 'name', 'namespace': 'namespace'},  # for matching
+            'metadata': {'name': 'name', 'namespace': peering_namespace},  # for matching
             'status': {
                 'higher-prio': {
                     'priority': 101,
@@ -93,8 +92,8 @@ async def test_toggled_on_for_higher_priority_peer_when_initially_off(
         freeze_toggle=freeze_toggle,
         replenished=replenished,
         autoclean=False,
-        namespace='namespace',
-        resource=NAMESPACED_PEERING_RESOURCE,
+        namespace=peering_namespace,
+        resource=peering_resource,
         identity='id',
         settings=settings,
     )
@@ -111,12 +110,13 @@ async def test_toggled_on_for_higher_priority_peer_when_initially_off(
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
 async def test_ignored_for_higher_priority_peer_when_already_on(
-        mocker, k8s_mocked, replenished, caplog, assert_logs, settings):
+        mocker, k8s_mocked, replenished, caplog, assert_logs, settings,
+        peering_resource, peering_namespace):
 
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
         object={
-            'metadata': {'name': 'name', 'namespace': 'namespace'},  # for matching
+            'metadata': {'name': 'name', 'namespace': peering_namespace},  # for matching
             'status': {
                 'higher-prio': {
                     'priority': 101,
@@ -138,8 +138,8 @@ async def test_ignored_for_higher_priority_peer_when_already_on(
         freeze_toggle=freeze_toggle,
         replenished=replenished,
         autoclean=False,
-        namespace='namespace',
-        resource=NAMESPACED_PEERING_RESOURCE,
+        namespace=peering_namespace,
+        resource=peering_resource,
         identity='id',
         settings=settings,
     )
@@ -157,12 +157,13 @@ async def test_ignored_for_higher_priority_peer_when_already_on(
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
 async def test_toggled_off_for_lower_priority_peer_when_initially_on(
-        mocker, k8s_mocked, replenished, caplog, assert_logs, settings):
+        mocker, k8s_mocked, replenished, caplog, assert_logs, settings,
+        peering_resource, peering_namespace):
 
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
         object={
-            'metadata': {'name': 'name', 'namespace': 'namespace'},  # for matching
+            'metadata': {'name': 'name', 'namespace': peering_namespace},  # for matching
             'status': {
                 'higher-prio': {
                     'priority': 99,
@@ -184,8 +185,8 @@ async def test_toggled_off_for_lower_priority_peer_when_initially_on(
         freeze_toggle=freeze_toggle,
         replenished=replenished,
         autoclean=False,
-        namespace='namespace',
-        resource=NAMESPACED_PEERING_RESOURCE,
+        namespace=peering_namespace,
+        resource=peering_resource,
         identity='id',
         settings=settings,
     )
@@ -201,12 +202,13 @@ async def test_toggled_off_for_lower_priority_peer_when_initially_on(
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
 async def test_ignored_for_lower_priority_peer_when_already_off(
-        mocker, k8s_mocked, replenished, caplog, assert_logs, settings):
+        mocker, k8s_mocked, replenished, caplog, assert_logs, settings,
+        peering_resource, peering_namespace):
 
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
         object={
-            'metadata': {'name': 'name', 'namespace': 'namespace'},  # for matching
+            'metadata': {'name': 'name', 'namespace': peering_namespace},  # for matching
             'status': {
                 'higher-prio': {
                     'priority': 99,
@@ -228,8 +230,8 @@ async def test_ignored_for_lower_priority_peer_when_already_off(
         freeze_toggle=freeze_toggle,
         replenished=replenished,
         autoclean=False,
-        namespace='namespace',
-        resource=NAMESPACED_PEERING_RESOURCE,
+        namespace=peering_namespace,
+        resource=peering_resource,
         identity='id',
         settings=settings,
     )
@@ -246,12 +248,13 @@ async def test_ignored_for_lower_priority_peer_when_already_off(
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
 async def test_toggled_on_for_same_priority_peer_when_initially_off(
-        mocker, k8s_mocked, replenished, caplog, assert_logs, settings):
+        mocker, k8s_mocked, replenished, caplog, assert_logs, settings,
+        peering_resource, peering_namespace):
 
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
         object={
-            'metadata': {'name': 'name', 'namespace': 'namespace'},  # for matching
+            'metadata': {'name': 'name', 'namespace': peering_namespace},  # for matching
             'status': {
                 'higher-prio': {
                     'priority': 100,
@@ -273,8 +276,8 @@ async def test_toggled_on_for_same_priority_peer_when_initially_off(
         freeze_toggle=freeze_toggle,
         replenished=replenished,
         autoclean=False,
-        namespace='namespace',
-        resource=NAMESPACED_PEERING_RESOURCE,
+        namespace=peering_namespace,
+        resource=peering_resource,
         identity='id',
         settings=settings,
     )
@@ -293,12 +296,13 @@ async def test_toggled_on_for_same_priority_peer_when_initially_off(
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
 async def test_ignored_for_same_priority_peer_when_already_on(
-        mocker, k8s_mocked, replenished, caplog, assert_logs, settings):
+        mocker, k8s_mocked, replenished, caplog, assert_logs, settings,
+        peering_resource, peering_namespace):
 
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
         object={
-            'metadata': {'name': 'name', 'namespace': 'namespace'},  # for matching
+            'metadata': {'name': 'name', 'namespace': peering_namespace},  # for matching
             'status': {
                 'higher-prio': {
                     'priority': 100,
@@ -320,8 +324,8 @@ async def test_ignored_for_same_priority_peer_when_already_on(
         freeze_toggle=freeze_toggle,
         replenished=replenished,
         autoclean=False,
-        namespace='namespace',
-        resource=NAMESPACED_PEERING_RESOURCE,
+        namespace=peering_namespace,
+        resource=peering_resource,
         identity='id',
         settings=settings,
     )
@@ -341,12 +345,13 @@ async def test_ignored_for_same_priority_peer_when_already_on(
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
 @pytest.mark.parametrize('priority', [100, 101])
 async def test_resumes_immediately_on_expiration_of_blocking_peers(
-        mocker, k8s_mocked, replenished, caplog, assert_logs, settings, priority):
+        mocker, k8s_mocked, replenished, caplog, assert_logs, settings, priority,
+        peering_resource, peering_namespace):
 
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
         object={
-            'metadata': {'name': 'name', 'namespace': 'namespace'},  # for matching
+            'metadata': {'name': 'name', 'namespace': peering_namespace},  # for matching
             'status': {
                 'higher-prio': {
                     'priority': priority,
@@ -368,8 +373,8 @@ async def test_resumes_immediately_on_expiration_of_blocking_peers(
         freeze_toggle=freeze_toggle,
         replenished=replenished,
         autoclean=False,
-        namespace='namespace',
-        resource=NAMESPACED_PEERING_RESOURCE,
+        namespace=peering_namespace,
+        resource=peering_resource,
         identity='id',
         settings=settings,
     )

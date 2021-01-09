@@ -91,6 +91,32 @@ def enforce_asyncio_mocker(pytestconfig):
     assert fixture.mock_module is asynctest, "Mock replacement failed!"
 
 
+@pytest.fixture(params=[
+    ('kopf.dev', 'v1', 'clusterkopfpeerings'),
+    ('zalando.org', 'v1', 'clusterkopfpeerings'),
+], ids=['kopf-dev-namespaced', 'zalando-org-namespaced'])
+def namespaced_peering_resource(request):
+    return Resource(*request.param[:3], namespaced=True)
+
+
+@pytest.fixture(params=[
+    ('kopf.dev', 'v1', 'kopfpeerings'),
+    ('zalando.org', 'v1', 'kopfpeerings'),
+], ids=['kopf-dev-cluster', 'zalando-org-cluster'])
+def cluster_peering_resource(request):
+    return Resource(*request.param[:3], namespaced=False)
+
+
+@pytest.fixture(params=[
+    ('kopf.dev', 'v1', 'clusterkopfpeerings', False),
+    ('zalando.org', 'v1', 'clusterkopfpeerings', False),
+    ('kopf.dev', 'v1', 'kopfpeerings', True),
+    ('zalando.org', 'v1', 'kopfpeerings', True),
+], ids=['kopf-dev-cluster', 'zalando-org-cluster', 'kopf-dev-namespaced', 'zalando-org-namespaced'])
+def peering_resource(request):
+    return Resource(*request.param[:3], namespaced=request.param[3])
+
+
 @pytest.fixture()
 def namespaced_resource():
     """ The resource used in the tests. Usually mocked, so it does not matter. """
@@ -113,6 +139,11 @@ def resource(request):
 def selector(resource):
     """ The selector used in the tests. Usually mocked, so it does not matter. """
     return Selector(group=resource.group, version=resource.version, plural=resource.plural)
+
+
+@pytest.fixture()
+def peering_namespace(peering_resource):
+    return 'ns' if peering_resource.namespaced else None
 
 
 @pytest.fixture()
