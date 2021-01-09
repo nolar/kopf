@@ -43,7 +43,7 @@ Exiting the main app.
 
 [INFO    ] Stop-flag is set to True. Operator is stopping.
 [DEBUG   ] Root task 'poster of events' is cancelled.
-[DEBUG   ] Root task 'watcher of kopfexamples.zalando.org' is cancelled.
+[DEBUG   ] Root task 'watcher of kopfexamples.kopf.dev' is cancelled.
 [DEBUG   ] Root tasks are stopped: finished normally; tasks left: set()
 [DEBUG   ] Hung tasks stopping is skipped: no tasks given.
 ```

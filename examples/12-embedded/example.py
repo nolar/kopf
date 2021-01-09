@@ -70,7 +70,7 @@ def _create_object(step):
     try:
         api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         kex = KopfExample(api, dict(
-            apiVersion='zalando.org/v1',
+            apiVersion='kopf.dev/v1',
             kind='KopfExample',
             metadata=dict(
                 namespace='default',

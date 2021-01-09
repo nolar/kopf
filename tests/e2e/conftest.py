@@ -53,7 +53,7 @@ def with_peering(peering_yaml):
 
 @pytest.fixture()
 def no_crd():
-    subprocess.run("kubectl delete customresourcedefinition kopfexamples.zalando.org",
+    subprocess.run("kubectl delete customresourcedefinition kopfexamples.kopf.dev",
                    shell=True, check=True, timeout=10, capture_output=True)
 
 
