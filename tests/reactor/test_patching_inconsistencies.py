@@ -42,16 +42,16 @@ from kopf.structs.patches import Patch
 
 ])
 async def test_patching_without_inconsistencies(
-        resource, settings, caplog, assert_logs, version_api,
+        resource, namespace, settings, caplog, assert_logs, version_api,
         aresponses, hostname, resp_mocker,
         patch, response):
     caplog.set_level(logging.DEBUG)
 
-    url = resource.get_url(namespace='ns1', name='name1')
+    url = resource.get_url(namespace=namespace, name='name1')
     patch_mock = resp_mocker(return_value=aiohttp.web.json_response(response))
     aresponses.add(hostname, url, 'patch', patch_mock)
 
-    body = Body({'metadata': {'namespace': 'ns1', 'name': 'name1'}})
+    body = Body({'metadata': {'namespace': namespace, 'name': 'name1'}})
     logger = LocalObjectLogger(body=body, settings=settings)
     await patch_and_check(
         resource=resource,
@@ -104,16 +104,16 @@ async def test_patching_without_inconsistencies(
 
 ])
 async def test_patching_with_inconsistencies(
-        resource, settings, caplog, assert_logs, version_api,
+        resource, namespace, settings, caplog, assert_logs, version_api,
         aresponses, hostname, resp_mocker,
         patch, response):
     caplog.set_level(logging.DEBUG)
 
-    url = resource.get_url(namespace='ns1', name='name1')
+    url = resource.get_url(namespace=namespace, name='name1')
     patch_mock = resp_mocker(return_value=aiohttp.web.json_response(response))
     aresponses.add(hostname, url, 'patch', patch_mock)
 
-    body = Body({'metadata': {'namespace': 'ns1', 'name': 'name1'}})
+    body = Body({'metadata': {'namespace': namespace, 'name': 'name1'}})
     logger = LocalObjectLogger(body=body, settings=settings)
     await patch_and_check(
         resource=resource,
@@ -129,16 +129,16 @@ async def test_patching_with_inconsistencies(
 
 
 async def test_patching_with_disappearance(
-        resource, settings, caplog, assert_logs, version_api,
+        resource, namespace, settings, caplog, assert_logs, version_api,
         aresponses, hostname, resp_mocker):
     caplog.set_level(logging.DEBUG)
 
     patch = {'spec': {'x': 'y'}, 'status': {'s': 't'}}  # irrelevant
-    url = resource.get_url(namespace='ns1', name='name1')
+    url = resource.get_url(namespace=namespace, name='name1')
     patch_mock = resp_mocker(return_value=aresponses.Response(status=404))
     aresponses.add(hostname, url, 'patch', patch_mock)
 
-    body = Body({'metadata': {'namespace': 'ns1', 'name': 'name1'}})
+    body = Body({'metadata': {'namespace': namespace, 'name': 'name1'}})
     logger = LocalObjectLogger(body=body, settings=settings)
     await patch_and_check(
         resource=resource,

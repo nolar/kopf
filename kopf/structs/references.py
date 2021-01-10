@@ -161,13 +161,17 @@ class Resource:
     ) -> str:
         if subresource is not None and name is None:
             raise ValueError("Subresources can be used only with specific resources by their name.")
+        if not self.namespaced and namespace is not None:
+            raise ValueError(f"Specific namespaces are not supported for cluster-scoped resources.")
+        if self.namespaced and namespace is None and name is not None:
+            raise ValueError("Specific namespaces are required for specific namespaced resources.")
 
         return self._build_url(server, params, [
             '/api' if self.group == '' and self.version == 'v1' else '/apis',
             self.group,
             self.version,
-            'namespaces' if namespace is not None else None,
-            namespace,
+            'namespaces' if self.namespaced and namespace is not None else None,
+            namespace if self.namespaced and namespace is not None else None,
             self.plural,
             name,
             subresource,

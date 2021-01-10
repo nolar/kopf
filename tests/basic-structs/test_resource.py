@@ -41,7 +41,7 @@ def test_api_version_of_custom_resource():
     assert api_version == 'group/version'
 
 
-def test_api_version_of_builtin_resource():
+def test_api_version_of_corev1_resource():
     resource = Resource('', 'v1', 'plural')
     api_version = resource.api_version
     assert api_version == 'v1'
@@ -53,56 +53,110 @@ def test_name_of_custom_resource():
     assert name == 'plural.group'
 
 
-def test_name_of_builtin_resource():
+def test_name_of_corev1_resource():
     resource = Resource('', 'v1', 'plural')
     name = resource.name
     assert name == 'plural'
 
 
-def test_url_of_custom_resource_list_cluster_scoped():
-    resource = Resource('group', 'version', 'plural')
-    url = resource.get_url()
+def test_url_for_a_list_of_clusterscoped_custom_resources_clusterwide():
+    resource = Resource('group', 'version', 'plural', namespaced=False)
+    url = resource.get_url(namespace=None)
     assert url == '/apis/group/version/plural'
 
 
-def test_url_of_custom_resource_list_namespaced():
-    resource = Resource('group', 'version', 'plural')
+def test_url_for_a_list_of_clusterscoped_custom_resources_in_a_namespace():
+    resource = Resource('group', 'version', 'plural', namespaced=False)
+    with pytest.raises(ValueError) as err:
+        resource.get_url(namespace='ns')
+    assert str(err.value) == "Specific namespaces are not supported for cluster-scoped resources."
+
+
+def test_url_for_a_list_of_namespaced_custom_resources_clusterwide():
+    resource = Resource('group', 'version', 'plural', namespaced=True)
+    url = resource.get_url(namespace=None)
+    assert url == '/apis/group/version/plural'
+
+
+def test_url_for_a_list_of_namespaced_custom_resources_in_a_namespace():
+    resource = Resource('group', 'version', 'plural', namespaced=True)
     url = resource.get_url(namespace='ns-a.b')
     assert url == '/apis/group/version/namespaces/ns-a.b/plural'
 
 
-def test_url_of_custom_resource_item_cluster_scoped():
-    resource = Resource('group', 'version', 'plural')
-    url = resource.get_url(name='name-a.b')
+def test_url_for_a_specific_clusterscoped_custom_resource_clusterwide():
+    resource = Resource('group', 'version', 'plural', namespaced=False)
+    url = resource.get_url(namespace=None, name='name-a.b')
     assert url == '/apis/group/version/plural/name-a.b'
 
 
-def test_url_of_custom_resource_item_namespaced():
-    resource = Resource('group', 'version', 'plural')
+def test_url_for_a_specific_clusterscoped_custom_resource_in_a_namespace():
+    resource = Resource('group', 'version', 'plural', namespaced=False)
+    with pytest.raises(ValueError) as err:
+        resource.get_url(namespace='ns', name='name-a.b')
+    assert str(err.value) == "Specific namespaces are not supported for cluster-scoped resources."
+
+
+def test_url_for_a_specific_namespaced_custom_resource_clusterwide():
+    resource = Resource('group', 'version', 'plural', namespaced=True)
+    with pytest.raises(ValueError) as err:
+        resource.get_url(namespace=None, name='name-a.b')
+    assert str(err.value) == "Specific namespaces are required for specific namespaced resources."
+
+
+def test_url_for_a_specific_namespaced_custom_resource_in_a_namespace():
+    resource = Resource('group', 'version', 'plural', namespaced=True)
     url = resource.get_url(namespace='ns-a.b', name='name-a.b')
     assert url == '/apis/group/version/namespaces/ns-a.b/plural/name-a.b'
 
 
-def test_url_of_builtin_resource_list_cluster_scoped():
-    resource = Resource('', 'v1', 'plural')
-    url = resource.get_url()
+def test_url_for_a_list_of_clusterscoped_corev1_resources_clusterwide():
+    resource = Resource('', 'v1', 'plural', namespaced=False)
+    url = resource.get_url(namespace=None)
     assert url == '/api/v1/plural'
 
 
-def test_url_of_builtin_resource_list_namespaced():
-    resource = Resource('', 'v1', 'plural')
+def test_url_for_a_list_of_clusterscoped_corev1_resources_in_a_namespace():
+    resource = Resource('', 'v1', 'plural', namespaced=False)
+    with pytest.raises(ValueError) as err:
+        resource.get_url(namespace='ns')
+    assert str(err.value) == "Specific namespaces are not supported for cluster-scoped resources."
+
+
+def test_url_for_a_list_of_namespaced_corev1_resources_clusterwide():
+    resource = Resource('', 'v1', 'plural', namespaced=True)
+    url = resource.get_url(namespace=None)
+    assert url == '/api/v1/plural'
+
+
+def test_url_for_a_list_of_namespaced_corev1_resources_in_a_namespace():
+    resource = Resource('', 'v1', 'plural', namespaced=True)
     url = resource.get_url(namespace='ns-a.b')
     assert url == '/api/v1/namespaces/ns-a.b/plural'
 
 
-def test_url_of_builtin_resource_item_cluster_scoped():
-    resource = Resource('', 'v1', 'plural')
-    url = resource.get_url(name='name-a.b')
+def test_url_of_a_specific_clusterscoped_corev1_resource_clusterwide():
+    resource = Resource('', 'v1', 'plural', namespaced=False)
+    url = resource.get_url(namespace=None, name='name-a.b')
     assert url == '/api/v1/plural/name-a.b'
 
 
-def test_url_of_builtin_resource_item_namespaced():
-    resource = Resource('', 'v1', 'plural')
+def test_url_of_a_specific_clusterscoped_corev1_resource_in_a_namespace():
+    resource = Resource('', 'v1', 'plural', namespaced=False)
+    with pytest.raises(ValueError) as err:
+        resource.get_url(namespace='ns', name='name-a.b')
+    assert str(err.value) == "Specific namespaces are not supported for cluster-scoped resources."
+
+
+def test_url_of_a_specific_namespaced_corev1_resource_clusterwide():
+    resource = Resource('', 'v1', 'plural', namespaced=True)
+    with pytest.raises(ValueError) as err:
+        resource.get_url(namespace=None, name='name-a.b')
+    assert str(err.value) == "Specific namespaces are required for specific namespaced resources."
+
+
+def test_url_of_a_specific_namespaced_corev1_resource_in_a_namespace():
+    resource = Resource('', 'v1', 'plural', namespaced=True)
     url = resource.get_url(namespace='ns-a.b', name='name-a.b')
     assert url == '/api/v1/namespaces/ns-a.b/plural/name-a.b'
 
@@ -113,49 +167,115 @@ def test_url_with_arbitrary_params():
     assert url == '/apis/group/version/plural?watch=true&resourceVersion=abc%25def+xyz'
 
 
-def test_url_of_custom_resource_list_cluster_scoped_with_subresource():
-    resource = Resource('group', 'version', 'plural')
-    with pytest.raises(ValueError):
-        resource.get_url(subresource='status')
+def test_url_for_a_list_of_clusterscoped_custom_subresources_clusterwide():
+    resource = Resource('group', 'version', 'plural', namespaced=False)
+    with pytest.raises(ValueError) as err:
+        resource.get_url(namespace=None, subresource='status')
+    assert str(err.value) == "Subresources can be used only with specific resources by their name."
 
 
-def test_url_of_custom_resource_list_namespaced_with_subresource():
-    resource = Resource('group', 'version', 'plural')
-    with pytest.raises(ValueError):
+def test_url_for_a_list_of_clusterscoped_custom_subresources_in_a_namespace():
+    resource = Resource('group', 'version', 'plural', namespaced=False)
+    with pytest.raises(ValueError) as err:
+        resource.get_url(namespace='ns', subresource='status')
+    assert str(err.value) in {
+        "Specific namespaces are not supported for cluster-scoped resources.",
+        "Subresources can be used only with specific resources by their name.",
+    }
+
+
+def test_url_for_a_list_of_namespaced_custom_subresources_clusterwide():
+    resource = Resource('group', 'version', 'plural', namespaced=True)
+    with pytest.raises(ValueError) as err:
+        resource.get_url(namespace=None, subresource='status')
+    assert str(err.value) == "Subresources can be used only with specific resources by their name."
+
+
+def test_url_for_a_list_of_namespaced_custom_subresources_in_a_namespace():
+    resource = Resource('group', 'version', 'plural', namespaced=True)
+    with pytest.raises(ValueError) as err:
         resource.get_url(namespace='ns-a.b', subresource='status')
+    assert str(err.value) == "Subresources can be used only with specific resources by their name."
 
 
-def test_url_of_custom_resource_item_cluster_scoped_with_subresource():
-    resource = Resource('group', 'version', 'plural')
-    url = resource.get_url(name='name-a.b', subresource='status')
+def test_url_for_a_specific_clusterscoped_custom_subresource_clusterwide():
+    resource = Resource('group', 'version', 'plural', namespaced=False)
+    url = resource.get_url(namespace=None, name='name-a.b', subresource='status')
     assert url == '/apis/group/version/plural/name-a.b/status'
 
 
-def test_url_of_custom_resource_item_namespaced_with_subresource():
-    resource = Resource('group', 'version', 'plural')
-    url = resource.get_url(name='name-a.b', namespace='ns-a.b', subresource='status')
+def test_url_for_a_specific_clusterscoped_custom_subresource_in_a_namespace():
+    resource = Resource('group', 'version', 'plural', namespaced=False)
+    with pytest.raises(ValueError) as err:
+        resource.get_url(namespace='ns', name='name-a.b', subresource='status')
+    assert str(err.value) == "Specific namespaces are not supported for cluster-scoped resources."
+
+
+def test_url_for_a_specific_namespaced_custom_subresource_clusterwide():
+    resource = Resource('group', 'version', 'plural', namespaced=True)
+    with pytest.raises(ValueError) as err:
+        resource.get_url(namespace=None, name='name-a.b', subresource='status')
+    assert str(err.value) == "Specific namespaces are required for specific namespaced resources."
+
+
+def test_url_for_a_specific_namespaced_custom_subresource_in_a_namespace():
+    resource = Resource('group', 'version', 'plural', namespaced=True)
+    url = resource.get_url(namespace='ns-a.b', name='name-a.b', subresource='status')
     assert url == '/apis/group/version/namespaces/ns-a.b/plural/name-a.b/status'
 
 
-def test_url_of_builtin_resource_list_cluster_scoped_with_subresource():
-    resource = Resource('', 'v1', 'plural')
-    with pytest.raises(ValueError):
-        resource.get_url(subresource='status')
+def test_url_for_a_list_of_clusterscoped_corev1_subresources_clusterwide():
+    resource = Resource('', 'v1', 'plural', namespaced=False)
+    with pytest.raises(ValueError) as err:
+        resource.get_url(namespace=None, subresource='status')
+    assert str(err.value) == "Subresources can be used only with specific resources by their name."
 
 
-def test_url_of_builtin_resource_list_namespaced_with_subresource():
-    resource = Resource('', 'v1', 'plural')
-    with pytest.raises(ValueError):
+def test_url_for_a_list_of_clusterscoped_corev1_subresources_in_a_namespace():
+    resource = Resource('', 'v1', 'plural', namespaced=False)
+    with pytest.raises(ValueError) as err:
+        resource.get_url(namespace='ns', subresource='status')
+    assert str(err.value) in {
+        "Specific namespaces are not supported for cluster-scoped resources.",
+        "Subresources can be used only with specific resources by their name.",
+    }
+
+
+def test_url_for_a_list_of_namespaced_corev1_subresources_clusterwide():
+    resource = Resource('', 'v1', 'plural', namespaced=True)
+    with pytest.raises(ValueError) as err:
+        resource.get_url(namespace=None, subresource='status')
+    assert str(err.value) == "Subresources can be used only with specific resources by their name."
+
+
+def test_url_for_a_list_of_namespaced_corev1_subresources_in_a_namespace():
+    resource = Resource('', 'v1', 'plural', namespaced=True)
+    with pytest.raises(ValueError) as err:
         resource.get_url(namespace='ns-a.b', subresource='status')
+    assert str(err.value) == "Subresources can be used only with specific resources by their name."
 
 
-def test_url_of_builtin_resource_item_cluster_scoped_with_subresource():
-    resource = Resource('', 'v1', 'plural')
-    url = resource.get_url(name='name-a.b', subresource='status')
+def test_url_for_a_specific_clusterscoped_corev1_subresource_clusterwide():
+    resource = Resource('', 'v1', 'plural', namespaced=False)
+    url = resource.get_url(namespace=None, name='name-a.b', subresource='status')
     assert url == '/api/v1/plural/name-a.b/status'
 
 
-def test_url_of_builtin_resource_item_namespaced_with_subresource():
-    resource = Resource('', 'v1', 'plural')
-    url = resource.get_url(name='name-a.b', namespace='ns-a.b', subresource='status')
+def test_url_for_a_specific_clusterscoped_corev1_subresource_in_a_namespace():
+    resource = Resource('', 'v1', 'plural', namespaced=False)
+    with pytest.raises(ValueError) as err:
+        resource.get_url(namespace='ns', name='name-a.b', subresource='status')
+    assert str(err.value) == "Specific namespaces are not supported for cluster-scoped resources."
+
+
+def test_url_for_a_specific_namespaced_corev1_subresource_clusterwide():
+    resource = Resource('', 'v1', 'plural', namespaced=True)
+    with pytest.raises(ValueError) as err:
+        resource.get_url(namespace=None, name='name-a.b', subresource='status')
+    assert str(err.value) == "Specific namespaces are required for specific namespaced resources."
+
+
+def test_url_for_a_specific_namespaced_corev1_subresource_in_a_namespace():
+    resource = Resource('', 'v1', 'plural', namespaced=True)
+    url = resource.get_url(namespace='ns-a.b', name='name-a.b', subresource='status')
     assert url == '/api/v1/namespaces/ns-a.b/plural/name-a.b/status'
