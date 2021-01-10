@@ -25,11 +25,11 @@ async def stream_fn(
 
 
 async def test_session_is_injected_to_request(
-        fake_vault, resp_mocker, aresponses, hostname, resource):
+        fake_vault, resp_mocker, aresponses, hostname, resource, namespace):
 
     result = {}
     get_mock = resp_mocker(return_value=aiohttp.web.json_response(result))
-    aresponses.add(hostname, resource.get_url(namespace=None, name='xyz'), 'get', get_mock)
+    aresponses.add(hostname, resource.get_url(namespace=namespace, name='xyz'), 'get', get_mock)
 
     context, result = await request_fn(1)
 
@@ -39,11 +39,11 @@ async def test_session_is_injected_to_request(
 
 
 async def test_session_is_injected_to_stream(
-        fake_vault, resp_mocker, aresponses, hostname, resource):
+        fake_vault, resp_mocker, aresponses, hostname, resource, namespace):
 
     result = {}
     get_mock = resp_mocker(return_value=aiohttp.web.json_response(result))
-    aresponses.add(hostname, resource.get_url(namespace=None, name='xyz'), 'get', get_mock)
+    aresponses.add(hostname, resource.get_url(namespace=namespace, name='xyz'), 'get', get_mock)
 
     context = None
     counter = 0
@@ -57,11 +57,11 @@ async def test_session_is_injected_to_stream(
 
 
 async def test_session_is_passed_through_to_request(
-        fake_vault, resp_mocker, aresponses, hostname, resource):
+        fake_vault, resp_mocker, aresponses, hostname, resource, namespace):
 
     result = {}
     get_mock = resp_mocker(return_value=aiohttp.web.json_response(result))
-    aresponses.add(hostname, resource.get_url(namespace=None, name='xyz'), 'get', get_mock)
+    aresponses.add(hostname, resource.get_url(namespace=namespace, name='xyz'), 'get', get_mock)
 
     explicit_context = APIContext(ConnectionInfo(server='http://irrelevant/'))
     context, result = await request_fn(1, context=explicit_context)
@@ -72,11 +72,11 @@ async def test_session_is_passed_through_to_request(
 
 
 async def test_session_is_passed_through_to_stream(
-        fake_vault, resp_mocker, aresponses, hostname, resource):
+        fake_vault, resp_mocker, aresponses, hostname, resource, namespace):
 
     result = {}
     get_mock = resp_mocker(return_value=aiohttp.web.json_response(result))
-    aresponses.add(hostname, resource.get_url(namespace=None, name='xyz'), 'get', get_mock)
+    aresponses.add(hostname, resource.get_url(namespace=namespace, name='xyz'), 'get', get_mock)
 
     explicit_context = APIContext(ConnectionInfo(server='http://irrelevant/'))
     counter = 0

@@ -25,7 +25,6 @@ from kopf.structs.references import Resource, Selector
 
 def pytest_configure(config):
     config.addinivalue_line('markers', "e2e: end-to-end tests with real operators.")
-    config.addinivalue_line('markers', "resource_clustered: (internal parameterizatiom mark).")
 
     # Unexpected warnings should fail the tests. Use `-Wignore` to explicitly disable it.
     config.addinivalue_line('filterwarnings', 'error')
@@ -90,15 +89,32 @@ def enforce_asyncio_mocker():
 
 
 @pytest.fixture()
-def resource():
+def namespaced_resource():
     """ The resource used in the tests. Usually mocked, so it does not matter. """
-    return Resource('zalando.org', 'v1', 'kopfexamples')
+    return Resource('zalando.org', 'v1', 'kopfexamples', namespaced=True)
+
+
+@pytest.fixture()
+def cluster_resource():
+    """ The resource used in the tests. Usually mocked, so it does not matter. """
+    return Resource('zalando.org', 'v1', 'kopfexamples', namespaced=False)
+
+
+@pytest.fixture(params=[True, False], ids=['namespaced', 'cluster'])
+def resource(request):
+    """ The resource used in the tests. Usually mocked, so it does not matter. """
+    return Resource('zalando.org', 'v1', 'kopfexamples', namespaced=request.param)
 
 
 @pytest.fixture()
 def selector(resource):
     """ The selector used in the tests. Usually mocked, so it does not matter. """
     return Selector(group=resource.group, version=resource.version, plural=resource.plural)
+
+
+@pytest.fixture()
+def namespace(resource):
+    return 'ns' if resource.namespaced else None
 
 
 @pytest.fixture()
