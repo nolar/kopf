@@ -9,7 +9,6 @@ NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings', name
 CLUSTER_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'clusterkopfpeerings', namespaced=False)
 
 
-@pytest.mark.usefixtures('with_both_crds')
 @pytest.mark.parametrize('namespace, peering_resource', [
     pytest.param('ns', NAMESPACED_PEERING_RESOURCE, id='namespace-scoped'),
     pytest.param(None, CLUSTER_PEERING_RESOURCE, id='cluster-scoped'),
@@ -36,7 +35,6 @@ async def test_cleaning_peers_purges_them(
     assert patch['status']['id1'] is None
 
 
-@pytest.mark.usefixtures('with_both_crds')
 @pytest.mark.parametrize('namespace, peering_resource', [
     pytest.param('ns', NAMESPACED_PEERING_RESOURCE, id='namespace-scoped'),
     pytest.param(None, CLUSTER_PEERING_RESOURCE, id='cluster-scoped'),
@@ -60,7 +58,6 @@ async def test_touching_a_peer_stores_it(
     assert patch['status']['id1']['lifetime'] == 60
 
 
-@pytest.mark.usefixtures('with_both_crds')
 @pytest.mark.parametrize('namespace, peering_resource', [
     pytest.param('ns', NAMESPACED_PEERING_RESOURCE, id='namespace-scoped'),
     pytest.param(None, CLUSTER_PEERING_RESOURCE, id='cluster-scoped'),
@@ -82,7 +79,6 @@ async def test_expiring_a_peer_purges_it(
     assert patch['status']['id1'] is None
 
 
-@pytest.mark.usefixtures('with_both_crds')
 @pytest.mark.parametrize('namespace, peering_resource', [
     pytest.param('ns', NAMESPACED_PEERING_RESOURCE, id='namespace-scoped'),
     pytest.param(None, CLUSTER_PEERING_RESOURCE, id='cluster-scoped'),
@@ -106,7 +102,6 @@ async def test_logs_are_skipped_in_stealth_mode(
     ])
 
 
-@pytest.mark.usefixtures('with_both_crds')
 @pytest.mark.parametrize('namespace, peering_resource', [
     pytest.param('ns', NAMESPACED_PEERING_RESOURCE, id='namespace-scoped'),
     pytest.param(None, CLUSTER_PEERING_RESOURCE, id='cluster-scoped'),
@@ -129,7 +124,6 @@ async def test_logs_are_logged_in_exposed_mode(
     ])
 
 
-@pytest.mark.usefixtures('with_both_crds')
 @pytest.mark.parametrize('stealth', [True, False], ids=['stealth', 'exposed'])
 @pytest.mark.parametrize('namespace, peering_resource', [
     pytest.param('ns', NAMESPACED_PEERING_RESOURCE, id='namespace-scoped'),
