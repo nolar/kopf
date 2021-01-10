@@ -10,7 +10,6 @@ def resource():
         plural='plural1', singular='singular1', kind='kind1',
         shortcuts=['shortcut1', 'shortcut2'],
         categories=['category1', 'category2'],
-        subresources=[], verbs=[], namespaced=True,  # not used in matching
     )
 
 
@@ -21,7 +20,6 @@ def v1_resource():
         plural='plural1', singular='singular1', kind='kind1',
         shortcuts=['shortcut1', 'shortcut2'],
         categories=['category1', 'category2'],
-        subresources=[], verbs=[], namespaced=True,  # not used in matching
     )
 
 
@@ -118,7 +116,6 @@ def test_catchall_versions_are_ignored_for_nonpreferred_resources():
         plural='plural1', singular='singular1', kind='kind1',
         shortcuts=['shortcut1', 'shortcut2'],
         categories=['category1', 'category2'],
-        subresources=[], verbs=[], namespaced=True,  # not used in matching
     )
     selector = Selector(EVERYTHING)
     matches = selector.check(resource)
@@ -131,11 +128,7 @@ def test_catchall_versions_are_ignored_for_nonpreferred_resources():
     pytest.param(['', 'v1', 'events'], id='with-groupversion'),
 ])
 def test_events_are_matched_when_explicitly_named(selector_args):
-    resource = Resource(
-        group='', version='v1', preferred=True, namespaced=True,
-        plural='events', singular='event', kind='Event',
-        shortcuts=[], categories=[], subresources=[], verbs=[],
-    )
+    resource = Resource('', 'v1', 'events')
     selector = Selector(*selector_args)
     matches = selector.check(resource)
     assert matches
@@ -154,11 +147,7 @@ def test_events_are_matched_when_explicitly_named(selector_args):
     pytest.param(dict(group='events.k8s.io', version='v1beta1'), id='k8sio-v1beta1'),
 ])
 def test_events_are_excluded_from_everything(resource_kwargs, selector_args):
-    resource = Resource(
-        **resource_kwargs, preferred=True, namespaced=True,
-        plural='events', singular='event', kind='Event',
-        shortcuts=[], categories=[], subresources=[], verbs=[],
-    )
+    resource = Resource(**resource_kwargs, plural='events')
     selector = Selector(*selector_args)
     matches = selector.check(resource)
     assert not matches

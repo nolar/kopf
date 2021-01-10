@@ -18,9 +18,7 @@ OBJ2 = {'apiVersion': 'group2/version2', 'kind': 'Kind2',
 REF2 = {'apiVersion': 'group2/version2', 'kind': 'Kind2',
         'uid': 'uid2', 'name': 'name2', 'namespace': 'ns2'}
 
-EVENTS = Resource('', 'v1', 'events',
-                  kind='...', singular='...', namespaced=True, preferred=True,
-                  shortcuts=[], categories=[], subresources=[], verbs=[])
+EVENTS = Resource('', 'v1', 'events')
 
 
 @pytest.fixture(autouse=True)

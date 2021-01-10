@@ -92,12 +92,7 @@ def enforce_asyncio_mocker():
 @pytest.fixture()
 def resource():
     """ The resource used in the tests. Usually mocked, so it does not matter. """
-    return Resource(
-        group='zalando.org', version='v1', namespaced=True, preferred=True,
-        plural='kopfexamples', singular='kopfexample', kind='KopfExample',
-        shortcuts=['kex'], categories=['kopf', 'all'], subresources=[],
-        verbs=['get', 'list', 'watch', 'patch', 'create', 'delete'],
-    )
+    return Resource('zalando.org', 'v1', 'kopfexamples')
 
 
 @pytest.fixture()
