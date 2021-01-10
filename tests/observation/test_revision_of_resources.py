@@ -4,11 +4,7 @@ import kopf
 from kopf.reactor.observation import revise_resources
 from kopf.structs.references import EVERYTHING, Insights, Resource
 
-DEFAULTS = dict(
-    kind='...', singular='...', namespaced=True, preferred=True,
-    shortcuts=[], categories=[], subresources=[],
-    verbs=['list', 'watch', 'patch'],
-)
+VERBS = ['list', 'watch', 'patch']
 
 
 @pytest.fixture(params=[
@@ -23,7 +19,7 @@ def handlers(request, registry):
 
 @pytest.mark.usefixtures('handlers')
 def test_initial_population(registry):
-    r1 = Resource(group='group1', version='version1', plural='plural1', **DEFAULTS)
+    r1 = Resource(group='group1', version='version1', plural='plural1', verbs=VERBS)
     insights = Insights()
     revise_resources(registry=registry, insights=insights, group=None, resources=[r1])
     assert insights.resources == {r1}
@@ -31,8 +27,8 @@ def test_initial_population(registry):
 
 @pytest.mark.usefixtures('handlers')
 def test_replacing_all_insights(registry):
-    r1 = Resource(group='group1', version='version1', plural='plural1', **DEFAULTS)
-    r2 = Resource(group='group2', version='version2', plural='plural2', **DEFAULTS)
+    r1 = Resource(group='group1', version='version1', plural='plural1', verbs=VERBS)
+    r2 = Resource(group='group2', version='version2', plural='plural2', verbs=VERBS)
     insights = Insights()
     revise_resources(registry=registry, insights=insights, group=None, resources=[r1])
     revise_resources(registry=registry, insights=insights, group=None, resources=[r2])
@@ -41,8 +37,8 @@ def test_replacing_all_insights(registry):
 
 @pytest.mark.usefixtures('handlers')
 def test_replacing_an_existing_group(registry):
-    r1 = Resource(group='group1', version='version1', plural='plural1', **DEFAULTS)
-    r2 = Resource(group='group2', version='version2', plural='plural2', **DEFAULTS)
+    r1 = Resource(group='group1', version='version1', plural='plural1', verbs=VERBS)
+    r2 = Resource(group='group2', version='version2', plural='plural2', verbs=VERBS)
     insights = Insights()
     revise_resources(registry=registry, insights=insights, group=None, resources=[r1])
     revise_resources(registry=registry, insights=insights, group='group1', resources=[r2])
@@ -51,8 +47,8 @@ def test_replacing_an_existing_group(registry):
 
 @pytest.mark.usefixtures('handlers')
 def test_replacing_a_new_group(registry):
-    r1 = Resource(group='group1', version='version1', plural='plural1', **DEFAULTS)
-    r2 = Resource(group='group2', version='version2', plural='plural2', **DEFAULTS)
+    r1 = Resource(group='group1', version='version1', plural='plural1', verbs=VERBS)
+    r2 = Resource(group='group2', version='version2', plural='plural2', verbs=VERBS)
     insights = Insights()
     revise_resources(registry=registry, insights=insights, group=None, resources=[r1])
     revise_resources(registry=registry, insights=insights, group='group2', resources=[r2])
@@ -64,8 +60,8 @@ def test_replacing_a_new_group(registry):
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
 ])
 def test_ambiguity_in_specific_selectors(registry, decorator, caplog, assert_logs):
-    r1 = Resource(group='g1', version='v1', plural='plural', **DEFAULTS)
-    r2 = Resource(group='g2', version='v2', plural='plural', **DEFAULTS)
+    r1 = Resource(group='g1', version='v1', plural='plural', verbs=VERBS)
+    r2 = Resource(group='g2', version='v2', plural='plural', verbs=VERBS)
 
     @decorator(plural='plural')
     def fn(**_): ...
@@ -81,8 +77,8 @@ def test_ambiguity_in_specific_selectors(registry, decorator, caplog, assert_log
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
 ])
 def test_corev1_overrides_ambuigity(registry, decorator, caplog, assert_logs):
-    r1 = Resource(group='', version='v1', plural='pods', **DEFAULTS)
-    r2 = Resource(group='metrics.k8s.io', version='v1beta1', plural='pods', **DEFAULTS)
+    r1 = Resource(group='', version='v1', plural='pods', verbs=VERBS)
+    r2 = Resource(group='metrics.k8s.io', version='v1', plural='pods', verbs=VERBS)
 
     @decorator(plural='pods')
     def fn(**_): ...
@@ -98,8 +94,8 @@ def test_corev1_overrides_ambuigity(registry, decorator, caplog, assert_logs):
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
 ])
 def test_no_ambiguity_in_generic_selector(registry, decorator, caplog, assert_logs):
-    r1 = Resource(group='g1', version='v1', plural='plural', **DEFAULTS)
-    r2 = Resource(group='g2', version='v2', plural='plural', **DEFAULTS)
+    r1 = Resource(group='g1', version='v1', plural='plural', verbs=VERBS)
+    r2 = Resource(group='g2', version='v2', plural='plural', verbs=VERBS)
 
     @decorator(EVERYTHING)
     def fn(**_): ...
@@ -115,8 +111,8 @@ def test_no_ambiguity_in_generic_selector(registry, decorator, caplog, assert_lo
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
 ])
 def test_selectors_with_no_resources(registry, decorator, caplog, assert_logs):
-    r1 = Resource(group='group1', version='version1', plural='plural1', **DEFAULTS)
-    r2 = Resource(group='group2', version='version2', plural='plural2', **DEFAULTS)
+    r1 = Resource(group='group1', version='version1', plural='plural1', verbs=VERBS)
+    r2 = Resource(group='group2', version='version2', plural='plural2', verbs=VERBS)
 
     @decorator(plural='plural3')
     def fn(**_): ...
@@ -132,8 +128,7 @@ def test_selectors_with_no_resources(registry, decorator, caplog, assert_logs):
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
 ])
 def test_nonwatchable_excluded(registry, decorator, caplog, assert_logs):
-    defaults = dict(DEFAULTS, verbs=[])
-    r1 = Resource(group='group1', version='version1', plural='plural1', **defaults)
+    r1 = Resource(group='group1', version='version1', plural='plural1', verbs=[])
 
     @decorator('group1', 'version1', 'plural1')
     def fn(**_): ...
@@ -149,8 +144,7 @@ def test_nonwatchable_excluded(registry, decorator, caplog, assert_logs):
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
 ])
 def test_nonpatchable_excluded(registry, decorator, caplog, assert_logs):
-    defaults = dict(DEFAULTS, verbs=['watch', 'list'])
-    r1 = Resource(group='group1', version='version1', plural='plural1', **defaults)
+    r1 = Resource(group='group1', version='version1', plural='plural1', verbs=['watch', 'list'])
 
     @decorator('group1', 'version1', 'plural1')  # because it patches!
     def fn(**_): ...

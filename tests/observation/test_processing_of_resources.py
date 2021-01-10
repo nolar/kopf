@@ -9,12 +9,6 @@ from kopf.reactor.observation import process_discovered_resource_event
 from kopf.structs.bodies import RawBody, RawEvent
 from kopf.structs.references import NAMESPACES, Insights, Resource
 
-DEFAULTS = dict(
-    kind='...', singular='...', namespaced=True, preferred=True,
-    shortcuts=[], categories=[], subresources=[],
-    verbs=['list', 'watch', 'patch'],
-)
-
 # Implementation awareness: the events only trigger the re-scan, so the fields can be reduced
 # to only the group name which is being rescanned. Other fields are ignored in the events.
 # The actual data is taken from the API. It is tested elsewhere, so we rely on its correctness here.
@@ -124,7 +118,7 @@ async def test_initial_listing_is_ignored(registry, apis_mock, group1_mock):
 @pytest.mark.parametrize('etype', ['ADDED', 'MODIFIED'])
 async def test_followups_for_addition(registry, apis_mock, group1_mock, timer, etype):
     e1 = RawEvent(type=etype, object=RawBody(spec={'group': 'group1'}))
-    r1 = Resource(group='group1', version='version1', plural='plural1', **DEFAULTS)
+    r1 = Resource(group='group1', version='version1', plural='plural1')
     insights = Insights()
 
     async def delayed_injection(delay: float):
@@ -147,7 +141,7 @@ async def test_followups_for_addition(registry, apis_mock, group1_mock, timer, e
 @pytest.mark.parametrize('etype', ['ADDED', 'MODIFIED', 'DELETED'])
 async def test_followups_for_deletion_of_resource(registry, apis_mock, group1_empty_mock, timer, etype):
     e1 = RawEvent(type=etype, object=RawBody(spec={'group': 'group1'}))
-    r1 = Resource(group='group1', version='version1', plural='plural1', **DEFAULTS)
+    r1 = Resource(group='group1', version='version1', plural='plural1')
     insights = Insights()
     insights.resources.add(r1)
 
@@ -171,7 +165,7 @@ async def test_followups_for_deletion_of_resource(registry, apis_mock, group1_em
 @pytest.mark.parametrize('etype', ['ADDED', 'MODIFIED', 'DELETED'])
 async def test_followups_for_deletion_of_group(registry, apis_mock, group1_404mock, timer, etype):
     e1 = RawEvent(type=etype, object=RawBody(spec={'group': 'group1'}))
-    r1 = Resource(group='group1', version='version1', plural='plural1', **DEFAULTS)
+    r1 = Resource(group='group1', version='version1', plural='plural1')
     insights = Insights()
     insights.resources.add(r1)
 
@@ -195,7 +189,7 @@ async def test_followups_for_deletion_of_group(registry, apis_mock, group1_404mo
 @pytest.mark.parametrize('etype', ['DELETED'])
 async def test_followups_for_deletion_of_group(registry, apis_mock, group1_404mock, timer, etype):
     e1 = RawEvent(type=etype, object=RawBody(spec={'group': 'group1'}))
-    r1 = Resource(group='group1', version='version1', plural='plural1', **DEFAULTS)
+    r1 = Resource(group='group1', version='version1', plural='plural1')
     insights = Insights()
     insights.resources.add(r1)
 

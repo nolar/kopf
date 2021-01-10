@@ -5,9 +5,7 @@ from kopf.clients.events import post_event
 from kopf.structs.bodies import build_object_reference
 from kopf.structs.references import Resource
 
-EVENTS = Resource('', 'v1', 'events',
-                  kind='...', singular='...', namespaced=True, preferred=True,
-                  shortcuts=[], categories=[], subresources=[], verbs=[])
+EVENTS = Resource('', 'v1', 'events')
 
 
 async def test_posting(
