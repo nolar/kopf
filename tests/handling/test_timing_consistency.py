@@ -38,7 +38,7 @@ async def test_consistent_awakening(registry, settings, resource, k8s_mocked, mo
     tsB_delivered = "2019-12-30T10:56:43.000001"
 
     # A dummy handler: it will not be selected for execution anyway, we just need to have it.
-    @kopf.on.create(resource.group, resource.version, resource.plural, id='some-id')
+    @kopf.on.create(*resource, id='some-id')
     def handler_fn(**_):
         pass
 

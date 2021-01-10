@@ -6,12 +6,10 @@ import kopf
 
 
 async def test_timer_regular_interval(
-        registry, resource, dummy,
-        caplog, assert_logs, k8s_mocked, simulate_cycle, frozen_time):
+        resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, frozen_time):
     caplog.set_level(logging.DEBUG)
 
-    @kopf.timer(resource.group, resource.version, resource.plural, registry=registry, id='fn',
-                interval=1.0, sharp=False)
+    @kopf.timer(*resource, id='fn', interval=1.0, sharp=False)
     async def fn(**kwargs):
         dummy.mock()
         dummy.kwargs = kwargs
@@ -32,12 +30,10 @@ async def test_timer_regular_interval(
 
 
 async def test_timer_sharp_interval(
-        registry, resource, dummy,
-        caplog, assert_logs, k8s_mocked, simulate_cycle, frozen_time):
+        resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, frozen_time):
     caplog.set_level(logging.DEBUG)
 
-    @kopf.timer(resource.group, resource.version, resource.plural, registry=registry, id='fn',
-                interval=1.0, sharp=True)
+    @kopf.timer(*resource, id='fn', interval=1.0, sharp=True)
     async def fn(**kwargs):
         dummy.mock()
         dummy.kwargs = kwargs

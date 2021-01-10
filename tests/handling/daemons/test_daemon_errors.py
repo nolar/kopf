@@ -1,20 +1,20 @@
 import logging
 
 import kopf
+from kopf.reactor.handling import PermanentError, TemporaryError
+from kopf.structs.handlers import ErrorsMode
 
 
 async def test_daemon_stopped_on_permanent_error(
-        registry, settings, resource, dummy, manual_time,
-        caplog, assert_logs, k8s_mocked, simulate_cycle):
+        settings, resource, dummy, manual_time, caplog, assert_logs, k8s_mocked, simulate_cycle):
     caplog.set_level(logging.DEBUG)
 
-    @kopf.daemon(resource.group, resource.version, resource.plural, registry=registry, id='fn',
-                 backoff=0.01)
+    @kopf.daemon(*resource, id='fn', backoff=0.01)
     async def fn(**kwargs):
         dummy.mock()
         dummy.kwargs = kwargs
         dummy.steps['called'].set()
-        raise kopf.PermanentError("boo!")
+        raise PermanentError("boo!")
 
     finalizer = settings.persistence.finalizer
     event_object = {'metadata': {'finalizers': [finalizer]}}
@@ -36,12 +36,10 @@ async def test_daemon_stopped_on_permanent_error(
 
 
 async def test_daemon_stopped_on_arbitrary_errors_with_mode_permanent(
-        registry, settings, resource, dummy, manual_time,
-        caplog, assert_logs, k8s_mocked, simulate_cycle):
+        settings, resource, dummy, manual_time, caplog, assert_logs, k8s_mocked, simulate_cycle):
     caplog.set_level(logging.DEBUG)
 
-    @kopf.daemon(resource.group, resource.version, resource.plural, registry=registry, id='fn',
-                 errors=kopf.ErrorsMode.PERMANENT, backoff=0.01)
+    @kopf.daemon(*resource, id='fn', errors=ErrorsMode.PERMANENT, backoff=0.01)
     async def fn(**kwargs):
         dummy.mock()
         dummy.kwargs = kwargs
@@ -71,14 +69,13 @@ async def test_daemon_retried_on_temporary_error(
         caplog, assert_logs, k8s_mocked, simulate_cycle):
     caplog.set_level(logging.DEBUG)
 
-    @kopf.daemon(resource.group, resource.version, resource.plural, registry=registry, id='fn',
-                 backoff=1.0)
+    @kopf.daemon(*resource, id='fn', backoff=1.0)
     async def fn(retry, **kwargs):
         dummy.mock()
         dummy.kwargs = kwargs
         dummy.steps['called'].set()
         if not retry:
-            raise kopf.TemporaryError("boo!", delay=1.0)
+            raise TemporaryError("boo!", delay=1.0)
         else:
             dummy.steps['finish'].set()
 
@@ -101,12 +98,10 @@ async def test_daemon_retried_on_temporary_error(
 
 
 async def test_daemon_retried_on_arbitrary_error_with_mode_temporary(
-        registry, settings, resource, dummy,
-        caplog, assert_logs, k8s_mocked, simulate_cycle, manual_time):
+        settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, manual_time):
     caplog.set_level(logging.DEBUG)
 
-    @kopf.daemon(resource.group, resource.version, resource.plural, registry=registry, id='fn',
-                 errors=kopf.ErrorsMode.TEMPORARY, backoff=1.0)
+    @kopf.daemon(*resource, id='fn', errors=ErrorsMode.TEMPORARY, backoff=1.0)
     async def fn(retry, **kwargs):
         dummy.mock()
         dummy.kwargs = kwargs
@@ -135,16 +130,14 @@ async def test_daemon_retried_on_arbitrary_error_with_mode_temporary(
 
 
 async def test_daemon_retried_until_retries_limit(
-        registry, resource, dummy,
-        caplog, assert_logs, k8s_mocked, simulate_cycle, manual_time):
+        resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, manual_time):
     caplog.set_level(logging.DEBUG)
 
-    @kopf.daemon(resource.group, resource.version, resource.plural, registry=registry, id='fn',
-                 retries=3)
+    @kopf.daemon(*resource, id='fn', retries=3)
     async def fn(**kwargs):
         dummy.kwargs = kwargs
         dummy.steps['called'].set()
-        raise kopf.TemporaryError("boo!", delay=1.0)
+        raise TemporaryError("boo!", delay=1.0)
 
     await simulate_cycle({})
     await dummy.steps['called'].wait()
@@ -157,16 +150,14 @@ async def test_daemon_retried_until_retries_limit(
 
 
 async def test_daemon_retried_until_timeout(
-        registry, resource, dummy,
-        caplog, assert_logs, k8s_mocked, simulate_cycle, manual_time):
+        resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, manual_time):
     caplog.set_level(logging.DEBUG)
 
-    @kopf.daemon(resource.group, resource.version, resource.plural, registry=registry, id='fn',
-                 timeout=3.0)
+    @kopf.daemon(*resource, id='fn', timeout=3.0)
     async def fn(**kwargs):
         dummy.kwargs = kwargs
         dummy.steps['called'].set()
-        raise kopf.TemporaryError("boo!", delay=1.0)
+        raise TemporaryError("boo!", delay=1.0)
 
     await simulate_cycle({})
     await dummy.steps['called'].wait()

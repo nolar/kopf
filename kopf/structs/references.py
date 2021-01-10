@@ -141,6 +141,10 @@ class Resource:
         subs_text = f'/{"/".join(subs)}' if subs else ''
         return f'{name_text}{subs_text}'
 
+    # Mostly for tests, to be used as `@kopf.on.event(*resource, ...)`
+    def __iter__(self) -> Iterator[str]:
+        return iter((self.group, self.version, self.plural))
+
     @property
     def name(self) -> str:
         return f'{self.plural}.{self.group}'.strip('.')

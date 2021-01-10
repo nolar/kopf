@@ -7,12 +7,12 @@ import kopf
 
 
 async def test_daemon_exits_gracefully_and_instantly_via_stopper(
-        registry, settings, resource, dummy, simulate_cycle,
+        settings, resource, dummy, simulate_cycle,
         caplog, assert_logs, k8s_mocked, frozen_time, mocker, timer):
     caplog.set_level(logging.DEBUG)
 
     # A daemon-under-test.
-    @kopf.daemon(resource.group, resource.version, resource.plural, registry=registry, id='fn')
+    @kopf.daemon(*resource, id='fn')
     async def fn(**kwargs):
         dummy.kwargs = kwargs
         dummy.steps['called'].set()
@@ -40,14 +40,13 @@ async def test_daemon_exits_gracefully_and_instantly_via_stopper(
 
 
 async def test_daemon_exits_instantly_via_cancellation_with_backoff(
-        registry, settings, resource, dummy, simulate_cycle,
+        settings, resource, dummy, simulate_cycle,
         caplog, assert_logs, k8s_mocked, frozen_time, mocker):
     caplog.set_level(logging.DEBUG)
     dummy.steps['finish'].set()
 
     # A daemon-under-test.
-    @kopf.daemon(resource.group, resource.version, resource.plural, registry=registry, id='fn',
-                 cancellation_backoff=5, cancellation_timeout=10)
+    @kopf.daemon(*resource, id='fn', cancellation_backoff=5, cancellation_timeout=10)
     async def fn(**kwargs):
         dummy.kwargs = kwargs
         dummy.steps['called'].set()
@@ -86,13 +85,12 @@ async def test_daemon_exits_instantly_via_cancellation_with_backoff(
 
 
 async def test_daemon_exits_slowly_via_cancellation_with_backoff(
-        registry, settings, resource, dummy, simulate_cycle,
+        settings, resource, dummy, simulate_cycle,
         caplog, assert_logs, k8s_mocked, frozen_time, mocker):
     caplog.set_level(logging.DEBUG)
 
     # A daemon-under-test.
-    @kopf.daemon(resource.group, resource.version, resource.plural, registry=registry, id='fn',
-                 cancellation_backoff=5, cancellation_timeout=10)
+    @kopf.daemon(*resource, id='fn', cancellation_backoff=5, cancellation_timeout=10)
     async def fn(**kwargs):
         dummy.kwargs = kwargs
         dummy.steps['called'].set()
@@ -141,13 +139,12 @@ async def test_daemon_exits_slowly_via_cancellation_with_backoff(
 
 
 async def test_daemon_is_abandoned_due_to_cancellation_timeout_reached(
-        registry, settings, resource, dummy, simulate_cycle,
+        settings, resource, dummy, simulate_cycle,
         caplog, assert_logs, k8s_mocked, frozen_time, mocker):
     caplog.set_level(logging.DEBUG)
 
     # A daemon-under-test.
-    @kopf.daemon(resource.group, resource.version, resource.plural, registry=registry, id='fn',
-                 cancellation_timeout=10)
+    @kopf.daemon(*resource, id='fn', cancellation_timeout=10)
     async def fn(**kwargs):
         dummy.kwargs = kwargs
         dummy.steps['called'].set()

@@ -5,10 +5,18 @@ import subprocess
 
 import pytest
 
+from kopf.reactor.registries import SmartOperatorRegistry
+
 root_dir = os.path.relpath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 examples = sorted(glob.glob(os.path.join(root_dir, 'examples/*/')))
 assert examples  # if empty, it is just the detection failed
 examples = [path for path in examples if not glob.glob((os.path.join(path, 'test*.py')))]
+
+
+@pytest.fixture
+def registry_factory():
+    # Authentication is needed for the real e2e tests.
+    return SmartOperatorRegistry
 
 
 @pytest.fixture(params=examples, ids=[os.path.basename(path.rstrip('/')) for path in examples])
