@@ -18,6 +18,7 @@ import kopf
 from kopf.clients.auth import APIContext
 from kopf.engines.loggers import ObjectPrefixingTextFormatter, configure
 from kopf.engines.posting import settings_var
+from kopf.reactor.registries import OperatorRegistry
 from kopf.structs.configuration import OperatorSettings
 from kopf.structs.credentials import ConnectionInfo, Vault, VaultKey
 from kopf.structs.references import Resource, Selector
@@ -136,23 +137,23 @@ def settings_via_contextvar(settings):
 #
 
 
+@pytest.fixture
+def registry_factory():
+    # For most tests: not SmartOperatorRegistry, but the empty one!
+    # For e2e tests: overridden to SmartOperatorRegistry.
+    return OperatorRegistry
+
+
 @pytest.fixture(autouse=True)
-def clear_default_registry():
+def registry(registry_factory):
     """
     Ensure that the tests have a fresh new global (not re-used) registry.
     """
     old_registry = kopf.get_default_registry()
-    new_registry = type(old_registry)()  # i.e. OperatorRegistry
+    new_registry = registry_factory()
     kopf.set_default_registry(new_registry)
-    try:
-        yield new_registry
-    finally:
-        kopf.set_default_registry(old_registry)
-
-
-@pytest.fixture()
-def registry(clear_default_registry):
-    return clear_default_registry
+    yield new_registry
+    kopf.set_default_registry(old_registry)
 
 
 #

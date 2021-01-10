@@ -75,7 +75,7 @@ class HandlersContainer:
 
 
 @pytest.fixture()
-def handlers(clear_default_registry):
+def handlers(registry):
     event_mock = Mock(return_value=None)
     create_mock = Mock(return_value=None)
     update_mock = Mock(return_value=None)
@@ -119,7 +119,7 @@ def handlers(clear_default_registry):
 
 
 @pytest.fixture()
-def extrahandlers(clear_default_registry, handlers):
+def extrahandlers(registry, handlers):
     event_mock = Mock(return_value=None)
     create_mock = Mock(return_value=None)
     update_mock = Mock(return_value=None)
