@@ -10,15 +10,6 @@ from kopf.structs import bodies, primitives
 from kopf.structs.references import Insights, Resource
 from kopf.utilities import aiotasks
 
-DEFAULTS = dict(
-    kind='...', singular='...', namespaced=True, preferred=True,
-    shortcuts=[], categories=[], subresources=[],
-    verbs=['list', 'watch', 'patch'],
-)
-
-NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings', **DEFAULTS)
-CLUSTER_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'clusterkopfpeerings', **DEFAULTS)
-
 
 async def processor(*, raw_event: bodies.RawEvent, replenished: asyncio.Event) -> None:
     pass
@@ -44,7 +35,7 @@ def k8s_mocked(mocker, resp_mocker):
 ], ids=['cluster-peering', 'namespaced-peering'])
 def peering_resource(request, settings):
     settings.peering.namespaced = request.param[0]
-    return Resource('zalando.org', 'v1', request.param[1], **DEFAULTS)
+    return Resource('zalando.org', 'v1', request.param[1], namespaced=request.param[0])
 
 
 @pytest.fixture()
@@ -87,8 +78,8 @@ async def test_empty_insights_cause_no_adjustments(
 async def test_new_resources_and_namespaces_spawn_new_tasks(
         settings, ensemble: Ensemble, insights: Insights, peering_resource):
 
-    r1 = Resource(group='group1', version='version1', plural='plural1', **DEFAULTS)
-    r2 = Resource(group='group2', version='version2', plural='plural2', **DEFAULTS)
+    r1 = Resource(group='group1', version='version1', plural='plural1', namespaced=True)
+    r2 = Resource(group='group2', version='version2', plural='plural2', namespaced=True)
     insights.resources.add(r1)
     insights.resources.add(r2)
     insights.namespaces.add('ns1')
@@ -117,8 +108,8 @@ async def test_new_resources_and_namespaces_spawn_new_tasks(
 async def test_gone_resources_and_namespaces_stop_running_tasks(
         settings, ensemble: Ensemble, insights: Insights, peering_resource):
 
-    r1 = Resource(group='group1', version='version1', plural='plural1', **DEFAULTS)
-    r2 = Resource(group='group2', version='version2', plural='plural2', **DEFAULTS)
+    r1 = Resource(group='group1', version='version1', plural='plural1', namespaced=True)
+    r2 = Resource(group='group2', version='version2', plural='plural2', namespaced=True)
     insights.resources.add(r1)
     insights.resources.add(r2)
     insights.namespaces.add('ns1')
@@ -164,8 +155,8 @@ async def test_gone_resources_and_namespaces_stop_running_tasks(
 async def test_cluster_tasks_continue_running_on_namespace_deletion(
         settings, ensemble: Ensemble, insights: Insights, peering_resource):
 
-    r1 = Resource(group='group1', version='version1', plural='plural1', **DEFAULTS)
-    r2 = Resource(group='group2', version='version2', plural='plural2', **DEFAULTS)
+    r1 = Resource(group='group1', version='version1', plural='plural1', namespaced=True)
+    r2 = Resource(group='group2', version='version2', plural='plural2', namespaced=True)
     insights.resources.add(r1)
     insights.resources.add(r2)
     insights.namespaces.add(None)
@@ -209,7 +200,7 @@ async def test_no_peering_tasks_with_no_peering_resources(
 
     settings.peering.mandatory = False
     insights = Insights()
-    r1 = Resource(group='group1', version='version1', plural='plural1', **DEFAULTS)
+    r1 = Resource(group='group1', version='version1', plural='plural1', namespaced=True)
     insights.resources.add(r1)
     insights.namespaces.add('ns1')
 

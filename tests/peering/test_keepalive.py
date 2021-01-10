@@ -3,13 +3,7 @@ import pytest
 from kopf.engines.peering import Peer, keepalive
 from kopf.structs.references import Resource
 
-DEFAULTS = dict(
-    kind='...', singular='...', namespaced=True, preferred=True,
-    shortcuts=[], categories=[], subresources=[],
-    verbs=['list', 'watch', 'patch'],
-)
-
-NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings', **DEFAULTS)
+NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings', namespaced=True)
 
 
 class StopInfiniteCycleException(Exception):

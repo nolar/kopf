@@ -2,14 +2,8 @@ import pytest
 
 from kopf.structs.references import Resource
 
-DEFAULTS = dict(
-    kind='...', singular='...', namespaced=True, preferred=True,
-    shortcuts=[], categories=[], subresources=[],
-    verbs=['list', 'watch', 'patch'],
-)
-
-NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings', **DEFAULTS)
-CLUSTER_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'clusterkopfpeerings', **DEFAULTS)
+NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings', namespaced=True)
+CLUSTER_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'clusterkopfpeerings', namespaced=False)
 
 
 @pytest.fixture(autouse=True)
@@ -20,7 +14,6 @@ def _autouse_fake_vault(fake_vault):
 @pytest.fixture()
 def with_cluster_crd(hostname, aresponses):
     result = {'resources': [{
-        **DEFAULTS,
         'group': CLUSTER_PEERING_RESOURCE.group,
         'version': CLUSTER_PEERING_RESOURCE.version,
         'name': CLUSTER_PEERING_RESOURCE.plural,
@@ -33,7 +26,6 @@ def with_cluster_crd(hostname, aresponses):
 @pytest.fixture()
 def with_namespaced_crd(hostname, aresponses):
     result = {'resources': [{
-        **DEFAULTS,
         'group': NAMESPACED_PEERING_RESOURCE.group,
         'version': NAMESPACED_PEERING_RESOURCE.version,
         'name': NAMESPACED_PEERING_RESOURCE.plural,
@@ -46,13 +38,11 @@ def with_namespaced_crd(hostname, aresponses):
 @pytest.fixture()
 def with_both_crds(hostname, aresponses):
     result = {'resources': [{
-        **DEFAULTS,
         'group': CLUSTER_PEERING_RESOURCE.group,
         'version': CLUSTER_PEERING_RESOURCE.version,
         'name': CLUSTER_PEERING_RESOURCE.plural,
         'namespaced': False,
     }, {
-        **DEFAULTS,
         'group': NAMESPACED_PEERING_RESOURCE.group,
         'version': NAMESPACED_PEERING_RESOURCE.version,
         'name': NAMESPACED_PEERING_RESOURCE.plural,

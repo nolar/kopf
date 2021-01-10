@@ -115,14 +115,14 @@ class Resource:
     version: str
     plural: str
 
-    kind: str
-    singular: str
-    shortcuts: Collection[str]
-    categories: Collection[str]
-    subresources: Collection[str]
-    namespaced: bool
-    preferred: bool
-    verbs: Collection[str]
+    kind: Optional[str] = None
+    singular: Optional[str] = None
+    shortcuts: Collection[str] = ()
+    categories: Collection[str] = ()
+    subresources: Collection[str] = ()
+    namespaced: Optional[bool] = None
+    preferred: Optional[bool] = None
+    verbs: Collection[str] = ()
 
     def __hash__(self) -> int:
         return hash((self.group, self.version, self.plural))

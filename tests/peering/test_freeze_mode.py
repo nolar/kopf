@@ -9,13 +9,7 @@ from kopf.engines.peering import process_peering_event
 from kopf.structs import bodies, primitives
 from kopf.structs.references import Resource
 
-DEFAULTS = dict(
-    kind='...', singular='...', namespaced=True, preferred=True,
-    shortcuts=[], categories=[], subresources=[],
-    verbs=['list', 'watch', 'patch'],
-)
-
-NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings', **DEFAULTS)
+NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings', namespaced=True)
 
 
 @dataclasses.dataclass(frozen=True, eq=False)
