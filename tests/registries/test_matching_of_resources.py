@@ -6,7 +6,7 @@ from kopf.structs.references import Resource, Selector
 
 def test_different_resource():
     selector = Selector('group1', 'version1', 'plural1')
-    resource = Resource('group2', 'version2', 'plural2', preferred=True)
+    resource = Resource('group2', 'version2', 'plural2')
     handler = Mock(selector=selector)
     matches = _matches_resource(handler, resource)
     assert not matches
@@ -14,7 +14,7 @@ def test_different_resource():
 
 def test_equivalent_resources():
     selector = Selector('group1', 'version1', 'plural1')
-    resource = Resource('group1', 'version1', 'plural1', preferred=True)
+    resource = Resource('group1', 'version1', 'plural1')
     handler = Mock(selector=selector)
     matches = _matches_resource(handler, resource)
     assert matches

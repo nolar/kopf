@@ -60,8 +60,8 @@ def test_replacing_a_new_group(registry):
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
 ])
 def test_ambiguity_in_specific_selectors(registry, decorator, caplog, assert_logs):
-    r1 = Resource(group='g1', version='v1', plural='plural', verbs=VERBS, preferred=True)
-    r2 = Resource(group='g2', version='v2', plural='plural', verbs=VERBS, preferred=True)
+    r1 = Resource(group='g1', version='v1', plural='plural', verbs=VERBS)
+    r2 = Resource(group='g2', version='v2', plural='plural', verbs=VERBS)
 
     @decorator(plural='plural')
     def fn(**_): ...
@@ -77,8 +77,8 @@ def test_ambiguity_in_specific_selectors(registry, decorator, caplog, assert_log
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
 ])
 def test_corev1_overrides_ambuigity(registry, decorator, caplog, assert_logs):
-    r1 = Resource(group='', version='v1', plural='pods', verbs=VERBS, preferred=True)
-    r2 = Resource(group='metrics.k8s.io', version='v1', plural='pods', verbs=VERBS, preferred=True)
+    r1 = Resource(group='', version='v1', plural='pods', verbs=VERBS)
+    r2 = Resource(group='metrics.k8s.io', version='v1', plural='pods', verbs=VERBS)
 
     @decorator(plural='pods')
     def fn(**_): ...
@@ -94,8 +94,8 @@ def test_corev1_overrides_ambuigity(registry, decorator, caplog, assert_logs):
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
 ])
 def test_no_ambiguity_in_generic_selector(registry, decorator, caplog, assert_logs):
-    r1 = Resource(group='g1', version='v1', plural='plural', verbs=VERBS, preferred=True)
-    r2 = Resource(group='g2', version='v2', plural='plural', verbs=VERBS, preferred=True)
+    r1 = Resource(group='g1', version='v1', plural='plural', verbs=VERBS)
+    r2 = Resource(group='g2', version='v2', plural='plural', verbs=VERBS)
 
     @decorator(EVERYTHING)
     def fn(**_): ...

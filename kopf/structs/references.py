@@ -121,7 +121,7 @@ class Resource:
     categories: Collection[str] = ()
     subresources: Collection[str] = ()
     namespaced: Optional[bool] = None
-    preferred: Optional[bool] = None
+    preferred: bool = True  # against conventions, but makes versionless selectors match by default.
     verbs: Collection[str] = ()
 
     def __hash__(self) -> int:
