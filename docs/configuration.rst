@@ -81,7 +81,7 @@ The following log formats are supported on CLI:
     .. code-block:: console
 
         {"message": "Initial authentication has been initiated.", "severity": "info", "timestamp": "2020-12-31T23:59:59.123456"}
-        {"message": "Resuming is in progress: ...", "object": {"apiVersion": "zalando.org/v1", "kind": "KopfExample", "name": "kopf-example-1", "uid": "...", "namespace": "default"}, "severity": "debug", "timestamp": "2020-12-31T23:59:59.123456"}
+        {"message": "Resuming is in progress: ...", "object": {"apiVersion": "kopf.dev/v1", "kind": "KopfExample", "name": "kopf-example-1", "uid": "...", "namespace": "default"}, "severity": "debug", "timestamp": "2020-12-31T23:59:59.123456"}
 
   For JSON logs, the object reference key can be configured to match
   the log parsers (if used) -- instead of the default ``"object"``:

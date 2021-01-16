@@ -297,7 +297,7 @@ class DaemonStopperChecker:
 
     Usage::
 
-        @kopf.daemon('zalando.org', 'v1', 'kopfexamples')
+        @kopf.daemon('kopfexamples')
         def handler(stopped, **kwargs):
             while not stopped:
                 ...

@@ -13,8 +13,8 @@ but separated with a slash:
 
 .. code-block:: python
 
-    @kopf.on.event('zalando.org', 'v1', 'kopfexamples')
-    @kopf.on.event('zalando.org/v1', 'kopfexamples')
+    @kopf.on.event('kopf.dev', 'v1', 'kopfexamples')
+    @kopf.on.event('kopf.dev/v1', 'kopfexamples')
     @kopf.on.event('apps', 'v1', 'deployments')
     @kopf.on.event('apps/v1', 'deployments')
     @kopf.on.event('', 'v1', 'pods')
@@ -26,7 +26,7 @@ as an API group, and the preferred API version of that API group is used:
 
 .. code-block:: python
 
-    @kopf.on.event('zalando.org', 'kopfexamples')
+    @kopf.on.event('kopf.dev', 'kopfexamples')
     @kopf.on.event('apps', 'deployments')
     def fn(**_):
         pass
@@ -35,7 +35,7 @@ It is also possible to specify the resources with ``kubectl``'s semantics:
 
 .. code-block:: python
 
-    @kopf.on.event('kopfexamples.zalando.org')
+    @kopf.on.event('kopfexamples.kopf.dev')
     @kopf.on.event('deployments.apps')
     def fn(**_):
         pass
@@ -109,9 +109,9 @@ of the mandatory resource name:
 
 .. code-block:: python
 
-    @kopf.on.event('zalando.org', 'v1', kopf.EVERYTHING)
-    @kopf.on.event('zalando.org/v1', kopf.EVERYTHING)
-    @kopf.on.event('zalando.org', kopf.EVERYTHING)
+    @kopf.on.event('kopf.dev', 'v1', kopf.EVERYTHING)
+    @kopf.on.event('kopf.dev/v1', kopf.EVERYTHING)
+    @kopf.on.event('kopf.dev', kopf.EVERYTHING)
     def fn(**_):
         pass
 

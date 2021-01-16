@@ -94,19 +94,19 @@ def enforce_asyncio_mocker(pytestconfig):
 @pytest.fixture()
 def namespaced_resource():
     """ The resource used in the tests. Usually mocked, so it does not matter. """
-    return Resource('zalando.org', 'v1', 'kopfexamples', namespaced=True)
+    return Resource('kopf.dev', 'v1', 'kopfexamples', namespaced=True)
 
 
 @pytest.fixture()
 def cluster_resource():
     """ The resource used in the tests. Usually mocked, so it does not matter. """
-    return Resource('zalando.org', 'v1', 'kopfexamples', namespaced=False)
+    return Resource('kopf.dev', 'v1', 'kopfexamples', namespaced=False)
 
 
 @pytest.fixture(params=[True, False], ids=['namespaced', 'cluster'])
 def resource(request):
     """ The resource used in the tests. Usually mocked, so it does not matter. """
-    return Resource('zalando.org', 'v1', 'kopfexamples', namespaced=request.param)
+    return Resource('kopf.dev', 'v1', 'kopfexamples', namespaced=request.param)
 
 
 @pytest.fixture()

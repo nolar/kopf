@@ -13,7 +13,7 @@ immediately when an ``EphemeralVolumeClaim`` is created this way:
     :name: evc
     :caption: evc.yaml
 
-    apiVersion: zalando.org/v1
+    apiVersion: kopf.dev/v1
     kind: EphemeralVolumeClaim
     metadata:
       name: my-claim
@@ -58,7 +58,7 @@ We will use the official Kubernetes client library (``pip install kubernetes``):
     import kubernetes
     import yaml
 
-    @kopf.on.create('zalando.org', 'v1', 'ephemeralvolumeclaims')
+    @kopf.on.create('ephemeralvolumeclaims')
     def create_fn(spec, name, namespace, logger, **kwargs):
 
         size = spec.get('size')

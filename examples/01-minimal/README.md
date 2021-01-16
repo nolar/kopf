@@ -37,7 +37,7 @@ Events:
 
 ```bash
 $ kubectl get KopfExample kopf-example-1 -o yaml
-apiVersion: zalando.org/v1
+apiVersion: kopf.dev/v1
 kind: KopfExample
 metadata:
   ...

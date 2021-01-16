@@ -41,7 +41,7 @@ Traceback (most recent call last):
 Exception: Oops!
 
 [2019-05-28 11:03:29,541] kopf.reactor.handlin [DEBUG   ] [default/kopf-example-1] Invoking handler 'normal_event_fn'.
-Event received: {'type': 'ADDED', 'object': {'apiVersion': 'zalando.org/v1', 'kind': 'KopfExample', ...}
+Event received: {'type': 'ADDED', 'object': {'apiVersion': 'kopf.dev/v1', 'kind': 'KopfExample', ...}
 [2019-05-28 11:03:29,541] kopf.reactor.handlin [INFO    ] [default/kopf-example-1] Handler 'normal_event_fn' succeeded.
 ```
 

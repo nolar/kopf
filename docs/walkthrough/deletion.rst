@@ -40,7 +40,7 @@ Let's extend the creation handler:
     import kubernetes
     import yaml
 
-    @kopf.on.create('zalando.org', 'v1', 'ephemeralvolumeclaims')
+    @kopf.on.create('ephemeralvolumeclaims')
     def create_fn(spec, name, namespace, logger, body, **kwargs):
 
         size = spec.get('size')

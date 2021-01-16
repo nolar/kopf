@@ -9,11 +9,11 @@ These values are then put to the resource status under the name of the handler:
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexampls')
+    @kopf.on.create('kopfexamples')
     def create_kex_1(**_):
         return 100
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexampls')
+    @kopf.on.create('kopfexamples')
     def create_kex_2(uid, **_):
         return {'r1': random.randint(0, 100), 'r2': random.randint(100, 999)}
 

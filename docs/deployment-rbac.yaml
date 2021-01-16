@@ -25,7 +25,7 @@ rules:
     verbs: [list, watch]
 
   # Application: read-only access for watching cluster-wide.
-  - apiGroups: [zalando.org]
+  - apiGroups: [kopf.dev]
     resources: [kopfexamples]
     verbs: [list, watch]
 ---
@@ -47,7 +47,7 @@ rules:
     verbs: [create]
 
   # Application: watching & handling for the custom resource we declare.
-  - apiGroups: [zalando.org]
+  - apiGroups: [kopf.dev]
     resources: [kopfexamples]
     verbs: [list, watch, patch]
 
