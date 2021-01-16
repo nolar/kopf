@@ -1,16 +1,13 @@
 import pytest
 
-from kopf.engines.peering import Peer, keepalive
-from kopf.structs.references import Resource
-
-NAMESPACED_PEERING_RESOURCE = Resource('zalando.org', 'v1', 'kopfpeerings', namespaced=True)
+from kopf.engines.peering import keepalive
 
 
 class StopInfiniteCycleException(Exception):
     pass
 
 
-async def test_background_task_runs(mocker, settings):
+async def test_background_task_runs(mocker, settings, namespaced_peering_resource):
     touch_mock = mocker.patch('kopf.engines.peering.touch')
 
     sleep_mock = mocker.patch('asyncio.sleep')
@@ -22,7 +19,7 @@ async def test_background_task_runs(mocker, settings):
     settings.peering.lifetime = 33
     with pytest.raises(StopInfiniteCycleException):
         await keepalive(settings=settings, identity='id',
-                        resource=NAMESPACED_PEERING_RESOURCE, namespace='namespace')
+                        resource=namespaced_peering_resource, namespace='namespace')
 
     assert randint_mock.call_count == 3  # only to be sure that we test the right thing
     assert sleep_mock.call_count == 3

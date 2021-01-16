@@ -24,6 +24,8 @@ def test_empty_backbone(selector: Selector):
     (CRDS, Resource('apiextensions.k8s.io', 'vX', 'customresourcedefinitions')),
     (EVENTS, Resource('', 'v1', 'events')),
     (NAMESPACES, Resource('', 'v1', 'namespaces')),
+    (CLUSTER_PEERINGS, Resource('kopf.dev', 'v1', 'clusterkopfpeerings')),
+    (NAMESPACED_PEERINGS, Resource('kopf.dev', 'v1', 'kopfpeerings')),
     (CLUSTER_PEERINGS, Resource('zalando.org', 'v1', 'clusterkopfpeerings')),
     (NAMESPACED_PEERINGS, Resource('zalando.org', 'v1', 'kopfpeerings')),
 ])

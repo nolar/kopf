@@ -15,7 +15,6 @@ async def processor(*, raw_event: bodies.RawEvent, replenished: asyncio.Event) -
     pass
 
 
-
 @dataclasses.dataclass(frozen=True, eq=False)
 class K8sMocks:
     patch_obj: Mock
@@ -27,15 +26,6 @@ def k8s_mocked(mocker, resp_mocker):
     return K8sMocks(
         patch_obj=mocker.patch('kopf.clients.patching.patch_obj', return_value={}),
     )
-
-
-@pytest.fixture(params=[
-    (False, 'clusterkopfpeerings'),
-    (True, 'kopfpeerings'),
-], ids=['cluster-peering', 'namespaced-peering'])
-def peering_resource(request, settings):
-    settings.peering.namespaced = request.param[0]
-    return Resource('zalando.org', 'v1', request.param[1], namespaced=request.param[0])
 
 
 @pytest.fixture()
@@ -77,6 +67,7 @@ async def test_empty_insights_cause_no_adjustments(
 
 async def test_new_resources_and_namespaces_spawn_new_tasks(
         settings, ensemble: Ensemble, insights: Insights, peering_resource):
+    settings.peering.namespaced = peering_resource.namespaced
 
     r1 = Resource(group='group1', version='version1', plural='plural1', namespaced=True)
     r2 = Resource(group='group2', version='version2', plural='plural2', namespaced=True)
@@ -107,6 +98,7 @@ async def test_new_resources_and_namespaces_spawn_new_tasks(
 
 async def test_gone_resources_and_namespaces_stop_running_tasks(
         settings, ensemble: Ensemble, insights: Insights, peering_resource):
+    settings.peering.namespaced = peering_resource.namespaced
 
     r1 = Resource(group='group1', version='version1', plural='plural1', namespaced=True)
     r2 = Resource(group='group2', version='version2', plural='plural2', namespaced=True)
@@ -154,6 +146,7 @@ async def test_gone_resources_and_namespaces_stop_running_tasks(
 
 async def test_cluster_tasks_continue_running_on_namespace_deletion(
         settings, ensemble: Ensemble, insights: Insights, peering_resource):
+    settings.peering.namespaced = peering_resource.namespaced
 
     r1 = Resource(group='group1', version='version1', plural='plural1', namespaced=True)
     r2 = Resource(group='group2', version='version2', plural='plural2', namespaced=True)
@@ -242,6 +235,7 @@ async def test_frozen_with_mandatory_peering_but_absent_peering_resource(
 
 async def test_unfrozen_with_mandatory_peering_and_existing_peering_resource(
         settings, ensemble: Ensemble, insights: Insights, peering_resource):
+    settings.peering.namespaced = peering_resource.namespaced
 
     await ensemble.freeze_blocker.turn_to(True)  # prerequisite
     assert ensemble.freeze_blocker.is_on()  # prerequisite

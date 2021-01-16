@@ -59,5 +59,5 @@ def no_crd():
 
 @pytest.fixture()
 def no_peering():
-    subprocess.run("kubectl delete customresourcedefinition kopfpeerings.zalando.org",
+    subprocess.run("kubectl delete customresourcedefinition kopfpeerings.kopf.dev",
                    shell=True, check=True, timeout=10, capture_output=True)

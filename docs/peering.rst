@@ -53,14 +53,14 @@ Create the peering objects as needed with one of:
 
 .. code-block:: yaml
 
-    apiVersion: zalando.org/v1
+    apiVersion: kopf.dev/v1
     kind: ClusterKopfPeering
     metadata:
       name: example
 
 .. code-block:: yaml
 
-    apiVersion: zalando.org/v1
+    apiVersion: kopf.dev/v1
     kind: KopfPeering
     metadata:
       namespace: default
@@ -69,10 +69,20 @@ Create the peering objects as needed with one of:
 .. note::
 
     In ``kopf<0.11`` (until May'2019), ``KopfPeering`` was the only CRD,
-    and it was cluster-scoped. In ``kopf>=0.11,<0.29`` (until Oct'2020),
+    and it was cluster-scoped. In ``kopf>=0.11,<1.29`` (until Dec'2020),
     this mode was deprecated but supported if the old CRD existed.
-    Since ``kopf>=0.29`` (Nov'2020), it is not supported anymore.
+    Since ``kopf>=1.29`` (Jan'2021), it is not supported anymore.
     To upgrade, delete and re-create the peering CRDs to the new ones.
+
+.. note::
+
+    In ``kopf<1.29``, all peering CRDs used the API group ``kopf.zalando.org``.
+    Since ``kopf>=1.29`` (Jan'2021), they belong to the API group ``kopf.dev``.
+
+    At runtime, both API groups are supported. However, these resources
+    of different API groups are mutually exclusive and cannot co-exist
+    in the same cluster since they use the same names. Whenever possible,
+    re-create them with the new API group after the operator/framework upgrade.
 
 
 Custom peering
