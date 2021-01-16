@@ -46,6 +46,7 @@ jobs:
         run: coveralls  # NB: Coveralls GitHub Action does not work: it wants an LCOV file.
         env:
           GITHUB_TOKEN: ${{ secrets.github_token }}
+        continue-on-error: true
       - name: Publish coverage to CodeCov.io
         uses: codecov/codecov-action@v1
         if: ${{ success() }}
@@ -54,6 +55,7 @@ jobs:
         with:
           flags: unit
           env_vars: PYTHON
+        continue-on-error: true
 
   functional:
     strategy:
