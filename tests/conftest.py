@@ -84,9 +84,11 @@ def pytest_collection_modifyitems(config, items):
 
 # Substitute the regular mock with the async-aware mock in the `mocker` fixture.
 @pytest.fixture(scope='session', autouse=True)
-def enforce_asyncio_mocker():
-    pytest_mock.plugin._get_mock_module = lambda config: asynctest
-    pytest_mock._get_mock_module = pytest_mock.plugin._get_mock_module
+def enforce_asyncio_mocker(pytestconfig):
+    pytest_mock.plugin.get_mock_module = lambda config: asynctest
+    pytest_mock.get_mock_module = pytest_mock.plugin.get_mock_module
+    fixture = pytest_mock.MockerFixture(pytestconfig)
+    assert fixture.mock_module is asynctest, "Mock replacement failed!"
 
 
 @pytest.fixture()
