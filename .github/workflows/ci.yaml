@@ -23,6 +23,8 @@ jobs:
         continue-on-error: true
       - run: isort examples --settings=examples --check --diff
         continue-on-error: true
+      - run: flake8 kopf/
+        continue-on-error: true
 
   unit-tests:
     strategy:

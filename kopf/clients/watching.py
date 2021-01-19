@@ -241,7 +241,9 @@ async def watch_objs(
         )
         await errors.check_response(response)
 
-        response_close_callback = lambda _: response.close()
+        def response_close_callback(*args):
+            response.close()
+
         freeze_waiter.add_done_callback(response_close_callback)
         try:
             async with response:

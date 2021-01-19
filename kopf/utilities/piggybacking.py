@@ -36,12 +36,12 @@ def login_via_client(
     try:
         kubernetes.config.load_incluster_config()  # cluster env vars
         logger.debug("Client is configured in cluster with service account.")
-    except kubernetes.config.ConfigException as e1:
+    except kubernetes.config.ConfigException:
         try:
             kubernetes.config.load_kube_config()  # developer's config files
             logger.debug("Client is configured via kubeconfig file.")
-        except kubernetes.config.ConfigException as e2:
-            raise credentials.LoginError(f"Cannot authenticate client neither in-cluster, nor via kubeconfig.")
+        except kubernetes.config.ConfigException:
+            raise credentials.LoginError("Cannot authenticate client neither in-cluster, nor via kubeconfig.")
 
     # We do not even try to understand how it works and why. Just load it, and extract the results.
     # For kubernetes client >= 12.0.0 use the new 'get_default_copy' method
@@ -97,8 +97,7 @@ def login_via_pykube(
             config = pykube.KubeConfig.from_file()
             logger.debug("Pykube is configured via kubeconfig file.")
         except (pykube.PyKubeError, FileNotFoundError):
-            raise credentials.LoginError(f"Cannot authenticate pykube "
-                                         f"neither in-cluster, nor via kubeconfig.")
+            raise credentials.LoginError("Cannot authenticate pykube neither in-cluster, nor via kubeconfig.")
 
     # We don't know how this token will be retrieved, we just get it afterwards.
     provider_token = None

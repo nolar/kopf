@@ -102,7 +102,7 @@ async def process_resource_event(
                     replenished=replenished,
                 )
                 if applied and matched:
-                    logger.debug(f"Handling cycle is finished, waiting for new changes since now.")
+                    logger.debug("Handling cycle is finished, waiting for new changes since now.")
 
 
 async def process_resource_causes(
@@ -164,7 +164,7 @@ async def process_resource_causes(
     # If there are any handlers for this resource kind in general, but not for this specific object
     # due to filters, then be blind to it, store no state, and log nothing about the handling cycle.
     if (resource_changing_cause is not None and
-        not registry._resource_changing.prematch(cause=resource_changing_cause)):
+            not registry._resource_changing.prematch(cause=resource_changing_cause)):
         resource_changing_cause = None
 
     # Block the object from deletion if we have anything to do in its end of life:

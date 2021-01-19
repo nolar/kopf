@@ -2,9 +2,9 @@
 
 All external contributors to the project, we are grateful for all their help.
 
-For the detailed information on who did what, 
+For the detailed information on who did what,
 see [GitHub Contributors](https://github.com/nolar/kopf/graphs/contributors)
-and [Historic GitHub Contributors](https://github.com/zalando-incubator/kopf/graphs/contributors). 
+and [Historic GitHub Contributors](https://github.com/zalando-incubator/kopf/graphs/contributors).
 
 ## Contributors sorted alphabetically
 
@@ -14,6 +14,7 @@ and [Historic GitHub Contributors](https://github.com/zalando-incubator/kopf/gra
 - [Ismail Kaboubi](https://github.com/smileisak)
 - [Michael Narodovitch](https://github.com/michaelnarodovitch)
 - [Sergey Vasilyev](https://github.com/nolar)
+- [Sergey Shevchenko](https://github.com/sergeykons)
 - [Soroosh Sarabadani](https://github.com/psycho-ir)
 - [Trond Hindenes](https://github.com/trondhindenes)
 - [Vennamaneni Sai Narasimha](https://github.com/thevennamaneni)

@@ -17,10 +17,12 @@ _ExcInfo = Tuple[Type[_ExcType], _ExcType, types.TracebackType]
 
 if TYPE_CHECKING:
     ResultFuture = concurrent.futures.Future[click.testing.Result]
+
     class _AbstractKopfRunner(contextlib.AbstractContextManager["_AbstractKopfRunner"]):
         pass
 else:
     ResultFuture = concurrent.futures.Future
+
     class _AbstractKopfRunner(contextlib.AbstractContextManager):
         pass
 

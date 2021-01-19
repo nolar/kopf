@@ -135,7 +135,7 @@ async def process_peering_event(
             await freeze_toggle.turn_to(True)
     else:
         if freeze_toggle.is_on():
-            logger.info(f"Resuming operations after the freeze. Conflicting operators with the same priority are gone.")
+            logger.info("Resuming operations after the freeze. Conflicting operators with the same priority are gone.")
             await freeze_toggle.turn_to(False)
 
     # Either wait for external updates (and exit when they arrive), or until the blocking peers
@@ -193,7 +193,7 @@ async def keepalive(
         except asyncio.CancelledError:
             pass
         except Exception:
-            logger.exception(f"Couldn't remove self from the peering. Ignoring.")
+            logger.exception("Couldn't remove self from the peering. Ignoring.")
 
 
 async def touch(

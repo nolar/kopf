@@ -166,7 +166,7 @@ class Resource:
         if subresource is not None and name is None:
             raise ValueError("Subresources can be used only with specific resources by their name.")
         if not self.namespaced and namespace is not None:
-            raise ValueError(f"Specific namespaces are not supported for cluster-scoped resources.")
+            raise ValueError("Specific namespaces are not supported for cluster-scoped resources.")
         if self.namespaced and namespace is None and name is not None:
             raise ValueError("Specific namespaces are required for specific namespaced resources.")
 
@@ -293,7 +293,7 @@ class Selector:
         if len(clean) > 1:
             raise TypeError(f"Ambiguous resource specification with names {clean}")
         if len(clean) < 1:
-            raise TypeError(f"Unspecific resource with no names.")
+            raise TypeError("Unspecific resource with no names.")
 
         # For reasons unknown, the singular is empty for ALL builtin resources. This does not affect
         # the checks unless defined as e.g. ``singular=""``, which would match ALL builtins at once.

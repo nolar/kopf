@@ -152,6 +152,7 @@ async def watcher(
     # In case of a failed worker, stop the watcher, and escalate to the operator to stop it.
     watcher_task = asyncio.current_task()
     worker_error: Optional[BaseException] = None
+
     def exception_handler(scheduler: aiojobs.Scheduler, context: _aiojobs_Context) -> None:
         nonlocal worker_error
         if worker_error is None:

@@ -67,7 +67,7 @@ async def post_event(
 
         'reportingComponent': 'kopf',
         'reportingInstance': 'dev',
-        'source' : {'component': 'kopf'},  # used in the "From" column in `kubectl describe`.
+        'source': {'component': 'kopf'},  # used in the "From" column in `kubectl describe`.
 
         'involvedObject': full_ref,
 

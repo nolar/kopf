@@ -291,7 +291,7 @@ async def execute_handler_once(
 
     # Same as permanent errors below, but with better logging for our internal cases.
     except HandlerTimeoutError as e:
-        logger.error(f"%s", str(e) or repr(e))  # already formatted
+        logger.error("%s", str(e) or repr(e))  # already formatted
         return states.HandlerOutcome(final=True, exception=e, subrefs=subrefs)
         # TODO: report the handling failure somehow (beside logs/events). persistent status?
 

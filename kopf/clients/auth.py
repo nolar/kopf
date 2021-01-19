@@ -176,7 +176,7 @@ class APIContext:
             auth = None
 
         # It is a good practice to self-identify a bit.
-        headers['User-Agent'] = f'kopf/unknown'  # TODO: add version someday
+        headers['User-Agent'] = 'kopf/unknown'  # TODO: add version someday
 
         # Generic aiohttp session based on the constructed credentials.
         self.session = aiohttp.ClientSession(

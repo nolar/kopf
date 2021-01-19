@@ -632,7 +632,7 @@ def subhandler(  # lgtm[py/similar-function]
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=None, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=old, new=new,
-            field_needs_change=parent_handler.field_needs_change, # inherit dymaically
+            field_needs_change=parent_handler.field_needs_change,  # inherit dymaically
             initial=None, deleted=None, requires_finalizer=None,
             reason=None,
         )

@@ -278,8 +278,7 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
         # In particular, no handlers means that it is "done" even before doing.
         return all(
             handler_state.finished for handler_state in self._states.values()
-            if self.purpose is None or handler_state.purpose is None
-               or handler_state.purpose == self.purpose
+            if self.purpose is None or handler_state.purpose is None or handler_state.purpose == self.purpose
         )
 
     @property
@@ -302,8 +301,7 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
     def counts(self) -> StateCounters:
         purposeful_states = [
             handler_state for handler_state in self._states.values()
-            if self.purpose is None or handler_state.purpose is None
-               or handler_state.purpose == self.purpose
+            if self.purpose is None or handler_state.purpose is None or handler_state.purpose == self.purpose
         ]
         return StateCounters(
             success=len([1 for handler_state in purposeful_states if handler_state.success]),
@@ -330,8 +328,7 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
             max(0, (handler_state.delayed - now).total_seconds()) if handler_state.delayed else 0
             for handler_state in self._states.values()
             if not handler_state.finished
-            if self.purpose is None or handler_state.purpose is None
-               or handler_state.purpose == self.purpose
+            if self.purpose is None or handler_state.purpose is None or handler_state.purpose == self.purpose
         ]
 
 
