@@ -22,7 +22,8 @@ import asyncio
 import contextlib
 import json
 import logging
-from typing import AsyncIterator, Dict, Optional, cast
+from asyncio.futures import Future
+from typing import Any, AsyncIterator, Dict, Optional, cast
 
 import aiohttp
 
@@ -241,7 +242,7 @@ async def watch_objs(
         )
         await errors.check_response(response)
 
-        def response_close_callback(*args):
+        def response_close_callback(future: Future[Any]) -> None:
             response.close()
 
         freeze_waiter.add_done_callback(response_close_callback)
