@@ -17,6 +17,7 @@ jobs:
   linters:
     name: Linting and static analysis
     runs-on: ubuntu-20.04
+    timeout-minutes: 2  # usually 0.5-1 mins
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -35,6 +36,7 @@ jobs:
         python-version: [ "3.7", "3.8", "3.9" ]
     name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-20.04
+    timeout-minutes: 5  # usually 2-3 mins
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -47,7 +49,7 @@ jobs:
 
       - name: Publish coverage to Coveralls.io
         if: success()
-        run: coveralls  # NB: Coveralls GitHub Action does not work: it wants an LCOV file.
+        run: coveralls --service=github
         env:
           GITHUB_TOKEN: ${{ secrets.github_token }}
       - name: Publish coverage to CodeCov.io
@@ -72,6 +74,7 @@ jobs:
             crdapi: v1beta1
     name: K3s ${{matrix.k3s}} ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
     runs-on: ubuntu-20.04
+    timeout-minutes: 10  # usually 4-5 mins
     env:
       CRDAPI: ${{ matrix.crdapi || '' }}
     steps:
@@ -94,6 +97,7 @@ jobs:
         crdapi: [""]
     name: K8s ${{matrix.k8s}} ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
     runs-on: ubuntu-20.04
+    timeout-minutes: 10  # usually 4-5 mins
     env:
       K8S: ${{ matrix.k8s }}
       CRDAPI: ${{ matrix.crdapi || '' }}
@@ -114,6 +118,7 @@ jobs:
         crdapi: [v1beta1]
     name: K8s ${{matrix.k8s}} ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
     runs-on: ubuntu-20.04
+    timeout-minutes: 10  # usually 4-5 mins
     env:
       K8S: ${{ matrix.k8s }}
       CRDAPI: ${{ matrix.crdapi || '' }}
@@ -133,6 +138,6 @@ jobs:
     steps:
       - uses: actions/setup-python@v2
       - run: pip install coveralls
-      - run: coveralls --finish
+      - run: coveralls --service=github --finish
         env:
           GITHUB_TOKEN: ${{ secrets.github_token }}
