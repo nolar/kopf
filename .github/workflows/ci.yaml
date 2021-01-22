@@ -13,6 +13,7 @@ jobs:
   linters:
     name: Linting and static analysis
     runs-on: ubuntu-20.04
+    timeout-minutes: 2  # usually 0.5-1 mins
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -31,6 +32,7 @@ jobs:
         python-version: [ "3.7", "3.8", "3.9" ]
     name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-20.04
+    timeout-minutes: 5  # usually 2-3 mins
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -70,6 +72,7 @@ jobs:
             crdapi: v1beta1
     name: K3s ${{matrix.k3s}} ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
     runs-on: ubuntu-20.04
+    timeout-minutes: 10  # usually 4-5 mins
     env:
       CRDAPI: ${{ matrix.crdapi || '' }}
     steps:
