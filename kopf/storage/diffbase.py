@@ -128,7 +128,7 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
     ) -> bodies.BodyEssence:
         essence = super().build(body=body, extra_fields=extra_fields)
         annotations = essence.get('metadata', {}).get('annotations', {})
-        for full_key in self.make_keys(self.key):
+        for full_key in self.make_keys(self.key, body=body):
             if full_key in annotations:
                 del annotations[full_key]
         return essence
@@ -138,7 +138,7 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
             *,
             body: bodies.Body,
     ) -> Optional[bodies.BodyEssence]:
-        for full_key in self.make_keys(self.key):
+        for full_key in self.make_keys(self.key, body=body):
             encoded = body.metadata.annotations.get(full_key, None)
             decoded = json.loads(encoded) if encoded is not None else None
             if decoded is not None:
@@ -154,7 +154,7 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
     ) -> None:
         encoded: str = json.dumps(essence, separators=(',', ':'))  # NB: no spaces
         encoded += '\n'  # for better kubectl presentation without wrapping (same as kubectl's one)
-        for full_key in self.make_keys(self.key):
+        for full_key in self.make_keys(self.key, body=body):
             patch.metadata.annotations[full_key] = encoded
         self._store_marker(prefix=self.prefix, patch=patch, body=body)
 
