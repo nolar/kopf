@@ -33,12 +33,48 @@ replaced; in some cases, they will be cut and hash-suffixed.
 import base64
 import hashlib
 import warnings
-from typing import Any, Collection, Iterable, Set
+from typing import Any, Collection, Iterable, Optional, Set
 
 from kopf.structs import bodies, patches
 
 
-class StorageKeyFormingConvention:
+class CollisionEvadingConvention:
+    """
+    A helper mixin to evade collisions in annotations propagated down by K8s.
+
+    For some resources, such as ReplicaSets owned by Deployments,
+    the annotations are implicitly propagated by Kubernetes
+    from the owning resources down to the owned resources.
+
+    As a result, if both resources are served by Kopf-based operators with
+    the same or default identity, the owner's annotations overwrite those
+    of the resource, which causes all kinds of chaos when e.g. the diff-base
+    mismatches the resource's schema or the handlers' progress is miscalculated.
+
+    To evade this, Kopf adds special marks to all annotations of all resources
+    known to be overwritten by Kubernetes -- in order to preserve the state
+    regardless of whether the parent's annotations are already propagated:
+    this can happen much later when the owning resource is started to be served
+    hours, days, months after the owned resource has stored its state.
+
+    The only known case at the moment is caused by this behaviour in Kubernetes:
+
+    * https://github.com/kubernetes/kubernetes/blob/v1.20.2/pkg/controller/deployment/util/deployment_util.go#L230-L234
+    * https://github.com/kubernetes/kubernetes/blob/v1.20.2/pkg/controller/deployment/util/deployment_util.go#L310-L341
+
+    We assume this does not happen to other resources unless proven otherwise.
+    """
+
+    def mark_key(self, key: str, *, body: bodies.Body) -> str:
+        owners = body.meta.get('ownerReferences', [])
+        kind = body.get('kind')
+        if kind == 'ReplicaSet' and any(owner['kind'] == 'Deployment' for owner in owners):
+            return f"{key}-ofDRS"  # no need to generalise for a single known case
+        else:
+            return key
+
+
+class StorageKeyFormingConvention(CollisionEvadingConvention):
     """
     A helper mixin to manage annotations/labels naming as per K8s restrictions.
 
@@ -107,7 +143,8 @@ class StorageKeyFormingConvention:
         if len(self.prefix or '') > 253 - 63 - 1:
             warnings.warn("The annotations prefix is too long. It can cause errors when PATCHing.")
 
-    def make_keys(self, key: str) -> Iterable[str]:
+    def make_keys(self, key: str, *, body: Optional[bodies.Body] = None) -> Iterable[str]:
+        key = key if body is None else self.mark_key(key, body=body)
         v2_keys = [self.make_v2_key(key)]
         v1_keys = [self.make_v1_key(key)] if self.v1 else []
         return v2_keys + list(set(v1_keys) - set(v2_keys))

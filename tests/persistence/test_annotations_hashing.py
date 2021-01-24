@@ -89,6 +89,19 @@ def test_keys_deduplication(cls):
     assert v2_key in keys
 
 
+@pytest.mark.parametrize('kind, owners, expected', [
+    pytest.param('ReplicaSet', [{'kind': 'Deployment'}], 'kopf.dev/xyz-ofDRS', id='DRS'),
+    pytest.param('ReplicaSet', [{'kind': 'OtherOwner'}], 'kopf.dev/xyz', id='not-deployment'),
+    pytest.param('OtherKind', [{'kind': 'Deployment'}], 'kopf.dev/xyz', id='not-replicaset'),
+])
+@pytest.mark.parametrize('cls', STORAGE_KEY_FORMING_CLASSES)
+def test_keys_of_replicaset_owned_by_deployment(cls, kind, owners, expected):
+    storage = cls(v1=True, prefix='kopf.dev')
+    body = Body({'kind': kind, 'metadata': {'ownerReferences': owners}})
+    keys = storage.make_keys('xyz', body=body)
+    assert set(keys) == {expected}
+
+
 @pytest.mark.parametrize('prefix, provided_key, expected_key', COMMON_KEYS + V1_KEYS)
 @pytest.mark.parametrize('cls', STORAGE_KEY_FORMING_CLASSES)
 def test_key_hashing_v1(cls, prefix, provided_key, expected_key):
