@@ -86,7 +86,7 @@ jobs:
         with:
           version: ${{ matrix.k3s }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt -r examples/requirements.txt
       - run: pytest --color=yes --only-e2e
 
   full-scale-crd-v1:
@@ -107,7 +107,7 @@ jobs:
         with:
           python-version: "3.9"
       - run: tools/install-minikube.sh
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt -r examples/requirements.txt
       - run: pytest --color=yes --only-e2e
 
   full-scale-crd-v1beta1:
@@ -128,7 +128,7 @@ jobs:
         with:
           python-version: "3.9"
       - run: tools/install-minikube.sh
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt -r examples/requirements.txt
       - run: pytest --color=yes --only-e2e
 
   coveralls-finish:

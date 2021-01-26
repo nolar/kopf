@@ -84,7 +84,7 @@ jobs:
         with:
           version: ${{ matrix.k3s }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt -r examples/requirements.txt
       - run: pytest --color=yes --only-e2e
 
   coveralls-finish:
