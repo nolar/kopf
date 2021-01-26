@@ -2,7 +2,6 @@ import os.path
 import time
 
 import kopf.testing
-import pykube
 
 
 def test_pods_reacted():
@@ -27,6 +26,7 @@ def test_pods_reacted():
 
 
 def _create_pod():
+    import pykube
     api = pykube.HTTPClient(pykube.KubeConfig.from_file())
     with api.session:
         pod = pykube.Pod(api, {
@@ -45,6 +45,7 @@ def _create_pod():
 
 
 def _delete_pod(name):
+    import pykube
     api = pykube.HTTPClient(pykube.KubeConfig.from_file())
     with api.session:
         pod = pykube.Pod.objects(api, namespace='default').get_by_name(name)
