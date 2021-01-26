@@ -69,6 +69,7 @@ Multiple handlers can be declared to retrieve different credentials,
 or the same credentials via different libraries. All of the retrieved
 credentials will be used in random order with no specific priority.
 
+.. _auth-piggybacking:
 
 Piggybacking
 ============
@@ -80,6 +81,12 @@ In the future, more libraries can be added for authentication piggybacking.
 
 .. _pykube-ng: https://github.com/hjacobs/pykube
 .. _kubernetes: https://github.com/kubernetes-client/python
+
+.. note::
+
+    Since ``kopf>=1.29``, ``pykube-ng`` is not pre-installed implicitly.
+    If needed, install it explicitly as a dependency of the operator,
+    or via ``kopf[full-auth]`` (see :doc:`install`).
 
 *Piggybacking* means that the config parsing and authentication methods of these
 libraries are used, and only the information needed for API calls is extracted.

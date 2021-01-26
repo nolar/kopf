@@ -49,4 +49,7 @@ setup(
         'aiohttp<4.0.0',
         'aiojobs',
     ],
+    extras_require={
+        'full-auth': ['pykube-ng', 'kubernetes'],
+    },
 )
