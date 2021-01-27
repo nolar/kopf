@@ -76,8 +76,8 @@ async def namespace_observer(
                                             insights=insights))
         except errors.APIForbiddenError:
             logger.warning("Not enough permissions to watch for namespaces: "
-                           "changes (deletion/creation) will not be noticed."
-                           "To refresh the namespaces, the operator must be restarted.")
+                           "changes (deletion/creation) will not be noticed; "
+                           "the namespaces are only refreshed on operator restarts.")
             await asyncio.Event().wait()
     else:
         await asyncio.Event().wait()
@@ -125,8 +125,8 @@ async def resource_observer(
                                             insights=insights))
         except errors.APIForbiddenError:
             logger.warning("Not enough permissions to watch for resources: "
-                           "changes (creation/deletion/updates) will not be noticed. "
-                           "To refresh the resources, the operator must be restarted.")
+                           "changes (creation/deletion/updates) will not be noticed; "
+                           "the resources are only refreshed on operator restarts.")
             await asyncio.Event().wait()
     else:
         await asyncio.Event().wait()
