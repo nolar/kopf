@@ -35,30 +35,6 @@ def test_creation_with_all_kwargs():
     assert resource.verbs == ['verb1', 'verb2']
 
 
-def test_api_version_of_custom_resource():
-    resource = Resource('group', 'version', 'plural')
-    api_version = resource.api_version
-    assert api_version == 'group/version'
-
-
-def test_api_version_of_corev1_resource():
-    resource = Resource('', 'v1', 'plural')
-    api_version = resource.api_version
-    assert api_version == 'v1'
-
-
-def test_name_of_custom_resource():
-    resource = Resource('group', 'version', 'plural')
-    name = resource.name
-    assert name == 'plural.group'
-
-
-def test_name_of_corev1_resource():
-    resource = Resource('', 'v1', 'plural')
-    name = resource.name
-    assert name == 'plural'
-
-
 def test_url_for_a_list_of_clusterscoped_custom_resources_clusterwide():
     resource = Resource('group', 'version', 'plural', namespaced=False)
     url = resource.get_url(namespace=None)

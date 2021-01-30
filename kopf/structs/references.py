@@ -145,15 +145,6 @@ class Resource:
     def __iter__(self) -> Iterator[str]:
         return iter((self.group, self.version, self.plural))
 
-    @property
-    def name(self) -> str:
-        return f'{self.plural}.{self.group}'.strip('.')
-
-    @property
-    def api_version(self) -> str:
-        # Strip heading/trailing slashes if group is absent (e.g. for pods).
-        return f'{self.group}/{self.version}'.strip('/')
-
     def get_url(
             self,
             *,
@@ -170,7 +161,7 @@ class Resource:
         if self.namespaced and namespace is None and name is not None:
             raise ValueError("Specific namespaces are required for specific namespaced resources.")
 
-        return self._build_url(server, params, [
+        parts: List[Optional[str]] = [
             '/api' if self.group == '' and self.version == 'v1' else '/apis',
             self.group,
             self.version,
@@ -179,26 +170,8 @@ class Resource:
             self.plural,
             name,
             subresource,
-        ])
+        ]
 
-    def get_version_url(
-            self,
-            *,
-            server: Optional[str] = None,
-            params: Optional[Mapping[str, str]] = None,
-    ) -> str:
-        return self._build_url(server, params, [
-            '/api' if self.group == '' and self.version == 'v1' else '/apis',
-            self.group,
-            self.version,
-        ])
-
-    def _build_url(
-            self,
-            server: Optional[str],
-            params: Optional[Mapping[str, str]],
-            parts: List[Optional[str]],
-    ) -> str:
         query = urllib.parse.urlencode(params, encoding='utf-8') if params else ''
         path = '/'.join([part for part in parts if part])
         url = path + ('?' if query else '') + query
