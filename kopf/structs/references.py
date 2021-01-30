@@ -4,7 +4,7 @@ import enum
 import fnmatch
 import re
 import urllib.parse
-from typing import Collection, Iterable, Iterator, List, Mapping, \
+from typing import Collection, FrozenSet, Iterable, Iterator, List, Mapping, \
                    MutableMapping, NewType, Optional, Pattern, Set, Union
 
 # A namespace specification with globs, negations, and some minimal syntax; see `match_namespace()`.
@@ -117,12 +117,12 @@ class Resource:
 
     kind: Optional[str] = None
     singular: Optional[str] = None
-    shortcuts: Collection[str] = ()
-    categories: Collection[str] = ()
-    subresources: Collection[str] = ()
+    shortcuts: FrozenSet[str] = frozenset()
+    categories: FrozenSet[str] = frozenset()
+    subresources: FrozenSet[str] = frozenset()
     namespaced: Optional[bool] = None
     preferred: bool = True  # against conventions, but makes versionless selectors match by default.
-    verbs: Collection[str] = ()
+    verbs: FrozenSet[str] = frozenset()
 
     def __hash__(self) -> int:
         return hash((self.group, self.version, self.plural))
