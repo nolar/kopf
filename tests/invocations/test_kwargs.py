@@ -58,10 +58,11 @@ def test_resource_watching_kwargs(resource):
         raw={'type': 'ADDED', 'object': {}},
     )
     kwargs = build_kwargs(cause=cause, extrakwarg=123)
-    assert set(kwargs) == {'extrakwarg', 'logger', 'patch', 'event', 'type', 'memo',
+    assert set(kwargs) == {'extrakwarg', 'logger', 'resource', 'patch', 'event', 'type', 'memo',
                            'body', 'spec', 'status', 'meta', 'uid', 'name', 'namespace',
                            'labels', 'annotations'}
     assert kwargs['extrakwarg'] == 123
+    assert kwargs['resource'] is cause.resource
     assert kwargs['logger'] is cause.logger
     assert kwargs['patch'] is cause.patch
     assert kwargs['event'] is cause.raw
@@ -96,10 +97,11 @@ def test_resource_changing_kwargs(resource):
         new=BodyEssence(),
     )
     kwargs = build_kwargs(cause=cause, extrakwarg=123)
-    assert set(kwargs) == {'extrakwarg', 'logger', 'patch', 'reason', 'memo',
+    assert set(kwargs) == {'extrakwarg', 'logger', 'resource', 'patch', 'reason', 'memo',
                            'body', 'spec', 'status', 'meta', 'uid', 'name', 'namespace',
                            'labels', 'annotations', 'diff', 'old', 'new'}
     assert kwargs['extrakwarg'] == 123
+    assert kwargs['resource'] is cause.resource
     assert kwargs['reason'] is cause.reason
     assert kwargs['logger'] is cause.logger
     assert kwargs['patch'] is cause.patch
@@ -132,10 +134,11 @@ def test_resource_spawning_kwargs(resource):
         reset=False,
     )
     kwargs = build_kwargs(cause=cause, extrakwarg=123)
-    assert set(kwargs) == {'extrakwarg', 'logger', 'patch', 'memo',
+    assert set(kwargs) == {'extrakwarg', 'logger', 'resource', 'patch', 'memo',
                            'body', 'spec', 'status', 'meta', 'uid', 'name', 'namespace',
                            'labels', 'annotations'}
     assert kwargs['extrakwarg'] == 123
+    assert kwargs['resource'] is cause.resource
     assert kwargs['logger'] is cause.logger
     assert kwargs['patch'] is cause.patch
     assert kwargs['memo'] is cause.memo
@@ -164,10 +167,11 @@ def test_daemon_kwargs(resource):
         stopper=DaemonStopper(),
     )
     kwargs = build_kwargs(cause=cause, extrakwarg=123)
-    assert set(kwargs) == {'extrakwarg', 'logger', 'patch', 'memo',
+    assert set(kwargs) == {'extrakwarg', 'logger', 'resource', 'patch', 'memo',
                            'body', 'spec', 'status', 'meta', 'uid', 'name', 'namespace',
                            'labels', 'annotations'}
     assert kwargs['extrakwarg'] == 123
+    assert kwargs['resource'] is cause.resource
     assert kwargs['logger'] is cause.logger
     assert kwargs['patch'] is cause.patch
     assert kwargs['memo'] is cause.memo
