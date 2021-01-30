@@ -57,6 +57,7 @@ See also: :doc:`configuration`.
 Resource-related kwargs
 =======================
 
+.. kwarg:: resource
 .. kwarg:: body
 .. kwarg:: spec
 .. kwarg:: meta
@@ -69,6 +70,11 @@ Resource-related kwargs
 
 Body parts
 ----------
+
+``resource`` (:class:`kopf.Resource`) is the actual resource being served
+as retrieved from the cluster during the initial discovery.
+Please note that it is not necessary the same selector as used in the decorator,
+as one selector can match multiple actual resources.
 
 ``body`` is the handled object's body, a read-only mapping (dict).
 

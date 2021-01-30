@@ -60,6 +60,7 @@ def build_kwargs(
         )
     if isinstance(cause, causation.ResourceCause):
         new_kwargs.update(
+            resource=cause.resource,
             patch=cause.patch,
             memo=cause.memo,
             body=cause.body,

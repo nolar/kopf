@@ -274,8 +274,9 @@ def version_api(resp_mocker, aresponses, hostname, resource):
         'name': resource.plural,
         'namespaced': True,
     }]}
+    version_url = resource.get_url().rsplit('/', 1)[0]  # except the plural name
     list_mock = resp_mocker(return_value=aiohttp.web.json_response(result))
-    aresponses.add(hostname, resource.get_version_url(), 'get', list_mock)
+    aresponses.add(hostname, version_url, 'get', list_mock)
 
 
 @pytest.fixture()
