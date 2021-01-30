@@ -251,7 +251,7 @@ class SmartOperatorRegistry(OperatorRegistry):
                 fn=cast(callbacks.ActivityFn, piggybacking.login_via_pykube),
                 activity=handlers.Activity.AUTHENTICATION,
                 errors=handlers.ErrorsMode.IGNORED,
-                timeout=None, retries=None, backoff=None,
+                param=None, timeout=None, retries=None, backoff=None,
                 _fallback=True,
             ))
         try:
@@ -264,7 +264,7 @@ class SmartOperatorRegistry(OperatorRegistry):
                 fn=cast(callbacks.ActivityFn, piggybacking.login_via_client),
                 activity=handlers.Activity.AUTHENTICATION,
                 errors=handlers.ErrorsMode.IGNORED,
-                timeout=None, retries=None, backoff=None,
+                param=None, timeout=None, retries=None, backoff=None,
                 _fallback=True,
             ))
 

@@ -38,6 +38,48 @@ in case of retries & errors -- i.e. of the first attempt.
 in case of retries & errors -- i.e. since the first attempt.
 
 
+.. kwarg:: param
+
+Parametrization
+===============
+
+``param`` (any type, defaults to ``None``) is a value passed from the same-named
+handler option ``param=``. It can be helpful if there are multiple decorators,
+possibly with multiple different selectors & filters, for one handler function:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.create('KopfExample', param=1000)
+    @kopf.on.resume('KopfExample', param=100)
+    @kopf.on.update('KopfExample', param=10, field='spec.field')
+    @kopf.on.update('KopfExample', param=1, field='spec.items')
+    def count_updates(param, patch, **_):
+        patch.status['counter'] = body.status.get('counter', 0) + param
+
+    @kopf.on.update('Child1', param='first', field='status.done', new=True)
+    @kopf.on.update('Child2', param='second', field='status.done', new=True)
+    def child_updated(param, patch, **_):
+        patch_parent({'status': {param: {'done': True}}})
+
+Note that Kopf deduplicates the functions to execute on one single occasion,
+so in this example with overlapping criteria, if ``spec.field`` is updated,
+the parameter can be either 1 or 10, and the developers cannot control which
+parameter is actually passed (except as by being more specific with filters):
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.update('KopfExample', param=10, field='spec.field')
+    @kopf.on.update('KopfExample', param=1, field='spec')
+    def count_updates(param, patch, name, **_): ...
+
+In practice, it is usually the first matching handler (the lowest decorator in
+the list, as Python applies them from bottom to top), but it is not guaranteed.
+
+
 .. kwarg:: settings
 
 Operator configuration

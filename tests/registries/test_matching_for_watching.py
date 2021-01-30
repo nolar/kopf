@@ -26,7 +26,7 @@ def _always(*_, **__):
 def handler_factory(registry, selector):
     def factory(**kwargs):
         handler = ResourceWatchingHandler(**dict(dict(
-            fn=some_fn, id='a',
+            fn=some_fn, id='a', param=None,
             errors=None, timeout=None, retries=None, backoff=None,
             selector=selector, annotations=None, labels=None, when=None,
             field=None, value=None,

@@ -1,6 +1,6 @@
 import dataclasses
 import enum
-from typing import NewType, Optional
+from typing import Any, NewType, Optional
 
 from kopf.structs import callbacks, dicts, filters, references
 
@@ -70,6 +70,7 @@ TITLES = {
 class BaseHandler:
     id: HandlerId
     fn: callbacks.BaseFn
+    param: Optional[Any]
     errors: Optional[ErrorsMode]
     timeout: Optional[float]
     retries: Optional[int]

@@ -25,11 +25,14 @@ ResourceTimerDecorator = Callable[[callbacks.ResourceTimerFn], callbacks.Resourc
 
 def startup(  # lgtm[py/similar-function]
         *,
+        # Handler's behaviour specification:
         id: Optional[str] = None,
+        param: Optional[Any] = None,
         errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
+        # Operator specification:
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityDecorator:
     def decorator(  # lgtm[py/similar-function]
@@ -38,7 +41,7 @@ def startup(  # lgtm[py/similar-function]
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
-            fn=fn, id=real_id,
+            fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             activity=handlers.Activity.STARTUP,
         )
@@ -49,11 +52,14 @@ def startup(  # lgtm[py/similar-function]
 
 def cleanup(  # lgtm[py/similar-function]
         *,
+        # Handler's behaviour specification:
         id: Optional[str] = None,
+        param: Optional[Any] = None,
         errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
+        # Operator specification:
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityDecorator:
     def decorator(  # lgtm[py/similar-function]
@@ -62,7 +68,7 @@ def cleanup(  # lgtm[py/similar-function]
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
-            fn=fn, id=real_id,
+            fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             activity=handlers.Activity.CLEANUP,
         )
@@ -73,11 +79,14 @@ def cleanup(  # lgtm[py/similar-function]
 
 def login(  # lgtm[py/similar-function]
         *,
+        # Handler's behaviour specification:
         id: Optional[str] = None,
+        param: Optional[Any] = None,
         errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
+        # Operator specification:
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityDecorator:
     """ ``@kopf.on.login()`` handler for custom (re-)authentication. """
@@ -87,7 +96,7 @@ def login(  # lgtm[py/similar-function]
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
-            fn=fn, id=real_id,
+            fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             activity=handlers.Activity.AUTHENTICATION,
         )
@@ -98,11 +107,14 @@ def login(  # lgtm[py/similar-function]
 
 def probe(  # lgtm[py/similar-function]
         *,
+        # Handler's behaviour specification:
         id: Optional[str] = None,
+        param: Optional[Any] = None,
         errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
+        # Operator specification:
         registry: Optional[registries.OperatorRegistry] = None,
 ) -> ActivityDecorator:
     """ ``@kopf.on.probe()`` handler for arbitrary liveness metrics. """
@@ -112,7 +124,7 @@ def probe(  # lgtm[py/similar-function]
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_id = registries.generate_id(fn=fn, id=id)
         handler = handlers.ActivityHandler(
-            fn=fn, id=real_id,
+            fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             activity=handlers.Activity.PROBE,
         )
@@ -136,17 +148,20 @@ def resume(  # lgtm[py/similar-function]
         category: Optional[str] = None,
         # Handler's behaviour specification:
         id: Optional[str] = None,
+        param: Optional[Any] = None,
         errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
-        registry: Optional[registries.OperatorRegistry] = None,
         deleted: Optional[bool] = None,
+        # Resource object specification:
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
         field: Optional[dicts.FieldSpec] = None,
         value: Optional[filters.ValueFilter] = None,
+        # Operator specification:
+        registry: Optional[registries.OperatorRegistry] = None,
 ) -> ResourceChangingDecorator:
     """ ``@kopf.on.resume()`` handler for the object resuming on operator (re)start. """
     def decorator(  # lgtm[py/similar-function]
@@ -163,7 +178,7 @@ def resume(  # lgtm[py/similar-function]
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
         handler = handlers.ResourceChangingHandler(
-            fn=fn, id=real_id,
+            fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=None, new=None, field_needs_change=False,
@@ -190,6 +205,7 @@ def create(  # lgtm[py/similar-function]
         category: Optional[str] = None,
         # Handler's behaviour specification:
         id: Optional[str] = None,
+        param: Optional[Any] = None,
         errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
@@ -218,7 +234,7 @@ def create(  # lgtm[py/similar-function]
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
         handler = handlers.ResourceChangingHandler(
-            fn=fn, id=real_id,
+            fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=None, new=None, field_needs_change=False,
@@ -245,6 +261,7 @@ def update(  # lgtm[py/similar-function]
         category: Optional[str] = None,
         # Handler's behaviour specification:
         id: Optional[str] = None,
+        param: Optional[Any] = None,
         errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
@@ -275,7 +292,7 @@ def update(  # lgtm[py/similar-function]
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
         handler = handlers.ResourceChangingHandler(
-            fn=fn, id=real_id,
+            fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=old, new=new, field_needs_change=True,
@@ -302,6 +319,7 @@ def delete(  # lgtm[py/similar-function]
         category: Optional[str] = None,
         # Handler's behaviour specification:
         id: Optional[str] = None,
+        param: Optional[Any] = None,
         errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
@@ -331,7 +349,7 @@ def delete(  # lgtm[py/similar-function]
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
         handler = handlers.ResourceChangingHandler(
-            fn=fn, id=real_id,
+            fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=None, new=None, field_needs_change=False,
@@ -358,6 +376,7 @@ def field(  # lgtm[py/similar-function]
         category: Optional[str] = None,
         # Handler's behaviour specification:
         id: Optional[str] = None,
+        param: Optional[Any] = None,
         errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
@@ -388,7 +407,7 @@ def field(  # lgtm[py/similar-function]
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
         handler = handlers.ResourceChangingHandler(
-            fn=fn, id=real_id,
+            fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=old, new=new, field_needs_change=True,
@@ -415,6 +434,7 @@ def event(  # lgtm[py/similar-function]
         category: Optional[str] = None,
         # Handler's behaviour specification:
         id: Optional[str] = None,
+        param: Optional[Any] = None,
         # Resource object specification:
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
@@ -439,7 +459,7 @@ def event(  # lgtm[py/similar-function]
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
         handler = handlers.ResourceWatchingHandler(
-            fn=fn, id=real_id,
+            fn=fn, id=real_id, param=param,
             errors=None, timeout=None, retries=None, backoff=None,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value,
@@ -464,6 +484,7 @@ def daemon(  # lgtm[py/similar-function]
         category: Optional[str] = None,
         # Handler's behaviour specification:
         id: Optional[str] = None,
+        param: Optional[Any] = None,
         errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
@@ -496,7 +517,7 @@ def daemon(  # lgtm[py/similar-function]
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
         handler = handlers.ResourceDaemonHandler(
-            fn=fn, id=real_id,
+            fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value,
@@ -525,6 +546,7 @@ def timer(  # lgtm[py/similar-function]
         category: Optional[str] = None,
         # Handler's behaviour specification:
         id: Optional[str] = None,
+        param: Optional[Any] = None,
         errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
@@ -557,7 +579,7 @@ def timer(  # lgtm[py/similar-function]
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
         handler = handlers.ResourceTimerHandler(
-            fn=fn, id=real_id,
+            fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value,
@@ -573,6 +595,7 @@ def subhandler(  # lgtm[py/similar-function]
         *,
         # Handler's behaviour specification:
         id: Optional[str] = None,
+        param: Optional[Any] = None,
         errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
@@ -628,7 +651,7 @@ def subhandler(  # lgtm[py/similar-function]
         real_id = registries.generate_id(fn=fn, id=id,
                                          prefix=parent_handler.id if parent_handler else None)
         handler = handlers.ResourceChangingHandler(
-            fn=fn, id=real_id,
+            fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=None, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=old, new=new,
@@ -646,6 +669,7 @@ def register(  # lgtm[py/similar-function]
         *,
         # Handler's behaviour specification:
         id: Optional[str] = None,
+        param: Optional[Any] = None,
         errors: Optional[handlers.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
@@ -680,7 +704,7 @@ def register(  # lgtm[py/similar-function]
                     pass
     """
     decorator = subhandler(
-        id=id,
+        id=id, param=param,
         errors=errors, timeout=timeout, retries=retries, backoff=backoff,
         labels=labels, annotations=annotations, when=when,
     )

@@ -37,7 +37,7 @@ def context(
 def build_kwargs(
         cause: Optional[causation.BaseCause] = None,
         _sync: Optional[bool] = None,
-        **kwargs: Any
+        **kwargs: Any,  # includes param, retry, started, runtime, etc.
 ) -> Dict[str, Any]:
     """
     Expand kwargs dict with fields from the causation.
@@ -96,7 +96,7 @@ async def invoke(
         *args: Any,
         settings: Optional[configuration.OperatorSettings] = None,
         cause: Optional[causation.BaseCause] = None,
-        **kwargs: Any,
+        **kwargs: Any,  # includes param, retry, started, runtime, etc.
 ) -> Any:
     """
     Invoke a single function, but safely for the main asyncio process.
