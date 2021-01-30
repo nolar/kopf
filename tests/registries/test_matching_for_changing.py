@@ -51,7 +51,7 @@ mismatching_reason_and_decorator = pytest.mark.parametrize('reason, decorator', 
 def handler_factory(registry, selector):
     def factory(**kwargs):
         handler = ResourceChangingHandler(**dict(dict(
-            fn=some_fn, id='a',
+            fn=some_fn, id='a', param=None,
             errors=None, timeout=None, retries=None, backoff=None,
             initial=None, deleted=None, requires_finalizer=None,
             selector=selector, annotations=None, labels=None, when=None,

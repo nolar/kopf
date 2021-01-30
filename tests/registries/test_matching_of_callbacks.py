@@ -32,7 +32,7 @@ def handler(request, callback, selector):
         field=parse_field('spec.field'),
         value='value',
         when=None,
-        fn=some_fn, id='a', errors=None, timeout=None, retries=None, backoff=None,  # irrelevant
+        fn=some_fn, id='a', param=None, errors=None, timeout=None, retries=None, backoff=None,
     )
     if request.param in ['annotations', 'labels']:
         handler = dataclasses.replace(handler, **{request.param: {'known': callback}})

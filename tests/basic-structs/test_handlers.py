@@ -12,6 +12,7 @@ def test_handler_with_no_args(cls):
 def test_activity_handler_with_all_args(mocker):
     fn = mocker.Mock()
     id = mocker.Mock()
+    param = mocker.Mock()
     errors = mocker.Mock()
     timeout = mocker.Mock()
     retries = mocker.Mock()
@@ -20,6 +21,7 @@ def test_activity_handler_with_all_args(mocker):
     handler = ActivityHandler(
         fn=fn,
         id=id,
+        param=param,
         errors=errors,
         timeout=timeout,
         retries=retries,
@@ -28,6 +30,7 @@ def test_activity_handler_with_all_args(mocker):
     )
     assert handler.fn is fn
     assert handler.id is id
+    assert handler.param is param
     assert handler.errors is errors
     assert handler.timeout is timeout
     assert handler.retries is retries
@@ -38,6 +41,7 @@ def test_activity_handler_with_all_args(mocker):
 def test_resource_handler_with_all_args(mocker):
     fn = mocker.Mock()
     id = mocker.Mock()
+    param = mocker.Mock()
     selector = mocker.Mock()
     reason = mocker.Mock()
     errors = mocker.Mock()
@@ -58,6 +62,7 @@ def test_resource_handler_with_all_args(mocker):
     handler = ResourceChangingHandler(
         fn=fn,
         id=id,
+        param=param,
         selector=selector,
         reason=reason,
         errors=errors,
@@ -78,6 +83,7 @@ def test_resource_handler_with_all_args(mocker):
     )
     assert handler.fn is fn
     assert handler.id is id
+    assert handler.param is param
     assert handler.selector is selector
     assert handler.reason is reason
     assert handler.errors is errors

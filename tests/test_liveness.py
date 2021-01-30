@@ -57,11 +57,11 @@ async def test_liveness_with_reporting(liveness_url, liveness_registry):
 
     liveness_registry._activities.append(ActivityHandler(
         fn=fn1, id='id1', activity=Activity.PROBE,
-        errors=None, timeout=None, retries=None, backoff=None,
+        param=None, errors=None, timeout=None, retries=None, backoff=None,
     ))
     liveness_registry._activities.append(ActivityHandler(
         fn=fn2, id='id2', activity=Activity.PROBE,
-        errors=None, timeout=None, retries=None, backoff=None,
+        param=None, errors=None, timeout=None, retries=None, backoff=None,
     ))
 
     async with aiohttp.ClientSession() as session:
@@ -81,7 +81,7 @@ async def test_liveness_data_is_cached(liveness_url, liveness_registry):
 
     liveness_registry._activities.append(ActivityHandler(
         fn=fn1, id='id1', activity=Activity.PROBE,
-        errors=None, timeout=None, retries=None, backoff=None,
+        param=None, errors=None, timeout=None, retries=None, backoff=None,
     ))
 
     async with aiohttp.ClientSession() as session:

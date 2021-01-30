@@ -32,11 +32,11 @@ async def test_results_are_returned_on_success(settings, activity):
     registry = OperatorRegistry()
     registry._activities.append(ActivityHandler(
         fn=sample_fn1, id='id1', activity=activity,
-        errors=None, timeout=None, retries=None, backoff=None,
+        param=None, errors=None, timeout=None, retries=None, backoff=None,
     ))
     registry._activities.append(ActivityHandler(
         fn=sample_fn2, id='id2', activity=activity,
-        errors=None, timeout=None, retries=None, backoff=None,
+        param=None, errors=None, timeout=None, retries=None, backoff=None,
     ))
 
     results = await run_activity(
@@ -63,11 +63,11 @@ async def test_errors_are_raised_aggregated(settings, activity):
     registry = OperatorRegistry()
     registry._activities.append(ActivityHandler(
         fn=sample_fn1, id='id1', activity=activity,
-        errors=None, timeout=None, retries=None, backoff=None,
+        param=None, errors=None, timeout=None, retries=None, backoff=None,
     ))
     registry._activities.append(ActivityHandler(
         fn=sample_fn2, id='id2', activity=activity,
-        errors=None, timeout=None, retries=None, backoff=None,
+        param=None, errors=None, timeout=None, retries=None, backoff=None,
     ))
 
     with pytest.raises(ActivityError) as e:
@@ -100,7 +100,7 @@ async def test_errors_are_cascaded_from_one_of_the_originals(settings, activity)
     registry = OperatorRegistry()
     registry._activities.append(ActivityHandler(
         fn=sample_fn, id='id', activity=activity,
-        errors=None, timeout=None, retries=None, backoff=None,
+        param=None, errors=None, timeout=None, retries=None, backoff=None,
     ))
 
     with pytest.raises(ActivityError) as e:
@@ -127,7 +127,7 @@ async def test_retries_are_simulated(settings, activity, mocker):
     registry = OperatorRegistry()
     registry._activities.append(ActivityHandler(
         fn=sample_fn, id='id', activity=activity,
-        errors=None, timeout=None, retries=3, backoff=None,
+        param=None, errors=None, timeout=None, retries=3, backoff=None,
     ))
 
     with pytest.raises(ActivityError) as e:
@@ -151,7 +151,7 @@ async def test_delays_are_simulated(settings, activity, mocker):
     registry = OperatorRegistry()
     registry._activities.append(ActivityHandler(
         fn=sample_fn, id='id', activity=activity,
-        errors=None, timeout=None, retries=3, backoff=None,
+        param=None, errors=None, timeout=None, retries=3, backoff=None,
     ))
 
     with freezegun.freeze_time() as frozen:
