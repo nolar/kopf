@@ -112,17 +112,64 @@ class Resource:
     """
 
     group: str
+    """
+    The resource's API group; e.g. ``"kopf.dev"``, ``"apps"``, ``"batch"``.
+    For Core v1 API resources, an empty string: ``""``.
+    """
+
     version: str
+    """
+    The resource's API version; e.g. ``"v1"``, ``"v1beta1"``, etc.
+    """
+
     plural: str
+    """
+    The resource's plural name; e.g. ``"pods"``, ``"kopfexamples"``.
+    It is used as an API endpoint, together with API group & version.
+    """
 
     kind: Optional[str] = None
+    """
+    The resource's kind (as in YAML files); e.g. ``"Pod"``, ``"KopfExample"``.
+    """
+
     singular: Optional[str] = None
+    """
+    The resource's singular name; e.g. ``"pod"``, ``"kopfexample"``.
+    """
+
     shortcuts: FrozenSet[str] = frozenset()
+    """
+    The resource's short names; e.g. ``{"po"}``, ``{"kex", "kexes"}``.
+    """
+
     categories: FrozenSet[str] = frozenset()
+    """
+    The resource's categories, to which the resource belongs; e.g. ``{"all"}``.
+    """
+
     subresources: FrozenSet[str] = frozenset()
+    """
+    The resource's subresources, if defined; e.g. ``{"status", "scale"}``.
+    """
+
     namespaced: Optional[bool] = None
+    """
+    Whether the resource is namespaced (``True``) or cluster-scoped (``False``).
+    """
+
     preferred: bool = True  # against conventions, but makes versionless selectors match by default.
+    """
+    Whether the resource belong to a "preferred" API version.
+    Only "preferred" resources are served when the version is not specified.
+    """
+
     verbs: FrozenSet[str] = frozenset()
+    """
+    All available verbs for the resource, as supported by K8s API;
+    e.g., ``{"list", "watch", "create", "update", "delete", "patch"}``.
+    Note that it is not the same as all verbs permitted by RBAC.
+    """
 
     def __hash__(self) -> int:
         return hash((self.group, self.version, self.plural))
@@ -154,6 +201,20 @@ class Resource:
             subresource: Optional[str] = None,
             params: Optional[Mapping[str, str]] = None,
     ) -> str:
+        """
+        Build a URL to be used with K8s API.
+
+        If the namespace is not set, a cluster-wide URL is returned.
+        For cluster-scoped resources, the namespace is ignored.
+
+        If the name is not set, the URL for the resource list is returned.
+        Otherwise (if set), the URL for the individual resource is returned.
+
+        If subresource is set, that subresource's URL is returned,
+        regardless of whether such a subresource is known or not.
+
+        Params go to the query parameters (``?param1=value1&param2=value2...``).
+        """
         if subresource is not None and name is None:
             raise ValueError("Subresources can be used only with specific resources by their name.")
         if not self.namespaced and namespace is not None:
