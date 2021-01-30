@@ -188,17 +188,6 @@ async def test_special_kwargs_added(fn, resource):
     assert fn.called
     assert fn.call_count == 1
 
-    assert len(fn.call_args[1]) >= 2
-    assert fn.call_args[1]['reason'] is cause.reason
-    assert fn.call_args[1]['body'] is cause.body
-    assert fn.call_args[1]['spec'] == cause.body['spec']
-    assert fn.call_args[1]['meta'] == cause.body['metadata']
-    assert fn.call_args[1]['status'] == cause.body['status']
-    assert fn.call_args[1]['diff'] is cause.diff
-    assert fn.call_args[1]['old'] is cause.old
-    assert fn.call_args[1]['new'] is cause.new
-    assert fn.call_args[1]['patch'] is cause.patch
-    assert fn.call_args[1]['logger'] is cause.logger
-    assert fn.call_args[1]['uid'] == cause.body['metadata']['uid']
-    assert fn.call_args[1]['name'] == cause.body['metadata']['name']
-    assert fn.call_args[1]['namespace'] == cause.body['metadata']['namespace']
+    # Only check that kwargs are passed at all. The exact kwargs per cause are tested separately.
+    assert 'logger' in fn.call_args[1]
+    assert 'resource' in fn.call_args[1]
