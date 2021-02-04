@@ -13,7 +13,7 @@ To specify an endpoint to listen for probes, use :option:`--liveness`:
 
 .. code-block:: bash
 
-    kopf run --liveness=http://:8080/healthz --verbose handlers.py
+    kopf run --liveness=http://0.0.0.0:8080/healthz --verbose handlers.py
 
 Currently, only HTTP is supported.
 Other protocols (TCP, HTTPS) can be added in the future.
