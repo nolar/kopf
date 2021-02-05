@@ -36,6 +36,7 @@ Kopf: Kubernetes Operators Framework
    filters
    results
    errors
+   memories
    scopes
 
 .. toctree::

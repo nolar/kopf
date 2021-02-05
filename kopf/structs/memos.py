@@ -11,6 +11,8 @@ class Memo(Dict[Any, Any]):
     The values can be accessed either as dictionary keys (the memo is a ``dict``
     under the hood) or as object attributes (except for methods of ``dict``).
 
+    See more in :doc:`/memories`.
+
     >>> memo = Memo()
 
     >>> memo.f1 = 100

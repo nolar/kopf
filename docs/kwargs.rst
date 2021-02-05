@@ -139,7 +139,6 @@ as empty dicts.
 Logging
 -------
 
-
 ``logger`` is a per-object logger, with the messages prefixed with the object's
 namespace/name.
 
@@ -163,13 +162,16 @@ in the framework, why make separate API calls for patching?)_.
 In-memory container
 -------------------
 
-``memo`` is an in-memory container for arbitrary runtime-only keys/fields
-and values stored during the operator lifetime.
-The values are shared by all the handlers for the same object.
+``memo`` is an in-memory container for arbitrary runtime-only keys-values.
+The values can be accessed as either object attributes or dictionary keys.
 
-The in-memory values are lost on operator restarts.
-If the resource is deleted and re-created with the same name,
-the in-memory values are also lost (technically, it is a new object).
+For resource handlers, ``memo`` is shared by all handlers of the same
+individual resource (not of the resource kind, but of the resource object).
+For operator handlers, ``memo`` is shared by all handlers of the same operator,
+and later used to populate the resources' ``memo`` containers.
+
+.. seealso::
+    :doc:`memories` and :class:`kopf.Memo`.
 
 
 Resource-watching kwargs
