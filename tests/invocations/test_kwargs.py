@@ -7,9 +7,9 @@ from kopf.reactor.causation import ActivityCause, DaemonCause, ResourceChangingC
 from kopf.reactor.invocation import build_kwargs
 from kopf.structs.bodies import Body, BodyEssence
 from kopf.structs.configuration import OperatorSettings
-from kopf.structs.containers import Memo
 from kopf.structs.diffs import Diff
 from kopf.structs.handlers import Activity, Reason
+from kopf.structs.memos import Memo
 from kopf.structs.patches import Patch
 from kopf.structs.primitives import DaemonStopper
 
