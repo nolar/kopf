@@ -44,7 +44,7 @@ async def authenticator(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         vault: credentials.Vault,
-        memo: memos.Memo,
+        memo: memos.AnyMemo,
 ) -> NoReturn:
     """ Keep the credentials forever up to date. """
     counter: int = 1 if vault else 0
@@ -64,7 +64,7 @@ async def authenticate(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         vault: credentials.Vault,
-        memo: memos.Memo,
+        memo: memos.AnyMemo,
         _activity_title: str = "Authentication",
 ) -> None:
     """ Retrieve the credentials once, successfully or not, and exit. """
@@ -99,7 +99,7 @@ async def run_activity(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         activity: handlers_.Activity,
-        memo: memos.Memo,
+        memo: memos.AnyMemo,
 ) -> Mapping[handlers_.HandlerId, callbacks.Result]:
     logger = logging.getLogger(f'kopf.activities.{activity.value}')
 

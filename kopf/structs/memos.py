@@ -1,4 +1,9 @@
-from typing import Any, Dict
+from typing import Any, Dict, Union
+
+# Used for type-checking of embedded operators, where it can have any type.
+# It is usually of type `Memo` -- but the framework must not rely on that.
+# `Memo`, despite inheritance from `object`, is added to enable IDE completions.
+AnyMemo = Union["Memo", object]
 
 
 class Memo(Dict[Any, Any]):

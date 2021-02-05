@@ -36,7 +36,7 @@ def run(
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
-        memo: Optional[memos.Memo] = None,
+        memo: Optional[memos.AnyMemo] = None,
         _command: Optional[Coroutine[None, None, None]] = None,
 ) -> None:
     """
@@ -88,7 +88,7 @@ async def operator(
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
-        memo: Optional[memos.Memo] = None,
+        memo: Optional[memos.AnyMemo] = None,
         _command: Optional[Coroutine[None, None, None]] = None,
 ) -> None:
     """
@@ -141,7 +141,7 @@ async def spawn_tasks(
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
-        memo: Optional[memos.Memo] = None,
+        memo: Optional[memos.AnyMemo] = None,
         _command: Optional[Coroutine[None, None, None]] = None,
 ) -> Collection[aiotasks.Task]:
     """
@@ -431,7 +431,7 @@ async def _startup_cleanup_activities(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         vault: credentials.Vault,
-        memo: memos.Memo,
+        memo: memos.AnyMemo,
 ) -> None:
     """
     Startup and cleanup activities.

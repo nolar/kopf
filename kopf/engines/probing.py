@@ -20,7 +20,7 @@ _Key = Tuple[str, int]  # hostname, port
 async def health_reporter(
         endpoint: str,
         *,
-        memo: memos.Memo,
+        memo: memos.AnyMemo,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         ready_flag: Optional[asyncio.Event] = None,  # used for testing

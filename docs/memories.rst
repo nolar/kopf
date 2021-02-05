@@ -96,6 +96,58 @@ can be modified from outside, and these changes will be seen in all individual
 resource handlers & daemons which use their own per-resource containers.
 
 
+Custom memo classes
+===================
+
+For embedded operators (:doc:`/embedding`), it is possible to use any class
+for memos. It is not even required to inherit from :class:`kopf.Memo`.
+
+There are 2 strict requirements:
+
+* The class must be supported by all involved handlers that use it.
+* The class must support shallow copying via :func:`copy.copy` (``__copy__()``).
+
+The latter is used to create per-resource memos from the operator's memo.
+To have one global memo for all individual resources, redefine the class
+to return ``self`` when requested to make a copy, as shown below:
+
+.. code-block:: python
+
+    import asyncio
+    import dataclasses
+    import kopf
+
+    @dataclasses.dataclass()
+    class CustomContext:
+        create_tpl: str
+        delete_tpl: str
+
+        def __copy__(self) -> "CustomContext":
+            return self
+
+    @kopf.on.create('kopfexamples')
+    def create_fn(memo: CustomContext, **kwargs):
+        print(memo.create_tpl.format(**kwargs))
+
+    @kopf.on.delete('kopfexamples')
+    def delete_fn(memo: CustomContext, **kwargs):
+        print(memo.delete_tpl.format(**kwargs))
+
+    if __name__ == '__main__':
+        kopf.configure(verbose=True)
+        asyncio.run(kopf.operator(
+            memo=CustomContext(
+                create_tpl="Hello, {name}!",
+                delete_tpl="Good bye, {name}!",
+            ),
+        ))
+
+In all other regards, the framework does not use memos for its own needs
+and passes them through the call stack to the handlers and daemons "as is".
+
+This advanced feature is not available for operators executed via ``kopf run``.
+
+
 Limitations
 ===========
 

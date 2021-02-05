@@ -29,7 +29,7 @@ async def process_resource_event(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         memories: containers.ResourceMemories,
-        memobase: memos.Memo,
+        memobase: memos.AnyMemo,
         resource: references.Resource,
         raw_event: bodies.RawEvent,
         replenished: asyncio.Event,
