@@ -49,6 +49,7 @@ def build_kwargs(
     if isinstance(cause, causation.BaseCause):
         new_kwargs.update(
             logger=cause.logger,
+            memo=cause.memo,
         )
     if isinstance(cause, causation.ActivityCause):
         new_kwargs.update(
@@ -62,7 +63,6 @@ def build_kwargs(
         new_kwargs.update(
             resource=cause.resource,
             patch=cause.patch,
-            memo=cause.memo,
             body=cause.body,
             spec=cause.body.spec,
             meta=cause.body.metadata,

@@ -17,12 +17,13 @@ from kopf.structs.primitives import DaemonStopper
 @pytest.mark.parametrize('activity', set(Activity) - {Activity.STARTUP})
 def test_activity_kwargs(resource, activity):
     cause = ActivityCause(
+        memo=Memo(),
         logger=logging.getLogger('kopf.test.fake.logger'),
         activity=activity,
         settings=OperatorSettings(),
     )
     kwargs = build_kwargs(cause=cause, extrakwarg=123)
-    assert set(kwargs) == {'extrakwarg', 'logger', 'activity'}
+    assert set(kwargs) == {'extrakwarg', 'memo', 'logger', 'activity'}
     assert kwargs['extrakwarg'] == 123
     assert kwargs['logger'] is cause.logger
     assert kwargs['activity'] is activity
@@ -31,12 +32,13 @@ def test_activity_kwargs(resource, activity):
 @pytest.mark.parametrize('activity', {Activity.STARTUP})
 def test_startup_kwargs(resource, activity):
     cause = ActivityCause(
+        memo=Memo(),
         logger=logging.getLogger('kopf.test.fake.logger'),
         activity=activity,
         settings=OperatorSettings(),
     )
     kwargs = build_kwargs(cause=cause, extrakwarg=123)
-    assert set(kwargs) == {'extrakwarg', 'logger', 'activity', 'settings'}
+    assert set(kwargs) == {'extrakwarg', 'memo', 'logger', 'activity', 'settings'}
     assert kwargs['extrakwarg'] == 123
     assert kwargs['logger'] is cause.logger
     assert kwargs['activity'] is activity

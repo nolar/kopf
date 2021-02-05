@@ -10,6 +10,7 @@ def test_cause_with_no_args(cls):
 
 
 def test_activity_cause(mocker):
+    memo = mocker.Mock()
     logger = mocker.Mock()
     activity = mocker.Mock()
     settings = mocker.Mock()
@@ -17,10 +18,12 @@ def test_activity_cause(mocker):
         activity=activity,
         settings=settings,
         logger=logger,
+        memo=memo,
     )
     assert cause.activity is activity
     assert cause.settings is settings
     assert cause.logger is logger
+    assert cause.memo is memo
 
 
 def test_resource_watching_cause(mocker):

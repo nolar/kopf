@@ -96,6 +96,7 @@ def cause_factory(resource):
     ):
         if cls is ActivityCause or cls is ActivityRegistry:
             return ActivityCause(
+                memo=Memo(),
                 logger=logging.getLogger('kopf.test.fake.logger'),
                 activity=activity,
                 settings=settings,

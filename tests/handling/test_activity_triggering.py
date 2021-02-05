@@ -9,6 +9,7 @@ from kopf.reactor.lifecycles import all_at_once
 from kopf.reactor.registries import OperatorRegistry
 from kopf.storage.states import HandlerOutcome
 from kopf.structs.handlers import Activity, ActivityHandler, HandlerId
+from kopf.structs.memos import Memo
 
 
 def test_activity_error_exception():
@@ -44,6 +45,7 @@ async def test_results_are_returned_on_success(settings, activity):
         settings=settings,
         activity=activity,
         lifecycle=all_at_once,
+        memo=Memo(),
     )
 
     assert set(results.keys()) == {'id1', 'id2'}
@@ -76,6 +78,7 @@ async def test_errors_are_raised_aggregated(settings, activity):
             settings=settings,
             activity=activity,
             lifecycle=all_at_once,
+            memo=Memo(),
         )
 
     assert set(e.value.outcomes.keys()) == {'id1', 'id2'}
@@ -109,6 +112,7 @@ async def test_errors_are_cascaded_from_one_of_the_originals(settings, activity)
             settings=settings,
             activity=activity,
             lifecycle=all_at_once,
+            memo=Memo(),
         )
 
     assert e.value.__cause__
@@ -136,6 +140,7 @@ async def test_retries_are_simulated(settings, activity, mocker):
             settings=settings,
             activity=activity,
             lifecycle=all_at_once,
+            memo=Memo(),
         )
 
     assert isinstance(e.value.outcomes['id'].exception, PermanentError)
@@ -168,6 +173,7 @@ async def test_delays_are_simulated(settings, activity, mocker):
                 settings=settings,
                 activity=activity,
                 lifecycle=all_at_once,
+                memo=Memo(),
             )
 
     assert sleep_or_wait.call_count >= 3  # 3 retries, 1 sleep each

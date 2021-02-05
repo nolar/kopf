@@ -30,6 +30,7 @@ class ActivityFn(Protocol):
             self,
             *args: Any,
             logger: Union[logging.Logger, logging.LoggerAdapter],
+            memo: memos.Memo,
             **kwargs: Any,
     ) -> _SyncOrAsyncResult: ...
 

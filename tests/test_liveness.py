@@ -6,6 +6,7 @@ import pytest
 from kopf.engines.probing import health_reporter
 from kopf.reactor.registries import OperatorRegistry
 from kopf.structs.handlers import Activity, ActivityHandler
+from kopf.structs.memos import Memo
 
 
 @pytest.fixture()
@@ -26,6 +27,7 @@ async def liveness_url(settings, liveness_registry, aiohttp_unused_port):
             registry=liveness_registry,
             settings=settings,
             ready_flag=ready_flag,
+            memo=Memo(),
         )
     )
 
