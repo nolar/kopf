@@ -30,6 +30,7 @@ class ActivityFn(Protocol):
             self,
             *args: Any,
             logger: Union[logging.Logger, logging.LoggerAdapter],
+            memo: memos.AnyMemo,
             **kwargs: Any,
     ) -> _SyncOrAsyncResult: ...
 
@@ -50,7 +51,7 @@ class ResourceWatchingFn(Protocol):
             patch: patches.Patch,
             logger: Union[logging.Logger, logging.LoggerAdapter],
             resource: references.Resource,
-            memo: memos.Memo,
+            memo: memos.AnyMemo,
             **kwargs: Any,
     ) -> _SyncOrAsyncResult: ...
 
@@ -72,7 +73,7 @@ class ResourceChangingFn(Protocol):
             old: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
             new: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
             resource: references.Resource,
-            memo: memos.Memo,
+            memo: memos.AnyMemo,
             **kwargs: Any,
     ) -> _SyncOrAsyncResult: ...
 
@@ -91,7 +92,7 @@ class ResourceDaemonSyncFn(Protocol):
             logger: Union[logging.Logger, logging.LoggerAdapter],
             stopped: primitives.SyncDaemonStopperChecker,  # << different type
             resource: references.Resource,
-            memo: memos.Memo,
+            memo: memos.AnyMemo,
             **kwargs: Any,
     ) -> Optional[Result]: ...
 
@@ -110,7 +111,7 @@ class ResourceDaemonAsyncFn(Protocol):
             logger: Union[logging.Logger, logging.LoggerAdapter],
             stopped: primitives.AsyncDaemonStopperChecker,  # << different type
             resource: references.Resource,
-            memo: memos.Memo,
+            memo: memos.AnyMemo,
             **kwargs: Any,
     ) -> Optional[Result]: ...
 
@@ -131,7 +132,7 @@ class ResourceTimerFn(Protocol):
             namespace: Optional[str],
             logger: Union[logging.Logger, logging.LoggerAdapter],
             resource: references.Resource,
-            memo: memos.Memo,
+            memo: memos.AnyMemo,
             **kwargs: Any,
     ) -> _SyncOrAsyncResult: ...
 
@@ -158,7 +159,7 @@ class WhenFilterFn(Protocol):
             old: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
             new: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
             resource: references.Resource,
-            memo: memos.Memo,
+            memo: memos.AnyMemo,
             **kwargs: Any,
     ) -> bool: ...
 
@@ -178,7 +179,7 @@ class MetaFilterFn(Protocol):
             patch: patches.Patch,
             logger: Union[logging.Logger, logging.LoggerAdapter],
             resource: references.Resource,
-            memo: memos.Memo,
+            memo: memos.AnyMemo,
             **kwargs: Any,
     ) -> bool: ...
 

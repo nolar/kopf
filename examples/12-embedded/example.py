@@ -8,13 +8,13 @@ import pykube
 
 
 @kopf.on.create('kopfexamples')
-def create_fn(**_):
-    pass
+def create_fn(memo: kopf.Memo, **kwargs):
+    print(memo.create_tpl.format(**kwargs))
 
 
 @kopf.on.delete('kopfexamples')
-def delete_fn(**_):
-    pass
+def delete_fn(memo: kopf.Memo, **kwargs):
+    print(memo.delete_tpl.format(**kwargs))
 
 
 def kopf_thread(
@@ -30,6 +30,10 @@ def kopf_thread(
         loop.run_until_complete(kopf.operator(
             ready_flag=ready_flag,
             stop_flag=stop_flag,
+            memo=kopf.Memo(
+                create_tpl="Hello, {name}!",
+                delete_tpl="Good bye, {name}!",
+            ),
         ))
 
 

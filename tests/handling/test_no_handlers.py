@@ -7,6 +7,7 @@ import kopf
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.handlers import HANDLER_REASONS, ResourceChangingHandler
+from kopf.structs.memos import Memo
 
 LAST_SEEN_ANNOTATION = 'kopf.zalando.org/last-handled-configuration'
 
@@ -37,6 +38,7 @@ async def test_skipped_with_no_handlers(
         settings=settings,
         resource=resource,
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
@@ -92,6 +94,7 @@ async def test_stealth_mode_with_mismatching_handlers(
         settings=settings,
         resource=resource,
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),

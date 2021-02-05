@@ -8,6 +8,7 @@ import kopf
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.handlers import HANDLER_REASONS, Reason
+from kopf.structs.memos import Memo
 
 
 # The timeout is hard-coded in conftest.py:handlers().
@@ -40,6 +41,7 @@ async def test_timed_out_handler_fails(
             settings=settings,
             resource=resource,
             memories=ResourceMemories(),
+            memobase=Memo(),
             raw_event={'type': event_type, 'object': event_body},
             replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
@@ -89,6 +91,7 @@ async def test_retries_limited_handler_fails(
         settings=settings,
         resource=resource,
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),

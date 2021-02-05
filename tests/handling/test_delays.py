@@ -12,6 +12,7 @@ from kopf.reactor.processing import process_resource_event
 from kopf.storage.states import HandlerState
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.handlers import HANDLER_REASONS, Reason
+from kopf.structs.memos import Memo
 
 
 @pytest.mark.parametrize('cause_reason', HANDLER_REASONS)
@@ -38,6 +39,7 @@ async def test_delayed_handlers_progress(
             settings=settings,
             resource=resource,
             memories=ResourceMemories(),
+            memobase=Memo(),
             raw_event={'type': event_type, 'object': {}},
             replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
@@ -94,6 +96,7 @@ async def test_delayed_handlers_sleep(
             settings=settings,
             resource=resource,
             memories=ResourceMemories(),
+            memobase=Memo(),
             raw_event={'type': event_type, 'object': event_body},
             replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),

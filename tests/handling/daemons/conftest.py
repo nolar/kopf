@@ -9,6 +9,7 @@ import kopf
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.bodies import RawBody
 from kopf.structs.containers import ResourceMemories
+from kopf.structs.memos import Memo
 
 
 class DaemonDummy:
@@ -62,6 +63,7 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
             settings=settings,
             resource=resource,
             memories=memories,
+            memobase=Memo(),
             raw_event={'type': 'irrelevant', 'object': event_object},
             replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),

@@ -7,6 +7,7 @@ import kopf
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.handlers import Reason
+from kopf.structs.memos import Memo
 
 LAST_SEEN_ANNOTATION = 'kopf.zalando.org/last-handled-configuration'
 
@@ -27,6 +28,7 @@ async def test_create(registry, settings, handlers, resource, cause_mock, event_
         settings=settings,
         resource=resource,
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
         replenished=asyncio.Event(),
         event_queue=event_queue,
@@ -67,6 +69,7 @@ async def test_update(registry, settings, handlers, resource, cause_mock, event_
         settings=settings,
         resource=resource,
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
         replenished=asyncio.Event(),
         event_queue=event_queue,
@@ -109,6 +112,7 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
         settings=settings,
         resource=resource,
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
         replenished=asyncio.Event(),
         event_queue=event_queue,
@@ -149,6 +153,7 @@ async def test_gone(registry, settings, handlers, resource, cause_mock, event_ty
         settings=settings,
         resource=resource,
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
         replenished=asyncio.Event(),
         event_queue=event_queue,
@@ -179,6 +184,7 @@ async def test_free(registry, settings, handlers, resource, cause_mock, event_ty
         settings=settings,
         resource=resource,
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
         replenished=asyncio.Event(),
         event_queue=event_queue,
@@ -210,6 +216,7 @@ async def test_noop(registry, settings, handlers, resource, cause_mock, event_ty
         settings=settings,
         resource=resource,
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
         replenished=asyncio.Event(),
         event_queue=event_queue,

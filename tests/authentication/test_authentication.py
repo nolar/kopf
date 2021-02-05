@@ -4,6 +4,7 @@ from kopf.reactor.activities import authenticate
 from kopf.reactor.registries import OperatorRegistry
 from kopf.structs.credentials import ConnectionInfo, LoginError, Vault
 from kopf.structs.handlers import Activity, ActivityHandler
+from kopf.structs.memos import Memo
 
 
 async def test_empty_registry_produces_no_credentials(settings):
@@ -14,6 +15,7 @@ async def test_empty_registry_produces_no_credentials(settings):
         registry=registry,
         settings=settings,
         vault=vault,
+        memo=Memo(),
     )
 
     assert not vault
@@ -39,6 +41,7 @@ async def test_noreturn_handler_produces_no_credentials(settings):
         registry=registry,
         settings=settings,
         vault=vault,
+        memo=Memo(),
     )
 
     assert not vault
@@ -65,6 +68,7 @@ async def test_single_credentials_provided_to_vault(settings):
         registry=registry,
         settings=settings,
         vault=vault,
+        memo=Memo(),
     )
 
     assert vault

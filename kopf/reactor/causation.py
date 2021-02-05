@@ -31,6 +31,7 @@ from kopf.structs import bodies, configuration, diffs, handlers, \
 @dataclasses.dataclass
 class BaseCause:
     logger: Union[logging.Logger, logging.LoggerAdapter]
+    memo: memos.AnyMemo
 
 
 @dataclasses.dataclass
@@ -44,7 +45,6 @@ class ResourceCause(BaseCause):
     resource: references.Resource
     patch: patches.Patch
     body: bodies.Body
-    memo: memos.Memo
 
 
 @dataclasses.dataclass

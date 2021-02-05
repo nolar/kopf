@@ -1,4 +1,9 @@
-from typing import Any, Dict
+from typing import Any, Dict, Union
+
+# Used for type-checking of embedded operators, where it can have any type.
+# It is usually of type `Memo` -- but the framework must not rely on that.
+# `Memo`, despite inheritance from `object`, is added to enable IDE completions.
+AnyMemo = Union["Memo", object]
 
 
 class Memo(Dict[Any, Any]):
@@ -10,6 +15,8 @@ class Memo(Dict[Any, Any]):
 
     The values can be accessed either as dictionary keys (the memo is a ``dict``
     under the hood) or as object attributes (except for methods of ``dict``).
+
+    See more in :doc:`/memories`.
 
     >>> memo = Memo()
 

@@ -21,7 +21,7 @@ from typing import Mapping, MutableMapping, NoReturn
 
 from kopf.reactor import causation, effects, handling, lifecycles, registries
 from kopf.storage import states
-from kopf.structs import callbacks, configuration, credentials, handlers as handlers_
+from kopf.structs import callbacks, configuration, credentials, handlers as handlers_, memos
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,7 @@ async def authenticator(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         vault: credentials.Vault,
+        memo: memos.AnyMemo,
 ) -> NoReturn:
     """ Keep the credentials forever up to date. """
     counter: int = 1 if vault else 0
@@ -52,6 +53,7 @@ async def authenticator(
             registry=registry,
             settings=settings,
             vault=vault,
+            memo=memo,
             _activity_title="Re-authentication" if counter else "Initial authentication",
         )
         counter += 1
@@ -62,6 +64,7 @@ async def authenticate(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         vault: credentials.Vault,
+        memo: memos.AnyMemo,
         _activity_title: str = "Authentication",
 ) -> None:
     """ Retrieve the credentials once, successfully or not, and exit. """
@@ -77,6 +80,7 @@ async def authenticate(
         registry=registry,
         settings=settings,
         activity=handlers_.Activity.AUTHENTICATION,
+        memo=memo,
     )
 
     if activity_results:
@@ -95,11 +99,17 @@ async def run_activity(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         activity: handlers_.Activity,
+        memo: memos.AnyMemo,
 ) -> Mapping[handlers_.HandlerId, callbacks.Result]:
     logger = logging.getLogger(f'kopf.activities.{activity.value}')
 
     # For the activity handlers, we have neither bodies, nor patches, just the state.
-    cause = causation.ActivityCause(logger=logger, activity=activity, settings=settings)
+    cause = causation.ActivityCause(
+        logger=logger,
+        activity=activity,
+        settings=settings,
+        memo=memo,
+    )
     handlers = registry._activities.get_handlers(activity=activity)
     state = states.State.from_scratch().with_handlers(handlers)
     outcomes: MutableMapping[handlers_.HandlerId, states.HandlerOutcome] = {}

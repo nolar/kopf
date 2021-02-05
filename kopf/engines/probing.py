@@ -7,7 +7,7 @@ from typing import MutableMapping, Optional, Tuple
 import aiohttp.web
 
 from kopf.reactor import activities, lifecycles, registries
-from kopf.structs import callbacks, configuration, handlers
+from kopf.structs import callbacks, configuration, handlers, memos
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +20,7 @@ _Key = Tuple[str, int]  # hostname, port
 async def health_reporter(
         endpoint: str,
         *,
+        memo: memos.AnyMemo,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         ready_flag: Optional[asyncio.Event] = None,  # used for testing
@@ -54,6 +55,7 @@ async def health_reporter(
                         registry=registry,
                         settings=settings,
                         activity=handlers.Activity.PROBE,
+                        memo=memo,
                     )
                     probing_container.clear()
                     probing_container.update(activity_results)

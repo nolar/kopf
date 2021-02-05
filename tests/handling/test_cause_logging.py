@@ -10,6 +10,7 @@ from kopf.reactor.processing import process_resource_event
 from kopf.storage.progress import StatusProgressStorage
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.handlers import ALL_REASONS, HANDLER_REASONS, Reason
+from kopf.structs.memos import Memo
 
 
 @pytest.mark.parametrize('cause_type', ALL_REASONS)
@@ -25,6 +26,7 @@ async def test_all_logs_are_prefixed(registry, settings, resource, handlers,
         settings=settings,
         resource=resource,
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
@@ -55,6 +57,7 @@ async def test_diffs_logged_if_present(registry, settings, resource, handlers,
         settings=settings,
         resource=resource,
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
@@ -85,6 +88,7 @@ async def test_diffs_not_logged_if_absent(registry, settings, resource, handlers
         settings=settings,
         resource=resource,
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
@@ -128,6 +132,7 @@ async def test_supersession_is_logged(
         settings=settings,
         resource=resource,
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': body},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),

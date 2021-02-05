@@ -10,7 +10,8 @@ from kopf.clients import auth
 from kopf.engines import peering, posting, probing
 from kopf.reactor import activities, daemons, lifecycles, observation, \
                          orchestration, processing, registries
-from kopf.structs import configuration, containers, credentials, handlers, primitives, references
+from kopf.structs import configuration, containers, credentials, \
+                         handlers, memos, primitives, references
 from kopf.utilities import aiotasks
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ def run(
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
+        memo: Optional[memos.AnyMemo] = None,
         _command: Optional[Coroutine[None, None, None]] = None,
 ) -> None:
     """
@@ -61,6 +63,7 @@ def run(
             stop_flag=stop_flag,
             ready_flag=ready_flag,
             vault=vault,
+            memo=memo,
             _command=_command,
         ))
     except asyncio.CancelledError:
@@ -85,6 +88,7 @@ async def operator(
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
+        memo: Optional[memos.AnyMemo] = None,
         _command: Optional[Coroutine[None, None, None]] = None,
 ) -> None:
     """
@@ -113,6 +117,7 @@ async def operator(
         stop_flag=stop_flag,
         ready_flag=ready_flag,
         vault=vault,
+        memo=memo,
         _command=_command,
     )
     await run_tasks(operator_tasks, ignored=existing_tasks)
@@ -136,6 +141,7 @@ async def spawn_tasks(
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
+        memo: Optional[memos.AnyMemo] = None,
         _command: Optional[Coroutine[None, None, None]] = None,
 ) -> Collection[aiotasks.Task]:
     """
@@ -167,6 +173,7 @@ async def spawn_tasks(
     insights = insights if insights is not None else references.Insights()
     identity = identity if identity is not None else peering.detect_own_id(manual=False)
     vault = vault if vault is not None else credentials.Vault()
+    memo = memo if memo is not None else memos.Memo()
     event_queue: posting.K8sEventQueue = asyncio.Queue()
     signal_flag: aiotasks.Future = asyncio.Future()
     started_flag: asyncio.Event = asyncio.Event()
@@ -208,7 +215,8 @@ async def spawn_tasks(
             started_flag=started_flag,
             registry=registry,
             settings=settings,
-            vault=vault)))  # to purge & finalize the caches in the end.
+            vault=vault,
+            memo=memo)))  # to purge & finalize the caches in the end.
 
     # Kill all the daemons gracefully when the operator exits (so that they are not "hung").
     tasks.append(aiotasks.create_guarded_task(
@@ -223,7 +231,8 @@ async def spawn_tasks(
         coro=activities.authenticator(
             registry=registry,
             settings=settings,
-            vault=vault)))
+            vault=vault,
+            memo=memo)))
 
     # K8s-event posting. Events are queued in-memory and posted in the background.
     # NB: currently, it is a global task, but can be made per-resource or per-object.
@@ -240,7 +249,8 @@ async def spawn_tasks(
             coro=probing.health_reporter(
                 registry=registry,
                 settings=settings,
-                endpoint=liveness_endpoint)))
+                endpoint=liveness_endpoint,
+                memo=memo)))
 
     # Permanent observation of what resource kinds and namespaces are available in the cluster.
     # Spawn and cancel dimensional tasks as they come and go; dimensions = resources x namespaces.
@@ -276,6 +286,7 @@ async def spawn_tasks(
                                             registry=registry,
                                             settings=settings,
                                             memories=memories,
+                                            memobase=memo,
                                             event_queue=event_queue))))
 
     # Ensure that all guarded tasks got control for a moment to enter the guard.
@@ -420,6 +431,7 @@ async def _startup_cleanup_activities(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         vault: credentials.Vault,
+        memo: memos.AnyMemo,
 ) -> None:
     """
     Startup and cleanup activities.
@@ -441,6 +453,7 @@ async def _startup_cleanup_activities(
             registry=registry,
             settings=settings,
             activity=handlers.Activity.STARTUP,
+            memo=memo,
         )
     except asyncio.CancelledError:
         logger.warning("Startup activity is only partially executed due to cancellation.")
@@ -473,6 +486,7 @@ async def _startup_cleanup_activities(
             registry=registry,
             settings=settings,
             activity=handlers.Activity.CLEANUP,
+            memo=memo,
         )
         await vault.close()
     except asyncio.CancelledError:
