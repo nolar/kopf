@@ -7,8 +7,8 @@ from kopf.reactor.causation import ResourceChangingCause
 from kopf.reactor.invocation import invoke
 from kopf.storage.states import State
 from kopf.structs.bodies import Body
-from kopf.structs.containers import Memo
 from kopf.structs.handlers import Reason
+from kopf.structs.memos import Memo
 from kopf.structs.patches import Patch
 
 

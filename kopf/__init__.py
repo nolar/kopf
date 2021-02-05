@@ -90,9 +90,6 @@ from kopf.structs.callbacks import (
 from kopf.structs.configuration import (
     OperatorSettings,
 )
-from kopf.structs.containers import (
-    Memo,
-)
 from kopf.structs.credentials import (
     LoginError,
     ConnectionInfo,
@@ -114,6 +111,9 @@ from kopf.structs.handlers import (
     HandlerId,
     ErrorsMode,
     Reason,
+)
+from kopf.structs.memos import (
+    Memo,
 )
 from kopf.structs.patches import (
     Patch,

@@ -9,7 +9,7 @@ from typing import Any, Callable, Collection, Coroutine, NewType, Optional, Type
 
 from typing_extensions import Protocol
 
-from kopf.structs import bodies, diffs, patches, primitives, references
+from kopf.structs import bodies, diffs, memos, patches, primitives, references
 
 # A specialised type to highlight the purpose or origin of the data of type Any,
 # to not be mixed with other arbitrary Any values, where it is indeed "any".
@@ -50,6 +50,7 @@ class ResourceWatchingFn(Protocol):
             patch: patches.Patch,
             logger: Union[logging.Logger, logging.LoggerAdapter],
             resource: references.Resource,
+            memo: memos.Memo,
             **kwargs: Any,
     ) -> _SyncOrAsyncResult: ...
 
@@ -71,6 +72,7 @@ class ResourceChangingFn(Protocol):
             old: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
             new: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
             resource: references.Resource,
+            memo: memos.Memo,
             **kwargs: Any,
     ) -> _SyncOrAsyncResult: ...
 
@@ -89,6 +91,7 @@ class ResourceDaemonSyncFn(Protocol):
             logger: Union[logging.Logger, logging.LoggerAdapter],
             stopped: primitives.SyncDaemonStopperChecker,  # << different type
             resource: references.Resource,
+            memo: memos.Memo,
             **kwargs: Any,
     ) -> Optional[Result]: ...
 
@@ -107,6 +110,7 @@ class ResourceDaemonAsyncFn(Protocol):
             logger: Union[logging.Logger, logging.LoggerAdapter],
             stopped: primitives.AsyncDaemonStopperChecker,  # << different type
             resource: references.Resource,
+            memo: memos.Memo,
             **kwargs: Any,
     ) -> Optional[Result]: ...
 
@@ -127,6 +131,7 @@ class ResourceTimerFn(Protocol):
             namespace: Optional[str],
             logger: Union[logging.Logger, logging.LoggerAdapter],
             resource: references.Resource,
+            memo: memos.Memo,
             **kwargs: Any,
     ) -> _SyncOrAsyncResult: ...
 
@@ -153,6 +158,7 @@ class WhenFilterFn(Protocol):
             old: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
             new: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
             resource: references.Resource,
+            memo: memos.Memo,
             **kwargs: Any,
     ) -> bool: ...
 
@@ -172,6 +178,7 @@ class MetaFilterFn(Protocol):
             patch: patches.Patch,
             logger: Union[logging.Logger, logging.LoggerAdapter],
             resource: references.Resource,
+            memo: memos.Memo,
             **kwargs: Any,
     ) -> bool: ...
 

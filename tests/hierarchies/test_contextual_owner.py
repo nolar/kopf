@@ -7,8 +7,8 @@ from kopf.reactor.causation import ResourceChangingCause, ResourceWatchingCause
 from kopf.reactor.handling import cause_var
 from kopf.reactor.invocation import context
 from kopf.structs.bodies import Body, RawBody, RawEvent, RawMeta
-from kopf.structs.containers import Memo
 from kopf.structs.handlers import Reason
+from kopf.structs.memos import Memo
 from kopf.structs.patches import Patch
 
 OWNER_API_VERSION = 'owner-api-version'

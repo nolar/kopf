@@ -24,8 +24,8 @@ import logging
 from typing import Any, Optional, TypeVar, Union
 
 from kopf.storage import finalizers
-from kopf.structs import bodies, configuration, containers, diffs, \
-                         handlers, patches, primitives, references
+from kopf.structs import bodies, configuration, diffs, handlers, \
+                         memos, patches, primitives, references
 
 
 @dataclasses.dataclass
@@ -44,7 +44,7 @@ class ResourceCause(BaseCause):
     resource: references.Resource
     patch: patches.Patch
     body: bodies.Body
-    memo: containers.Memo
+    memo: memos.Memo
 
 
 @dataclasses.dataclass
