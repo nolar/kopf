@@ -36,6 +36,7 @@ def run(
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
+        memo: Optional[memos.Memo] = None,
         _command: Optional[Coroutine[None, None, None]] = None,
 ) -> None:
     """
@@ -62,6 +63,7 @@ def run(
             stop_flag=stop_flag,
             ready_flag=ready_flag,
             vault=vault,
+            memo=memo,
             _command=_command,
         ))
     except asyncio.CancelledError:
@@ -86,6 +88,7 @@ async def operator(
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
+        memo: Optional[memos.Memo] = None,
         _command: Optional[Coroutine[None, None, None]] = None,
 ) -> None:
     """
@@ -114,6 +117,7 @@ async def operator(
         stop_flag=stop_flag,
         ready_flag=ready_flag,
         vault=vault,
+        memo=memo,
         _command=_command,
     )
     await run_tasks(operator_tasks, ignored=existing_tasks)
@@ -137,6 +141,7 @@ async def spawn_tasks(
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
+        memo: Optional[memos.Memo] = None,
         _command: Optional[Coroutine[None, None, None]] = None,
 ) -> Collection[aiotasks.Task]:
     """
@@ -168,7 +173,7 @@ async def spawn_tasks(
     insights = insights if insights is not None else references.Insights()
     identity = identity if identity is not None else peering.detect_own_id(manual=False)
     vault = vault if vault is not None else credentials.Vault()
-    memo = memos.Memo()
+    memo = memo if memo is not None else memos.Memo()
     event_queue: posting.K8sEventQueue = asyncio.Queue()
     signal_flag: aiotasks.Future = asyncio.Future()
     started_flag: asyncio.Event = asyncio.Event()
