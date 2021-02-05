@@ -281,6 +281,7 @@ async def spawn_tasks(
                                             registry=registry,
                                             settings=settings,
                                             memories=memories,
+                                            memobase=memo,
                                             event_queue=event_queue))))
 
     # Ensure that all guarded tasks got control for a moment to enter the guard.

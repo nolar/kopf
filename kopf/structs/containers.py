@@ -7,6 +7,7 @@ On the operator restart, all the memories are lost.
 It is used internally to track allocated system resources for each Kubernetes
 object, even if that object does not show up in the event streams for long time.
 """
+import copy
 import dataclasses
 import logging
 import time
@@ -85,6 +86,7 @@ class ResourceMemories:
             self,
             raw_body: bodies.RawBody,
             *,
+            memo: Optional[memos.Memo] = None,
             noticed_by_listing: bool = False,
     ) -> ResourceMemory:
         """
@@ -94,7 +96,10 @@ class ResourceMemories:
         """
         key = self._build_key(raw_body)
         if key not in self._items:
-            memory = ResourceMemory(noticed_by_listing=noticed_by_listing)
+            if memo is None:
+                memory = ResourceMemory(noticed_by_listing=noticed_by_listing)
+            else:
+                memory = ResourceMemory(noticed_by_listing=noticed_by_listing, memo=copy.copy(memo))
             self._items[key] = memory
         return self._items[key]
 

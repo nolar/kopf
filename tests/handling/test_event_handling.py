@@ -7,6 +7,7 @@ import kopf
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.handlers import ALL_REASONS
+from kopf.structs.memos import Memo
 
 
 @pytest.mark.parametrize('cause_type', ALL_REASONS)
@@ -22,6 +23,7 @@ async def test_handlers_called_always(
         settings=settings,
         resource=resource,
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': 'ev-type', 'object': {'field': 'value'}},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
@@ -57,6 +59,7 @@ async def test_errors_are_ignored(
         settings=settings,
         resource=resource,
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': 'ev-type', 'object': {}},
         replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),

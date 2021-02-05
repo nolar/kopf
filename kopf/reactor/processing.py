@@ -21,7 +21,7 @@ from kopf.engines import loggers, posting
 from kopf.reactor import causation, daemons, effects, handling, lifecycles, registries
 from kopf.storage import finalizers, states
 from kopf.structs import bodies, configuration, containers, diffs, \
-                         handlers as handlers_, patches, references
+                         handlers as handlers_, memos, patches, references
 
 
 async def process_resource_event(
@@ -29,6 +29,7 @@ async def process_resource_event(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         memories: containers.ResourceMemories,
+        memobase: memos.Memo,
         resource: references.Resource,
         raw_event: bodies.RawEvent,
         replenished: asyncio.Event,
@@ -44,7 +45,7 @@ async def process_resource_event(
     # Recall what is stored about that object. Share it in little portions with the consumers.
     # And immediately forget it if the object is deleted from the cluster (but keep in memory).
     raw_type, raw_body = raw_event['type'], raw_event['object']
-    memory = await memories.recall(raw_body, noticed_by_listing=raw_type is None)
+    memory = await memories.recall(raw_body, noticed_by_listing=raw_type is None, memo=memobase)
     if memory.live_fresh_body is not None:
         memory.live_fresh_body._replace_with(raw_body)
     if raw_type == 'DELETED':

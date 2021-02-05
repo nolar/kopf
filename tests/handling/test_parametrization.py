@@ -4,6 +4,7 @@ from unittest.mock import Mock
 import kopf
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
+from kopf.structs.memos import Memo
 
 
 async def test_parameter_is_passed_when_specified(resource, cause_mock, registry, settings):
@@ -22,6 +23,7 @@ async def test_parameter_is_passed_when_specified(resource, cause_mock, registry
         settings=settings,
         resource=resource,
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': None, 'object': {}},
         replenished=asyncio.Event(),
         event_queue=event_queue,
@@ -47,6 +49,7 @@ async def test_parameter_is_passed_even_if_not_specified(resource, cause_mock, r
         settings=settings,
         resource=resource,
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': None, 'object': {}},
         replenished=asyncio.Event(),
         event_queue=event_queue,

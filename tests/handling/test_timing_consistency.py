@@ -6,6 +6,7 @@ import freezegun
 import kopf
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
+from kopf.structs.memos import Memo
 
 
 async def test_consistent_awakening(registry, settings, resource, k8s_mocked, mocker):
@@ -61,6 +62,7 @@ async def test_consistent_awakening(registry, settings, resource, k8s_mocked, mo
             settings=settings,
             resource=resource,
             memories=ResourceMemories(),
+            memobase=Memo(),
             raw_event={'type': 'ADDED', 'object': body},
             replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
