@@ -2,7 +2,28 @@ from typing import Any, Dict
 
 
 class Memo(Dict[Any, Any]):
-    """ A container to hold arbitrary keys-fields assigned by the users. """
+    """
+    A container to hold arbitrary keys-values assigned by operator developers.
+
+    It is used in the :kwarg:`memo` kwarg to all resource handlers, isolated
+    per individual resource object (not the resource kind).
+
+    The values can be accessed either as dictionary keys (the memo is a ``dict``
+    under the hood) or as object attributes (except for methods of ``dict``).
+
+    >>> memo = Memo()
+
+    >>> memo.f1 = 100
+    >>> memo['f1']
+    ... 100
+
+    >>> memo['f2'] = 200
+    >>> memo.f2
+    ... 200
+
+    >>> set(memo.keys())
+    ... {'f1', 'f2'}
+    """
 
     def __setattr__(self, key: str, value: Any) -> None:
         self[key] = value
