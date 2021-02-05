@@ -61,7 +61,7 @@ def main(steps=3):
 
 
 class KopfExample(pykube.objects.NamespacedAPIObject):
-    version = "v1"
+    version = "kopf.dev/v1"
     endpoint = "kopfexamples"
     kind = "KopfExample"
 
