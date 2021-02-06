@@ -51,7 +51,7 @@ def remove_owner_reference(
 
 def label(
         objs: K8sObjects,
-        labels: Mapping[str, Union[None, str]],
+        labels: Optional[Mapping[str, Union[None, str]]] = None,
         *,
         forced: bool = False,
         nested: Optional[Iterable[dicts.FieldSpec]] = None,
@@ -64,6 +64,12 @@ def label(
         warnings.warn("force= is deprecated in kopf.label(); use forced=...", DeprecationWarning)
         forced = force
 
+    # Try to use the current object being handled if possible.
+    if labels is None:
+        real_owner = _guess_owner(None)
+        labels = real_owner.get('metadata', {}).get('labels', {})
+
+    # Set labels based on the explicitly specified or guessed ones.
     for obj in cast(Iterator[K8sObject], dicts.walk(objs, nested=nested)):
         obj_labels = obj.setdefault('metadata', {}).setdefault('labels', {})
         for key, val in labels.items():

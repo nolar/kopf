@@ -1,5 +1,4 @@
 import copy
-
 import logging
 
 import pytest
@@ -86,6 +85,12 @@ def test_when_unset_for_namespace_adjustment():
     assert 'Owner must be set explicitly' in str(e.value)
 
 
+def test_when_unset_for_labelling():
+    with pytest.raises(LookupError) as e:
+        kopf.label([])
+    assert 'Owner must be set explicitly' in str(e.value)
+
+
 def test_when_unset_for_adopting():
     with pytest.raises(LookupError) as e:
         kopf.adopt([])
@@ -137,3 +142,9 @@ def test_when_set_for_owner_references_removal(owner):
     kopf.append_owner_reference(obj)  # assumed to work, tested above
     kopf.remove_owner_reference(obj)  # this one is being tested here
     assert not obj['metadata']['ownerReferences']
+
+
+def test_when_set_for_labelling(owner):
+    obj = {}
+    kopf.label(obj)
+    assert obj['metadata']['labels'] == {'label-1': 'value-1', 'label-2': 'value-2'}
