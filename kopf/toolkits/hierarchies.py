@@ -76,6 +76,8 @@ def label(
 def harmonize_naming(
         objs: K8sObjects,
         name: Optional[str] = None,
+        *,
+        forced: bool = False,
         strict: bool = False,
 ) -> None:
     """
@@ -101,16 +103,22 @@ def harmonize_naming(
     # Set name/prefix based on the explicitly specified or guessed name.
     for obj in cast(Iterator[K8sObject], dicts.walk(objs)):
         noname = 'metadata' not in obj or not set(obj['metadata']) & {'name', 'generateName'}
-        if noname:
+        if forced or noname:
             if strict:
-                obj.setdefault('metadata', {}).setdefault('name', name)
+                obj.setdefault('metadata', {})['name'] = name
+                if 'generateName' in obj['metadata']:
+                    del obj['metadata']['generateName']
             else:
-                obj.setdefault('metadata', {}).setdefault('generateName', f'{name}-')
+                obj.setdefault('metadata', {})['generateName'] = f'{name}-'
+                if 'name' in obj['metadata']:
+                    del obj['metadata']['name']
 
 
 def adjust_namespace(
         objs: K8sObjects,
         namespace: Optional[str] = None,
+        *,
+        forced: bool = False,
 ) -> None:
     """
     Adjust the namespace of the objects.
@@ -128,7 +136,8 @@ def adjust_namespace(
 
     # Set namespace based on the explicitly specified or guessed namespace.
     for obj in cast(Iterator[K8sObject], dicts.walk(objs)):
-        obj.setdefault('metadata', {}).setdefault('namespace', namespace)
+        if forced or obj.get('metadata', {}).get('namespace') is None:
+            obj.setdefault('metadata', {})['namespace'] = namespace
 
 
 def adopt(
