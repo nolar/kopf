@@ -7,8 +7,9 @@ from typing import Any, Iterable, Iterator, Mapping, MutableMapping, Optional, U
 
 from kopf.reactor import causation, handling
 from kopf.structs import bodies, dicts
+from kopf.utilities import thirdparty
 
-K8sObject = MutableMapping[Any, Any]
+K8sObject = Union[MutableMapping[Any, Any], thirdparty.PykubeObject, thirdparty.KubernetesModel]
 K8sObjects = Union[K8sObject, Iterable[K8sObject]]
 
 
@@ -25,10 +26,26 @@ def append_owner_reference(
     real_owner = _guess_owner(owner)
     owner_ref = bodies.build_owner_reference(real_owner)
     for obj in cast(Iterator[K8sObject], dicts.walk(objs)):
+        # Pykube is yielded as a usual dict, no need to specially treat it.
         if isinstance(obj, collections.abc.MutableMapping):
             refs = obj.setdefault('metadata', {}).setdefault('ownerReferences', [])
             if not any(ref.get('uid') == owner_ref['uid'] for ref in refs):
                 refs.append(owner_ref)
+        elif isinstance(obj, thirdparty.KubernetesModel):
+            if obj.metadata is None:
+                obj.metadata = thirdparty.V1ObjectMeta()
+            if obj.metadata.owner_references is None:
+                obj.metadata.owner_references = []
+            refs = obj.metadata.owner_references
+            if not any(ref.uid == owner_ref['uid'] for ref in refs):
+                refs.append(thirdparty.V1OwnerReference(
+                    api_version=owner_ref['apiVersion'],
+                    kind=owner_ref['kind'],
+                    name=owner_ref['name'],
+                    uid=owner_ref['uid'],
+                    controller=owner_ref['controller'],
+                    block_owner_deletion=owner_ref['blockOwnerDeletion'],
+                ))
         else:
             raise TypeError(f"K8s object class is not supported: {type(obj)}")
 
@@ -46,10 +63,19 @@ def remove_owner_reference(
     real_owner = _guess_owner(owner)
     owner_ref = bodies.build_owner_reference(real_owner)
     for obj in cast(Iterator[K8sObject], dicts.walk(objs)):
+        # Pykube is yielded as a usual dict, no need to specially treat it.
         if isinstance(obj, collections.abc.MutableMapping):
             refs = obj.setdefault('metadata', {}).setdefault('ownerReferences', [])
             if any(ref.get('uid') == owner_ref['uid'] for ref in refs):
                 refs[:] = [ref for ref in refs if ref.get('uid') != owner_ref['uid']]
+        elif isinstance(obj, thirdparty.KubernetesModel):
+            if obj.metadata is None:
+                obj.metadata = thirdparty.V1ObjectMeta()
+            if obj.metadata.owner_references is None:
+                obj.metadata.owner_references = []
+            refs = obj.metadata.owner_references
+            if any(ref.uid == owner_ref['uid'] for ref in refs):
+                refs[:] = [ref for ref in refs if ref.uid != owner_ref['uid']]
         else:
             raise TypeError(f"K8s object class is not supported: {type(obj)}")
 
@@ -77,8 +103,15 @@ def label(
 
     # Set labels based on the explicitly specified or guessed ones.
     for obj in cast(Iterator[K8sObject], dicts.walk(objs, nested=nested)):
+        # Pykube is yielded as a usual dict, no need to specially treat it.
         if isinstance(obj, collections.abc.MutableMapping):
             obj_labels = obj.setdefault('metadata', {}).setdefault('labels', {})
+        elif isinstance(obj, thirdparty.KubernetesModel):
+            if obj.metadata is None:
+                obj.metadata = thirdparty.V1ObjectMeta()
+            if obj.metadata.labels is None:
+                obj.metadata.labels = {}
+            obj_labels = obj.metadata.labels
         else:
             raise TypeError(f"K8s object class is not supported: {type(obj)}")
 
@@ -120,6 +153,7 @@ def harmonize_naming(
 
     # Set name/prefix based on the explicitly specified or guessed name.
     for obj in cast(Iterator[K8sObject], dicts.walk(objs)):
+        # Pykube is yielded as a usual dict, no need to specially treat it.
         if isinstance(obj, collections.abc.MutableMapping):
             noname = 'metadata' not in obj or not set(obj['metadata']) & {'name', 'generateName'}
             if forced or noname:
@@ -131,6 +165,19 @@ def harmonize_naming(
                     obj.setdefault('metadata', {})['generateName'] = f'{name}-'
                     if 'name' in obj['metadata']:
                         del obj['metadata']['name']
+        elif isinstance(obj, thirdparty.KubernetesModel):
+            if obj.metadata is None:
+                obj.metadata = thirdparty.V1ObjectMeta()
+            noname = obj.metadata.name is None and obj.metadata.generate_name is None
+            if forced or noname:
+                if strict:
+                    obj.metadata.name = name
+                    if obj.metadata.generate_name is not None:
+                        obj.metadata.generate_name = None
+                else:
+                    obj.metadata.generate_name = f'{name}-'
+                    if obj.metadata.name is not None:
+                        obj.metadata.name = None
         else:
             raise TypeError(f"K8s object class is not supported: {type(obj)}")
 
@@ -159,9 +206,15 @@ def adjust_namespace(
 
     # Set namespace based on the explicitly specified or guessed namespace.
     for obj in cast(Iterator[K8sObject], dicts.walk(objs)):
+        # Pykube is yielded as a usual dict, no need to specially treat it.
         if isinstance(obj, collections.abc.MutableMapping):
             if forced or obj.get('metadata', {}).get('namespace') is None:
                 obj.setdefault('metadata', {})['namespace'] = namespace
+        elif isinstance(obj, thirdparty.KubernetesModel):
+            if obj.metadata is None:
+                obj.metadata = thirdparty.V1ObjectMeta()
+            if forced or obj.metadata.namespace is None:
+                obj.metadata.namespace = namespace
         else:
             raise TypeError(f"K8s object class is not supported: {type(obj)}")
 

@@ -56,6 +56,22 @@ def test_preserved_namespaces_of_dicts(forcedness, multicls, obj1, obj2):
     assert obj2['metadata']['namespace'] != 'provided-namespace'
 
 
+@obj1_with_namespace
+@non_forced_mode
+def test_preserved_namespace_of_pykube_object(forcedness, pykube_object, obj1):
+    pykube_object.obj = copy.deepcopy(obj1)
+    kopf.adjust_namespace(pykube_object, namespace='provided-namespace', **forcedness)
+    assert pykube_object.obj['metadata'].get('namespace') != 'provided-namespace'
+
+
+@obj1_with_namespace
+@non_forced_mode
+def test_preserved_namespace_of_kubernetes_model(forcedness, kubernetes_model, obj1):
+    kubernetes_model.metadata.namespace = obj1.get('metadata', {}).get('namespace')
+    kopf.adjust_namespace(kubernetes_model, namespace='provided-namespace', **forcedness)
+    assert kubernetes_model.metadata.namespace != 'provided-namespace'
+
+
 #
 # In the FORCED mode, the EXISTING namespaces are overwritten.
 #
@@ -81,6 +97,22 @@ def test_overwriting_of_namespaces_of_dicts(forcedness, multicls, obj1, obj2):
     assert obj2['metadata']['namespace'] == 'provided-namespace'
 
 
+@obj1_with_namespace
+@forced_mode
+def test_overwriting_namespace_of_pykube_object(forcedness, pykube_object, obj1):
+    pykube_object.obj = copy.deepcopy(obj1)
+    kopf.adjust_namespace(pykube_object, namespace='provided-namespace', **forcedness)
+    assert pykube_object.obj['metadata'].get('namespace') == 'provided-namespace'
+
+
+@obj1_with_namespace
+@forced_mode
+def test_overwriting_namespace_of_kubernetes_model(forcedness, kubernetes_model, obj1):
+    kubernetes_model.metadata.namespace = obj1.get('metadata', {}).get('namespace')
+    kopf.adjust_namespace(kubernetes_model, namespace='provided-namespace', **forcedness)
+    assert kubernetes_model.metadata.namespace == 'provided-namespace'
+
+
 #
 # When namespaces are ABSENT, they are added regardless of the forced mode.
 #
@@ -104,3 +136,18 @@ def test_assignment_of_namespaces_of_dicts(forcedness, multicls, obj1, obj2):
     assert 'namespace' in obj2['metadata']
     assert obj1['metadata']['namespace'] == 'provided-namespace'
     assert obj2['metadata']['namespace'] == 'provided-namespace'
+
+
+@obj1_without_namespace
+@any_forced_mode
+def test_assignment_namespace_of_pykube_object(forcedness, pykube_object, obj1):
+    pykube_object.obj = copy.deepcopy(obj1)
+    kopf.adjust_namespace(pykube_object, namespace='provided-namespace', **forcedness)
+    assert pykube_object.obj['metadata'].get('namespace') == 'provided-namespace'
+
+
+@any_forced_mode
+def test_assignment_namespace_of_kubernetes_model(forcedness, kubernetes_model):
+    kubernetes_model.metadata = None
+    kopf.adjust_namespace(kubernetes_model, namespace='provided-namespace', **forcedness)
+    assert kubernetes_model.metadata.namespace == 'provided-namespace'

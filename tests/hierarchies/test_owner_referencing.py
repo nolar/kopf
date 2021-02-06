@@ -62,6 +62,33 @@ def test_appending_to_dicts(multicls):
     assert obj2['metadata']['ownerReferences'][0]['uid'] == OWNER_UID
 
 
+def test_appending_to_pykube_object(pykube_object):
+    del pykube_object.obj['metadata']
+    kopf.append_owner_reference(pykube_object, owner=Body(OWNER))
+    assert 'metadata' in pykube_object.obj
+    assert 'ownerReferences' in pykube_object.obj['metadata']
+    assert isinstance(pykube_object.obj['metadata']['ownerReferences'], list)
+    assert len(pykube_object.obj['metadata']['ownerReferences']) == 1
+    assert isinstance(pykube_object.obj['metadata']['ownerReferences'][0], dict)
+    assert pykube_object.obj['metadata']['ownerReferences'][0]['apiVersion'] == OWNER_API_VERSION
+    assert pykube_object.obj['metadata']['ownerReferences'][0]['kind'] == OWNER_KIND
+    assert pykube_object.obj['metadata']['ownerReferences'][0]['name'] == OWNER_NAME
+    assert pykube_object.obj['metadata']['ownerReferences'][0]['uid'] == OWNER_UID
+
+
+def test_appending_to_kubernetes_model(kubernetes_model):
+    kubernetes_model.metadata = None
+    kopf.append_owner_reference(kubernetes_model, owner=Body(OWNER))
+    assert kubernetes_model.metadata is not None
+    assert kubernetes_model.metadata.owner_references is not None
+    assert isinstance(kubernetes_model.metadata.owner_references, list)
+    assert len(kubernetes_model.metadata.owner_references) == 1
+    assert kubernetes_model.metadata.owner_references[0].api_version == OWNER_API_VERSION
+    assert kubernetes_model.metadata.owner_references[0].kind == OWNER_KIND
+    assert kubernetes_model.metadata.owner_references[0].name == OWNER_NAME
+    assert kubernetes_model.metadata.owner_references[0].uid == OWNER_UID
+
+
 def test_appending_deduplicates_by_uid():
     """
     The uid is the only necessary criterion to identify same objects.
@@ -136,6 +163,26 @@ def test_removal_from_dicts(multicls):
     assert 'ownerReferences' in obj2['metadata']
     assert isinstance(obj2['metadata']['ownerReferences'], list)
     assert len(obj2['metadata']['ownerReferences']) == 0
+
+
+def test_removal_from_pykube_object(pykube_object):
+    del pykube_object.obj['metadata']
+    kopf.append_owner_reference(pykube_object, owner=Body(OWNER))
+    kopf.remove_owner_reference(pykube_object, owner=Body(OWNER))
+    assert 'metadata' in pykube_object.obj
+    assert 'ownerReferences' in pykube_object.obj['metadata']
+    assert isinstance(pykube_object.obj['metadata']['ownerReferences'], list)
+    assert len(pykube_object.obj['metadata']['ownerReferences']) == 0
+
+
+def test_removal_from_kubernetes_model(kubernetes_model):
+    kubernetes_model.metadata = None
+    kopf.append_owner_reference(kubernetes_model, owner=Body(OWNER))
+    kopf.remove_owner_reference(kubernetes_model, owner=Body(OWNER))
+    assert kubernetes_model.metadata is not None
+    assert kubernetes_model.metadata.owner_references is not None
+    assert isinstance(kubernetes_model.metadata.owner_references, list)
+    assert len(kubernetes_model.metadata.owner_references) == 0
 
 
 def test_removal_identifies_by_uid():
