@@ -20,7 +20,7 @@ by manipulating their content before it is sent to the Kubernetes API.
 .. _pykube-ng: https://github.com/hjacobs/pykube
 
 In all examples below, ``obj`` and ``objs`` are either a supported object type
-(dictionaries, mappings) or a list/tuple/iterable with several objects.
+(native or 3rd-party, see below) or a list/tuple/iterable with several objects.
 
 
 Labels
@@ -278,3 +278,59 @@ All of the above can be done in one call with :func:`kopf.adopt`; ``forced``,
         #    'name': 'kopf-example-1',
         #    'namespace': 'default',
         #    'labels': {'somelabel': 'somevalue'}}}]
+
+
+3rd-party libraries
+===================
+
+All described methods support resource-related classes of selected libraries
+the same way as the native Python dictionaries (or any mutable mappings).
+Currently, that is `pykube-ng`_ (classes based on ``pykube.objects.APIObject``)
+and `kubernetes client`_ (resource models from ``kubernetes.client.models``).
+
+.. code-block:: python
+
+    import kopf
+    import pykube
+
+    @kopf.on.create('KopfExample')
+    def create_fn(**_):
+        api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+        pod = pykube.objects.Pod(api, {})
+        kopf.adopt(pod)
+
+.. code-block:: python
+
+    import kopf
+    import kubernetes.client
+
+    @kopf.on.create('KopfExample')
+    def create_fn(**_):
+        pod = kubernetes.client.V1Pod()
+        kopf.adopt(pod)
+        print(pod)
+        # {'api_version': None,
+        #  'kind': None,
+        #  'metadata': {'annotations': None,
+        #               'cluster_name': None,
+        #               'creation_timestamp': None,
+        #               'deletion_grace_period_seconds': None,
+        #               'deletion_timestamp': None,
+        #               'finalizers': None,
+        #               'generate_name': 'kopf-example-1-',
+        #               'generation': None,
+        #               'labels': {'somelabel': 'somevalue'},
+        #               'managed_fields': None,
+        #               'name': None,
+        #               'namespace': 'default',
+        #               'owner_references': [{'api_version': 'kopf.dev/v1',
+        #                                     'block_owner_deletion': True,
+        #                                     'controller': True,
+        #                                     'kind': 'KopfExample',
+        #                                     'name': 'kopf-example-1',
+        #                                     'uid': 'a114fa89-e696-4e84-9b80-b29fbccc460c'}],
+        #               'resource_version': None,
+        #               'self_link': None,
+        #               'uid': None},
+        #  'spec': None,
+        #  'status': None}
