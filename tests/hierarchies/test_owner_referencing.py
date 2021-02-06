@@ -1,6 +1,8 @@
 import copy
 from unittest.mock import Mock, call
 
+import pytest
+
 import kopf
 from kopf.structs.bodies import Body, RawBody, RawMeta
 
@@ -182,7 +184,15 @@ def test_removal_distinguishes_by_uid():
 
 
 # Not related to owner references only, but uses the OWNER constants.
-def test_adopting(mocker):
+@pytest.mark.parametrize('nested', [
+    pytest.param(('spec.template',), id='tuple'),
+    pytest.param(['spec.template'], id='list'),
+    pytest.param({'spec.template'}, id='set'),
+    pytest.param('spec.template', id='string'),
+])
+@pytest.mark.parametrize('strict', [True, False])
+@pytest.mark.parametrize('forced', [True, False])
+def test_adopting(mocker, forced, strict, nested):
     # These methods are tested in their own tests.
     # We just check that they are called at all.
     append_owner_ref = mocker.patch('kopf.toolkits.hierarchies.append_owner_reference')
@@ -190,15 +200,15 @@ def test_adopting(mocker):
     adjust_namespace = mocker.patch('kopf.toolkits.hierarchies.adjust_namespace')
     label = mocker.patch('kopf.toolkits.hierarchies.label')
 
-    obj = Mock()
-    kopf.adopt(obj, owner=Body(OWNER), nested=['template'])
+    obj = {}
+    kopf.adopt(obj, owner=Body(OWNER), forced=forced, strict=strict, nested=nested)
 
     assert append_owner_ref.called
     assert harmonize_naming.called
     assert adjust_namespace.called
     assert label.called
 
-    assert append_owner_ref.call_args_list == [call(obj, owner=Body(OWNER))]
-    assert harmonize_naming.call_args_list == [call(obj, name=OWNER_NAME)]
-    assert adjust_namespace.call_args_list == [call(obj, namespace=OWNER_NAMESPACE)]
-    assert label.call_args_list == [call(obj, labels=OWNER_LABELS, nested=['template'])]
+    assert append_owner_ref.call_args == call(obj, owner=Body(OWNER))
+    assert harmonize_naming.call_args == call(obj, name=OWNER_NAME, forced=forced, strict=strict)
+    assert adjust_namespace.call_args == call(obj, namespace=OWNER_NAMESPACE, forced=forced)
+    assert label.call_args == call(obj, labels=OWNER_LABELS, nested=nested, forced=forced)

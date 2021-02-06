@@ -170,16 +170,21 @@ def adopt(
         objs: K8sObjects,
         owner: Optional[bodies.Body] = None,
         *,
+        forced: bool = False,
+        strict: bool = False,
         nested: Optional[Union[str, Iterable[dicts.FieldSpec]]] = None,
 ) -> None:
     """
     The children should be in the same namespace, named after their parent, and owned by it.
     """
     real_owner = _guess_owner(owner)
+    real_owner_name = real_owner.get('metadata', {}).get('name', None)
+    real_owner_namespace = real_owner.get('metadata', {}).get('namespace', None)
+    real_owner_labels = real_owner.get('metadata', {}).get('labels', {})
     append_owner_reference(objs, owner=real_owner)
-    harmonize_naming(objs, name=real_owner.get('metadata', {}).get('name', None))
-    adjust_namespace(objs, namespace=real_owner.get('metadata', {}).get('namespace', None))
-    label(objs, labels=real_owner.get('metadata', {}).get('labels', {}), nested=nested)
+    harmonize_naming(objs, forced=forced, strict=strict, name=real_owner_name)
+    adjust_namespace(objs, forced=forced, namespace=real_owner_namespace)
+    label(objs, forced=forced, nested=nested, labels=real_owner_labels)
 
 
 def _guess_owner(
