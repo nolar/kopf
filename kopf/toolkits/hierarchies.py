@@ -1,6 +1,7 @@
 """
 All the functions to properly build the object hierarchies.
 """
+import collections.abc
 import warnings
 from typing import Any, Iterable, Iterator, Mapping, MutableMapping, Optional, Union, cast
 
@@ -24,10 +25,12 @@ def append_owner_reference(
     real_owner = _guess_owner(owner)
     owner_ref = bodies.build_owner_reference(real_owner)
     for obj in cast(Iterator[K8sObject], dicts.walk(objs)):
-        refs = obj.setdefault('metadata', {}).setdefault('ownerReferences', [])
-        matching = [ref for ref in refs if ref.get('uid') == owner_ref['uid']]
-        if not matching:
-            refs.append(owner_ref)
+        if isinstance(obj, collections.abc.MutableMapping):
+            refs = obj.setdefault('metadata', {}).setdefault('ownerReferences', [])
+            if not any(ref.get('uid') == owner_ref['uid'] for ref in refs):
+                refs.append(owner_ref)
+        else:
+            raise TypeError(f"K8s object class is not supported: {type(obj)}")
 
 
 def remove_owner_reference(
@@ -43,10 +46,12 @@ def remove_owner_reference(
     real_owner = _guess_owner(owner)
     owner_ref = bodies.build_owner_reference(real_owner)
     for obj in cast(Iterator[K8sObject], dicts.walk(objs)):
-        refs = obj.setdefault('metadata', {}).setdefault('ownerReferences', [])
-        matching = [ref for ref in refs if ref.get('uid') == owner_ref['uid']]
-        for ref in matching:
-            refs.remove(ref)
+        if isinstance(obj, collections.abc.MutableMapping):
+            refs = obj.setdefault('metadata', {}).setdefault('ownerReferences', [])
+            if any(ref.get('uid') == owner_ref['uid'] for ref in refs):
+                refs[:] = [ref for ref in refs if ref.get('uid') != owner_ref['uid']]
+        else:
+            raise TypeError(f"K8s object class is not supported: {type(obj)}")
 
 
 def label(
@@ -71,7 +76,11 @@ def label(
 
     # Set labels based on the explicitly specified or guessed ones.
     for obj in cast(Iterator[K8sObject], dicts.walk(objs, nested=nested)):
-        obj_labels = obj.setdefault('metadata', {}).setdefault('labels', {})
+        if isinstance(obj, collections.abc.MutableMapping):
+            obj_labels = obj.setdefault('metadata', {}).setdefault('labels', {})
+        else:
+            raise TypeError(f"K8s object class is not supported: {type(obj)}")
+
         for key, val in labels.items():
             if forced:
                 obj_labels[key] = val
@@ -110,16 +119,19 @@ def harmonize_naming(
 
     # Set name/prefix based on the explicitly specified or guessed name.
     for obj in cast(Iterator[K8sObject], dicts.walk(objs)):
-        noname = 'metadata' not in obj or not set(obj['metadata']) & {'name', 'generateName'}
-        if forced or noname:
-            if strict:
-                obj.setdefault('metadata', {})['name'] = name
-                if 'generateName' in obj['metadata']:
-                    del obj['metadata']['generateName']
-            else:
-                obj.setdefault('metadata', {})['generateName'] = f'{name}-'
-                if 'name' in obj['metadata']:
-                    del obj['metadata']['name']
+        if isinstance(obj, collections.abc.MutableMapping):
+            noname = 'metadata' not in obj or not set(obj['metadata']) & {'name', 'generateName'}
+            if forced or noname:
+                if strict:
+                    obj.setdefault('metadata', {})['name'] = name
+                    if 'generateName' in obj['metadata']:
+                        del obj['metadata']['generateName']
+                else:
+                    obj.setdefault('metadata', {})['generateName'] = f'{name}-'
+                    if 'name' in obj['metadata']:
+                        del obj['metadata']['name']
+        else:
+            raise TypeError(f"K8s object class is not supported: {type(obj)}")
 
 
 def adjust_namespace(
@@ -146,8 +158,11 @@ def adjust_namespace(
 
     # Set namespace based on the explicitly specified or guessed namespace.
     for obj in cast(Iterator[K8sObject], dicts.walk(objs)):
-        if forced or obj.get('metadata', {}).get('namespace') is None:
-            obj.setdefault('metadata', {})['namespace'] = namespace
+        if isinstance(obj, collections.abc.MutableMapping):
+            if forced or obj.get('metadata', {}).get('namespace') is None:
+                obj.setdefault('metadata', {})['namespace'] = namespace
+        else:
+            raise TypeError(f"K8s object class is not supported: {type(obj)}")
 
 
 def adopt(
