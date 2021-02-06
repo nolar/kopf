@@ -68,17 +68,29 @@ def test_forcing_default_to_dict():
     assert obj['metadata']['labels']['label'] == 'old-value'
 
 
-def test_nested_with_forced_true_to_dict():
+@pytest.mark.parametrize('nested', [
+    pytest.param(('spec.jobTemplate',), id='tuple'),
+    pytest.param(['spec.jobTemplate'], id='list'),
+    pytest.param({'spec.jobTemplate'}, id='set'),
+    pytest.param('spec.jobTemplate', id='string'),
+])
+def test_nested_with_forced_true_to_dict(nested):
     obj = {'metadata': {'labels': {'label': 'old-value'}},
-           'spec': {'template': {}}}
-    kopf.label(obj, {'label': 'new-value'}, nested=['spec.template'], forced=True)
+           'spec': {'jobTemplate': {}}}
+    kopf.label(obj, {'label': 'new-value'}, nested=nested, forced=True)
     assert obj['metadata']['labels']['label'] == 'new-value'
-    assert obj['spec']['template']['metadata']['labels']['label'] == 'new-value'
+    assert obj['spec']['jobTemplate']['metadata']['labels']['label'] == 'new-value'
 
 
-def test_nested_with_forced_false_to_dict():
+@pytest.mark.parametrize('nested', [
+    pytest.param(('spec.jobTemplate',), id='tuple'),
+    pytest.param(['spec.jobTemplate'], id='list'),
+    pytest.param({'spec.jobTemplate'}, id='set'),
+    pytest.param('spec.jobTemplate', id='string'),
+])
+def test_nested_with_forced_false_to_dict(nested):
     obj = {'metadata': {'labels': {'label': 'old-value'}},
-           'spec': {'template': {}}}
-    kopf.label(obj, {'label': 'new-value'}, nested=['spec.template'], forced=False)
+           'spec': {'jobTemplate': {}}}
+    kopf.label(obj, {'label': 'new-value'}, nested=nested, forced=False)
     assert obj['metadata']['labels']['label'] == 'old-value'
-    assert obj['spec']['template']['metadata']['labels']['label'] == 'new-value'
+    assert obj['spec']['jobTemplate']['metadata']['labels']['label'] == 'new-value'

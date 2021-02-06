@@ -59,12 +59,13 @@ def label(
         labels: Optional[Mapping[str, Union[None, str]]] = None,
         *,
         forced: bool = False,
-        nested: Optional[Iterable[dicts.FieldSpec]] = None,
+        nested: Optional[Union[str, Iterable[dicts.FieldSpec]]] = None,
         force: Optional[bool] = None,  # deprecated
 ) -> None:
     """
     Apply the labels to the object(s).
     """
+    nested = [nested] if isinstance(nested, str) else nested
     if force is not None:
         warnings.warn("force= is deprecated in kopf.label(); use forced=...", DeprecationWarning)
         forced = force
@@ -169,7 +170,7 @@ def adopt(
         objs: K8sObjects,
         owner: Optional[bodies.Body] = None,
         *,
-        nested: Optional[Iterable[dicts.FieldSpec]] = None,
+        nested: Optional[Union[str, Iterable[dicts.FieldSpec]]] = None,
 ) -> None:
     """
     The children should be in the same namespace, named after their parent, and owned by it.
