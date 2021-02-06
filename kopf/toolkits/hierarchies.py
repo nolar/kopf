@@ -1,6 +1,7 @@
 """
 All the functions to properly build the object hierarchies.
 """
+import warnings
 from typing import Any, Iterable, Iterator, Mapping, MutableMapping, Optional, Union, cast
 
 from kopf.reactor import causation, handling
@@ -52,16 +53,21 @@ def label(
         objs: K8sObjects,
         labels: Mapping[str, Union[None, str]],
         *,
-        force: bool = False,
+        forced: bool = False,
         nested: Optional[Iterable[dicts.FieldSpec]] = None,
+        force: Optional[bool] = None,  # deprecated
 ) -> None:
     """
     Apply the labels to the object(s).
     """
+    if force is not None:
+        warnings.warn("force= is deprecated in kopf.label(); use forced=...", DeprecationWarning)
+        forced = force
+
     for obj in cast(Iterator[K8sObject], dicts.walk(objs, nested=nested)):
         obj_labels = obj.setdefault('metadata', {}).setdefault('labels', {})
         for key, val in labels.items():
-            if force:
+            if forced:
                 obj_labels[key] = val
             else:
                 obj_labels.setdefault(key, val)

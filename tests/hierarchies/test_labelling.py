@@ -1,3 +1,5 @@
+import pytest
+
 import kopf
 
 
@@ -38,15 +40,29 @@ def test_adding_to_multiple_objects(multicls):
     assert obj2['metadata']['labels']['label-2'] == 'value-2'
 
 
+def test_forcing_true_warns_on_deprecated_option():
+    obj = {'metadata': {'labels': {'label': 'old-value'}}}
+    with pytest.deprecated_call(match=r"use forced="):
+        kopf.label(obj, {'label': 'new-value'}, force=True)
+    assert obj['metadata']['labels']['label'] == 'new-value'
+
+
+def test_forcing_false_warns_on_deprecated_option():
+    obj = {'metadata': {'labels': {'label': 'old-value'}}}
+    with pytest.deprecated_call(match=r"use forced="):
+        kopf.label(obj, {'label': 'new-value'}, force=False)
+    assert obj['metadata']['labels']['label'] == 'old-value'
+
+
 def test_forcing_true():
     obj = {'metadata': {'labels': {'label': 'old-value'}}}
-    kopf.label(obj, {'label': 'new-value'}, force=True)
+    kopf.label(obj, {'label': 'new-value'}, forced=True)
     assert obj['metadata']['labels']['label'] == 'new-value'
 
 
 def test_forcing_false():
     obj = {'metadata': {'labels': {'label': 'old-value'}}}
-    kopf.label(obj, {'label': 'new-value'}, force=False)
+    kopf.label(obj, {'label': 'new-value'}, forced=False)
     assert obj['metadata']['labels']['label'] == 'old-value'
 
 
@@ -59,7 +75,7 @@ def test_forcing_default():
 def test_nested_with_forced_true():
     obj = {'metadata': {'labels': {'label': 'old-value'}},
            'spec': {'template': {}}}
-    kopf.label(obj, {'label': 'new-value'}, nested=['spec.template'], force=True)
+    kopf.label(obj, {'label': 'new-value'}, nested=['spec.template'], forced=True)
     assert obj['metadata']['labels']['label'] == 'new-value'
     assert obj['spec']['template']['metadata']['labels']['label'] == 'new-value'
 
@@ -67,6 +83,6 @@ def test_nested_with_forced_true():
 def test_nested_with_forced_false():
     obj = {'metadata': {'labels': {'label': 'old-value'}},
            'spec': {'template': {}}}
-    kopf.label(obj, {'label': 'new-value'}, nested=['spec.template'], force=False)
+    kopf.label(obj, {'label': 'new-value'}, nested=['spec.template'], forced=False)
     assert obj['metadata']['labels']['label'] == 'old-value'
     assert obj['spec']['template']['metadata']['labels']['label'] == 'new-value'
