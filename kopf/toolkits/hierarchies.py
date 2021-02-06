@@ -99,6 +99,8 @@ def harmonize_naming(
     if name is None:
         real_owner = _guess_owner(None)
         name = real_owner.get('metadata', {}).get('name', None)
+    if name is None:
+        raise LookupError("Name must be set explicitly: couldn't find it automatically.")
 
     # Set name/prefix based on the explicitly specified or guessed name.
     for obj in cast(Iterator[K8sObject], dicts.walk(objs)):
@@ -133,6 +135,8 @@ def adjust_namespace(
     if namespace is None:
         real_owner = _guess_owner(None)
         namespace = real_owner.get('metadata', {}).get('namespace', None)
+    if namespace is None:
+        raise LookupError("Namespace must be set explicitly: couldn't find it automatically.")
 
     # Set namespace based on the explicitly specified or guessed namespace.
     for obj in cast(Iterator[K8sObject], dicts.walk(objs)):
