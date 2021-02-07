@@ -6,6 +6,8 @@ import enum
 from typing import Any, Callable, Generic, Iterable, Iterator, List, \
                    Mapping, MutableMapping, Optional, Tuple, TypeVar, Union
 
+from kopf.utilities import thirdparty
+
 FieldPath = Tuple[str, ...]
 FieldSpec = Union[None, str, FieldPath, List[str]]
 
@@ -39,6 +41,42 @@ def parse_field(
         return tuple(field)
     else:
         raise ValueError(f"Field must be either a str, or a list/tuple. Got {field!r}")
+
+
+def resolve_obj(
+        d: Union[None, thirdparty.KubernetesModel, Mapping[Any, Any]],
+        field: FieldSpec,
+        default: Union[_T, _UNSET] = _UNSET.token,
+) -> Union[Any, _T]:
+    """
+    Mirrors `resolve`, but for a nested mix of dict keys & object attributes.
+
+    While `resolve` is used mostly in certain dictionaries (e.g. diffs),
+    this function is used for walking over 3rd-party API objects & models
+    with nested structures. The algorithm is essentially the same.
+    """
+    path = parse_field(field)
+    try:
+        result = d
+        for key in path:
+            if isinstance(result, collections.abc.Mapping):
+                result = result[key]
+            elif isinstance(result, thirdparty.KubernetesModel):
+                attrmap: Mapping[str, str] = getattr(result, 'attribute_map', {})
+                attrs = [attr for attr, schema_key in attrmap.items() if schema_key == key]
+                key = attrs[0] if attrs else key
+                result = getattr(result, key)
+            elif not isinstance(result, (tuple, list, set, frozenset, str, bytes)):
+                result = getattr(result, key)
+            elif not isinstance(default, _UNSET):
+                return default
+            else:
+                raise TypeError(f"The structure has no field {key!r}: {result!r}")
+        return result
+    except (AttributeError, KeyError):
+        if not isinstance(default, _UNSET):
+            return default
+        raise
 
 
 def resolve(
@@ -198,6 +236,16 @@ def walk(
     """
     if objs is None:
         pass
+    elif isinstance(objs, thirdparty.PykubeObject):
+        # Pykube is yielded as an underlying dict, never as its own class.
+        yield from walk(objs.obj, nested=nested)
+    elif isinstance(objs, thirdparty.KubernetesModel):
+        yield objs  # type: ignore
+        for subfield in (nested if nested is not None else []):
+            try:
+                yield resolve_obj(objs, parse_field(subfield))
+            except (AttributeError, KeyError):
+                pass
     elif isinstance(objs, collections.abc.Mapping):
         yield objs  # type: ignore
         for subfield in (nested if nested is not None else []):
@@ -209,7 +257,7 @@ def walk(
         for obj in objs:
             yield from walk(obj, nested=nested)
     else:
-        yield objs  # NB: not a mapping, no nested sub-fields.
+        yield objs  # NB: not a mapping or a known type => no nested sub-fields.
 
 
 class MappingView(Mapping[_K, _V], Generic[_K, _V]):
