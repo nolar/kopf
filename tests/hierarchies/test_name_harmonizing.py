@@ -1,114 +1,113 @@
+import copy
+
 import pytest
 
 import kopf
 
+strict_mode = pytest.mark.parametrize('strictness', [
+    pytest.param(dict(strict=True), id='strictTrue'),
+])
+non_strict_mode = pytest.mark.parametrize('strictness', [
+    pytest.param(dict(strict=False), id='strictFalse'),
+    pytest.param(dict(), id='strictAbsent'),
+])
+any_strict_mode = pytest.mark.parametrize('strictness', [
+    pytest.param(dict(strict=True), id='strictTrue'),
+    pytest.param(dict(strict=False), id='strictFalse'),
+    pytest.param(dict(), id='strictAbsent'),
+])
 
-@pytest.fixture(params=[
-    dict(strict=True),
-    dict(strict=False),
-    dict(),
-], ids=['strict', 'relaxed', 'default'])
-def all_modes_kwargs(request):
-    return request.param
-
-
-@pytest.fixture(params=[
-    dict(strict=True),
-], ids=['strict'])
-def strict_kwargs(request):
-    return request.param
-
-
-@pytest.fixture(params=[
-    dict(strict=False),
-    dict(),  # no kwargs, the function defaults are used.
-], ids=['relaxed', 'default'])
-def relaxed_kwargs(request):
-    return request.param
-
-#
-# No matter what `strict` mode is, the pre-existing names are preserved.
-#
-
-def test_preserved_name_of_dict(all_modes_kwargs):
-    obj = {'metadata': {'name': 'preexisting-name'}}
-
-    kopf.harmonize_naming(obj, name='provided-name', **all_modes_kwargs)
-
-    assert 'name' in obj['metadata']
-    assert 'generateName' not in obj['metadata']
-    assert obj['metadata']['name'] == 'preexisting-name'
+obj1_with_names = pytest.mark.parametrize('obj1', [
+    pytest.param({'metadata': {'name': 'a'}}, id='regularname'),
+    pytest.param({'metadata': {'generateName': 'b'}}, id='generatename'),
+    pytest.param({'metadata': {'name': 'c', 'generateName': 'd'}}, id='bothnames'),
+])
+obj2_with_names = pytest.mark.parametrize('obj2', [
+    pytest.param({'metadata': {'name': 'a'}}, id='regularname'),
+    pytest.param({'metadata': {'generateName': 'b'}}, id='generatename'),
+    pytest.param({'metadata': {'name': 'c', 'generateName': 'd'}}, id='bothnames'),
+])
+obj1_without_names = pytest.mark.parametrize('obj1', [
+    pytest.param({}, id='withoutmeta'),
+    pytest.param({'metadata': {}}, id='withmeta'),
+])
+obj2_without_names = pytest.mark.parametrize('obj2', [
+    pytest.param({}, id='withoutmeta'),
+    pytest.param({'metadata': {}}, id='withmeta'),
+])
 
 
-def test_preserved_names_of_multiple_objects(all_modes_kwargs, multicls):
-    obj1 = {'metadata': {'name': 'preexisting-name-1'}}
-    obj2 = {'metadata': {'name': 'preexisting-name-2'}}
+# The EXISTING names are preserved.
+# The strictness is not involved due to this (no new names added).
+@obj1_with_names
+@any_strict_mode
+def test_preserved_name_of_dict(strictness, obj1):
+    obj1 = copy.deepcopy(obj1)
+    kopf.harmonize_naming(obj1, name='provided-name', **strictness)
+    assert obj1['metadata'].get('name') != 'provided-name'
+    assert obj1['metadata'].get('generateName') != 'provided-name'
+
+
+@obj2_with_names
+@obj1_with_names
+@any_strict_mode
+def test_preserved_names_of_dicts(strictness, multicls, obj1, obj2):
+    obj1, obj2 = copy.deepcopy(obj1), copy.deepcopy(obj2)
     objs = multicls([obj1, obj2])
+    kopf.harmonize_naming(objs, name='provided-name', **strictness)
+    assert obj1['metadata'].get('name') != 'provided-name'
+    assert obj2['metadata'].get('name') != 'provided-name'
+    assert obj1['metadata'].get('generateName') != 'provided-name'
+    assert obj2['metadata'].get('generateName') != 'provided-name'
 
-    kopf.harmonize_naming(objs, name='provided-name', **all_modes_kwargs)
 
+# When names are ABSENT, they are added.
+# The only varying part is which name is added: regular or generated.
+@obj1_without_names
+@strict_mode
+def test_assignment_of_strict_name_of_dict(strictness, obj1):
+    obj1 = copy.deepcopy(obj1)
+    kopf.harmonize_naming(obj1, name='provided-name', **strictness)
     assert 'name' in obj1['metadata']
     assert 'generateName' not in obj1['metadata']
-    assert obj1['metadata']['name'] == 'preexisting-name-1'
-
-    assert 'name' in obj2['metadata']
-    assert 'generateName' not in obj2['metadata']
-    assert obj2['metadata']['name'] == 'preexisting-name-2'
-
-#
-# In strict mode and with the absent names, the provided name is used.
-#
-
-def test_assigned_name_of_dict(strict_kwargs):
-    obj = {}
-
-    kopf.harmonize_naming(obj, name='provided-name', **strict_kwargs)
-
-    assert 'name' in obj['metadata']
-    assert 'generateName' not in obj['metadata']
-    assert obj['metadata']['name'] == 'provided-name'
+    assert obj1['metadata']['name'] == 'provided-name'
 
 
-def test_assigned_names_of_multiple_objects(strict_kwargs, multicls):
-    obj1 = {'metadata': {'name': 'preexisting-name-1'}}
-    obj2 = {'metadata': {'name': 'preexisting-name-2'}}
+@obj2_without_names
+@obj1_without_names
+@strict_mode
+def test_assignment_of_strict_names_of_dicts(strictness, multicls, obj1, obj2):
+    obj1, obj2 = copy.deepcopy(obj1), copy.deepcopy(obj2)
     objs = multicls([obj1, obj2])
-
-    kopf.harmonize_naming(objs, name='provided-name', **strict_kwargs)
-
+    kopf.harmonize_naming(objs, name='provided-name', **strictness)
     assert 'name' in obj1['metadata']
-    assert 'generateName' not in obj1['metadata']
-    assert obj1['metadata']['name'] == 'preexisting-name-1'
-
     assert 'name' in obj2['metadata']
+    assert 'generateName' not in obj1['metadata']
     assert 'generateName' not in obj2['metadata']
-    assert obj2['metadata']['name'] == 'preexisting-name-2'
-
-#
-# In relaxed mode, if the names are absent, they are auto-generated.
-#
-
-def test_prefixed_name_of_dict(relaxed_kwargs):
-    obj = {}
-
-    kopf.harmonize_naming(obj, name='provided-name', **relaxed_kwargs)
-
-    assert 'name' not in obj['metadata']
-    assert 'generateName' in obj['metadata']
-    assert obj['metadata']['generateName'] == 'provided-name-'
+    assert obj1['metadata']['name'] == 'provided-name'
+    assert obj2['metadata']['name'] == 'provided-name'
 
 
-def test_prefixed_names_of_multiple_objects(relaxed_kwargs, multicls):
-    obj1 = {}
-    obj2 = {}
-    objs = multicls([obj1, obj2])
-
-    kopf.harmonize_naming(objs, name='provided-name', **relaxed_kwargs)
-
+@obj1_without_names
+@non_strict_mode
+def test_assignment_of_nonstrict_name_of_dict(strictness, obj1):
+    obj1 = copy.deepcopy(obj1)
+    kopf.harmonize_naming(obj1, name='provided-name', **strictness)
     assert 'name' not in obj1['metadata']
     assert 'generateName' in obj1['metadata']
     assert obj1['metadata']['generateName'] == 'provided-name-'
 
+
+@obj2_without_names
+@obj1_without_names
+@non_strict_mode
+def test_assignment_of_nonstrict_names_of_dicts(strictness, multicls, obj1, obj2):
+    obj1, obj2 = copy.deepcopy(obj1), copy.deepcopy(obj2)
+    objs = multicls([obj1, obj2])
+    kopf.harmonize_naming(objs, name='provided-name', **strictness)
+    assert 'name' not in obj1['metadata']
     assert 'name' not in obj2['metadata']
+    assert 'generateName' in obj1['metadata']
     assert 'generateName' in obj2['metadata']
+    assert obj1['metadata']['generateName'] == 'provided-name-'
     assert obj2['metadata']['generateName'] == 'provided-name-'

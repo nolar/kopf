@@ -38,7 +38,7 @@ def test_appending_to_dict():
     assert obj['metadata']['ownerReferences'][0]['uid'] == OWNER_UID
 
 
-def test_appending_to_multiple_objects(multicls):
+def test_appending_to_dicts(multicls):
     obj1 = {}
     obj2 = {}
     objs = multicls([obj1, obj2])
@@ -117,7 +117,7 @@ def test_removal_from_dict():
     assert len(obj['metadata']['ownerReferences']) == 0
 
 
-def test_removal_from_multiple_objects(multicls):
+def test_removal_from_dicts(multicls):
     obj1 = {}
     obj2 = {}
     objs = multicls([obj1, obj2])
@@ -180,10 +180,8 @@ def test_removal_distinguishes_by_uid():
     uids = {ref['uid'] for ref in obj['metadata']['ownerReferences']}
     assert uids == {'uid-b', 'uid-c'}
 
-#
-# Not related to owner references only, but uses the OWNER constants.
-#
 
+# Not related to owner references only, but uses the OWNER constants.
 def test_adopting(mocker):
     # These methods are tested in their own tests.
     # We just check that they are called at all.
