@@ -100,7 +100,8 @@ def harmonize_naming(
 
     # Set name/prefix based on the explicitly specified or guessed name.
     for obj in cast(Iterator[K8sObject], dicts.walk(objs)):
-        if obj.get('metadata', {}).get('name', None) is None:
+        noname = 'metadata' not in obj or not set(obj['metadata']) & {'name', 'generateName'}
+        if noname:
             if strict:
                 obj.setdefault('metadata', {}).setdefault('name', name)
             else:
