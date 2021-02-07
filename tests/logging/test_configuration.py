@@ -16,6 +16,9 @@ def _clear_own_handlers():
         if not isinstance(handler, logging.StreamHandler) or
            not isinstance(handler.formatter, ObjectFormatter)
     ]
+    original_handlers = logger.handlers[:]
+    yield
+    logger.handlers[:] = original_handlers
 
 
 def _get_own_handlers(logger: logging.Logger) -> Collection[logging.Handler]:
