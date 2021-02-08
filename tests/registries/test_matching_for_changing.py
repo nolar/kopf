@@ -778,13 +778,48 @@ def test_order_persisted_b(cause_with_diff, registry, resource):
     assert handlers[1].fn is some_fn_3
     assert handlers[2].fn is some_fn_5
 
+
 #
 # Same function should not be returned twice for the same event/cause.
 # Only actual for the cases when the event/cause can match multiple handlers.
 #
+@matching_reason_and_decorator
+def test_deduplication_by_fn_and_id(
+        cause_with_diff, registry, resource, reason, decorator):
+
+    # Note: the decorators are applied bottom-up -- hence, the order of ids:
+    @decorator(*resource, id='a')
+    @decorator(*resource, id='a')
+    def some_fn(**_): ...
+
+    cause = cause_with_diff
+    cause.reason = reason
+    handlers = registry._resource_changing.get_handlers(cause)
+
+    assert len(handlers) == 1
+    assert handlers[0].id == 'a'  # the first found one is returned
+
 
 @matching_reason_and_decorator
-def test_deduplicated(
+def test_deduplication_distinguishes_different_fns(
+        cause_with_diff, registry, resource, reason, decorator):
+
+    # Note: the decorators are applied bottom-up -- hence, the order of ids:
+    @decorator(*resource, id='a')
+    def some_fn1(**_): ...
+
+    @decorator(*resource, id='a')
+    def some_fn2(**_): ...
+
+    cause = cause_with_diff
+    cause.reason = reason
+    handlers = registry._resource_changing.get_handlers(cause)
+
+    assert len(handlers) == 2
+
+
+@matching_reason_and_decorator
+def test_deduplication_distinguishes_different_ids(
         cause_with_diff, registry, resource, reason, decorator):
 
     # Note: the decorators are applied bottom-up -- hence, the order of ids:
@@ -796,5 +831,4 @@ def test_deduplicated(
     cause.reason = reason
     handlers = registry._resource_changing.get_handlers(cause)
 
-    assert len(handlers) == 1
-    assert handlers[0].id == 'a'  # the first found one is returned
+    assert len(handlers) == 2

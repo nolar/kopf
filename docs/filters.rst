@@ -94,6 +94,23 @@ with any value (for update handlers: present before or after the change).
     def field_is_affected(old, new, **_):
         pass
 
+
+Since the field name is part of the handler id (e.g., ``"fn/spec.field"``),
+multiple decorators can be defined to react to different fields with the same
+function, and it will be invoked multiple times with different old & new values
+relevant to the specified fields, so as different :kwarg:`param`:
+
+.. code-block:: python
+
+    @kopf.on.update('kopfexamples', field='spec.field', param='fld')
+    @kopf.on.update('kopfexamples', field='spec.items', param='itm')
+    def one_of_the_fields_is_affected(old, new, **_):
+        pass
+
+However, different causes --mostly resuming + one of creation/update/deletion--
+will not be distinguished, so e.g. resume+create pair with the same field
+will be called only once.
+
 Due to a special nature of the update handlers (``@on.update``, ``@on.field``),
 described in a note below, this filtering semantics is extended for them:
 
