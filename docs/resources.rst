@@ -150,7 +150,8 @@ Serving everything is better when it is used with filters:
 The resource specifications do not support multiple values, masks or globs.
 To handle multiple independent resources, add multiple decorators
 to the same handler function -- as shown above.
-The handlers are deduplicated by uniqueness of the underlying function,
+The handlers are deduplicated by the underlying function and its handler id
+(which, in turn, equals to the function's name by default unless overridden),
 so one function will never be triggered multiple times for the same resource
 if there are some accidental overlaps in the specifications.
 

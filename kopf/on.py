@@ -171,7 +171,7 @@ def resume(  # lgtm[py/similar-function]
         _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
-        real_id = registries.generate_id(fn=fn, id=id)
+        real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         selector = references.Selector(
             __group_or_groupversion_or_name, __version_or_name, __name,
             group=group, version=version,
@@ -227,7 +227,7 @@ def create(  # lgtm[py/similar-function]
         _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
-        real_id = registries.generate_id(fn=fn, id=id)
+        real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         selector = references.Selector(
             __group_or_groupversion_or_name, __version_or_name, __name,
             group=group, version=version,
@@ -285,7 +285,7 @@ def update(  # lgtm[py/similar-function]
         _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
-        real_id = registries.generate_id(fn=fn, id=id)
+        real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         selector = references.Selector(
             __group_or_groupversion_or_name, __version_or_name, __name,
             group=group, version=version,
@@ -342,7 +342,7 @@ def delete(  # lgtm[py/similar-function]
         _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
-        real_id = registries.generate_id(fn=fn, id=id)
+        real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         selector = references.Selector(
             __group_or_groupversion_or_name, __version_or_name, __name,
             group=group, version=version,
@@ -452,7 +452,7 @@ def event(  # lgtm[py/similar-function]
         _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
-        real_id = registries.generate_id(fn=fn, id=id)
+        real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         selector = references.Selector(
             __group_or_groupversion_or_name, __version_or_name, __name,
             group=group, version=version,
@@ -510,7 +510,7 @@ def daemon(  # lgtm[py/similar-function]
         _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
-        real_id = registries.generate_id(fn=fn, id=id)
+        real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         selector = references.Selector(
             __group_or_groupversion_or_name, __version_or_name, __name,
             group=group, version=version,
@@ -572,7 +572,7 @@ def timer(  # lgtm[py/similar-function]
         _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
-        real_id = registries.generate_id(fn=fn, id=id)
+        real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         selector = references.Selector(
             __group_or_groupversion_or_name, __version_or_name, __name,
             group=group, version=version,
