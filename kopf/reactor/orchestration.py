@@ -87,8 +87,8 @@ async def ochestrator(
         settings: configuration.OperatorSettings,
         identity: peering.Identity,
         insights: references.Insights,
+        freeze_checker: primitives.ToggleSet,
 ) -> None:
-    freeze_checker = primitives.ToggleSet()
     freeze_blocker = await freeze_checker.make_toggle(name='peering CRD is absent')
     ensemble = Ensemble(freeze_blocker=freeze_blocker, freeze_checker=freeze_checker)
     try:

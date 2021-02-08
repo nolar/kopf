@@ -177,6 +177,7 @@ async def spawn_tasks(
     event_queue: posting.K8sEventQueue = asyncio.Queue()
     signal_flag: aiotasks.Future = asyncio.Future()
     started_flag: asyncio.Event = asyncio.Event()
+    freeze_checker = primitives.ToggleSet()
     tasks: MutableSequence[aiotasks.Task] = []
 
     # Map kwargs into the settings object.
@@ -223,7 +224,8 @@ async def spawn_tasks(
         name="daemon killer", flag=started_flag, logger=logger,
         coro=daemons.daemon_killer(
             settings=settings,
-            memories=memories)))
+            memories=memories,
+            freeze_checker=freeze_checker)))
 
     # Keeping the credentials fresh and valid via the authentication handlers on demand.
     tasks.append(aiotasks.create_guarded_task(
@@ -281,6 +283,7 @@ async def spawn_tasks(
                 settings=settings,
                 insights=insights,
                 identity=identity,
+                freeze_checker=freeze_checker,
                 processor=functools.partial(processing.process_resource_event,
                                             lifecycle=lifecycle,
                                             registry=registry,

@@ -6,10 +6,12 @@ import freezegun
 import pytest
 
 import kopf
+from kopf.reactor.daemons import daemon_killer
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.bodies import RawBody
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.memos import Memo
+from kopf.structs.primitives import ToggleSet
 
 
 class DaemonDummy:
@@ -74,6 +76,31 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
             _merge_dicts(call[1]['patch'], event_object)
 
     return _simulate_cycle
+
+
+@pytest.fixture()
+async def freeze_checker():
+    return ToggleSet()
+
+
+@pytest.fixture()
+async def freeze_toggle(freeze_checker: ToggleSet):
+    return await freeze_checker.make_toggle(name="freeze_toggle fixture")
+
+
+@pytest.fixture()
+async def background_daemon_killer(settings, memories, freeze_checker):
+    """
+    Run the daemon killer in the background.
+    """
+    task = asyncio.create_task(daemon_killer(
+        settings=settings, memories=memories, freeze_checker=freeze_checker))
+    yield
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
 
 
 @pytest.fixture()
