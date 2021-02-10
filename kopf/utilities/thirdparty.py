@@ -13,13 +13,16 @@ from typing import Any, Optional
 class _dummy: pass
 
 
+# Do these imports look excessive? ==> https://github.com/python/mypy/issues/10063
+# TL;DR: Strictly `from...import...as...`, AND strictly same-named (`X as X`).
 try:
-    from pykube.objects import APIObject as PykubeObject
+    from pykube.objects import APIObject as APIObject
+    PykubeObject = APIObject
 except ImportError:
     PykubeObject = _dummy
 
 try:
-    from kubernetes.client import V1ObjectMeta, V1OwnerReference
+    from kubernetes.client import V1ObjectMeta as V1ObjectMeta, V1OwnerReference as V1OwnerReference
 except ImportError:
     V1ObjectMeta = V1OwnerReference = None
 

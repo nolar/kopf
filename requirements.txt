@@ -14,5 +14,5 @@ async-timeout
 freezegun
 codecov
 coveralls
-mypy==0.782
+mypy==0.800
 isort>=5.5.0
