@@ -12,7 +12,7 @@ async def test_pausing_is_ignored_if_turned_off(
         resource, namespace, timer, caplog, assert_logs):
     caplog.set_level(logging.DEBUG)
 
-    operator_paused = ToggleSet()
+    operator_paused = ToggleSet(any)
     await operator_paused.make_toggle(False)
 
     async with timer, async_timeout.timeout(0.5) as timeout:
@@ -35,7 +35,7 @@ async def test_pausing_waits_forever_if_not_resumed(
         resource, namespace, timer, caplog, assert_logs):
     caplog.set_level(logging.DEBUG)
 
-    operator_paused = ToggleSet()
+    operator_paused = ToggleSet(any)
     await operator_paused.make_toggle(True)
 
     with pytest.raises(asyncio.TimeoutError):
@@ -60,7 +60,7 @@ async def test_pausing_waits_until_resumed(
         resource, namespace, timer, caplog, assert_logs):
     caplog.set_level(logging.DEBUG)
 
-    operator_paused = ToggleSet()
+    operator_paused = ToggleSet(any)
     conflicts_found = await operator_paused.make_toggle(True)
 
     async def delayed_resuming(delay: float):

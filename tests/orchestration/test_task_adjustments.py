@@ -39,7 +39,7 @@ async def insights(settings, peering_resource):
 
 @pytest.fixture()
 async def ensemble(_no_asyncio_pending_tasks):
-    operator_paused = primitives.ToggleSet()
+    operator_paused = primitives.ToggleSet(any)
     peering_missing = await operator_paused.make_toggle()
     ensemble = Ensemble(operator_paused=operator_paused, peering_missing=peering_missing)
 

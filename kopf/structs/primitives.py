@@ -7,7 +7,7 @@ import concurrent.futures
 import enum
 import threading
 import time
-from typing import Any, Collection, Iterable, Iterator, Optional, Set, Union
+from typing import Any, Callable, Collection, Iterable, Iterator, Optional, Set, Union
 
 from kopf.utilities import aiotasks
 
@@ -147,24 +147,38 @@ class ToggleSet(Collection[Toggle]):
     A read-only checker for multiple toggles.
 
     The toggle-checker does not have its own state to be turned on/off.
-    It is "on" when at least one child toggle is "on",
-    and it is "off" when all children toggles are "off",
-    or if it has no children toggles at all.
 
-    The multi-toggle is used mostly in peering, where every individual peering
-    identified by name and namespace has its own individual toggle to manage,
-    but the whole set of toggles of all names & namespaces is used for pausing
-    the operators as one single logical toggle.
+    The positional argument is a function, usually :func:`any` or :func:`all`,
+    which takes an iterable of all individual toggles' states (on/off),
+    and calculates the overall state of the toggle set.
+
+    With :func:`any`, the set is "on" when at least one child toggle is "on"
+    (and it has at least one child), and it is "off" when all children toggles
+    are "off" (or if it has no children toggles at all).
+
+    With :func:`all`, the set is "on" when all of its children toggles are "on"
+    (or it has no children at all), and it is "off" when at least one child
+    toggle is "off" (and there is at least one toggle).
+
+    The multi-toggle sets are used mostly for operator pausing,
+    e.g. in peering and in index pre-population. For a practical example,
+    in peering, every individual peering identified by name and namespace has
+    its own individual toggle to manage, but the whole set of toggles of all
+    names & namespaces is used for pausing the operator as one single toggle.
+    In index pre-population, the toggles are used on the operator's startup
+    to temporarily delay the actual resource handling until all index-handlers
+    of all involved resources and resource kinds are processed and stored.
 
     Note: the set can only contain toggles that were produced by the set;
     externally produced toggles cannot be added, since they do not share
     the same condition object, which is used for synchronisation/notifications.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, fn: Callable[[Iterable[bool]], bool]) -> None:
         super().__init__()
         self._condition = asyncio.Condition()
         self._toggles: Set[Toggle] = set()
+        self._fn = fn
 
     def __repr__(self) -> str:
         return repr(self._toggles)
@@ -182,10 +196,10 @@ class ToggleSet(Collection[Toggle]):
         raise NotImplementedError  # to protect against accidental misuse
 
     def is_on(self) -> bool:
-        return any(toggle.is_on() for toggle in self._toggles)
+        return self._fn(toggle.is_on() for toggle in self._toggles)
 
     def is_off(self) -> bool:
-        return all(toggle.is_off() for toggle in self._toggles)
+        return not self.is_on()
 
     async def wait_for(self, __state: bool) -> None:
         async with self._condition:

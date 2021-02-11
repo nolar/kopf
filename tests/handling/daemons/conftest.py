@@ -79,7 +79,7 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
 
 @pytest.fixture()
 async def operator_paused():
-    return ToggleSet()
+    return ToggleSet(any)
 
 
 @pytest.fixture()
