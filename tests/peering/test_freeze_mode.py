@@ -40,7 +40,6 @@ async def test_other_peering_objects_are_ignored(
     settings.peering.name = 'our-name'
     await process_peering_event(
         raw_event=event,
-        freeze_toggle=primitives.Toggle(),
         replenished=asyncio.Event(),
         autoclean=False,
         identity='id',

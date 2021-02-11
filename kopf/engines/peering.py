@@ -94,7 +94,7 @@ async def process_peering_event(
         settings: configuration.OperatorSettings,
         autoclean: bool = True,
         replenished: asyncio.Event,
-        freeze_toggle: primitives.Toggle,
+        freeze_toggle: Optional[primitives.Toggle] = None,  # None for tests & observation
 ) -> None:
     """
     Handle a single update of the peers by us or by other operators.
@@ -124,7 +124,9 @@ async def process_peering_event(
     if autoclean and dead_peers:
         await clean(peers=dead_peers, settings=settings, resource=resource, namespace=namespace)
 
-    if prio_peers:
+    if freeze_toggle is None:
+        pass
+    elif prio_peers:
         if freeze_toggle.is_off():
             logger.info(f"Freezing operations in favour of {prio_peers}.")
             await freeze_toggle.turn_to(True)
