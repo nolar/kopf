@@ -17,12 +17,12 @@ They would not be needed if the client library were natively asynchronous.
 
 .. _PEP-479: https://www.python.org/dev/peps/pep-0479/
 """
-
 import asyncio
 import contextlib
+import enum
 import json
 import logging
-from typing import AsyncIterator, Dict, Optional, cast
+from typing import AsyncIterator, Dict, Optional, Union, cast
 
 import aiohttp
 
@@ -39,6 +39,11 @@ class WatchingError(Exception):
     """
 
 
+class Bookmark(enum.Enum):
+    """ Special marks sent in the stream among raw events. """
+    LISTED = enum.auto()  # the listing is over, now streaming.
+
+
 async def infinite_watch(
         *,
         settings: configuration.OperatorSettings,
@@ -46,7 +51,7 @@ async def infinite_watch(
         namespace: references.Namespace,
         operator_paused: Optional[primitives.ToggleSet] = None,  # None for tests & observation
         _iterations: Optional[int] = None,  # used in tests/mocks/fixtures
-) -> AsyncIterator[bodies.RawEvent]:
+) -> AsyncIterator[Union[Bookmark, bodies.RawEvent]]:
     """
     Stream the watch-events infinitely.
 
@@ -146,13 +151,16 @@ async def continuous_watch(
         resource: references.Resource,
         namespace: references.Namespace,
         operator_pause_waiter: aiotasks.Future,
-) -> AsyncIterator[bodies.RawEvent]:
+) -> AsyncIterator[Union[Bookmark, bodies.RawEvent]]:
 
     # First, list the resources regularly, and get the list's resource version.
     # Simulate the events with type "None" event - used in detection of causes.
     items, resource_version = await fetching.list_objs_rv(resource=resource, namespace=namespace)
     for item in items:
         yield {'type': None, 'object': item}
+
+    # Notify the watcher that the initial listing is over, even if there was nothing yielded.
+    yield Bookmark.LISTED
 
     # Repeat through disconnects of the watch as long as the resource version is valid (no errors).
     # The individual watching API calls are disconnected by timeout even if the stream is fine.

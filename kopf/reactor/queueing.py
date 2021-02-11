@@ -175,11 +175,19 @@ async def watcher(
             operator_paused=operator_paused,
         )
         async for raw_event in stream:
+
+            # Whatever is bookmarked there, don't let it go to the multiplexer. Handle it above.
+            if isinstance(raw_event, watching.Bookmark):
+                continue
+
+            # Multiplex the raw events to per-resource workers/queues. Start the new ones if needed.
             key: ObjectRef = (resource, get_uid(raw_event))
             try:
+                # Feed the worker, as fast as possible, no extra activities.
                 streams[key].pressure.set()  # interrupt current sleeps, if any.
                 await streams[key].backlog.put(raw_event)
             except KeyError:
+                # Start the worker, and feed it initially. Starting can be moderately slow.
                 streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
                 streams[key].pressure.set()  # interrupt current sleeps, if any.
                 await streams[key].backlog.put(raw_event)
@@ -190,6 +198,7 @@ async def watcher(
                     streams=streams,
                     key=key,
                 ))
+
     except asyncio.CancelledError:
         if worker_error is None:
             raise

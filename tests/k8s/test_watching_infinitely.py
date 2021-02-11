@@ -1,7 +1,7 @@
 import pytest
 
 from kopf.clients.errors import APIError
-from kopf.clients.watching import infinite_watch
+from kopf.clients.watching import Bookmark, infinite_watch
 
 STREAM_WITH_UNKNOWN_EVENT = [
     {'type': 'ADDED', 'object': {'spec': 'a'}},
@@ -57,7 +57,9 @@ async def test_infinite_watch_never_exits_normally(
 
     assert e.value.status == 555
 
-    assert len(events) == 3
-    assert events[0]['object']['spec'] == 'a'
+    assert len(events) == 5
+    assert events[0] == Bookmark.LISTED
     assert events[1]['object']['spec'] == 'a'
-    assert events[2]['object']['spec'] == 'b'
+    assert events[2] == Bookmark.LISTED
+    assert events[3]['object']['spec'] == 'a'
+    assert events[4]['object']['spec'] == 'b'
