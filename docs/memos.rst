@@ -6,8 +6,8 @@ Kopf prodives several ways of storing and exchanging the data in-memory
 between handlers and operators.
 
 
-Resource memo
-=============
+Resource memos
+==============
 
 Every resource handler gets a :kwarg:`memo` kwarg of type :class:`kopf.Memo`.
 It is an in-memory container for arbitrary runtime-only keys-values.
@@ -32,8 +32,8 @@ the memo is also re-created (technically, it is a new resource).
         memo.counter = 0
 
 
-Operator memo
-=============
+Operator memos
+==============
 
 In the operator handlers, such as the operator startup/cleanup, liveness probes,
 credentials retrieval, and everything else not specific to resources,
