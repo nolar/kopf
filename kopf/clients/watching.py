@@ -44,7 +44,7 @@ async def infinite_watch(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         namespace: references.Namespace,
-        freeze_checker: Optional[primitives.ToggleSet] = None,
+        freeze_checker: Optional[primitives.ToggleSet] = None,  # None for tests & observation
         _iterations: Optional[int] = None,  # used in tests/mocks/fixtures
 ) -> AsyncIterator[bodies.RawEvent]:
     """
@@ -86,7 +86,7 @@ async def streaming_block(
         *,
         resource: references.Resource,
         namespace: references.Namespace,
-        freeze_checker: Optional[primitives.ToggleSet],
+        freeze_checker: Optional[primitives.ToggleSet],  # None for tests & observation
 ) -> AsyncIterator[aiotasks.Future]:
     """
     Block the execution until the freeze is off; signal when it is on again.

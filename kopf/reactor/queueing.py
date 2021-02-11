@@ -129,7 +129,7 @@ async def watcher(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         processor: WatchStreamProcessor,
-        freeze_checker: Optional[primitives.ToggleSet] = None,
+        freeze_checker: Optional[primitives.ToggleSet] = None,  # None for tests & observation
 ) -> None:
     """
     The watchers watches for the resource events via the API, and spawns the workers for every object.
