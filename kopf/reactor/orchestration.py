@@ -186,7 +186,6 @@ async def spawn_missing_peerings(
             ensemble.peering_tasks[dkey] = aiotasks.create_guarded_task(
                 name=f"peering observer for {what}", logger=logger, cancellable=True,
                 coro=queueing.watcher(
-                    freeze_checker=None,
                     settings=settings,
                     resource=resource,
                     namespace=namespace,
