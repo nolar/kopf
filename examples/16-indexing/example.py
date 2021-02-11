@@ -39,3 +39,7 @@ def intervalled(is_running: kopf.Index, by_label: kopf.Index, patch: kopf.Patch,
         if ns in ['kube-system', 'default']
         if is_running
     ]
+
+
+# Marks for the e2e tests (see tests/e2e/test_examples.py):
+E2E_SUCCESS_COUNTS = {}  # we do not care: pods can have 6-10 updates here.

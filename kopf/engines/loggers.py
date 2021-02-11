@@ -180,7 +180,7 @@ class ObjectLogger(logging.LoggerAdapter):
 
 class LocalObjectLogger(ObjectLogger):
     """
-    Same as `ObjectLogger`, but does not post the messages as k8s-events.
+    The same as `ObjectLogger`, but does not post the messages as k8s-events.
 
     Used in the resource-watching handlers to log the handler's invocation
     successes/failures without overloading K8s with excessively many k8s-events.
@@ -191,6 +191,22 @@ class LocalObjectLogger(ObjectLogger):
     def log(self, *args: Any, **kwargs: Any) -> None:
         kwargs['extra'] = dict(kwargs.pop('extra', {}), k8s_skip=True)
         return super().log(*args, **kwargs)
+
+
+class TerseObjectLogger(LocalObjectLogger):
+    """
+    The same as 'LocalObjectLogger`, but more terse (less wordy).
+
+    In the normal mode, only logs warnings & errors (but not infos).
+    In the verbose mode, only logs warnings & errors & infos (but not debugs).
+
+    Used for resource indexers: there can be hundreds or thousands of them,
+    they are typically verbose, they are called often due to cluster changes
+    (e.g. for pods). On the other hand, they are lightweight, so there is
+    no much need to know what is happening until warnings/errors happen.
+    """
+    def isEnabledFor(self, level: int) -> bool:
+        return super().isEnabledFor(level if level >= logging.WARNING else level - 10)
 
 
 logger = logging.getLogger('kopf.objects')

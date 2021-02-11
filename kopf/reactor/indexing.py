@@ -1,6 +1,10 @@
-from typing import Any, Dict, Generic, Iterable, Iterator, Optional, Tuple, TypeVar
+import collections.abc
+import logging
+from typing import Any, Dict, Generic, Iterable, Iterator, Mapping, Optional, Tuple, TypeVar, Union
 
-from kopf.structs import ephemera, handlers, references
+from kopf.reactor import causation, handling, lifecycles, registries
+from kopf.storage import states
+from kopf.structs import bodies, configuration, ephemera, handlers, patches, references
 
 Key = Tuple[references.Namespace, Optional[str], Optional[str]]
 _K = TypeVar('_K')
@@ -37,6 +41,19 @@ class Store(ephemera.Store[_V], Generic[_V]):
     def __contains__(self, obj: object) -> bool:
         return any(val == obj for val in self.__items.values())
 
+    # Indexers' internal protocol. Must not be used by handlers & operators.
+    def _discard(self, acckey: Key) -> None:
+        try:
+            del self.__items[acckey]
+        except KeyError:
+            pass
+
+    # Indexers' internal protocol. Must not be used by handlers & operators.
+    def _replace(self, acckey: Key, obj: _V) -> None:
+        # Minimise the dict updates and rehashes for no need: only update if really changed.
+        if acckey not in self.__items or self.__items[acckey] != obj:
+            self.__items[acckey] = obj
+
 
 class Index(ephemera.Index[_K, _V], Generic[_K, _V]):
     """
@@ -70,6 +87,38 @@ class Index(ephemera.Index[_K, _V], Generic[_K, _V]):
     def __contains__(self, item: object) -> bool:  # for performant lookups!
         return item in self.__items
 
+    # Indexers' internal protocol. Must not be used by handlers & operators.
+    def _discard(self, acckey: Key) -> None:
+        # Recursively discard from all indices, and down to the actual stores.
+        for item in self.__items.values():
+            item._discard(acckey)
+        self.__delete_empty_stores()
+
+    # Indexers' internal protocol. Must not be used by handlers & operators.
+    def _replace(self, acckey: Key, obj: Mapping[_K, _V]) -> None:
+
+        # Discard from all stores that surely do not contain `obj` anymore.
+        for ind_key, ind_val in self.__items.items():
+            if ind_key not in obj:
+                ind_val._discard(acckey)
+        self.__delete_empty_stores()
+
+        # Update all containers that are still related to `obj`.
+        for obj_key, obj_val in obj.items():
+            try:
+                store = self.__items[obj_key]
+            except KeyError:
+                store = self.__items[obj_key] = Store()
+            store._replace(acckey, obj_val)
+
+    def __delete_empty_stores(self) -> None:
+        empty_keys = {key for key, val in self.__items.items() if not val}
+        for key in empty_keys:
+            try:
+                del self.__items[key]
+            except KeyError:
+                pass  # if deleted while we were calculating without locks
+
 
 class OperatorIndexer:
     """
@@ -88,6 +137,15 @@ class OperatorIndexer:
     def __repr__(self) -> str:
         return repr(self.index)
 
+    def discard(self, key: Key) -> None:
+        """ Remove all values of the object, and keep ready for re-indexing. """
+        self.index._discard(key)
+
+    def replace(self, key: Key, obj: object) -> None:
+        """ Store/merge the object's indexing results. """
+        obj = obj if isinstance(obj, collections.abc.Mapping) else {None: obj}
+        self.index._replace(key, obj)
+
 
 class OperatorIndexers(Dict[handlers.HandlerId, OperatorIndexer]):
 
@@ -104,6 +162,53 @@ class OperatorIndexers(Dict[handlers.HandlerId, OperatorIndexer]):
         """
         for handler in __handlers:
             self[handler.id] = OperatorIndexer()
+
+    def discard(
+            self,
+            body: bodies.Body,
+    ) -> None:
+        """ Remove all values of this object from all indexers. Forget it! """
+        key = self.make_key(body)
+        for id, indexer in self.items():
+            indexer.discard(key)
+
+    def replace(
+            self,
+            body: bodies.Body,
+            outcomes: Mapping[handlers.HandlerId, states.HandlerOutcome],
+    ) -> None:
+        """ Interpret the indexing results and apply them to the indices. """
+        key = self.make_key(body)
+
+        # Store the values: either for new objects or those re-matching the filters.
+        for id, outcome in outcomes.items():
+            if outcome.exception is not None:
+                self[id].discard(key)
+            elif outcome.result is not None:
+                self[id].replace(key, outcome.result)
+
+        # Purge the values: for those stopped matching the filters.
+        for id, indexer in self.items():
+            if id not in outcomes:
+                indexer.discard(key)
+
+    def make_key(self, body: bodies.Body) -> Key:
+        """
+        Make a key to address an object in internal containers.
+
+        The key is not exposed to the users via indices,
+        so its structure and type can be safely changed any time.
+
+        However, the key must be as lightweight as possible:
+        no dataclasses or namedtuples, only builtins.
+
+        The name and namespace do not add value on top of the uid's uniqueness.
+        They are here for debugging and for those rare objects
+        that have no uid but are still exposed via the K8s API
+        (highly unlikely to be indexed though).
+        """
+        meta = body.get('metadata', {})
+        return (meta.get('namespace'), meta.get('name'), meta.get('uid'))
 
 
 class OperatorIndices(ephemera.Indices):
@@ -141,3 +246,51 @@ class OperatorIndices(ephemera.Indices):
 
     def __contains__(self, id: object) -> bool:
         return id in self.__indexers
+
+
+async def index_resource(
+        *,
+        indexers: OperatorIndexers,
+        registry: registries.OperatorRegistry,
+        settings: configuration.OperatorSettings,
+        resource: references.Resource,
+        raw_event: bodies.RawEvent,
+        logger: Union[logging.Logger, logging.LoggerAdapter],
+        body: bodies.Body,
+        memo: ephemera.AnyMemo,
+) -> None:
+    """
+    Populate the indices from the received event. Log but ignore all errors.
+
+    This is a lightweight and standalone process, which is executed before
+    any real handlers are invoked. Multi-step calls are also not supported.
+    If the handler fails, it fails and is never retried.
+
+    Note: K8s-event posting is skipped for `kopf.on.event` handlers,
+    as they should be silent. Still, the messages are logged normally.
+    """
+    if not registry._resource_indexing.has_handlers(resource=resource):
+        pass
+    elif raw_event['type'] == 'DELETED':
+        # Do not index it if it is deleted. Just discard quickly (ASAP!).
+        indexers.discard(body=body)
+    else:
+        # Otherwise, go for full indexing with handlers invocation with all kwargs.
+        cause = causation.ResourceIndexingCause(
+            resource=resource,
+            indices=indexers.indices,
+            logger=logger,
+            patch=patches.Patch(),  # NB: not applied. TODO: get rid of it!
+            body=body,
+            memo=memo,
+        )
+        indexing_handlers = registry._resource_indexing.get_handlers(cause=cause)
+        outcomes = await handling.execute_handlers_once(
+            lifecycle=lifecycles.all_at_once,
+            settings=settings,
+            handlers=indexing_handlers,
+            cause=cause,
+            state=states.State.from_scratch().with_handlers(indexing_handlers),
+            default_errors=handlers.ErrorsMode.IGNORED,
+        )
+        indexers.replace(body=body, outcomes=outcomes)

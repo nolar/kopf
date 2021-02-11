@@ -77,6 +77,18 @@ async def process_resource_event(
             posting.event_queue_loop_var.set(asyncio.get_running_loop())
             posting.event_queue_var.set(event_queue)  # till the end of this object's task.
 
+            # [Pre-]populate the indices. This must be lightweight.
+            await indexing.index_resource(
+                registry=registry,
+                indexers=indexers,
+                settings=settings,
+                resource=resource,
+                raw_event=raw_event,
+                body=body,
+                memo=memory.memo,
+                logger=loggers.TerseObjectLogger(body=body, settings=settings),
+            )
+
             # Do the magic -- do the job.
             delays, matched = await process_resource_causes(
                 lifecycle=lifecycle,
@@ -87,8 +99,8 @@ async def process_resource_event(
                 raw_event=raw_event,
                 body=body,
                 patch=patch,
-                logger=logger,
                 memory=memory,
+                logger=logger,
             )
 
             # Whatever was done, apply the accumulated changes to the object, or sleep-n-touch for delays.
@@ -123,6 +135,7 @@ async def process_resource_causes(
 
     finalizer = settings.persistence.finalizer
     extra_fields = (
+        # NB: indexing handlers are useless here, they are handled on their own.
         registry._resource_watching.get_extra_fields(resource=resource) |
         registry._resource_changing.get_extra_fields(resource=resource) |
         registry._resource_spawning.get_extra_fields(resource=resource))
