@@ -160,3 +160,7 @@ For persistent values, use the status stanza or annotations of the resources.
 Essentially, the operator's memo is not much different from global variables
 (unless there are 2+ embedded operator tasks running) or asyncio contextvars,
 except that it provides the same interface as for per-resource memos.
+
+.. seealso::
+
+    :doc:`/indexing` --- other in-memory structures with similar limitations.
