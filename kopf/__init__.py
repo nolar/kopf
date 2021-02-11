@@ -106,6 +106,8 @@ from kopf.structs.diffs import (
 )
 from kopf.structs.ephemera import (
     Memo,
+    Index,
+    Store,
 )
 from kopf.structs.filters import (
     ABSENT,
@@ -186,7 +188,7 @@ __all__ = [
     'BodyEssence',
     'ObjectReference',
     'OwnerReference',
-    'Memo',
+    'Memo', 'Index', 'Store',
     'ObjectLogger',
     'LocalObjectLogger',
     'FieldSpec',

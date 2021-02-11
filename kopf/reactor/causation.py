@@ -30,6 +30,7 @@ from kopf.structs import bodies, configuration, diffs, ephemera, \
 
 @dataclasses.dataclass
 class BaseCause:
+    indices: ephemera.Indices
     logger: Union[logging.Logger, logging.LoggerAdapter]
     memo: ephemera.AnyMemo
 

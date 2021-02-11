@@ -18,7 +18,7 @@ import time
 from typing import Collection, Optional, Tuple
 
 from kopf.engines import loggers, posting
-from kopf.reactor import causation, daemons, effects, handling, lifecycles, registries
+from kopf.reactor import causation, daemons, effects, handling, indexing, lifecycles, registries
 from kopf.storage import finalizers, states
 from kopf.structs import bodies, configuration, containers, diffs, ephemera, \
                          handlers as handlers_, patches, references
@@ -26,6 +26,7 @@ from kopf.structs import bodies, configuration, containers, diffs, ephemera, \
 
 async def process_resource_event(
         lifecycle: lifecycles.LifeCycleFn,
+        indexers: indexing.OperatorIndexers,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         memories: containers.ResourceMemories,
@@ -79,6 +80,7 @@ async def process_resource_event(
             # Do the magic -- do the job.
             delays, matched = await process_resource_causes(
                 lifecycle=lifecycle,
+                indexers=indexers,
                 registry=registry,
                 settings=settings,
                 resource=resource,
@@ -108,6 +110,7 @@ async def process_resource_event(
 
 async def process_resource_causes(
         lifecycle: lifecycles.LifeCycleFn,
+        indexers: indexing.OperatorIndexers,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         resource: references.Resource,
@@ -133,6 +136,7 @@ async def process_resource_causes(
     resource_watching_cause = causation.detect_resource_watching_cause(
         raw_event=raw_event,
         resource=resource,
+        indices=indexers.indices,
         logger=logger,
         patch=patch,
         body=body,
@@ -141,6 +145,7 @@ async def process_resource_causes(
 
     resource_spawning_cause = causation.detect_resource_spawning_cause(
         resource=resource,
+        indices=indexers.indices,
         logger=logger,
         patch=patch,
         body=body,
@@ -152,6 +157,7 @@ async def process_resource_causes(
         finalizer=finalizer,
         raw_event=raw_event,
         resource=resource,
+        indices=indexers.indices,
         logger=logger,
         patch=patch,
         body=body,

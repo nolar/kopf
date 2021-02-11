@@ -6,6 +6,7 @@ import freezegun
 import pytest
 
 import kopf
+from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.processing import process_resource_event
 from kopf.storage.progress import StatusProgressStorage
 from kopf.structs.containers import ResourceMemories
@@ -25,6 +26,7 @@ async def test_all_logs_are_prefixed(registry, settings, resource, handlers,
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
@@ -55,6 +57,7 @@ async def test_diffs_logged_if_present(registry, settings, resource, handlers,
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
@@ -85,6 +88,7 @@ async def test_diffs_not_logged_if_absent(registry, settings, resource, handlers
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
@@ -128,6 +132,7 @@ async def test_supersession_is_logged(
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': body},

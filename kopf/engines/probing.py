@@ -21,6 +21,7 @@ async def health_reporter(
         endpoint: str,
         *,
         memo: ephemera.AnyMemo,
+        indices: ephemera.Indices,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         ready_flag: Optional[asyncio.Event] = None,  # used for testing
@@ -55,6 +56,7 @@ async def health_reporter(
                         registry=registry,
                         settings=settings,
                         activity=handlers.Activity.PROBE,
+                        indices=indices,
                         memo=memo,
                     )
                     probing_container.clear()

@@ -56,6 +56,7 @@ async def spawn_resource_daemons(
             stopper = primitives.DaemonStopper()
             daemon_cause = causation.DaemonCause(
                 resource=cause.resource,
+                indices=cause.indices,
                 logger=cause.logger,
                 body=memory.live_fresh_body,
                 memo=memory.memo,

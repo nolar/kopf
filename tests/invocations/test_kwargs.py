@@ -4,6 +4,7 @@ import pytest
 
 from kopf.reactor.causation import ActivityCause, DaemonCause, ResourceChangingCause, \
                                    ResourceSpawningCause, ResourceWatchingCause
+from kopf.reactor.indexing import OperatorIndexer, OperatorIndexers
 from kopf.reactor.invocation import build_kwargs
 from kopf.structs.bodies import Body, BodyEssence
 from kopf.structs.configuration import OperatorSettings
@@ -14,44 +15,60 @@ from kopf.structs.patches import Patch
 from kopf.structs.primitives import DaemonStopper
 
 
+@pytest.fixture()
+def indices():
+    indexers = OperatorIndexers()
+    indexers['index1'] = OperatorIndexer()
+    indexers['index2'] = OperatorIndexer()
+    return indexers.indices
+
+
 @pytest.mark.parametrize('activity', set(Activity) - {Activity.STARTUP})
-def test_activity_kwargs(resource, activity):
+def test_activity_kwargs(resource, activity, indices):
     cause = ActivityCause(
         memo=Memo(),
         logger=logging.getLogger('kopf.test.fake.logger'),
+        indices=indices,
         activity=activity,
         settings=OperatorSettings(),
     )
     kwargs = build_kwargs(cause=cause, extrakwarg=123)
-    assert set(kwargs) == {'extrakwarg', 'memo', 'logger', 'activity'}
+    assert set(kwargs) == {'extrakwarg', 'memo', 'logger', 'index1', 'index2', 'activity'}
     assert kwargs['extrakwarg'] == 123
+    assert kwargs['index1'] is indices['index1']
+    assert kwargs['index2'] is indices['index2']
     assert kwargs['logger'] is cause.logger
     assert kwargs['activity'] is activity
 
 
 @pytest.mark.parametrize('activity', {Activity.STARTUP})
-def test_startup_kwargs(resource, activity):
+def test_startup_kwargs(resource, activity, indices):
     cause = ActivityCause(
         memo=Memo(),
         logger=logging.getLogger('kopf.test.fake.logger'),
+        indices=indices,
         activity=activity,
         settings=OperatorSettings(),
     )
     kwargs = build_kwargs(cause=cause, extrakwarg=123)
-    assert set(kwargs) == {'extrakwarg', 'memo', 'logger', 'activity', 'settings'}
+    assert set(kwargs) == {'extrakwarg', 'memo', 'logger', 'index1', 'index2',
+                           'activity', 'settings'}
     assert kwargs['extrakwarg'] == 123
+    assert kwargs['index1'] is indices['index1']
+    assert kwargs['index2'] is indices['index2']
     assert kwargs['logger'] is cause.logger
     assert kwargs['activity'] is activity
     assert kwargs['settings'] is cause.settings
 
 
-def test_resource_watching_kwargs(resource):
+def test_resource_watching_kwargs(resource, indices):
     body = {'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1',
                          'labels': {'l1': 'v1'}, 'annotations': {'a1': 'v1'}},
             'spec': {'field': 'value'},
             'status': {'info': 'payload'}}
     cause = ResourceWatchingCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
+        indices=indices,
         resource=resource,
         patch=Patch(),
         memo=Memo(),
@@ -60,11 +77,14 @@ def test_resource_watching_kwargs(resource):
         raw={'type': 'ADDED', 'object': {}},
     )
     kwargs = build_kwargs(cause=cause, extrakwarg=123)
-    assert set(kwargs) == {'extrakwarg', 'logger', 'resource', 'patch', 'event', 'type', 'memo',
+    assert set(kwargs) == {'extrakwarg', 'logger', 'index1', 'index2', 'resource',
+                           'patch', 'event', 'type', 'memo',
                            'body', 'spec', 'status', 'meta', 'uid', 'name', 'namespace',
                            'labels', 'annotations'}
     assert kwargs['extrakwarg'] == 123
     assert kwargs['resource'] is cause.resource
+    assert kwargs['index1'] is indices['index1']
+    assert kwargs['index2'] is indices['index2']
     assert kwargs['logger'] is cause.logger
     assert kwargs['patch'] is cause.patch
     assert kwargs['event'] is cause.raw
@@ -81,13 +101,14 @@ def test_resource_watching_kwargs(resource):
     assert kwargs['namespace'] == cause.body.metadata.namespace
 
 
-def test_resource_changing_kwargs(resource):
+def test_resource_changing_kwargs(resource, indices):
     body = {'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1',
                          'labels': {'l1': 'v1'}, 'annotations': {'a1': 'v1'}},
             'spec': {'field': 'value'},
             'status': {'info': 'payload'}}
     cause = ResourceChangingCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
+        indices=indices,
         resource=resource,
         patch=Patch(),
         initial=False,
@@ -99,11 +120,14 @@ def test_resource_changing_kwargs(resource):
         new=BodyEssence(),
     )
     kwargs = build_kwargs(cause=cause, extrakwarg=123)
-    assert set(kwargs) == {'extrakwarg', 'logger', 'resource', 'patch', 'reason', 'memo',
+    assert set(kwargs) == {'extrakwarg', 'logger', 'index1', 'index2', 'resource',
+                           'patch', 'reason', 'memo',
                            'body', 'spec', 'status', 'meta', 'uid', 'name', 'namespace',
                            'labels', 'annotations', 'diff', 'old', 'new'}
     assert kwargs['extrakwarg'] == 123
     assert kwargs['resource'] is cause.resource
+    assert kwargs['index1'] is indices['index1']
+    assert kwargs['index2'] is indices['index2']
     assert kwargs['reason'] is cause.reason
     assert kwargs['logger'] is cause.logger
     assert kwargs['patch'] is cause.patch
@@ -122,13 +146,14 @@ def test_resource_changing_kwargs(resource):
     assert kwargs['namespace'] == cause.body.metadata.namespace
 
 
-def test_resource_spawning_kwargs(resource):
+def test_resource_spawning_kwargs(resource, indices):
     body = {'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1',
                          'labels': {'l1': 'v1'}, 'annotations': {'a1': 'v1'}},
             'spec': {'field': 'value'},
             'status': {'info': 'payload'}}
     cause = ResourceSpawningCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
+        indices=indices,
         resource=resource,
         patch=Patch(),
         memo=Memo(),
@@ -136,11 +161,14 @@ def test_resource_spawning_kwargs(resource):
         reset=False,
     )
     kwargs = build_kwargs(cause=cause, extrakwarg=123)
-    assert set(kwargs) == {'extrakwarg', 'logger', 'resource', 'patch', 'memo',
+    assert set(kwargs) == {'extrakwarg', 'logger', 'index1', 'index2',
+                           'resource', 'patch', 'memo',
                            'body', 'spec', 'status', 'meta', 'uid', 'name', 'namespace',
                            'labels', 'annotations'}
     assert kwargs['extrakwarg'] == 123
     assert kwargs['resource'] is cause.resource
+    assert kwargs['index1'] is indices['index1']
+    assert kwargs['index2'] is indices['index2']
     assert kwargs['logger'] is cause.logger
     assert kwargs['patch'] is cause.patch
     assert kwargs['memo'] is cause.memo
@@ -155,13 +183,14 @@ def test_resource_spawning_kwargs(resource):
     assert kwargs['namespace'] == cause.body.metadata.namespace
 
 
-def test_daemon_kwargs(resource):
+def test_daemon_kwargs(resource, indices):
     body = {'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1',
                          'labels': {'l1': 'v1'}, 'annotations': {'a1': 'v1'}},
             'spec': {'field': 'value'},
             'status': {'info': 'payload'}}
     cause = DaemonCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
+        indices=indices,
         resource=resource,
         patch=Patch(),
         memo=Memo(),
@@ -169,11 +198,14 @@ def test_daemon_kwargs(resource):
         stopper=DaemonStopper(),
     )
     kwargs = build_kwargs(cause=cause, extrakwarg=123)
-    assert set(kwargs) == {'extrakwarg', 'logger', 'resource', 'patch', 'memo',
+    assert set(kwargs) == {'extrakwarg', 'logger', 'index1', 'index2',
+                           'resource', 'patch', 'memo',
                            'body', 'spec', 'status', 'meta', 'uid', 'name', 'namespace',
                            'labels', 'annotations'}
     assert kwargs['extrakwarg'] == 123
     assert kwargs['resource'] is cause.resource
+    assert kwargs['index1'] is indices['index1']
+    assert kwargs['index2'] is indices['index2']
     assert kwargs['logger'] is cause.logger
     assert kwargs['patch'] is cause.patch
     assert kwargs['memo'] is cause.memo
@@ -189,9 +221,10 @@ def test_daemon_kwargs(resource):
     assert 'stopped' not in kwargs
 
 
-def test_daemon_sync_stopper(resource):
+def test_daemon_sync_stopper(resource, indices):
     cause = DaemonCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
+        indices=indices,
         resource=resource,
         patch=Patch(),
         memo=Memo(),
@@ -202,9 +235,10 @@ def test_daemon_sync_stopper(resource):
     assert kwargs['stopped'] is cause.stopper.sync_checker
 
 
-def test_daemon_async_stopper(resource):
+def test_daemon_async_stopper(resource, indices):
     cause = DaemonCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
+        indices=indices,
         resource=resource,
         patch=Patch(),
         memo=Memo(),

@@ -4,6 +4,7 @@ import logging
 import pytest
 
 import kopf
+from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.ephemera import Memo
@@ -37,6 +38,7 @@ async def test_skipped_with_no_handlers(
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
@@ -92,6 +94,7 @@ async def test_stealth_mode_with_mismatching_handlers(
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},

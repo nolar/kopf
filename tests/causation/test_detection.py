@@ -118,6 +118,7 @@ def kwargs():
     return dict(
         finalizer=FINALIZER,
         resource=object(),
+        indices=object(),
         logger=object(),
         patch=object(),
         memo=object(),

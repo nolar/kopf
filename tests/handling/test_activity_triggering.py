@@ -5,6 +5,7 @@ import pytest
 
 from kopf.reactor.activities import ActivityError, run_activity
 from kopf.reactor.handling import PermanentError, TemporaryError
+from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.lifecycles import all_at_once
 from kopf.reactor.registries import OperatorRegistry
 from kopf.storage.states import HandlerOutcome
@@ -45,6 +46,7 @@ async def test_results_are_returned_on_success(settings, activity):
         settings=settings,
         activity=activity,
         lifecycle=all_at_once,
+        indices=OperatorIndexers().indices,
         memo=Memo(),
     )
 
@@ -78,6 +80,7 @@ async def test_errors_are_raised_aggregated(settings, activity):
             settings=settings,
             activity=activity,
             lifecycle=all_at_once,
+            indices=OperatorIndexers().indices,
             memo=Memo(),
         )
 
@@ -112,6 +115,7 @@ async def test_errors_are_cascaded_from_one_of_the_originals(settings, activity)
             settings=settings,
             activity=activity,
             lifecycle=all_at_once,
+            indices=OperatorIndexers().indices,
             memo=Memo(),
         )
 
@@ -140,6 +144,7 @@ async def test_retries_are_simulated(settings, activity, mocker):
             settings=settings,
             activity=activity,
             lifecycle=all_at_once,
+            indices=OperatorIndexers().indices,
             memo=Memo(),
         )
 
@@ -173,6 +178,7 @@ async def test_delays_are_simulated(settings, activity, mocker):
                 settings=settings,
                 activity=activity,
                 lifecycle=all_at_once,
+                indices=OperatorIndexers().indices,
                 memo=Memo(),
             )
 
