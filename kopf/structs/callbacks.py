@@ -89,6 +89,7 @@ class ResourceDaemonSyncFn(Protocol):
             uid: Optional[str],
             name: Optional[str],
             namespace: Optional[str],
+            patch: patches.Patch,
             logger: Union[logging.Logger, logging.LoggerAdapter],
             stopped: primitives.SyncDaemonStopperChecker,  # << different type
             resource: references.Resource,
@@ -108,6 +109,7 @@ class ResourceDaemonAsyncFn(Protocol):
             uid: Optional[str],
             name: Optional[str],
             namespace: Optional[str],
+            patch: patches.Patch,
             logger: Union[logging.Logger, logging.LoggerAdapter],
             stopped: primitives.AsyncDaemonStopperChecker,  # << different type
             resource: references.Resource,
@@ -130,6 +132,7 @@ class ResourceTimerFn(Protocol):
             uid: Optional[str],
             name: Optional[str],
             namespace: Optional[str],
+            patch: patches.Patch,
             logger: Union[logging.Logger, logging.LoggerAdapter],
             resource: references.Resource,
             memo: ephemera.AnyMemo,
