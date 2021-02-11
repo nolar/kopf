@@ -45,6 +45,11 @@ class EnsembleKey(NamedTuple):
 @dataclasses.dataclass
 class Ensemble:
 
+    # Global synchronisation point on the cache pre-populating stage and overall cache readiness.
+    # Note: there is no need for ToggleSet; it is checked by emptiness of items inside.
+    #       ToggleSet is used because it is the closest equivalent of such a primitive.
+    operator_indexed: primitives.ToggleSet
+
     # Multidimentional pausing: for every namespace, and a few for the whole cluster (for CRDs).
     operator_paused: primitives.ToggleSet
     peering_missing: primitives.Toggle
@@ -90,7 +95,11 @@ async def ochestrator(
         operator_paused: primitives.ToggleSet,
 ) -> None:
     peering_missing = await operator_paused.make_toggle(name='peering CRD is missing')
-    ensemble = Ensemble(peering_missing=peering_missing, operator_paused=operator_paused)
+    ensemble = Ensemble(
+        peering_missing=peering_missing,
+        operator_paused=operator_paused,
+        operator_indexed=primitives.ToggleSet(all),
+    )
     try:
         async with insights.revised:
             while True:
@@ -217,6 +226,7 @@ async def spawn_missing_watchers(
                 name=f"watcher for {what}", logger=logger, cancellable=True,
                 coro=queueing.watcher(
                     operator_paused=ensemble.operator_paused,
+                    operator_indexed=ensemble.operator_indexed,
                     settings=settings,
                     resource=resource,
                     namespace=namespace,

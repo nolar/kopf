@@ -27,7 +27,7 @@ from typing import Collection, List, Optional
 
 from kopf.clients import errors, fetching, scanning
 from kopf.reactor import queueing, registries
-from kopf.structs import bodies, configuration, handlers, references
+from kopf.structs import bodies, configuration, handlers, primitives, references
 
 logger = logging.getLogger(__name__)
 
@@ -138,6 +138,8 @@ async def process_discovered_namespace_event(
         insights: references.Insights,
         # Must be accepted whether used or not -- as passed by watcher()/worker().
         stream_pressure: Optional[asyncio.Event] = None,  # None for tests
+        resource_indexed: Optional[primitives.Toggle] = None,  # None for tests & observation
+        operator_indexed: Optional[primitives.ToggleSet] = None,  # None for tests & observation
 ) -> None:
     if raw_event['type'] is None:
         return
@@ -154,6 +156,8 @@ async def process_discovered_resource_event(
         insights: references.Insights,
         # Must be accepted whether used or not -- as passed by watcher()/worker().
         stream_pressure: Optional[asyncio.Event] = None,  # None for tests
+        resource_indexed: Optional[primitives.Toggle] = None,  # None for tests & observation
+        operator_indexed: Optional[primitives.ToggleSet] = None,  # None for tests & observation
 ) -> None:
     # Ignore the initial listing, as all custom resources were already noticed by API listing.
     # This prevents numerous unneccessary API requests at the the start of the operator.

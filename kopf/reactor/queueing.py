@@ -50,6 +50,8 @@ class WatchStreamProcessor(Protocol):
             *,
             raw_event: bodies.RawEvent,
             stream_pressure: Optional[asyncio.Event] = None,  # None for tests
+            resource_indexed: Optional[primitives.Toggle] = None,  # None for tests & observation
+            operator_indexed: Optional[primitives.ToggleSet] = None,  # None for tests & observation
     ) -> None: ...
 
 
@@ -130,6 +132,7 @@ async def watcher(
         resource: references.Resource,
         processor: WatchStreamProcessor,
         operator_paused: Optional[primitives.ToggleSet] = None,  # None for tests & observation
+        operator_indexed: Optional[primitives.ToggleSet] = None,  # None for tests & observation
 ) -> None:
     """
     The watchers watches for the resource events via the API, and spawns the workers for every object.
@@ -166,6 +169,14 @@ async def watcher(
     scheduler = await aiojobs.create_scheduler(limit=settings.batching.worker_limit,
                                                exception_handler=exception_handler)
     streams: Streams = {}
+
+    # One extra toggle per resource kind -- turned on (or removed) when the initial listing is over.
+    # This ensures that the pre-indexing is not finished until all resources are listed & indexed.
+    resource_listed: Optional[primitives.Toggle] = None
+    if operator_indexed is not None:  # NB: no "is_off" check -- lists are unconditional!
+        what = f"listing of {resource}@{namespace}"
+        resource_listed = await operator_indexed.make_toggle(name=what)
+
     try:
         # Either use the existing object's queue, or create a new one together with the per-object job.
         # "Fire-and-forget": we do not wait for the result; the job destroys itself when it is fully done.
@@ -175,6 +186,12 @@ async def watcher(
             operator_paused=operator_paused,
         )
         async for raw_event in stream:
+
+            # If the listing is over (even if it was empty), the resource kind is pre-indexed.
+            # At this moment, only the individual workers/processors can block the global readiness.
+            if raw_event is watching.Bookmark.LISTED:
+                if operator_indexed is not None and resource_listed is not None:
+                    await operator_indexed.drop_toggle(resource_listed)
 
             # Whatever is bookmarked there, don't let it go to the multiplexer. Handle it above.
             if isinstance(raw_event, watching.Bookmark):
@@ -187,12 +204,22 @@ async def watcher(
                 streams[key].pressure.set()  # interrupt current sleeps, if any.
                 await streams[key].backlog.put(raw_event)
             except KeyError:
+
+                # Block the index readiness for individual resource's index handlers.
+                # But NOT when the readiness is already achieved once! After that, ignore it.
+                # NB: Strictly before the worker starts -- the processor can be too slow, too late.
+                resource_indexed: Optional[primitives.Toggle] = None
+                if operator_indexed is not None and operator_indexed.is_off():
+                    resource_indexed = await operator_indexed.make_toggle(name=f"{key!r}")
+
                 # Start the worker, and feed it initially. Starting can be moderately slow.
                 streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
                 streams[key].pressure.set()  # interrupt current sleeps, if any.
                 await streams[key].backlog.put(raw_event)
                 await scheduler.spawn(worker(
                     signaller=signaller,
+                    operator_indexed=operator_indexed,
+                    resource_indexed=resource_indexed,
                     processor=processor,
                     settings=settings,
                     streams=streams,
@@ -232,6 +259,8 @@ async def worker(
         signaller: asyncio.Condition,
         processor: WatchStreamProcessor,
         settings: configuration.OperatorSettings,
+        resource_indexed: Optional[primitives.Toggle],  # None for tests & observation
+        operator_indexed: Optional[primitives.ToggleSet],  # None for tests & observation
         streams: Streams,
         key: ObjectRef,
 ) -> None:
@@ -283,7 +312,12 @@ async def worker(
 
             # Try the processor. In case of errors, show the error, but continue the processing.
             pressure.clear()
-            await processor(raw_event=raw_event, stream_pressure=pressure)
+            await processor(
+                raw_event=raw_event,
+                stream_pressure=pressure,
+                resource_indexed=resource_indexed,
+                operator_indexed=operator_indexed,
+            )
 
     except Exception:
         # Log the error for every worker: there can be several of them failing at the same time,
