@@ -62,6 +62,7 @@ def k8s_mocked(mocker, resp_mocker):
 
 @dataclasses.dataclass(frozen=True, eq=False, order=False)
 class HandlersContainer:
+    index_mock: Mock
     event_mock: Mock
     create_mock: Mock
     update_mock: Mock
@@ -76,11 +77,16 @@ class HandlersContainer:
 
 @pytest.fixture()
 def handlers(registry):
+    index_mock = Mock(return_value=None)
     event_mock = Mock(return_value=None)
     create_mock = Mock(return_value=None)
     update_mock = Mock(return_value=None)
     delete_mock = Mock(return_value=None)
     resume_mock = Mock(return_value=None)
+
+    @kopf.index('kopfexamples', id='index_fn')
+    async def index_fn(**kwargs):
+        return index_mock(**kwargs)
 
     @kopf.on.event('kopfexamples', id='event_fn')
     async def event_fn(**kwargs):
@@ -105,6 +111,7 @@ def handlers(registry):
         return delete_mock(**kwargs)
 
     return HandlersContainer(
+        index_mock=index_mock,
         event_mock=event_mock,
         create_mock=create_mock,
         update_mock=update_mock,
@@ -120,11 +127,16 @@ def handlers(registry):
 
 @pytest.fixture()
 def extrahandlers(registry, handlers):
+    index_mock = Mock(return_value=None)
     event_mock = Mock(return_value=None)
     create_mock = Mock(return_value=None)
     update_mock = Mock(return_value=None)
     delete_mock = Mock(return_value=None)
     resume_mock = Mock(return_value=None)
+
+    @kopf.index('kopfexamples', id='index_fn2')
+    async def index_fn2(**kwargs):
+        return index_mock(**kwargs)
 
     @kopf.on.event('kopfexamples', id='event_fn2')
     async def event_fn2(**kwargs):
@@ -149,6 +161,7 @@ def extrahandlers(registry, handlers):
         return delete_mock(**kwargs)
 
     return HandlersContainer(
+        index_mock=index_mock,
         event_mock=event_mock,
         create_mock=create_mock,
         update_mock=update_mock,

@@ -35,6 +35,25 @@ class ActivityFn(Protocol):
     ) -> _SyncOrAsyncResult: ...
 
 
+class ResourceIndexingFn(Protocol):
+    def __call__(  # lgtm[py/similar-function]
+            self,
+            *args: Any,
+            body: bodies.Body,
+            meta: bodies.Meta,
+            spec: bodies.Spec,
+            status: bodies.Status,
+            uid: Optional[str],
+            name: Optional[str],
+            namespace: Optional[str],
+            patch: patches.Patch,
+            logger: Union[logging.Logger, logging.LoggerAdapter],
+            resource: references.Resource,
+            memo: ephemera.AnyMemo,
+            **kwargs: Any,
+    ) -> _SyncOrAsyncResult: ...
+
+
 class ResourceWatchingFn(Protocol):
     def __call__(  # lgtm[py/similar-function]
             self,

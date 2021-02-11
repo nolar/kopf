@@ -17,6 +17,7 @@ from kopf.reactor import handling, registries
 from kopf.structs import callbacks, dicts, filters, handlers, references
 
 ActivityDecorator = Callable[[callbacks.ActivityFn], callbacks.ActivityFn]
+ResourceIndexingDecorator = Callable[[callbacks.ResourceIndexingFn], callbacks.ResourceIndexingFn]
 ResourceWatchingDecorator = Callable[[callbacks.ResourceWatchingFn], callbacks.ResourceWatchingFn]
 ResourceChangingDecorator = Callable[[callbacks.ResourceChangingFn], callbacks.ResourceChangingFn]
 ResourceDaemonDecorator = Callable[[callbacks.ResourceDaemonFn], callbacks.ResourceDaemonFn]
@@ -415,6 +416,60 @@ def field(  # lgtm[py/similar-function]
             reason=None,
         )
         real_registry._resource_changing.append(handler)
+        return fn
+    return decorator
+
+
+def index(  # lgtm[py/similar-function]
+        # Resource type specification:
+        __group_or_groupversion_or_name: Optional[Union[str, references.Marker]] = None,
+        __version_or_name: Optional[Union[str, references.Marker]] = None,
+        __name: Optional[Union[str, references.Marker]] = None,
+        *,
+        group: Optional[str] = None,
+        version: Optional[str] = None,
+        kind: Optional[str] = None,
+        plural: Optional[str] = None,
+        singular: Optional[str] = None,
+        shortcut: Optional[str] = None,
+        category: Optional[str] = None,
+        # Handler's behaviour specification:
+        id: Optional[str] = None,
+        param: Optional[Any] = None,
+        errors: Optional[handlers.ErrorsMode] = None,
+        timeout: Optional[float] = None,
+        retries: Optional[int] = None,
+        backoff: Optional[float] = None,
+        # Resource object specification:
+        labels: Optional[filters.MetaFilter] = None,
+        annotations: Optional[filters.MetaFilter] = None,
+        when: Optional[callbacks.WhenFilterFn] = None,
+        field: Optional[dicts.FieldSpec] = None,
+        value: Optional[filters.ValueFilter] = None,
+        # Operator specification:
+        registry: Optional[registries.OperatorRegistry] = None,
+) -> ResourceIndexingDecorator:
+    """ ``@kopf.index()`` handler for the indexing callbacks. """
+    def decorator(  # lgtm[py/similar-function]
+            fn: callbacks.ResourceIndexingFn,
+    ) -> callbacks.ResourceIndexingFn:
+        _warn_conflicting_values(field, value)
+        _verify_filters(labels, annotations)
+        real_registry = registry if registry is not None else registries.get_default_registry()
+        real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
+        real_id = registries.generate_id(fn=fn, id=id)
+        selector = references.Selector(
+            __group_or_groupversion_or_name, __version_or_name, __name,
+            group=group, version=version,
+            kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
+        )
+        handler = handlers.ResourceIndexingHandler(
+            fn=fn, id=real_id, param=param,
+            errors=errors, timeout=timeout, retries=retries, backoff=backoff,
+            selector=selector, labels=labels, annotations=annotations, when=when,
+            field=real_field, value=value,
+        )
+        real_registry._resource_indexing.append(handler)
         return fn
     return decorator
 

@@ -28,6 +28,7 @@ HandlerT = TypeVar('HandlerT', bound=handlers.BaseHandler)
 ResourceHandlerT = TypeVar('ResourceHandlerT', bound=handlers.ResourceHandler)
 HandlerFnT = TypeVar('HandlerFnT',
                      callbacks.ActivityFn,
+                     callbacks.ResourceIndexingFn,
                      callbacks.ResourceWatchingFn,
                      callbacks.ResourceSpawningFn,
                      callbacks.ResourceChangingFn)
@@ -119,6 +120,22 @@ class ResourceRegistry(
             if _matches_resource(handler, resource):
                 if handler.field:
                     yield handler.field
+
+
+class ResourceIndexingRegistry(ResourceRegistry[
+        causation.ResourceIndexingCause,
+        callbacks.ResourceIndexingFn,
+        handlers.ResourceIndexingHandler]):
+
+    def iter_handlers(
+            self,
+            cause: causation.ResourceIndexingCause,
+            excluded: Container[handlers.HandlerId] = frozenset(),
+    ) -> Iterator[handlers.ResourceIndexingHandler]:
+        for handler in self._handlers:
+            if handler.id not in excluded:
+                if match(handler=handler, cause=cause):
+                    yield handler
 
 
 class ResourceWatchingRegistry(ResourceRegistry[
@@ -233,6 +250,7 @@ class OperatorRegistry:
     def __init__(self) -> None:
         super().__init__()
         self._activities = ActivityRegistry()
+        self._resource_indexing = ResourceIndexingRegistry()
         self._resource_watching = ResourceWatchingRegistry()
         self._resource_spawning = ResourceSpawningRegistry()
         self._resource_changing = ResourceChangingRegistry()

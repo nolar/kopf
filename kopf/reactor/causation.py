@@ -48,6 +48,14 @@ class ResourceCause(BaseCause):
 
 
 @dataclasses.dataclass
+class ResourceIndexingCause(ResourceCause):
+    """
+    The raw event received from the API.
+    """
+    pass
+
+
+@dataclasses.dataclass
 class ResourceWatchingCause(ResourceCause):
     """
     The raw event received from the API.

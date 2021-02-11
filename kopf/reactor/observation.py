@@ -91,6 +91,7 @@ async def resource_observer(
 
     # Scan only the resource-related handlers, ignore activies & co.
     all_handlers: List[handlers.ResourceHandler] = []
+    all_handlers.extend(registry._resource_indexing.get_all_handlers())
     all_handlers.extend(registry._resource_watching.get_all_handlers())
     all_handlers.extend(registry._resource_spawning.get_all_handlers())
     all_handlers.extend(registry._resource_changing.get_all_handlers())
@@ -199,6 +200,7 @@ def revise_resources(
 
     # Scan only the resource-related handlers, ignore activies & co.
     all_handlers: List[handlers.ResourceHandler] = []
+    all_handlers.extend(registry._resource_indexing.get_all_handlers())
     all_handlers.extend(registry._resource_watching.get_all_handlers())
     all_handlers.extend(registry._resource_spawning.get_all_handlers())
     all_handlers.extend(registry._resource_changing.get_all_handlers())
