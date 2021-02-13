@@ -64,7 +64,6 @@ async def test_consistent_awakening(registry, settings, resource, k8s_mocked, mo
             memories=ResourceMemories(),
             memobase=Memo(),
             raw_event={'type': 'ADDED', 'object': body},
-            replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
         assert datetime.datetime.utcnow() > ts0  # extra precaution

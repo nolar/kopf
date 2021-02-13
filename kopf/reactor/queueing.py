@@ -49,7 +49,7 @@ class WatchStreamProcessor(Protocol):
             self,
             *,
             raw_event: bodies.RawEvent,
-            replenished: asyncio.Event,
+            replenished: Optional[asyncio.Event] = None,  # None for tests
     ) -> None: ...
 
 
