@@ -30,7 +30,6 @@ async def test_create(registry, settings, handlers, resource, cause_mock, event_
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
-        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 
@@ -71,7 +70,6 @@ async def test_update(registry, settings, handlers, resource, cause_mock, event_
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
-        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 
@@ -114,7 +112,6 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
-        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 
@@ -155,7 +152,6 @@ async def test_gone(registry, settings, handlers, resource, cause_mock, event_ty
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
-        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 
@@ -186,7 +182,6 @@ async def test_free(registry, settings, handlers, resource, cause_mock, event_ty
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
-        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 
@@ -218,7 +213,6 @@ async def test_noop(registry, settings, handlers, resource, cause_mock, event_ty
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
-        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 

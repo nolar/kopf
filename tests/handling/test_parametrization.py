@@ -25,7 +25,6 @@ async def test_parameter_is_passed_when_specified(resource, cause_mock, registry
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': None, 'object': {}},
-        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 
@@ -51,7 +50,6 @@ async def test_parameter_is_passed_even_if_not_specified(resource, cause_mock, r
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': None, 'object': {}},
-        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 

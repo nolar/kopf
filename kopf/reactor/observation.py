@@ -135,7 +135,7 @@ async def process_discovered_namespace_event(
         raw_event: bodies.RawEvent,
         namespaces: Collection[references.NamespacePattern],
         insights: references.Insights,
-        replenished: Optional[asyncio.Event] = None,
+        replenished: Optional[asyncio.Event] = None,  # None for tests
 ) -> None:
     if raw_event['type'] is None:
         return
@@ -150,7 +150,7 @@ async def process_discovered_resource_event(
         raw_event: bodies.RawEvent,
         registry: registries.OperatorRegistry,
         insights: references.Insights,
-        replenished: Optional[asyncio.Event] = None,
+        replenished: Optional[asyncio.Event] = None,  # None for tests
 ) -> None:
     # Ignore the initial listing, as all custom resources were already noticed by API listing.
     # This prevents numerous unneccessary API requests at the the start of the operator.

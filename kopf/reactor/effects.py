@@ -49,7 +49,7 @@ async def apply(
         patch: patches.Patch,
         delays: Collection[float],
         logger: loggers.ObjectLogger,
-        replenished: asyncio.Event,
+        replenished: Optional[asyncio.Event] = None,  # None for tests
 ) -> bool:
     delay = min(delays) if delays else None
 

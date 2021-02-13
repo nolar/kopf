@@ -32,8 +32,8 @@ async def process_resource_event(
         memobase: memos.AnyMemo,
         resource: references.Resource,
         raw_event: bodies.RawEvent,
-        replenished: asyncio.Event,
         event_queue: posting.K8sEventQueue,
+        replenished: Optional[asyncio.Event] = None,  # None for tests
 ) -> None:
     """
     Handle a single custom object low-level watch-event.

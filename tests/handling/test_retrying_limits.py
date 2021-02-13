@@ -43,7 +43,6 @@ async def test_timed_out_handler_fails(
             memories=ResourceMemories(),
             memobase=Memo(),
             raw_event={'type': event_type, 'object': event_body},
-            replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
 
@@ -93,7 +92,6 @@ async def test_retries_limited_handler_fails(
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 

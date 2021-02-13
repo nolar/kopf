@@ -67,7 +67,6 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
             memories=memories,
             memobase=Memo(),
             raw_event={'type': 'irrelevant', 'object': event_object},
-            replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
 

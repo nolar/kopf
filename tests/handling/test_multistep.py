@@ -36,7 +36,6 @@ async def test_1st_step_stores_progress_by_patching(
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 
@@ -96,7 +95,6 @@ async def test_2nd_step_finishes_the_handlers(caplog,
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 
