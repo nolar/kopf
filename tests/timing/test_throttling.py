@@ -15,7 +15,7 @@ def clock(mocker):
 
 @pytest.fixture(autouse=True)
 def sleep(mocker):
-    return mocker.patch('kopf.reactor.effects.sleep_or_wait', return_value=None)
+    return mocker.patch('kopf.structs.primitives.sleep_or_wait', return_value=None)
 
 
 async def test_remains_inactive_on_success():

@@ -3,7 +3,7 @@ import asyncio
 import async_timeout
 import pytest
 
-from kopf.reactor.effects import sleep_or_wait
+from kopf.structs.primitives import sleep_or_wait
 
 
 async def test_the_only_delay_is_awaited(timer):
