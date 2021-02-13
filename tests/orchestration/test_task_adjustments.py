@@ -12,7 +12,7 @@ from kopf.structs.references import Insights, Resource
 from kopf.utilities import aiotasks
 
 
-async def processor(*, raw_event: bodies.RawEvent, replenished: Optional[asyncio.Event]) -> None:
+async def processor(*, raw_event: bodies.RawEvent, stream_pressure: Optional[asyncio.Event]) -> None:
     pass
 
 

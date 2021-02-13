@@ -93,7 +93,7 @@ async def process_peering_event(
         identity: Identity,
         settings: configuration.OperatorSettings,
         autoclean: bool = True,
-        replenished: Optional[asyncio.Event] = None,  # None for tests
+        stream_pressure: Optional[asyncio.Event] = None,  # None for tests
         conflicts_found: Optional[primitives.Toggle] = None,  # None for tests & observation
 ) -> None:
     """
@@ -143,7 +143,7 @@ async def process_peering_event(
     # from other peers that existed a moment earlier, this should not be a problem.
     now = datetime.datetime.utcnow()
     delays = [(peer.deadline - now).total_seconds() for peer in same_peers + prio_peers]
-    unslept = await primitives.sleep_or_wait(delays, wakeup=replenished)
+    unslept = await primitives.sleep_or_wait(delays, wakeup=stream_pressure)
     if unslept is None and delays:
         await touch(
             identity=identity,

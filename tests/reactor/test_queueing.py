@@ -87,8 +87,8 @@ async def test_watchevent_demultiplexing(worker_mock, timer, resource, processor
         assert key in streams
 
         queue_events = []
-        while not streams[key].watchevents.empty():
-            queue_events.append(streams[key].watchevents.get_nowait())
+        while not streams[key].backlog.empty():
+            queue_events.append(streams[key].backlog.get_nowait())
 
         assert len(queue_events) == cnt + 1
         assert queue_events[-1] is EOS.token
