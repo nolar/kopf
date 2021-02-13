@@ -99,14 +99,14 @@ class PeeringSettings:
 
     Note that some occasions are logged unconditionally: 
     
-    * those affecting the operator's behaviour, such as freezes/resumes;
+    * those affecting the operator's behaviour, such as pauses/resumes;
     * those requiring human intervention, such as absence of a peering object
       in the auto-detection mode (to make the peering mandatory or standalone). 
     """
 
     priority: int = 0
     """
-    The operator's priority to use. The operators with lower priority freeze
+    The operator's priority to use. The operators with lower priority pause
     when they see operators with higher or the same priority --
     to avoid double-processing and double-handling of the resources.
     """
@@ -115,7 +115,7 @@ class PeeringSettings:
     """
     For how long (in seconds) the operator's record is considered actual
     by other operators before assuming that the corresponding operator
-    is not functioning and the freeze mode should be re-evaluated.
+    is not functioning and the paused state should be re-evaluated.
 
     The peered operators will update their records as long as they are running,
     slightly faster than their records expires (5-10 seconds earlier).

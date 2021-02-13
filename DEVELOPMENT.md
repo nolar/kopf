@@ -109,15 +109,15 @@ and `--namespace` CLI options, but does not prevent the mis-configurations.
 
 To run against the real cluster, use the dev-mode of the framework.
 This will set the operator's priority to 666 (just a high number),
-and will freeze all other running operators (the default priority is 0)
+and will pause all other running operators (the default priority is 0)
 for the runtime, so that they do not collide with each other:
 
 ```bash
 kopf run examples/01-minimal/example.py --verbose --dev
 ```
 
-Alternatively, explicitly freeze/resume all other operators,
-and it will freeze them even if your operator is not running
+Alternatively, explicitly pause/resume all other operators,
+and it will pause them even if your operator is not running
 (e.g., for 2 hours):
 
 ```bash
