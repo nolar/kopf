@@ -6,7 +6,7 @@ import pytest
 import kopf
 
 
-async def test_daemon_exits_gracefully_and_instantly_via_stopper(
+async def test_daemon_exits_gracefully_and_instantly_on_termination_request(
         settings, resource, dummy, simulate_cycle,
         caplog, assert_logs, k8s_mocked, frozen_time, mocker, timer):
     caplog.set_level(logging.DEBUG)
@@ -40,8 +40,8 @@ async def test_daemon_exits_gracefully_and_instantly_via_stopper(
 
 
 @pytest.mark.usefixtures('background_daemon_killer')
-async def test_daemon_exits_gracefully_and_instantly_via_peering_freeze(
-        settings, memories, resource, dummy, simulate_cycle, freeze_toggle,
+async def test_daemon_exits_gracefully_and_instantly_on_operator_pausing(
+        settings, memories, resource, dummy, simulate_cycle, conflicts_found,
         caplog, assert_logs, k8s_mocked, frozen_time, mocker, timer):
     caplog.set_level(logging.DEBUG)
 
@@ -58,9 +58,9 @@ async def test_daemon_exits_gracefully_and_instantly_via_peering_freeze(
     await simulate_cycle(event_object)
     await dummy.steps['called'].wait()
 
-    # 1st stage: trigger termination due to peering freeze.
+    # 1st stage: trigger termination due to the operator's pause.
     mocker.resetall()
-    await freeze_toggle.turn_to(True)
+    await conflicts_found.turn_to(True)
 
     # Check that the daemon has exited near-instantly, with no delays.
     with timer:
@@ -68,7 +68,7 @@ async def test_daemon_exits_gracefully_and_instantly_via_peering_freeze(
     assert timer.seconds < 0.01  # near-instantly
 
     # There is no way to test for re-spawning here: it is done by watch-events,
-    # which are tested by the peering freezes elsewhere (test_daemon_spawning.py).
+    # which are tested by the paused operators elsewhere (test_daemon_spawning.py).
     # We only test that it is capable for respawning (not forever-stopped):
     memory = await memories.recall(event_object)
     assert not memory.forever_stopped
