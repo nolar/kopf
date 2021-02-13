@@ -44,7 +44,7 @@ async def infinite_watch(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         namespace: references.Namespace,
-        freeze_checker: Optional[primitives.ToggleSet] = None,
+        operator_paused: Optional[primitives.ToggleSet] = None,  # None for tests & observation
         _iterations: Optional[int] = None,  # used in tests/mocks/fixtures
 ) -> AsyncIterator[bodies.RawEvent]:
     """
@@ -57,7 +57,7 @@ async def infinite_watch(
     a new one is recreated, and the stream continues.
     It only exits with unrecoverable exceptions.
     """
-    how = ' (frozen)' if freeze_checker is not None and freeze_checker.is_on() else ''
+    how = ' (paused)' if operator_paused is not None and operator_paused.is_on() else ''
     where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
     logger.debug(f"Starting the watch-stream for {resource} {where}{how}.")
     try:
@@ -66,13 +66,13 @@ async def infinite_watch(
             async with streaming_block(
                 namespace=namespace,
                 resource=resource,
-                freeze_checker=freeze_checker,
-            ) as freeze_waiter:
+                operator_paused=operator_paused,
+            ) as operator_pause_waiter:
                 stream = continuous_watch(
                     settings=settings,
                     resource=resource,
                     namespace=namespace,
-                    freeze_waiter=freeze_waiter,
+                    operator_pause_waiter=operator_pause_waiter,
                 )
                 async for raw_event in stream:
                     yield raw_event
@@ -86,58 +86,58 @@ async def streaming_block(
         *,
         resource: references.Resource,
         namespace: references.Namespace,
-        freeze_checker: Optional[primitives.ToggleSet],
+        operator_paused: Optional[primitives.ToggleSet] = None,  # None for tests & observation
 ) -> AsyncIterator[aiotasks.Future]:
     """
-    Block the execution until the freeze is off; signal when it is on again.
+    Block the execution until un-paused; signal when it is active again.
 
-    This prevents both watching and listing while the freeze mode is on,
+    This prevents both watching and listing while the operator is paused,
     until it is off. Specifically, the watch-stream closes its connection
-    once the freeze mode is on, so the while-true & for-event-in-stream cycles
-    exit, and the streaming coroutine is started again by `infinite_stream()`
-    (the watcher timeout is swallowed by the freeze time).
+    once paused, so the while-true & for-event-in-stream cycles exit,
+    and the streaming coroutine is started again by `infinite_stream()`
+    (the watcher timeout is swallowed by the pause time).
 
-    Returns a future (or a task) that is set when the freeze is turned on again.
+    Returns a future (or a task) that is set (or finished) when paused again.
 
     A stop-future is a client-specific way of terminating the streaming HTTPS
-    connections when the freeze is turned back on. The low-level streaming API
-    call attaches its `response.close()` to the future's "done" callback,
-    so that the stream is closed once the freeze is turned back on.
+    connections when paused again. The low-level streaming API call attaches
+    its `response.close()` to the future's "done" callback,
+    so that the stream is closed once the operator is paused.
 
     Note: this routine belongs to watching and does not belong to peering.
-    The freeze can be managed in any other ways: as an imaginary edge case,
-    imagine a operator with UI with a "pause" button that freezes the operator.
+    The pause can be managed in any other ways: as an imaginary edge case,
+    imagine a operator with UI with a "pause" button that pauses the operator.
     """
     where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
 
-    # Block until unfrozen before even starting the API communication.
-    if freeze_checker is not None and freeze_checker.is_on():
-        names = {toggle.name for toggle in freeze_checker if toggle.is_on() and toggle.name}
-        freezing_reason = f" (blockers: {', '.join(names)})" if names else ""
-        logger.debug(f"Freezing the watch-stream for {resource} {where}{freezing_reason}.")
+    # Block until unpaused before even starting the API communication.
+    if operator_paused is not None and operator_paused.is_on():
+        names = {toggle.name for toggle in operator_paused if toggle.is_on() and toggle.name}
+        pause_reason = f" (blockers: {', '.join(names)})" if names else ""
+        logger.debug(f"Pausing the watch-stream for {resource} {where}{pause_reason}.")
 
-        await freeze_checker.wait_for(False)
+        await operator_paused.wait_for(False)
 
-        names = {toggle.name for toggle in freeze_checker if toggle.is_on() and toggle.name}
+        names = {toggle.name for toggle in operator_paused if toggle.is_on() and toggle.name}
         resuming_reason = f" (resolved: {', '.join(names)})" if names else ""
         logger.debug(f"Resuming the watch-stream for {resource} {where}{resuming_reason}.")
 
-    # Create the signalling future that the freeze is on again.
-    freeze_waiter: aiotasks.Future
-    if freeze_checker is not None:
-        freeze_waiter = aiotasks.create_task(
-            freeze_checker.wait_for(True),
-            name=f"freeze-waiter for {resource}")
+    # Create the signalling future for when paused again.
+    operator_pause_waiter: aiotasks.Future
+    if operator_paused is not None:
+        operator_pause_waiter = aiotasks.create_task(
+            operator_paused.wait_for(True),
+            name=f"pause-waiter for {resource}")
     else:
-        freeze_waiter = asyncio.Future()  # a dummy just to have it
+        operator_pause_waiter = asyncio.Future()  # a dummy just to have it
 
-    # Go for the streaming with the prepared freezing/unfreezing setup.
+    # Go for the streaming with the prepared pauseing/unpausing setup.
     try:
-        yield freeze_waiter
+        yield operator_pause_waiter
     finally:
         with contextlib.suppress(asyncio.CancelledError):
-            freeze_waiter.cancel()
-            await freeze_waiter
+            operator_pause_waiter.cancel()
+            await operator_pause_waiter
 
 
 async def continuous_watch(
@@ -145,7 +145,7 @@ async def continuous_watch(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         namespace: references.Namespace,
-        freeze_waiter: aiotasks.Future,
+        operator_pause_waiter: aiotasks.Future,
 ) -> AsyncIterator[bodies.RawEvent]:
 
     # First, list the resources regularly, and get the list's resource version.
@@ -156,7 +156,7 @@ async def continuous_watch(
 
     # Repeat through disconnects of the watch as long as the resource version is valid (no errors).
     # The individual watching API calls are disconnected by timeout even if the stream is fine.
-    while not freeze_waiter.done():
+    while not operator_pause_waiter.done():
 
         # Then, watch the resources starting from the list's resource version.
         stream = watch_objs(
@@ -165,7 +165,7 @@ async def continuous_watch(
             namespace=namespace,
             timeout=settings.watching.server_timeout,
             since=resource_version,
-            freeze_waiter=freeze_waiter,
+            operator_pause_waiter=operator_pause_waiter,
         )
         async for raw_input in stream:
             raw_type = raw_input['type']
@@ -205,7 +205,7 @@ async def watch_objs(
         timeout: Optional[float] = None,
         since: Optional[str] = None,
         context: Optional[auth.APIContext] = None,  # injected by the decorator
-        freeze_waiter: aiotasks.Future,
+        operator_pause_waiter: aiotasks.Future,
 ) -> AsyncIterator[bodies.RawInput]:
     """
     Watch objects of a specific resource type.
@@ -230,7 +230,7 @@ async def watch_objs(
         params['timeoutSeconds'] = str(timeout)
 
     # Stream the parsed events from the response until it is closed server-side,
-    # or until it is closed client-side by the freeze-waiting future's callbacks.
+    # or until it is closed client-side by the pause-waiting future's callbacks.
     try:
         response = await context.session.get(
             url=resource.get_url(server=context.server, namespace=namespace, params=params),
@@ -242,14 +242,14 @@ async def watch_objs(
         await errors.check_response(response)
 
         response_close_callback = lambda _: response.close()
-        freeze_waiter.add_done_callback(response_close_callback)
+        operator_pause_waiter.add_done_callback(response_close_callback)
         try:
             async with response:
                 async for line in _iter_jsonlines(response.content):
                     raw_input = cast(bodies.RawInput, json.loads(line.decode("utf-8")))
                     yield raw_input
         finally:
-            freeze_waiter.remove_done_callback(response_close_callback)
+            operator_pause_waiter.remove_done_callback(response_close_callback)
 
     except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, asyncio.TimeoutError):
         pass

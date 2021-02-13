@@ -40,7 +40,6 @@ async def test_other_peering_objects_are_ignored(
     settings.peering.name = 'our-name'
     await process_peering_event(
         raw_event=event,
-        freeze_toggle=primitives.Toggle(),
         replenished=asyncio.Event(),
         autoclean=False,
         identity='id',
@@ -73,14 +72,14 @@ async def test_toggled_on_for_higher_priority_peer_when_initially_off(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    freeze_toggle = primitives.Toggle(False)
+    conflicts_found = primitives.Toggle(False)
     k8s_mocked.sleep_or_wait.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
-    assert freeze_toggle.is_off()
+    assert conflicts_found.is_off()
     await process_peering_event(
         raw_event=event,
-        freeze_toggle=freeze_toggle,
+        conflicts_found=conflicts_found,
         replenished=asyncio.Event(),
         autoclean=False,
         namespace=peering_namespace,
@@ -88,14 +87,14 @@ async def test_toggled_on_for_higher_priority_peer_when_initially_off(
         identity='id',
         settings=settings,
     )
-    assert freeze_toggle.is_on()
+    assert conflicts_found.is_on()
     assert k8s_mocked.sleep_or_wait.call_count == 1
     assert 9 < k8s_mocked.sleep_or_wait.call_args[0][0][0] < 10
     assert not k8s_mocked.patch_obj.called
-    assert_logs(["Freezing operations in favour of"], prohibited=[
+    assert_logs(["Pausing operations in favour of"], prohibited=[
         "Possibly conflicting operators",
-        "Freezing all operators, including self",
-        "Resuming operations after the freeze",
+        "Pausing all operators, including self",
+        "Resuming operations after the pause",
     ])
 
 
@@ -119,14 +118,14 @@ async def test_ignored_for_higher_priority_peer_when_already_on(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    freeze_toggle = primitives.Toggle(True)
+    conflicts_found = primitives.Toggle(True)
     k8s_mocked.sleep_or_wait.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
-    assert freeze_toggle.is_on()
+    assert conflicts_found.is_on()
     await process_peering_event(
         raw_event=event,
-        freeze_toggle=freeze_toggle,
+        conflicts_found=conflicts_found,
         replenished=asyncio.Event(),
         autoclean=False,
         namespace=peering_namespace,
@@ -134,15 +133,15 @@ async def test_ignored_for_higher_priority_peer_when_already_on(
         identity='id',
         settings=settings,
     )
-    assert freeze_toggle.is_on()
+    assert conflicts_found.is_on()
     assert k8s_mocked.sleep_or_wait.call_count == 1
     assert 9 < k8s_mocked.sleep_or_wait.call_args[0][0][0] < 10
     assert not k8s_mocked.patch_obj.called
     assert_logs([], prohibited=[
         "Possibly conflicting operators",
-        "Freezing all operators, including self",
-        "Freezing operations in favour of",
-        "Resuming operations after the freeze",
+        "Pausing all operators, including self",
+        "Pausing operations in favour of",
+        "Resuming operations after the pause",
     ])
 
 
@@ -166,14 +165,14 @@ async def test_toggled_off_for_lower_priority_peer_when_initially_on(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    freeze_toggle = primitives.Toggle(True)
+    conflicts_found = primitives.Toggle(True)
     k8s_mocked.sleep_or_wait.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
-    assert freeze_toggle.is_on()
+    assert conflicts_found.is_on()
     await process_peering_event(
         raw_event=event,
-        freeze_toggle=freeze_toggle,
+        conflicts_found=conflicts_found,
         replenished=asyncio.Event(),
         autoclean=False,
         namespace=peering_namespace,
@@ -181,14 +180,14 @@ async def test_toggled_off_for_lower_priority_peer_when_initially_on(
         identity='id',
         settings=settings,
     )
-    assert freeze_toggle.is_off()
+    assert conflicts_found.is_off()
     assert k8s_mocked.sleep_or_wait.call_count == 1
     assert k8s_mocked.sleep_or_wait.call_args[0][0] == []
     assert not k8s_mocked.patch_obj.called
-    assert_logs(["Resuming operations after the freeze"], prohibited=[
+    assert_logs(["Resuming operations after the pause"], prohibited=[
         "Possibly conflicting operators",
-        "Freezing all operators, including self",
-        "Freezing operations in favour of",
+        "Pausing all operators, including self",
+        "Pausing operations in favour of",
     ])
 
 
@@ -212,14 +211,14 @@ async def test_ignored_for_lower_priority_peer_when_already_off(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    freeze_toggle = primitives.Toggle(False)
+    conflicts_found = primitives.Toggle(False)
     k8s_mocked.sleep_or_wait.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
-    assert freeze_toggle.is_off()
+    assert conflicts_found.is_off()
     await process_peering_event(
         raw_event=event,
-        freeze_toggle=freeze_toggle,
+        conflicts_found=conflicts_found,
         replenished=asyncio.Event(),
         autoclean=False,
         namespace=peering_namespace,
@@ -227,15 +226,15 @@ async def test_ignored_for_lower_priority_peer_when_already_off(
         identity='id',
         settings=settings,
     )
-    assert freeze_toggle.is_off()
+    assert conflicts_found.is_off()
     assert k8s_mocked.sleep_or_wait.call_count == 1
     assert k8s_mocked.sleep_or_wait.call_args[0][0] == []
     assert not k8s_mocked.patch_obj.called
     assert_logs([], prohibited=[
         "Possibly conflicting operators",
-        "Freezing all operators, including self",
-        "Freezing operations in favour of",
-        "Resuming operations after the freeze",
+        "Pausing all operators, including self",
+        "Pausing operations in favour of",
+        "Resuming operations after the pause",
     ])
 
 
@@ -259,14 +258,14 @@ async def test_toggled_on_for_same_priority_peer_when_initially_off(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    freeze_toggle = primitives.Toggle(False)
+    conflicts_found = primitives.Toggle(False)
     k8s_mocked.sleep_or_wait.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
-    assert freeze_toggle.is_off()
+    assert conflicts_found.is_off()
     await process_peering_event(
         raw_event=event,
-        freeze_toggle=freeze_toggle,
+        conflicts_found=conflicts_found,
         replenished=asyncio.Event(),
         autoclean=False,
         namespace=peering_namespace,
@@ -274,16 +273,16 @@ async def test_toggled_on_for_same_priority_peer_when_initially_off(
         identity='id',
         settings=settings,
     )
-    assert freeze_toggle.is_on()
+    assert conflicts_found.is_on()
     assert k8s_mocked.sleep_or_wait.call_count == 1
     assert 9 < k8s_mocked.sleep_or_wait.call_args[0][0][0] < 10
     assert not k8s_mocked.patch_obj.called
     assert_logs([
         "Possibly conflicting operators",
-        "Freezing all operators, including self",
+        "Pausing all operators, including self",
     ], prohibited=[
-        "Freezing operations in favour of",
-        "Resuming operations after the freeze",
+        "Pausing operations in favour of",
+        "Resuming operations after the pause",
     ])
 
 
@@ -307,14 +306,14 @@ async def test_ignored_for_same_priority_peer_when_already_on(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    freeze_toggle = primitives.Toggle(True)
+    conflicts_found = primitives.Toggle(True)
     k8s_mocked.sleep_or_wait.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
-    assert freeze_toggle.is_on()
+    assert conflicts_found.is_on()
     await process_peering_event(
         raw_event=event,
-        freeze_toggle=freeze_toggle,
+        conflicts_found=conflicts_found,
         replenished=asyncio.Event(),
         autoclean=False,
         namespace=peering_namespace,
@@ -322,16 +321,16 @@ async def test_ignored_for_same_priority_peer_when_already_on(
         identity='id',
         settings=settings,
     )
-    assert freeze_toggle.is_on()
+    assert conflicts_found.is_on()
     assert k8s_mocked.sleep_or_wait.call_count == 1
     assert 9 < k8s_mocked.sleep_or_wait.call_args[0][0][0] < 10
     assert not k8s_mocked.patch_obj.called
     assert_logs([
         "Possibly conflicting operators",
     ], prohibited=[
-        "Freezing all operators, including self",
-        "Freezing operations in favour of",
-        "Resuming operations after the freeze",
+        "Pausing all operators, including self",
+        "Pausing operations in favour of",
+        "Resuming operations after the pause",
     ])
 
 
@@ -356,14 +355,14 @@ async def test_resumes_immediately_on_expiration_of_blocking_peers(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    freeze_toggle = primitives.Toggle(True)
+    conflicts_found = primitives.Toggle(True)
     k8s_mocked.sleep_or_wait.return_value = None  # as if finished sleeping uninterrupted
 
     caplog.set_level(0)
-    assert freeze_toggle.is_on()
+    assert conflicts_found.is_on()
     await process_peering_event(
         raw_event=event,
-        freeze_toggle=freeze_toggle,
+        conflicts_found=conflicts_found,
         replenished=asyncio.Event(),
         autoclean=False,
         namespace=peering_namespace,
@@ -371,7 +370,7 @@ async def test_resumes_immediately_on_expiration_of_blocking_peers(
         identity='id',
         settings=settings,
     )
-    assert freeze_toggle.is_on()
+    assert conflicts_found.is_on()
     assert k8s_mocked.sleep_or_wait.call_count == 1
     assert 9 < k8s_mocked.sleep_or_wait.call_args[0][0][0] < 10
     assert k8s_mocked.patch_obj.called

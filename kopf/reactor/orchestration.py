@@ -45,10 +45,10 @@ class EnsembleKey(NamedTuple):
 @dataclasses.dataclass
 class Ensemble:
 
-    # Multidimentional freeze: for every namespace, and a few for the whole cluster (for CRDs).
-    freeze_checker: primitives.ToggleSet
-    freeze_blocker: primitives.Toggle
-    freeze_toggles: Dict[EnsembleKey, primitives.Toggle] = dataclasses.field(default_factory=dict)
+    # Multidimentional pausing: for every namespace, and a few for the whole cluster (for CRDs).
+    operator_paused: primitives.ToggleSet
+    peering_missing: primitives.Toggle
+    conflicts_found: Dict[EnsembleKey, primitives.Toggle] = dataclasses.field(default_factory=dict)
 
     # Multidimensional tasks -- one for every combination of relevant dimensions.
     watcher_tasks: Dict[EnsembleKey, aiotasks.Task] = dataclasses.field(default_factory=dict)
@@ -59,15 +59,15 @@ class Ensemble:
         return (frozenset(self.watcher_tasks) |
                 frozenset(self.peering_tasks) |
                 frozenset(self.pinging_tasks) |
-                frozenset(self.freeze_toggles))
+                frozenset(self.conflicts_found))
 
     def get_tasks(self, keys: Container[EnsembleKey]) -> Collection[aiotasks.Task]:
         return {task
                 for tasks in [self.watcher_tasks, self.peering_tasks, self.pinging_tasks]
                 for key, task in tasks.items() if key in keys}
 
-    def get_toggles(self, keys: Container[EnsembleKey]) -> Collection[primitives.Toggle]:
-        return {toggle for key, toggle in self.freeze_toggles.items() if key in keys}
+    def get_flags(self, keys: Container[EnsembleKey]) -> Collection[primitives.Toggle]:
+        return {toggle for key, toggle in self.conflicts_found.items() if key in keys}
 
     def del_keys(self, keys: Container[EnsembleKey]) -> None:
         d: MutableMapping[EnsembleKey, Any]
@@ -75,7 +75,7 @@ class Ensemble:
             for key in set(d):
                 if key in keys:
                     del d[key]
-        for d in [self.freeze_toggles]:  # separated for easier type inferrence
+        for d in [self.conflicts_found]:  # separated for easier type inferrence
             for key in set(d):
                 if key in keys:
                     del d[key]
@@ -87,10 +87,10 @@ async def ochestrator(
         settings: configuration.OperatorSettings,
         identity: peering.Identity,
         insights: references.Insights,
-        freeze_checker: primitives.ToggleSet,
+        operator_paused: primitives.ToggleSet,
 ) -> None:
-    freeze_blocker = await freeze_checker.make_toggle(name='peering CRD is absent')
-    ensemble = Ensemble(freeze_blocker=freeze_blocker, freeze_checker=freeze_checker)
+    peering_missing = await operator_paused.make_toggle(name='peering CRD is missing')
+    ensemble = Ensemble(peering_missing=peering_missing, operator_paused=operator_paused)
     try:
         async with insights.revised:
             while True:
@@ -122,9 +122,9 @@ async def adjust_tasks(
     peering_resource = insights.backbone.get(peering_selector) if peering_selector else None
     peering_resources = {peering_resource} if peering_resource is not None else set()
 
-    # Freeze or resume all streams if the peering CRDs are absent but required.
-    # Ignore the CRD absence in auto-detection mode: freeze only when (and if) the CRDs are added.
-    await ensemble.freeze_blocker.turn_to(settings.peering.mandatory and not peering_resources)
+    # Pause or resume all streams if the peering CRDs are absent but required.
+    # Ignore the CRD absence in auto-detection mode: pause only when (and if) the CRDs are added.
+    await ensemble.peering_missing.turn_to(settings.peering.mandatory and not peering_resources)
 
     # Stop & start the tasks to match the task matrix with the cluster insights.
     # As a rule of thumb, stop the tasks first, start later -- not vice versa!
@@ -155,9 +155,9 @@ async def terminate_redundancies(
                       if key.namespace not in remaining_namespaces
                       or key.resource not in remaining_resources}
     redundant_tasks = ensemble.get_tasks(redundant_keys)
-    redundant_toggles = ensemble.get_toggles(redundant_keys)
+    redundant_flags = ensemble.get_flags(redundant_keys)
     await aiotasks.stop(redundant_tasks, title="streaming", logger=logger, interval=10, quiet=True)
-    await ensemble.freeze_checker.drop_toggles(redundant_toggles)
+    await ensemble.operator_paused.drop_toggles(redundant_flags)
     ensemble.del_keys(redundant_keys)
 
 
@@ -173,9 +173,9 @@ async def spawn_missing_peerings(
         dkey = EnsembleKey(resource=resource, namespace=namespace)
         if dkey not in ensemble.peering_tasks:
             what = f"{settings.peering.name}@{namespace}"
-            is_pre_frozen = settings.peering.mandatory
-            freeze_toggle = await ensemble.freeze_checker.make_toggle(is_pre_frozen, name=what)
-            ensemble.freeze_toggles[dkey] = freeze_toggle
+            is_preactivated = settings.peering.mandatory
+            conflicts_found = await ensemble.operator_paused.make_toggle(is_preactivated, name=what)
+            ensemble.conflicts_found[dkey] = conflicts_found
             ensemble.pinging_tasks[dkey] = aiotasks.create_guarded_task(
                 name=f"peering keep-alive for {what}", logger=logger, cancellable=True,
                 coro=peering.keepalive(
@@ -186,12 +186,11 @@ async def spawn_missing_peerings(
             ensemble.peering_tasks[dkey] = aiotasks.create_guarded_task(
                 name=f"peering observer for {what}", logger=logger, cancellable=True,
                 coro=queueing.watcher(
-                    freeze_checker=None,
                     settings=settings,
                     resource=resource,
                     namespace=namespace,
                     processor=functools.partial(peering.process_peering_event,
-                                                freeze_toggle=freeze_toggle,
+                                                conflicts_found=conflicts_found,
                                                 namespace=namespace,
                                                 resource=resource,
                                                 settings=settings,
@@ -217,7 +216,7 @@ async def spawn_missing_watchers(
             ensemble.watcher_tasks[dkey] = aiotasks.create_guarded_task(
                 name=f"watcher for {what}", logger=logger, cancellable=True,
                 coro=queueing.watcher(
-                    freeze_checker=ensemble.freeze_checker,
+                    operator_paused=ensemble.operator_paused,
                     settings=settings,
                     resource=resource,
                     namespace=namespace,

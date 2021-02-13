@@ -165,7 +165,7 @@ async def spawn_tasks(
                       FutureWarning)
         clusterwide = True
 
-    # The freezer and the registry are scoped to this whole task-set, to sync them all.
+    # All tasks of the operator are synced via these primitives and structures:
     lifecycle = lifecycle if lifecycle is not None else lifecycles.get_default_lifecycle()
     registry = registry if registry is not None else registries.get_default_registry()
     settings = settings if settings is not None else configuration.OperatorSettings()
@@ -177,7 +177,7 @@ async def spawn_tasks(
     event_queue: posting.K8sEventQueue = asyncio.Queue()
     signal_flag: aiotasks.Future = asyncio.Future()
     started_flag: asyncio.Event = asyncio.Event()
-    freeze_checker = primitives.ToggleSet()
+    operator_paused = primitives.ToggleSet()
     tasks: MutableSequence[aiotasks.Task] = []
 
     # Map kwargs into the settings object.
@@ -225,7 +225,7 @@ async def spawn_tasks(
         coro=daemons.daemon_killer(
             settings=settings,
             memories=memories,
-            freeze_checker=freeze_checker)))
+            operator_paused=operator_paused)))
 
     # Keeping the credentials fresh and valid via the authentication handlers on demand.
     tasks.append(aiotasks.create_guarded_task(
@@ -283,7 +283,7 @@ async def spawn_tasks(
                 settings=settings,
                 insights=insights,
                 identity=identity,
-                freeze_checker=freeze_checker,
+                operator_paused=operator_paused,
                 processor=functools.partial(processing.process_resource_event,
                                             lifecycle=lifecycle,
                                             registry=registry,

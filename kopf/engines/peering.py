@@ -94,17 +94,14 @@ async def process_peering_event(
         settings: configuration.OperatorSettings,
         autoclean: bool = True,
         replenished: asyncio.Event,
-        freeze_toggle: primitives.Toggle,
+        conflicts_found: Optional[primitives.Toggle] = None,  # None for tests & observation
 ) -> None:
     """
     Handle a single update of the peers by us or by other operators.
 
-    When an operator with a higher priority appears, switch to the freeze-mode.
-    The these operators disappear or become presumably dead, resume the event handling.
-
-    The freeze object is passed both to the peers handler to set/clear it,
-    and to all the resource handlers to check its value when the events arrive
-    (see :func:`spawn_tasks`).
+    When an operator with a higher priority appears, pause this operator.
+    When conflicting operators disappear or become presumably dead,
+    resume the event handling in the current operator (un-pause it).
     """
     body: bodies.RawBody = raw_event['object']
     meta: bodies.RawMeta = raw_event['object']['metadata']
@@ -124,19 +121,21 @@ async def process_peering_event(
     if autoclean and dead_peers:
         await clean(peers=dead_peers, settings=settings, resource=resource, namespace=namespace)
 
-    if prio_peers:
-        if freeze_toggle.is_off():
-            logger.info(f"Freezing operations in favour of {prio_peers}.")
-            await freeze_toggle.turn_to(True)
+    if conflicts_found is None:
+        pass
+    elif prio_peers:
+        if conflicts_found.is_off():
+            logger.info(f"Pausing operations in favour of {prio_peers}.")
+            await conflicts_found.turn_to(True)
     elif same_peers:
         logger.warning(f"Possibly conflicting operators with the same priority: {same_peers}.")
-        if freeze_toggle.is_off():
-            logger.warning(f"Freezing all operators, including self: {peers}")
-            await freeze_toggle.turn_to(True)
+        if conflicts_found.is_off():
+            logger.warning(f"Pausing all operators, including self: {peers}")
+            await conflicts_found.turn_to(True)
     else:
-        if freeze_toggle.is_on():
-            logger.info(f"Resuming operations after the freeze. Conflicting operators with the same priority are gone.")
-            await freeze_toggle.turn_to(False)
+        if conflicts_found.is_on():
+            logger.info(f"Resuming operations after the pause. Conflicting operators with the same priority are gone.")
+            await conflicts_found.turn_to(False)
 
     # Either wait for external updates (and exit when they arrive), or until the blocking peers
     # are expected to expire, and force the immediate re-evaluation by a certain change of self.

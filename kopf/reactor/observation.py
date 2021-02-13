@@ -67,7 +67,6 @@ async def namespace_observer(
     if not settings.scanning.disabled and not clusterwide:
         try:
             await queueing.watcher(
-                freeze_checker=None,
                 settings=settings,
                 resource=resource,
                 namespace=None,
@@ -116,7 +115,6 @@ async def resource_observer(
     if not settings.scanning.disabled:
         try:
             await queueing.watcher(
-                freeze_checker=None,
                 settings=settings,
                 resource=resource,
                 namespace=None,

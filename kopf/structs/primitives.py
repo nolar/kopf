@@ -91,7 +91,7 @@ class Toggle:
     But these events cannot be awaited until cleared.
 
     The bi-directional toggles are needed in some places in the code, such as
-    in the population/depletion of a `Vault`, or as an operator's freeze-mode.
+    in the population/depletion of a `Vault`, or as in the operator's pause.
 
     The optional name is used only for hinting in reprs. It can be used when
     there are many toggles, and they need to be distinguished somehow.
@@ -153,7 +153,7 @@ class ToggleSet(Collection[Toggle]):
 
     The multi-toggle is used mostly in peering, where every individual peering
     identified by name and namespace has its own individual toggle to manage,
-    but the whole set of toggles of all names & namespaces is used for freezing
+    but the whole set of toggles of all names & namespaces is used for pausing
     the operators as one single logical toggle.
 
     Note: the set can only contain toggles that were produced by the set;

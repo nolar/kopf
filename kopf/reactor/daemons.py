@@ -211,7 +211,7 @@ async def daemon_killer(
         *,
         settings: configuration.OperatorSettings,
         memories: containers.ResourceMemories,
-        freeze_checker: primitives.ToggleSet,
+        operator_paused: primitives.ToggleSet,
 ) -> None:
     """
     An operator's root task to kill the daemons on the operator's demand.
@@ -230,7 +230,7 @@ async def daemon_killer(
         There are never 2 instances of the same daemon running in parallel.
 
         In normal cases (enough time is given to stop), this is usually done
-        by the post-freeze re-listing event. In rare cases when the unfreeze
+        by the post-pause re-listing event. In rare cases when the re-pausing
         happens faster than the daemon is stopped (highly unlikely to happen),
         that event can be missed because the daemon is being stopped yet,
         so the respawn can happen with a significant delay.
@@ -244,8 +244,8 @@ async def daemon_killer(
     try:
         while True:
 
-            # Stay here while the operator is running normally, until it is frozen.
-            await freeze_checker.wait_for(True)
+            # Stay here while the operator is running normally, until it is paused.
+            await operator_paused.wait_for(True)
 
             # The stopping tasks are "fire-and-forget" -- we do not get (or care of) the result.
             # The daemons remain resumable, since they exit not on their own accord.
@@ -256,9 +256,9 @@ async def daemon_killer(
                         daemon=daemon,
                         reason=primitives.DaemonStoppingReason.OPERATOR_PAUSING))
 
-            # Stay here while the operator is frozen, until it is resumed.
+            # Stay here while the operator is paused, until it is resumed.
             # The fresh stream of watch-events will spawn new daemons naturally.
-            await freeze_checker.wait_for(False)
+            await operator_paused.wait_for(False)
 
     # Terminate all running daemons when the operator exits (and this task is cancelled).
     finally:
@@ -378,7 +378,7 @@ async def _runner(
     finally:
 
         # Prevent future re-spawns for those exited on their own, for no reason.
-        # Only the filter-mismatching or peering-frozen daemons can be re-spawned.
+        # Only the filter-mismatching or peering-pausing daemons can be re-spawned.
         if stopper.reason == primitives.DaemonStoppingReason.NONE:
             memory.forever_stopped.add(handler.id)
 
