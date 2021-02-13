@@ -93,7 +93,7 @@ async def process_peering_event(
         identity: Identity,
         settings: configuration.OperatorSettings,
         autoclean: bool = True,
-        replenished: asyncio.Event,
+        replenished: Optional[asyncio.Event] = None,  # None for tests
         conflicts_found: Optional[primitives.Toggle] = None,  # None for tests & observation
 ) -> None:
     """

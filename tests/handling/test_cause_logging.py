@@ -28,7 +28,6 @@ async def test_all_logs_are_prefixed(registry, settings, resource, handlers,
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 
@@ -59,7 +58,6 @@ async def test_diffs_logged_if_present(registry, settings, resource, handlers,
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
     assert_logs([
@@ -90,7 +88,6 @@ async def test_diffs_not_logged_if_absent(registry, settings, resource, handlers
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
     assert_logs([
@@ -134,7 +131,6 @@ async def test_supersession_is_logged(
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': body},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
     assert_logs([

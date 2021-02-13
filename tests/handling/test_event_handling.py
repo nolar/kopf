@@ -25,7 +25,6 @@ async def test_handlers_called_always(
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': 'ev-type', 'object': {'field': 'value'}},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 
@@ -61,7 +60,6 @@ async def test_errors_are_ignored(
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': 'ev-type', 'object': {}},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 

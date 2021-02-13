@@ -41,7 +41,6 @@ async def test_delayed_handlers_progress(
             memories=ResourceMemories(),
             memobase=Memo(),
             raw_event={'type': event_type, 'object': {}},
-            replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
 
@@ -98,7 +97,6 @@ async def test_delayed_handlers_sleep(
             memories=ResourceMemories(),
             memobase=Memo(),
             raw_event={'type': event_type, 'object': event_body},
-            replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
 
