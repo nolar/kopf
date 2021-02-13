@@ -1,4 +1,3 @@
-import asyncio
 import dataclasses
 from unittest.mock import Mock
 
@@ -40,7 +39,6 @@ async def test_other_peering_objects_are_ignored(
     settings.peering.name = 'our-name'
     await process_peering_event(
         raw_event=event,
-        replenished=asyncio.Event(),
         autoclean=False,
         identity='id',
         settings=settings,
@@ -80,7 +78,6 @@ async def test_toggled_on_for_higher_priority_peer_when_initially_off(
     await process_peering_event(
         raw_event=event,
         conflicts_found=conflicts_found,
-        replenished=asyncio.Event(),
         autoclean=False,
         namespace=peering_namespace,
         resource=peering_resource,
@@ -126,7 +123,6 @@ async def test_ignored_for_higher_priority_peer_when_already_on(
     await process_peering_event(
         raw_event=event,
         conflicts_found=conflicts_found,
-        replenished=asyncio.Event(),
         autoclean=False,
         namespace=peering_namespace,
         resource=peering_resource,
@@ -173,7 +169,6 @@ async def test_toggled_off_for_lower_priority_peer_when_initially_on(
     await process_peering_event(
         raw_event=event,
         conflicts_found=conflicts_found,
-        replenished=asyncio.Event(),
         autoclean=False,
         namespace=peering_namespace,
         resource=peering_resource,
@@ -219,7 +214,6 @@ async def test_ignored_for_lower_priority_peer_when_already_off(
     await process_peering_event(
         raw_event=event,
         conflicts_found=conflicts_found,
-        replenished=asyncio.Event(),
         autoclean=False,
         namespace=peering_namespace,
         resource=peering_resource,
@@ -266,7 +260,6 @@ async def test_toggled_on_for_same_priority_peer_when_initially_off(
     await process_peering_event(
         raw_event=event,
         conflicts_found=conflicts_found,
-        replenished=asyncio.Event(),
         autoclean=False,
         namespace=peering_namespace,
         resource=peering_resource,
@@ -314,7 +307,6 @@ async def test_ignored_for_same_priority_peer_when_already_on(
     await process_peering_event(
         raw_event=event,
         conflicts_found=conflicts_found,
-        replenished=asyncio.Event(),
         autoclean=False,
         namespace=peering_namespace,
         resource=peering_resource,
@@ -363,7 +355,6 @@ async def test_resumes_immediately_on_expiration_of_blocking_peers(
     await process_peering_event(
         raw_event=event,
         conflicts_found=conflicts_found,
-        replenished=asyncio.Event(),
         autoclean=False,
         namespace=peering_namespace,
         resource=peering_resource,

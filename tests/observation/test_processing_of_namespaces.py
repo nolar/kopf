@@ -15,7 +15,7 @@ async def test_initial_listing_is_ignored():
     async def delayed_injection(delay: float):
         await asyncio.sleep(delay)
         await process_discovered_namespace_event(
-            insights=insights, raw_event=e1, namespaces=['ns*'], replenished=asyncio.Event())
+            insights=insights, raw_event=e1, namespaces=['ns*'])
 
     task = asyncio.create_task(delayed_injection(0))
     with pytest.raises(asyncio.TimeoutError):
@@ -35,7 +35,7 @@ async def test_followups_for_addition(timer, etype):
     async def delayed_injection(delay: float):
         await asyncio.sleep(delay)
         await process_discovered_namespace_event(
-            insights=insights, raw_event=e1, namespaces=['ns*'], replenished=asyncio.Event())
+            insights=insights, raw_event=e1, namespaces=['ns*'])
 
     task = asyncio.create_task(delayed_injection(0.1))
     async with timer, async_timeout.timeout(1):
@@ -55,7 +55,7 @@ async def test_followups_for_deletion(timer, etype):
     async def delayed_injection(delay: float):
         await asyncio.sleep(delay)
         await process_discovered_namespace_event(
-            insights=insights, raw_event=e1, namespaces=['ns*'], replenished=asyncio.Event())
+            insights=insights, raw_event=e1, namespaces=['ns*'])
 
     task = asyncio.create_task(delayed_injection(0.1))
     async with timer, async_timeout.timeout(1):

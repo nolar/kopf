@@ -40,7 +40,6 @@ async def test_skipped_with_no_handlers(
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 
@@ -96,7 +95,6 @@ async def test_stealth_mode_with_mismatching_handlers(
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 

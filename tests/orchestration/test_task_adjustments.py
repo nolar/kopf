@@ -1,5 +1,6 @@
 import asyncio
 import dataclasses
+from typing import Optional
 from unittest.mock import Mock
 
 import pytest
@@ -11,7 +12,7 @@ from kopf.structs.references import Insights, Resource
 from kopf.utilities import aiotasks
 
 
-async def processor(*, raw_event: bodies.RawEvent, replenished: asyncio.Event) -> None:
+async def processor(*, raw_event: bodies.RawEvent, stream_pressure: Optional[asyncio.Event]) -> None:
     pass
 
 

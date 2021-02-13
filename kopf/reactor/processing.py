@@ -32,8 +32,8 @@ async def process_resource_event(
         memobase: memos.AnyMemo,
         resource: references.Resource,
         raw_event: bodies.RawEvent,
-        replenished: asyncio.Event,
         event_queue: posting.K8sEventQueue,
+        stream_pressure: Optional[asyncio.Event] = None,  # None for tests
 ) -> None:
     """
     Handle a single custom object low-level watch-event.
@@ -67,7 +67,7 @@ async def process_resource_event(
         throttler=memory.error_throttler,
         logger=loggers.LocalObjectLogger(body=body, settings=settings),
         delays=settings.batching.error_delays,
-        wakeup=replenished,
+        wakeup=stream_pressure,
     ) as should_run:
         if should_run:
 
@@ -100,7 +100,7 @@ async def process_resource_event(
                     patch=patch,
                     logger=logger,
                     delays=delays,
-                    replenished=replenished,
+                    stream_pressure=stream_pressure,
                 )
                 if applied and matched:
                     logger.debug(f"Handling cycle is finished, waiting for new changes since now.")
