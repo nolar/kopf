@@ -143,17 +143,15 @@ async def process_peering_event(
     # This incurs an extra PATCH request besides usual keepalives, but in the complete silence
     # from other peers that existed a moment earlier, this should not be a problem.
     now = datetime.datetime.utcnow()
-    delay = max([0] + [(peer.deadline - now).total_seconds() for peer in same_peers + prio_peers])
-    if delay:
-        try:
-            await asyncio.wait_for(replenished.wait(), timeout=delay)
-        except asyncio.TimeoutError:
-            await touch(
-                identity=identity,
-                settings=settings,
-                resource=resource,
-                namespace=namespace,
-            )
+    delays = [(peer.deadline - now).total_seconds() for peer in same_peers + prio_peers]
+    unslept = await primitives.sleep_or_wait(delays, wakeup=replenished)
+    if unslept is None and delays:
+        await touch(
+            identity=identity,
+            settings=settings,
+            resource=resource,
+            namespace=namespace,
+        )
 
 
 async def keepalive(

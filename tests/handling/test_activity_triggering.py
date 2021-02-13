@@ -164,7 +164,7 @@ async def test_delays_are_simulated(settings, activity, mocker):
         async def sleep_or_wait_substitute(*_, **__):
             frozen.tick(123)
 
-        sleep_or_wait = mocker.patch('kopf.reactor.effects.sleep_or_wait',
+        sleep_or_wait = mocker.patch('kopf.structs.primitives.sleep_or_wait',
                                      wraps=sleep_or_wait_substitute)
 
         with pytest.raises(ActivityError) as e:
