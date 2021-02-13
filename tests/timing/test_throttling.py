@@ -33,6 +33,7 @@ async def test_remains_inactive_on_success():
     pytest.param(Exception, dict(errors=ValueError), id='child'),
     pytest.param(RuntimeError, dict(errors=ValueError), id='sibling'),
     pytest.param(RuntimeError, dict(errors=(ValueError, TypeError)), id='tuple'),
+    pytest.param(asyncio.CancelledError, dict(), id='cancelled'),
 ])
 async def test_escalates_unexpected_errors(exc_cls, kwargs):
     logger = logging.getLogger()
