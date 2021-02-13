@@ -49,7 +49,7 @@ async def apply(
         patch: patches.Patch,
         delays: Collection[float],
         logger: loggers.ObjectLogger,
-        replenished: Optional[asyncio.Event] = None,  # None for tests
+        stream_pressure: Optional[asyncio.Event] = None,  # None for tests
 ) -> bool:
     delay = min(delays) if delays else None
 
@@ -70,10 +70,10 @@ async def apply(
         if delay > WAITING_KEEPALIVE_INTERVAL:
             limit = WAITING_KEEPALIVE_INTERVAL
             logger.debug(f"Sleeping for {delay} (capped {limit}) seconds for the delayed handlers.")
-            unslept_delay = await primitives.sleep_or_wait(limit, replenished)
+            unslept_delay = await primitives.sleep_or_wait(limit, wakeup=stream_pressure)
         elif delay > 0:
             logger.debug(f"Sleeping for {delay} seconds for the delayed handlers.")
-            unslept_delay = await primitives.sleep_or_wait(delay, replenished)
+            unslept_delay = await primitives.sleep_or_wait(delay, wakeup=stream_pressure)
         else:
             unslept_delay = None  # no need to sleep? means: slept in full.
 

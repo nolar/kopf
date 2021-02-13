@@ -49,7 +49,7 @@ class WatchStreamProcessor(Protocol):
             self,
             *,
             raw_event: bodies.RawEvent,
-            replenished: Optional[asyncio.Event] = None,  # None for tests
+            stream_pressure: Optional[asyncio.Event] = None,  # None for tests
     ) -> None: ...
 
 
@@ -67,8 +67,8 @@ else:
 
 class Stream(NamedTuple):
     """ A single object's stream of watch-events, with some extra helpers. """
-    watchevents: WatchEventQueue
-    replenished: asyncio.Event  # means: "hurry up, there are new events queued again"
+    backlog: WatchEventQueue
+    pressure: asyncio.Event  # means: "hurry up, there are new events queued again"
 
 
 ObjectUid = NewType('ObjectUid', str)
@@ -177,12 +177,12 @@ async def watcher(
         async for raw_event in stream:
             key: ObjectRef = (resource, get_uid(raw_event))
             try:
-                streams[key].replenished.set()  # interrupt current sleeps, if any.
-                await streams[key].watchevents.put(raw_event)
+                streams[key].pressure.set()  # interrupt current sleeps, if any.
+                await streams[key].backlog.put(raw_event)
             except KeyError:
-                streams[key] = Stream(watchevents=asyncio.Queue(), replenished=asyncio.Event())
-                streams[key].replenished.set()  # interrupt current sleeps, if any.
-                await streams[key].watchevents.put(raw_event)
+                streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
+                streams[key].pressure.set()  # interrupt current sleeps, if any.
+                await streams[key].backlog.put(raw_event)
                 await scheduler.spawn(worker(
                     signaller=signaller,
                     processor=processor,
@@ -240,8 +240,8 @@ async def worker(
     reasonable, but small enough time (few seconds) before actually finishing --
     in case the new events are there, but the API or the watcher task lags a bit.
     """
-    watchevents = streams[key].watchevents
-    replenished = streams[key].replenished
+    backlog = streams[key].backlog
+    pressure = streams[key].pressure
     shouldstop = False
     try:
         while not shouldstop:
@@ -252,7 +252,7 @@ async def worker(
             # If an EOS marker is received, handle the last real event, then finish the worker ASAP.
             try:
                 raw_event = await asyncio.wait_for(
-                    watchevents.get(),
+                    backlog.get(),
                     timeout=settings.batching.idle_timeout)
             except asyncio.TimeoutError:
                 break
@@ -261,7 +261,7 @@ async def worker(
                     while True:
                         prev_event = raw_event
                         next_event = await asyncio.wait_for(
-                            watchevents.get(),
+                            backlog.get(),
                             timeout=settings.batching.batch_window)
                         shouldstop = shouldstop or isinstance(next_event, EOS)
                         raw_event = prev_event if isinstance(next_event, EOS) else next_event
@@ -273,8 +273,8 @@ async def worker(
                 break
 
             # Try the processor. In case of errors, show the error, but continue the processing.
-            replenished.clear()
-            await processor(raw_event=raw_event, replenished=replenished)
+            pressure.clear()
+            await processor(raw_event=raw_event, stream_pressure=pressure)
 
     except Exception:
         # Log the error for every worker: there can be several of them failing at the same time,
@@ -307,7 +307,7 @@ async def _wait_for_depletion(
 
     # Notify all the workers to finish now. Wake them up if they are waiting in the queue-getting.
     for stream in streams.values():
-        await stream.watchevents.put(EOS.token)
+        await stream.backlog.put(EOS.token)
 
     # Wait for the queues to be depleted, but only if there are some workers running.
     # Continue with the tasks termination if the timeout is reached, no matter the queues.
