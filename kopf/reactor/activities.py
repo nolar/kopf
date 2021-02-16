@@ -22,7 +22,7 @@ from typing import Mapping, MutableMapping, NoReturn
 from kopf.reactor import causation, handling, lifecycles, registries
 from kopf.storage import states
 from kopf.structs import callbacks, configuration, credentials, \
-                         handlers as handlers_, memos, primitives
+                         ephemera, handlers as handlers_, primitives
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ async def authenticator(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         vault: credentials.Vault,
-        memo: memos.AnyMemo,
+        memo: ephemera.AnyMemo,
 ) -> NoReturn:
     """ Keep the credentials forever up to date. """
     counter: int = 1 if vault else 0
@@ -65,7 +65,7 @@ async def authenticate(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         vault: credentials.Vault,
-        memo: memos.AnyMemo,
+        memo: ephemera.AnyMemo,
         _activity_title: str = "Authentication",
 ) -> None:
     """ Retrieve the credentials once, successfully or not, and exit. """
@@ -100,7 +100,7 @@ async def run_activity(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         activity: handlers_.Activity,
-        memo: memos.AnyMemo,
+        memo: ephemera.AnyMemo,
 ) -> Mapping[handlers_.HandlerId, callbacks.Result]:
     logger = logging.getLogger(f'kopf.activities.{activity.value}')
 

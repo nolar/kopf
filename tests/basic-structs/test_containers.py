@@ -2,7 +2,7 @@ from unittest.mock import Mock
 
 from kopf.structs.bodies import Body
 from kopf.structs.containers import ResourceMemories, ResourceMemory
-from kopf.structs.memos import Memo
+from kopf.structs.ephemera import Memo
 
 BODY: Body = {
     'metadata': {

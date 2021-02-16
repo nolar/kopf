@@ -11,7 +11,7 @@ from kopf.engines import peering, posting, probing
 from kopf.reactor import activities, daemons, lifecycles, observation, \
                          orchestration, processing, registries
 from kopf.structs import configuration, containers, credentials, \
-                         handlers, memos, primitives, references
+                         ephemera, handlers, primitives, references
 from kopf.utilities import aiotasks
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ def run(
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
-        memo: Optional[memos.AnyMemo] = None,
+        memo: Optional[ephemera.AnyMemo] = None,
         _command: Optional[Coroutine[None, None, None]] = None,
 ) -> None:
     """
@@ -88,7 +88,7 @@ async def operator(
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
-        memo: Optional[memos.AnyMemo] = None,
+        memo: Optional[ephemera.AnyMemo] = None,
         _command: Optional[Coroutine[None, None, None]] = None,
 ) -> None:
     """
@@ -141,7 +141,7 @@ async def spawn_tasks(
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
-        memo: Optional[memos.AnyMemo] = None,
+        memo: Optional[ephemera.AnyMemo] = None,
         _command: Optional[Coroutine[None, None, None]] = None,
 ) -> Collection[aiotasks.Task]:
     """
@@ -173,7 +173,7 @@ async def spawn_tasks(
     insights = insights if insights is not None else references.Insights()
     identity = identity if identity is not None else peering.detect_own_id(manual=False)
     vault = vault if vault is not None else credentials.Vault()
-    memo = memo if memo is not None else memos.Memo()
+    memo = memo if memo is not None else ephemera.Memo()
     event_queue: posting.K8sEventQueue = asyncio.Queue()
     signal_flag: aiotasks.Future = asyncio.Future()
     started_flag: asyncio.Event = asyncio.Event()
@@ -434,7 +434,7 @@ async def _startup_cleanup_activities(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         vault: credentials.Vault,
-        memo: memos.AnyMemo,
+        memo: ephemera.AnyMemo,
 ) -> None:
     """
     Startup and cleanup activities.

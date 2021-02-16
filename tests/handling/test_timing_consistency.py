@@ -6,7 +6,7 @@ import freezegun
 import kopf
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
-from kopf.structs.memos import Memo
+from kopf.structs.ephemera import Memo
 
 
 async def test_consistent_awakening(registry, settings, resource, k8s_mocked, mocker):

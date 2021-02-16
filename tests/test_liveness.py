@@ -5,8 +5,8 @@ import pytest
 
 from kopf.engines.probing import health_reporter
 from kopf.reactor.registries import OperatorRegistry
+from kopf.structs.ephemera import Memo
 from kopf.structs.handlers import Activity, ActivityHandler
-from kopf.structs.memos import Memo
 
 
 @pytest.fixture()

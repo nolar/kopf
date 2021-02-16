@@ -10,7 +10,7 @@ from kopf.reactor.daemons import daemon_killer
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.bodies import RawBody
 from kopf.structs.containers import ResourceMemories
-from kopf.structs.memos import Memo
+from kopf.structs.ephemera import Memo
 from kopf.structs.primitives import ToggleSet
 
 

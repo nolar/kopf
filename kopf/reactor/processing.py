@@ -20,8 +20,8 @@ from typing import Collection, Optional, Tuple
 from kopf.engines import loggers, posting
 from kopf.reactor import causation, daemons, effects, handling, lifecycles, registries
 from kopf.storage import finalizers, states
-from kopf.structs import bodies, configuration, containers, diffs, \
-                         handlers as handlers_, memos, patches, references
+from kopf.structs import bodies, configuration, containers, diffs, ephemera, \
+                         handlers as handlers_, patches, references
 
 
 async def process_resource_event(
@@ -29,7 +29,7 @@ async def process_resource_event(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         memories: containers.ResourceMemories,
-        memobase: memos.AnyMemo,
+        memobase: ephemera.AnyMemo,
         resource: references.Resource,
         raw_event: bodies.RawEvent,
         event_queue: posting.K8sEventQueue,

@@ -103,6 +103,9 @@ from kopf.structs.diffs import (
     DiffItem,
     DiffOperation,
 )
+from kopf.structs.ephemera import (
+    Memo,
+)
 from kopf.structs.filters import (
     ABSENT,
     PRESENT,
@@ -111,9 +114,6 @@ from kopf.structs.handlers import (
     HandlerId,
     ErrorsMode,
     Reason,
-)
-from kopf.structs.memos import (
-    Memo,
 )
 from kopf.structs.patches import (
     Patch,
