@@ -13,6 +13,7 @@ import logging
 import time
 from typing import Dict, Iterator, MutableMapping, Optional, Set, Union
 
+from kopf.storage import states
 from kopf.structs import bodies, ephemera, handlers, primitives
 from kopf.utilities import aiotasks
 
@@ -52,6 +53,9 @@ class ResourceMemory:
     idle_reset_time: float = dataclasses.field(default_factory=time.monotonic)
     forever_stopped: Set[handlers.HandlerId] = dataclasses.field(default_factory=set)
     running_daemons: Dict[handlers.HandlerId, Daemon] = dataclasses.field(default_factory=dict)
+
+    # For indexing errors backoffs/retries/timeouts. It is None when successfully indexed.
+    indexing_state: Optional[states.State] = None
 
 
 class ResourceMemories:

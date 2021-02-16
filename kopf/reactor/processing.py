@@ -85,7 +85,7 @@ async def process_resource_event(
                 resource=resource,
                 raw_event=raw_event,
                 body=body,
-                memo=memory.memo,
+                memory=memory,
                 logger=loggers.TerseObjectLogger(body=body, settings=settings),
             )
 

@@ -5,7 +5,7 @@ from typing import Any, Dict, Generic, Iterable, Iterator, \
 
 from kopf.reactor import causation, handling, lifecycles, registries
 from kopf.storage import states
-from kopf.structs import bodies, configuration, ephemera, handlers, patches, references
+from kopf.structs import bodies, configuration, containers, ephemera, handlers, patches, references
 
 Key = Tuple[references.Namespace, Optional[str], Optional[str]]
 _K = TypeVar('_K')
@@ -276,9 +276,9 @@ async def index_resource(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         raw_event: bodies.RawEvent,
+        memory: containers.ResourceMemory,
         logger: Union[logging.Logger, logging.LoggerAdapter],
         body: bodies.Body,
-        memo: ephemera.AnyMemo,
 ) -> None:
     """
     Populate the indices from the received event. Log but ignore all errors.
@@ -303,15 +303,24 @@ async def index_resource(
             logger=logger,
             patch=patches.Patch(),  # NB: not applied. TODO: get rid of it!
             body=body,
-            memo=memo,
+            memo=memory.memo,
         )
+
+        # Note: the indexing state contains only failures & retries. Successes will be re-executed.
         indexing_handlers = registry._resource_indexing.get_handlers(cause=cause)
+        state = memory.indexing_state
+        state = state if state is not None else states.State.from_scratch()
+        state = state.with_handlers(indexing_handlers)
         outcomes = await handling.execute_handlers_once(
             lifecycle=lifecycles.all_at_once,
             settings=settings,
             handlers=indexing_handlers,
             cause=cause,
-            state=states.State.from_scratch().with_handlers(indexing_handlers),
+            state=state,
             default_errors=handlers.ErrorsMode.IGNORED,
         )
         indexers.replace(body=body, outcomes=outcomes)
+
+        # Remember only failures & retries. Omit successes -- let them be re-executed every time.
+        state = state.with_outcomes(outcomes).without_successes()
+        memory.indexing_state = state if state else None

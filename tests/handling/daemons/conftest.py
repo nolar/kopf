@@ -40,11 +40,6 @@ def dummy():
 
 
 @pytest.fixture()
-def memories():
-    return ResourceMemories()
-
-
-@pytest.fixture()
 def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
     """
     Simulate K8s behaviour locally in memory (some meaningful approximation).
