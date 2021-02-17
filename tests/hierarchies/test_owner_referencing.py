@@ -1,5 +1,5 @@
 import copy
-from unittest.mock import Mock, call
+from unittest.mock import call
 
 import pytest
 

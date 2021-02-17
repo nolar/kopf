@@ -4,8 +4,6 @@ import subprocess
 import time
 from typing import Any, Optional, Sequence
 
-import pytest
-
 from kopf.testing import KopfRunner
 
 
