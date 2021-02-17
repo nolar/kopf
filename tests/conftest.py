@@ -592,7 +592,9 @@ def assert_logs(caplog):
     The listed message patterns MUST be present, in the order specified.
     Some other log messages can also be present, but they are ignored.
     """
-    def assert_logs_fn(patterns, prohibited=[], strict=False):
+    def assert_logs_fn(patterns, prohibited=None, strict=False):
+        if prohibited is None:
+            prohibited = []
         __traceback_hide__ = True
         remaining_patterns = list(patterns)
         for message in caplog.messages:

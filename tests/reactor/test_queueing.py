@@ -201,7 +201,7 @@ async def test_garbage_collection_of_streams(settings, stream, events, unique, w
     # Weakly remember the stream's content to make sure it is gc'ed later.
     # Note: namedtuples are not referable due to __slots__/__weakref__ issues.
     refs = [weakref.ref(val) for wstream in streams.values() for val in wstream]
-    assert all([ref() is not None for ref in refs])
+    assert all(ref() is not None for ref in refs)
 
     # Give the workers some time to finish waiting for the events.
     # After the idle timeout is reached, they will exit and gc their streams.
@@ -222,7 +222,7 @@ async def test_garbage_collection_of_streams(settings, stream, events, unique, w
     await asyncio.sleep(0.1)
 
     # Truly garbage-collected? Memory freed?
-    assert all([ref() is None for ref in refs])
+    assert all(ref() is None for ref in refs)
 
 
 # TODO: also add tests for the depletion of the workers pools on cancellation (+timing)
