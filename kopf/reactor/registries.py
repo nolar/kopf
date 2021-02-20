@@ -15,8 +15,8 @@ import abc
 import enum
 import functools
 from types import FunctionType, MethodType
-from typing import Any, Callable, Collection, Container, Generic, Iterable, Iterator, \
-                   List, Mapping, MutableMapping, Optional, Sequence, Set, TypeVar, cast
+from typing import Any, Callable, Collection, Container, Generic, Iterable, Iterator, List, \
+                   Mapping, MutableMapping, Optional, Sequence, Set, Tuple, TypeVar, cast
 
 from kopf.reactor import causation, invocation
 from kopf.structs import callbacks, dicts, filters, handlers, references
@@ -303,7 +303,7 @@ def get_callable_id(c: Callable[..., Any]) -> str:
 
 
 def _deduplicated(
-        handlers: Iterable[HandlerT],
+        src: Iterable[HandlerT],
 ) -> Iterator[HandlerT]:
     """
     Yield the handlers deduplicated.
@@ -325,12 +325,13 @@ def _deduplicated(
     handled) **AND** it is detected as per-existing before operator start.
     But `fn()` should be called only once for this cause.
     """
-    seen_ids: Set[int] = set()
-    for handler in handlers:
-        if id(handler.fn) in seen_ids:
+    seen_ids: Set[Tuple[int, handlers.HandlerId]] = set()
+    for handler in src:
+        key = (id(handler.fn), handler.id)
+        if key in seen_ids:
             pass
         else:
-            seen_ids.add(id(handler.fn))
+            seen_ids.add(key)
             yield handler
 
 

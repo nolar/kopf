@@ -63,10 +63,13 @@ possibly with multiple different selectors & filters, for one handler function:
     def child_updated(param, patch, **_):
         patch_parent({'status': {param: {'done': True}}})
 
-Note that Kopf deduplicates the functions to execute on one single occasion,
-so in this example with overlapping criteria, if ``spec.field`` is updated,
-the parameter can be either 1 or 10, and the developers cannot control which
-parameter is actually passed (except as by being more specific with filters):
+Note that Kopf deduplicates the handlers to execute on one single occasion by
+their underlying function and its id, which includes the field name by default.
+
+In this example below with overlapping criteria, if ``spec.field`` is updated,
+the handler will be called twice: one time -- for ``spec`` as a whole,
+another time -- for ``spec.field`` in particular;
+each time with the proper values of old/new/diff/param kwargs for those fields:
 
 .. code-block:: python
 
@@ -74,10 +77,7 @@ parameter is actually passed (except as by being more specific with filters):
 
     @kopf.on.update('KopfExample', param=10, field='spec.field')
     @kopf.on.update('KopfExample', param=1, field='spec')
-    def count_updates(param, patch, name, **_): ...
-
-In practice, it is usually the first matching handler (the lowest decorator in
-the list, as Python applies them from bottom to top), but it is not guaranteed.
+    def fn(param, **_): ...
 
 
 .. kwarg:: settings

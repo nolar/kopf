@@ -267,6 +267,7 @@ def test_on_resume_with_most_kwargs(mocker, reason, cause_factory, resource):
                     id='id', registry=registry,
                     errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     deleted=True,
+                    field='field.subfield', value=999,
                     labels={'somelabel': 'somevalue'},
                     annotations={'someanno': 'somevalue'},
                     when=when)
@@ -277,7 +278,7 @@ def test_on_resume_with_most_kwargs(mocker, reason, cause_factory, resource):
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
-    assert handlers[0].id == 'id'
+    assert handlers[0].id == 'id/field.subfield'
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
     assert handlers[0].retries == 456
@@ -286,8 +287,8 @@ def test_on_resume_with_most_kwargs(mocker, reason, cause_factory, resource):
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert handlers[0].when == when
-    assert handlers[0].field is None
-    assert handlers[0].value is None
+    assert handlers[0].field == ('field', 'subfield')
+    assert handlers[0].value == 999
     assert handlers[0].old is None
     assert handlers[0].new is None
 
@@ -302,6 +303,7 @@ def test_on_create_with_most_kwargs(mocker, cause_factory, resource):
     @kopf.on.create(*resource,
                     id='id', registry=registry,
                     errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
+                    field='field.subfield', value=999,
                     labels={'somelabel': 'somevalue'},
                     annotations={'someanno': 'somevalue'},
                     when=when)
@@ -312,7 +314,7 @@ def test_on_create_with_most_kwargs(mocker, cause_factory, resource):
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.CREATE
-    assert handlers[0].id == 'id'
+    assert handlers[0].id == 'id/field.subfield'
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
     assert handlers[0].retries == 456
@@ -320,8 +322,8 @@ def test_on_create_with_most_kwargs(mocker, cause_factory, resource):
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert handlers[0].when == when
-    assert handlers[0].field is None
-    assert handlers[0].value is None
+    assert handlers[0].field == ('field', 'subfield')
+    assert handlers[0].value == 999
     assert handlers[0].old is None
     assert handlers[0].new is None
 
@@ -336,6 +338,7 @@ def test_on_update_with_most_kwargs(mocker, cause_factory, resource):
     @kopf.on.update(*resource,
                     id='id', registry=registry,
                     errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
+                    field='field.subfield', value=999,
                     labels={'somelabel': 'somevalue'},
                     annotations={'someanno': 'somevalue'},
                     when=when)
@@ -346,7 +349,7 @@ def test_on_update_with_most_kwargs(mocker, cause_factory, resource):
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.UPDATE
-    assert handlers[0].id == 'id'
+    assert handlers[0].id == 'id/field.subfield'
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
     assert handlers[0].retries == 456
@@ -354,8 +357,8 @@ def test_on_update_with_most_kwargs(mocker, cause_factory, resource):
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert handlers[0].when == when
-    assert handlers[0].field is None
-    assert handlers[0].value is None
+    assert handlers[0].field == ('field', 'subfield')
+    assert handlers[0].value == 999
     assert handlers[0].old is None
     assert handlers[0].new is None
 
@@ -375,6 +378,7 @@ def test_on_delete_with_most_kwargs(mocker, cause_factory, optional, resource):
                     id='id', registry=registry,
                     errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     optional=optional,
+                    field='field.subfield', value=999,
                     labels={'somelabel': 'somevalue'},
                     annotations={'someanno': 'somevalue'},
                     when=when)
@@ -385,7 +389,7 @@ def test_on_delete_with_most_kwargs(mocker, cause_factory, optional, resource):
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.DELETE
-    assert handlers[0].id == 'id'
+    assert handlers[0].id == 'id/field.subfield'
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
     assert handlers[0].retries == 456
@@ -393,8 +397,8 @@ def test_on_delete_with_most_kwargs(mocker, cause_factory, optional, resource):
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert handlers[0].when == when
-    assert handlers[0].field is None
-    assert handlers[0].value is None
+    assert handlers[0].field == ('field', 'subfield')
+    assert handlers[0].value == 999
     assert handlers[0].old is None
     assert handlers[0].new is None
 
@@ -408,9 +412,10 @@ def test_on_field_with_most_kwargs(mocker, cause_factory, resource):
 
     when = lambda **_: False
 
-    @kopf.on.field(*resource, field='field.subfield',
+    @kopf.on.field(*resource,
                    id='id', registry=registry,
                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
+                   field='field.subfield', value=999,
                    labels={'somelabel': 'somevalue'},
                    annotations={'someanno': 'somevalue'},
                    when=when)
@@ -430,7 +435,7 @@ def test_on_field_with_most_kwargs(mocker, cause_factory, resource):
     assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert handlers[0].when == when
     assert handlers[0].field == ('field', 'subfield')
-    assert handlers[0].value is None
+    assert handlers[0].value == 999
     assert handlers[0].old is None
     assert handlers[0].new is None
 
