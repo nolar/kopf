@@ -1,6 +1,7 @@
 import collections.abc
 import logging
-from typing import Any, Dict, Generic, Iterable, Iterator, Mapping, Optional, Tuple, TypeVar, Union
+from typing import Any, Dict, Generic, Iterable, Iterator, \
+                   Mapping, Optional, Set, Tuple, TypeVar, Union
 
 from kopf.reactor import causation, handling, lifecycles, registries
 from kopf.storage import states
@@ -19,6 +20,8 @@ class Store(ephemera.Store[_V], Generic[_V]):
     to handlers or operators. Currently, it is a dictionary
     with the keys of form ``(namespace, name, uid)`` of type `Key`,
     but the implementation can later change without notice.
+
+    The store is O(1) for updates/deletions due to ``dict`` used internally.
     """
     __items: Dict[Key, _V]
 
@@ -57,17 +60,27 @@ class Store(ephemera.Store[_V], Generic[_V]):
 
 class Index(ephemera.Index[_K, _V], Generic[_K, _V]):
     """
-    A specific implementation of `.ephemera.Index` usable by inxeders.
+    A specific implementation of `.ephemera.Index` usable by indexers.
 
     The indexers and all writing interfaces for indices are not exposed
     to handlers or operators or developers, they remain strictly internal.
     Only the read-only indices and stores are exposed.
+
+    The forward index points to the indexed values of one or more objects.
+    The lookups are O(1), as Python's dict description promises.
+
+    The reverse index points to the main index's keys where a specific object
+    is stored, thus reducing the updates/deletions from O(K) to O(k), where
+    "K" is the number of all keys, "k" is the number of keys per object.
+    Assuming the amount of keys per object is usually fixed, it is O(1).
     """
     __items: Dict[_K, Store[_V]]
+    __reverse: Dict[Key, Set[_K]]
 
     def __init__(self) -> None:
         super().__init__()
         self.__items = {}
+        self.__reverse = {}
 
     def __repr__(self) -> str:
         return repr(self.__items)
@@ -88,36 +101,44 @@ class Index(ephemera.Index[_K, _V], Generic[_K, _V]):
         return item in self.__items
 
     # Indexers' internal protocol. Must not be used by handlers & operators.
-    def _discard(self, acckey: Key) -> None:
-        # Recursively discard from all indices, and down to the actual stores.
-        for item in self.__items.values():
-            item._discard(acckey)
-        self.__delete_empty_stores()
+    def _discard(self, acckey: Key, obj_keys: Optional[Iterable[_K]] = None) -> None:
+        # We know all the keys where that object is indexed, so we delete only from there.
+        # Assume that the reverse/forward indices are consistent. If not, fix it, not "fall back".
+        if acckey in self.__reverse:
+            obj_keys = obj_keys if obj_keys is not None else self.__reverse[acckey].copy()
+            for obj_key in obj_keys:
+
+                # Discard from that store and remove all freshly emptied stores.
+                store = self.__items[obj_key]
+                store._discard(acckey)
+                if not store:
+                    del self.__items[obj_key]
+
+                # One by one -- so that the reverse index is consistent even in case of errors.
+                self.__reverse[acckey].discard(obj_key)
+
+            if not self.__reverse[acckey]:
+                del self.__reverse[acckey]
 
     # Indexers' internal protocol. Must not be used by handlers & operators.
     def _replace(self, acckey: Key, obj: Mapping[_K, _V]) -> None:
+        # Remember where the object is stored, so that the updates/deletions are O(1) later.
+        try:
+            reverse = self.__reverse[acckey]
+        except KeyError:
+            reverse = self.__reverse[acckey] = set()
 
-        # Discard from all stores that surely do not contain `obj` anymore.
-        for ind_key, ind_val in self.__items.items():
-            if ind_key not in obj:
-                ind_val._discard(acckey)
-        self.__delete_empty_stores()
-
-        # Update all containers that are still related to `obj`.
+        # Update (append or replace) all stores that are still related to `obj`.
         for obj_key, obj_val in obj.items():
             try:
                 store = self.__items[obj_key]
             except KeyError:
                 store = self.__items[obj_key] = Store()
             store._replace(acckey, obj_val)
+            reverse.add(obj_key)
 
-    def __delete_empty_stores(self) -> None:
-        empty_keys = {key for key, val in self.__items.items() if not val}
-        for key in empty_keys:
-            try:
-                del self.__items[key]
-            except KeyError:
-                pass  # if deleted while we were calculating without locks
+        # Discard from all stores that surely do not contain `obj` anymore.
+        self._discard(acckey, reverse - set(obj.keys()))
 
 
 class OperatorIndexer:
