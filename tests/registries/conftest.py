@@ -9,8 +9,8 @@ from kopf.reactor.registries import ActivityRegistry, OperatorRegistry, Resource
                                     ResourceWatchingRegistry
 from kopf.structs.bodies import Body
 from kopf.structs.diffs import Diff, DiffItem
+from kopf.structs.ephemera import Memo
 from kopf.structs.handlers import HandlerId, ResourceChangingHandler
-from kopf.structs.memos import Memo
 from kopf.structs.patches import Patch
 
 

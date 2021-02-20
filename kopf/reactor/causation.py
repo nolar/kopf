@@ -24,14 +24,14 @@ import logging
 from typing import Any, Optional, TypeVar, Union
 
 from kopf.storage import finalizers
-from kopf.structs import bodies, configuration, diffs, handlers, \
-                         memos, patches, primitives, references
+from kopf.structs import bodies, configuration, diffs, ephemera, \
+                         handlers, patches, primitives, references
 
 
 @dataclasses.dataclass
 class BaseCause:
     logger: Union[logging.Logger, logging.LoggerAdapter]
-    memo: memos.AnyMemo
+    memo: ephemera.AnyMemo
 
 
 @dataclasses.dataclass

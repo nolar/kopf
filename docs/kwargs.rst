@@ -171,6 +171,8 @@ For operator handlers, ``memo`` is shared by all handlers of the same operator,
 and later used to populate the resources' ``memo`` containers.
 
 .. seealso::
+    :doc:`memos` and :class:`kopf.Memo`.
+.. seealso::
     :doc:`memories` and :class:`kopf.Memo`.
 
 

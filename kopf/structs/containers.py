@@ -13,7 +13,7 @@ import logging
 import time
 from typing import Dict, Iterator, MutableMapping, Optional, Set, Union
 
-from kopf.structs import bodies, handlers, memos, primitives
+from kopf.structs import bodies, ephemera, handlers, primitives
 from kopf.utilities import aiotasks
 
 
@@ -38,7 +38,7 @@ class ResourceMemory:
     """ A system memo about a single resource/object. Usually stored in `Memories`. """
 
     # For arbitrary user data to be stored in memory, passed as `memo` to all the handlers.
-    memo: memos.AnyMemo = dataclasses.field(default_factory=memos.Memo)
+    memo: ephemera.AnyMemo = dataclasses.field(default_factory=ephemera.Memo)
 
     # For resuming handlers tracking and deciding on should they be called or not.
     noticed_by_listing: bool = False
@@ -86,7 +86,7 @@ class ResourceMemories:
             self,
             raw_body: bodies.RawBody,
             *,
-            memo: Optional[memos.AnyMemo] = None,
+            memo: Optional[ephemera.AnyMemo] = None,
             noticed_by_listing: bool = False,
     ) -> ResourceMemory:
         """

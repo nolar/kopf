@@ -8,8 +8,8 @@ from kopf.reactor.invocation import build_kwargs
 from kopf.structs.bodies import Body, BodyEssence
 from kopf.structs.configuration import OperatorSettings
 from kopf.structs.diffs import Diff
+from kopf.structs.ephemera import Memo
 from kopf.structs.handlers import Activity, Reason
-from kopf.structs.memos import Memo
 from kopf.structs.patches import Patch
 from kopf.structs.primitives import DaemonStopper
 
