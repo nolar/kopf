@@ -10,6 +10,7 @@ from kopf.reactor.lifecycles import all_at_once
 from kopf.reactor.processing import process_resource_event
 from kopf.storage.states import HandlerState, State
 from kopf.structs.ephemera import Memo
+from kopf.structs.primitives import Toggle
 
 EVENT_TYPES_WHEN_EXISTS = [None, 'ADDED', 'MODIFIED']
 EVENT_TYPES_WHEN_GONE = ['DELETED']
@@ -41,6 +42,7 @@ async def test_successes_are_removed_from_the_indexing_state(
         memobase=Memo(),
         raw_event={'type': event_type, 'object': body},
         event_queue=asyncio.Queue(),
+        resource_indexed=Toggle(),  # used! only to enable indexing.
     )
     assert handlers.index_mock.call_count == 1
     assert memory.indexing_state is None
@@ -63,6 +65,7 @@ async def test_temporary_failures_with_no_delays_are_reindexed(
         memobase=Memo(),
         raw_event={'type': event_type, 'object': body},
         event_queue=asyncio.Queue(),
+        resource_indexed=Toggle(),  # used! only to enable indexing.
     )
     assert handlers.index_mock.call_count == 1
 
@@ -86,6 +89,7 @@ async def test_temporary_failures_with_expired_delays_are_reindexed(
         memobase=Memo(),
         raw_event={'type': event_type, 'object': body},
         event_queue=asyncio.Queue(),
+        resource_indexed=Toggle(),  # used! only to enable indexing.
     )
     assert handlers.index_mock.call_count == 1
 
@@ -107,6 +111,7 @@ async def test_permanent_failures_are_not_reindexed(
         memobase=Memo(),
         raw_event={'type': event_type, 'object': body},
         event_queue=asyncio.Queue(),
+        resource_indexed=Toggle(),  # used! only to enable indexing.
     )
     assert handlers.index_mock.call_count == 0
 
@@ -136,6 +141,7 @@ async def test_removed_and_remembered_on_permanent_errors(
         memobase=Memo(),
         raw_event={'type': event_type, 'object': body},
         event_queue=asyncio.Queue(),
+        resource_indexed=Toggle(),  # used! only to enable indexing.
     )
     assert set(index) == set()
     assert memory.indexing_state['index_fn'].finished == True
@@ -171,6 +177,7 @@ async def test_removed_and_remembered_on_temporary_errors(
         memobase=Memo(),
         raw_event={'type': event_type, 'object': body},
         event_queue=asyncio.Queue(),
+        resource_indexed=Toggle(),  # used! only to enable indexing.
     )
     assert set(index) == set()
     assert memory.indexing_state['index_fn'].finished == False
@@ -198,6 +205,7 @@ async def test_preserved_on_ignored_errors(
         memobase=Memo(),
         raw_event={'type': event_type, 'object': body},
         event_queue=asyncio.Queue(),
+        resource_indexed=Toggle(),  # used! only to enable indexing.
     )
     assert set(index) == {None}
     assert set(index[None]) == {123}

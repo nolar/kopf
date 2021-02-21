@@ -479,3 +479,6 @@ class Insights:
     # The flags that are set after the initial listing is finished. Not cleared afterwards.
     ready_namespaces: asyncio.Event = dataclasses.field(default_factory=asyncio.Event)
     ready_resources: asyncio.Event = dataclasses.field(default_factory=asyncio.Event)
+
+    # The resources that are part of indices and can block the operator readiness on start.
+    indexable: Set[Resource] = dataclasses.field(default_factory=set)

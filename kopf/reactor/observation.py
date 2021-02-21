@@ -221,6 +221,8 @@ def revise_resources(
     # Also stop watching the resources that were changed to not hit any selectors (e.g. categories).
     for selector in all_selectors:
         insights.resources.update(selector.select(resources))
+        insights.indexable.update(resource for resource in selector.select(resources)
+                                  if registry._resource_indexing.has_handlers(resource))
 
     # Detect ambiguous selectors and stop watching: 2+ distinct resources for the same selector.
     # E.g.: "pods.v1" & "pods.v1beta1.metrics.k8s.io", when specified as just "pods" (but only
@@ -251,6 +253,9 @@ def revise_resources(
     if nonpatchable and any(handler.requires_patching for handler in all_handlers):
         logger.warning(f"Non-patchable resources will not be served: {nonpatchable}")
         insights.resources.difference_update(nonpatchable)
+
+    # Keep the secondary set clean of irrelevant resources. Though, it does not harm if it is not.
+    insights.indexable.intersection_update(insights.resources)
 
 
 def is_deleted(raw_event: bodies.RawEvent) -> bool:
