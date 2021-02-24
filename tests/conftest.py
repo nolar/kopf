@@ -20,6 +20,7 @@ from kopf.engines.loggers import ObjectPrefixingTextFormatter, configure
 from kopf.engines.posting import settings_var
 from kopf.reactor.registries import OperatorRegistry
 from kopf.structs.configuration import OperatorSettings
+from kopf.structs.containers import ResourceMemories
 from kopf.structs.credentials import ConnectionInfo, Vault, VaultKey
 from kopf.structs.references import Resource, Selector
 
@@ -154,6 +155,11 @@ def namespace(resource):
 @pytest.fixture()
 def settings():
     return OperatorSettings()
+
+
+@pytest.fixture()
+def memories():
+    return ResourceMemories()
 
 
 @pytest.fixture()

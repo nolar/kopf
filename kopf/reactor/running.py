@@ -8,8 +8,8 @@ from typing import Collection, Coroutine, MutableSequence, Optional, Sequence
 
 from kopf.clients import auth
 from kopf.engines import peering, posting, probing
-from kopf.reactor import activities, daemons, lifecycles, observation, \
-                         orchestration, processing, registries
+from kopf.reactor import activities, daemons, indexing, lifecycles, \
+                         observation, orchestration, processing, registries
 from kopf.structs import configuration, containers, credentials, \
                          ephemera, handlers, primitives, references
 from kopf.utilities import aiotasks
@@ -21,6 +21,7 @@ def run(
         *,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
+        indexers: Optional[indexing.OperatorIndexers] = None,
         registry: Optional[registries.OperatorRegistry] = None,
         settings: Optional[configuration.OperatorSettings] = None,
         memories: Optional[containers.ResourceMemories] = None,
@@ -48,6 +49,7 @@ def run(
     try:
         loop.run_until_complete(operator(
             lifecycle=lifecycle,
+            indexers=indexers,
             registry=registry,
             settings=settings,
             memories=memories,
@@ -73,6 +75,7 @@ def run(
 async def operator(
         *,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
+        indexers: Optional[indexing.OperatorIndexers] = None,
         registry: Optional[registries.OperatorRegistry] = None,
         settings: Optional[configuration.OperatorSettings] = None,
         memories: Optional[containers.ResourceMemories] = None,
@@ -102,6 +105,7 @@ async def operator(
     existing_tasks = await aiotasks.all_tasks()
     operator_tasks = await spawn_tasks(
         lifecycle=lifecycle,
+        indexers=indexers,
         registry=registry,
         settings=settings,
         memories=memories,
@@ -126,6 +130,7 @@ async def operator(
 async def spawn_tasks(
         *,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
+        indexers: Optional[indexing.OperatorIndexers] = None,
         registry: Optional[registries.OperatorRegistry] = None,
         settings: Optional[configuration.OperatorSettings] = None,
         memories: Optional[containers.ResourceMemories] = None,
@@ -170,6 +175,7 @@ async def spawn_tasks(
     registry = registry if registry is not None else registries.get_default_registry()
     settings = settings if settings is not None else configuration.OperatorSettings()
     memories = memories if memories is not None else containers.ResourceMemories()
+    indexers = indexers if indexers is not None else indexing.OperatorIndexers()
     insights = insights if insights is not None else references.Insights()
     identity = identity if identity is not None else peering.detect_own_id(manual=False)
     vault = vault if vault is not None else credentials.Vault()
@@ -177,7 +183,7 @@ async def spawn_tasks(
     event_queue: posting.K8sEventQueue = asyncio.Queue()
     signal_flag: aiotasks.Future = asyncio.Future()
     started_flag: asyncio.Event = asyncio.Event()
-    operator_paused = primitives.ToggleSet()
+    operator_paused = primitives.ToggleSet(any)
     tasks: MutableSequence[aiotasks.Task] = []
 
     # Map kwargs into the settings object.
@@ -189,6 +195,9 @@ async def spawn_tasks(
         settings.peering.standalone = standalone
     if priority is not None:
         settings.peering.priority = priority
+
+    # Prepopulate indexers with empty indices -- to be available startup handlers.
+    indexers.ensure(registry._resource_indexing.get_all_handlers())
 
     # Global credentials store for this operator, also for CRD-reading & peering mode detection.
     auth.vault_var.set(vault)
@@ -216,6 +225,7 @@ async def spawn_tasks(
             started_flag=started_flag,
             registry=registry,
             settings=settings,
+            indices=indexers.indices,
             vault=vault,
             memo=memo)))  # to purge & finalize the caches in the end.
 
@@ -233,6 +243,7 @@ async def spawn_tasks(
         coro=activities.authenticator(
             registry=registry,
             settings=settings,
+            indices=indexers.indices,
             vault=vault,
             memo=memo)))
 
@@ -252,6 +263,7 @@ async def spawn_tasks(
                 registry=registry,
                 settings=settings,
                 endpoint=liveness_endpoint,
+                indices=indexers.indices,
                 memo=memo)))
 
     # Permanent observation of what resource kinds and namespaces are available in the cluster.
@@ -288,6 +300,7 @@ async def spawn_tasks(
                                             lifecycle=lifecycle,
                                             registry=registry,
                                             settings=settings,
+                                            indexers=indexers,
                                             memories=memories,
                                             memobase=memo,
                                             event_queue=event_queue))))
@@ -433,6 +446,7 @@ async def _startup_cleanup_activities(
         started_flag: asyncio.Event,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
+        indices: ephemera.Indices,
         vault: credentials.Vault,
         memo: ephemera.AnyMemo,
 ) -> None:
@@ -456,6 +470,7 @@ async def _startup_cleanup_activities(
             registry=registry,
             settings=settings,
             activity=handlers.Activity.STARTUP,
+            indices=indices,
             memo=memo,
         )
     except asyncio.CancelledError:
@@ -489,6 +504,7 @@ async def _startup_cleanup_activities(
             registry=registry,
             settings=settings,
             activity=handlers.Activity.CLEANUP,
+            indices=indices,
             memo=memo,
         )
         await vault.close()

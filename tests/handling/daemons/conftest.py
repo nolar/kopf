@@ -7,6 +7,7 @@ import pytest
 
 import kopf
 from kopf.reactor.daemons import daemon_killer
+from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.bodies import RawBody
 from kopf.structs.containers import ResourceMemories
@@ -39,11 +40,6 @@ def dummy():
 
 
 @pytest.fixture()
-def memories():
-    return ResourceMemories()
-
-
-@pytest.fixture()
 def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
     """
     Simulate K8s behaviour locally in memory (some meaningful approximation).
@@ -66,6 +62,7 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
             resource=resource,
             memories=memories,
             memobase=Memo(),
+            indexers=OperatorIndexers(),
             raw_event={'type': 'irrelevant', 'object': event_object},
             event_queue=asyncio.Queue(),
         )
@@ -79,7 +76,7 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
 
 @pytest.fixture()
 async def operator_paused():
-    return ToggleSet()
+    return ToggleSet(any)
 
 
 @pytest.fixture()

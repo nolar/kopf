@@ -490,6 +490,7 @@ def test_subhandler_imperatively(parent_handler, cause_factory):
 
 
 @pytest.mark.parametrize('decorator, kwargs', [
+    (kopf.index, {}),
     (kopf.on.event, {}),
     (kopf.on.resume, {}),
     (kopf.on.create, {}),
@@ -506,6 +507,7 @@ def test_labels_filter_with_nones(resource, decorator, kwargs):
 
 
 @pytest.mark.parametrize('decorator, kwargs', [
+    (kopf.index, {}),
     (kopf.on.event, {}),
     (kopf.on.resume, {}),
     (kopf.on.create, {}),
@@ -522,6 +524,7 @@ def test_annotations_filter_with_nones(resource, decorator, kwargs):
 
 
 @pytest.mark.parametrize('decorator, causeargs, handlers_prop', [
+    pytest.param(kopf.index, dict(), '_resource_indexing', id='on-index'),
     pytest.param(kopf.on.event, dict(), '_resource_watching', id='on-event'),
     pytest.param(kopf.on.resume, dict(reason=None, initial=True), '_resource_changing', id='on-resume'),
     pytest.param(kopf.on.create, dict(reason=Reason.CREATE), '_resource_changing', id='on-create'),
@@ -570,6 +573,7 @@ def test_field_with_oldnew(mocker, cause_factory, decorator, causeargs, handlers
 
 
 @pytest.mark.parametrize('decorator', [
+    pytest.param(kopf.index, id='on-index'),
     pytest.param(kopf.on.event, id='on-event'),
     pytest.param(kopf.on.resume, id='on-resume'),
     pytest.param(kopf.on.create, id='on-create'),

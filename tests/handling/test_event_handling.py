@@ -4,6 +4,7 @@ import logging
 import pytest
 
 import kopf
+from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.ephemera import Memo
@@ -22,6 +23,7 @@ async def test_handlers_called_always(
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': 'ev-type', 'object': {'field': 'value'}},
@@ -57,6 +59,7 @@ async def test_errors_are_ignored(
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': 'ev-type', 'object': {}},

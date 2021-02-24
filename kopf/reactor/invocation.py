@@ -89,6 +89,15 @@ def build_kwargs(
         new_kwargs.update(
             stopped=cause.stopper.sync_checker if _sync else cause.stopper.async_checker,
         )
+
+    # Inject indices in the end, so that they overwrite regular kwargs.
+    # Why? For backwards compatibility: if an operator's handlers use an index e.g. "children",
+    # and Kopf introduces a new kwarg "children", the code could break on the new version upgrade.
+    # To prevent this, overwrite it and let the developers rename it when they want the new kwarg.
+    # Naming new indices after the known kwargs harms only these developers. This is fine.
+    if isinstance(cause, causation.BaseCause):
+        new_kwargs.update(cause.indices)
+
     return new_kwargs
 
 

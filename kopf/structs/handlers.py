@@ -106,6 +106,18 @@ class ResourceHandler(BaseHandler):
 
 
 @dataclasses.dataclass
+class ResourceIndexingHandler(ResourceHandler):
+    fn: callbacks.ResourceIndexingFn  # type clarification
+
+    def __str__(self) -> str:
+        return f"Indexer {self.id!r}"
+
+    @property
+    def requires_patching(self) -> bool:
+        return False
+
+
+@dataclasses.dataclass
 class ResourceWatchingHandler(ResourceHandler):
     fn: callbacks.ResourceWatchingFn  # type clarification
 

@@ -36,8 +36,9 @@ Kopf: Kubernetes Operators Framework
    filters
    results
    errors
-   memos
    scopes
+   memos
+   indexing
 
 .. toctree::
    :maxdepth: 2

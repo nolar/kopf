@@ -27,6 +27,7 @@ from kopf.on import (
     register,
     daemon,
     timer,
+    index,
 )
 from kopf.reactor import (
     lifecycles,  # as a separate name on the public namespace
@@ -105,6 +106,8 @@ from kopf.structs.diffs import (
 )
 from kopf.structs.ephemera import (
     Memo,
+    Index,
+    Store,
 )
 from kopf.structs.filters import (
     ABSENT,
@@ -141,7 +144,7 @@ from kopf.utilities.piggybacking import (
 )
 
 __all__ = [
-    'on', 'lifecycles', 'register', 'execute', 'daemon', 'timer',
+    'on', 'lifecycles', 'register', 'execute', 'daemon', 'timer', 'index',
     'configure', 'LogFormat',
     'login_via_pykube', 'login_via_client', 'LoginError', 'ConnectionInfo',
     'event', 'info', 'warn', 'exception',
@@ -185,7 +188,7 @@ __all__ = [
     'BodyEssence',
     'ObjectReference',
     'OwnerReference',
-    'Memo',
+    'Memo', 'Index', 'Store',
     'ObjectLogger',
     'LocalObjectLogger',
     'FieldSpec',

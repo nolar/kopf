@@ -4,6 +4,7 @@ import logging
 import pytest
 
 import kopf
+from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.ephemera import Memo
@@ -27,6 +28,7 @@ async def test_create(registry, settings, handlers, resource, cause_mock, event_
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
@@ -67,6 +69,7 @@ async def test_update(registry, settings, handlers, resource, cause_mock, event_
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
@@ -109,6 +112,7 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
@@ -149,6 +153,7 @@ async def test_gone(registry, settings, handlers, resource, cause_mock, event_ty
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
@@ -179,6 +184,7 @@ async def test_free(registry, settings, handlers, resource, cause_mock, event_ty
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
@@ -210,6 +216,7 @@ async def test_noop(registry, settings, handlers, resource, cause_mock, event_ty
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},

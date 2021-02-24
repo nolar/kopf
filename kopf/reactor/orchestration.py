@@ -27,7 +27,7 @@ import dataclasses
 import functools
 import itertools
 import logging
-from typing import Any, Collection, Container, Dict, MutableMapping, NamedTuple
+from typing import Any, Collection, Container, Dict, MutableMapping, NamedTuple, Optional
 
 from kopf.engines import peering
 from kopf.reactor import queueing
@@ -44,6 +44,11 @@ class EnsembleKey(NamedTuple):
 
 @dataclasses.dataclass
 class Ensemble:
+
+    # Global synchronisation point on the cache pre-populating stage and overall cache readiness.
+    # Note: there is no need for ToggleSet; it is checked by emptiness of items inside.
+    #       ToggleSet is used because it is the closest equivalent of such a primitive.
+    operator_indexed: primitives.ToggleSet
 
     # Multidimentional pausing: for every namespace, and a few for the whole cluster (for CRDs).
     operator_paused: primitives.ToggleSet
@@ -90,7 +95,11 @@ async def ochestrator(
         operator_paused: primitives.ToggleSet,
 ) -> None:
     peering_missing = await operator_paused.make_toggle(name='peering CRD is missing')
-    ensemble = Ensemble(peering_missing=peering_missing, operator_paused=operator_paused)
+    ensemble = Ensemble(
+        peering_missing=peering_missing,
+        operator_paused=operator_paused,
+        operator_indexed=primitives.ToggleSet(all),
+    )
     try:
         async with insights.revised:
             while True:
@@ -139,6 +148,7 @@ async def adjust_tasks(
     await spawn_missing_watchers(ensemble=ensemble,
                                  settings=settings,
                                  processor=processor,
+                                 indexable=insights.indexable,
                                  resources=insights.resources,
                                  namespaces=insights.namespaces)
 
@@ -205,22 +215,37 @@ async def spawn_missing_watchers(
         processor: queueing.WatchStreamProcessor,
         settings: configuration.OperatorSettings,
         resources: Collection[references.Resource],
+        indexable: Collection[references.Resource],
         namespaces: Collection[references.Namespace],
         ensemble: Ensemble,
 ) -> None:
+
+    # Block the operator globally until specialised per-resource-kind blockers are created.
+    # NB: Must be created before the point of parallelisation!
+    operator_blocked = await ensemble.operator_indexed.make_toggle(name="orchestration blocker")
+
+    # Spawn watchers and create the specialised per-resource-kind blockers.
     for resource, namespace in itertools.product(resources, namespaces):
         namespace = namespace if resource.namespaced else None
         dkey = EnsembleKey(resource=resource, namespace=namespace)
         if dkey not in ensemble.watcher_tasks:
             what = f"{resource}@{namespace}"
+            resource_indexed: Optional[primitives.Toggle] = None
+            if resource in indexable:
+                resource_indexed = await ensemble.operator_indexed.make_toggle(name=what)
             ensemble.watcher_tasks[dkey] = aiotasks.create_guarded_task(
                 name=f"watcher for {what}", logger=logger, cancellable=True,
                 coro=queueing.watcher(
                     operator_paused=ensemble.operator_paused,
+                    operator_indexed=ensemble.operator_indexed,
+                    resource_indexed=resource_indexed,
                     settings=settings,
                     resource=resource,
                     namespace=namespace,
                     processor=functools.partial(processor, resource=resource)))
+
+    # Unblock globally, let the specialised per-resource-kind blockers hold the readiness.
+    await ensemble.operator_indexed.drop_toggle(operator_blocked)
 
     # Ensure that all guarded tasks got control for a moment to enter the guard.
     await asyncio.sleep(0)

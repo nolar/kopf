@@ -44,6 +44,7 @@ async def authenticator(
         *,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
+        indices: ephemera.Indices,
         vault: credentials.Vault,
         memo: ephemera.AnyMemo,
 ) -> NoReturn:
@@ -53,6 +54,7 @@ async def authenticator(
         await authenticate(
             registry=registry,
             settings=settings,
+            indices=indices,
             vault=vault,
             memo=memo,
             _activity_title="Re-authentication" if counter else "Initial authentication",
@@ -64,6 +66,7 @@ async def authenticate(
         *,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
+        indices: ephemera.Indices,
         vault: credentials.Vault,
         memo: ephemera.AnyMemo,
         _activity_title: str = "Authentication",
@@ -81,6 +84,7 @@ async def authenticate(
         registry=registry,
         settings=settings,
         activity=handlers_.Activity.AUTHENTICATION,
+        indices=indices,
         memo=memo,
     )
 
@@ -100,6 +104,7 @@ async def run_activity(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         activity: handlers_.Activity,
+        indices: ephemera.Indices,
         memo: ephemera.AnyMemo,
 ) -> Mapping[handlers_.HandlerId, callbacks.Result]:
     logger = logging.getLogger(f'kopf.activities.{activity.value}')
@@ -109,6 +114,7 @@ async def run_activity(
         logger=logger,
         activity=activity,
         settings=settings,
+        indices=indices,
         memo=memo,
     )
     handlers = registry._activities.get_handlers(activity=activity)

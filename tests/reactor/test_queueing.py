@@ -10,6 +10,9 @@ Excluded: the causation and handling routines
 Used for internal control that the event queueing works are intended.
 If the intentions change, the tests should be rewritten.
 They are NOT part of the public interface of the framework.
+
+NOTE: These tests also check that the bookmarks are ignored
+by checking that they are not multiplexed into workers.
 """
 import asyncio
 import contextlib

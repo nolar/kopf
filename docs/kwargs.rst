@@ -172,8 +172,27 @@ and later used to populate the resources' ``memo`` containers.
 
 .. seealso::
     :doc:`memos` and :class:`kopf.Memo`.
+
+
+.. kwarg:: indices
+.. kwarg:: indexes
+
+In-memory indices
+-----------------
+
+Indices are in-memory overviews of matching resources in the cluster.
+They are populated according to ``@kopf.index`` handlers and their filters.
+
+Each individual index is exposed in kwargs under its own name (function name)
+or id (if overridden with ``id=``). There is no global structure to access
+all indices at once. If needed, use ``**kwargs`` itself.
+
+Indices are available for all operator-level and all resource-level handlers.
+For resource handlers, they are guaranteed to be populated before any handlers
+are invoked. For operator handlers, there is no such guarantee.
+
 .. seealso::
-    :doc:`memories` and :class:`kopf.Memo`.
+    :doc:`indices`.
 
 
 Resource-watching kwargs

@@ -1,6 +1,7 @@
 import pytest
 
 from kopf.reactor.activities import authenticate
+from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.registries import OperatorRegistry
 from kopf.structs.credentials import ConnectionInfo, LoginError, Vault
 from kopf.structs.ephemera import Memo
@@ -16,6 +17,7 @@ async def test_empty_registry_produces_no_credentials(settings):
         settings=settings,
         vault=vault,
         memo=Memo(),
+        indices=OperatorIndexers().indices,
     )
 
     assert not vault
@@ -42,6 +44,7 @@ async def test_noreturn_handler_produces_no_credentials(settings):
         settings=settings,
         vault=vault,
         memo=Memo(),
+        indices=OperatorIndexers().indices,
     )
 
     assert not vault
@@ -69,6 +72,7 @@ async def test_single_credentials_provided_to_vault(settings):
         settings=settings,
         vault=vault,
         memo=Memo(),
+        indices=OperatorIndexers().indices,
     )
 
     assert vault

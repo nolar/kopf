@@ -2,6 +2,7 @@ import asyncio
 from unittest.mock import Mock
 
 import kopf
+from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.ephemera import Memo
@@ -22,6 +23,7 @@ async def test_parameter_is_passed_when_specified(resource, cause_mock, registry
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': None, 'object': {}},
@@ -47,6 +49,7 @@ async def test_parameter_is_passed_even_if_not_specified(resource, cause_mock, r
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': None, 'object': {}},

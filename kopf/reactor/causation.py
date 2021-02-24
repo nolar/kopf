@@ -30,6 +30,7 @@ from kopf.structs import bodies, configuration, diffs, ephemera, \
 
 @dataclasses.dataclass
 class BaseCause:
+    indices: ephemera.Indices
     logger: Union[logging.Logger, logging.LoggerAdapter]
     memo: ephemera.AnyMemo
 
@@ -45,6 +46,14 @@ class ResourceCause(BaseCause):
     resource: references.Resource
     patch: patches.Patch
     body: bodies.Body
+
+
+@dataclasses.dataclass
+class ResourceIndexingCause(ResourceCause):
+    """
+    The raw event received from the API.
+    """
+    pass
 
 
 @dataclasses.dataclass

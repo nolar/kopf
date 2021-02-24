@@ -18,14 +18,15 @@ import time
 from typing import Collection, Optional, Tuple
 
 from kopf.engines import loggers, posting
-from kopf.reactor import causation, daemons, effects, handling, lifecycles, registries
+from kopf.reactor import causation, daemons, effects, handling, indexing, lifecycles, registries
 from kopf.storage import finalizers, states
 from kopf.structs import bodies, configuration, containers, diffs, ephemera, \
-                         handlers as handlers_, patches, references
+                         handlers as handlers_, patches, primitives, references
 
 
 async def process_resource_event(
         lifecycle: lifecycles.LifeCycleFn,
+        indexers: indexing.OperatorIndexers,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         memories: containers.ResourceMemories,
@@ -34,6 +35,8 @@ async def process_resource_event(
         raw_event: bodies.RawEvent,
         event_queue: posting.K8sEventQueue,
         stream_pressure: Optional[asyncio.Event] = None,  # None for tests
+        resource_indexed: Optional[primitives.Toggle] = None,  # None for tests & observation
+        operator_indexed: Optional[primitives.ToggleSet] = None,  # None for tests & observation
 ) -> None:
     """
     Handle a single custom object low-level watch-event.
@@ -76,17 +79,39 @@ async def process_resource_event(
             posting.event_queue_loop_var.set(asyncio.get_running_loop())
             posting.event_queue_var.set(event_queue)  # till the end of this object's task.
 
+            # [Pre-]populate the indices. This must be lightweight.
+            await indexing.index_resource(
+                registry=registry,
+                indexers=indexers,
+                settings=settings,
+                resource=resource,
+                raw_event=raw_event,
+                body=body,
+                memory=memory,
+                logger=loggers.TerseObjectLogger(body=body, settings=settings),
+            )
+
+            # Wait for all other individual resources and all other resource kinds' lists to finish.
+            # If this one has changed while waiting for the global readiness, let it be reprocessed.
+            if operator_indexed is not None and resource_indexed is not None:
+                await operator_indexed.drop_toggle(resource_indexed)
+            if operator_indexed is not None:
+                await operator_indexed.wait_for(True)  # other resource kinds & objects.
+            if stream_pressure is not None and stream_pressure.is_set():
+                return
+
             # Do the magic -- do the job.
             delays, matched = await process_resource_causes(
                 lifecycle=lifecycle,
+                indexers=indexers,
                 registry=registry,
                 settings=settings,
                 resource=resource,
                 raw_event=raw_event,
                 body=body,
                 patch=patch,
-                logger=logger,
                 memory=memory,
+                logger=logger,
             )
 
             # Whatever was done, apply the accumulated changes to the object, or sleep-n-touch for delays.
@@ -108,6 +133,7 @@ async def process_resource_event(
 
 async def process_resource_causes(
         lifecycle: lifecycles.LifeCycleFn,
+        indexers: indexing.OperatorIndexers,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         resource: references.Resource,
@@ -120,6 +146,7 @@ async def process_resource_causes(
 
     finalizer = settings.persistence.finalizer
     extra_fields = (
+        # NB: indexing handlers are useless here, they are handled on their own.
         registry._resource_watching.get_extra_fields(resource=resource) |
         registry._resource_changing.get_extra_fields(resource=resource) |
         registry._resource_spawning.get_extra_fields(resource=resource))
@@ -133,6 +160,7 @@ async def process_resource_causes(
     resource_watching_cause = causation.detect_resource_watching_cause(
         raw_event=raw_event,
         resource=resource,
+        indices=indexers.indices,
         logger=logger,
         patch=patch,
         body=body,
@@ -141,6 +169,7 @@ async def process_resource_causes(
 
     resource_spawning_cause = causation.detect_resource_spawning_cause(
         resource=resource,
+        indices=indexers.indices,
         logger=logger,
         patch=patch,
         body=body,
@@ -152,6 +181,7 @@ async def process_resource_causes(
         finalizer=finalizer,
         raw_event=raw_event,
         resource=resource,
+        indices=indexers.indices,
         logger=logger,
         patch=patch,
         body=body,
