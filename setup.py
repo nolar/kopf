@@ -52,4 +52,5 @@ setup(
     extras_require={
         'full-auth': ['pykube-ng', 'kubernetes'],
     },
+    package_data={"kopf": ["py.typed"]},
 )
