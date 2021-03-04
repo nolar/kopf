@@ -20,17 +20,17 @@ def by_label(labels, name, **_):
     #    ...}
 
 
-@kopf.on.probe()
+@kopf.on.probe()  # type: ignore
 def pod_count(is_running: kopf.Index, **_):
     return len(is_running)
 
 
-@kopf.on.probe()
+@kopf.on.probe()  # type: ignore
 def pod_names(is_running: kopf.Index, **_):
     return [name for _, name in is_running]
 
 
-@kopf.timer('kex', interval=5)
+@kopf.timer('kex', interval=5)  # type: ignore
 def intervalled(is_running: kopf.Index, by_label: kopf.Index, patch: kopf.Patch, **_):
     pprint.pprint(dict(by_label))
     patch.status['running-pods'] = [
@@ -42,4 +42,4 @@ def intervalled(is_running: kopf.Index, by_label: kopf.Index, patch: kopf.Patch,
 
 
 # Marks for the e2e tests (see tests/e2e/test_examples.py):
-E2E_SUCCESS_COUNTS = {}  # we do not care: pods can have 6-10 updates here.
+E2E_SUCCESS_COUNTS = {}  # type: ignore # we do not care: pods can have 6-10 updates here.
