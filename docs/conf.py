@@ -52,7 +52,7 @@ def linkcode_resolve(domain, info):
     if not info['module']:
         return None
     filename = info['module'].replace('.', '/')
-    return "https://github.com/nolar/kopf/blob/master/%s.py" % filename
+    return "https://github.com/nolar/kopf/blob/main/%s.py" % filename
 
 
 ###############################################################################

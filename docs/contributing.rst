@@ -30,11 +30,11 @@ The recommended setup:
         git remote add upstream git@github.com:nolar/kopf.git
         git fetch upstream
 
-* Sync your ``master`` branch with the upstream regularly::
+* Sync your ``main`` branch with the upstream regularly::
 
-        git checkout master
-        git pull upstream master --ff
-        git push origin master
+        git checkout main
+        git pull upstream main --ff
+        git push origin main
 
 Work in the feature branches of your fork, not in the upstream's branches:
 

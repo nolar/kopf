@@ -1,4 +1,4 @@
-# The thorough tests run only on the master branch after everything is merged,
+# The thorough tests run only on the main branch after everything is merged,
 # and regularly by time —- on order to detect bugs and incompatibility with
 # the new versions of freshly released software (e.g. K8s, K3s, Python libs).
 # The first part fully includes the CI workflow, with more versions of K3d/K3s.
@@ -7,7 +7,7 @@ name: Thorough tests
 on:
   push:
     branches:
-      - master
+      - main
       - release/**
   schedule:
     - cron: "13 3 * * 6"
