@@ -95,6 +95,9 @@ async def process_peering_event(
         autoclean: bool = True,
         stream_pressure: Optional[asyncio.Event] = None,  # None for tests
         conflicts_found: Optional[primitives.Toggle] = None,  # None for tests & observation
+        # Must be accepted whether used or not -- as passed by watcher()/worker().
+        resource_indexed: Optional[primitives.Toggle] = None,  # None for tests & observation
+        operator_indexed: Optional[primitives.ToggleSet] = None,  # None for tests & observation
 ) -> None:
     """
     Handle a single update of the peers by us or by other operators.
