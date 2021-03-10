@@ -1,8 +1,8 @@
 # Kubernetes Operator Pythonic Framework (Kopf)
 
 [![CI](https://github.com/nolar/kopf/workflows/Thorough%20tests/badge.svg)](https://github.com/nolar/kopf/actions)
-[![codecov](https://codecov.io/gh/nolar/kopf/branch/master/graph/badge.svg)](https://codecov.io/gh/nolar/kopf)
-[![Coverage Status](https://coveralls.io/repos/github/nolar/kopf/badge.svg?branch=master)](https://coveralls.io/github/nolar/kopf?branch=master)
+[![codecov](https://codecov.io/gh/nolar/kopf/branch/main/graph/badge.svg)](https://codecov.io/gh/nolar/kopf)
+[![Coverage Status](https://coveralls.io/repos/github/nolar/kopf/badge.svg?branch=main)](https://coveralls.io/github/nolar/kopf?branch=main)
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/nolar/kopf.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/nolar/kopf/alerts/)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/nolar/kopf.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/nolar/kopf/context:python)
 
@@ -76,7 +76,7 @@ deployment files like RBAC roles, bindings, service accounts, network policies
 
 ## Examples
 
-See [examples](https://github.com/nolar/kopf/tree/master/examples)
+See [examples](https://github.com/nolar/kopf/tree/main/examples)
 for the examples of the typical use-cases.
 
 A minimalistic operator can look like this:
@@ -139,12 +139,12 @@ See `kopf run --help` for others ways of attaching the handlers.
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](https://github.com/nolar/kopf/blob/master/CONTRIBUTING.md)
+Please read [CONTRIBUTING.md](https://github.com/nolar/kopf/blob/main/CONTRIBUTING.md)
 for details on our process for submitting pull requests to us, and please ensure
-you follow the [CODE_OF_CONDUCT.md](https://github.com/nolar/kopf/blob/master/CODE_OF_CONDUCT.md).
+you follow the [CODE_OF_CONDUCT.md](https://github.com/nolar/kopf/blob/main/CODE_OF_CONDUCT.md).
 
 To install the environment for the local development,
-read [DEVELOPMENT.md](https://github.com/nolar/kopf/blob/master/DEVELOPMENT.md).
+read [DEVELOPMENT.md](https://github.com/nolar/kopf/blob/main/DEVELOPMENT.md).
 
 
 ## Versioning
@@ -156,7 +156,7 @@ see the [releases on this repository](https://github.com/nolar/kopf/releases).
 ## License
 
 This project is licensed under the MIT License —
-see the [LICENSE](https://github.com/nolar/kopf/blob/master/LICENSE) file for details.
+see the [LICENSE](https://github.com/nolar/kopf/blob/main/LICENSE) file for details.
 
 
 ## Acknowledgments
