@@ -200,7 +200,7 @@ async def execute_handlers_once(
 
     # Filter and select the handlers to be executed right now, on this event reaction cycle.
     handlers_todo = [h for h in handlers if state[h.id].awakened]
-    handlers_plan = lifecycle(handlers_todo, **invocation.build_kwargs(cause=cause, state=state))
+    handlers_plan = lifecycle(handlers_todo, state=state, **cause.kwargs)
 
     # Execute all planned (selected) handlers in one event reaction cycle, even if there are few.
     outcomes: MutableMapping[ids.HandlerId, states.HandlerOutcome] = {}
@@ -371,7 +371,7 @@ async def invoke_handler(
         result = await invocation.invoke(
             handler.fn,
             settings=settings,
-            cause=cause,
+            kwargsrc=cause,
             kwargs=dict(
                 param=handler.param,
                 retry=retry,

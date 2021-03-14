@@ -182,7 +182,7 @@ async def test_special_kwargs_added(fn, resource):
     )
 
     fn = MagicMock(fn)
-    await invoke(fn, cause=cause)
+    await invoke(fn, kwargsrc=cause)
 
     assert fn.called
     assert fn.call_count == 1

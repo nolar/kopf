@@ -56,7 +56,7 @@ def owner(request, resource):
             memo=Memo(),
             body=body,
             type='irrelevant',
-            raw=RawEvent(type='irrelevant', object=OWNER),
+            event=RawEvent(type='irrelevant', object=OWNER),
         )
         with context([(cause_var, cause)]):
             yield body

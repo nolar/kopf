@@ -5,15 +5,61 @@ Both sync & async functions are supported, so as their partials.
 Also, decorated wrappers and lambdas are recognized.
 All of this goes via the same invocation logic and protocol.
 """
+import abc
 import asyncio
 import contextlib
 import contextvars
 import functools
-from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Tuple, cast
+from typing import Any, Iterable, Iterator, List, Mapping, Optional, Tuple, cast
 
-from kopf.reactor import causation
+from typing_extensions import final
+
 from kopf.structs import callbacks, configuration
 from kopf.utilities import aiotasks
+
+
+class Kwargable(metaclass=abc.ABCMeta):
+    """
+    Something that can provide kwargs to the function invocation rotuine.
+
+    Technically, there is only one source of kwargs in the framework --
+    ``causes.py`` (`BaseCause` and descendants across the source code).
+    However, we do not want to introduce a new dependency of a low-level
+    function invocation module on the specialised causation logic & structures.
+    For this reason, the `BaseCause` & `Kwargable` classes are split.
+    """
+
+    @property
+    @abc.abstractmethod
+    def _kwargs(self) -> Mapping[str, Any]:
+        return {}
+
+    @property
+    def _sync_kwargs(self) -> Mapping[str, Any]:
+        return self._kwargs
+
+    @property
+    def _async_kwargs(self) -> Mapping[str, Any]:
+        return self._kwargs
+
+    @property
+    def _super_kwargs(self) -> Mapping[str, Any]:
+        return {}
+
+    @final
+    @property
+    def kwargs(self) -> Mapping[str, Any]:
+        return dict(self._kwargs, **self._super_kwargs)
+
+    @final
+    @property
+    def sync_kwargs(self) -> Mapping[str, Any]:
+        return dict(self._sync_kwargs, **self._super_kwargs)
+
+    @final
+    @property
+    def async_kwargs(self) -> Mapping[str, Any]:
+        return dict(self._async_kwargs, **self._super_kwargs)
 
 
 @contextlib.contextmanager
@@ -34,86 +80,11 @@ def context(
             var.reset(token)
 
 
-def build_kwargs(
-        cause: Optional[causation.BaseCause] = None,
-        _sync: Optional[bool] = None,
-        **kwargs: Any,  # includes param, retry, started, runtime, etc.
-) -> Dict[str, Any]:
-    """
-    Expand kwargs dict with fields from the causation.
-    """
-    new_kwargs = {}
-    new_kwargs.update(kwargs)
-
-    # Add aliases for the kwargs, directly linked to the body, or to the assumed defaults.
-    if isinstance(cause, causation.BaseCause):
-        new_kwargs.update(
-            logger=cause.logger,
-            memo=cause.memo,
-        )
-    if isinstance(cause, causation.ActivityCause):
-        new_kwargs.update(
-            activity=cause.activity,
-        )
-    if isinstance(cause, causation.ActivityCause) and cause.activity == cause.activity.STARTUP:
-        new_kwargs.update(
-            settings=cause.settings,
-        )
-    if isinstance(cause, causation.ResourceCause):
-        new_kwargs.update(
-            resource=cause.resource,
-            patch=cause.patch,
-            body=cause.body,
-            spec=cause.body.spec,
-            meta=cause.body.metadata,
-            status=cause.body.status,
-            uid=cause.body.metadata.uid,
-            name=cause.body.metadata.name,
-            namespace=cause.body.metadata.namespace,
-            labels=cause.body.metadata.labels,
-            annotations=cause.body.metadata.annotations,
-        )
-    if isinstance(cause, causation.ResourceWebhookCause):
-        new_kwargs.update(
-            dryrun=cause.dryrun,
-            headers=cause.headers,
-            sslpeer=cause.sslpeer,
-            userinfo=cause.userinfo,
-            warnings=cause.warnings,
-        )
-    if isinstance(cause, causation.ResourceWatchingCause):
-        new_kwargs.update(
-            event=cause.raw,
-            type=cause.type,
-        )
-    if isinstance(cause, causation.ResourceChangingCause):
-        new_kwargs.update(
-            reason=cause.reason,
-            diff=cause.diff,
-            old=cause.old,
-            new=cause.new,
-        )
-    if isinstance(cause, causation.DaemonCause) and _sync is not None:
-        new_kwargs.update(
-            stopped=cause.stopper.sync_checker if _sync else cause.stopper.async_checker,
-        )
-
-    # Inject indices in the end, so that they overwrite regular kwargs.
-    # Why? For backwards compatibility: if an operator's handlers use an index e.g. "children",
-    # and Kopf introduces a new kwarg "children", the code could break on the new version upgrade.
-    # To prevent this, overwrite it and let the developers rename it when they want the new kwarg.
-    # Naming new indices after the known kwargs harms only these developers. This is fine.
-    if isinstance(cause, causation.BaseCause):
-        new_kwargs.update(cause.indices)
-
-    return new_kwargs
-
-
 async def invoke(
         fn: callbacks.BaseFn,
         *,
         settings: Optional[configuration.OperatorSettings] = None,
-        cause: Optional[causation.BaseCause] = None,
+        kwargsrc: Optional[Kwargable] = None,
         kwargs: Optional[Mapping[str, Any]] = None,  # includes param, retry, started, runtime, etc.
 ) -> Any:
     """
@@ -133,10 +104,10 @@ async def invoke(
     """
     kwargs = {} if kwargs is None else kwargs
     if is_async_fn(fn):
-        kwargs = build_kwargs(cause=cause, _sync=False, **kwargs)
+        kwargs = kwargs if kwargsrc is None else dict(kwargs, **kwargsrc.async_kwargs)
         result = await fn(**kwargs)  # type: ignore
     else:
-        kwargs = build_kwargs(cause=cause, _sync=True, **kwargs)
+        kwargs = kwargs if kwargsrc is None else dict(kwargs, **kwargsrc.sync_kwargs)
 
         # Not that we want to use functools, but for executors kwargs, it is officially recommended:
         # https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.run_in_executor
