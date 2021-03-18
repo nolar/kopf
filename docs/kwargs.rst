@@ -87,11 +87,11 @@ Operator configuration
 
 ``settings`` is passed to activity handlers (but not to resource handlers).
 
-It is an object with predefined nested structure of containers with values,
+It is an object with a predefined nested structure of containers with values,
 which defines the operator's behaviour. See also: `kopf.OperatorSettings`.
 
 It can be modified if needed (usually in the startup handlers). Every operator
-(if there are more than one in the same process) has its own config.
+(if there are more than one in the same process) has its config.
 
 See also: :doc:`configuration`.
 
@@ -143,7 +143,7 @@ Logging
 namespace/name.
 
 Some of the log messages are also sent as Kubernetes events according to the
-log level configuration (default is INFO, WARNINGs, ERRORs).
+log-level configuration (default is INFO, WARNINGs, ERRORs).
 
 
 .. kwarg:: patch
@@ -167,7 +167,7 @@ The values can be accessed as either object attributes or dictionary keys.
 
 For resource handlers, ``memo`` is shared by all handlers of the same
 individual resource (not of the resource kind, but of the resource object).
-For operator handlers, ``memo`` is shared by all handlers of the same operator,
+For operator handlers, ``memo`` is shared by all handlers of the same operator
 and later used to populate the resources' ``memo`` containers.
 
 .. seealso::
@@ -183,7 +183,7 @@ In-memory indices
 Indices are in-memory overviews of matching resources in the cluster.
 They are populated according to ``@kopf.index`` handlers and their filters.
 
-Each individual index is exposed in kwargs under its own name (function name)
+Each index is exposed in kwargs under its name (function name)
 or id (if overridden with ``id=``). There is no global structure to access
 all indices at once. If needed, use ``**kwargs`` itself.
 
@@ -213,7 +213,7 @@ it is a dict with ``['type']`` & ``['object']`` keys.
 Resource-changing kwargs
 ========================
 
-Kopf provides functionality for change detection, and triggers the handlers
+Kopf provides functionality for change detection and triggers the handlers
 for those changes (not for every event coming from the Kubernetes API).
 Few extra kwargs are provided for these handlers, exposing the detected changes:
 

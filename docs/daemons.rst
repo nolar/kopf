@@ -2,7 +2,7 @@
 Daemons
 =======
 
-Daemons are a special type of handler for background logic that accompanies
+Daemons are a special type of handlers for background logic that accompanies
 the Kubernetes resources during their life cycle.
 
 Unlike event-driven short-running handlers declared with ``@kopf.on``,
@@ -18,7 +18,7 @@ Spawning
 ========
 
 To have a daemon accompanying a resource of some kind, decorate a function
-with ``@kopf.daemon`` and make it run for long time or forever:
+with ``@kopf.daemon`` and make it run for a long time or forever:
 
 .. code-block:: python
 
@@ -43,7 +43,7 @@ executed directly in the asyncio event loop of the operator -- same as with
 regular handlers. See :doc:`async`.
 
 The same executor is used both for regular sync handlers and for sync daemons.
-If you expect large number of synchronous daemons (e.g. for large clusters),
+If you expect a large number of synchronous daemons (e.g. for large clusters),
 make sure to pre-scale the executor accordingly.
 See :doc:`configuration` (:ref:`configure-sync-handlers`).
 
@@ -94,7 +94,7 @@ it is cancelled when the operator exits and stops all "hung" left-over tasks
 .. note::
 
     The MUST_ / SHOULD_ separation is due to Python having no way to terminate
-    a thread unless the thread exits by its own. The :kwarg:`stopped` flag
+    a thread unless the thread exits on its own. The :kwarg:`stopped` flag
     is a way to signal the thread it should exit. If :kwarg:`stopped` is not
     checked, the synchronous daemons will run forever or until an error happens.
 
@@ -118,7 +118,7 @@ The termination sequence parameters can be controlled when declaring a daemon:
         while not stopped:
             await asyncio.sleep(1)
 
-There are three stages how the daemon is terminated:
+There are three stages of how the daemon is terminated:
 
 * 1. Graceful termination:
   * ``stopped`` is set immediately (unconditionally).
@@ -140,9 +140,9 @@ The total termination time is ``cancellation_backoff + cancellation_timeout``.
 
 .. warning::
 
-    When the operator is exiting, it has its own timeout of 5 seconds
+    When the operator is terminating, it has its timeout of 5 seconds
     for all "hung" tasks. This includes the daemons after they are requested
-    to exit gracefully and all timeouts are reached.
+    to finish gracefully and all timeouts are reached.
 
     If the daemon termination takes longer than this for any reason,
     the daemon will be cancelled (by the operator, not by the daemon guard)
@@ -230,8 +230,8 @@ Restarting
 ==========
 
 It is generally expected that daemons are designed to run forever.
-However, it is possible for a daemon to exit prematurely, i.e. before
-the resource is deleted or the operator is exiting.
+However, a daemon can exit prematurely, i.e. before the resource is deleted
+or the operator terminates.
 
 In that case, the daemon will not be restarted again during the lifecycle
 of this resource in this operator process (however, it will be spawned again
@@ -306,8 +306,8 @@ and will not be updated as the object changes.
 Results delivery
 ================
 
-As with any other handlers, it is possible for the daemons to return
-arbitrary JSON-serializable values to be put on the resource's status:
+As with any other handlers, the daemons can return arbitrary JSON-serializable
+values to be put on the resource's status:
 
 .. code-block:: python
 
@@ -376,8 +376,8 @@ The criteria themselves are not re-evaluated if nothing changes.
 
 .. warning::
 
-    A daemon that is being terminated is considered as still running, therefore
-    it will not be re-spawned until the termination ends. It will be re-spawned
+    A daemon that is terminating is considered as still running, therefore
+    it will not be re-spawned until it fully terminates. It will be re-spawned
     the next time a watch-event arrives after the daemon has truly exited.
 
 
@@ -387,12 +387,12 @@ System resources
 .. warning::
 
     A separate OS thread or asyncio task is started
-    for each individual resource and each individual handler.
+    for each resource and each handler.
 
     Having hundreds or thousands of OS threads or asyncio tasks can consume
     system resources significantly. Make sure you only have daemons and timers
     with appropriate filters (e.g., by labels, annotations, or so).
 
     For the same reason, prefer to use async handlers (with properly designed
-    async/await code), since asyncio tasks are a somewhat cheaper than threads.
+    async/await code), since asyncio tasks are somewhat cheaper than threads.
     See :doc:`async` for details.

@@ -38,7 +38,7 @@ because it does not match the initial decisive glob::
 
     kopf run --namespace=myapp-*,!*-pr-*,*-pr-123 ...
 
-In all cases, the operator monitors the namespaces that exist at startup
+In all cases, the operator monitors the namespaces that exist at the startup
 or are created/deleted at runtime, and starts/stops serving them accordingly.
 
 If there are no permissions to list/watch the namespaces, the operator falls
@@ -50,7 +50,7 @@ If a namespace does not exist, `Kubernetes permits watching over it anyway`__.
 The only difference is when the resource watching starts: if the permissions
 are sufficient, the watching starts only after the namespace is created;
 if not sufficient, the watching starts immediately (for an unexistent namespace)
-and the resources will be actually served once that namespace is created.
+and the resources will be served once that namespace is created.
 
 __ https://github.com/kubernetes/kubernetes/issues/75537
 

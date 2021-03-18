@@ -7,8 +7,8 @@ Contributing
 In a nutshell, to contribute, follow this scenario:
 
 * Fork the repo in GitHub.
-* Clone your own fork.
-* Checkout a feature branch.
+* Clone the fork.
+* Check out a feature branch.
 * **Implement the changes.**
 * Sign-off your commits.
 * Create a pull request.
@@ -58,7 +58,7 @@ Git conventions
 
 The more rules you have, the less they are followed.
 
-Kopf tries to avoid any written rules, and to follow the human habits
+Kopf tries to avoid any written rules and to follow human habits
 and intuitive expectations where possible. Therefore:
 
 * Write clear and explanatory commit messages and PR titles.
@@ -76,7 +76,7 @@ DCO sign-off
 
 All contributions (including pull requests) must agree
 to the Developer Certificate of Origin (DCO) version 1.1.
-This is exactly the same one created and used by the Linux kernel developers
+This is the same one created and used by the Linux kernel developers
 and posted on http://developercertificate.org/.
 
 This is a developer's certification that they have the right to submit
@@ -86,7 +86,7 @@ Simply submitting a contribution implies this agreement.
 However, please include a "Signed-off-by" tag in every patch
 (this tag is a conventional way to confirm that you agree to the DCO):
 
-The sign-off can be either written manually, or added with `git commit -s`.
+The sign-off can be either written manually or added with `git commit -s`.
 If you contribute often, you can automate this in Kopf's repo with
 a [Git hook](https://stackoverflow.com/a/46536244/857383).
 
@@ -98,7 +98,7 @@ Common sense is the best code formatter.
 Blend your code into the surrounding code style.
 
 Kopf does not use and will never use strict code formatters
-(at least, until they acquire common sense and context awareness).
+(at least until they acquire common sense and context awareness).
 In case of doubt, adhere to PEP-8 and [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html).
 
 For imports, use [isort](https://github.com/PyCQA/isort)::

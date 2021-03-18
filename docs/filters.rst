@@ -14,11 +14,11 @@ There are only a few kinds of checks:
 
 * Specific values -- expressed with Python literals such as ``"a string"``.
 * Presence of values -- with special markers ``kopf.PRESENT/kopf.ABSENT``.
-* Per-value callbacks -- with anything callable and evaluatable to true/false.
-* Whole-body callbacks -- with anything callable and evaluatable to true/false.
+* Per-value callbacks -- with anything callable which evaluates to true/false.
+* Whole-body callbacks -- with anything callable which evaluates to true/false.
 
 But there are multiple places where these checks can be applied,
-each has its own specifics.
+each has its specifics.
 
 
 Metadata filters
@@ -63,7 +63,7 @@ i.e. they are considered as present on the resource.
 Field filters
 =============
 
-Specific fields can be checked for specific values or for presence/absence,
+Specific fields can be checked for specific values or presence/absence,
 similar to the metadata filters:
 
 .. code-block:: python
@@ -97,8 +97,8 @@ with any value (for update handlers: present before or after the change).
 
 Since the field name is part of the handler id (e.g., ``"fn/spec.field"``),
 multiple decorators can be defined to react to different fields with the same
-function, and it will be invoked multiple times with different old & new values
-relevant to the specified fields, so as different :kwarg:`param`:
+function and it will be invoked multiple times with different old & new values
+relevant to the specified fields, so as different values of :kwarg:`param`:
 
 .. code-block:: python
 
@@ -111,7 +111,7 @@ However, different causes --mostly resuming + one of creation/update/deletion--
 will not be distinguished, so e.g. resume+create pair with the same field
 will be called only once.
 
-Due to a special nature of the update handlers (``@on.update``, ``@on.field``),
+Due to the special nature of update handlers (``@on.update``, ``@on.field``),
 described in a note below, this filtering semantics is extended for them:
 
 The ``field=`` filter restricts the update-handlers to cases when the specified
@@ -137,7 +137,7 @@ the transitioning resource still satisfies the filter in its "old" state.
     in-between the old and new states, and therefore belong to both of them.
 
     **In general,** the resource-changing handlers are an abstraction on top
-    of the low level K8s machinery for eventual processing of such state
+    of the low-level K8s machinery for eventual processing of such state
     transitions, so their semantics can differ from K8s's low-level semantics.
     In most cases, this is not visible or important to the operator developers,
     except for such cases, where it might affect the semantics of e.g. filters.
@@ -225,7 +225,7 @@ Instead of specific values or special markers, all the value-based filters can
 use arbitrary per-value callbacks (as an advanced use-case for advanced logic).
 
 The value callbacks must receive the same :doc:`keyword arguments <kwargs>`
-as the respective handlers (with ``**kwargs/**_`` for forward compatibility),
+as the respective handlers (with ``**kwargs/**_`` for forwards compatibility),
 plus one *positional* (not keyword!) argument with the value being checked.
 The passed value will be ``None`` if the value is absent in the resource.
 
@@ -245,7 +245,7 @@ Callback filters
 ================
 
 The resource callbacks must receive the same :doc:`keyword arguments <kwargs>`
-as the respective handlers (with ``**kwargs/**_`` for forward compatibility).
+as the respective handlers (with ``**kwargs/**_`` for forwards compatibility).
 
 .. code-block:: python
 
@@ -313,7 +313,7 @@ Stealth mode
 
     As the result, when the object is updated to match the filters some time
     later (e.g. by putting labels/annotations on it, or changing its spec),
-    this will not be considered as an update, but as a creation.
+    this will not be considered as an update but as a creation.
 
     From the operator's point of view, the object has suddenly appeared
     in sight with no diff-base, which means that it is a newly created object;

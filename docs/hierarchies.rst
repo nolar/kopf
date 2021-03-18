@@ -4,7 +4,7 @@ Hierarchies
 
 One of the most common patterns of the operators is to create
 children resources in the same Kubernetes cluster.
-Kopf provides some tools to simplify connecting these resources together
+Kopf provides some tools to simplify connecting these resources
 by manipulating their content before it is sent to the Kubernetes API.
 
 .. note::
@@ -196,7 +196,7 @@ being processed at the moment, omit the name or set it to ``None``
 
 Alternatively, the operator can request Kubernetes to generate a name
 with the specified prefix and a random suffix (via ``metadata.generateName``).
-The actual name will be known only after the resource is actually created:
+The actual name will be known only after the resource is created:
 
 .. code-block:: python
 

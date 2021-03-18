@@ -67,12 +67,14 @@ We can see that with kubectl:
       kopf: {}
 
 .. note::
-    If the above change causes ``Patching failed with inconsistencies`` 
-    debug warnings and/or your EVC yaml doesn't show a ``.status`` field, make sure
-    you have set the ``x-kubernetes-preserve-unknown-fields: true`` field in your CRD
-    on either the entire object or just the ``.status`` field as detailed in :doc:`resources`. 
-    Without setting this field, Kubernetes will prune the ``.status`` field when Kopf tries to 
-    update it. For more info on field pruning, see `the Kubernetes docs  
+    If the above change causes ``Patching failed with inconsistencies``
+    debug warnings and/or your EVC YAML doesn't show a ``.status`` field,
+    make sure you have set the ``x-kubernetes-preserve-unknown-fields: true``
+    field in your CRD on either the entire object or just the ``.status`` field
+    as detailed in :doc:`resources`.
+    Without setting this field, Kubernetes will prune the ``.status`` field
+    when Kopf tries to update it. For more info on field pruning,
+    see `the Kubernetes docs
     <https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#field-pruning>`_.
 
 Let's add a yet another handler, but for the "update" cause.
@@ -112,7 +114,7 @@ Or by patching it:
 
 Keep in mind the PVC size can only be increased, never decreased.
 
-Give the operator few seconds to handle the change.
+Give the operator a few seconds to handle the change.
 
 Check the size of the actual PV behind the PVC, which is now increased:
 
@@ -128,5 +130,5 @@ Check the size of the actual PV behind the PVC, which is now increased:
 .. warning::
     Kubernetes & ``kubectl`` improperly show the capacity of PVCs:
     it remains the same (1G) event after the change.
-    The size of actual PV (Persistent Volume) of each PVC is important!
+    The size of the actual PV (Persistent Volume) of each PVC is important!
     This issue is not related to Kopf, so we go around it.

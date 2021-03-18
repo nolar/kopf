@@ -13,7 +13,7 @@ Background runner
 while the original testing thread does the object manipulation and assertions:
 
 When the ``with`` block exits, the operator stops, and its exceptions,
-exit code, and output are available to the test (for additional assertions).
+exit code and output are available to the test (for additional assertions).
 
 .. code-block:: python
     :caption: test_example_operator.py
