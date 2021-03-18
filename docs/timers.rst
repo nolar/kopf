@@ -28,7 +28,7 @@ Sharpness
 
 Usually (by default), the timers are invoked with the specified interval
 between each call. The time taken by the handler itself is not taken into
-account. It is possible to define timers with sharp schedule: i.e. invoked
+account. It is possible to define timers with a sharp schedule: i.e. invoked
 every number of seconds sharp, no matter how long it takes to execute it:
 
 .. code-block:: python
@@ -61,15 +61,16 @@ be invoked when it is stable for some time:
     def ping_kex(spec, **kwargs):
         print(f"FIELD={spec['field']}")
 
-Creation of a resource is considered as a change, so idling also shifts
+The creation of a resource is considered as a change, so idling also shifts
 the very first invocation by that time.
 
 The default is to have no idle time, just the intervals.
 
 It is possible to have a timer with both idling and interval. In that case,
-the timer will be invoked only if there were no changes for specified duration
-(idle), and every N seconds after that (interval), as long as the object does
-not change. Once changed, the timer will stop and wait for the new idling time:
+the timer will be invoked only if there were no changes in the resource
+for the specified duration (idle time),
+and every N seconds after that (interval) as long as the object does not change.
+Once changed, the timer will stop and wait for the new idling time:
 
 .. code-block:: python
 
@@ -106,7 +107,7 @@ resource/operator lifecycle in the very beginning.
 Combined timing
 ===============
 
-It is possible to combine all schedule intervals to achieve the desired effect.
+It is possible to combine all scheduled intervals to achieve the desired effect.
 For example, to give an operator 1 minute for warming up, and then pinging
 the resources every 10 seconds if they are unmodified for 10 minutes:
 

@@ -14,7 +14,7 @@ Therefore, it knows nothing about the *desired state* or *actual state*
 Kopf-based operators must implement the checks and reactions to the changes,
 so that both states are synchronised according to the operator's concepts.
 
-Kopf only provides few ways and tools of achieving this easily.
+Kopf only provides a few ways and tools fir achieving this easily.
 
 
 Event-driven reactions
@@ -22,15 +22,15 @@ Event-driven reactions
 
 Normally, Kopf triggers the on-creation/on-update/on-deletion handlers
 every time anything changes on the object, as reported by Kubernetes API.
-It provides both the current state of the object, and a diff with the last
-handled state.
+It provides both the current state of the object and a diff list
+with the last handled state.
 
 The event-driven approach is the best, as it saves system resources (RAM & CPU),
-and does not trigger any activity when it is not needed, and does not consume
+and does not trigger any activity when it is not needed and does not consume
 memory for keeping the object's last known state permanently in memory.
 
 But it is more difficult to develop, and is not suitable for some cases:
-e.g., when an external non-Kubernetes system is monitored via its own API.
+e.g., when an external non-Kubernetes system is monitored via its API.
 
 .. seealso::
     :doc:`handlers`
@@ -39,10 +39,10 @@ e.g., when an external non-Kubernetes system is monitored via its own API.
 Regularly scheduled timers
 ==========================
 
-Timers are triggered on regular schedule, regardless of whether anything
+Timers are triggered on a regular schedule, regardless of whether anything
 changes or does not change in the resource itself. This can be used to
 verify both the resource's body, and the state of other related resources
-though API calls, and update the original resource's status/content.
+through API calls, and update the original resource's status/content.
 
 .. seealso::
     :doc:`timers`
@@ -51,7 +51,7 @@ though API calls, and update the original resource's status/content.
 Permanently running daemons
 ===========================
 
-As a last resort, a developer can implement their own background task,
+As a last resort, a developer can implement a background task,
 which checks the status of the system and reacts when the "actual" state
 diverts from the "desired" state.
 

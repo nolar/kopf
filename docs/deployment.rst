@@ -23,7 +23,7 @@ First of all, the operator must be packaged as a docker image with Python 3.7:
 
 Build and push it to some repository of your choice.
 Here, we will use DockerHub_
-(with a personal account "nolar" -- replace it with your own name or namespace;
+(with a personal account "nolar" -- replace it with your name or namespace;
 you may also want to add the versioning tags instead of the implied "latest"):
 
 .. code-block:: bash
@@ -92,7 +92,7 @@ and attached to the operator's pod via a service account.
 
 .. _RBAC: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
 
-Here is an example of what a RBAC config should look like
+Here is an example of what an RBAC config should look like
 (remove the parts which are not needed: e.g. the cluster roles/bindings
 for the strictly namespace-bound operator):
 

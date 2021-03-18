@@ -18,7 +18,7 @@ can also be considered as a part of the solution.
 ----
 
 The **Kubernetes controller** is the logic (i.e. the behaviour) behind most
-objects, both built-in and added as extension of Kubernetes.
+objects, both built-in and added as extensions of Kubernetes.
 Examples of objects are ReplicaSet and Pods, created when a Deployment object
 is created, with the rolling version upgrades, and so on.
 
@@ -45,12 +45,12 @@ watching the objects and reacting to the objects' events (usually the changes).
 
 **Kopf** is a framework to build Kubernetes operators in Python.
 
-As any framework, Kopf provides both the "outer" toolkit to run the operator,
+Like any framework, Kopf provides both the "outer" toolkit to run the operator,
 to talk to the Kubernetes cluster, and to marshal the Kubernetes events
 into the pure-Python functions of the Kopf-based operator,
 and the "inner" libraries to assist with a limited set of common tasks
 of manipulating the Kubernetes objects
-(however, it is not a yet another Kubernetes client library).
+(however, it is not yet another Kubernetes client library).
 
 .. seealso::
 

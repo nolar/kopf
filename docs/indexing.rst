@@ -361,7 +361,7 @@ as they are capable of delaying the operator startup and resource processing.
 For this reason, in case of errors in handlers, the handlers are never retried.
 
 Arbitrary exceptions with ``errors=IGNORED`` (the default) make the framework
-to ignore the error and keep the existing indexed values (which are now stale).
+ignore the error and keep the existing indexed values (which are now stale).
 It means that the new values are expected to appear soon, but the old values
 are good enough meanwhile (which is usually highly probable). This is the same
 as returning ``None``, except that the exception's stack trace is logged too:

@@ -4,7 +4,7 @@ Creating the objects
 
 Previously (:doc:`starting`),
 we have created a skeleton operator and learned to start it and see the logs.
-Now, let's add few meaningful reactions to solve our problem (:doc:`problem`).
+Now, let's add a few meaningful reactions to solve our problem (:doc:`problem`).
 
 We want to create a real ``PersistentVolumeClaim`` object
 immediately when an ``EphemeralVolumeClaim`` is created this way:
@@ -93,7 +93,7 @@ Wait 1-2 seconds, and take a look:
 Now, the PVC can be attached to the pods by the same name, as EVC is named.
 
 .. note::
-    If you have to re-run the operator, and hit a HTTP 409 error saying
+    If you have to re-run the operator and hit an HTTP 409 error saying
     "persistentvolumeclaims "my-claim" already exists",
     then remove it manually:
 

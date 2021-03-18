@@ -120,7 +120,7 @@ The following log formats are supported on CLI:
 Logging events
 ==============
 
-``settings.posting`` allows to control which log messages should be post as
+``settings.posting`` allows to control which log messages should be posted as
 Kubernetes events. Use ``logging`` constants or integer values to set the level:
 e.g., ``logging.WARNING``, ``logging.ERROR``, etc.
 The default is ``logging`.INFO``.
@@ -150,8 +150,8 @@ The event-posting can be disabled completely (the default is to be enabled):
     `kopf.info`, `kopf.warn`, `kopf.exception`, etc --
     even if they are called explicitly in the code.
 
-    To avoid these settings having impact on your code, post events
-    directly with an API client library instead of Kopf-provided toolkit.
+    To avoid these settings having an impact on your code, post events
+    directly with an API client library instead of the Kopf-provided toolkit.
 
 
 .. _configure-sync-handlers:
@@ -159,7 +159,7 @@ The event-posting can be disabled completely (the default is to be enabled):
 Synchronous handlers
 ====================
 
-``settings.execution`` allows to set the number of synchronous workers used
+``settings.execution`` allows setting the number of synchronous workers used
 by the operator for synchronous handlers, or replace the asyncio executor
 with another one:
 
@@ -189,7 +189,7 @@ handler itself. To avoid it, make the on-startup handler asynchronous:
         settings.execution.executor = concurrent.futures.ThreadPoolExecutor()
 
 The same executor is used both for regular sync handlers and for sync daemons.
-If you expect large number of synchronous daemons (e.g. for large clusters),
+If you expect a large number of synchronous daemons (e.g. for large clusters),
 make sure to pre-scale the executor accordingly
 (the default in Python is 5x times the CPU cores):
 
@@ -209,13 +209,13 @@ Few timeouts can be controlled when communicating with Kubernetes API:
 
 ``settings.watching.server_timeout`` (seconds) is how long the session
 with a watching request will exist before closing it from the **server** side.
-This value is passed to the server side in a query string, and the server
+This value is passed to the server-side in a query string, and the server
 decides on how to follow it. The watch-stream is then gracefully closed.
 The default is to use the server setup (``None``).
 
 ``settings.watching.client_timeout`` (seconds) is how long the session
 with a watching request will exist before closing it from the **client** side.
-This includes the connection establishing and event streaming.
+This includes establishing the connection and event streaming.
 The default is forever (``None``).
 
 ``settings.watching.connect_timeout`` (seconds) is how long a connection
@@ -223,7 +223,7 @@ can be established before failing. (With current aiohttp-based implementation,
 this corresponds to ``sock_connect=`` timeout, not to ``connect=`` timeout,
 which would also include the time for getting a connection from the pool.)
 
-It makes no sense to set the client-side timeout shorter than the server side
+It makes no sense to set the client-side timeout shorter than the server-side
 timeout, but it is given to the developers' responsibility to decide.
 
 The server-side timeouts are unpredictable, they can be 10 seconds or
@@ -231,8 +231,8 @@ The server-side timeouts are unpredictable, they can be 10 seconds or
 (especially since it works without timeouts defined, just produces extra logs).
 
 ``settings.watching.reconnect_backoff`` (seconds) is a backoff interval between
-watching requests -- in order to prevent API flooding in case of errors
-or disconnects. The default is 0.1 seconds (nearly instant, but not flooding).
+watching requests -- to prevent API flooding in case of errors or disconnects.
+The default is 0.1 seconds (nearly instant, but not flooding).
 
 .. code-block:: python
 
@@ -274,11 +274,11 @@ The default is the one that was hard-coded before:
 Handling progress
 =================
 
-In order to keep the handling state across multiple handling cycles, and to be
-resilient to errors and tolerable to restarts and downtimes, the operator keeps
-its state in a configured state storage. See more in :doc:`continuity`.
+To keep the handling state across multiple handling cycles, and to be resilient
+to errors and tolerable to restarts and downtimes, the operator keeps its state
+in a configured state storage. See more in :doc:`continuity`.
 
-To store the state only in the annotations with your own prefix:
+To store the state only in the annotations with a preferred prefix:
 
 .. code-block:: python
 
@@ -338,13 +338,13 @@ For this, inherit from `kopf.ProgressStorage` and implement its abstract methods
     ``kopf.StatusProgressStorage(field='status.kopf.progress')``.
 
     Starting with Kubernetes 1.16, both custom and built-in resources have
-    strict structural schemas with pruning of unknown fields
+    strict structural schemas with the pruning of unknown fields
     (more information is in `Future of CRDs: Structural Schemas`__).
 
     __ https://kubernetes.io/blog/2019/06/20/crd-structural-schema/
 
     Long story short, unknown fields are silently pruned by Kubernetes API.
-    As a result, Kopf's status storage will not be able to actually store
+    As a result, Kopf's status storage will not be able to store
     anything in the resource, as it will be instantly lost.
     (See `#321 <https://github.com/zalando-incubator/kopf/issues/321>`_.)
 
@@ -383,7 +383,7 @@ Change detection
 
 For change-detecting handlers, Kopf keeps the last handled configuration --
 i.e. the last state that has been successfully handled. New changes are compared
-against the last handled configuration, and a diff is formed.
+against the last handled configuration, and a diff list is formed.
 
 The last-handled configuration is also used to detect if there were any
 essential changes at all -- i.e. not just the system or status fields.
@@ -405,7 +405,7 @@ The default is an equivalent of:
 The stored content is a JSON-serialised essence of the object (i.e., only
 the important fields, with system fields and status stanza removed).
 
-It is generally not a good idea to override this store, unless multiple
+It is generally not a good idea to override this store unless multiple
 Kopf-based operators must handle the same resources, and they should not
 collide with each other. In that case, they must take different names.
 
@@ -422,7 +422,7 @@ Storage transition
     will start handling each of them again -- which can lead to duplicated
     children or other side-effects.
 
-To ensure smooth transition, use a composite multi-storage, with the
+To ensure a smooth transition, use a composite multi-storage, with the
 new storage as a first child, and the old storage as the second child
 (both are used for writing, the first found value is used for reading).
 
@@ -440,7 +440,7 @@ for diff-base storage, apply this configuration:
             kopf.AnnotationsDiffBaseStorage('kopf.zalando.org/last-handled-configuration'),
         ])
 
-Run the operator for some time. Let all resources to change or force this:
+Run the operator for some time. Let all resources change or force this:
 e.g. by arbitrarily labelling them, so that a new diff-base is generated:
 
 .. code-block:: shell
@@ -453,7 +453,7 @@ Then, switch to the new storage alone, without the transitional setup.
 Error throttling
 ================
 
-To prevent uncontrollable flood of activities in case of errors that prevent
+To prevent an uncontrollable flood of activities in case of errors that prevent
 the resources being marked as handled, which could lead to Kubernetes API
 flooding, it is possible to throttle the activities on a per-resource basis:
 
@@ -476,7 +476,7 @@ The back-offs are not persisted, so they are lost on the operator restarts.
 
 These back-offs do not cover errors in the handlers -- the handlers have their
 own configurable per-handler back-off intervals. These back-offs are for Kopf
-and for Kubernetes API mostly (and other environment issues).
+and the Kubernetes API mostly (and other issues of the environment).
 
 To disable throttling (on your own risk!), set the error delays to
 an empty list (``[]``) or an empty tuple (``()``).

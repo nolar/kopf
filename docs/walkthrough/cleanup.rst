@@ -2,7 +2,7 @@
 Cleanup
 =======
 
-To cleanup the cluster after all the experiments are finished:
+To clean up the cluster after all the experiments are finished:
 
 .. code-block:: bash
 

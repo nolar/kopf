@@ -10,8 +10,8 @@ to schedule arbitrary sub-handlers for the execution in the current cycle.
 `kopf.execute` coroutine executes arbitrary sub-handlers
 directly in the place of invocation, and returns when all they have succeeded.
 
-Every of the sub-handlers is tracked by Kopf, and will not be executed twice
-within one handling cycle.
+Every one of the sub-handlers is tracked by Kopf, and will not be executed
+twice within one handling cycle.
 
 .. code-block:: python
 
@@ -43,11 +43,11 @@ and the main handler succeeds too.
 The first one, ``create_a``, will succeed on the 3rd attempt after ~20s.
 The second one, ``create_b``, will succeed only on the 7th attempt after ~60s.
 
-However, despite ``create_a`` will be submitted every time when ``create``
+However, despite ``create_a`` will be submitted whenever ``create``
 and ``create_b`` are retried, it will not be executed in the 20s..60s range,
 as it has succeeded already, and the record about this is stored on the object.
 
-This approach can be used to perform operations, which needs the protection
+This approach can be used to perform operations, which needs protection
 from double-execution, such as the children object creation with randomly
 generated names (e.g. Pods, Jobs, PersistentVolumeClaims, etc).
 

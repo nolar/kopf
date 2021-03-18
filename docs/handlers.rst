@@ -23,7 +23,7 @@ More on that, since Kopf stores the state of the handlers on the object itself,
 these state changes also cause the events, which are seen by the operators
 and any other watchers.
 
-To hide the complexity of the state storing, Kopf provides the cause detection:
+To hide the complexity of the state storing, Kopf provides a cause detection:
 whenever an event happens for the object, the framework detects what happened
 actually, as follows:
 
@@ -57,7 +57,7 @@ Low-level events can be intercepted and handled silently, without
 storing the handlers' status (errors, retries, successes) on the object.
 
 This can be useful if the operator needs to watch over the objects
-of another operator or controller, without adding its own data.
+of another operator or controller, without adding its data.
 
 The following event-handler is available::
 
@@ -84,7 +84,7 @@ State-changing handlers
 =======================
 
 Kopf goes further and beyond: it detects the actual causes of these events,
-i.e. what actually happened to the object:
+i.e. what happened to the object:
 
 * Was the object just created?
 * Was the object deleted (marked for deletion)?
@@ -94,7 +94,7 @@ i.e. what actually happened to the object:
 .. note::
     Worth noting that Kopf stores the status of the handlers, such as their
     progress or errors or retries, in the object itself (``.status`` stanza),
-    which triggers its own low-level events, but these events are not detected
+    which triggers its low-level events, but these events are not detected
     as separate causes, as there is nothing changed *essentially*.
 
 The following 3 core cause-handlers are available::
@@ -116,9 +116,9 @@ The following 3 core cause-handlers are available::
 .. note::
     Kopf's finalizers will be added to the object when there are delete
     handlers specified. Finalizers block Kubernetes from fully deleting
-    objects, and Kubernetes will only actually delete objects when all
+    objects and Kubernetes will only actually delete objects when all
     finalizers are removed, i.e. only if the Kopf operator is running to
-    remove them (check: :ref:`finalizers-blocking-deletion` for a work-around).
+    remove them (check: :ref:`finalizers-blocking-deletion` for a workaround).
     If a delete handler is added but finalizers are not required to block the
     actual deletion, i.e. the handler is optional, the optional argument
     ``optional=True`` can be passed to the delete cause decorator.
@@ -127,7 +127,7 @@ The following 3 core cause-handlers are available::
 Resuming handlers
 =================
 
-An special kind of handlers can be used for cases when the operator restarts
+A special kind of handlers can be used for cases when the operator restarts
 and detects an object that existed before::
 
     @kopf.on.resume('kopfexamples')
@@ -140,7 +140,7 @@ With the resuming handler in addition to creation/update/deletion handlers,
 no object will be left unattended even if it does not change over time.
 
 The resuming handlers are guaranteed to execute only once per operator
-life time for each individual resource (except if errors are retried).
+lifetime for each resource object (except if errors are retried).
 
 Normally, the resume handlers are mixed-in to the creation and updating
 handling cycles, and are executed in the order they are declared.
@@ -192,7 +192,7 @@ with ``deleted=True`` option::
         pass
 
 In that case, both the deletion and resuming handlers will be invoked. It is
-the developer's responsibility to ensure this does not lead to the memory leaks.
+the developer's responsibility to ensure this does not lead to memory leaks.
 
 
 Field handlers

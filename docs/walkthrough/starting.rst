@@ -7,7 +7,7 @@ and created the :doc:`custom resource definitions <resources>`
 for the ephemeral volume claims.
 
 Now, we are ready to write some logic for this kind of objects.
-Let's start with the an operator skeleton that does nothing useful --
+Let's start with an operator skeleton that does nothing useful --
 just to see how it can be started.
 
 .. code-block:: python
@@ -53,7 +53,7 @@ The output looks like this:
     [2019-05-31 10:42:12,362] kopf.reactor.handlin [DEBUG   ] [default/my-claim] Patching with: {'status': {'kopf': {'progress': None}}, 'metadata': {'annotations': {'kopf.zalando.org/last-handled-configuration': '{"apiVersion": "kopf.dev/v1", "kind": "EphemeralVolumeClaim", "metadata": {"name": "my-claim", "namespace": "default"}, "spec": {}}'}}}
 
 Note that the operator has noticed an object created before the operator
-was even started, and handled it -- since it was not handled before.
+was even started, and handled the object because it was not handled before.
 
 Now, you can stop the operator with Ctrl-C (twice), and start it again:
 
@@ -62,7 +62,7 @@ Now, you can stop the operator with Ctrl-C (twice), and start it again:
     kopf run ephemeral.py --verbose
 
 The operator will not handle the object, as now it is already successfully
-handled. This is important in case of the operator is restarted if it runs
+handled. This is important in case the operator is restarted if it runs
 in a normally deployed pod, or when you restart the operator for debugging.
 
 Let's delete and re-create the same object to see the operator reacting:

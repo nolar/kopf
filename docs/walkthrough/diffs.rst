@@ -64,7 +64,7 @@ since Kubernetes notifies the operators only with the newest state of the object
 Diffs
 =====
 
-Kopf tracks the state of the objects, and calculates the diffs.
+Kopf tracks the state of the objects and calculates the diffs.
 The diffs are provided as the :kwarg:`diff` kwarg; the old & new states
 of the object or field -- as the :kwarg:`old` & :kwarg:`new` kwargs.
 
@@ -84,7 +84,7 @@ For example, if the field is ``metadata.labels``::
      ('change', ('label2',), 'old-value', 'new-value'),
      ('remove', ('label3',), 'old-value', None)]
 
-Now, let's use this feature to explicitly react to re-labelling of the EVCs.
+Now, let's use this feature to explicitly react to the re-labelling of the EVCs.
 Note that the ``new`` value for the removed dict key is ``None``,
 exactly as needed for the patch object (i.e. the field is present there):
 

@@ -12,10 +12,10 @@ Problem Statement
 
 In Kubernetes, there are no ephemeral volumes of big sizes, e.g. 500 GB.
 By ephemeral, it means that the volume does not persist after it is used.
-Such volumes can be used as workspace for large data-crunching jobs.
+Such volumes can be used as a workspace for large data-crunching jobs.
 
 There is `Local Ephemeral Storage`__, which allocates some space on a node's
-root partition, shared with the docker images and other containers,
+root partition shared with the docker images and other containers,
 but it is often limited in size depending on the node/cluster config:
 
 __ https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#local-ephemeral-storage
@@ -51,13 +51,13 @@ We will implement the ``EphemeralVolumeClaim`` object kind,
 which will be directly equivalent to ``PersistentVolumeClaim``
 (and will use it internally), but with a little extension:
 
-It will be *designated* for a pod or pods with a specific selection criteria.
+It will be *designated* for a pod or pods with specific selection criteria.
 
 Once used, and all those pods are gone and are not going to be restarted,
 the ephemeral volume claim will be deleted after a *grace period*.
 
 For safety, there will be an *expiry period* for the cases when the claim
-was not used: e.g. if the pod could not start for some reasons,
+was not used: e.g. if the pod could not start for some reasons
 so that the claim does not remain stale forever.
 
 The lifecycle of an ``EphemeralVolumeClaim`` is this:

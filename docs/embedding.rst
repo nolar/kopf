@@ -13,7 +13,7 @@ Manual orchestration
 ====================
 
 Since Kopf is fully asynchronous, the best way to run Kopf is to provide
-an event-loop specially for Kopf in a separate thread, while running
+an event-loop dedicated to Kopf in a separate thread, while running
 the main application in the main thread.
 
 .. code-block:: python
@@ -37,7 +37,7 @@ the main application in the main thread.
         # ...
         thread.join()
 
-In case of :command:`kopf run`, the main application is Kopf itself,
+In the case of :command:`kopf run`, the main application is Kopf itself,
 so its event-loop runs in the main thread.
 
 .. note::
@@ -55,7 +55,7 @@ themselves. The example above is an equivalent of the following:
         tasks = loop.run_until_complete(kopf.spawn_tasks())
         loop.run_until_complete(kopf.run_tasks(tasks, return_when=asyncio.FIRST_COMPLETED))
 
-Or, if proper cancellation and termination is not expected, of the following:
+Or, if proper cancellation and termination are not expected, of the following:
 
 .. code-block:: python
 
@@ -103,7 +103,7 @@ in :mod:`contextvars` containers with values isolated per-loop and per-task.
 
 
 .. warning::
-    It is not recommended to run Kopf in the same event-loop with other routines
+    It is not recommended to run Kopf in the same event-loop as other routines
     or applications: it considers all tasks in the event-loop as spawned by its
     workers and handlers, and cancels them when it exits.
 
