@@ -10,6 +10,14 @@ from kopf.reactor import registries, running
 from kopf.structs import configuration, credentials, primitives, references
 from kopf.utilities import loaders
 
+if os.name == "posix":
+    import asyncio
+    try:
+        import uvloop
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    except ImportError:
+        pass
+
 
 @dataclasses.dataclass()
 class CLIControls:

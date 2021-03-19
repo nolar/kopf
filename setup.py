@@ -12,6 +12,11 @@ PROJECT_URLS = {
     'Source Code': 'https://github.com/nolar/kopf',
 }
 
+SPEEDUPS_REQUIREMENTS = [
+    "uvloop; sys_platform != \"win32\""
+]
+
+
 setup(
     name='kopf',
     use_scm_version=True,
@@ -51,5 +56,6 @@ setup(
     ],
     extras_require={
         'full-auth': ['pykube-ng', 'kubernetes'],
+        'speedups': SPEEDUPS_REQUIREMENTS,
     },
 )
