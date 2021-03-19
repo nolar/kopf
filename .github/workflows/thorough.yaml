@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        install-extras: [ "", "full-auth" ]
+        install-extras: [ "", "full-auth", "speedupds" ]
         python-version: [ "3.7", "3.8", "3.9" ]
     name: Python ${{ matrix.python-version }} ${{ matrix.install-extras }}
     runs-on: ubuntu-20.04

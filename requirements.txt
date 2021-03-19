@@ -16,3 +16,4 @@ codecov
 coveralls
 mypy==0.800
 isort>=5.5.0
+uvloop; sys_platform != "win32"

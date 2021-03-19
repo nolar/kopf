@@ -15,8 +15,9 @@ if os.name == "posix":
     try:
         import uvloop
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+        print("Using uvloop")
     except ImportError:
-        pass
+        print("Using stdlib loop")
 
 
 @dataclasses.dataclass()
