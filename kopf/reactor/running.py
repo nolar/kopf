@@ -267,7 +267,20 @@ async def spawn_tasks(
                 memo=memo)))
 
     # Admission webhooks run as either a server or a tunnel or a fixed config.
+    # The webhook manager automatically adjusts the cluster configuration at runtime.
     container: primitives.Container[reviews.WebhookClientConfig] = primitives.Container()
+    tasks.append(aiotasks.create_guarded_task(
+        name="admission insights chain", flag=started_flag, logger=logger,
+        coro=primitives.condition_chain(
+            source=insights.revised, target=container.changed)))
+    tasks.append(aiotasks.create_guarded_task(
+        name="admission validating configuration manager", flag=started_flag, logger=logger,
+        coro=admission.validating_configuration_manager(
+            container=container, settings=settings, registry=registry, insights=insights)))
+    tasks.append(aiotasks.create_guarded_task(
+        name="admission mutating configuration manager", flag=started_flag, logger=logger,
+        coro=admission.mutating_configuration_manager(
+            container=container, settings=settings, registry=registry, insights=insights)))
     tasks.append(aiotasks.create_guarded_task(
         name="admission webhook server", flag=started_flag, logger=logger,
         coro=admission.admission_webhook_server(

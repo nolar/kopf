@@ -397,6 +397,8 @@ EVENTS_K8S = Selector('events.k8s.io', 'events')  # only for exclusion from EVER
 NAMESPACES = Selector('v1', 'namespaces')
 CLUSTER_PEERINGS = Selector('clusterkopfpeerings')
 NAMESPACED_PEERINGS = Selector('kopfpeerings')
+MUTATING_WEBHOOK = Selector('admissionregistration.k8s.io', 'mutatingwebhookconfigurations')
+VALIDATING_WEBHOOK = Selector('admissionregistration.k8s.io', 'validatingwebhookconfigurations')
 
 
 class Backbone(Mapping[Selector, Resource]):
@@ -422,7 +424,11 @@ class Backbone(Mapping[Selector, Resource]):
         super().__init__()
         self._items: MutableMapping[Selector, Resource] = {}
         self._revised = asyncio.Condition()
-        self.selectors = [NAMESPACES, EVENTS, CRDS, CLUSTER_PEERINGS, NAMESPACED_PEERINGS]
+        self.selectors = [
+            NAMESPACES, EVENTS, CRDS,
+            CLUSTER_PEERINGS, NAMESPACED_PEERINGS,
+            MUTATING_WEBHOOK, VALIDATING_WEBHOOK,
+        ]
 
     def __len__(self) -> int:
         return len(self._items)

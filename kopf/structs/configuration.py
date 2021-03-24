@@ -283,6 +283,23 @@ class AdmissionSettings:
         :doc:`/admission`.
     """
 
+    managed: Optional[str] = None
+    """
+    The names of managed ``[Validating/Mutating]WebhookConfiguration`` objects.
+
+    If not set (the default), Kopf does not manage the configuration and
+    expects that the requests come from a manually pre-created configuration.
+
+    If set, Kopf creates the validating/mutating configurations objects with
+    this name and continuously keeps them up to date with the currently served
+    resources and client configs as they change at runtime.
+    All existing webhooks in these configuration objects are overwritten.
+
+    This feature requires the ``patch`` and ``create`` RBAC verbs
+    for ``admissionregistration.k8s.io``'s resources (:doc:`/admission`).
+    """
+
+
 @dataclasses.dataclass
 class ExecutionSettings:
     """

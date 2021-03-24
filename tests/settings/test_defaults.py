@@ -25,6 +25,7 @@ async def test_declared_public_interface_and_promised_defaults():
     assert settings.batching.error_delays == (1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610)
     assert settings.scanning.disabled == False
     assert settings.admission.server is None
+    assert settings.admission.managed is None
     assert settings.execution.executor is not None
     assert settings.execution.max_workers is None
 

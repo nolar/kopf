@@ -1,13 +1,22 @@
 import asyncio
 import base64
+import copy
 import json
-from typing import Any, Collection, List, Mapping, Optional
+import logging
+import re
+import urllib.parse
+from typing import Any, Collection, Dict, Iterable, List, Mapping, Optional
 
+from typing_extensions import Literal, TypedDict
+
+from kopf.clients import creating, errors, patching
 from kopf.engines import loggers
 from kopf.reactor import causation, handling, lifecycles, registries
 from kopf.storage import states
-from kopf.structs import bodies, configuration, containers, ephemera, \
+from kopf.structs import bodies, configuration, containers, ephemera, filters, \
                          handlers, patches, primitives, references, reviews
+
+logger = logging.getLogger(__name__)
 
 
 class AdmissionError(handling.PermanentError):
@@ -226,3 +235,209 @@ async def admission_webhook_server(
         await asyncio.Event().wait()
 
 
+async def validating_configuration_manager(
+        *,
+        registry: registries.OperatorRegistry,
+        settings: configuration.OperatorSettings,
+        insights: references.Insights,
+        container: primitives.Container[reviews.WebhookClientConfig],
+) -> None:
+    await configuration_manager(
+        reason=handlers.WebhookType.VALIDATING,
+        selector=references.VALIDATING_WEBHOOK,
+        registry=registry, settings=settings,
+        insights=insights, container=container,
+    )
+
+
+async def mutating_configuration_manager(
+        *,
+        registry: registries.OperatorRegistry,
+        settings: configuration.OperatorSettings,
+        insights: references.Insights,
+        container: primitives.Container[reviews.WebhookClientConfig],
+) -> None:
+    await configuration_manager(
+        reason=handlers.WebhookType.MUTATING,
+        selector=references.MUTATING_WEBHOOK,
+        registry=registry, settings=settings,
+        insights=insights, container=container,
+    )
+
+
+async def configuration_manager(
+        *,
+        reason: handlers.WebhookType,
+        selector: references.Selector,
+        registry: registries.OperatorRegistry,
+        settings: configuration.OperatorSettings,
+        insights: references.Insights,
+        container: primitives.Container[reviews.WebhookClientConfig],
+) -> None:
+    """
+    Manage the webhook configurations dynamically.
+
+    This is one of an operator's root tasks that run forever.
+    If exited, the whole operator exits as by an error.
+
+    The manager waits for changes in one of these:
+
+    * Observed resources in the cluster (via insights).
+    * A new webhook client config yielded by the webhook server.
+
+    On either of these occasion, the manager rebuilds the webhook configuration
+    and applies it to the specified configuration resources in the cluster
+    (for which it needs some RBAC permissions).
+    Besides, it also creates an webhook configuration resource if it is absent.
+    """
+
+    # Do nothing if not managed. The root task cannot be skipped from creation,
+    # since the managed mode is only set at the startup activities.
+    if settings.admission.managed is None:
+        await asyncio.Event().wait()
+        return
+
+    # Wait until the prerequisites for managing are available (scanned from the cluster).
+    await insights.ready_resources.wait()
+    resource = await insights.backbone.wait_for(selector)
+    all_handlers = registry._resource_webhooks.get_all_handlers()
+    all_handlers = [h for h in all_handlers if h.reason == reason]
+
+    # Optionally (if configured), pre-create the configuration objects if they are absent.
+    # Use the try-or-fail strategy instead of check-and-do -- to reduce the RBAC requirements.
+    try:
+        await creating.create_obj(resource=resource, name=settings.admission.managed)
+    except errors.APIConflictError:
+        pass  # exists already
+    except errors.APIForbiddenError:
+        logger.error(f"Not enough RBAC permissions to create a {resource}.")
+        raise
+
+    # Execute either when actually changed (yielded from the webhook server),
+    # or the condition is chain-notified (from the insights: on resources/namespaces revision).
+    # Ignore inconsistencies: they are expected -- the server fills the defaults.
+    client_config: Optional[reviews.WebhookClientConfig] = None
+    try:
+        async for client_config in container.as_changed():
+            logger.info(f"Reconfiguring the {reason.value} webhook {settings.admission.managed}.")
+            webhooks = build_webhooks(
+                all_handlers,
+                resources=insights.resources,
+                name_suffix=settings.admission.managed,
+                client_config=client_config)
+            await patching.patch_obj(
+                resource=resource,
+                namespace=None,
+                name=settings.admission.managed,
+                patch=patches.Patch({'webhooks': webhooks}),
+            )
+    finally:
+        # Attempt to remove all managed webhooks, except for the strict ones.
+        if client_config is not None:
+            logger.info(f"Cleaning up the admission webhook {settings.admission.managed}.")
+            webhooks = build_webhooks(
+                all_handlers,
+                resources=insights.resources,
+                name_suffix=settings.admission.managed,
+                client_config=client_config,
+                persistent_only=True)
+            await patching.patch_obj(
+                resource=resource,
+                namespace=None,
+                name=settings.admission.managed,
+                patch=patches.Patch({'webhooks': webhooks}),
+            )
+
+
+def build_webhooks(
+        handlers_: Iterable[handlers.ResourceWebhookHandler],
+        *,
+        resources: Iterable[references.Resource],
+        name_suffix: str,
+        client_config: reviews.WebhookClientConfig,
+        persistent_only: bool = False,
+) -> List[Dict[str, Any]]:
+    """
+    Construct the content for ``[Validating|Mutating]WebhookConfiguration``.
+
+    This function concentrates all conventions how Kopf manages the webhook.
+    """
+    return [
+        {
+            'name': _normalize_name(handler.id, suffix=name_suffix),
+            'sideEffects': 'NoneOnDryRun' if handler.side_effects else 'None',
+            'failurePolicy': 'Ignore' if handler.ignore_failures else 'Fail',
+            'matchPolicy': 'Equivalent',
+            'rules': [
+                {
+                    'apiGroups': [resource.group],
+                    'apiVersions': [resource.version],
+                    'resources': [resource.plural],
+                    'operations': ['*'] if handler.operation is None else [handler.operation],
+                    'scope': '*',  # doesn't matter since a specific resource is used.
+                }
+                for resource in resources
+                if handler.selector is not None  # None is used only in sub-handlers, ignore here.
+                if handler.selector.check(resource)
+            ],
+            'objectSelector': _build_labels_selector(handler.labels),
+            'clientConfig': _inject_handler_id(client_config, handler.id),
+            'timeoutSeconds': 30,  # a permitted maximum is 30.
+            'admissionReviewVersions': ['v1', 'v1beta1'],  # only those understood by Kopf itself.
+        }
+        for handler in handlers_
+        if not persistent_only or handler.persistent
+    ]
+
+
+class MatchExpression(TypedDict, total=False):
+    key: str
+    operator: Literal['Exists', 'DoesNotExist', 'In', 'NotIn']
+    values: Optional[Collection[str]]
+
+
+def _build_labels_selector(labels: Optional[filters.MetaFilter]) -> Optional[Mapping[str, Any]]:
+    # https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#resources-that-support-set-based-requirements
+    exprs: Collection[MatchExpression] = [
+        {'key': key, 'operator': 'Exists'} if val is filters.MetaFilterToken.PRESENT else
+        {'key': key, 'operator': 'DoesNotExist'} if val is filters.MetaFilterToken.ABSENT else
+        {'key': key, 'operator': 'In', 'values': [str(val)]}
+        for key, val in (labels or {}).items()
+        if not callable(val)
+    ]
+    return {'matchExpressions': exprs} if exprs else None
+
+
+BAD_WEBHOOK_NAME = re.compile(r'[^\w\d\.-]')
+
+
+def _normalize_name(id: handlers.HandlerId, suffix: str) -> str:
+    """
+    Normalize the webhook name to what Kubernetes accepts as normal.
+
+    The restriction is: *a lowercase RFC 1123 subdomain must consist
+    of lower case alphanumeric characters, \'-\' or \'.\',
+    and must start and end with an alphanumeric character.*
+
+    The actual name is not that important, it is for informational purposes
+    only. In the managed configurations, it will be rewritten every time.
+    """
+    name = f'{id}'.replace('/', '.').replace('_', '-')  # common cases, for beauty
+    name = BAD_WEBHOOK_NAME.sub(lambda s: s.group(0).encode('utf-8').hex(), name)  # uncommon cases
+    return f'{name}.{suffix}' if suffix else name
+
+
+def _inject_handler_id(config: reviews.WebhookClientConfig, id: handlers.HandlerId) -> reviews.WebhookClientConfig:
+    config = copy.deepcopy(config)
+
+    url_id = urllib.parse.quote(id)
+    url = config.get('url')
+    if url is not None:
+        config['url'] = f'{url.rstrip("/")}/{url_id}'
+
+    service = config.get('service')
+    if service is not None:
+        path = service.get('path', '')
+        service['path'] = f"{path}/{url_id}"
+
+    return config
