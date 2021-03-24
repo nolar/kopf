@@ -32,6 +32,9 @@ from kopf.on import (
 from kopf.reactor import (
     lifecycles,  # as a separate name on the public namespace
 )
+from kopf.reactor.admission import (
+    AdmissionError,
+)
 from kopf.reactor.handling import (
     TemporaryError,
     PermanentError,
@@ -133,10 +136,14 @@ from kopf.structs.references import (
     EVERYTHING,
 )
 from kopf.structs.reviews import (
+    WebhookClientConfigService,
+    WebhookClientConfig,
     Operation,
     UserInfo,
     Headers,
     SSLPeer,
+    WebhookFn,
+    WebhookServerProtocol,
 )
 from kopf.toolkits.hierarchies import (
     adopt,
@@ -166,10 +173,15 @@ __all__ = [
     'build_object_reference', 'build_owner_reference',
     'append_owner_reference', 'remove_owner_reference',
     'ErrorsMode',
+    'AdmissionError',
+    'WebhookClientConfigService',
+    'WebhookClientConfig',
     'Operation',
     'UserInfo',
     'Headers',
     'SSLPeer',
+    'WebhookFn',
+    'WebhookServerProtocol',
     'PermanentError',
     'TemporaryError',
     'HandlerTimeoutError',

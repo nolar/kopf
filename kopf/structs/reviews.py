@@ -1,9 +1,9 @@
 """
 Admission reviews: requests & responses, also the webhook server protocols.
 """
-from typing import Any, List, Mapping, Optional, Union
+from typing import Any, AsyncIterator, Awaitable, Callable, List, Mapping, Optional, Union
 
-from typing_extensions import Literal, TypedDict
+from typing_extensions import Literal, Protocol, TypedDict
 
 from kopf.structs import bodies
 
@@ -86,3 +86,49 @@ class Response(TypedDict):
     apiVersion: Literal["admission.k8s.io/v1", "admission.k8s.io/v1beta1"]
     kind: Literal["AdmissionReview"]
     response: ResponsePayload
+
+
+class WebhookClientConfigService(TypedDict, total=False):
+    namespace: Optional[str]
+    name: Optional[str]
+    path: Optional[str]
+    port: Optional[int]
+
+
+class WebhookClientConfig(TypedDict, total=False):
+    """
+    A config of clients (apiservers) to access the webhooks' server (operators).
+
+    This dictionary is put into managed webhook configurations "as is".
+    The fields & type annotations are only for hinting.
+
+    Kopf additionally modifies the url and the service's path to inject
+    handler ids as the last path component. This must be taken into account
+    by custom webhook servers.
+    """
+    caBundle: Optional[str]  # if absent, the default apiservers' trust chain is used.
+    url: Optional[str]
+    service: Optional[WebhookClientConfigService]
+
+
+class WebhookFn(Protocol):
+    """
+    A framework-provided function to call when a admission request is received.
+
+    The framework provides the actual function. Custom webhook servers must
+    accept the function, invoke it accordingly on admission requests, wait
+    for the admission response, serialise it and send it back. They do not
+    implement this function. This protocol only declares the exact signature.
+    """
+    def __call__(
+            self,
+            request: Request,
+            *,
+            webhook: Optional[str] = None,
+            headers: Optional[Mapping[str, str]] = None,
+            sslpeer: Optional[Mapping[str, Any]] = None,
+    ) -> Awaitable[Response]: ...
+
+
+# A server (either a coroutine or a callable object).
+WebhookServerProtocol = Callable[[WebhookFn], AsyncIterator[WebhookClientConfig]]

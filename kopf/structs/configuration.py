@@ -31,6 +31,7 @@ import logging
 from typing import Iterable, Optional
 
 from kopf.storage import diffbase, progress
+from kopf.structs import reviews
 
 
 @dataclasses.dataclass
@@ -259,6 +260,30 @@ class ScanningSettings:
 
 
 @dataclasses.dataclass
+class AdmissionSettings:
+
+    server: Optional[reviews.WebhookServerProtocol] = None
+    """
+    A way of accepting admission requests from Kubernetes.
+
+    In production, only a `kopf.WebhookServer` is sufficient.
+    If development, a tunnel from the cluster to the operator might be needed.
+
+    If no server is configured (the default), then no server is started.
+    If admission handlers are detected with no server configured,
+    an error is raised and the operator fails to start (with a hint).
+
+    Kopf provides several webhook configs, servers, and tunnels out of the box
+    (they also serve as examples for implementing custom tunnels).
+    `kopf.WebhookServer`,
+    `kopf.WebhookK3dServer`, `kopf.WebhookMinikubeServer`,
+    `kopf.WebhookNgrokTunnel`, `kopf.WebhookInletsTunnel`.
+    
+    .. seealso::
+        :doc:`/admission`.
+    """
+
+@dataclasses.dataclass
 class ExecutionSettings:
     """
     Settings for synchronous handlers execution (e.g. thread-/process-pools).
@@ -385,6 +410,7 @@ class OperatorSettings:
     watching: WatchingSettings = dataclasses.field(default_factory=WatchingSettings)
     batching: BatchingSettings = dataclasses.field(default_factory=BatchingSettings)
     scanning: ScanningSettings = dataclasses.field(default_factory=ScanningSettings)
+    admission: AdmissionSettings =dataclasses.field(default_factory=AdmissionSettings)
     execution: ExecutionSettings = dataclasses.field(default_factory=ExecutionSettings)
     background: BackgroundSettings = dataclasses.field(default_factory=BackgroundSettings)
     persistence: PersistenceSettings = dataclasses.field(default_factory=PersistenceSettings)
