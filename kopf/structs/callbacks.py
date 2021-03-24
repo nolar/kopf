@@ -9,7 +9,8 @@ import logging
 from typing import TYPE_CHECKING, Any, Callable, Collection, \
                    Coroutine, List, NewType, Optional, TypeVar, Union
 
-from kopf.structs import bodies, diffs, ephemera, patches, primitives, references, reviews
+from kopf.structs import bodies, configuration, diffs, ephemera, \
+                         patches, primitives, references, reviews
 
 # A specialised type to highlight the purpose or origin of the data of type Any,
 # to not be mixed with other arbitrary Any values, where it is indeed "any".
@@ -44,6 +45,7 @@ else:
     # when PEP 612 is released (https://www.python.org/dev/peps/pep-0612/)
     ActivityFn = Callable[
         [
+            NamedArg(configuration.OperatorSettings, "settings"),
             NamedArg(ephemera.Index, "*"),
             NamedArg(int, "retry"),
             NamedArg(datetime.datetime, "started"),
