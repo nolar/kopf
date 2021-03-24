@@ -47,6 +47,8 @@ the same packages, the same developer(s).
   * Dynamically generated or conditional sub-handlers (an advanced feature).
   * Timers that tick as long as the resource exists, optionally with a delay since the last change.
   * Daemons that run as long as the resource exists (in threads or asyncio-tasks).
+  * Validating and mutating admission webhook (with dev-mode tunneling).
+  * Live in-memory indexing of resources or their excerpts.
   * Filtering with stealth mode (no logging): by arbitrary filtering functions,
     by labels/annotations with values, presence/absence, or dynamic callbacks.
   * In-memory all-purpose containers to store non-serializable objects for individual resources.

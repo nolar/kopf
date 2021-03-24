@@ -261,3 +261,75 @@ Its ``.wait()`` method can be used to replace ``time.sleep()``
 or ``asyncio.sleep()`` for faster (instant) termination on resource deletion.
 
 See more: :doc:`daemons`.
+
+
+Resource admission kwargs
+=========================
+
+.. kwarg:: dryrun
+
+Dry run
+-------
+
+Admission handlers, both validating and mutating, must skip any side effects
+if ``dryrun`` is ``True``. It is ``True`` when a dry-run API request is made,
+e.g. with ``kubectl --dry-run=server ...``.
+
+Regardless of ``dryrun`, the handlers must not make any side effects
+unless they declare themselves as ``side_effects=True``.
+
+See more: :doc:`admission`.
+
+
+.. kwarg:: warnings
+
+Admission warnings
+------------------
+
+``warnings`` (``list[str]``) is a **mutable** list of string used as warnings.
+The admission webhook handlers can populate the list with warnings (strings),
+and the webhook servers/tunnels return them to Kubernetes, which shows them
+to ``kubectl``.
+
+See more: :doc:`admission`.
+
+
+.. kwarg:: userinfo
+
+User information
+----------------
+
+``userinfo`` (``Mapping[str, Any]``) is an information about a user that
+sends the API request to Kubernetes.
+
+It usually contains the keys ``'username'``, ``'uid'``, ``'groups'``,
+but this might change in the future. The information is provided exactly
+as Kubernetes sends it in the admission request.
+
+See more: :doc:`admission`.
+
+
+.. kwarg:: headers
+.. kwarg:: sslpeer
+
+Request credentials
+-------------------
+
+For rudimentary authentication and authorization, Kopf passes the information
+from the admission requests to the admission handlers as is,
+without additional interpretation of it.
+
+``headers`` (``Mapping[str, str]``) contains all HTTPS request headers,
+including ``Authorization: Basic ...``, ``Authorization: Bearer ...``.
+
+``sslpeer`` (``Mapping[str, Any]``) contains the SSL peer information
+as returned by `ssl.SSLSocket.getpeercert`. It is ``None`` if no proper
+SSL client certificate was provided (i.e. by apiservers talking to webhooks),
+or if the SSL protocol could not verify the provided certificate with its CA.
+
+.. note::
+    This is an identity of the apiservers that send the admission request,
+    not of the user or an app that sends the API request to Kubernetes.
+    For the user's identity, use :kwarg:`userinfo`.
+
+See more: :doc:`admission`.
