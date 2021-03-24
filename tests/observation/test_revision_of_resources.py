@@ -10,6 +10,7 @@ VERBS = ['list', 'watch', 'patch']
 @pytest.fixture(params=[
     kopf.on.event, kopf.daemon, kopf.timer, kopf.index,
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
+    kopf.on.validate, kopf.on.mutate,
 ])
 def handlers(request, registry):
     @request.param('group1', 'version1', 'plural1')
@@ -58,6 +59,7 @@ def test_replacing_a_new_group(registry):
 @pytest.mark.parametrize('decorator', [
     kopf.on.event, kopf.daemon, kopf.timer, kopf.index,
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
+    kopf.on.validate, kopf.on.mutate,
 ])
 def test_ambiguity_in_specific_selectors(registry, decorator, caplog, assert_logs):
     r1 = Resource(group='g1', version='v1', plural='plural', verbs=VERBS)
@@ -75,6 +77,7 @@ def test_ambiguity_in_specific_selectors(registry, decorator, caplog, assert_log
 @pytest.mark.parametrize('decorator', [
     kopf.on.event, kopf.daemon, kopf.timer, kopf.index,
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
+    kopf.on.validate, kopf.on.mutate,
 ])
 def test_corev1_overrides_ambuigity(registry, decorator, caplog, assert_logs):
     r1 = Resource(group='', version='v1', plural='pods', verbs=VERBS)
@@ -92,6 +95,7 @@ def test_corev1_overrides_ambuigity(registry, decorator, caplog, assert_logs):
 @pytest.mark.parametrize('decorator', [
     kopf.on.event, kopf.daemon, kopf.timer, kopf.index,
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
+    kopf.on.validate, kopf.on.mutate,
 ])
 def test_no_ambiguity_in_generic_selector(registry, decorator, caplog, assert_logs):
     r1 = Resource(group='g1', version='v1', plural='plural', verbs=VERBS)
@@ -109,6 +113,7 @@ def test_no_ambiguity_in_generic_selector(registry, decorator, caplog, assert_lo
 @pytest.mark.parametrize('decorator', [
     kopf.on.event, kopf.daemon, kopf.timer, kopf.index,
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
+    kopf.on.validate, kopf.on.mutate,
 ])
 def test_selectors_with_no_resources(registry, decorator, caplog, assert_logs):
     r1 = Resource(group='group1', version='version1', plural='plural1', verbs=VERBS)

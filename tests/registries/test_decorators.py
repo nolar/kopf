@@ -1,6 +1,7 @@
 import pytest
 
 import kopf
+from kopf.reactor.causation import ResourceWebhookCause
 from kopf.reactor.handling import handler_var, subregistry_var
 from kopf.reactor.invocation import context
 from kopf.reactor.registries import OperatorRegistry, ResourceChangingRegistry
@@ -492,6 +493,8 @@ def test_subhandler_imperatively(parent_handler, cause_factory):
 @pytest.mark.parametrize('decorator, kwargs', [
     (kopf.index, {}),
     (kopf.on.event, {}),
+    (kopf.on.mutate, {}),
+    (kopf.on.validate, {}),
     (kopf.on.resume, {}),
     (kopf.on.create, {}),
     (kopf.on.update, {}),
@@ -509,6 +512,8 @@ def test_labels_filter_with_nones(resource, decorator, kwargs):
 @pytest.mark.parametrize('decorator, kwargs', [
     (kopf.index, {}),
     (kopf.on.event, {}),
+    (kopf.on.mutate, {}),
+    (kopf.on.validate, {}),
     (kopf.on.resume, {}),
     (kopf.on.create, {}),
     (kopf.on.update, {}),
@@ -526,6 +531,8 @@ def test_annotations_filter_with_nones(resource, decorator, kwargs):
 @pytest.mark.parametrize('decorator, causeargs, handlers_prop', [
     pytest.param(kopf.index, dict(), '_resource_indexing', id='on-index'),
     pytest.param(kopf.on.event, dict(), '_resource_watching', id='on-event'),
+    pytest.param(kopf.on.mutate, dict(cls=ResourceWebhookCause), '_resource_webhooks', id='on-mutation'),
+    pytest.param(kopf.on.validate, dict(cls=ResourceWebhookCause), '_resource_webhooks', id='on-validation'),
     pytest.param(kopf.on.resume, dict(reason=None, initial=True), '_resource_changing', id='on-resume'),
     pytest.param(kopf.on.create, dict(reason=Reason.CREATE), '_resource_changing', id='on-create'),
     pytest.param(kopf.on.update, dict(reason=Reason.UPDATE), '_resource_changing', id='on-update'),
@@ -575,6 +582,8 @@ def test_field_with_oldnew(mocker, cause_factory, decorator, causeargs, handlers
 @pytest.mark.parametrize('decorator', [
     pytest.param(kopf.index, id='on-index'),
     pytest.param(kopf.on.event, id='on-event'),
+    pytest.param(kopf.on.mutate, id='on-mutation'),
+    pytest.param(kopf.on.validate, id='on-validation'),
     pytest.param(kopf.on.resume, id='on-resume'),
     pytest.param(kopf.on.create, id='on-create'),
     pytest.param(kopf.on.update, id='on-update'),

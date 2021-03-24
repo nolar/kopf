@@ -132,6 +132,12 @@ from kopf.structs.references import (
     Resource,
     EVERYTHING,
 )
+from kopf.structs.reviews import (
+    Operation,
+    UserInfo,
+    Headers,
+    SSLPeer,
+)
 from kopf.toolkits.hierarchies import (
     adopt,
     label,
@@ -160,6 +166,10 @@ __all__ = [
     'build_object_reference', 'build_owner_reference',
     'append_owner_reference', 'remove_owner_reference',
     'ErrorsMode',
+    'Operation',
+    'UserInfo',
+    'Headers',
+    'SSLPeer',
     'PermanentError',
     'TemporaryError',
     'HandlerTimeoutError',

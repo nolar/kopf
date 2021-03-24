@@ -2,12 +2,13 @@ import logging
 
 import pytest
 
-from kopf.reactor.causation import ActivityCause, ResourceCause, ResourceChangingCause, \
-                                   ResourceSpawningCause, ResourceWatchingCause
+from kopf.reactor.causation import ActivityCause, ResourceCause, \
+                                   ResourceChangingCause, ResourceSpawningCause, \
+                                   ResourceWatchingCause, ResourceWebhookCause
 from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.registries import ActivityRegistry, OperatorRegistry, ResourceChangingRegistry, \
                                     ResourceRegistry, ResourceSpawningRegistry, \
-                                    ResourceWatchingRegistry
+                                    ResourceWatchingRegistry, ResourceWebhooksRegistry
 from kopf.structs.bodies import Body
 from kopf.structs.diffs import Diff, DiffItem
 from kopf.structs.ephemera import Memo
@@ -146,6 +147,23 @@ def cause_factory(resource):
                 memo=Memo(),
                 body=Body(body if body is not None else {}),
                 reset=False,
+            )
+        if cls is ResourceWebhookCause or cls is ResourceWebhooksRegistry:
+            return ResourceWebhookCause(
+                logger=logging.getLogger('kopf.test.fake.logger'),
+                indices=OperatorIndexers().indices,
+                resource=resource,
+                patch=Patch(),
+                memo=Memo(),
+                body=Body(body if body is not None else {}),
+                dryrun=False,
+                sslpeer={},
+                headers={},
+                userinfo={},
+                warnings=[],
+                reason=None,
+                webhook=None,
+                operation=None,
             )
         raise TypeError(f"Cause/registry type {cls} is not supported by this fixture.")
     return make_cause

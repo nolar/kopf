@@ -31,7 +31,8 @@ HandlerFnT = TypeVar('HandlerFnT',
                      callbacks.ResourceIndexingFn,
                      callbacks.ResourceWatchingFn,
                      callbacks.ResourceSpawningFn,
-                     callbacks.ResourceChangingFn)
+                     callbacks.ResourceChangingFn,
+                     callbacks.ResourceWebhookFn)
 
 
 class GenericRegistry(Generic[HandlerFnT, HandlerT]):
@@ -240,6 +241,32 @@ class ResourceChangingRegistry(ResourceRegistry[
         return list(_deduplicated(found_handlers))
 
 
+class ResourceWebhooksRegistry(ResourceRegistry[
+        causation.ResourceWebhookCause,
+        callbacks.ResourceWebhookFn,
+        handlers.ResourceWebhookHandler]):
+
+    def iter_handlers(
+            self,
+            cause: causation.ResourceWebhookCause,
+            excluded: Container[handlers.HandlerId] = frozenset(),
+    ) -> Iterator[handlers.ResourceWebhookHandler]:
+        for handler in self._handlers:
+            if handler.id not in excluded:
+                # Only the handlers for the hinted webhook, if possible; if not hinted, then all.
+                matching_reason = cause.reason is None or cause.reason == handler.reason
+                matching_webhook = cause.webhook is None or cause.webhook == handler.id
+                if matching_reason and matching_webhook:
+                    # For deletion, exclude all mutation handlers unless explicitly enabled.
+                    non_mutating = handler.reason != handlers.WebhookType.MUTATING
+                    non_deletion = cause.operation != 'DELETE'
+                    explicitly_for_deletion = handler.operation == 'DELETE'
+                    if non_mutating or non_deletion or explicitly_for_deletion:
+                        # Filter by usual criteria: labels, annotations, fields, callbacks.
+                        if match(handler=handler, cause=cause):
+                            yield handler
+
+
 class OperatorRegistry:
     """
     A global registry is used for handling of multiple resources & activities.
@@ -254,6 +281,7 @@ class OperatorRegistry:
         self._resource_watching = ResourceWatchingRegistry()
         self._resource_spawning = ResourceSpawningRegistry()
         self._resource_changing = ResourceChangingRegistry()
+        self._resource_webhooks = ResourceWebhooksRegistry()
 
 
 class SmartOperatorRegistry(OperatorRegistry):

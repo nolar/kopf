@@ -23,6 +23,14 @@ class Activity(str, enum.Enum):
     PROBE = 'probe'
 
 
+class WebhookType(str, enum.Enum):
+    VALIDATING = 'validating'
+    MUTATING = 'mutating'
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+
 # Constants for cause types, to prevent a direct usage of strings, and typos.
 # They are not exposed by the framework, but are used internally. See also: `kopf.on`.
 class Reason(str, enum.Enum):
@@ -103,6 +111,23 @@ class ResourceHandler(BaseHandler):
     @property
     def requires_patching(self) -> bool:
         return True  # all typical handlers except several ones with overrides
+
+
+@dataclasses.dataclass
+class ResourceWebhookHandler(ResourceHandler):
+    fn: callbacks.ResourceWebhookFn  # type clarification
+    reason: WebhookType
+    operation: Optional[str]
+    persistent: Optional[bool]
+    side_effects: Optional[bool]
+    ignore_failures: Optional[bool]
+
+    def __str__(self) -> str:
+        return f"Webhook {self.id!r}"
+
+    @property
+    def requires_patching(self) -> bool:
+        return False
 
 
 @dataclasses.dataclass
