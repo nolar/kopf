@@ -153,6 +153,12 @@ from kopf.toolkits.hierarchies import (
     append_owner_reference,
     remove_owner_reference,
 )
+from kopf.toolkits.webhooks import (
+    WebhookServer,
+    WebhookK3dServer,
+    WebhookMinikubeServer,
+    WebhookNgrokTunnel,
+)
 from kopf.utilities.piggybacking import (
     login_via_pykube,
     login_via_client,
@@ -182,6 +188,10 @@ __all__ = [
     'SSLPeer',
     'WebhookFn',
     'WebhookServerProtocol',
+    'WebhookServer',
+    'WebhookK3dServer',
+    'WebhookMinikubeServer',
+    'WebhookNgrokTunnel',
     'PermanentError',
     'TemporaryError',
     'HandlerTimeoutError',

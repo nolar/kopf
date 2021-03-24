@@ -42,15 +42,23 @@ setup(
         'setuptools_scm',
     ],
     install_requires=[
-        'typing_extensions',
-        'python-json-logger',
-        'click',
-        'iso8601',
-        'aiohttp<4.0.0',
-        'aiojobs',
+        'typing_extensions',    # 0.20 MB
+        'python-json-logger',   # 0.05 MB
+        'iso8601',              # 0.07 MB
+        'click',                # 0.60 MB
+        'aiojobs',              # 0.07 MB
+        'aiohttp<4.0.0',        # 7.80 MB
     ],
     extras_require={
-        'full-auth': ['pykube-ng', 'kubernetes'],
+        'full-auth': [
+            'pykube-ng',        # 4.90 MB
+            'kubernetes',       # 40.0 MB (!)
+        ],
+        'dev': [
+            'pyngrok',          # 1.00 MB + downloaded binary
+            'oscrypto',         # 2.80 MB (smaller than cryptography: 8.7 MB)
+            'certbuilder',      # +0.1 MB (2.90 MB if alone)
+        ],
     },
     package_data={"kopf": ["py.typed"]},
 )

@@ -492,6 +492,22 @@ def any_pykube(request):
     else:
         yield from _with_module_absent('pykube')
 
+
+@pytest.fixture()
+def no_pyngrok():
+    yield from _with_module_absent('pyngrok')
+
+
+@pytest.fixture()
+def no_oscrypto():
+    yield from _with_module_absent('oscrypto')
+
+
+@pytest.fixture()
+def no_certbuilder():
+    yield from _with_module_absent('certbuilder')
+
+
 #
 # Helpers for the timing checks.
 #
