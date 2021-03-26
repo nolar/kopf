@@ -49,7 +49,9 @@ class WatchStreamProcessor(Protocol):
             self,
             *,
             raw_event: bodies.RawEvent,
-            replenished: asyncio.Event,
+            stream_pressure: Optional[asyncio.Event] = None,  # None for tests
+            resource_indexed: Optional[primitives.Toggle] = None,  # None for tests & observation
+            operator_indexed: Optional[primitives.ToggleSet] = None,  # None for tests & observation
     ) -> None: ...
 
 
@@ -67,8 +69,8 @@ else:
 
 class Stream(NamedTuple):
     """ A single object's stream of watch-events, with some extra helpers. """
-    watchevents: WatchEventQueue
-    replenished: asyncio.Event  # means: "hurry up, there are new events queued again"
+    backlog: WatchEventQueue
+    pressure: asyncio.Event  # means: "hurry up, there are new events queued again"
 
 
 ObjectUid = NewType('ObjectUid', str)
@@ -129,7 +131,9 @@ async def watcher(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         processor: WatchStreamProcessor,
-        freeze_checker: Optional[primitives.ToggleSet] = None,
+        operator_paused: Optional[primitives.ToggleSet] = None,  # None for tests & observation
+        operator_indexed: Optional[primitives.ToggleSet] = None,  # None for tests & observation
+        resource_indexed: Optional[primitives.Toggle] = None,  # None for tests & non-indexable
 ) -> None:
     """
     The watchers watches for the resource events via the API, and spawns the workers for every object.
@@ -167,30 +171,58 @@ async def watcher(
     scheduler = await aiojobs.create_scheduler(limit=settings.batching.worker_limit,
                                                exception_handler=exception_handler)
     streams: Streams = {}
+
     try:
         # Either use the existing object's queue, or create a new one together with the per-object job.
         # "Fire-and-forget": we do not wait for the result; the job destroys itself when it is fully done.
         stream = watching.infinite_watch(
             settings=settings,
             resource=resource, namespace=namespace,
-            freeze_checker=freeze_checker,
+            operator_paused=operator_paused,
         )
         async for raw_event in stream:
+
+            # If the listing is over (even if it was empty), the resource kind is pre-indexed.
+            # At this moment, only the individual workers/processors can block the global readiness.
+            if raw_event is watching.Bookmark.LISTED:
+                if operator_indexed is not None and resource_indexed is not None:
+                    await operator_indexed.drop_toggle(resource_indexed)
+
+            # Whatever is bookmarked there, don't let it go to the multiplexer. Handle it above.
+            if isinstance(raw_event, watching.Bookmark):
+                continue
+
+            # Multiplex the raw events to per-resource workers/queues. Start the new ones if needed.
             key: ObjectRef = (resource, get_uid(raw_event))
             try:
-                streams[key].replenished.set()  # interrupt current sleeps, if any.
-                await streams[key].watchevents.put(raw_event)
+                # Feed the worker, as fast as possible, no extra activities.
+                streams[key].pressure.set()  # interrupt current sleeps, if any.
+                await streams[key].backlog.put(raw_event)
             except KeyError:
-                streams[key] = Stream(watchevents=asyncio.Queue(), replenished=asyncio.Event())
-                streams[key].replenished.set()  # interrupt current sleeps, if any.
-                await streams[key].watchevents.put(raw_event)
+
+                # Block the operator's readiness for individual resource's index handlers.
+                # But NOT when the readiness is already achieved once! After that, ignore it.
+                # NB: Strictly before the worker starts -- the processor can be too slow, too late.
+                resource_object_indexed: Optional[primitives.Toggle] = None
+                if operator_indexed is not None and operator_indexed.is_on():
+                    operator_indexed = None
+                if operator_indexed is not None and resource_indexed is not None:
+                    resource_object_indexed = await operator_indexed.make_toggle(name=f"{key!r}")
+
+                # Start the worker, and feed it initially. Starting can be moderately slow.
+                streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
+                streams[key].pressure.set()  # interrupt current sleeps, if any.
+                await streams[key].backlog.put(raw_event)
                 await scheduler.spawn(worker(
                     signaller=signaller,
+                    resource_indexed=resource_object_indexed,
+                    operator_indexed=operator_indexed,
                     processor=processor,
                     settings=settings,
                     streams=streams,
                     key=key,
                 ))
+
     except asyncio.CancelledError:
         if worker_error is None:
             raise
@@ -224,6 +256,8 @@ async def worker(
         signaller: asyncio.Condition,
         processor: WatchStreamProcessor,
         settings: configuration.OperatorSettings,
+        resource_indexed: Optional[primitives.Toggle],  # None for tests & observation
+        operator_indexed: Optional[primitives.ToggleSet],  # None for tests & observation
         streams: Streams,
         key: ObjectRef,
 ) -> None:
@@ -241,8 +275,8 @@ async def worker(
     reasonable, but small enough time (few seconds) before actually finishing --
     in case the new events are there, but the API or the watcher task lags a bit.
     """
-    watchevents = streams[key].watchevents
-    replenished = streams[key].replenished
+    backlog = streams[key].backlog
+    pressure = streams[key].pressure
     shouldstop = False
     try:
         while not shouldstop:
@@ -253,7 +287,7 @@ async def worker(
             # If an EOS marker is received, handle the last real event, then finish the worker ASAP.
             try:
                 raw_event = await asyncio.wait_for(
-                    watchevents.get(),
+                    backlog.get(),
                     timeout=settings.batching.idle_timeout)
             except asyncio.TimeoutError:
                 break
@@ -262,7 +296,7 @@ async def worker(
                     while True:
                         prev_event = raw_event
                         next_event = await asyncio.wait_for(
-                            watchevents.get(),
+                            backlog.get(),
                             timeout=settings.batching.batch_window)
                         shouldstop = shouldstop or isinstance(next_event, EOS)
                         raw_event = prev_event if isinstance(next_event, EOS) else next_event
@@ -274,8 +308,13 @@ async def worker(
                 break
 
             # Try the processor. In case of errors, show the error, but continue the processing.
-            replenished.clear()
-            await processor(raw_event=raw_event, replenished=replenished)
+            pressure.clear()
+            await processor(
+                raw_event=raw_event,
+                stream_pressure=pressure,
+                resource_indexed=resource_indexed,
+                operator_indexed=operator_indexed,
+            )
 
     except Exception:
         # Log the error for every worker: there can be several of them failing at the same time,
@@ -308,7 +347,7 @@ async def _wait_for_depletion(
 
     # Notify all the workers to finish now. Wake them up if they are waiting in the queue-getting.
     for stream in streams.values():
-        await stream.watchevents.put(EOS.token)
+        await stream.backlog.put(EOS.token)
 
     # Wait for the queues to be depleted, but only if there are some workers running.
     # Continue with the tasks termination if the timeout is reached, no matter the queues.

@@ -1,6 +1,6 @@
 import asyncio
 import random
-from typing import Dict, NoReturn
+from typing import Dict
 
 import kopf
 import pykube
@@ -8,7 +8,7 @@ import pykube
 E2E_STARTUP_STOP_WORDS = ['Served by the background task.']
 E2E_CLEANUP_STOP_WORDS = ['Hung tasks', 'Root tasks']
 E2E_SUCCESS_COUNTS = {'startup_fn_simple': 1, 'startup_fn_retried': 1, 'cleanup_fn': 1}
-E2E_FAILURE_COUNTS = {}
+E2E_FAILURE_COUNTS = {}  # type: Dict[str, int]
 
 LOCK: asyncio.Lock  # requires a loop on creation
 STOPPERS: Dict[str, Dict[str, asyncio.Event]] = {}  # [namespace][name]
@@ -81,7 +81,7 @@ async def pod_task(namespace, name, logger, **_):
             asyncio.create_task(_task_fn(logger, shouldstop=flag))
 
 
-async def _task_fn(logger, shouldstop: asyncio.Event) -> NoReturn:
+async def _task_fn(logger, shouldstop: asyncio.Event):
     while not shouldstop.is_set():
         await asyncio.sleep(random.randint(1, 10))
         logger.info("Served by the background task.")

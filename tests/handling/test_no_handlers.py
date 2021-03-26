@@ -4,8 +4,10 @@ import logging
 import pytest
 
 import kopf
+from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
+from kopf.structs.ephemera import Memo
 from kopf.structs.handlers import HANDLER_REASONS, ResourceChangingHandler
 
 LAST_SEEN_ANNOTATION = 'kopf.zalando.org/last-handled-configuration'
@@ -24,7 +26,7 @@ async def test_skipped_with_no_handlers(
     assert not registry._resource_changing.has_handlers(resource=resource)  # prerequisite
     registry._resource_changing.append(ResourceChangingHandler(
         reason='a-non-existent-cause-type',
-        fn=lambda **_: None, id='id',
+        fn=lambda **_: None, id='id', param=None,
         errors=None, timeout=None, retries=None, backoff=None,
         selector=selector, annotations=None, labels=None, when=None,
         field=None, value=None, old=None, new=None, field_needs_change=None,
@@ -36,9 +38,10 @@ async def test_skipped_with_no_handlers(
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 
@@ -79,7 +82,7 @@ async def test_stealth_mode_with_mismatching_handlers(
     assert not registry._resource_changing.has_handlers(resource=resource)  # prerequisite
     registry._resource_changing.append(ResourceChangingHandler(
         reason=None,
-        fn=lambda **_: None, id='id',
+        fn=lambda **_: None, id='id', param=None,
         errors=None, timeout=None, retries=None, backoff=None,
         selector=selector, annotations=annotations, labels=labels, when=when,
         field=None, value=None, old=None, new=None, field_needs_change=None,
@@ -91,9 +94,10 @@ async def test_stealth_mode_with_mismatching_handlers(
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 

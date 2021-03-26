@@ -5,7 +5,7 @@ name: CI
 on:
   pull_request:
     branches:
-      - master
+      - main
       - release/**
   workflow_dispatch: {}
 
@@ -13,6 +13,7 @@ jobs:
   linters:
     name: Linting and static analysis
     runs-on: ubuntu-20.04
+    timeout-minutes: 2  # usually 0.5-1 mins
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -30,9 +31,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        install-extras: [ "", "full-auth" ]
         python-version: [ "3.7", "3.8", "3.9" ]
-    name: Python ${{ matrix.python-version }}
+    name: Python ${{ matrix.python-version }} ${{ matrix.install-extras }}
     runs-on: ubuntu-20.04
+    timeout-minutes: 5  # usually 2-3 mins
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -40,12 +43,25 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - run: pip install -r requirements.txt
+      - run: pip install -e .[${{ matrix.install-extras }}]
+        if: ${{ matrix.install-extras }}
+
       - run: mypy kopf --strict --pretty
+      - run: |
+          # Mypying the examples
+          exit_codes=0
+          for d in $(find examples -maxdepth 1 -mindepth 1 -type d)
+          do
+            echo "Checking ${d}"
+            mypy $d --pretty
+            exit_codes=$[${exit_codes} + $?]
+          done
+          exit ${exit_codes}
       - run: pytest --color=yes --cov=kopf --cov-branch
 
       - name: Publish coverage to Coveralls.io
         if: ${{ success() }}
-        run: coveralls  # NB: Coveralls GitHub Action does not work: it wants an LCOV file.
+        run: coveralls --service=github
         env:
           GITHUB_TOKEN: ${{ secrets.github_token }}
         continue-on-error: true
@@ -63,7 +79,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        k3s: [v1.19, v1.18, v1.17, v1.16]
+        k3s: [v1.20, v1.19, v1.18, v1.17, v1.16]
         crdapi: ["", v1beta1]
         exclude:
           - crdapi: v1beta1
@@ -72,6 +88,7 @@ jobs:
             crdapi: v1beta1
     name: K3s ${{matrix.k3s}} ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
     runs-on: ubuntu-20.04
+    timeout-minutes: 10  # usually 4-5 mins
     env:
       CRDAPI: ${{ matrix.crdapi || '' }}
     steps:
@@ -83,7 +100,7 @@ jobs:
         with:
           version: ${{ matrix.k3s }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt -r examples/requirements.txt
       - run: pytest --color=yes --only-e2e
 
   coveralls-finish:
@@ -93,6 +110,7 @@ jobs:
     steps:
       - uses: actions/setup-python@v2
       - run: pip install coveralls
-      - run: coveralls --finish
+      - run: coveralls --service=github --finish
         env:
           GITHUB_TOKEN: ${{ secrets.github_token }}
+        continue-on-error: true

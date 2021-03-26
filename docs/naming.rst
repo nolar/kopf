@@ -8,7 +8,7 @@ Kopf is an abbreviation either for
 
 "Kopf" also means "head" in German.
 
-It is capitalised in all natural language texts:
+It is capitalised in natural language texts:
 
     *I like using Kopf to manage my domain in Kubernetes.*
 

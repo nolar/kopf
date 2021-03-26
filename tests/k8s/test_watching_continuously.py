@@ -13,7 +13,7 @@ import logging
 
 import pytest
 
-from kopf.clients.watching import WatchingError, continuous_watch
+from kopf.clients.watching import Bookmark, WatchingError, continuous_watch
 
 STREAM_WITH_NORMAL_EVENTS = [
     {'type': 'ADDED', 'object': {'spec': 'a'}},
@@ -50,10 +50,11 @@ async def test_empty_stream_yields_nothing(
     async for event in continuous_watch(settings=settings,
                                         resource=resource,
                                         namespace=namespace,
-                                        freeze_waiter=asyncio.Future()):
+                                        operator_pause_waiter=asyncio.Future()):
         events.append(event)
 
-    assert len(events) == 0
+    assert len(events) == 1
+    assert events[0] == Bookmark.LISTED
 
 
 async def test_event_stream_yields_everything(
@@ -66,12 +67,13 @@ async def test_event_stream_yields_everything(
     async for event in continuous_watch(settings=settings,
                                         resource=resource,
                                         namespace=namespace,
-                                        freeze_waiter=asyncio.Future()):
+                                        operator_pause_waiter=asyncio.Future()):
         events.append(event)
 
-    assert len(events) == 2
-    assert events[0]['object']['spec'] == 'a'
-    assert events[1]['object']['spec'] == 'b'
+    assert len(events) == 3
+    assert events[0] == Bookmark.LISTED
+    assert events[1]['object']['spec'] == 'a'
+    assert events[2]['object']['spec'] == 'b'
 
 
 async def test_unknown_event_type_ignored(
@@ -85,12 +87,13 @@ async def test_unknown_event_type_ignored(
     async for event in continuous_watch(settings=settings,
                                         resource=resource,
                                         namespace=namespace,
-                                        freeze_waiter=asyncio.Future()):
+                                        operator_pause_waiter=asyncio.Future()):
         events.append(event)
 
-    assert len(events) == 2
-    assert events[0]['object']['spec'] == 'a'
-    assert events[1]['object']['spec'] == 'b'
+    assert len(events) == 3
+    assert events[0] == Bookmark.LISTED
+    assert events[1]['object']['spec'] == 'a'
+    assert events[2]['object']['spec'] == 'b'
     assert "Ignoring an unsupported event type" in caplog.text
     assert "UNKNOWN" in caplog.text
 
@@ -106,11 +109,12 @@ async def test_error_410gone_exits_normally(
     async for event in continuous_watch(settings=settings,
                                         resource=resource,
                                         namespace=namespace,
-                                        freeze_waiter=asyncio.Future()):
+                                        operator_pause_waiter=asyncio.Future()):
         events.append(event)
 
-    assert len(events) == 1
-    assert events[0]['object']['spec'] == 'a'
+    assert len(events) == 2
+    assert events[0] == Bookmark.LISTED
+    assert events[1]['object']['spec'] == 'a'
     assert "Restarting the watch-stream" in caplog.text
 
 
@@ -125,11 +129,12 @@ async def test_unknown_error_raises_exception(
         async for event in continuous_watch(settings=settings,
                                             resource=resource,
                                             namespace=namespace,
-                                            freeze_waiter=asyncio.Future()):
+                                            operator_pause_waiter=asyncio.Future()):
             events.append(event)
 
-    assert len(events) == 1
-    assert events[0]['object']['spec'] == 'a'
+    assert len(events) == 2
+    assert events[0] == Bookmark.LISTED
+    assert events[1]['object']['spec'] == 'a'
     assert '666' in str(e.value)
 
 
@@ -145,7 +150,7 @@ async def test_exception_escalates(
         async for event in continuous_watch(settings=settings,
                                             resource=resource,
                                             namespace=namespace,
-                                            freeze_waiter=asyncio.Future()):
+                                            operator_pause_waiter=asyncio.Future()):
             events.append(event)
 
     assert len(events) == 0
@@ -167,10 +172,11 @@ async def test_long_line_parsing(
     async for event in continuous_watch(settings=settings,
                                         resource=resource,
                                         namespace=namespace,
-                                        freeze_waiter=asyncio.Future()):
+                                        operator_pause_waiter=asyncio.Future()):
         events.append(event)
 
-    assert len(events) == 3
-    assert len(events[0]['object']['spec']['field']) == 1
-    assert len(events[1]['object']['spec']['field']) == 2 * 1024 * 1024
-    assert len(events[2]['object']['spec']['field']) == 4 * 1024 * 1024
+    assert len(events) == 4
+    assert events[0] == Bookmark.LISTED
+    assert len(events[1]['object']['spec']['field']) == 1
+    assert len(events[2]['object']['spec']['field']) == 2 * 1024 * 1024
+    assert len(events[3]['object']['spec']['field']) == 4 * 1024 * 1024

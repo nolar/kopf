@@ -10,12 +10,12 @@ Priorities
 ==========
 
 Each operator has a priority (the default is 0). Whenever the operator
-notices that other operators start with a higher priority, it freezes
+notices that other operators start with a higher priority, it pauses
 its operation until those operators stop working.
 
 This is done to prevent collisions of multiple operators handling
-the same objects. If two operators runs with the same priority  all operators 
-issue a warning and freeze, so that the cluster becomes not served anymore.
+the same objects. If two operators run with the same priority, all operators
+issue a warning and pause, so that the cluster is not served anymore.
 
 To set the operator's priority, use :option:`--priority`:
 
@@ -49,7 +49,7 @@ Kopf automatically chooses which one to use, depending on whether
 the operator is restricted to a namespace with :option:`--namespace`,
 or it is running cluster-wide with :option:`--all-namespaces`.
 
-Create the peering objects as needed with one of:
+Create a peering object as needed with one of:
 
 .. code-block:: yaml
 
@@ -68,10 +68,10 @@ Create the peering objects as needed with one of:
 
 .. note::
 
-    In ``kopf<0.11`` (until May'2019), ``KopfPeering`` was the only CRD,
-    and it was cluster-scoped. In ``kopf>=0.11,<1.29`` (until Dec'2020),
+    In ``kopf<0.11`` (until May 2019), ``KopfPeering`` was the only CRD,
+    and it was cluster-scoped. In ``kopf>=0.11,<1.29`` (until Dec 2020),
     this mode was deprecated but supported if the old CRD existed.
-    Since ``kopf>=1.29`` (Jan'2021), it is not supported anymore.
+    Since ``kopf>=1.29`` (Jan 2021), it is not supported anymore.
     To upgrade, delete and re-create the peering CRDs to the new ones.
 
 .. note::
@@ -107,12 +107,12 @@ Or:
 Depending on :option:`--namespace` or :option:`--all-namespaces`,
 either ``ClusterKopfPeering`` or ``KopfPeering`` will be used automatically.
 
-If the peering object does not exist, the operator will freeze at start.
+If the peering object does not exist, the operator will pause at the start.
 Using :option:`--peering` assumes that the peering is mandatory.
 
-Please note that in the startup handler, this is not exactly the same:
+Please note that in the startup handler, this is not the same:
 the mandatory mode must be set explicitly. Otherwise, the operator will try
-to auto-detect the presence of the custom peering object, but will not freeze
+to auto-detect the presence of the custom peering object, but will not pause
 if it is absent -- unlike with the ``--peering=`` CLI option.
 
 The operators from different peering objects do not see each other.
@@ -139,7 +139,7 @@ Or:
     def configure(settings: kopf.OperatorSettings, **_):
         settings.peering.standalone = True
 
-In that case, the operator will not freeze if other operators with
+In that case, the operator will not pause if other operators with
 the higher priority will start handling the objects, which may lead
 to the conflicting changes and reactions from multiple operators
 for the same events.
@@ -148,9 +148,9 @@ for the same events.
 Automatic peering
 =================
 
-If there is a peering object detected with name `default` (either
-cluster-scoped or namespace-scoped), then it is used by default
-as the peering object.
+If there is a peering object detected with the name ``default``
+(either cluster-scoped or namespace-scoped),
+then it is used by default as the peering object.
 
 Otherwise, Kopf will run the operator in the standalone mode.
 
@@ -164,8 +164,8 @@ will stop until the operator's pod is restarted (and if restarted at all).
 
 To start multiple operator pods, they must be distinctly prioritised.
 In that case, only one operator will be active --- the one with the highest
-priority. All other operators will freeze and wait until this operator dies.
-Once it dies, the second highest priority operator will come into play.
+priority. All other operators will pause and wait until this operator exits.
+Once it dies, the second-highest priority operator will come into play.
 And so on.
 
 For this, assign a monotonically growing or random priority to each
@@ -195,14 +195,14 @@ You can also use the pod's IP address in its numeric form as the priority,
 or any other source of integers.
 
 
-Stealth keep-alives
-===================
+Stealth keep-alive
+==================
 
 Every few seconds (60 by default), the operator will send a keep-alive update
 to the chosen peering, showing that it is still functioning. Other operators
-will notice that and make decisions on their freezing or resuming.
+will notice that and make decisions on their pausing or resuming.
 
-The operator also logs a keep-alive activity to its own logs. This can be
+The operator also logs a keep-alive activity to its logs. This can be
 distracting. To disable:
 
 .. code-block:: python
@@ -216,4 +216,4 @@ distracting. To disable:
 
 There is no equivalent CLI option for that.
 
-Please note that it only affects logging. The keep-alive are sent anyway.
+Please note that it only affects logging. The keep-alive is sent anyway.

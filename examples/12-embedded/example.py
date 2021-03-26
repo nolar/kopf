@@ -2,19 +2,20 @@ import asyncio
 import contextlib
 import threading
 import time
+from typing import Union
 
 import kopf
 import pykube
 
 
 @kopf.on.create('kopfexamples')
-def create_fn(**_):
-    pass
+def create_fn(memo: Union[kopf.Memo, object], **kwargs):
+    print(memo.create_tpl.format(**kwargs))  # type: ignore
 
 
 @kopf.on.delete('kopfexamples')
-def delete_fn(**_):
-    pass
+def delete_fn(memo: Union[kopf.Memo, object], **kwargs):
+    print(memo.delete_tpl.format(**kwargs))  # type: ignore
 
 
 def kopf_thread(
@@ -30,6 +31,10 @@ def kopf_thread(
         loop.run_until_complete(kopf.operator(
             ready_flag=ready_flag,
             stop_flag=stop_flag,
+            memo=kopf.Memo(
+                create_tpl="Hello, {name}!",
+                delete_tpl="Good bye, {name}!",
+            ),
         ))
 
 
@@ -61,7 +66,7 @@ def main(steps=3):
 
 
 class KopfExample(pykube.objects.NamespacedAPIObject):
-    version = "v1"
+    version = "kopf.dev/v1"
     endpoint = "kopfexamples"
     kind = "KopfExample"
 

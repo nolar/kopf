@@ -7,22 +7,22 @@ Metacontroller
 
 The closest equivalent of Kopf is Metacontroller_.
 It targets the same goal as Kopf does:
-to make the Kubernetes operators development easy,
+to make the development of Kubernetes operators easy,
 with no need for in-depth knowledge of Kubernetes or Go.
 
 However, it does that in a different way than Kopf does:
-with few yaml files describing the structure of your operator
-(beside the custom resource definition),
+with a few YAML files describing the structure of your operator
+(besides the custom resource definition),
 and by wrapping your core domain logic into the Function-as-a-Service
 or into the in-cluster HTTP API deployments,
-which in turn react to the changes of the custom resources.
+which in turn react to the changes in the custom resources.
 
 An operator developer still has to implement the infrastructure
 of the API calls in these HTTP APIs and/or Lambdas.
 The APIs must be reachable from inside the cluster,
 which means that they must be deployed there.
 
-Kopf, on the other hand, attempts to keep the things explicit
+Kopf, on the other hand, attempts to keep things explicit
 (as per the `Zen of Python`_: *explicit is better than implicit*),
 keeping the whole operator's logic in one place, in one syntax (Python).
 
@@ -36,11 +36,11 @@ keeping the whole operator's logic in one place, in one syntax (Python).
 
 Kopf also makes the effort to keep the operator development human-friendly,
 which means at least the ease of debugging (e.g. with the breakpoints,
-running in a local IDE, not in the cloud), the logs readability,
+running in a local IDE, not in the cloud), the readability of the logs,
 and other little pleasant things.
 
 And also Kopf allows to write *any* arbitrary domain logic of the resources,
-especially if it spans over long time periods (hours, days if needed),
+especially if it spans over long periods (hours, days if needed),
 and is not limited to the timeout restrictions of the HTTP APIs with their
 expectation of nearly-immediate outcome (i.e. in seconds or milliseconds).
 
@@ -58,9 +58,9 @@ Side8's k8s-operator
 ====================
 
 Side8's k8s-operator_ is another direct equivalent.
-It was actually the initial inspiration for writing Kopf.
+It was the initial inspiration for writing Kopf.
 
-Side8's k8s-operator is written with Python3, and allows to write
+Side8's k8s-operator is written with Python3 and allows to write
 the domain logic in the apply/delete scripts in any language.
 The scripts run locally on the same machine where the controller is running
 (usually the same pod, or a developer's computer).
@@ -70,7 +70,7 @@ and the environment variables as the input,
 which is only good if the scripts are written in shell/bash.
 Writing the complicated domain logic in bash can be troublesome.
 
-The scripts in other languages, such as Python, are supported, but require
+The scripts in other languages, such as Python, are supported but require
 the inner infrastructure logic to parse the input and to render the output
 and to perform the logging properly:
 e.g., so that no single byte of garbage output is ever printed to stdout,
@@ -84,7 +84,7 @@ in the operator codebase.
 CoreOS Operator SDK & Framework
 ===============================
 
-`CoreOS Operator SDK`_ is not actually an operator framework.
+`CoreOS Operator SDK`_ is not an operator framework.
 It is an SDK, i.e. a Software Development Kit,
 which generates the skeleton code for the operators-to-be,
 and users should enrich it with the domain logic code as needed.

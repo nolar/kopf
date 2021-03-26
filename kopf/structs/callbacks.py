@@ -5,11 +5,11 @@ Since these signatures contain a lot of copy-pasted kwargs and are
 not so important for the codebase, they are moved to this separate module.
 """
 import logging
-from typing import Any, Callable, Collection, Coroutine, NewType, Optional, TypeVar, Union
+from datetime import datetime, timedelta
+from typing import TYPE_CHECKING, Any, Callable, Collection, \
+                   Coroutine, Dict, NewType, Optional, TypeVar, Union
 
-from typing_extensions import Protocol
-
-from kopf.structs import bodies, diffs, patches, primitives
+from kopf.structs import bodies, diffs, ephemera, patches, primitives, references
 
 # A specialised type to highlight the purpose or origin of the data of type Any,
 # to not be mixed with other arbitrary Any values, where it is indeed "any".
@@ -24,152 +24,224 @@ _SyncOrAsyncResult = Union[Optional[Result], Coroutine[None, None, Optional[Resu
 # Used for the BaseHandler and generic invocation methods (which do not care about protocols).
 BaseFn = Callable[..., _SyncOrAsyncResult]
 
-
-class ActivityFn(Protocol):
-    def __call__(  # lgtm[py/similar-function]
-            self,
-            *args: Any,
-            logger: Union[logging.Logger, logging.LoggerAdapter],
-            **kwargs: Any,
-    ) -> _SyncOrAsyncResult: ...
+LoggerType = Union[logging.Logger, logging.LoggerAdapter]
 
 
-class ResourceWatchingFn(Protocol):
-    def __call__(  # lgtm[py/similar-function]
-            self,
-            *args: Any,
-            type: str,
-            event: bodies.RawEvent,
-            body: bodies.Body,
-            meta: bodies.Meta,
-            spec: bodies.Spec,
-            status: bodies.Status,
-            uid: Optional[str],
-            name: Optional[str],
-            namespace: Optional[str],
-            patch: patches.Patch,
-            logger: Union[logging.Logger, logging.LoggerAdapter],
-            **kwargs: Any,
-    ) -> _SyncOrAsyncResult: ...
+if TYPE_CHECKING:  # pragma: nocover
+    from mypy_extensions import Arg, DefaultNamedArg, KwArg, NamedArg, VarArg
+
+    # TODO: Try using ParamSpec to support index type checking in callbacks 
+    # when PEP 612 is released (https://www.python.org/dev/peps/pep-0612/)
+    ActivityFn = Callable[
+        [
+            NamedArg(ephemera.Index, "*"),
+            NamedArg(int, "retry"),
+            NamedArg(datetime, "started"),
+            NamedArg(timedelta, "runtime"),
+
+            NamedArg(LoggerType, "logger"),
+            NamedArg(ephemera.AnyMemo, "memo"),
+            DefaultNamedArg(Any, "param"),
+            KwArg(Any),
+        ],
+        _SyncOrAsyncResult
+    ]
 
 
-class ResourceChangingFn(Protocol):
-    def __call__(  # lgtm[py/similar-function]
-            self,
-            *args: Any,
-            body: bodies.Body,
-            meta: bodies.Meta,
-            spec: bodies.Spec,
-            status: bodies.Status,
-            uid: Optional[str],
-            name: Optional[str],
-            namespace: Optional[str],
-            patch: patches.Patch,
-            logger: Union[logging.Logger, logging.LoggerAdapter],
-            diff: diffs.Diff,
-            old: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
-            new: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
-            **kwargs: Any,
-    ) -> _SyncOrAsyncResult: ...
+    ResourceIndexingFn = Callable[
+        [
+            NamedArg(Dict[str, str], "labels"),
+            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(bodies.Body, "body"),
+            NamedArg(bodies.Meta, "meta"),
+            NamedArg(bodies.Spec, "spec"),
+            NamedArg(bodies.Status, "status"),
+            NamedArg(references.Resource, "resource"),
+            NamedArg(Optional[str], "uid"),
+            NamedArg(Optional[str], "name"),
+            NamedArg(Optional[str], "namespace"),
+            NamedArg(patches.Patch, "patch"),
+
+            NamedArg(LoggerType, "logger"),
+            NamedArg(ephemera.AnyMemo, "memo"),
+            DefaultNamedArg(Any, "param"),
+            KwArg(Any),
+        ],
+        _SyncOrAsyncResult
+    ]
 
 
-class ResourceDaemonSyncFn(Protocol):
-    def __call__(  # lgtm[py/similar-function]  # << different mode
-            self,
-            *args: Any,
-            body: bodies.Body,
-            meta: bodies.Meta,
-            spec: bodies.Spec,
-            status: bodies.Status,
-            uid: Optional[str],
-            name: Optional[str],
-            namespace: Optional[str],
-            logger: Union[logging.Logger, logging.LoggerAdapter],
-            stopped: primitives.SyncDaemonStopperChecker,  # << different type
-            **kwargs: Any,
-    ) -> Optional[Result]: ...
+    ResourceWatchingFn = Callable[
+        [
+            NamedArg(str, "type"),
+            NamedArg(bodies.RawEvent, "event"),
+
+            NamedArg(Dict[str, str], "labels"),
+            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(bodies.Body, "body"),
+            NamedArg(bodies.Meta, "meta"),
+            NamedArg(bodies.Spec, "spec"),
+            NamedArg(bodies.Status, "status"),
+            NamedArg(references.Resource, "resource"),
+            NamedArg(Optional[str], "uid"),
+            NamedArg(Optional[str], "name"),
+            NamedArg(Optional[str], "namespace"),
+            NamedArg(patches.Patch, "patch"),
+            
+            NamedArg(LoggerType, "logger"),
+            NamedArg(ephemera.AnyMemo, "memo"),
+            DefaultNamedArg(Any, "param"),
+            KwArg(Any),
+        ],
+        _SyncOrAsyncResult
+    ]
 
 
-class ResourceDaemonAsyncFn(Protocol):
-    async def __call__(  # lgtm[py/similar-function]  # << different mode
-            self,
-            *args: Any,
-            body: bodies.Body,
-            meta: bodies.Meta,
-            spec: bodies.Spec,
-            status: bodies.Status,
-            uid: Optional[str],
-            name: Optional[str],
-            namespace: Optional[str],
-            logger: Union[logging.Logger, logging.LoggerAdapter],
-            stopped: primitives.AsyncDaemonStopperChecker,  # << different type
-            **kwargs: Any,
-    ) -> Optional[Result]: ...
+    ResourceChangingFn = Callable[
+        [
+            NamedArg(int, "retry"),
+            NamedArg(datetime, "started"),
+            NamedArg(timedelta, "runtime"),
+
+            NamedArg(Dict[str, str], "labels"),
+            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(bodies.Body, "body"),
+            NamedArg(bodies.Meta, "meta"),
+            NamedArg(bodies.Spec, "spec"),
+            NamedArg(bodies.Status, "status"),
+            NamedArg(references.Resource, "resource"),
+            NamedArg(Optional[str], "uid"),
+            NamedArg(Optional[str], "name"),
+            NamedArg(Optional[str], "namespace"),
+            NamedArg(patches.Patch, "patch"),
+
+            NamedArg(str, "reason"),
+            NamedArg(diffs.Diff, "diff"),
+            NamedArg(Optional[Union[bodies.BodyEssence, Any]], "old"),
+            NamedArg(Optional[Union[bodies.BodyEssence, Any]], "new"),
+
+            NamedArg(LoggerType, "logger"),
+            NamedArg(ephemera.AnyMemo, "memo"),
+            DefaultNamedArg(Any, "param"),
+            KwArg(Any),
+        ],
+        _SyncOrAsyncResult
+    ]
 
 
-ResourceDaemonFn = Union[ResourceDaemonSyncFn, ResourceDaemonAsyncFn]
+    ResourceDaemonFn = Callable[
+        [
+            NamedArg(primitives.SyncDaemonStopperChecker, "stopped"),
+
+            NamedArg(int, "retry"),
+            NamedArg(datetime, "started"),
+            NamedArg(timedelta, "runtime"),
+
+            NamedArg(Dict[str, str], "labels"),
+            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(bodies.Body, "body"),
+            NamedArg(bodies.Meta, "meta"),
+            NamedArg(bodies.Spec, "spec"),
+            NamedArg(bodies.Status, "status"),
+            NamedArg(references.Resource, "resource"),
+            NamedArg(Optional[str], "uid"),
+            NamedArg(Optional[str], "name"),
+            NamedArg(Optional[str], "namespace"),
+            NamedArg(patches.Patch, "patch"),
+            
+            NamedArg(LoggerType, "logger"),
+            NamedArg(ephemera.AnyMemo, "memo"),
+            DefaultNamedArg(Any, "param"),
+            KwArg(Any),
+        ],
+        _SyncOrAsyncResult
+    ]
 
 
-class ResourceTimerFn(Protocol):
-    def __call__(  # lgtm[py/similar-function]
-            self,
-            *args: Any,
-            body: bodies.Body,
-            meta: bodies.Meta,
-            spec: bodies.Spec,
-            status: bodies.Status,
-            uid: Optional[str],
-            name: Optional[str],
-            namespace: Optional[str],
-            logger: Union[logging.Logger, logging.LoggerAdapter],
-            **kwargs: Any,
-    ) -> _SyncOrAsyncResult: ...
+    ResourceTimerFn = Callable[
+        [
+            NamedArg(ephemera.Index, "*"),
+
+            NamedArg(Dict[str, str], "labels"),
+            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(bodies.Body, "body"),
+            NamedArg(bodies.Meta, "meta"),
+            NamedArg(bodies.Spec, "spec"),
+            NamedArg(bodies.Status, "status"),
+            NamedArg(references.Resource, "resource"),
+            NamedArg(Optional[str], "uid"),
+            NamedArg(Optional[str], "name"),
+            NamedArg(Optional[str], "namespace"),
+            NamedArg(patches.Patch, "patch"),
+
+            NamedArg(LoggerType, "logger"),
+            NamedArg(ephemera.AnyMemo, "memo"),
+            DefaultNamedArg(Any, "param"),
+            KwArg(Any),
+        ],
+        _SyncOrAsyncResult
+    ]
 
 
-ResourceSpawningFn = Union[ResourceDaemonFn, ResourceTimerFn]
+    ResourceSpawningFn = Union[ResourceDaemonFn, ResourceTimerFn]
+
+    WhenFilterFn = Callable[
+        [
+            NamedArg(str, "type"),
+            NamedArg(bodies.RawEvent, "event"),
+
+            NamedArg(Dict[str, str], "labels"),
+            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(bodies.Body, "body"),
+            NamedArg(bodies.Meta, "meta"),
+            NamedArg(bodies.Spec, "spec"),
+            NamedArg(bodies.Status, "status"),
+            NamedArg(references.Resource, "resource"),
+            NamedArg(Optional[str], "uid"),
+            NamedArg(Optional[str], "name"),
+            NamedArg(Optional[str], "namespace"),
+            NamedArg(patches.Patch, "patch"),
+            
+            NamedArg(diffs.Diff, "diff"),
+            NamedArg(Optional[Union[bodies.BodyEssence, Any]], "old"),
+            NamedArg(Optional[Union[bodies.BodyEssence, Any]], "new"),
+            
+            NamedArg(LoggerType, "logger"),
+            NamedArg(ephemera.AnyMemo, "memo"),
+            DefaultNamedArg(Any, "param"),
+            KwArg(Any),
+        ],
+        bool
+    ]
 
 
-class WhenFilterFn(Protocol):
-    def __call__(  # lgtm[py/similar-function]
-            self,
-            *args: Any,
-            type: str,
-            event: bodies.RawEvent,
-            body: bodies.Body,
-            meta: bodies.Meta,
-            spec: bodies.Spec,
-            status: bodies.Status,
-            uid: Optional[str],
-            name: Optional[str],
-            namespace: Optional[str],
-            patch: patches.Patch,
-            logger: Union[logging.Logger, logging.LoggerAdapter],
-            diff: diffs.Diff,
-            old: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
-            new: Optional[Union[bodies.BodyEssence, Any]],  # "Any" is for field-handlers.
-            **kwargs: Any,
-    ) -> bool: ...
+    MetaFilterFn = Callable[
+        [
+            Arg(Any, "value"),
+            NamedArg(str, "type"),
+
+            NamedArg(Dict[str, str], "labels"),
+            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(bodies.Body, "body"),
+            NamedArg(bodies.Meta, "meta"),
+            NamedArg(bodies.Spec, "spec"),
+            NamedArg(bodies.Status, "status"),
+            NamedArg(references.Resource, "resource"),
+            NamedArg(Optional[str], "uid"),
+            NamedArg(Optional[str], "name"),
+            NamedArg(Optional[str], "namespace"),
+            NamedArg(patches.Patch, "patch"),
+
+            NamedArg(LoggerType, "logger"),
+            NamedArg(ephemera.AnyMemo, "memo"),
+            DefaultNamedArg(Any, "param"),
+            KwArg(Any),
+        ],
+        bool
+    ]
 
 
-class MetaFilterFn(Protocol):
-    def __call__(  # lgtm[py/similar-function]
-            self,
-            value: Any,
-            *args: Any,
-            body: bodies.Body,
-            meta: bodies.Meta,
-            spec: bodies.Spec,
-            status: bodies.Status,
-            uid: Optional[str],
-            name: Optional[str],
-            namespace: Optional[str],
-            patch: patches.Patch,
-            logger: Union[logging.Logger, logging.LoggerAdapter],
-            **kwargs: Any,
-    ) -> bool: ...
-
-
-_FnT = TypeVar('_FnT', WhenFilterFn, MetaFilterFn)
+_FnT = TypeVar('_FnT', "WhenFilterFn", "MetaFilterFn")
 
 
 def not_(fn: _FnT) -> _FnT:

@@ -93,18 +93,18 @@ async def process_peering_event(
         identity: Identity,
         settings: configuration.OperatorSettings,
         autoclean: bool = True,
-        replenished: asyncio.Event,
-        freeze_toggle: primitives.Toggle,
+        stream_pressure: Optional[asyncio.Event] = None,  # None for tests
+        conflicts_found: Optional[primitives.Toggle] = None,  # None for tests & observation
+        # Must be accepted whether used or not -- as passed by watcher()/worker().
+        resource_indexed: Optional[primitives.Toggle] = None,  # None for tests & observation
+        operator_indexed: Optional[primitives.ToggleSet] = None,  # None for tests & observation
 ) -> None:
     """
     Handle a single update of the peers by us or by other operators.
 
-    When an operator with a higher priority appears, switch to the freeze-mode.
-    The these operators disappear or become presumably dead, resume the event handling.
-
-    The freeze object is passed both to the peers handler to set/clear it,
-    and to all the resource handlers to check its value when the events arrive
-    (see :func:`spawn_tasks`).
+    When an operator with a higher priority appears, pause this operator.
+    When conflicting operators disappear or become presumably dead,
+    resume the event handling in the current operator (un-pause it).
     """
     body: bodies.RawBody = raw_event['object']
     meta: bodies.RawMeta = raw_event['object']['metadata']
@@ -124,36 +124,36 @@ async def process_peering_event(
     if autoclean and dead_peers:
         await clean(peers=dead_peers, settings=settings, resource=resource, namespace=namespace)
 
-    if prio_peers:
-        if freeze_toggle.is_off():
-            logger.info(f"Freezing operations in favour of {prio_peers}.")
-            await freeze_toggle.turn_to(True)
+    if conflicts_found is None:
+        pass
+    elif prio_peers:
+        if conflicts_found.is_off():
+            logger.info(f"Pausing operations in favour of {prio_peers}.")
+            await conflicts_found.turn_to(True)
     elif same_peers:
         logger.warning(f"Possibly conflicting operators with the same priority: {same_peers}.")
-        if freeze_toggle.is_off():
-            logger.warning(f"Freezing all operators, including self: {peers}")
-            await freeze_toggle.turn_to(True)
+        if conflicts_found.is_off():
+            logger.warning(f"Pausing all operators, including self: {peers}")
+            await conflicts_found.turn_to(True)
     else:
-        if freeze_toggle.is_on():
-            logger.info("Resuming operations after the freeze. Conflicting operators with the same priority are gone.")
-            await freeze_toggle.turn_to(False)
+        if conflicts_found.is_on():
+            logger.info("Resuming operations after the pause. Conflicting operators with the same priority are gone.")
+            await conflicts_found.turn_to(False)
 
     # Either wait for external updates (and exit when they arrive), or until the blocking peers
     # are expected to expire, and force the immediate re-evaluation by a certain change of self.
     # This incurs an extra PATCH request besides usual keepalives, but in the complete silence
     # from other peers that existed a moment earlier, this should not be a problem.
     now = datetime.datetime.utcnow()
-    delay = max([0] + [(peer.deadline - now).total_seconds() for peer in same_peers + prio_peers])
-    if delay:
-        try:
-            await asyncio.wait_for(replenished.wait(), timeout=delay)
-        except asyncio.TimeoutError:
-            await touch(
-                identity=identity,
-                settings=settings,
-                resource=resource,
-                namespace=namespace,
-            )
+    delays = [(peer.deadline - now).total_seconds() for peer in same_peers + prio_peers]
+    unslept = await primitives.sleep_or_wait(delays, wakeup=stream_pressure)
+    if unslept is None and delays:
+        await touch(
+            identity=identity,
+            settings=settings,
+            resource=resource,
+            namespace=namespace,
+        )
 
 
 async def keepalive(

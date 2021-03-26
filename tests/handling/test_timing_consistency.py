@@ -4,8 +4,10 @@ import datetime
 import freezegun
 
 import kopf
+from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
+from kopf.structs.ephemera import Memo
 
 
 async def test_consistent_awakening(registry, settings, resource, k8s_mocked, mocker):
@@ -60,9 +62,10 @@ async def test_consistent_awakening(registry, settings, resource, k8s_mocked, mo
             registry=registry,
             settings=settings,
             resource=resource,
+            indexers=OperatorIndexers(),
             memories=ResourceMemories(),
+            memobase=Memo(),
             raw_event={'type': 'ADDED', 'object': body},
-            replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
         assert datetime.datetime.utcnow() > ts0  # extra precaution

@@ -5,8 +5,10 @@ import pytest
 
 import kopf
 from kopf.reactor.handling import PermanentError, TemporaryError
+from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
+from kopf.structs.ephemera import Memo
 from kopf.structs.handlers import HANDLER_REASONS, Reason
 
 
@@ -30,9 +32,10 @@ async def test_fatal_error_stops_handler(
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 
@@ -74,9 +77,10 @@ async def test_retry_error_delays_handler(
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 
@@ -119,9 +123,10 @@ async def test_arbitrary_error_delays_handler(
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 

@@ -27,7 +27,7 @@ from typing import Collection, List, Optional
 
 from kopf.clients import errors, fetching, scanning
 from kopf.reactor import queueing, registries
-from kopf.structs import bodies, configuration, handlers, references
+from kopf.structs import bodies, configuration, handlers, primitives, references
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,6 @@ async def namespace_observer(
     if not settings.scanning.disabled and not clusterwide:
         try:
             await queueing.watcher(
-                freeze_checker=None,
                 settings=settings,
                 resource=resource,
                 namespace=None,
@@ -76,8 +75,8 @@ async def namespace_observer(
                                             insights=insights))
         except errors.APIForbiddenError:
             logger.warning("Not enough permissions to watch for namespaces: "
-                           "changes (deletion/creation) will not be noticed."
-                           "To refresh the namespaces, the operator must be restarted.")
+                           "changes (deletion/creation) will not be noticed; "
+                           "the namespaces are only refreshed on operator restarts.")
             await asyncio.Event().wait()
     else:
         await asyncio.Event().wait()
@@ -92,6 +91,7 @@ async def resource_observer(
 
     # Scan only the resource-related handlers, ignore activies & co.
     all_handlers: List[handlers.ResourceHandler] = []
+    all_handlers.extend(registry._resource_indexing.get_all_handlers())
     all_handlers.extend(registry._resource_watching.get_all_handlers())
     all_handlers.extend(registry._resource_spawning.get_all_handlers())
     all_handlers.extend(registry._resource_changing.get_all_handlers())
@@ -116,7 +116,6 @@ async def resource_observer(
     if not settings.scanning.disabled:
         try:
             await queueing.watcher(
-                freeze_checker=None,
                 settings=settings,
                 resource=resource,
                 namespace=None,
@@ -125,8 +124,8 @@ async def resource_observer(
                                             insights=insights))
         except errors.APIForbiddenError:
             logger.warning("Not enough permissions to watch for resources: "
-                           "changes (creation/deletion/updates) will not be noticed. "
-                           "To refresh the resources, the operator must be restarted.")
+                           "changes (creation/deletion/updates) will not be noticed; "
+                           "the resources are only refreshed on operator restarts.")
             await asyncio.Event().wait()
     else:
         await asyncio.Event().wait()
@@ -137,7 +136,10 @@ async def process_discovered_namespace_event(
         raw_event: bodies.RawEvent,
         namespaces: Collection[references.NamespacePattern],
         insights: references.Insights,
-        replenished: Optional[asyncio.Event] = None,
+        # Must be accepted whether used or not -- as passed by watcher()/worker().
+        stream_pressure: Optional[asyncio.Event] = None,  # None for tests
+        resource_indexed: Optional[primitives.Toggle] = None,  # None for tests & observation
+        operator_indexed: Optional[primitives.ToggleSet] = None,  # None for tests & observation
 ) -> None:
     if raw_event['type'] is None:
         return
@@ -152,7 +154,10 @@ async def process_discovered_resource_event(
         raw_event: bodies.RawEvent,
         registry: registries.OperatorRegistry,
         insights: references.Insights,
-        replenished: Optional[asyncio.Event] = None,
+        # Must be accepted whether used or not -- as passed by watcher()/worker().
+        stream_pressure: Optional[asyncio.Event] = None,  # None for tests
+        resource_indexed: Optional[primitives.Toggle] = None,  # None for tests & observation
+        operator_indexed: Optional[primitives.ToggleSet] = None,  # None for tests & observation
 ) -> None:
     # Ignore the initial listing, as all custom resources were already noticed by API listing.
     # This prevents numerous unneccessary API requests at the the start of the operator.
@@ -199,6 +204,7 @@ def revise_resources(
 
     # Scan only the resource-related handlers, ignore activies & co.
     all_handlers: List[handlers.ResourceHandler] = []
+    all_handlers.extend(registry._resource_indexing.get_all_handlers())
     all_handlers.extend(registry._resource_watching.get_all_handlers())
     all_handlers.extend(registry._resource_spawning.get_all_handlers())
     all_handlers.extend(registry._resource_changing.get_all_handlers())
@@ -215,6 +221,8 @@ def revise_resources(
     # Also stop watching the resources that were changed to not hit any selectors (e.g. categories).
     for selector in all_selectors:
         insights.resources.update(selector.select(resources))
+        insights.indexable.update(resource for resource in selector.select(resources)
+                                  if registry._resource_indexing.has_handlers(resource))
 
     # Detect ambiguous selectors and stop watching: 2+ distinct resources for the same selector.
     # E.g.: "pods.v1" & "pods.v1beta1.metrics.k8s.io", when specified as just "pods" (but only
@@ -245,6 +253,9 @@ def revise_resources(
     if nonpatchable and any(handler.requires_patching for handler in all_handlers):
         logger.warning(f"Non-patchable resources will not be served: {nonpatchable}")
         insights.resources.difference_update(nonpatchable)
+
+    # Keep the secondary set clean of irrelevant resources. Though, it does not harm if it is not.
+    insights.indexable.intersection_update(insights.resources)
 
 
 def is_deleted(raw_event: bodies.RawEvent) -> bool:

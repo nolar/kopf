@@ -180,7 +180,7 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
             key: handlers.HandlerId,
             body: bodies.Body,
     ) -> Optional[ProgressRecord]:
-        for full_key in self.make_keys(key):
+        for full_key in self.make_keys(key, body=body):
             key_field = ['metadata', 'annotations', full_key]
             encoded = dicts.resolve(body, key_field, None)
             decoded = json.loads(encoded) if encoded is not None else None
@@ -198,7 +198,7 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
     ) -> None:
         decoded = {key: val for key, val in record.items() if self.verbose or val is not None}
         encoded = json.dumps(decoded, separators=(',', ':'))  # NB: no spaces
-        for full_key in self.make_keys(key):
+        for full_key in self.make_keys(key, body=body):
             key_field = ['metadata', 'annotations', full_key]
             dicts.ensure(patch, key_field, encoded)
         self._store_marker(prefix=self.prefix, patch=patch, body=body)
@@ -211,7 +211,7 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
             patch: patches.Patch,
     ) -> None:
         absent = object()
-        for full_key in self.make_keys(key):
+        for full_key in self.make_keys(key, body=body):
             key_field = ['metadata', 'annotations', full_key]
             body_value = dicts.resolve(body, key_field, absent)
             patch_value = dicts.resolve(patch, key_field, absent)
@@ -227,7 +227,7 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
             patch: patches.Patch,
             value: Optional[str],
     ) -> None:
-        for full_key in self.make_keys(self.touch_key):
+        for full_key in self.make_keys(self.touch_key, body=body):
             key_field = ['metadata', 'annotations', full_key]
             body_value = dicts.resolve(body, key_field, None)
             if body_value != value:  # also covers absent-vs-None cases.

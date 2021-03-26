@@ -1,9 +1,8 @@
-import collections.abc
-
-import pytest
+from unittest.mock import Mock
 
 from kopf.structs.bodies import Body
-from kopf.structs.containers import Memo, ResourceMemories, ResourceMemory
+from kopf.structs.containers import ResourceMemories, ResourceMemory
+from kopf.structs.ephemera import Memo
 
 BODY: Body = {
     'metadata': {
@@ -44,56 +43,16 @@ async def test_forgetting_ignores_when_absent():
     await memories.forget(BODY)
 
 
-def test_object_dict_creation():
-    obj = Memo()
-    assert isinstance(obj, collections.abc.MutableMapping)
+async def test_memo_is_shallow_copied():
 
+    class MyMemo(Memo):
+        def __copy__(self):
+            mock()
+            return MyMemo()
 
-def test_object_dict_fields_are_keys():
-    obj = Memo()
-    obj.xyz = 100
-    assert obj['xyz'] == 100
-
-
-def test_object_dict_keys_are_fields():
-    obj = Memo()
-    obj['xyz'] = 100
-    assert obj.xyz == 100
-
-
-def test_object_dict_keys_deleted():
-    obj = Memo()
-    obj['xyz'] = 100
-    del obj['xyz']
-    assert obj == {}
-
-
-def test_object_dict_fields_deleted():
-    obj = Memo()
-    obj.xyz = 100
-    del obj.xyz
-    assert obj == {}
-
-
-def test_object_dict_raises_key_errors_on_get():
-    obj = Memo()
-    with pytest.raises(KeyError):
-        obj['unexistent']
-
-
-def test_object_dict_raises_attribute_errors_on_get():
-    obj = Memo()
-    with pytest.raises(AttributeError):
-        obj.unexistent
-
-
-def test_object_dict_raises_key_errors_on_del():
-    obj = Memo()
-    with pytest.raises(KeyError):
-        del obj['unexistent']
-
-
-def test_object_dict_raises_attribute_errors_on_del():
-    obj = Memo()
-    with pytest.raises(AttributeError):
-        del obj.unexistent
+    mock = Mock()
+    memo = MyMemo()
+    memories = ResourceMemories()
+    memory = await memories.recall(BODY, memo=memo)
+    assert mock.call_count == 1
+    assert memory.memo is not memo

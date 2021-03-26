@@ -10,19 +10,19 @@ __ https://www.google.com/search?q=kubernetes+standard+de+facto&oq=kuerbenetes+s
 Kubernetes operators have become a common way to extend Kubernetes
 with domain objects and domain logic.
 
-At the moment (2018-2019), operators are mostly written in Go,
-and require the advanced knowledge both of Go and of Kubernetes internals.
+At the moment (2018-2019), operators are mostly written in Go
+and require advanced knowledge both of Go and Kubernetes internals.
 This raises the entry barrier to the operator development field.
 
 In a perfect world of Kopf, Kubernetes operators are a commodity,
 used to build the domain logic on top of Kubernetes fast and with ease,
-requiring little or no skills in the infrastructure management.
+requiring little or no skills in infrastructure management.
 
 For this, Kopf hides the low-level infrastructure details from the user
 (i.e. the operator developer),
 exposing only the APIs and DSLs needed to express the user's domain.
 
-In addition, Kopf does this in one of the widely used, easy to learn
+Besides, Kopf does this in one of the widely used, easy to learn
 programming languages: Python.
 
 But Kopf does not go too far in abstracting the Kubernetes internals away:

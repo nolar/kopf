@@ -6,7 +6,7 @@ import pytest
 import kopf
 
 
-async def test_daemon_exits_gracefully_and_instantly_via_stopper(
+async def test_daemon_exits_gracefully_and_instantly_on_termination_request(
         settings, resource, dummy, simulate_cycle,
         caplog, assert_logs, k8s_mocked, frozen_time, mocker, timer):
     caplog.set_level(logging.DEBUG)
@@ -18,7 +18,7 @@ async def test_daemon_exits_gracefully_and_instantly_via_stopper(
         dummy.steps['called'].set()
         await kwargs['stopped'].wait()
 
-    # 0th cycle:tTrigger spawning and wait until ready. Assume the finalizers are already added.
+    # 0th cycle: trigger spawning and wait until ready. Assume the finalizers are already added.
     finalizer = settings.persistence.finalizer
     event_object = {'metadata': {'finalizers': [finalizer]}}
     await simulate_cycle(event_object)
@@ -37,6 +37,41 @@ async def test_daemon_exits_gracefully_and_instantly_via_stopper(
     assert k8s_mocked.sleep_or_wait.call_count == 0
     assert k8s_mocked.patch_obj.call_count == 1
     assert k8s_mocked.patch_obj.call_args_list[0][1]['patch']['metadata']['finalizers'] == []
+
+
+@pytest.mark.usefixtures('background_daemon_killer')
+async def test_daemon_exits_gracefully_and_instantly_on_operator_pausing(
+        settings, memories, resource, dummy, simulate_cycle, conflicts_found,
+        caplog, assert_logs, k8s_mocked, frozen_time, mocker, timer):
+    caplog.set_level(logging.DEBUG)
+
+    # A daemon-under-test.
+    @kopf.daemon(*resource, id='fn')
+    async def fn(**kwargs):
+        dummy.kwargs = kwargs
+        dummy.steps['called'].set()
+        await kwargs['stopped'].wait()
+
+    # 0th cycle: trigger spawning and wait until ready. Assume the finalizers are already added.
+    finalizer = settings.persistence.finalizer
+    event_object = {'metadata': {'finalizers': [finalizer]}}
+    await simulate_cycle(event_object)
+    await dummy.steps['called'].wait()
+
+    # 1st stage: trigger termination due to the operator's pause.
+    mocker.resetall()
+    await conflicts_found.turn_to(True)
+
+    # Check that the daemon has exited near-instantly, with no delays.
+    with timer:
+        await dummy.wait_for_daemon_done()
+    assert timer.seconds < 0.01  # near-instantly
+
+    # There is no way to test for re-spawning here: it is done by watch-events,
+    # which are tested by the paused operators elsewhere (test_daemon_spawning.py).
+    # We only test that it is capable for respawning (not forever-stopped):
+    memory = await memories.recall(event_object)
+    assert not memory.forever_stopped
 
 
 async def test_daemon_exits_instantly_via_cancellation_with_backoff(

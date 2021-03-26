@@ -39,7 +39,7 @@ from being handled (such as deletion or parallel handlers/sub-handlers).
     as to be retried immediately, where it continues with the remaining
     handlers.
 
-    The only difference is that this special case produces less logs.
+    The only difference is that this special case produces fewer logs.
 
 
 Permanent errors
@@ -60,7 +60,7 @@ is no need to retry over time, as it will not become better::
             raise kopf.PermanentError("The object is not valid anymore.")
 
 See also: :ref:`never-again-filters` to prevent handlers from being invoked
-for the future change-sets even after operator restarts.
+for the future change-sets even after the operator restarts.
 
 
 Regular errors
@@ -68,9 +68,9 @@ Regular errors
 
 Kopf assumes that any arbitrary errors
 (i.e. not `TemporaryError` and not `PermanentError`)
-are environment issues and can self-resolve after some time.
+are the environment's issues and can self-resolve after some time.
 
-As such, as a default behaviour,
+As such, as default behaviour,
 Kopf retries the handlers with arbitrary errors
 infinitely until the handlers either succeed or fail permanently.
 

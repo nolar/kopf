@@ -1,8 +1,8 @@
 # Kubernetes Operator Pythonic Framework (Kopf)
 
-[![CI](https://github.com/nolar/kopf/workflows/CI/badge.svg)](https://github.com/nolar/kopf/actions)
-[![codecov](https://codecov.io/gh/nolar/kopf/branch/master/graph/badge.svg)](https://codecov.io/gh/nolar/kopf)
-[![Coverage Status](https://coveralls.io/repos/github/nolar/kopf/badge.svg?branch=master)](https://coveralls.io/github/nolar/kopf?branch=master)
+[![CI](https://github.com/nolar/kopf/workflows/Thorough%20tests/badge.svg)](https://github.com/nolar/kopf/actions)
+[![codecov](https://codecov.io/gh/nolar/kopf/branch/main/graph/badge.svg)](https://codecov.io/gh/nolar/kopf)
+[![Coverage Status](https://coveralls.io/repos/github/nolar/kopf/badge.svg?branch=main)](https://coveralls.io/github/nolar/kopf?branch=main)
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/nolar/kopf.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/nolar/kopf/alerts/)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/nolar/kopf.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/nolar/kopf/context:python)
 
@@ -27,7 +27,7 @@ the same packages, the same developer(s).
 
 * Simple, but powerful:
   * A full-featured operator in just 2 files: a `Dockerfile` + a Python file (*).
-  * Handling functions registered via decorators with declarative approach. 
+  * Handling functions registered via decorators with a declarative approach. 
   * No infrastructure boilerplate code with K8s API communication.
   * Both sync and async handlers, with sync ones being threaded under the hood.
   * Detailed documentation with examples.
@@ -36,7 +36,7 @@ the same packages, the same developer(s).
   * Marshalling of handlers' results to the resources' statuses.
   * Publishing of logging messages as Kubernetes events linked to the resources.
 * Support anything that exists in K8s:
-  * Custom K8s resources, obviously.
+  * Custom K8s resources.
   * Builtin K8s resources (pods, namespaces, etc).
   * Multiple resource types in one operator.
   * Both cluster and namespaced operators.
@@ -58,7 +58,7 @@ the same packages, the same developer(s).
   * Tolerance to restarts and lengthy downtimes: handles the changes afterwards.
 * Awareness of other Kopf-based operators:
   * Configurable identities for different Kopf-based operators for the same resource kinds.
-  * Avoiding of double-processing due to cross-pod awareness of the same operator ("peering").
+  * Avoiding double-processing due to cross-pod awareness of the same operator ("peering").
   * Pausing of a deployed operator when a dev-mode operator runs outside of the cluster.
 * Extra toolkits and integrations:
   * Some limited support for object hierarchies with name/labels propagation.
@@ -76,7 +76,7 @@ deployment files like RBAC roles, bindings, service accounts, network policies
 
 ## Examples
 
-See [examples](https://github.com/nolar/kopf/tree/master/examples)
+See [examples](https://github.com/nolar/kopf/tree/main/examples)
 for the examples of the typical use-cases.
 
 A minimalistic operator can look like this:
@@ -93,7 +93,7 @@ Numerous kwargs are available, such as `body`, `meta`, `spec`, `status`,
 `name`, `namespace`, `retry`, `diff`, `old`, `new`, `logger`, etc: 
 see [Arguments](https://kopf.readthedocs.io/en/latest/kwargs/)
 
-To run a non-exiting function for every resource as long as it exists:
+To run a never-exiting function for every resource as long as it exists:
 
 ```python
 import time
@@ -122,7 +122,7 @@ That easy! For more features, see the [documentation](https://kopf.readthedocs.i
 ## Usage
 
 We assume that when the operator is executed in the cluster, it must be packaged
-into a docker image with CI/CD tool of your preference.
+into a docker image with a CI/CD tool of your preference.
 
 ```dockerfile
 FROM python:3.7
@@ -134,17 +134,17 @@ CMD kopf run /src/handlers.py --verbose
 Where `handlers.py` is your Python script with the handlers
 (see `examples/*/example.py` for the examples).
 
-See `kopf run --help` for others ways of attaching the handlers.
+See `kopf run --help` for other ways of attaching the handlers.
 
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](https://github.com/nolar/kopf/blob/master/CONTRIBUTING.md)
+Please read [CONTRIBUTING.md](https://github.com/nolar/kopf/blob/main/CONTRIBUTING.md)
 for details on our process for submitting pull requests to us, and please ensure
-you follow the [CODE_OF_CONDUCT.md](https://github.com/nolar/kopf/blob/master/CODE_OF_CONDUCT.md).
+you follow the [CODE_OF_CONDUCT.md](https://github.com/nolar/kopf/blob/main/CODE_OF_CONDUCT.md).
 
 To install the environment for the local development,
-read [DEVELOPMENT.md](https://github.com/nolar/kopf/blob/master/DEVELOPMENT.md).
+read [DEVELOPMENT.md](https://github.com/nolar/kopf/blob/main/DEVELOPMENT.md).
 
 
 ## Versioning
@@ -156,7 +156,7 @@ see the [releases on this repository](https://github.com/nolar/kopf/releases).
 ## License
 
 This project is licensed under the MIT License —
-see the [LICENSE](https://github.com/nolar/kopf/blob/master/LICENSE) file for details.
+see the [LICENSE](https://github.com/nolar/kopf/blob/main/LICENSE) file for details.
 
 
 ## Acknowledgments

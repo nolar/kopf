@@ -24,13 +24,15 @@ import logging
 from typing import Any, Optional, TypeVar, Union
 
 from kopf.storage import finalizers
-from kopf.structs import bodies, configuration, containers, diffs, \
+from kopf.structs import bodies, configuration, diffs, ephemera, \
                          handlers, patches, primitives, references
 
 
 @dataclasses.dataclass
 class BaseCause:
+    indices: ephemera.Indices
     logger: Union[logging.Logger, logging.LoggerAdapter]
+    memo: ephemera.AnyMemo
 
 
 @dataclasses.dataclass
@@ -44,7 +46,14 @@ class ResourceCause(BaseCause):
     resource: references.Resource
     patch: patches.Patch
     body: bodies.Body
-    memo: containers.Memo
+
+
+@dataclasses.dataclass
+class ResourceIndexingCause(ResourceCause):
+    """
+    The raw event received from the API.
+    """
+    pass
 
 
 @dataclasses.dataclass

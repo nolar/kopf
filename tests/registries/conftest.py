@@ -4,12 +4,13 @@ import pytest
 
 from kopf.reactor.causation import ActivityCause, ResourceCause, ResourceChangingCause, \
                                    ResourceSpawningCause, ResourceWatchingCause
+from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.registries import ActivityRegistry, OperatorRegistry, ResourceChangingRegistry, \
                                     ResourceRegistry, ResourceSpawningRegistry, \
                                     ResourceWatchingRegistry
 from kopf.structs.bodies import Body
-from kopf.structs.containers import Memo
 from kopf.structs.diffs import Diff, DiffItem
+from kopf.structs.ephemera import Memo
 from kopf.structs.handlers import HandlerId, ResourceChangingHandler
 from kopf.structs.patches import Patch
 
@@ -52,7 +53,7 @@ def parent_handler(selector):
         pass
 
     return ResourceChangingHandler(
-        fn=parent_fn, id=HandlerId('parent_fn'),
+        fn=parent_fn, id=HandlerId('parent_fn'), param=None,
         errors=None, retries=None, timeout=None, backoff=None,
         selector=selector, labels=None, annotations=None, when=None,
         field=None, value=None, old=None, new=None, field_needs_change=None,
@@ -96,13 +97,16 @@ def cause_factory(resource):
     ):
         if cls is ActivityCause or cls is ActivityRegistry:
             return ActivityCause(
+                memo=Memo(),
                 logger=logging.getLogger('kopf.test.fake.logger'),
+                indices=OperatorIndexers().indices,
                 activity=activity,
                 settings=settings,
             )
         if cls is ResourceCause or cls is ResourceRegistry:
             return ResourceCause(
                 logger=logging.getLogger('kopf.test.fake.logger'),
+                indices=OperatorIndexers().indices,
                 resource=resource,
                 patch=Patch(),
                 memo=Memo(),
@@ -111,6 +115,7 @@ def cause_factory(resource):
         if cls is ResourceWatchingCause or cls is ResourceWatchingRegistry:
             return ResourceWatchingCause(
                 logger=logging.getLogger('kopf.test.fake.logger'),
+                indices=OperatorIndexers().indices,
                 resource=resource,
                 patch=Patch(),
                 memo=Memo(),
@@ -121,6 +126,7 @@ def cause_factory(resource):
         if cls is ResourceChangingCause or cls is ResourceChangingRegistry:
             return ResourceChangingCause(
                 logger=logging.getLogger('kopf.test.fake.logger'),
+                indices=OperatorIndexers().indices,
                 resource=resource,
                 patch=Patch(),
                 memo=Memo(),
@@ -134,6 +140,7 @@ def cause_factory(resource):
         if cls is ResourceSpawningCause or cls is ResourceSpawningRegistry:
             return ResourceSpawningCause(
                 logger=logging.getLogger('kopf.test.fake.logger'),
+                indices=OperatorIndexers().indices,
                 resource=resource,
                 patch=Patch(),
                 memo=Memo(),

@@ -25,6 +25,8 @@ import time
 import warnings
 from typing import Collection, List, Mapping, MutableMapping, Sequence
 
+import aiojobs
+
 from kopf.engines import loggers
 from kopf.reactor import causation, effects, handling, lifecycles
 from kopf.storage import states
@@ -54,6 +56,7 @@ async def spawn_resource_daemons(
             stopper = primitives.DaemonStopper()
             daemon_cause = causation.DaemonCause(
                 resource=cause.resource,
+                indices=cause.indices,
                 logger=cause.logger,
                 body=memory.live_fresh_body,
                 memo=memory.memo,
@@ -209,31 +212,71 @@ async def daemon_killer(
         *,
         settings: configuration.OperatorSettings,
         memories: containers.ResourceMemories,
+        operator_paused: primitives.ToggleSet,
 ) -> None:
     """
-    An operator's root task to kill the daemons on the operator's shutdown.
-    """
+    An operator's root task to kill the daemons on the operator's demand.
 
-    # Sleep forever, or until cancelled, which happens when the operator begins its shutdown.
+    The "demand" comes in two cases: when the operator is exiting (gracefully
+    or not), and when the operator is pausing because of peering. In that case,
+    all watch-streams are disconnected, and all daemons/timers should stop.
+
+    When pausing, the daemons/timers are stopped via their regular stopping
+    procedure: with graceful or forced termination, backoffs, timeouts.
+
+    .. warning::
+
+        Each daemon will be respawned on the next K8s watch-event strictly
+        after the previous daemon is fully stopped.
+        There are never 2 instances of the same daemon running in parallel.
+
+        In normal cases (enough time is given to stop), this is usually done
+        by the post-pause re-listing event. In rare cases when the re-pausing
+        happens faster than the daemon is stopped (highly unlikely to happen),
+        that event can be missed because the daemon is being stopped yet,
+        so the respawn can happen with a significant delay.
+
+        This issue is considered low-priority & auxiliary, so as the peering
+        itself. It can be fixed later. Workaround: make daemons to exit fast.
+    """
+    # Unlimited job pool size —- the same as if we would be managing the tasks directly.
+    # Unlimited timeout in `close()` -- since we have our own per-daemon timeout management.
+    scheduler: aiojobs.Scheduler = await aiojobs.create_scheduler(limit=None, close_timeout=99999)
     try:
-        await asyncio.Event().wait()
+        while True:
+
+            # Stay here while the operator is running normally, until it is paused.
+            await operator_paused.wait_for(True)
+
+            # The stopping tasks are "fire-and-forget" -- we do not get (or care of) the result.
+            # The daemons remain resumable, since they exit not on their own accord.
+            for memory in memories.iter_all_memories():
+                for daemon in memory.running_daemons.values():
+                    await scheduler.spawn(stop_daemon(
+                        settings=settings,
+                        daemon=daemon,
+                        reason=primitives.DaemonStoppingReason.OPERATOR_PAUSING))
+
+            # Stay here while the operator is paused, until it is resumed.
+            # The fresh stream of watch-events will spawn new daemons naturally.
+            await operator_paused.wait_for(False)
 
     # Terminate all running daemons when the operator exits (and this task is cancelled).
     finally:
-        tasks = [
-            aiotasks.create_task(
-                name=f"stop daemon {daemon.handler.id}",
-                coro=stop_daemon(daemon=daemon, settings=settings))
-            for memory in memories.iter_all_memories()
-            for daemon in memory.running_daemons.values()
-        ]
-        await aiotasks.wait(tasks)
+        for memory in memories.iter_all_memories():
+            for daemon in memory.running_daemons.values():
+                await scheduler.spawn(stop_daemon(
+                    settings=settings,
+                    daemon=daemon,
+                    reason=primitives.DaemonStoppingReason.OPERATOR_EXITING))
+        await scheduler.close()
 
 
 async def stop_daemon(
         *,
         settings: configuration.OperatorSettings,
         daemon: containers.Daemon,
+        reason: primitives.DaemonStoppingReason,
 ) -> None:
     """
     Stop a single daemon.
@@ -255,7 +298,7 @@ async def stop_daemon(
         raise RuntimeError(f"Unsupported daemon handler: {handler!r}")
 
     # Whatever happens with other flags & logs & timings, this flag must be surely set.
-    daemon.stopper.set(reason=primitives.DaemonStoppingReason.OPERATOR_EXITING)
+    daemon.stopper.set(reason=reason)
     await _wait_for_instant_exit(settings=settings, daemon=daemon)
 
     if daemon.task.done():
@@ -336,7 +379,7 @@ async def _runner(
     finally:
 
         # Prevent future re-spawns for those exited on their own, for no reason.
-        # Only the filter-mismatching daemons can be re-spawned on future events.
+        # Only the filter-mismatching or peering-pausing daemons can be re-spawned.
         if stopper.reason == primitives.DaemonStoppingReason.NONE:
             memory.forever_stopped.add(handler.id)
 
@@ -371,7 +414,7 @@ async def _resource_daemon(
     body = cause.body
 
     if handler.initial_delay is not None:
-        await effects.sleep_or_wait(handler.initial_delay, cause.stopper)
+        await primitives.sleep_or_wait(handler.initial_delay, cause.stopper)
 
     # Similar to activities (in-memory execution), but applies patches on every attempt.
     state = states.State.from_scratch().with_handlers([handler])
@@ -391,7 +434,7 @@ async def _resource_daemon(
 
         # The in-memory sleep does not react to resource changes, but only to stopping.
         if state.delay:
-            await effects.sleep_or_wait(state.delay, cause.stopper)
+            await primitives.sleep_or_wait(state.delay, cause.stopper)
 
     if stopper.is_set():
         logger.debug(f"{handler} has exited on request and will not be retried or restarted.")
@@ -434,7 +477,7 @@ async def _resource_timer(
     body = cause.body
 
     if handler.initial_delay is not None:
-        await effects.sleep_or_wait(handler.initial_delay, stopper)
+        await primitives.sleep_or_wait(handler.initial_delay, stopper)
 
     # Similar to activities (in-memory execution), but applies patches on every attempt.
     state = states.State.from_scratch().with_handlers([handler])
@@ -450,7 +493,7 @@ async def _resource_timer(
         if handler.idle is not None:
             while not stopper.is_set() and time.monotonic() - memory.idle_reset_time < handler.idle:
                 delay = memory.idle_reset_time + handler.idle - time.monotonic()
-                await effects.sleep_or_wait(delay, stopper)
+                await primitives.sleep_or_wait(delay, stopper)
             if stopper.is_set():
                 continue
 
@@ -473,7 +516,7 @@ async def _resource_timer(
         # For temporary errors, override the schedule by the one provided by errors themselves.
         # It can be either a delay from TemporaryError, or a backoff for an arbitrary exception.
         if not state.done:
-            await effects.sleep_or_wait(state.delays, stopper)
+            await primitives.sleep_or_wait(state.delays, stopper)
 
         # For sharp timers, calculate how much time is left to fit the interval grid:
         #       |-----|-----|-----|-----|-----|-----|---> (interval=5, sharp=True)
@@ -481,19 +524,19 @@ async def _resource_timer(
         elif handler.interval is not None and handler.sharp:
             passed_duration = time.monotonic() - started
             remaining_delay = handler.interval - (passed_duration % handler.interval)
-            await effects.sleep_or_wait(remaining_delay, stopper)
+            await primitives.sleep_or_wait(remaining_delay, stopper)
 
         # For regular (non-sharp) timers, simply sleep from last exit to the next call:
         #       |-----|-----|-----|-----|-----|-----|---> (interval=5, sharp=False)
         #       [slow_handler].....[slow_handler].....[slow...
         elif handler.interval is not None:
-            await effects.sleep_or_wait(handler.interval, stopper)
+            await primitives.sleep_or_wait(handler.interval, stopper)
 
         # For idle-only no-interval timers, wait till the next change (i.e. idling reset).
         # NB: This will skip the handler in the same tact (1/64th of a second) even if changed.
         elif handler.idle is not None:
             while memory.idle_reset_time <= started:
-                await effects.sleep_or_wait(handler.idle, stopper)
+                await primitives.sleep_or_wait(handler.idle, stopper)
 
         # Only in case there are no intervals and idling, treat it as a one-shot handler.
         # This makes the handler practically meaningless, but technically possible.

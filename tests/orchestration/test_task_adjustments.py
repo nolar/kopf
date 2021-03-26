@@ -1,5 +1,6 @@
 import asyncio
 import dataclasses
+from typing import Optional
 from unittest.mock import Mock
 
 import pytest
@@ -11,7 +12,7 @@ from kopf.structs.references import Insights, Resource
 from kopf.utilities import aiotasks
 
 
-async def processor(*, raw_event: bodies.RawEvent, replenished: asyncio.Event) -> None:
+async def processor(*, raw_event: bodies.RawEvent, stream_pressure: Optional[asyncio.Event]) -> None:
     pass
 
 
@@ -38,9 +39,14 @@ async def insights(settings, peering_resource):
 
 @pytest.fixture()
 async def ensemble(_no_asyncio_pending_tasks):
-    freeze_checker = primitives.ToggleSet()
-    freeze_blocker = await freeze_checker.make_toggle()
-    ensemble = Ensemble(freeze_checker=freeze_checker, freeze_blocker=freeze_blocker)
+    operator_indexed = primitives.ToggleSet(all)
+    operator_paused = primitives.ToggleSet(any)
+    peering_missing = await operator_paused.make_toggle()
+    ensemble = Ensemble(
+        operator_indexed=operator_indexed,
+        operator_paused=operator_paused,
+        peering_missing=peering_missing,
+    )
 
     try:
         yield ensemble
@@ -62,7 +68,7 @@ async def test_empty_insights_cause_no_adjustments(
     assert not ensemble.watcher_tasks
     assert not ensemble.peering_tasks
     assert not ensemble.pinging_tasks
-    assert not ensemble.freeze_toggles
+    assert not ensemble.conflicts_found
 
 
 async def test_new_resources_and_namespaces_spawn_new_tasks(
@@ -93,7 +99,7 @@ async def test_new_resources_and_namespaces_spawn_new_tasks(
     assert set(ensemble.watcher_tasks) == {r1ns1, r1ns2, r2ns1, r2ns2}
     assert set(ensemble.peering_tasks) == {peer1, peer2}
     assert set(ensemble.pinging_tasks) == {peer1, peer2}
-    assert set(ensemble.freeze_toggles) == {peer1, peer2}
+    assert set(ensemble.conflicts_found) == {peer1, peer2}
 
 
 async def test_gone_resources_and_namespaces_stop_running_tasks(
@@ -138,7 +144,7 @@ async def test_gone_resources_and_namespaces_stop_running_tasks(
     assert set(ensemble.watcher_tasks) == {r1ns1}
     assert set(ensemble.peering_tasks) == {peer1}
     assert set(ensemble.pinging_tasks) == {peer1}
-    assert set(ensemble.freeze_toggles) == {peer1}
+    assert set(ensemble.conflicts_found) == {peer1}
     assert r1ns2_task.cancelled()
     assert r2ns1_task.cancelled()
     assert r2ns2_task.cancelled()
@@ -181,7 +187,7 @@ async def test_cluster_tasks_continue_running_on_namespace_deletion(
     assert set(ensemble.watcher_tasks) == {r1nsN, r2nsN}
     assert set(ensemble.peering_tasks) == {peerN}
     assert set(ensemble.pinging_tasks) == {peerN}
-    assert set(ensemble.freeze_toggles) == {peerN}
+    assert set(ensemble.conflicts_found) == {peerN}
     assert not r1nsN_task.cancelled()
     assert not r2nsN_task.cancelled()
     assert not r1nsN_task.done()
@@ -208,18 +214,18 @@ async def test_no_peering_tasks_with_no_peering_resources(
     assert ensemble.watcher_tasks
     assert not ensemble.peering_tasks
     assert not ensemble.pinging_tasks
-    assert not ensemble.freeze_toggles
+    assert not ensemble.conflicts_found
 
 
-async def test_frozen_with_mandatory_peering_but_absent_peering_resource(
+async def test_paused_with_mandatory_peering_but_absent_peering_resource(
         settings, ensemble: Ensemble):
 
     settings.peering.mandatory = True
     insights = Insights()
 
-    await ensemble.freeze_blocker.turn_to(False)  # prerequisite
-    assert ensemble.freeze_blocker.is_off()  # prerequisite
-    assert ensemble.freeze_checker.is_off()  # prerequisite
+    await ensemble.peering_missing.turn_to(False)  # prerequisite
+    assert ensemble.peering_missing.is_off()  # prerequisite
+    assert ensemble.operator_paused.is_off()  # prerequisite
 
     await adjust_tasks(
         processor=processor,
@@ -229,17 +235,17 @@ async def test_frozen_with_mandatory_peering_but_absent_peering_resource(
         ensemble=ensemble,
     )
 
-    assert ensemble.freeze_blocker.is_on()
-    assert ensemble.freeze_checker.is_on()
+    assert ensemble.peering_missing.is_on()
+    assert ensemble.operator_paused.is_on()
 
 
-async def test_unfrozen_with_mandatory_peering_and_existing_peering_resource(
+async def test_unpaused_with_mandatory_peering_and_existing_peering_resource(
         settings, ensemble: Ensemble, insights: Insights, peering_resource):
     settings.peering.namespaced = peering_resource.namespaced
 
-    await ensemble.freeze_blocker.turn_to(True)  # prerequisite
-    assert ensemble.freeze_blocker.is_on()  # prerequisite
-    assert ensemble.freeze_checker.is_on()  # prerequisite
+    await ensemble.peering_missing.turn_to(True)  # prerequisite
+    assert ensemble.peering_missing.is_on()  # prerequisite
+    assert ensemble.operator_paused.is_on()  # prerequisite
 
     await adjust_tasks(
         processor=processor,
@@ -249,5 +255,5 @@ async def test_unfrozen_with_mandatory_peering_and_existing_peering_resource(
         ensemble=ensemble,
     )
 
-    assert ensemble.freeze_blocker.is_off()
-    assert ensemble.freeze_checker.is_off()
+    assert ensemble.peering_missing.is_off()
+    assert ensemble.operator_paused.is_off()

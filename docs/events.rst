@@ -28,7 +28,7 @@ for the handled objects as Kubernetes events::
                    reason='SomeReason',
                    message='Some message')
 
-The type and reason are arbitrary, and can be anything.
+The type and reason are arbitrary and can be anything.
 Some restrictions apply (e.g. no spaces).
 The message is also arbitrary free-text.
 However, newlines are not rendered nicely
@@ -91,7 +91,7 @@ at the moment (and not event the children)::
 .. note::
     Events are not persistent.
     They are usually garbage-collected after some time, e.g. one hour.
-    All the reported information must be only for a short-term use.
+    All the reported information must be only for short-term use.
 
 
 Events for events

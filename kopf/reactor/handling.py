@@ -62,7 +62,7 @@ cause_var: ContextVar[causation.BaseCause] = ContextVar('cause_var')
 
 async def execute(
         *,
-        fns: Optional[Iterable[callbacks.ResourceChangingFn]] = None,
+        fns: Optional[Iterable["callbacks.ResourceChangingFn"]] = None,
         handlers: Optional[Iterable[handlers_.ResourceChangingHandler]] = None,
         registry: Optional[registries.ResourceChangingRegistry] = None,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
@@ -100,7 +100,7 @@ async def execute(
         for id, fn in fns.items():
             real_id = registries.generate_id(fn=fn, id=id, prefix=parent_prefix)
             handler = handlers_.ResourceChangingHandler(
-                fn=fn, id=real_id,
+                fn=fn, id=real_id, param=None,
                 errors=None, timeout=None, retries=None, backoff=None,
                 selector=None, labels=None, annotations=None, when=None,
                 initial=None, deleted=None, requires_finalizer=None,
@@ -114,7 +114,7 @@ async def execute(
         for fn in fns:
             real_id = registries.generate_id(fn=fn, id=None, prefix=parent_prefix)
             handler = handlers_.ResourceChangingHandler(
-                fn=fn, id=real_id,
+                fn=fn, id=real_id, param=None,
                 errors=None, timeout=None, retries=None, backoff=None,
                 selector=None, labels=None, annotations=None, when=None,
                 initial=None, deleted=None, requires_finalizer=None,
@@ -370,6 +370,7 @@ async def invoke_handler(
             *args,
             settings=settings,
             cause=cause,
+            param=handler.param,
             **kwargs,
         )
 

@@ -8,6 +8,12 @@ To install Kopf::
 
     pip install kopf
 
+If you use some of the managed Kubernetes services which require a sophisticated
+authentication beyond username+password, fixed tokens, or client SSL certs
+(also see :ref:`authentication piggy-backing <auth-piggybacking>`)::
+
+    pip install kopf[full-auth]
+
 Unless you use the standalone mode,
 create few Kopf-specific custom resources in the cluster::
 

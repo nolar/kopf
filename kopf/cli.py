@@ -128,7 +128,7 @@ def freeze(
         peering_name: str,
         priority: int,
 ) -> None:
-    """ Freeze the resource handling in the cluster. """
+    """ Pause the resource handling in the operator(s). """
     identity = peering.Identity(id) if id else peering.detect_own_id(manual=True)
     insights = references.Insights()
     settings = configuration.OperatorSettings()
@@ -159,7 +159,7 @@ def resume(
         clusterwide: bool,
         peering_name: str,
 ) -> None:
-    """ Resume the resource handling in the cluster. """
+    """ Resume the resource handling in the operator(s). """
     identity = peering.Identity(id) if id else peering.detect_own_id(manual=True)
     insights = references.Insights()
     settings = configuration.OperatorSettings()

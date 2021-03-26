@@ -2,11 +2,12 @@
 Synchronisation primitives and helper functions.
 """
 import asyncio
+import collections.abc
 import concurrent.futures
 import enum
 import threading
 import time
-from typing import Any, Collection, Iterable, Iterator, Optional, Set, Union
+from typing import Any, Callable, Collection, Iterable, Iterator, Optional, Set, Union
 
 from kopf.utilities import aiotasks
 
@@ -90,7 +91,7 @@ class Toggle:
     But these events cannot be awaited until cleared.
 
     The bi-directional toggles are needed in some places in the code, such as
-    in the population/depletion of a `Vault`, or as an operator's freeze-mode.
+    in the population/depletion of a `Vault`, or as in the operator's pause.
 
     The optional name is used only for hinting in reprs. It can be used when
     there are many toggles, and they need to be distinguished somehow.
@@ -146,24 +147,38 @@ class ToggleSet(Collection[Toggle]):
     A read-only checker for multiple toggles.
 
     The toggle-checker does not have its own state to be turned on/off.
-    It is "on" when at least one child toggle is "on",
-    and it is "off" when all children toggles are "off",
-    or if it has no children toggles at all.
 
-    The multi-toggle is used mostly in peering, where every individual peering
-    identified by name and namespace has its own individual toggle to manage,
-    but the whole set of toggles of all names & namespaces is used for freezing
-    the operators as one single logical toggle.
+    The positional argument is a function, usually :func:`any` or :func:`all`,
+    which takes an iterable of all individual toggles' states (on/off),
+    and calculates the overall state of the toggle set.
+
+    With :func:`any`, the set is "on" when at least one child toggle is "on"
+    (and it has at least one child), and it is "off" when all children toggles
+    are "off" (or if it has no children toggles at all).
+
+    With :func:`all`, the set is "on" when all of its children toggles are "on"
+    (or it has no children at all), and it is "off" when at least one child
+    toggle is "off" (and there is at least one toggle).
+
+    The multi-toggle sets are used mostly for operator pausing,
+    e.g. in peering and in index pre-population. For a practical example,
+    in peering, every individual peering identified by name and namespace has
+    its own individual toggle to manage, but the whole set of toggles of all
+    names & namespaces is used for pausing the operator as one single toggle.
+    In index pre-population, the toggles are used on the operator's startup
+    to temporarily delay the actual resource handling until all index-handlers
+    of all involved resources and resource kinds are processed and stored.
 
     Note: the set can only contain toggles that were produced by the set;
     externally produced toggles cannot be added, since they do not share
     the same condition object, which is used for synchronisation/notifications.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, fn: Callable[[Iterable[bool]], bool]) -> None:
         super().__init__()
         self._condition = asyncio.Condition()
         self._toggles: Set[Toggle] = set()
+        self._fn = fn
 
     def __repr__(self) -> str:
         return repr(self._toggles)
@@ -181,10 +196,10 @@ class ToggleSet(Collection[Toggle]):
         raise NotImplementedError  # to protect against accidental misuse
 
     def is_on(self) -> bool:
-        return any(toggle.is_on() for toggle in self._toggles)
+        return self._fn(toggle.is_on() for toggle in self._toggles)
 
     def is_off(self) -> bool:
-        return all(toggle.is_off() for toggle in self._toggles)
+        return not self.is_on()
 
     async def wait_for(self, __state: bool) -> None:
         async with self._condition:
@@ -230,6 +245,7 @@ class DaemonStoppingReason(enum.Flag):
     DONE = enum.auto()  # whatever the reason and the status, the asyncio task has exited.
     FILTERS_MISMATCH = enum.auto()  # the resource does not match the filters anymore.
     RESOURCE_DELETED = enum.auto()  # the resource was deleted, the asyncio task is still awaited.
+    OPERATOR_PAUSING = enum.auto()  # the operator is pausing, the asyncio task is still awaited.
     OPERATOR_EXITING = enum.auto()  # the operator is exiting, the asyncio task is still awaited.
     DAEMON_SIGNALLED = enum.auto()  # the stopper flag was set, the asyncio task is still awaited.
     DAEMON_CANCELLED = enum.auto()  # the asyncio task was cancelled, the thread can be running.
@@ -335,3 +351,40 @@ class AsyncDaemonStopperChecker(DaemonStopperChecker):
         except asyncio.TimeoutError:
             pass
         return bool(self)
+
+
+async def sleep_or_wait(
+        delays: Union[None, float, Collection[Union[None, float]]],
+        wakeup: Optional[Union[asyncio.Event, DaemonStopper]] = None,
+) -> Optional[float]:
+    """
+    Measure the sleep time: either until the timeout, or until the event is set.
+
+    Returns the number of seconds left to sleep, or ``None`` if the sleep was
+    not interrupted and reached its specified delay (an equivalent of ``0``).
+    In theory, the result can be ``0`` if the sleep was interrupted precisely
+    the last moment before timing out; this is unlikely to happen though.
+    """
+    passed_delays = delays if isinstance(delays, collections.abc.Collection) else [delays]
+    actual_delays = [delay for delay in passed_delays if delay is not None]
+    minimal_delay = min(actual_delays) if actual_delays else 0
+
+    # Do not go for the real low-level system sleep if there is no need to sleep.
+    if minimal_delay <= 0:
+        return None
+
+    awakening_event = (
+        wakeup.async_event if isinstance(wakeup, DaemonStopper) else
+        wakeup if wakeup is not None else
+        asyncio.Event())
+
+    loop = asyncio.get_running_loop()
+    try:
+        start_time = loop.time()
+        await asyncio.wait_for(awakening_event.wait(), timeout=minimal_delay)
+    except asyncio.TimeoutError:
+        return None  # interruptable sleep is over: uninterrupted.
+    else:
+        end_time = loop.time()
+        duration = end_time - start_time
+        return max(0, minimal_delay - duration)

@@ -5,9 +5,11 @@ import pytest
 
 from kopf.reactor.activities import ActivityError, run_activity
 from kopf.reactor.handling import PermanentError, TemporaryError
+from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.lifecycles import all_at_once
 from kopf.reactor.registries import OperatorRegistry
 from kopf.storage.states import HandlerOutcome
+from kopf.structs.ephemera import Memo
 from kopf.structs.handlers import Activity, ActivityHandler, HandlerId
 
 
@@ -32,11 +34,11 @@ async def test_results_are_returned_on_success(settings, activity):
     registry = OperatorRegistry()
     registry._activities.append(ActivityHandler(
         fn=sample_fn1, id='id1', activity=activity,
-        errors=None, timeout=None, retries=None, backoff=None,
+        param=None, errors=None, timeout=None, retries=None, backoff=None,
     ))
     registry._activities.append(ActivityHandler(
         fn=sample_fn2, id='id2', activity=activity,
-        errors=None, timeout=None, retries=None, backoff=None,
+        param=None, errors=None, timeout=None, retries=None, backoff=None,
     ))
 
     results = await run_activity(
@@ -44,6 +46,8 @@ async def test_results_are_returned_on_success(settings, activity):
         settings=settings,
         activity=activity,
         lifecycle=all_at_once,
+        indices=OperatorIndexers().indices,
+        memo=Memo(),
     )
 
     assert set(results.keys()) == {'id1', 'id2'}
@@ -63,11 +67,11 @@ async def test_errors_are_raised_aggregated(settings, activity):
     registry = OperatorRegistry()
     registry._activities.append(ActivityHandler(
         fn=sample_fn1, id='id1', activity=activity,
-        errors=None, timeout=None, retries=None, backoff=None,
+        param=None, errors=None, timeout=None, retries=None, backoff=None,
     ))
     registry._activities.append(ActivityHandler(
         fn=sample_fn2, id='id2', activity=activity,
-        errors=None, timeout=None, retries=None, backoff=None,
+        param=None, errors=None, timeout=None, retries=None, backoff=None,
     ))
 
     with pytest.raises(ActivityError) as e:
@@ -76,6 +80,8 @@ async def test_errors_are_raised_aggregated(settings, activity):
             settings=settings,
             activity=activity,
             lifecycle=all_at_once,
+            indices=OperatorIndexers().indices,
+            memo=Memo(),
         )
 
     assert set(e.value.outcomes.keys()) == {'id1', 'id2'}
@@ -100,7 +106,7 @@ async def test_errors_are_cascaded_from_one_of_the_originals(settings, activity)
     registry = OperatorRegistry()
     registry._activities.append(ActivityHandler(
         fn=sample_fn, id='id', activity=activity,
-        errors=None, timeout=None, retries=None, backoff=None,
+        param=None, errors=None, timeout=None, retries=None, backoff=None,
     ))
 
     with pytest.raises(ActivityError) as e:
@@ -109,6 +115,8 @@ async def test_errors_are_cascaded_from_one_of_the_originals(settings, activity)
             settings=settings,
             activity=activity,
             lifecycle=all_at_once,
+            indices=OperatorIndexers().indices,
+            memo=Memo(),
         )
 
     assert e.value.__cause__
@@ -127,7 +135,7 @@ async def test_retries_are_simulated(settings, activity, mocker):
     registry = OperatorRegistry()
     registry._activities.append(ActivityHandler(
         fn=sample_fn, id='id', activity=activity,
-        errors=None, timeout=None, retries=3, backoff=None,
+        param=None, errors=None, timeout=None, retries=3, backoff=None,
     ))
 
     with pytest.raises(ActivityError) as e:
@@ -136,6 +144,8 @@ async def test_retries_are_simulated(settings, activity, mocker):
             settings=settings,
             activity=activity,
             lifecycle=all_at_once,
+            indices=OperatorIndexers().indices,
+            memo=Memo(),
         )
 
     assert isinstance(e.value.outcomes['id'].exception, PermanentError)
@@ -151,7 +161,7 @@ async def test_delays_are_simulated(settings, activity, mocker):
     registry = OperatorRegistry()
     registry._activities.append(ActivityHandler(
         fn=sample_fn, id='id', activity=activity,
-        errors=None, timeout=None, retries=3, backoff=None,
+        param=None, errors=None, timeout=None, retries=3, backoff=None,
     ))
 
     with freezegun.freeze_time() as frozen:
@@ -159,7 +169,7 @@ async def test_delays_are_simulated(settings, activity, mocker):
         async def sleep_or_wait_substitute(*_, **__):
             frozen.tick(123)
 
-        sleep_or_wait = mocker.patch('kopf.reactor.effects.sleep_or_wait',
+        sleep_or_wait = mocker.patch('kopf.structs.primitives.sleep_or_wait',
                                      wraps=sleep_or_wait_substitute)
 
         with pytest.raises(ActivityError) as e:
@@ -168,6 +178,8 @@ async def test_delays_are_simulated(settings, activity, mocker):
                 settings=settings,
                 activity=activity,
                 lifecycle=all_at_once,
+                indices=OperatorIndexers().indices,
+                memo=Memo(),
             )
 
     assert sleep_or_wait.call_count >= 3  # 3 retries, 1 sleep each

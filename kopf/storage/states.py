@@ -231,6 +231,14 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
             for handler_id, handler_state in self.items()
         }, purpose=self.purpose)
 
+    def without_successes(self) -> "State":
+        cls = type(self)
+        return cls({
+            handler_id: handler_state
+            for handler_id, handler_state in self.items()
+            if not handler_state.success # i.e. failures & in-progress/retrying
+        })
+
     def store(
             self,
             body: bodies.Body,

@@ -8,9 +8,11 @@ import pytest
 import kopf
 from kopf.reactor.effects import WAITING_KEEPALIVE_INTERVAL
 from kopf.reactor.handling import TemporaryError
+from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.processing import process_resource_event
 from kopf.storage.states import HandlerState
 from kopf.structs.containers import ResourceMemories
+from kopf.structs.ephemera import Memo
 from kopf.structs.handlers import HANDLER_REASONS, Reason
 
 
@@ -37,9 +39,10 @@ async def test_delayed_handlers_progress(
             registry=registry,
             settings=settings,
             resource=resource,
+            indexers=OperatorIndexers(),
             memories=ResourceMemories(),
+            memobase=Memo(),
             raw_event={'type': event_type, 'object': {}},
-            replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
 
@@ -93,9 +96,10 @@ async def test_delayed_handlers_sleep(
             registry=registry,
             settings=settings,
             resource=resource,
+            indexers=OperatorIndexers(),
             memories=ResourceMemories(),
+            memobase=Memo(),
             raw_event={'type': event_type, 'object': event_body},
-            replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
 

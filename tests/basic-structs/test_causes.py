@@ -10,21 +10,28 @@ def test_cause_with_no_args(cls):
 
 
 def test_activity_cause(mocker):
+    memo = mocker.Mock()
     logger = mocker.Mock()
+    indices = mocker.Mock()
     activity = mocker.Mock()
     settings = mocker.Mock()
     cause = ActivityCause(
         activity=activity,
         settings=settings,
+        indices=indices,
         logger=logger,
+        memo=memo,
     )
     assert cause.activity is activity
     assert cause.settings is settings
+    assert cause.indices is indices
     assert cause.logger is logger
+    assert cause.memo is memo
 
 
 def test_resource_watching_cause(mocker):
     logger = mocker.Mock()
+    indices = mocker.Mock()
     resource = mocker.Mock()
     body = mocker.Mock()
     patch = mocker.Mock()
@@ -33,6 +40,7 @@ def test_resource_watching_cause(mocker):
     raw = mocker.Mock()
     cause = ResourceWatchingCause(
         resource=resource,
+        indices=indices,
         logger=logger,
         body=body,
         patch=patch,
@@ -41,6 +49,7 @@ def test_resource_watching_cause(mocker):
         raw=raw,
     )
     assert cause.resource is resource
+    assert cause.indices is indices
     assert cause.logger is logger
     assert cause.body is body
     assert cause.patch is patch
@@ -51,6 +60,7 @@ def test_resource_watching_cause(mocker):
 
 def test_resource_changing_cause_with_all_args(mocker):
     logger = mocker.Mock()
+    indices = mocker.Mock()
     resource = mocker.Mock()
     reason = mocker.Mock()
     initial = mocker.Mock()
@@ -62,6 +72,7 @@ def test_resource_changing_cause_with_all_args(mocker):
     new = mocker.Mock()
     cause = ResourceChangingCause(
         resource=resource,
+        indices=indices,
         logger=logger,
         reason=reason,
         initial=initial,
@@ -73,6 +84,7 @@ def test_resource_changing_cause_with_all_args(mocker):
         new=new,
     )
     assert cause.resource is resource
+    assert cause.indices is indices
     assert cause.logger is logger
     assert cause.reason is reason
     assert cause.initial is initial
@@ -86,6 +98,7 @@ def test_resource_changing_cause_with_all_args(mocker):
 
 def test_resource_changing_cause_with_only_required_args(mocker):
     logger = mocker.Mock()
+    indices = mocker.Mock()
     resource = mocker.Mock()
     reason = mocker.Mock()
     initial = mocker.Mock()
@@ -94,6 +107,7 @@ def test_resource_changing_cause_with_only_required_args(mocker):
     memo = mocker.Mock()
     cause = ResourceChangingCause(
         resource=resource,
+        indices=indices,
         logger=logger,
         reason=reason,
         initial=initial,
@@ -102,6 +116,7 @@ def test_resource_changing_cause_with_only_required_args(mocker):
         memo=memo,
     )
     assert cause.resource is resource
+    assert cause.indices is indices
     assert cause.logger is logger
     assert cause.reason is reason
     assert cause.initial is initial

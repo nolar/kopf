@@ -7,12 +7,14 @@ On the operator restart, all the memories are lost.
 It is used internally to track allocated system resources for each Kubernetes
 object, even if that object does not show up in the event streams for long time.
 """
+import copy
 import dataclasses
 import logging
 import time
-from typing import Any, Dict, Iterator, MutableMapping, Optional, Set, Union
+from typing import Dict, Iterator, MutableMapping, Optional, Set, Union
 
-from kopf.structs import bodies, handlers, primitives
+from kopf.storage import states
+from kopf.structs import bodies, ephemera, handlers, primitives
 from kopf.utilities import aiotasks
 
 
@@ -32,31 +34,12 @@ class Throttler:
     active_until: Optional[float] = None  # internal clock
 
 
-class Memo(Dict[Any, Any]):
-    """ A container to hold arbitrary keys-fields assigned by the users. """
-
-    def __setattr__(self, key: str, value: Any) -> None:
-        self[key] = value
-
-    def __delattr__(self, key: str) -> None:
-        try:
-            del self[key]
-        except KeyError as e:
-            raise AttributeError(str(e))
-
-    def __getattr__(self, key: str) -> Any:
-        try:
-            return self[key]
-        except KeyError as e:
-            raise AttributeError(str(e))
-
-
 @dataclasses.dataclass(frozen=False)
 class ResourceMemory:
     """ A system memo about a single resource/object. Usually stored in `Memories`. """
 
     # For arbitrary user data to be stored in memory, passed as `memo` to all the handlers.
-    memo: Memo = dataclasses.field(default_factory=Memo)
+    memo: ephemera.AnyMemo = dataclasses.field(default_factory=ephemera.Memo)
 
     # For resuming handlers tracking and deciding on should they be called or not.
     noticed_by_listing: bool = False
@@ -70,6 +53,9 @@ class ResourceMemory:
     idle_reset_time: float = dataclasses.field(default_factory=time.monotonic)
     forever_stopped: Set[handlers.HandlerId] = dataclasses.field(default_factory=set)
     running_daemons: Dict[handlers.HandlerId, Daemon] = dataclasses.field(default_factory=dict)
+
+    # For indexing errors backoffs/retries/timeouts. It is None when successfully indexed.
+    indexing_state: Optional[states.State] = None
 
 
 class ResourceMemories:
@@ -104,6 +90,7 @@ class ResourceMemories:
             self,
             raw_body: bodies.RawBody,
             *,
+            memo: Optional[ephemera.AnyMemo] = None,
             noticed_by_listing: bool = False,
     ) -> ResourceMemory:
         """
@@ -113,7 +100,10 @@ class ResourceMemories:
         """
         key = self._build_key(raw_body)
         if key not in self._items:
-            memory = ResourceMemory(noticed_by_listing=noticed_by_listing)
+            if memo is None:
+                memory = ResourceMemory(noticed_by_listing=noticed_by_listing)
+            else:
+                memory = ResourceMemory(noticed_by_listing=noticed_by_listing, memo=copy.copy(memo))
             self._items[key] = memory
         return self._items[key]
 

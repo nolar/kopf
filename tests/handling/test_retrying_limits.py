@@ -5,8 +5,10 @@ import freezegun
 import pytest
 
 import kopf
+from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
+from kopf.structs.ephemera import Memo
 from kopf.structs.handlers import HANDLER_REASONS, Reason
 
 
@@ -39,9 +41,10 @@ async def test_timed_out_handler_fails(
             registry=registry,
             settings=settings,
             resource=resource,
+            indexers=OperatorIndexers(),
             memories=ResourceMemories(),
+            memobase=Memo(),
             raw_event={'type': event_type, 'object': event_body},
-            replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
 
@@ -88,9 +91,10 @@ async def test_retries_limited_handler_fails(
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 

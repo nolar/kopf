@@ -19,7 +19,6 @@ It is used from in :mod:`processing`, :mod:`actitivies`, and :mod:`daemons` --
 all the modules, of which the reactor's core consists.
 """
 import asyncio
-import collections
 import contextlib
 import datetime
 import logging
@@ -50,7 +49,7 @@ async def apply(
         patch: patches.Patch,
         delays: Collection[float],
         logger: loggers.ObjectLogger,
-        replenished: asyncio.Event,
+        stream_pressure: Optional[asyncio.Event] = None,  # None for tests
 ) -> bool:
     delay = min(delays) if delays else None
 
@@ -71,10 +70,10 @@ async def apply(
         if delay > WAITING_KEEPALIVE_INTERVAL:
             limit = WAITING_KEEPALIVE_INTERVAL
             logger.debug(f"Sleeping for {delay} (capped {limit}) seconds for the delayed handlers.")
-            unslept_delay = await sleep_or_wait(limit, replenished)
+            unslept_delay = await primitives.sleep_or_wait(limit, wakeup=stream_pressure)
         elif delay > 0:
             logger.debug(f"Sleeping for {delay} seconds for the delayed handlers.")
-            unslept_delay = await sleep_or_wait(delay, replenished)
+            unslept_delay = await primitives.sleep_or_wait(delay, wakeup=stream_pressure)
         else:
             unslept_delay = None  # no need to sleep? means: slept in full.
 
@@ -135,43 +134,6 @@ async def patch_and_check(
             logger.warning(f"Patching failed with inconsistencies: {inconsistencies}")
 
 
-async def sleep_or_wait(
-        delays: Union[None, float, Collection[Union[None, float]]],
-        wakeup: Optional[Union[asyncio.Event, primitives.DaemonStopper]] = None,
-) -> Optional[float]:
-    """
-    Measure the sleep time: either until the timeout, or until the event is set.
-
-    Returns the number of seconds left to sleep, or ``None`` if the sleep was
-    not interrupted and reached its specified delay (an equivalent of ``0``).
-    In theory, the result can be ``0`` if the sleep was interrupted precisely
-    the last moment before timing out; this is unlikely to happen though.
-    """
-    passed_delays = delays if isinstance(delays, collections.abc.Collection) else [delays]
-    actual_delays = [delay for delay in passed_delays if delay is not None]
-    minimal_delay = min(actual_delays) if actual_delays else 0
-
-    # Do not go for the real low-level system sleep if there is no need to sleep.
-    if minimal_delay <= 0:
-        return None
-
-    awakening_event = (
-        wakeup.async_event if isinstance(wakeup, primitives.DaemonStopper) else
-        wakeup if wakeup is not None else
-        asyncio.Event())
-
-    loop = asyncio.get_running_loop()
-    try:
-        start_time = loop.time()
-        await asyncio.wait_for(awakening_event.wait(), timeout=minimal_delay)
-    except asyncio.TimeoutError:
-        return None  # interruptable sleep is over: uninterrupted.
-    else:
-        end_time = loop.time()
-        duration = end_time - start_time
-        return max(0, minimal_delay - duration)
-
-
 @contextlib.asynccontextmanager
 async def throttled(
         *,
@@ -189,7 +151,7 @@ async def throttled(
     # It is needed to properly process the latest known event after the successful sleep.
     if throttler.active_until is not None:
         remaining_time = throttler.active_until - time.monotonic()
-        unslept_time = await sleep_or_wait(remaining_time, wakeup=wakeup)
+        unslept_time = await primitives.sleep_or_wait(remaining_time, wakeup=wakeup)
         if unslept_time is None:
             logger.info("Throttling is over. Switching back to normal operations.")
             throttler.active_until = None
@@ -198,6 +160,11 @@ async def throttled(
     should_run = throttler.active_until is None
     try:
         yield should_run
+
+    except asyncio.CancelledError:
+        # CancelledError is a BaseException in 3.8 & 3.9, but a regular Exception in 3.7.
+        # Behave as if it is a BaseException -- to enabled tests with async-timeout.
+        raise
 
     except Exception as e:
 
@@ -214,11 +181,11 @@ async def throttled(
             throttler.source_of_delays = iter(delays)
 
         # Choose a delay. If there are none, avoid throttling at all.
-        throttle_delay = next(throttler.source_of_delays, throttler.last_used_delay)
-        if throttle_delay is not None:
-            throttler.last_used_delay = throttle_delay
-            throttler.active_until = time.monotonic() + throttle_delay
-            logger.exception(f"Throttling for {throttle_delay} seconds due to an unexpected error:")
+        delay = next(throttler.source_of_delays, throttler.last_used_delay)
+        if delay is not None:
+            throttler.last_used_delay = delay
+            throttler.active_until = time.monotonic() + delay
+            logger.exception(f"Throttling for {delay} seconds due to an unexpected error: {e!r}")
 
     else:
         # Reset the throttling. Release the iterator to keep the memory free during normal run.
@@ -229,7 +196,7 @@ async def throttled(
     # It is needed to have better logging/sleeping without workers exiting for "no events".
     if throttler.active_until is not None and should_run:
         remaining_time = throttler.active_until - time.monotonic()
-        unslept_time = await sleep_or_wait(remaining_time, wakeup=wakeup)
+        unslept_time = await primitives.sleep_or_wait(remaining_time, wakeup=wakeup)
         if unslept_time is None:
             throttler.active_until = None
             logger.info("Throttling is over. Switching back to normal operations.")

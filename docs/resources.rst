@@ -51,7 +51,7 @@ to an empty API group name. The following specifications are equivalent:
     def fn(**_):
         pass
 
-If neither API group nor API version are specified,
+If neither the API group nor the API version is specified,
 all resources with that name would match regardless of the API groups/versions.
 However, it is reasonable to expect only one:
 
@@ -65,7 +65,7 @@ However, it is reasonable to expect only one:
 
 In all examples above, where the resource identifier is expected, it can be
 any name: plural, singular, kind, or a short name. As it is impossible to guess
-which one is which, the name is rememebered as is, and is later checked for all
+which one is which, the name is remembered as is, and is later checked for all
 possible names of the specific resources once those are discovered:
 
 .. code-block:: python
@@ -115,7 +115,7 @@ of the mandatory resource name:
     def fn(**_):
         pass
 
-As a consequence of the above, to handle each and every resource in the cluster
+As a consequence of the above, to handle every resource in the cluster
 -- which might be not the best idea per se, but is technically possible --
 omit the API group/version, and use the marker only:
 
@@ -150,7 +150,8 @@ Serving everything is better when it is used with filters:
 The resource specifications do not support multiple values, masks or globs.
 To handle multiple independent resources, add multiple decorators
 to the same handler function -- as shown above.
-The handlers are deduplicated by uniqueness of the underlying function,
+The handlers are deduplicated by the underlying function and its handler id
+(which, in turn, equals to the function's name by default unless overridden),
 so one function will never be triggered multiple times for the same resource
 if there are some accidental overlaps in the specifications.
 
@@ -164,7 +165,7 @@ if there are some accidental overlaps in the specifications.
 
     This only applies to resource specifications where it is intended to have
     a specific resource by its name; specifications with intentional
-    multi-resource mode are served as usualy (e.g. by categories).
+    multi-resource mode are served as usually (e.g. by categories).
 
     However, ``v1`` resources have priority over all other resources. This
     resolves the conflict of ``pods.v1`` vs. ``pods.v1beta1.metrics.k8s.io``,

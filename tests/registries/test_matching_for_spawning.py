@@ -32,7 +32,7 @@ spawning_decorators = pytest.mark.parametrize('decorator', [
 def handler_factory(registry, selector):
     def factory(**kwargs):
         handler = ResourceSpawningHandler(**dict(dict(
-            fn=some_fn, id='a',
+            fn=some_fn, id='a', param=None,
             errors=None, timeout=None, retries=None, backoff=None,
             selector=selector, annotations=None, labels=None, when=None,
             field=None, value=None,

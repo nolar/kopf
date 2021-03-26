@@ -15,22 +15,27 @@ import abc
 import enum
 import functools
 from types import FunctionType, MethodType
-from typing import Any, Callable, Collection, Container, Generic, Iterable, Iterator, \
-                   List, Mapping, MutableMapping, Optional, Sequence, Set, TypeVar, cast
+from typing import Any, Callable, Collection, Container, Generic, Iterable, Iterator, List, \
+                   Mapping, MutableMapping, Optional, Sequence, Set, Tuple, TypeVar, cast, \
+                   TYPE_CHECKING
 
 from kopf.reactor import causation, invocation
-from kopf.structs import callbacks, dicts, filters, handlers, references
+from kopf.structs import dicts, filters, handlers, references
 from kopf.utilities import piggybacking
+
+if TYPE_CHECKING:  # pragma: nocover
+    from kopf.structs import callbacks
 
 # We only type-check for known classes of handlers/callbacks, and ignore any custom subclasses.
 CauseT = TypeVar('CauseT', bound=causation.BaseCause)
 HandlerT = TypeVar('HandlerT', bound=handlers.BaseHandler)
 ResourceHandlerT = TypeVar('ResourceHandlerT', bound=handlers.ResourceHandler)
 HandlerFnT = TypeVar('HandlerFnT',
-                     callbacks.ActivityFn,
-                     callbacks.ResourceWatchingFn,
-                     callbacks.ResourceSpawningFn,
-                     callbacks.ResourceChangingFn)
+                     "callbacks.ActivityFn",
+                     "callbacks.ResourceIndexingFn",
+                     "callbacks.ResourceWatchingFn",
+                     "callbacks.ResourceSpawningFn",
+                     "callbacks.ResourceChangingFn")
 
 
 class GenericRegistry(Generic[HandlerFnT, HandlerT]):
@@ -49,7 +54,7 @@ class GenericRegistry(Generic[HandlerFnT, HandlerT]):
 
 
 class ActivityRegistry(GenericRegistry[
-        callbacks.ActivityFn,
+        "callbacks.ActivityFn",
         handlers.ActivityHandler]):
 
     def get_handlers(
@@ -121,9 +126,25 @@ class ResourceRegistry(
                     yield handler.field
 
 
+class ResourceIndexingRegistry(ResourceRegistry[
+        causation.ResourceIndexingCause,
+        "callbacks.ResourceIndexingFn",
+        handlers.ResourceIndexingHandler]):
+
+    def iter_handlers(
+            self,
+            cause: causation.ResourceIndexingCause,
+            excluded: Container[handlers.HandlerId] = frozenset(),
+    ) -> Iterator[handlers.ResourceIndexingHandler]:
+        for handler in self._handlers:
+            if handler.id not in excluded:
+                if match(handler=handler, cause=cause):
+                    yield handler
+
+
 class ResourceWatchingRegistry(ResourceRegistry[
         causation.ResourceWatchingCause,
-        callbacks.ResourceWatchingFn,
+        "callbacks.ResourceWatchingFn",
         handlers.ResourceWatchingHandler]):
 
     def iter_handlers(
@@ -139,7 +160,7 @@ class ResourceWatchingRegistry(ResourceRegistry[
 
 class ResourceSpawningRegistry(ResourceRegistry[
         causation.ResourceSpawningCause,
-        callbacks.ResourceSpawningFn,
+        "callbacks.ResourceSpawningFn",
         handlers.ResourceSpawningHandler]):
 
     def iter_handlers(
@@ -170,7 +191,7 @@ class ResourceSpawningRegistry(ResourceRegistry[
 
 class ResourceChangingRegistry(ResourceRegistry[
         causation.ResourceChangingCause,
-        callbacks.ResourceChangingFn,
+        "callbacks.ResourceChangingFn",
         handlers.ResourceChangingHandler]):
 
     def iter_handlers(
@@ -233,6 +254,7 @@ class OperatorRegistry:
     def __init__(self) -> None:
         super().__init__()
         self._activities = ActivityRegistry()
+        self._resource_indexing = ResourceIndexingRegistry()
         self._resource_watching = ResourceWatchingRegistry()
         self._resource_spawning = ResourceSpawningRegistry()
         self._resource_changing = ResourceChangingRegistry()
@@ -248,10 +270,10 @@ class SmartOperatorRegistry(OperatorRegistry):
         else:
             self._activities.append(handlers.ActivityHandler(
                 id=handlers.HandlerId('login_via_pykube'),
-                fn=cast(callbacks.ActivityFn, piggybacking.login_via_pykube),
+                fn=cast("callbacks.ActivityFn", piggybacking.login_via_pykube),
                 activity=handlers.Activity.AUTHENTICATION,
                 errors=handlers.ErrorsMode.IGNORED,
-                timeout=None, retries=None, backoff=None,
+                param=None, timeout=None, retries=None, backoff=None,
                 _fallback=True,
             ))
         try:
@@ -261,10 +283,10 @@ class SmartOperatorRegistry(OperatorRegistry):
         else:
             self._activities.append(handlers.ActivityHandler(
                 id=handlers.HandlerId('login_via_client'),
-                fn=cast(callbacks.ActivityFn, piggybacking.login_via_client),
+                fn=cast("callbacks.ActivityFn", piggybacking.login_via_client),
                 activity=handlers.Activity.AUTHENTICATION,
                 errors=handlers.ErrorsMode.IGNORED,
-                timeout=None, retries=None, backoff=None,
+                param=None, timeout=None, retries=None, backoff=None,
                 _fallback=True,
             ))
 
@@ -303,7 +325,7 @@ def get_callable_id(c: Callable[..., Any]) -> str:
 
 
 def _deduplicated(
-        handlers: Iterable[HandlerT],
+        src: Iterable[HandlerT],
 ) -> Iterator[HandlerT]:
     """
     Yield the handlers deduplicated.
@@ -325,12 +347,13 @@ def _deduplicated(
     handled) **AND** it is detected as per-existing before operator start.
     But `fn()` should be called only once for this cause.
     """
-    seen_ids: Set[int] = set()
-    for handler in handlers:
-        if id(handler.fn) in seen_ids:
+    seen_ids: Set[Tuple[int, handlers.HandlerId]] = set()
+    for handler in src:
+        key = (id(handler.fn), handler.id)
+        if key in seen_ids:
             pass
         else:
-            seen_ids.add(id(handler.fn))
+            seen_ids.add(key)
             yield handler
 
 
@@ -340,13 +363,13 @@ def prematch(
 ) -> bool:
     # Kwargs are lazily evaluated on the first _actual_ use, and shared for all filters since then.
     kwargs: MutableMapping[str, Any] = {}
-    return all([
-        _matches_resource(handler, cause.resource),
-        _matches_labels(handler, cause, kwargs),
-        _matches_annotations(handler, cause, kwargs),
-        _matches_field_values(handler, cause, kwargs),
-        _matches_filter_callback(handler, cause, kwargs),
-    ])
+    return (
+        _matches_resource(handler, cause.resource) and
+        _matches_labels(handler, cause, kwargs) and
+        _matches_annotations(handler, cause, kwargs) and
+        _matches_field_values(handler, cause, kwargs) and
+        _matches_filter_callback(handler, cause, kwargs)  # the callback comes in the end!
+    )
 
 
 def match(
@@ -355,14 +378,14 @@ def match(
 ) -> bool:
     # Kwargs are lazily evaluated on the first _actual_ use, and shared for all filters since then.
     kwargs: MutableMapping[str, Any] = {}
-    return all([
-        _matches_resource(handler, cause.resource),
-        _matches_labels(handler, cause, kwargs),
-        _matches_annotations(handler, cause, kwargs),
-        _matches_field_values(handler, cause, kwargs),
-        _matches_field_changes(handler, cause, kwargs),
-        _matches_filter_callback(handler, cause, kwargs),
-    ])
+    return (
+        _matches_resource(handler, cause.resource) and
+        _matches_labels(handler, cause, kwargs) and
+        _matches_annotations(handler, cause, kwargs) and
+        _matches_field_values(handler, cause, kwargs) and
+        _matches_field_changes(handler, cause, kwargs) and
+        _matches_filter_callback(handler, cause, kwargs)  # the callback comes in the end!
+    )
 
 
 def _matches_resource(

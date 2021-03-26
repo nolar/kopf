@@ -6,9 +6,13 @@ import freezegun
 import pytest
 
 import kopf
+from kopf.reactor.daemons import daemon_killer
+from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.bodies import RawBody
 from kopf.structs.containers import ResourceMemories
+from kopf.structs.ephemera import Memo
+from kopf.structs.primitives import ToggleSet
 
 
 class DaemonDummy:
@@ -36,11 +40,6 @@ def dummy():
 
 
 @pytest.fixture()
-def memories():
-    return ResourceMemories()
-
-
-@pytest.fixture()
 def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
     """
     Simulate K8s behaviour locally in memory (some meaningful approximation).
@@ -62,8 +61,9 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
             settings=settings,
             resource=resource,
             memories=memories,
+            memobase=Memo(),
+            indexers=OperatorIndexers(),
             raw_event={'type': 'irrelevant', 'object': event_object},
-            replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
 
@@ -72,6 +72,31 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
             _merge_dicts(call[1]['patch'], event_object)
 
     return _simulate_cycle
+
+
+@pytest.fixture()
+async def operator_paused():
+    return ToggleSet(any)
+
+
+@pytest.fixture()
+async def conflicts_found(operator_paused: ToggleSet):
+    return await operator_paused.make_toggle(name="conflicts_found fixture")
+
+
+@pytest.fixture()
+async def background_daemon_killer(settings, memories, operator_paused):
+    """
+    Run the daemon killer in the background.
+    """
+    task = asyncio.create_task(daemon_killer(
+        settings=settings, memories=memories, operator_paused=operator_paused))
+    yield
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
 
 
 @pytest.fixture()

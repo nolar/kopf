@@ -37,7 +37,7 @@ def context(
 def build_kwargs(
         cause: Optional[causation.BaseCause] = None,
         _sync: Optional[bool] = None,
-        **kwargs: Any
+        **kwargs: Any,  # includes param, retry, started, runtime, etc.
 ) -> Dict[str, Any]:
     """
     Expand kwargs dict with fields from the causation.
@@ -49,6 +49,7 @@ def build_kwargs(
     if isinstance(cause, causation.BaseCause):
         new_kwargs.update(
             logger=cause.logger,
+            memo=cause.memo,
         )
     if isinstance(cause, causation.ActivityCause):
         new_kwargs.update(
@@ -60,8 +61,8 @@ def build_kwargs(
         )
     if isinstance(cause, causation.ResourceCause):
         new_kwargs.update(
+            resource=cause.resource,
             patch=cause.patch,
-            memo=cause.memo,
             body=cause.body,
             spec=cause.body.spec,
             meta=cause.body.metadata,
@@ -88,6 +89,15 @@ def build_kwargs(
         new_kwargs.update(
             stopped=cause.stopper.sync_checker if _sync else cause.stopper.async_checker,
         )
+
+    # Inject indices in the end, so that they overwrite regular kwargs.
+    # Why? For backwards compatibility: if an operator's handlers use an index e.g. "children",
+    # and Kopf introduces a new kwarg "children", the code could break on the new version upgrade.
+    # To prevent this, overwrite it and let the developers rename it when they want the new kwarg.
+    # Naming new indices after the known kwargs harms only these developers. This is fine.
+    if isinstance(cause, causation.BaseCause):
+        new_kwargs.update(cause.indices)
+
     return new_kwargs
 
 
@@ -96,7 +106,7 @@ async def invoke(
         *args: Any,
         settings: Optional[configuration.OperatorSettings] = None,
         cause: Optional[causation.BaseCause] = None,
-        **kwargs: Any,
+        **kwargs: Any,  # includes param, retry, started, runtime, etc.
 ) -> Any:
     """
     Invoke a single function, but safely for the main asyncio process.

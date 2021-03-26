@@ -19,9 +19,10 @@ The process is intentionally split into multiple packages:
 import logging
 from typing import Mapping, MutableMapping, NoReturn
 
-from kopf.reactor import causation, effects, handling, lifecycles, registries
+from kopf.reactor import causation, handling, lifecycles, registries
 from kopf.storage import states
-from kopf.structs import callbacks, configuration, credentials, handlers as handlers_
+from kopf.structs import callbacks, configuration, credentials, \
+                         ephemera, handlers as handlers_, primitives
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,9 @@ async def authenticator(
         *,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
+        indices: ephemera.Indices,
         vault: credentials.Vault,
+        memo: ephemera.AnyMemo,
 ) -> NoReturn:
     """ Keep the credentials forever up to date. """
     counter: int = 1 if vault else 0
@@ -51,7 +54,9 @@ async def authenticator(
         await authenticate(
             registry=registry,
             settings=settings,
+            indices=indices,
             vault=vault,
+            memo=memo,
             _activity_title="Re-authentication" if counter else "Initial authentication",
         )
         counter += 1
@@ -61,7 +66,9 @@ async def authenticate(
         *,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
+        indices: ephemera.Indices,
         vault: credentials.Vault,
+        memo: ephemera.AnyMemo,
         _activity_title: str = "Authentication",
 ) -> None:
     """ Retrieve the credentials once, successfully or not, and exit. """
@@ -77,6 +84,8 @@ async def authenticate(
         registry=registry,
         settings=settings,
         activity=handlers_.Activity.AUTHENTICATION,
+        indices=indices,
+        memo=memo,
     )
 
     if activity_results:
@@ -95,11 +104,19 @@ async def run_activity(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         activity: handlers_.Activity,
+        indices: ephemera.Indices,
+        memo: ephemera.AnyMemo,
 ) -> Mapping[handlers_.HandlerId, callbacks.Result]:
     logger = logging.getLogger(f'kopf.activities.{activity.value}')
 
     # For the activity handlers, we have neither bodies, nor patches, just the state.
-    cause = causation.ActivityCause(logger=logger, activity=activity, settings=settings)
+    cause = causation.ActivityCause(
+        logger=logger,
+        activity=activity,
+        settings=settings,
+        indices=indices,
+        memo=memo,
+    )
     handlers = registry._activities.get_handlers(activity=activity)
     state = states.State.from_scratch().with_handlers(handlers)
     outcomes: MutableMapping[handlers_.HandlerId, states.HandlerOutcome] = {}
@@ -113,7 +130,7 @@ async def run_activity(
         )
         outcomes.update(current_outcomes)
         state = state.with_outcomes(current_outcomes)
-        await effects.sleep_or_wait(state.delay)
+        await primitives.sleep_or_wait(state.delay)
 
     # Activities assume that all handlers must eventually succeed.
     # We raise from the 1st exception only: just to have something real in the tracebacks.

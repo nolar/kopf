@@ -1,6 +1,6 @@
 import dataclasses
 import enum
-from typing import NewType, Optional
+from typing import Any, NewType, Optional
 
 from kopf.structs import callbacks, dicts, filters, references
 
@@ -70,6 +70,7 @@ TITLES = {
 class BaseHandler:
     id: HandlerId
     fn: callbacks.BaseFn
+    param: Optional[Any]
     errors: Optional[ErrorsMode]
     timeout: Optional[float]
     retries: Optional[int]
@@ -82,7 +83,7 @@ class BaseHandler:
 
 @dataclasses.dataclass
 class ActivityHandler(BaseHandler):
-    fn: callbacks.ActivityFn  # type clarification
+    fn: "callbacks.ActivityFn"  # type clarification
     activity: Optional[Activity]
     _fallback: bool = False  # non-public!
 
@@ -95,7 +96,7 @@ class ResourceHandler(BaseHandler):
     selector: Optional[references.Selector]  # None is used only in sub-handlers
     labels: Optional[filters.MetaFilter]
     annotations: Optional[filters.MetaFilter]
-    when: Optional[callbacks.WhenFilterFn]
+    when: Optional["callbacks.WhenFilterFn"]
     field: Optional[dicts.FieldPath]
     value: Optional[filters.ValueFilter]
 
@@ -105,8 +106,20 @@ class ResourceHandler(BaseHandler):
 
 
 @dataclasses.dataclass
+class ResourceIndexingHandler(ResourceHandler):
+    fn: "callbacks.ResourceIndexingFn"  # type clarification
+
+    def __str__(self) -> str:
+        return f"Indexer {self.id!r}"
+
+    @property
+    def requires_patching(self) -> bool:
+        return False
+
+
+@dataclasses.dataclass
 class ResourceWatchingHandler(ResourceHandler):
-    fn: callbacks.ResourceWatchingFn  # type clarification
+    fn: "callbacks.ResourceWatchingFn"  # type clarification
 
     @property
     def requires_patching(self) -> bool:
@@ -115,7 +128,7 @@ class ResourceWatchingHandler(ResourceHandler):
 
 @dataclasses.dataclass
 class ResourceChangingHandler(ResourceHandler):
-    fn: callbacks.ResourceChangingFn  # type clarification
+    fn: "callbacks.ResourceChangingFn"  # type clarification
     reason: Optional[Reason]
     initial: Optional[bool]
     deleted: Optional[bool]  # used for mixed-in (initial==True) @on.resume handlers only.
@@ -133,7 +146,7 @@ class ResourceSpawningHandler(ResourceHandler):
 
 @dataclasses.dataclass
 class ResourceDaemonHandler(ResourceSpawningHandler):
-    fn: callbacks.ResourceDaemonFn  # type clarification
+    fn: "callbacks.ResourceDaemonFn"  # type clarification
     cancellation_backoff: Optional[float]  # how long to wait before actual cancellation.
     cancellation_timeout: Optional[float]  # how long to wait before giving up on cancellation.
     cancellation_polling: Optional[float]  # how often to check for cancellation status.
@@ -144,7 +157,7 @@ class ResourceDaemonHandler(ResourceSpawningHandler):
 
 @dataclasses.dataclass
 class ResourceTimerHandler(ResourceSpawningHandler):
-    fn: callbacks.ResourceTimerFn  # type clarification
+    fn: "callbacks.ResourceTimerFn"  # type clarification
     sharp: Optional[bool]
     idle: Optional[float]
     interval: Optional[float]

@@ -19,7 +19,7 @@ jobs:
           python-version: 3.9
       - run: pip install --upgrade setuptools wheel twine
       - run: python setup.py sdist bdist_wheel
-      - uses: pypa/gh-action-pypi-publish@master
+      - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
           password: ${{ secrets.pypi_token }}

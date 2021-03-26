@@ -4,7 +4,7 @@ import enum
 import fnmatch
 import re
 import urllib.parse
-from typing import Collection, Iterable, Iterator, List, Mapping, \
+from typing import Collection, FrozenSet, Iterable, Iterator, List, Mapping, \
                    MutableMapping, NewType, Optional, Pattern, Set, Union
 
 # A namespace specification with globs, negations, and some minimal syntax; see `match_namespace()`.
@@ -112,17 +112,64 @@ class Resource:
     """
 
     group: str
+    """
+    The resource's API group; e.g. ``"kopf.dev"``, ``"apps"``, ``"batch"``.
+    For Core v1 API resources, an empty string: ``""``.
+    """
+
     version: str
+    """
+    The resource's API version; e.g. ``"v1"``, ``"v1beta1"``, etc.
+    """
+
     plural: str
+    """
+    The resource's plural name; e.g. ``"pods"``, ``"kopfexamples"``.
+    It is used as an API endpoint, together with API group & version.
+    """
 
     kind: Optional[str] = None
+    """
+    The resource's kind (as in YAML files); e.g. ``"Pod"``, ``"KopfExample"``.
+    """
+
     singular: Optional[str] = None
-    shortcuts: Collection[str] = ()
-    categories: Collection[str] = ()
-    subresources: Collection[str] = ()
+    """
+    The resource's singular name; e.g. ``"pod"``, ``"kopfexample"``.
+    """
+
+    shortcuts: FrozenSet[str] = frozenset()
+    """
+    The resource's short names; e.g. ``{"po"}``, ``{"kex", "kexes"}``.
+    """
+
+    categories: FrozenSet[str] = frozenset()
+    """
+    The resource's categories, to which the resource belongs; e.g. ``{"all"}``.
+    """
+
+    subresources: FrozenSet[str] = frozenset()
+    """
+    The resource's subresources, if defined; e.g. ``{"status", "scale"}``.
+    """
+
     namespaced: Optional[bool] = None
+    """
+    Whether the resource is namespaced (``True``) or cluster-scoped (``False``).
+    """
+
     preferred: bool = True  # against conventions, but makes versionless selectors match by default.
-    verbs: Collection[str] = ()
+    """
+    Whether the resource belong to a "preferred" API version.
+    Only "preferred" resources are served when the version is not specified.
+    """
+
+    verbs: FrozenSet[str] = frozenset()
+    """
+    All available verbs for the resource, as supported by K8s API;
+    e.g., ``{"list", "watch", "create", "update", "delete", "patch"}``.
+    Note that it is not the same as all verbs permitted by RBAC.
+    """
 
     def __hash__(self) -> int:
         return hash((self.group, self.version, self.plural))
@@ -145,15 +192,6 @@ class Resource:
     def __iter__(self) -> Iterator[str]:
         return iter((self.group, self.version, self.plural))
 
-    @property
-    def name(self) -> str:
-        return f'{self.plural}.{self.group}'.strip('.')
-
-    @property
-    def api_version(self) -> str:
-        # Strip heading/trailing slashes if group is absent (e.g. for pods).
-        return f'{self.group}/{self.version}'.strip('/')
-
     def get_url(
             self,
             *,
@@ -163,6 +201,20 @@ class Resource:
             subresource: Optional[str] = None,
             params: Optional[Mapping[str, str]] = None,
     ) -> str:
+        """
+        Build a URL to be used with K8s API.
+
+        If the namespace is not set, a cluster-wide URL is returned.
+        For cluster-scoped resources, the namespace is ignored.
+
+        If the name is not set, the URL for the resource list is returned.
+        Otherwise (if set), the URL for the individual resource is returned.
+
+        If subresource is set, that subresource's URL is returned,
+        regardless of whether such a subresource is known or not.
+
+        Params go to the query parameters (``?param1=value1&param2=value2...``).
+        """
         if subresource is not None and name is None:
             raise ValueError("Subresources can be used only with specific resources by their name.")
         if not self.namespaced and namespace is not None:
@@ -170,7 +222,7 @@ class Resource:
         if self.namespaced and namespace is None and name is not None:
             raise ValueError("Specific namespaces are required for specific namespaced resources.")
 
-        return self._build_url(server, params, [
+        parts: List[Optional[str]] = [
             '/api' if self.group == '' and self.version == 'v1' else '/apis',
             self.group,
             self.version,
@@ -179,26 +231,8 @@ class Resource:
             self.plural,
             name,
             subresource,
-        ])
+        ]
 
-    def get_version_url(
-            self,
-            *,
-            server: Optional[str] = None,
-            params: Optional[Mapping[str, str]] = None,
-    ) -> str:
-        return self._build_url(server, params, [
-            '/api' if self.group == '' and self.version == 'v1' else '/apis',
-            self.group,
-            self.version,
-        ])
-
-    def _build_url(
-            self,
-            server: Optional[str],
-            params: Optional[Mapping[str, str]],
-            parts: List[Optional[str]],
-    ) -> str:
         query = urllib.parse.urlencode(params, encoding='utf-8') if params else ''
         path = '/'.join([part for part in parts if part])
         url = path + ('?' if query else '') + query
@@ -445,3 +479,6 @@ class Insights:
     # The flags that are set after the initial listing is finished. Not cleared afterwards.
     ready_namespaces: asyncio.Event = dataclasses.field(default_factory=asyncio.Event)
     ready_resources: asyncio.Event = dataclasses.field(default_factory=asyncio.Event)
+
+    # The resources that are part of indices and can block the operator readiness on start.
+    indexable: Set[Resource] = dataclasses.field(default_factory=set)

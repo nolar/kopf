@@ -4,10 +4,11 @@ import pytest
 
 import kopf
 from kopf.reactor.causation import ResourceChangingCause
+from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.invocation import invoke
 from kopf.storage.states import State
 from kopf.structs.bodies import Body
-from kopf.structs.containers import Memo
+from kopf.structs.ephemera import Memo
 from kopf.structs.handlers import Reason
 from kopf.structs.patches import Patch
 
@@ -28,6 +29,7 @@ async def test_protocol_invocation(lifecycle, resource):
     state = State.from_scratch()
     cause = ResourceChangingCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
+        indices=OperatorIndexers().indices,
         resource=resource,
         patch=Patch(),
         memo=Memo(),

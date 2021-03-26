@@ -20,6 +20,7 @@ from kopf.engines.loggers import ObjectPrefixingTextFormatter, configure
 from kopf.engines.posting import settings_var
 from kopf.reactor.registries import OperatorRegistry
 from kopf.structs.configuration import OperatorSettings
+from kopf.structs.containers import ResourceMemories
 from kopf.structs.credentials import ConnectionInfo, Vault, VaultKey
 from kopf.structs.references import Resource, Selector
 
@@ -157,6 +158,11 @@ def settings():
 
 
 @pytest.fixture()
+def memories():
+    return ResourceMemories()
+
+
+@pytest.fixture()
 def settings_via_contextvar(settings):
     token = settings_var.set(settings)
     try:
@@ -274,8 +280,9 @@ def version_api(resp_mocker, aresponses, hostname, resource):
         'name': resource.plural,
         'namespaced': True,
     }]}
+    version_url = resource.get_url().rsplit('/', 1)[0]  # except the plural name
     list_mock = resp_mocker(return_value=aiohttp.web.json_response(result))
-    aresponses.add(hostname, resource.get_version_url(), 'get', list_mock)
+    aresponses.add(hostname, version_url, 'get', list_mock)
 
 
 @pytest.fixture()
@@ -332,6 +339,7 @@ def hostname():
 class LoginMocks:
     pykube_in_cluster: Mock = None
     pykube_from_file: Mock = None
+    pykube_from_env: Mock = None
     client_in_cluster: Mock = None
     client_from_file: Mock = None
 
@@ -358,6 +366,7 @@ def login_mocks(mocker):
         kwargs.update(
             pykube_in_cluster=mocker.patch.object(pykube.KubeConfig, 'from_service_account', return_value=cfg),
             pykube_from_file=mocker.patch.object(pykube.KubeConfig, 'from_file', return_value=cfg),
+            pykube_from_env=mocker.patch.object(pykube.KubeConfig, 'from_env', return_value=cfg),
         )
     try:
         import kubernetes
