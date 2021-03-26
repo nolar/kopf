@@ -1,11 +1,11 @@
 import kopf
 
 
-def say_yes(value, spec, **_):
+def say_yes(value, spec, **_) -> bool:
     return value == 'somevalue' and spec.get('field') is not None
 
 
-def say_no(value, spec, **_):
+def say_no(value, spec, **_) -> bool:
     return value == 'somevalue' and spec.get('field') == 'not-this-value-for-sure'
 
 

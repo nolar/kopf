@@ -2,19 +2,20 @@ import asyncio
 import contextlib
 import threading
 import time
+from typing import Union
 
 import kopf
 import pykube
 
 
 @kopf.on.create('kopfexamples')
-def create_fn(memo: kopf.Memo, **kwargs):
-    print(memo.create_tpl.format(**kwargs))
+def create_fn(memo: Union[kopf.Memo, object], **kwargs):
+    print(memo.create_tpl.format(**kwargs))  # type: ignore
 
 
 @kopf.on.delete('kopfexamples')
-def delete_fn(memo: kopf.Memo, **kwargs):
-    print(memo.delete_tpl.format(**kwargs))
+def delete_fn(memo: Union[kopf.Memo, object], **kwargs):
+    print(memo.delete_tpl.format(**kwargs))  # type: ignore
 
 
 def kopf_thread(
