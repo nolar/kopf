@@ -10,7 +10,8 @@ from kopf.reactor.lifecycles import all_at_once
 from kopf.reactor.registries import OperatorRegistry
 from kopf.storage.states import HandlerOutcome
 from kopf.structs.ephemera import Memo
-from kopf.structs.handlers import Activity, ActivityHandler, HandlerId
+from kopf.structs.handlers import Activity, ActivityHandler
+from kopf.structs.ids import HandlerId
 
 
 def test_activity_error_exception():

@@ -14,7 +14,7 @@ import time
 from typing import Dict, Iterator, MutableMapping, Optional, Set, Union
 
 from kopf.storage import states
-from kopf.structs import bodies, ephemera, handlers, primitives
+from kopf.structs import bodies, ephemera, handlers, ids, primitives
 from kopf.utilities import aiotasks
 
 
@@ -51,8 +51,8 @@ class ResourceMemory:
     # For background and timed threads/tasks (invoked with the kwargs of the last-seen body).
     live_fresh_body: Optional[bodies.Body] = None
     idle_reset_time: float = dataclasses.field(default_factory=time.monotonic)
-    forever_stopped: Set[handlers.HandlerId] = dataclasses.field(default_factory=set)
-    running_daemons: Dict[handlers.HandlerId, Daemon] = dataclasses.field(default_factory=dict)
+    forever_stopped: Set[ids.HandlerId] = dataclasses.field(default_factory=set)
+    running_daemons: Dict[ids.HandlerId, Daemon] = dataclasses.field(default_factory=dict)
 
     # For indexing errors backoffs/retries/timeouts. It is None when successfully indexed.
     indexing_state: Optional[states.State] = None

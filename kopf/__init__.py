@@ -119,9 +119,11 @@ from kopf.structs.filters import (
     PRESENT,
 )
 from kopf.structs.handlers import (
-    HandlerId,
     ErrorsMode,
     Reason,
+)
+from kopf.structs.ids import (
+    HandlerId,
 )
 from kopf.structs.patches import (
     Patch,

@@ -5,7 +5,8 @@ from typing import Any, Dict, Generic, Iterable, Iterator, \
 
 from kopf.reactor import causation, handling, lifecycles, registries
 from kopf.storage import states
-from kopf.structs import bodies, configuration, containers, ephemera, handlers, patches, references
+from kopf.structs import bodies, configuration, containers, ephemera, \
+                         handlers, ids, patches, references
 
 Key = Tuple[references.Namespace, Optional[str], Optional[str]]
 _K = TypeVar('_K')
@@ -168,7 +169,7 @@ class OperatorIndexer:
         self.index._replace(key, obj)
 
 
-class OperatorIndexers(Dict[handlers.HandlerId, OperatorIndexer]):
+class OperatorIndexers(Dict[ids.HandlerId, OperatorIndexer]):
 
     def __init__(self) -> None:
         super().__init__()
@@ -196,7 +197,7 @@ class OperatorIndexers(Dict[handlers.HandlerId, OperatorIndexer]):
     def replace(
             self,
             body: bodies.Body,
-            outcomes: Mapping[handlers.HandlerId, states.HandlerOutcome],
+            outcomes: Mapping[ids.HandlerId, states.HandlerOutcome],
     ) -> None:
         """ Interpret the indexing results and apply them to the indices. """
         key = self.make_key(body)
@@ -263,7 +264,7 @@ class OperatorIndices(ephemera.Indices):
         return iter(self.__indexers)
 
     def __getitem__(self, id: str) -> Index[Any, Any]:
-        return self.__indexers[handlers.HandlerId(id)].index
+        return self.__indexers[ids.HandlerId(id)].index
 
     def __contains__(self, id: object) -> bool:
         return id in self.__indexers

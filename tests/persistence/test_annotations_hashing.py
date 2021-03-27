@@ -6,7 +6,7 @@ from kopf.storage.conventions import StorageKeyFormingConvention
 from kopf.storage.diffbase import AnnotationsDiffBaseStorage
 from kopf.storage.progress import AnnotationsProgressStorage, ProgressRecord, SmartProgressStorage
 from kopf.structs.bodies import Body
-from kopf.structs.handlers import HandlerId
+from kopf.structs.ids import HandlerId
 from kopf.structs.patches import Patch
 
 ANNOTATIONS_POPULATING_STORAGES = [

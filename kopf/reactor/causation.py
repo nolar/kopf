@@ -25,7 +25,7 @@ from typing import Any, List, Mapping, Optional, TypeVar, Union
 
 from kopf.storage import finalizers
 from kopf.structs import bodies, configuration, diffs, ephemera, handlers, \
-                         patches, primitives, references, reviews
+                         ids, patches, primitives, references, reviews
 
 
 @dataclasses.dataclass
@@ -52,7 +52,7 @@ class ResourceCause(BaseCause):
 class ResourceWebhookCause(ResourceCause):
     dryrun: bool
     reason: Optional[handlers.WebhookType]  # None means "all" or expects the webhook id
-    webhook: Optional[handlers.HandlerId]  # None means "all"
+    webhook: Optional[ids.HandlerId]  # None means "all"
     headers: Mapping[str, str]
     sslpeer: Mapping[str, Any]
     userinfo: reviews.UserInfo
