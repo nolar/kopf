@@ -4,8 +4,8 @@ Callback signatures for typing.
 Since these signatures contain a lot of copy-pasted kwargs and are
 not so important for the codebase, they are moved to this separate module.
 """
+import datetime
 import logging
-from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Callable, Collection, \
                    Coroutine, Dict, NewType, Optional, TypeVar, Union
 
@@ -45,8 +45,8 @@ else:
         [
             NamedArg(ephemera.Index, "*"),
             NamedArg(int, "retry"),
-            NamedArg(datetime, "started"),
-            NamedArg(timedelta, "runtime"),
+            NamedArg(datetime.datetime, "started"),
+            NamedArg(datetime.timedelta, "runtime"),
             NamedArg(LoggerType, "logger"),
             NamedArg(ephemera.AnyMemo, "memo"),
             DefaultNamedArg(Any, "param"),
@@ -102,8 +102,8 @@ else:
     ResourceChangingFn = Callable[
         [
             NamedArg(int, "retry"),
-            NamedArg(datetime, "started"),
-            NamedArg(timedelta, "runtime"),
+            NamedArg(datetime.datetime, "started"),
+            NamedArg(datetime.timedelta, "runtime"),
             NamedArg(Dict[str, str], "labels"),
             NamedArg(Dict[str, str], "annotations"),
             NamedArg(bodies.Body, "body"),
@@ -131,8 +131,8 @@ else:
         [
             NamedArg(primitives.SyncDaemonStopperChecker, "stopped"),
             NamedArg(int, "retry"),
-            NamedArg(datetime, "started"),
-            NamedArg(timedelta, "runtime"),
+            NamedArg(datetime.datetime, "started"),
+            NamedArg(datetime.timedelta, "runtime"),
             NamedArg(Dict[str, str], "labels"),
             NamedArg(Dict[str, str], "annotations"),
             NamedArg(bodies.Body, "body"),
