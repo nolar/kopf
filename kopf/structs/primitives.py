@@ -353,6 +353,11 @@ class AsyncDaemonStopperChecker(DaemonStopperChecker):
         return bool(self)
 
 
+# Having this union allows both sync & async checkers in the same protocol,
+# while not restricting the use of `wait()` as if the base class would be used.
+SyncAsyncDaemonStopperChecker = Union[SyncDaemonStopperChecker, AsyncDaemonStopperChecker]
+
+
 async def sleep_or_wait(
         delays: Union[None, float, Collection[Union[None, float]]],
         wakeup: Optional[Union[asyncio.Event, DaemonStopper]] = None,
