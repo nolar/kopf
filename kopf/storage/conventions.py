@@ -250,3 +250,32 @@ class StorageKeyMarkingConvention:
             marker = f'{prefix}/kopf-managed'
             if marker not in body.metadata.annotations and marker not in patch.metadata.annotations:
                 patch.metadata.annotations[marker] = value
+
+
+class StorageStanzaCleaner:
+    """
+    A mixin used internally to remove unwanted annotations and empty stanzas.
+    """
+
+    @staticmethod
+    def remove_annotations(essence: bodies.BodyEssence, keys_to_remove: Collection[str]) -> None:
+        """ Remove annotations (in-place). """
+        current_keys = essence.get('metadata', {}).get('annotations', {})
+        if frozenset(keys_to_remove) & frozenset(current_keys):
+            essence['metadata']['annotations'] = {
+                key: val
+                for key, val in essence.get('metadata', {}).get('annotations', {}).items()
+                if key not in keys_to_remove
+            }
+
+    @staticmethod
+    def remove_empty_stanzas(essence: bodies.BodyEssence) -> None:
+        """ Remove (in-place) the parent structs/stanzas if they are empty. """
+        if 'annotations' in essence.get('metadata', {}) and not essence['metadata']['annotations']:
+            del essence['metadata']['annotations']
+        if 'labels' in essence.get('metadata', {}) and not essence['metadata']['labels']:
+            del essence['metadata']['labels']
+        if 'metadata' in essence and not essence['metadata']:
+            del essence['metadata']
+        if 'status' in essence and not essence['status']:
+            del essence['status']

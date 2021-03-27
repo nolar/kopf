@@ -62,7 +62,7 @@ class ProgressRecord(TypedDict, total=True):
     subrefs: Optional[Collection[handlers.HandlerId]]
 
 
-class ProgressStorage(metaclass=abc.ABCMeta):
+class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
     """
     Base class and an interface for all persistent states.
 
@@ -237,9 +237,9 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
     def clear(self, *, essence: bodies.BodyEssence) -> bodies.BodyEssence:
         essence = super().clear(essence=essence)
         annotations = essence.get('metadata', {}).get('annotations', {})
-        for name in list(annotations.keys()):
-            if self.prefix and name.startswith(f'{self.prefix}/'):
-                del annotations[name]
+        keys = {key for key in annotations if self.prefix and key.startswith(f'{self.prefix}/')}
+        self.remove_annotations(essence, keys)
+        self.remove_empty_stanzas(essence)
         return essence
 
 
@@ -367,6 +367,7 @@ class StatusProgressStorage(ProgressStorage):
         essence_dict = cast(Dict[Any, Any], essence)
         dicts.remove(essence_dict, self.field)
 
+        self.remove_empty_stanzas(essence)
         return essence
 
 

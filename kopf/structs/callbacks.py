@@ -4,10 +4,10 @@ Callback signatures for typing.
 Since these signatures contain a lot of copy-pasted kwargs and are
 not so important for the codebase, they are moved to this separate module.
 """
+import datetime
 import logging
-from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Callable, Collection, \
-                   Coroutine, Dict, NewType, Optional, TypeVar, Union
+                   Coroutine, NewType, Optional, TypeVar, Union
 
 from kopf.structs import bodies, diffs, ephemera, patches, primitives, references
 
@@ -26,8 +26,17 @@ BaseFn = Callable[..., _SyncOrAsyncResult]
 
 LoggerType = Union[logging.Logger, logging.LoggerAdapter]
 
-
-if TYPE_CHECKING:  # pragma: nocover
+if not TYPE_CHECKING:  # pragma: nocover
+    # Define unspecified protocols for the runtime annotations -- to avoid "quoting".
+    ActivityFn = Callable[..., _SyncOrAsyncResult]
+    ResourceIndexingFn = Callable[..., _SyncOrAsyncResult]
+    ResourceWatchingFn = Callable[..., _SyncOrAsyncResult]
+    ResourceChangingFn = Callable[..., _SyncOrAsyncResult]
+    ResourceDaemonFn = Callable[..., _SyncOrAsyncResult]
+    ResourceTimerFn = Callable[..., _SyncOrAsyncResult]
+    WhenFilterFn = Callable[..., bool]
+    MetaFilterFn = Callable[..., bool]
+else:
     from mypy_extensions import Arg, DefaultNamedArg, KwArg, NamedArg, VarArg
 
     # TODO: Try using ParamSpec to support index type checking in callbacks 
@@ -36,9 +45,8 @@ if TYPE_CHECKING:  # pragma: nocover
         [
             NamedArg(ephemera.Index, "*"),
             NamedArg(int, "retry"),
-            NamedArg(datetime, "started"),
-            NamedArg(timedelta, "runtime"),
-
+            NamedArg(datetime.datetime, "started"),
+            NamedArg(datetime.timedelta, "runtime"),
             NamedArg(LoggerType, "logger"),
             NamedArg(ephemera.AnyMemo, "memo"),
             DefaultNamedArg(Any, "param"),
@@ -47,11 +55,10 @@ if TYPE_CHECKING:  # pragma: nocover
         _SyncOrAsyncResult
     ]
 
-
     ResourceIndexingFn = Callable[
         [
-            NamedArg(Dict[str, str], "labels"),
-            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(bodies.Annotations, "annotations"),
+            NamedArg(bodies.Labels, "labels"),
             NamedArg(bodies.Body, "body"),
             NamedArg(bodies.Meta, "meta"),
             NamedArg(bodies.Spec, "spec"),
@@ -61,7 +68,6 @@ if TYPE_CHECKING:  # pragma: nocover
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-
             NamedArg(LoggerType, "logger"),
             NamedArg(ephemera.AnyMemo, "memo"),
             DefaultNamedArg(Any, "param"),
@@ -69,15 +75,13 @@ if TYPE_CHECKING:  # pragma: nocover
         ],
         _SyncOrAsyncResult
     ]
-
 
     ResourceWatchingFn = Callable[
         [
             NamedArg(str, "type"),
             NamedArg(bodies.RawEvent, "event"),
-
-            NamedArg(Dict[str, str], "labels"),
-            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(bodies.Annotations, "annotations"),
+            NamedArg(bodies.Labels, "labels"),
             NamedArg(bodies.Body, "body"),
             NamedArg(bodies.Meta, "meta"),
             NamedArg(bodies.Spec, "spec"),
@@ -87,7 +91,6 @@ if TYPE_CHECKING:  # pragma: nocover
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            
             NamedArg(LoggerType, "logger"),
             NamedArg(ephemera.AnyMemo, "memo"),
             DefaultNamedArg(Any, "param"),
@@ -95,16 +98,14 @@ if TYPE_CHECKING:  # pragma: nocover
         ],
         _SyncOrAsyncResult
     ]
-
 
     ResourceChangingFn = Callable[
         [
             NamedArg(int, "retry"),
-            NamedArg(datetime, "started"),
-            NamedArg(timedelta, "runtime"),
-
-            NamedArg(Dict[str, str], "labels"),
-            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(datetime.datetime, "started"),
+            NamedArg(datetime.timedelta, "runtime"),
+            NamedArg(bodies.Annotations, "annotations"),
+            NamedArg(bodies.Labels, "labels"),
             NamedArg(bodies.Body, "body"),
             NamedArg(bodies.Meta, "meta"),
             NamedArg(bodies.Spec, "spec"),
@@ -114,12 +115,10 @@ if TYPE_CHECKING:  # pragma: nocover
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-
             NamedArg(str, "reason"),
             NamedArg(diffs.Diff, "diff"),
             NamedArg(Optional[Union[bodies.BodyEssence, Any]], "old"),
             NamedArg(Optional[Union[bodies.BodyEssence, Any]], "new"),
-
             NamedArg(LoggerType, "logger"),
             NamedArg(ephemera.AnyMemo, "memo"),
             DefaultNamedArg(Any, "param"),
@@ -128,17 +127,14 @@ if TYPE_CHECKING:  # pragma: nocover
         _SyncOrAsyncResult
     ]
 
-
     ResourceDaemonFn = Callable[
         [
-            NamedArg(primitives.SyncDaemonStopperChecker, "stopped"),
-
+            NamedArg(primitives.SyncAsyncDaemonStopperChecker, "stopped"),
             NamedArg(int, "retry"),
-            NamedArg(datetime, "started"),
-            NamedArg(timedelta, "runtime"),
-
-            NamedArg(Dict[str, str], "labels"),
-            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(datetime.datetime, "started"),
+            NamedArg(datetime.timedelta, "runtime"),
+            NamedArg(bodies.Annotations, "annotations"),
+            NamedArg(bodies.Labels, "labels"),
             NamedArg(bodies.Body, "body"),
             NamedArg(bodies.Meta, "meta"),
             NamedArg(bodies.Spec, "spec"),
@@ -148,7 +144,6 @@ if TYPE_CHECKING:  # pragma: nocover
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            
             NamedArg(LoggerType, "logger"),
             NamedArg(ephemera.AnyMemo, "memo"),
             DefaultNamedArg(Any, "param"),
@@ -156,14 +151,12 @@ if TYPE_CHECKING:  # pragma: nocover
         ],
         _SyncOrAsyncResult
     ]
-
 
     ResourceTimerFn = Callable[
         [
             NamedArg(ephemera.Index, "*"),
-
-            NamedArg(Dict[str, str], "labels"),
-            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(bodies.Annotations, "annotations"),
+            NamedArg(bodies.Labels, "labels"),
             NamedArg(bodies.Body, "body"),
             NamedArg(bodies.Meta, "meta"),
             NamedArg(bodies.Spec, "spec"),
@@ -173,7 +166,6 @@ if TYPE_CHECKING:  # pragma: nocover
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-
             NamedArg(LoggerType, "logger"),
             NamedArg(ephemera.AnyMemo, "memo"),
             DefaultNamedArg(Any, "param"),
@@ -181,17 +173,13 @@ if TYPE_CHECKING:  # pragma: nocover
         ],
         _SyncOrAsyncResult
     ]
-
-
-    ResourceSpawningFn = Union[ResourceDaemonFn, ResourceTimerFn]
 
     WhenFilterFn = Callable[
         [
             NamedArg(str, "type"),
             NamedArg(bodies.RawEvent, "event"),
-
-            NamedArg(Dict[str, str], "labels"),
-            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(bodies.Annotations, "annotations"),
+            NamedArg(bodies.Labels, "labels"),
             NamedArg(bodies.Body, "body"),
             NamedArg(bodies.Meta, "meta"),
             NamedArg(bodies.Spec, "spec"),
@@ -201,11 +189,9 @@ if TYPE_CHECKING:  # pragma: nocover
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            
             NamedArg(diffs.Diff, "diff"),
             NamedArg(Optional[Union[bodies.BodyEssence, Any]], "old"),
             NamedArg(Optional[Union[bodies.BodyEssence, Any]], "new"),
-            
             NamedArg(LoggerType, "logger"),
             NamedArg(ephemera.AnyMemo, "memo"),
             DefaultNamedArg(Any, "param"),
@@ -213,15 +199,13 @@ if TYPE_CHECKING:  # pragma: nocover
         ],
         bool
     ]
-
 
     MetaFilterFn = Callable[
         [
             Arg(Any, "value"),
             NamedArg(str, "type"),
-
-            NamedArg(Dict[str, str], "labels"),
-            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(bodies.Annotations, "annotations"),
+            NamedArg(bodies.Labels, "labels"),
             NamedArg(bodies.Body, "body"),
             NamedArg(bodies.Meta, "meta"),
             NamedArg(bodies.Spec, "spec"),
@@ -231,7 +215,6 @@ if TYPE_CHECKING:  # pragma: nocover
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-
             NamedArg(LoggerType, "logger"),
             NamedArg(ephemera.AnyMemo, "memo"),
             DefaultNamedArg(Any, "param"),
@@ -240,8 +223,8 @@ if TYPE_CHECKING:  # pragma: nocover
         bool
     ]
 
-
-_FnT = TypeVar('_FnT', "WhenFilterFn", "MetaFilterFn")
+ResourceSpawningFn = Union[ResourceDaemonFn, ResourceTimerFn]
+_FnT = TypeVar('_FnT', WhenFilterFn, MetaFilterFn)
 
 
 def not_(fn: _FnT) -> _FnT:

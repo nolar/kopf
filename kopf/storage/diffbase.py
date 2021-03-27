@@ -7,7 +7,9 @@ from kopf.storage import conventions
 from kopf.structs import bodies, dicts, patches
 
 
-class DiffBaseStorage(conventions.StorageKeyMarkingConvention, metaclass=abc.ABCMeta):
+class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
+                      conventions.StorageStanzaCleaner,
+                      metaclass=abc.ABCMeta):
     """
     Store the base essence for diff calculations, i.e. last handled state.
 
@@ -79,14 +81,7 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention, metaclass=abc.ABC
         # Restore all explicitly whitelisted extra-fields from the original body.
         dicts.cherrypick(src=body, dst=essence, fields=extra_fields, picker=copy.deepcopy)
 
-        # Cleanup the parent structs if they have become empty, for consistent essence comparison.
-        if 'annotations' in essence.get('metadata', {}) and not essence['metadata']['annotations']:
-            del essence['metadata']['annotations']
-        if 'metadata' in essence and not essence['metadata']:
-            del essence['metadata']
-        if 'status' in essence and not essence['status']:
-            del essence['status']
-
+        self.remove_empty_stanzas(cast(bodies.BodyEssence, essence))
         return cast(bodies.BodyEssence, essence)
 
     @abc.abstractmethod
@@ -127,10 +122,8 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
             extra_fields: Optional[Iterable[dicts.FieldSpec]] = None,
     ) -> bodies.BodyEssence:
         essence = super().build(body=body, extra_fields=extra_fields)
-        annotations = essence.get('metadata', {}).get('annotations', {})
-        for full_key in self.make_keys(self.key, body=body):
-            if full_key in annotations:
-                del annotations[full_key]
+        self.remove_annotations(essence, set(self.make_keys(self.key, body=body)))
+        self.remove_empty_stanzas(essence)
         return essence
 
     def fetch(
