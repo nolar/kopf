@@ -4,7 +4,8 @@ import pytest
 
 import kopf
 from kopf.reactor.admission import serve_admission_request
-from kopf.structs.handlers import HandlerId, WebhookType
+from kopf.structs.handlers import WebhookType
+from kopf.structs.ids import HandlerId
 
 
 async def test_all_handlers_with_no_id_or_reason_requested(

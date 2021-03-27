@@ -46,7 +46,7 @@ from typing import Any, Collection, Dict, Mapping, Optional, cast
 from typing_extensions import TypedDict
 
 from kopf.storage import conventions
-from kopf.structs import bodies, dicts, handlers, patches
+from kopf.structs import bodies, dicts, ids, patches
 
 
 class ProgressRecord(TypedDict, total=True):
@@ -59,7 +59,7 @@ class ProgressRecord(TypedDict, total=True):
     success: Optional[bool]
     failure: Optional[bool]
     message: Optional[str]
-    subrefs: Optional[Collection[handlers.HandlerId]]
+    subrefs: Optional[Collection[ids.HandlerId]]
 
 
 class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
@@ -84,7 +84,7 @@ class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
     def fetch(
             self,
             *,
-            key: handlers.HandlerId,
+            key: ids.HandlerId,
             body: bodies.Body,
     ) -> Optional[ProgressRecord]:
         raise NotImplementedError
@@ -93,7 +93,7 @@ class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
     def store(
             self,
             *,
-            key: handlers.HandlerId,
+            key: ids.HandlerId,
             record: ProgressRecord,
             body: bodies.Body,
             patch: patches.Patch,
@@ -104,7 +104,7 @@ class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
     def purge(
             self,
             *,
-            key: handlers.HandlerId,
+            key: ids.HandlerId,
             body: bodies.Body,
             patch: patches.Patch,
     ) -> None:
@@ -177,7 +177,7 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
     def fetch(
             self,
             *,
-            key: handlers.HandlerId,
+            key: ids.HandlerId,
             body: bodies.Body,
     ) -> Optional[ProgressRecord]:
         for full_key in self.make_keys(key, body=body):
@@ -191,7 +191,7 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
     def store(
             self,
             *,
-            key: handlers.HandlerId,
+            key: ids.HandlerId,
             record: ProgressRecord,
             body: bodies.Body,
             patch: patches.Patch,
@@ -206,7 +206,7 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
     def purge(
             self,
             *,
-            key: handlers.HandlerId,
+            key: ids.HandlerId,
             body: bodies.Body,
             patch: patches.Patch,
     ) -> None:
@@ -314,17 +314,17 @@ class StatusProgressStorage(ProgressStorage):
     def fetch(
             self,
             *,
-            key: handlers.HandlerId,
+            key: ids.HandlerId,
             body: bodies.Body,
     ) -> Optional[ProgressRecord]:
-        container: Mapping[handlers.HandlerId, ProgressRecord]
+        container: Mapping[ids.HandlerId, ProgressRecord]
         container = dicts.resolve(body, self.field, {})
         return container.get(key, None)
 
     def store(
             self,
             *,
-            key: handlers.HandlerId,
+            key: ids.HandlerId,
             record: ProgressRecord,
             body: bodies.Body,
             patch: patches.Patch,
@@ -335,7 +335,7 @@ class StatusProgressStorage(ProgressStorage):
     def purge(
             self,
             *,
-            key: handlers.HandlerId,
+            key: ids.HandlerId,
             body: bodies.Body,
             patch: patches.Patch,
     ) -> None:
@@ -383,7 +383,7 @@ class MultiProgressStorage(ProgressStorage):
     def fetch(
             self,
             *,
-            key: handlers.HandlerId,
+            key: ids.HandlerId,
             body: bodies.Body,
     ) -> Optional[ProgressRecord]:
         for storage in self.storages:
@@ -395,7 +395,7 @@ class MultiProgressStorage(ProgressStorage):
     def store(
             self,
             *,
-            key: handlers.HandlerId,
+            key: ids.HandlerId,
             record: ProgressRecord,
             body: bodies.Body,
             patch: patches.Patch,
@@ -406,7 +406,7 @@ class MultiProgressStorage(ProgressStorage):
     def purge(
             self,
             *,
-            key: handlers.HandlerId,
+            key: ids.HandlerId,
             body: bodies.Body,
             patch: patches.Patch,
     ) -> None:

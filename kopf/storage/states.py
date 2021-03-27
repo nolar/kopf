@@ -19,7 +19,7 @@ from typing import Any, Collection, Dict, Iterable, Iterator, \
                    Mapping, NamedTuple, Optional, overload
 
 from kopf.storage import progress
-from kopf.structs import bodies, callbacks, handlers as handlers_, patches
+from kopf.structs import bodies, callbacks, handlers as handlers_, ids, patches
 
 
 @dataclasses.dataclass(frozen=True)
@@ -39,7 +39,7 @@ class HandlerOutcome:
     delay: Optional[float] = None
     result: Optional[callbacks.Result] = None
     exception: Optional[Exception] = None
-    subrefs: Collection[handlers_.HandlerId] = ()
+    subrefs: Collection[ids.HandlerId] = ()
 
 
 @dataclasses.dataclass(frozen=True)
@@ -58,7 +58,7 @@ class HandlerState:
     success: bool = False
     failure: bool = False
     message: Optional[str] = None
-    subrefs: Collection[handlers_.HandlerId] = ()  # ids of actual sub-handlers of all levels deep.
+    subrefs: Collection[ids.HandlerId] = ()  # ids of actual sub-handlers of all levels deep.
     _origin: Optional[progress.ProgressRecord] = None  # to check later if it has actually changed.
 
     @classmethod
@@ -151,7 +151,7 @@ class StateCounters(NamedTuple):
     running: int
 
 
-class State(Mapping[handlers_.HandlerId, HandlerState]):
+class State(Mapping[ids.HandlerId, HandlerState]):
     """
     A state of selected handlers, as persisted in the object's status.
 
@@ -162,11 +162,11 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
     reflect the changes in the object's status. A new state is created every
     time some changes/outcomes are merged into the current state.
     """
-    _states: Mapping[handlers_.HandlerId, HandlerState]
+    _states: Mapping[ids.HandlerId, HandlerState]
 
     def __init__(
             self,
-            __src: Mapping[handlers_.HandlerId, HandlerState],
+            __src: Mapping[ids.HandlerId, HandlerState],
             *,
             purpose: Optional[handlers_.Reason] = None,
     ):
@@ -187,7 +187,7 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
             handlers: Iterable[handlers_.BaseHandler],
     ) -> "State":
         handler_ids = {handler.id for handler in handlers}
-        handler_states: Dict[handlers_.HandlerId, HandlerState] = {}
+        handler_states: Dict[ids.HandlerId, HandlerState] = {}
         for handler_id in handler_ids:
             content = storage.fetch(key=handler_id, body=body)
             if content is not None:
@@ -199,7 +199,7 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
             purpose: Optional[handlers_.Reason],
             handlers: Iterable[handlers_.BaseHandler] = (),  # to be re-purposed
     ) -> "State":
-        handler_states: Dict[handlers_.HandlerId, HandlerState] = dict(self)
+        handler_states: Dict[ids.HandlerId, HandlerState] = dict(self)
         for handler in handlers:
             handler_states[handler.id] = handler_states[handler.id].with_purpose(purpose)
         cls = type(self)
@@ -209,7 +209,7 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
             self,
             handlers: Iterable[handlers_.BaseHandler],
     ) -> "State":
-        handler_states: Dict[handlers_.HandlerId, HandlerState] = dict(self)
+        handler_states: Dict[ids.HandlerId, HandlerState] = dict(self)
         for handler in handlers:
             if handler.id not in handler_states:
                 handler_states[handler.id] = HandlerState.from_scratch(purpose=self.purpose)
@@ -218,7 +218,7 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
 
     def with_outcomes(
             self,
-            outcomes: Mapping[handlers_.HandlerId, HandlerOutcome],
+            outcomes: Mapping[ids.HandlerId, HandlerOutcome],
     ) -> "State":
         unknown_ids = [handler_id for handler_id in outcomes if handler_id not in self]
         if unknown_ids:
@@ -275,10 +275,10 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
     def __len__(self) -> int:
         return len(self._states)
 
-    def __iter__(self) -> Iterator[handlers_.HandlerId]:
+    def __iter__(self) -> Iterator[ids.HandlerId]:
         return iter(self._states)
 
-    def __getitem__(self, item: handlers_.HandlerId) -> HandlerState:
+    def __getitem__(self, item: ids.HandlerId) -> HandlerState:
         return self._states[item]
 
     @property
@@ -345,7 +345,7 @@ class State(Mapping[handlers_.HandlerId, HandlerState]):
 
 def deliver_results(
         *,
-        outcomes: Mapping[handlers_.HandlerId, HandlerOutcome],
+        outcomes: Mapping[ids.HandlerId, HandlerOutcome],
         patch: patches.Patch,
 ) -> None:
     """

@@ -14,7 +14,7 @@ from kopf.engines import loggers
 from kopf.reactor import causation, handling, lifecycles, registries
 from kopf.storage import states
 from kopf.structs import bodies, configuration, containers, ephemera, filters, \
-                         handlers, patches, primitives, references, reviews
+                         handlers, ids, patches, primitives, references, reviews
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ async def serve_admission_request(
         # Optional for webhook servers that can recognise this information:
         headers: Optional[Mapping[str, str]] = None,
         sslpeer: Optional[Mapping[str, Any]] = None,
-        webhook: Optional[handlers.HandlerId] = None,
+        webhook: Optional[ids.HandlerId] = None,
         reason: Optional[handlers.WebhookType] = None,  # TODO: undocumented: requires typing clarity!
         # Injected by partial() from spawn_tasks():
         settings: configuration.OperatorSettings,
@@ -168,7 +168,7 @@ def find_resource(
 def build_response(
         *,
         request: reviews.Request,
-        outcomes: Mapping[handlers.HandlerId, states.HandlerOutcome],
+        outcomes: Mapping[ids.HandlerId, states.HandlerOutcome],
         warnings: Collection[str],
         jsonpatch: patches.JSONPatch,
 ) -> reviews.Response:
@@ -411,7 +411,7 @@ def _build_labels_selector(labels: Optional[filters.MetaFilter]) -> Optional[Map
 BAD_WEBHOOK_NAME = re.compile(r'[^\w\d\.-]')
 
 
-def _normalize_name(id: handlers.HandlerId, suffix: str) -> str:
+def _normalize_name(id: ids.HandlerId, suffix: str) -> str:
     """
     Normalize the webhook name to what Kubernetes accepts as normal.
 
@@ -427,7 +427,7 @@ def _normalize_name(id: handlers.HandlerId, suffix: str) -> str:
     return f'{name}.{suffix}' if suffix else name
 
 
-def _inject_handler_id(config: reviews.WebhookClientConfig, id: handlers.HandlerId) -> reviews.WebhookClientConfig:
+def _inject_handler_id(config: reviews.WebhookClientConfig, id: ids.HandlerId) -> reviews.WebhookClientConfig:
     config = copy.deepcopy(config)
 
     url_id = urllib.parse.quote(id)

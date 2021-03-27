@@ -1,12 +1,8 @@
 import dataclasses
 import enum
-from typing import Any, NewType, Optional
+from typing import Any, Optional
 
-from kopf.structs import callbacks, dicts, filters, references
-
-# Strings are taken from the users, but then tainted as this type for stricter type-checking:
-# to prevent usage of some other strings (e.g. operator id) as the handlers ids.
-HandlerId = NewType('HandlerId', str)
+from kopf.structs import callbacks, dicts, filters, ids, references
 
 
 class ErrorsMode(enum.Enum):
@@ -76,7 +72,7 @@ TITLES = {
 # FIXME:    expected "Union[LifeCycleFn, ActivityHandlerFn, ResourceHandlerFn]"
 @dataclasses.dataclass
 class BaseHandler:
-    id: HandlerId
+    id: ids.HandlerId
     fn: callbacks.BaseFn
     param: Optional[Any]
     errors: Optional[ErrorsMode]

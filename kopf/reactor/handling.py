@@ -16,7 +16,7 @@ from typing import Any, Collection, Iterable, Mapping, MutableMapping, Optional,
 from kopf.engines import loggers
 from kopf.reactor import causation, invocation, lifecycles, registries
 from kopf.storage import states
-from kopf.structs import callbacks, configuration, dicts, diffs, handlers as handlers_
+from kopf.structs import callbacks, configuration, dicts, diffs, handlers as handlers_, ids
 
 DEFAULT_RETRY_DELAY = 1 * 60
 """ The default delay duration for the regular exception in retry-mode. """
@@ -55,7 +55,7 @@ sublifecycle_var: ContextVar[Optional[lifecycles.LifeCycleFn]] = ContextVar('sub
 subregistry_var: ContextVar[registries.ResourceChangingRegistry] = ContextVar('subregistry_var')
 subsettings_var: ContextVar[configuration.OperatorSettings] = ContextVar('subsettings_var')
 subexecuted_var: ContextVar[bool] = ContextVar('subexecuted_var')
-subrefs_var: ContextVar[Iterable[Set[handlers_.HandlerId]]] = ContextVar('subrefs_var')
+subrefs_var: ContextVar[Iterable[Set[ids.HandlerId]]] = ContextVar('subrefs_var')
 handler_var: ContextVar[handlers_.BaseHandler] = ContextVar('handler_var')
 cause_var: ContextVar[causation.BaseCause] = ContextVar('cause_var')
 
@@ -169,7 +169,7 @@ async def execute(
 
     # Enrich all parents with references to sub-handlers of any level deep (sub-sub-handlers, etc).
     # There is at least one container, as this function can be called only from a handler.
-    subrefs_containers: Iterable[Set[handlers_.HandlerId]] = subrefs_var.get()
+    subrefs_containers: Iterable[Set[ids.HandlerId]] = subrefs_var.get()
     for key in state:
         for subrefs_container in subrefs_containers:
             subrefs_container.add(key)
@@ -186,7 +186,7 @@ async def execute_handlers_once(
         cause: causation.BaseCause,
         state: states.State,
         default_errors: handlers_.ErrorsMode = handlers_.ErrorsMode.TEMPORARY,
-) -> Mapping[handlers_.HandlerId, states.HandlerOutcome]:
+) -> Mapping[ids.HandlerId, states.HandlerOutcome]:
     """
     Call the next handler(s) from the chain of the handlers.
 
@@ -202,7 +202,7 @@ async def execute_handlers_once(
     handlers_plan = lifecycle(handlers_todo, **invocation.build_kwargs(cause=cause, state=state))
 
     # Execute all planned (selected) handlers in one event reaction cycle, even if there are few.
-    outcomes: MutableMapping[handlers_.HandlerId, states.HandlerOutcome] = {}
+    outcomes: MutableMapping[ids.HandlerId, states.HandlerOutcome] = {}
     for handler in handlers_plan:
         outcome = await execute_handler_once(
             settings=settings,
@@ -251,7 +251,7 @@ async def execute_handler_once(
         logger = cause.logger
 
     # Mutable accumulator for all the sub-handlers of any level deep; populated in `kopf.execute`.
-    subrefs: Set[handlers_.HandlerId] = set()
+    subrefs: Set[ids.HandlerId] = set()
 
     # The exceptions are handled locally and are not re-raised, to keep the operator running.
     try:
@@ -328,7 +328,7 @@ async def invoke_handler(
         cause: causation.BaseCause,
         settings: configuration.OperatorSettings,
         lifecycle: Optional[lifecycles.LifeCycleFn],
-        subrefs: Set[handlers_.HandlerId],
+        subrefs: Set[ids.HandlerId],
         **kwargs: Any,
 ) -> Optional[callbacks.Result]:
     """

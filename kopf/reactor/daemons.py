@@ -30,7 +30,7 @@ import aiojobs
 from kopf.engines import loggers
 from kopf.reactor import causation, effects, handling, lifecycles
 from kopf.storage import states
-from kopf.structs import configuration, containers, handlers as handlers_, patches, primitives
+from kopf.structs import configuration, containers, handlers as handlers_, ids, patches, primitives
 from kopf.utilities import aiotasks
 
 
@@ -38,7 +38,7 @@ async def spawn_resource_daemons(
         *,
         settings: configuration.OperatorSettings,
         handlers: Sequence[handlers_.ResourceSpawningHandler],
-        daemons: MutableMapping[handlers_.HandlerId, containers.Daemon],
+        daemons: MutableMapping[ids.HandlerId, containers.Daemon],
         cause: causation.ResourceSpawningCause,
         memory: containers.ResourceMemory,
 ) -> Collection[float]:
@@ -83,7 +83,7 @@ async def match_resource_daemons(
         *,
         settings: configuration.OperatorSettings,
         handlers: Sequence[handlers_.ResourceSpawningHandler],
-        daemons: MutableMapping[handlers_.HandlerId, containers.Daemon],
+        daemons: MutableMapping[ids.HandlerId, containers.Daemon],
 ) -> Collection[float]:
     """
     Re-match the running daemons with the filters, and stop those mismatching.
@@ -107,7 +107,7 @@ async def match_resource_daemons(
 async def stop_resource_daemons(
         *,
         settings: configuration.OperatorSettings,
-        daemons: Mapping[handlers_.HandlerId, containers.Daemon],
+        daemons: Mapping[ids.HandlerId, containers.Daemon],
         reason: primitives.DaemonStoppingReason = primitives.DaemonStoppingReason.RESOURCE_DELETED,
 ) -> Collection[float]:
     """
@@ -355,7 +355,7 @@ async def _wait_for_instant_exit(
 async def _runner(
         *,
         settings: configuration.OperatorSettings,
-        daemons: MutableMapping[handlers_.HandlerId, containers.Daemon],
+        daemons: MutableMapping[ids.HandlerId, containers.Daemon],
         handler: handlers_.ResourceSpawningHandler,
         memory: containers.ResourceMemory,
         cause: causation.DaemonCause,

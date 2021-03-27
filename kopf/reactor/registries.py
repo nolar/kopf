@@ -19,7 +19,7 @@ from typing import Any, Callable, Collection, Container, Generic, Iterable, Iter
                    Mapping, MutableMapping, Optional, Sequence, Set, Tuple, TypeVar, cast
 
 from kopf.reactor import causation, invocation
-from kopf.structs import callbacks, dicts, filters, handlers, references
+from kopf.structs import callbacks, dicts, filters, handlers, ids, references
 from kopf.utilities import piggybacking
 
 # We only type-check for known classes of handlers/callbacks, and ignore any custom subclasses.
@@ -95,7 +95,7 @@ class ResourceRegistry(
     def get_handlers(
             self,
             cause: CauseT,
-            excluded: Container[handlers.HandlerId] = frozenset(),
+            excluded: Container[ids.HandlerId] = frozenset(),
     ) -> Sequence[ResourceHandlerT]:
         return list(_deduplicated(self.iter_handlers(cause=cause, excluded=excluded)))
 
@@ -103,7 +103,7 @@ class ResourceRegistry(
     def iter_handlers(
             self,
             cause: CauseT,
-            excluded: Container[handlers.HandlerId] = frozenset(),
+            excluded: Container[ids.HandlerId] = frozenset(),
     ) -> Iterator[ResourceHandlerT]:
         raise NotImplementedError
 
@@ -131,7 +131,7 @@ class ResourceIndexingRegistry(ResourceRegistry[
     def iter_handlers(
             self,
             cause: causation.ResourceIndexingCause,
-            excluded: Container[handlers.HandlerId] = frozenset(),
+            excluded: Container[ids.HandlerId] = frozenset(),
     ) -> Iterator[handlers.ResourceIndexingHandler]:
         for handler in self._handlers:
             if handler.id not in excluded:
@@ -147,7 +147,7 @@ class ResourceWatchingRegistry(ResourceRegistry[
     def iter_handlers(
             self,
             cause: causation.ResourceWatchingCause,
-            excluded: Container[handlers.HandlerId] = frozenset(),
+            excluded: Container[ids.HandlerId] = frozenset(),
     ) -> Iterator[handlers.ResourceWatchingHandler]:
         for handler in self._handlers:
             if handler.id not in excluded:
@@ -163,7 +163,7 @@ class ResourceSpawningRegistry(ResourceRegistry[
     def iter_handlers(
             self,
             cause: causation.ResourceSpawningCause,
-            excluded: Container[handlers.HandlerId] = frozenset(),
+            excluded: Container[ids.HandlerId] = frozenset(),
     ) -> Iterator[handlers.ResourceSpawningHandler]:
         for handler in self._handlers:
             if handler.id not in excluded:
@@ -173,7 +173,7 @@ class ResourceSpawningRegistry(ResourceRegistry[
     def requires_finalizer(
             self,
             cause: causation.ResourceSpawningCause,
-            excluded: Container[handlers.HandlerId] = frozenset(),
+            excluded: Container[ids.HandlerId] = frozenset(),
     ) -> bool:
         """
         Check whether a finalizer should be added to the given resource or not.
@@ -194,7 +194,7 @@ class ResourceChangingRegistry(ResourceRegistry[
     def iter_handlers(
             self,
             cause: causation.ResourceChangingCause,
-            excluded: Container[handlers.HandlerId] = frozenset(),
+            excluded: Container[ids.HandlerId] = frozenset(),
     ) -> Iterator[handlers.ResourceChangingHandler]:
         for handler in self._handlers:
             if handler.id not in excluded:
@@ -209,7 +209,7 @@ class ResourceChangingRegistry(ResourceRegistry[
     def requires_finalizer(
             self,
             cause: causation.ResourceCause,
-            excluded: Container[handlers.HandlerId] = frozenset(),
+            excluded: Container[ids.HandlerId] = frozenset(),
     ) -> bool:
         """
         Check whether a finalizer should be added to the given resource or not.
@@ -249,7 +249,7 @@ class ResourceWebhooksRegistry(ResourceRegistry[
     def iter_handlers(
             self,
             cause: causation.ResourceWebhookCause,
-            excluded: Container[handlers.HandlerId] = frozenset(),
+            excluded: Container[ids.HandlerId] = frozenset(),
     ) -> Iterator[handlers.ResourceWebhookHandler]:
         for handler in self._handlers:
             if handler.id not in excluded:
@@ -293,7 +293,7 @@ class SmartOperatorRegistry(OperatorRegistry):
             pass
         else:
             self._activities.append(handlers.ActivityHandler(
-                id=handlers.HandlerId('login_via_pykube'),
+                id=ids.HandlerId('login_via_pykube'),
                 fn=cast(callbacks.ActivityFn, piggybacking.login_via_pykube),
                 activity=handlers.Activity.AUTHENTICATION,
                 errors=handlers.ErrorsMode.IGNORED,
@@ -306,7 +306,7 @@ class SmartOperatorRegistry(OperatorRegistry):
             pass
         else:
             self._activities.append(handlers.ActivityHandler(
-                id=handlers.HandlerId('login_via_client'),
+                id=ids.HandlerId('login_via_client'),
                 fn=cast(callbacks.ActivityFn, piggybacking.login_via_client),
                 activity=handlers.Activity.AUTHENTICATION,
                 errors=handlers.ErrorsMode.IGNORED,
@@ -320,12 +320,12 @@ def generate_id(
         id: Optional[str],
         prefix: Optional[str] = None,
         suffix: Optional[str] = None,
-) -> handlers.HandlerId:
+) -> ids.HandlerId:
     real_id: str
     real_id = id if id is not None else get_callable_id(fn)
     real_id = real_id if not suffix else f'{real_id}/{suffix}'
     real_id = real_id if not prefix else f'{prefix}/{real_id}'
-    return cast(handlers.HandlerId, real_id)
+    return cast(ids.HandlerId, real_id)
 
 
 def get_callable_id(c: Callable[..., Any]) -> str:
@@ -371,7 +371,7 @@ def _deduplicated(
     handled) **AND** it is detected as per-existing before operator start.
     But `fn()` should be called only once for this cause.
     """
-    seen_ids: Set[Tuple[int, handlers.HandlerId]] = set()
+    seen_ids: Set[Tuple[int, ids.HandlerId]] = set()
     for handler in src:
         key = (id(handler.fn), handler.id)
         if key in seen_ids:

@@ -6,7 +6,7 @@ import pytest
 from kopf.storage.progress import AnnotationsProgressStorage, ProgressRecord, ProgressStorage, \
                                   SmartProgressStorage, StatusProgressStorage
 from kopf.structs.bodies import Body
-from kopf.structs.handlers import HandlerId
+from kopf.structs.ids import HandlerId
 from kopf.structs.patches import Patch
 
 ALL_STORAGES = [AnnotationsProgressStorage, StatusProgressStorage, SmartProgressStorage]

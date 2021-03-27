@@ -21,8 +21,8 @@ from typing import Mapping, MutableMapping, NoReturn
 
 from kopf.reactor import causation, handling, lifecycles, registries
 from kopf.storage import states
-from kopf.structs import callbacks, configuration, credentials, \
-                         ephemera, handlers as handlers_, primitives
+from kopf.structs import callbacks, configuration, credentials, ephemera, \
+                         handlers as handlers_, ids, primitives
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class ActivityError(Exception):
             self,
             msg: str,
             *,
-            outcomes: Mapping[handlers_.HandlerId, states.HandlerOutcome],
+            outcomes: Mapping[ids.HandlerId, states.HandlerOutcome],
     ) -> None:
         super().__init__(msg)
         self.outcomes = outcomes
@@ -106,7 +106,7 @@ async def run_activity(
         activity: handlers_.Activity,
         indices: ephemera.Indices,
         memo: ephemera.AnyMemo,
-) -> Mapping[handlers_.HandlerId, callbacks.Result]:
+) -> Mapping[ids.HandlerId, callbacks.Result]:
     logger = logging.getLogger(f'kopf.activities.{activity.value}')
 
     # For the activity handlers, we have neither bodies, nor patches, just the state.
@@ -119,7 +119,7 @@ async def run_activity(
     )
     handlers = registry._activities.get_handlers(activity=activity)
     state = states.State.from_scratch().with_handlers(handlers)
-    outcomes: MutableMapping[handlers_.HandlerId, states.HandlerOutcome] = {}
+    outcomes: MutableMapping[ids.HandlerId, states.HandlerOutcome] = {}
     while not state.done:
         current_outcomes = await handling.execute_handlers_once(
             lifecycle=lifecycle,
