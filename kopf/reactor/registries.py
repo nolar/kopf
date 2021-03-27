@@ -16,26 +16,22 @@ import enum
 import functools
 from types import FunctionType, MethodType
 from typing import Any, Callable, Collection, Container, Generic, Iterable, Iterator, List, \
-                   Mapping, MutableMapping, Optional, Sequence, Set, Tuple, TypeVar, cast, \
-                   TYPE_CHECKING
+                   Mapping, MutableMapping, Optional, Sequence, Set, Tuple, TypeVar, cast
 
 from kopf.reactor import causation, invocation
-from kopf.structs import dicts, filters, handlers, references
+from kopf.structs import callbacks, dicts, filters, handlers, references
 from kopf.utilities import piggybacking
-
-if TYPE_CHECKING:  # pragma: nocover
-    from kopf.structs import callbacks
 
 # We only type-check for known classes of handlers/callbacks, and ignore any custom subclasses.
 CauseT = TypeVar('CauseT', bound=causation.BaseCause)
 HandlerT = TypeVar('HandlerT', bound=handlers.BaseHandler)
 ResourceHandlerT = TypeVar('ResourceHandlerT', bound=handlers.ResourceHandler)
 HandlerFnT = TypeVar('HandlerFnT',
-                     "callbacks.ActivityFn",
-                     "callbacks.ResourceIndexingFn",
-                     "callbacks.ResourceWatchingFn",
-                     "callbacks.ResourceSpawningFn",
-                     "callbacks.ResourceChangingFn")
+                     callbacks.ActivityFn,
+                     callbacks.ResourceIndexingFn,
+                     callbacks.ResourceWatchingFn,
+                     callbacks.ResourceSpawningFn,
+                     callbacks.ResourceChangingFn)
 
 
 class GenericRegistry(Generic[HandlerFnT, HandlerT]):
@@ -54,7 +50,7 @@ class GenericRegistry(Generic[HandlerFnT, HandlerT]):
 
 
 class ActivityRegistry(GenericRegistry[
-        "callbacks.ActivityFn",
+        callbacks.ActivityFn,
         handlers.ActivityHandler]):
 
     def get_handlers(
@@ -128,7 +124,7 @@ class ResourceRegistry(
 
 class ResourceIndexingRegistry(ResourceRegistry[
         causation.ResourceIndexingCause,
-        "callbacks.ResourceIndexingFn",
+        callbacks.ResourceIndexingFn,
         handlers.ResourceIndexingHandler]):
 
     def iter_handlers(
@@ -144,7 +140,7 @@ class ResourceIndexingRegistry(ResourceRegistry[
 
 class ResourceWatchingRegistry(ResourceRegistry[
         causation.ResourceWatchingCause,
-        "callbacks.ResourceWatchingFn",
+        callbacks.ResourceWatchingFn,
         handlers.ResourceWatchingHandler]):
 
     def iter_handlers(
@@ -160,7 +156,7 @@ class ResourceWatchingRegistry(ResourceRegistry[
 
 class ResourceSpawningRegistry(ResourceRegistry[
         causation.ResourceSpawningCause,
-        "callbacks.ResourceSpawningFn",
+        callbacks.ResourceSpawningFn,
         handlers.ResourceSpawningHandler]):
 
     def iter_handlers(
@@ -191,7 +187,7 @@ class ResourceSpawningRegistry(ResourceRegistry[
 
 class ResourceChangingRegistry(ResourceRegistry[
         causation.ResourceChangingCause,
-        "callbacks.ResourceChangingFn",
+        callbacks.ResourceChangingFn,
         handlers.ResourceChangingHandler]):
 
     def iter_handlers(
@@ -270,7 +266,7 @@ class SmartOperatorRegistry(OperatorRegistry):
         else:
             self._activities.append(handlers.ActivityHandler(
                 id=handlers.HandlerId('login_via_pykube'),
-                fn=cast("callbacks.ActivityFn", piggybacking.login_via_pykube),
+                fn=cast(callbacks.ActivityFn, piggybacking.login_via_pykube),
                 activity=handlers.Activity.AUTHENTICATION,
                 errors=handlers.ErrorsMode.IGNORED,
                 param=None, timeout=None, retries=None, backoff=None,
@@ -283,7 +279,7 @@ class SmartOperatorRegistry(OperatorRegistry):
         else:
             self._activities.append(handlers.ActivityHandler(
                 id=handlers.HandlerId('login_via_client'),
-                fn=cast("callbacks.ActivityFn", piggybacking.login_via_client),
+                fn=cast(callbacks.ActivityFn, piggybacking.login_via_client),
                 activity=handlers.Activity.AUTHENTICATION,
                 errors=handlers.ErrorsMode.IGNORED,
                 param=None, timeout=None, retries=None, backoff=None,

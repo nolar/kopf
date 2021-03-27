@@ -62,7 +62,7 @@ cause_var: ContextVar[causation.BaseCause] = ContextVar('cause_var')
 
 async def execute(
         *,
-        fns: Optional[Iterable["callbacks.ResourceChangingFn"]] = None,
+        fns: Optional[Iterable[callbacks.ResourceChangingFn]] = None,
         handlers: Optional[Iterable[handlers_.ResourceChangingHandler]] = None,
         registry: Optional[registries.ResourceChangingRegistry] = None,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
