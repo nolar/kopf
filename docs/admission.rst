@@ -354,10 +354,17 @@ each with its configuration parameters (see their descriptions):
 usually to a locally running *webhook server*.
 
 * `kopf.WebhookNgrokTunnel` established a tunnel through ngrok_.
-* `kopf.WebhookInletsTunnel` tunnels the traffic through inlets_.
 
 .. _ngrok: https://ngrok.com/
-.. _inlets: https://inlets.dev/
+
+For ease of use, the cluster type can be recognised automatically in some cases:
+
+* `kopf.WebhookAutoServer` runs locally, detects Minikube & K3s, and uses them
+  via their special hostnames. If it cannot detect the cluster type, it runs
+  a simple local webhook server. The auto-server never tunnels.
+* `kopf.WebhookAutoTunnel` attempts to use an auto-server if possible.
+  If not, it uses one of the available tunnels (currently, only ngrok).
+  This is the most universal way to make any environment work.
 
 .. note::
     External tunnelling services usually limit the number of requests.
@@ -369,7 +376,7 @@ usually to a locally running *webhook server*.
 
 .. note::
     A reminder: using development-mode tunnels and self-signed certificates
-    requires an extra: ``pip install kopf[dev]``.
+    requires extra dependencies: ``pip install kopf[dev]``.
 
 
 Authenticate apiservers
@@ -545,7 +552,7 @@ do not support HTTPS tunnelling (or require paid subscriptions):
 
     @kopf.on.startup()
     def config(settings: kopf.OperatorSettings, **_):
-        settings.admission.server = kopf.WebhookServer(insecure=True)
+        settings.admission.server = kopf.¶ver(insecure=True)
 
 
 Custom servers/tunnels

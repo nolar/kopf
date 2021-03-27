@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, AsyncIterator, Collection, Dict, Iterable, Opt
 
 import aiohttp.web
 
+from kopf.clients import scanning
 from kopf.reactor import admission
 from kopf.structs import reviews
 
@@ -535,3 +536,116 @@ class WebhookNgrokTunnel:
         finally:
             if tunnel is not None:
                 await loop.run_in_executor(None, ngrok.disconnect, tunnel.public_url)
+
+
+class ClusterDetector:
+    """
+    A mixing for auto-server/auto-tunnel to detect the cluster type.
+
+    The implementation of the server detection requires the least possible
+    permissions or no permissions at all. In most cases, it will identify
+    the server type by its SSL certificate meta-information (subject/issuer).
+    SSL information is the most universal way for all typical local clusters.
+
+    If SSL parsing fails, it will try to fetch the information from the cluster.
+    However, it rarely contains any useful information about the cluster's
+    surroundings and environment, but only about the cluster itself
+    (though it helps with K3s).
+
+    Note: the SSL certificate of the Kubernetes API is checked, not of webhooks.
+    """
+    @staticmethod
+    async def guess_host() -> Optional[str]:
+        try:
+            import certvalidator
+        except ImportError:
+            raise MissingDependencyError(
+                "Auto-guessing cluster types requires an extra dependency: "
+                "run `pip install certvalidator` or `pip install kopf[dev]`. "
+                "More: https://kopf.readthedocs.io/en/stable/admission/")
+
+        hostname, cert = await scanning.read_sslcert()
+        valcontext = certvalidator.ValidationContext(extra_trust_roots=[cert])
+        validator = certvalidator.CertificateValidator(cert, validation_context=valcontext)
+        certpath = validator.validate_tls(hostname)
+        issuer_cn = certpath.first.issuer.native.get('common_name', '')
+        subject_cn = certpath.first.subject.native.get('common_name', '')
+        subject_org = certpath.first.subject.native.get('organization_name', '')
+
+        if subject_cn == 'k3s' or subject_org == 'k3s' or issuer_cn.startswith('k3s-'):
+            return WebhookK3dServer.DEFAULT_HOST
+        elif subject_cn == 'minikube' or issuer_cn == 'minikubeCA':
+            return WebhookMinikubeServer.DEFAULT_HOST
+        else:
+            versioninfo = await scanning.read_version()
+            if '+k3s' in versioninfo.get('gitVersion', ''):
+                return WebhookK3dServer.DEFAULT_HOST
+        return None
+
+
+class WebhookAutoServer(ClusterDetector, WebhookServer):
+    """
+    A locally listening webserver which attempts to guess its proper hostname.
+
+    The choice is happening between supported webhook servers only
+    (K3d/K3d and Minikube at the moment). In all other cases,
+    a regular local server is started without hostname overrides.
+
+    If automatic tunneling is possible, consider `WebhookAutoTunnel` instead.
+    """
+    async def __call__(self, fn: reviews.WebhookFn) -> AsyncIterator[reviews.WebhookClientConfig]:
+        host = self.DEFAULT_HOST = await self.guess_host()
+        if host is None:
+            logger.debug(f"Cluster detection failed, running a simple local server.")
+        else:
+            logger.debug(f"Cluster detection found the hostname: {host}")
+        async for client_config in super().__call__(fn):
+            yield client_config
+
+
+class WebhookAutoTunnel(ClusterDetector):
+    """
+    The same as `WebhookAutoServer`, but with possible tunneling.
+
+    Generally, tunneling gives more possibilities to run in any environment,
+    but it must not happen without a permission from the developers,
+    and is not possible if running in a completely isolated/local/CI/CD cluster.
+    Therefore, developers should activated automatic setup explicitly.
+
+    If automatic tunneling is prohibited or impossible, use `WebhookAutoServer`.
+
+    .. note::
+
+        Automatic server/tunnel detection is highly limited in configuration
+        and provides only the most common options of all servers & tunners:
+        specifically, listening ``addr:port/path``.
+        All other options are specific to their servers/tunnels
+        and the auto-guessing logic cannot use/accept/pass them.
+    """
+    addr: Optional[str]  # None means "any interface"
+    port: Optional[int]  # None means a random port
+    path: Optional[str]
+
+    def __init__(
+            self,
+            *,
+            addr: Optional[str] = None,
+            port: Optional[int] = None,
+            path: Optional[str] = None,
+    ) -> None:
+        super().__init__()
+        self.addr = addr
+        self.port = port
+        self.path = path
+
+    async def __call__(self, fn: reviews.WebhookFn) -> AsyncIterator[reviews.WebhookClientConfig]:
+        server: reviews.WebhookServerProtocol
+        host = await self.guess_host()
+        if host is None:
+            logger.debug(f"Cluster detection failed, using an ngrok tunnel.")
+            server = WebhookNgrokTunnel(addr=self.addr, port=self.port, path=self.path)
+        else:
+            logger.debug(f"Cluster detection found the hostname: {host}")
+            server = WebhookServer(addr=self.addr, port=self.port, path=self.path, host=host)
+        async for client_config in server(fn):
+            yield client_config

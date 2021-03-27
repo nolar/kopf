@@ -508,6 +508,11 @@ def no_certbuilder():
     yield from _with_module_absent('certbuilder')
 
 
+@pytest.fixture()
+def no_certvalidator():
+    yield from _with_module_absent('certvalidator')
+
+
 #
 # Helpers for the timing checks.
 #

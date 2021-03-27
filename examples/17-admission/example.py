@@ -1,41 +1,61 @@
 import pathlib
-from typing import Dict
+from typing import Dict, List
 
 import kopf
+
+ROOT = (pathlib.Path.cwd() / pathlib.Path(__file__)).parent.parent.parent
 
 
 @kopf.on.startup()
 def config(settings: kopf.OperatorSettings, **_):
-    ROOT = (pathlib.Path.cwd() / pathlib.Path(__file__)).parent.parent.parent
-    settings.admission.managed = 'auto.kopf.dev'
+
+    # Plain and simple local endpoint with an auto-generated certificate:
+    settings.admission.server = kopf.WebhookServer()
+
+    # Plain and simple local endpoint with with provided certificate (e.g. openssl):
+    settings.admission.server = kopf.WebhookServer(certfile=ROOT/'cert.pem', pkeyfile=ROOT/'key.pem', port=1234)
+
+    # K3d/K3s-specific server that supports accessing from inside of a VM (a generated certificate):
     settings.admission.server = kopf.WebhookK3dServer(cadump=ROOT/'ca.pem')
-    ## Other options (see the docs):
-    # settings.admission.server = kopf.WebhookServer()
-    # settings.admission.server = kopf.WebhookServer(certfile=ROOT/'cert.pem', pkeyfile=ROOT/'key.pem', port=1234)
-    # settings.admission.server = kopf.WebhookK3dServer(cadump=ROOT/'ca.pem')
-    # settings.admission.server = kopf.WebhookK3dServer(certfile=ROOT/'k3d-cert.pem', pkeyfile=ROOT/'k3d-key.pem', port=1234)
-    # settings.admission.server = kopf.WebhookMinikubeServer(port=1234, cadump=ROOT/'ca.pem', verify_cafile=ROOT/'client-cert.pem')
-    # settings.admission.server = kopf.WebhookNgrokTunnel()
-    # settings.admission.server = kopf.WebhookNgrokTunnel(binary="/usr/local/bin/ngrok", token='...', port=1234)
-    # settings.admission.server = kopf.WebhookNgrokTunnel(binary="/usr/local/bin/ngrok", port=1234, path='/xyz', region='eu')
+
+    # K3d/K3s-specific server that supports accessing from inside of a VM (a provided certificate):
+    settings.admission.server = kopf.WebhookK3dServer(certfile=ROOT/'k3d-cert.pem', pkeyfile=ROOT/'k3d-key.pem', port=1234)
+
+    # Minikube-specific server that supports accessing from inside of a VM (a generated certificate):
+    settings.admission.server = kopf.WebhookMinikubeServer(port=1234, cadump=ROOT/'ca.pem')
+
+    # Tunneling Kubernetes->ngrok->local server (anonymous, auto-loaded binary):
+    settings.admission.server = kopf.WebhookNgrokTunnel(path='/xyz', port=1234)
+
+    # Tunneling Kubernetes->ngrok->local server (registered users, pre-existing binary):
+    settings.admission.server = kopf.WebhookNgrokTunnel(binary="/usr/local/bin/ngrok", token='...', )
+
+    # Tunneling Kubernetes->ngrok->local server (registered users, pre-existing binary, specific region):
+    settings.admission.server = kopf.WebhookNgrokTunnel(binary="/usr/local/bin/ngrok", region='eu')
+
+    # Auto-detect the best server (K3d/Minikube/simple) strictly locally:
+    settings.admission.server = kopf.WebhookAutoServer()
+
+    # Auto-detect the best server (K3d/Minikube/simple) with external tunneling as a fallback:
+    settings.admission.server = kopf.WebhookAutoTunnel()
+
+    # The final configuration for CI/CD (overrides previous values):
+    settings.admission.server = kopf.WebhookAutoServer()
+    settings.admission.managed = 'auto.kopf.dev'
 
 
 @kopf.on.validate('kex')
-def authhook(headers, sslpeer, warnings, **_):
-    # print(f'headers={headers}')
-    # print(f'sslpeer={sslpeer}')
-    if not sslpeer:
+def authhook(headers: kopf.Headers, sslpeer: kopf.SSLPeer, warnings: List[str], **_):
+    user_agent = headers.get('User-Agent', '(unidentified)')
+    warnings.append(f"Accessing as user-agent: {user_agent}")
+    if not sslpeer.get('subject'):
         warnings.append("SSL peer is not identified.")
     else:
-        common_name = None
-        for key, val in sslpeer['subject'][0]:
-            if key == 'commonName':
-                common_name = val
-                break
+        common_names = [val for key, val in sslpeer['subject'][0] if key == 'commonName']
+        if common_names:
+            warnings.append(f"SSL peer is {common_names[0]}.")
         else:
             warnings.append("SSL peer's common name is absent.")
-        if common_name is not None:
-            warnings.append(f"SSL peer is {common_name}.")
 
 
 @kopf.on.validate('kex')

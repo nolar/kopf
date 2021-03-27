@@ -58,6 +58,7 @@ setup(
             'pyngrok',          # 1.00 MB + downloaded binary
             'oscrypto',         # 2.80 MB (smaller than cryptography: 8.7 MB)
             'certbuilder',      # +0.1 MB (2.90 MB if alone)
+            'certvalidator',    # +0.1 MB (2.90 MB if alone)
         ],
     },
     package_data={"kopf": ["py.typed"]},

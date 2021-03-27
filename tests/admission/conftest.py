@@ -3,6 +3,8 @@ import dataclasses
 import warnings
 from unittest.mock import Mock
 
+import pyngrok.conf
+import pyngrok.ngrok
 import pytest
 
 from kopf.reactor.indexing import OperatorIndexers
@@ -139,3 +141,13 @@ def k8s_mocked(mocker):
         post_event=mocker.patch('kopf.clients.events.post_event'),
         sleep_or_wait=mocker.patch('kopf.structs.primitives.sleep_or_wait', return_value=None),
     )
+
+
+@pytest.fixture(autouse=True)
+def pyngrok_mock(mocker):
+    mocker.patch.object(pyngrok.conf, 'get_default')
+    mocker.patch.object(pyngrok.ngrok, 'set_auth_token')
+    mocker.patch.object(pyngrok.ngrok, 'connect')
+    mocker.patch.object(pyngrok.ngrok, 'disconnect')
+    pyngrok.ngrok.connect.return_value.public_url = 'https://nowhere'
+    return pyngrok
