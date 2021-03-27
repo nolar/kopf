@@ -7,7 +7,7 @@ not so important for the codebase, they are moved to this separate module.
 import datetime
 import logging
 from typing import TYPE_CHECKING, Any, Callable, Collection, \
-                   Coroutine, Dict, NewType, Optional, TypeVar, Union
+                   Coroutine, NewType, Optional, TypeVar, Union
 
 from kopf.structs import bodies, diffs, ephemera, patches, primitives, references
 
@@ -57,8 +57,8 @@ else:
 
     ResourceIndexingFn = Callable[
         [
-            NamedArg(Dict[str, str], "labels"),
-            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(bodies.Annotations, "annotations"),
+            NamedArg(bodies.Labels, "labels"),
             NamedArg(bodies.Body, "body"),
             NamedArg(bodies.Meta, "meta"),
             NamedArg(bodies.Spec, "spec"),
@@ -80,8 +80,8 @@ else:
         [
             NamedArg(str, "type"),
             NamedArg(bodies.RawEvent, "event"),
-            NamedArg(Dict[str, str], "labels"),
-            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(bodies.Annotations, "annotations"),
+            NamedArg(bodies.Labels, "labels"),
             NamedArg(bodies.Body, "body"),
             NamedArg(bodies.Meta, "meta"),
             NamedArg(bodies.Spec, "spec"),
@@ -104,8 +104,8 @@ else:
             NamedArg(int, "retry"),
             NamedArg(datetime.datetime, "started"),
             NamedArg(datetime.timedelta, "runtime"),
-            NamedArg(Dict[str, str], "labels"),
-            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(bodies.Annotations, "annotations"),
+            NamedArg(bodies.Labels, "labels"),
             NamedArg(bodies.Body, "body"),
             NamedArg(bodies.Meta, "meta"),
             NamedArg(bodies.Spec, "spec"),
@@ -133,8 +133,8 @@ else:
             NamedArg(int, "retry"),
             NamedArg(datetime.datetime, "started"),
             NamedArg(datetime.timedelta, "runtime"),
-            NamedArg(Dict[str, str], "labels"),
-            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(bodies.Annotations, "annotations"),
+            NamedArg(bodies.Labels, "labels"),
             NamedArg(bodies.Body, "body"),
             NamedArg(bodies.Meta, "meta"),
             NamedArg(bodies.Spec, "spec"),
@@ -155,8 +155,8 @@ else:
     ResourceTimerFn = Callable[
         [
             NamedArg(ephemera.Index, "*"),
-            NamedArg(Dict[str, str], "labels"),
-            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(bodies.Annotations, "annotations"),
+            NamedArg(bodies.Labels, "labels"),
             NamedArg(bodies.Body, "body"),
             NamedArg(bodies.Meta, "meta"),
             NamedArg(bodies.Spec, "spec"),
@@ -178,8 +178,8 @@ else:
         [
             NamedArg(str, "type"),
             NamedArg(bodies.RawEvent, "event"),
-            NamedArg(Dict[str, str], "labels"),
-            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(bodies.Annotations, "annotations"),
+            NamedArg(bodies.Labels, "labels"),
             NamedArg(bodies.Body, "body"),
             NamedArg(bodies.Meta, "meta"),
             NamedArg(bodies.Spec, "spec"),
@@ -204,8 +204,8 @@ else:
         [
             Arg(Any, "value"),
             NamedArg(str, "type"),
-            NamedArg(Dict[str, str], "labels"),
-            NamedArg(Dict[str, str], "annotations"),
+            NamedArg(bodies.Annotations, "annotations"),
+            NamedArg(bodies.Labels, "labels"),
             NamedArg(bodies.Body, "body"),
             NamedArg(bodies.Meta, "meta"),
             NamedArg(bodies.Spec, "spec"),

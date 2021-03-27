@@ -41,11 +41,15 @@ In case the operators are also type-checked, type casting can be used
     and object-processing functions. The internal dicts will remain the same.
 """
 
-from typing import Any, List, Mapping, MutableMapping, Optional, Union, cast
+from typing import Any, List, Mapping, Optional, Union, cast
 
 from typing_extensions import Literal, TypedDict
 
 from kopf.structs import dicts, references
+
+# Make sure every kwarg has a corresponding same-named type in the root package.
+Labels = Mapping[str, str]
+Annotations = Mapping[str, str]
 
 #
 # Everything marked "raw" is a plain unwrapped unprocessed data as JSON-decoded
@@ -63,8 +67,8 @@ class RawMeta(TypedDict, total=False):
     uid: str
     name: str
     namespace: str
-    labels: Mapping[str, str]
-    annotations: Mapping[str, str]
+    labels: Labels
+    annotations: Annotations
     finalizers: List[str]
     resourceVersion: str
     deletionTimestamp: str
@@ -111,13 +115,14 @@ class RawEvent(TypedDict, total=True):
 
 
 class MetaEssence(TypedDict, total=False):
-    labels: MutableMapping[str, str]
-    annotations: MutableMapping[str, str]
+    labels: Labels
+    annotations: Annotations
 
 
 class BodyEssence(TypedDict, total=False):
     metadata: MetaEssence
-    spec: MutableMapping[str, Any]
+    spec: Mapping[str, Any]
+    status: Mapping[str, Any]
 
 
 #
@@ -136,11 +141,11 @@ class Meta(dicts.MappingView[str, Any]):
         self._annotations: dicts.MappingView[str, str] = dicts.MappingView(self, 'annotations')
 
     @property
-    def labels(self) -> dicts.MappingView[str, str]:
+    def labels(self) -> Labels:
         return self._labels
 
     @property
-    def annotations(self) -> dicts.MappingView[str, str]:
+    def annotations(self) -> Annotations:
         return self._annotations
 
     @property
