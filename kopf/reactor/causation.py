@@ -21,11 +21,11 @@ could execute on the yet-existing object (and its children, if created).
 """
 import dataclasses
 import logging
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, List, Mapping, Optional, TypeVar, Union
 
 from kopf.storage import finalizers
-from kopf.structs import bodies, configuration, diffs, ephemera, \
-                         handlers, patches, primitives, references
+from kopf.structs import bodies, configuration, diffs, ephemera, handlers, \
+                         patches, primitives, references, reviews
 
 
 @dataclasses.dataclass
@@ -46,6 +46,18 @@ class ResourceCause(BaseCause):
     resource: references.Resource
     patch: patches.Patch
     body: bodies.Body
+
+
+@dataclasses.dataclass
+class ResourceWebhookCause(ResourceCause):
+    dryrun: bool
+    reason: Optional[handlers.WebhookType]  # None means "all" or expects the webhook id
+    webhook: Optional[handlers.HandlerId]  # None means "all"
+    headers: Mapping[str, str]
+    sslpeer: Mapping[str, Any]
+    userinfo: reviews.UserInfo
+    warnings: List[str]  # mutable!
+    operation: Optional[reviews.Operation]  # None if not provided for some reason
 
 
 @dataclasses.dataclass

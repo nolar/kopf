@@ -32,6 +32,9 @@ from kopf.on import (
 from kopf.reactor import (
     lifecycles,  # as a separate name on the public namespace
 )
+from kopf.reactor.admission import (
+    AdmissionError,
+)
 from kopf.reactor.handling import (
     TemporaryError,
     PermanentError,
@@ -132,6 +135,16 @@ from kopf.structs.references import (
     Resource,
     EVERYTHING,
 )
+from kopf.structs.reviews import (
+    WebhookClientConfigService,
+    WebhookClientConfig,
+    Operation,
+    UserInfo,
+    Headers,
+    SSLPeer,
+    WebhookFn,
+    WebhookServerProtocol,
+)
 from kopf.toolkits.hierarchies import (
     adopt,
     label,
@@ -139,6 +152,12 @@ from kopf.toolkits.hierarchies import (
     adjust_namespace,
     append_owner_reference,
     remove_owner_reference,
+)
+from kopf.toolkits.webhooks import (
+    WebhookServer,
+    WebhookK3dServer,
+    WebhookMinikubeServer,
+    WebhookNgrokTunnel,
 )
 from kopf.utilities.piggybacking import (
     login_via_pykube,
@@ -160,6 +179,19 @@ __all__ = [
     'build_object_reference', 'build_owner_reference',
     'append_owner_reference', 'remove_owner_reference',
     'ErrorsMode',
+    'AdmissionError',
+    'WebhookClientConfigService',
+    'WebhookClientConfig',
+    'Operation',
+    'UserInfo',
+    'Headers',
+    'SSLPeer',
+    'WebhookFn',
+    'WebhookServerProtocol',
+    'WebhookServer',
+    'WebhookK3dServer',
+    'WebhookMinikubeServer',
+    'WebhookNgrokTunnel',
     'PermanentError',
     'TemporaryError',
     'HandlerTimeoutError',

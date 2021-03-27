@@ -2,8 +2,8 @@ import aiohttp
 import pytest
 
 from kopf.clients.auth import APIContext, reauthenticated_request
-from kopf.clients.errors import APIError, APIForbiddenError, APINotFoundError, \
-                                APIUnauthorizedError, check_response
+from kopf.clients.errors import APIConflictError, APIError, APIForbiddenError, \
+                                APINotFoundError, APIUnauthorizedError, check_response
 
 
 @reauthenticated_request
@@ -52,6 +52,7 @@ async def test_no_error_on_success(
     (401, APIUnauthorizedError),
     (403, APIForbiddenError),
     (404, APINotFoundError),
+    (409, APIConflictError),
     (500, APIError),
     (666, APIError),
 ])

@@ -24,6 +24,11 @@ rules:
     resources: [namespaces]
     verbs: [list, watch]
 
+  # Framework: admission webhook configuration management.
+  - apiGroups: [admissionregistration.k8s.io/v1, admissionregistration.k8s.io/v1beta1]
+    resources: [validatingwebhookconfigurations, mutatingwebhookconfigurations]
+    verbs: [create, patch]
+
   # Application: read-only access for watching cluster-wide.
   - apiGroups: [kopf.dev]
     resources: [kopfexamples]

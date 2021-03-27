@@ -101,6 +101,10 @@ class APINotFoundError(APIError):
     pass
 
 
+class APIConflictError(APIError):
+    pass
+
+
 async def check_response(
         response: aiohttp.ClientResponse,
 ) -> None:
@@ -124,6 +128,7 @@ async def check_response(
             APIUnauthorizedError if response.status == 401 else
             APIForbiddenError if response.status == 403 else
             APINotFoundError if response.status == 404 else
+            APIConflictError if response.status == 409 else
             APIError
         )
 

@@ -39,6 +39,7 @@ Kopf: Kubernetes Operators Framework
    scopes
    memos
    indexing
+   admission
 
 .. toctree::
    :maxdepth: 2

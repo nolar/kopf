@@ -14,12 +14,13 @@ This module is a part of the framework's public interface.
 from typing import Any, Callable, Optional, Union
 
 from kopf.reactor import handling, registries
-from kopf.structs import callbacks, dicts, filters, handlers, references
+from kopf.structs import callbacks, dicts, filters, handlers, references, reviews
 
 ActivityDecorator = Callable[[callbacks.ActivityFn], callbacks.ActivityFn]
 ResourceIndexingDecorator = Callable[[callbacks.ResourceIndexingFn], callbacks.ResourceIndexingFn]
 ResourceWatchingDecorator = Callable[[callbacks.ResourceWatchingFn], callbacks.ResourceWatchingFn]
 ResourceChangingDecorator = Callable[[callbacks.ResourceChangingFn], callbacks.ResourceChangingFn]
+ResourceWebhookDecorator = Callable[[callbacks.ResourceWebhookFn], callbacks.ResourceWebhookFn]
 ResourceDaemonDecorator = Callable[[callbacks.ResourceDaemonFn], callbacks.ResourceDaemonFn]
 ResourceTimerDecorator = Callable[[callbacks.ResourceTimerFn], callbacks.ResourceTimerFn]
 
@@ -130,6 +131,118 @@ def probe(  # lgtm[py/similar-function]
             activity=handlers.Activity.PROBE,
         )
         real_registry._activities.append(handler)
+        return fn
+    return decorator
+
+
+def validate(  # lgtm[py/similar-function]
+        # Resource type specification:
+        __group_or_groupversion_or_name: Optional[Union[str, references.Marker]] = None,
+        __version_or_name: Optional[Union[str, references.Marker]] = None,
+        __name: Optional[Union[str, references.Marker]] = None,
+        *,
+        group: Optional[str] = None,
+        version: Optional[str] = None,
+        kind: Optional[str] = None,
+        plural: Optional[str] = None,
+        singular: Optional[str] = None,
+        shortcut: Optional[str] = None,
+        category: Optional[str] = None,
+        # Handler's behaviour specification:
+        id: Optional[str] = None,
+        param: Optional[Any] = None,
+        operation: Optional[reviews.Operation] = None,  # -> .webhooks.*.rules.*.operations[0]
+        persistent: Optional[bool] = None,
+        side_effects: Optional[bool] = None,  # -> .webhooks.*.sideEffects
+        ignore_failures: Optional[bool] = None,  # -> .webhooks.*.failurePolicy=Ignore
+        # Resource object specification:
+        labels: Optional[filters.MetaFilter] = None,
+        annotations: Optional[filters.MetaFilter] = None,
+        when: Optional[callbacks.WhenFilterFn] = None,
+        field: Optional[dicts.FieldSpec] = None,
+        value: Optional[filters.ValueFilter] = None,
+        # Operator specification:
+        registry: Optional[registries.OperatorRegistry] = None,
+) -> ResourceWebhookDecorator:
+    """ ``@kopf.on.validate()`` handler for validating admission webhooks. """
+    def decorator(  # lgtm[py/similar-function]
+            fn: callbacks.ResourceWebhookFn,
+    ) -> callbacks.ResourceWebhookFn:
+        _warn_conflicting_values(field, value)
+        _verify_filters(labels, annotations)
+        real_registry = registry if registry is not None else registries.get_default_registry()
+        real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
+        real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
+        selector = references.Selector(
+            __group_or_groupversion_or_name, __version_or_name, __name,
+            group=group, version=version,
+            kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
+        )
+        handler = handlers.ResourceWebhookHandler(
+            fn=fn, id=real_id, param=param,
+            errors=None, timeout=None, retries=None, backoff=None,  # TODO: add some meaning later
+            selector=selector, labels=labels, annotations=annotations, when=when,
+            field=real_field, value=value,
+            reason=handlers.WebhookType.VALIDATING, operation=operation,
+            persistent=persistent, side_effects=side_effects, ignore_failures=ignore_failures,
+        )
+        real_registry._resource_webhooks.append(handler)
+        return fn
+    return decorator
+
+
+def mutate(  # lgtm[py/similar-function]
+        # Resource type specification:
+        __group_or_groupversion_or_name: Optional[Union[str, references.Marker]] = None,
+        __version_or_name: Optional[Union[str, references.Marker]] = None,
+        __name: Optional[Union[str, references.Marker]] = None,
+        *,
+        group: Optional[str] = None,
+        version: Optional[str] = None,
+        kind: Optional[str] = None,
+        plural: Optional[str] = None,
+        singular: Optional[str] = None,
+        shortcut: Optional[str] = None,
+        category: Optional[str] = None,
+        # Handler's behaviour specification:
+        id: Optional[str] = None,
+        param: Optional[Any] = None,
+        operation: Optional[reviews.Operation] = None,  # -> .webhooks.*.rules.*.operations[0]
+        persistent: Optional[bool] = None,
+        side_effects: Optional[bool] = None,  # -> .webhooks.*.sideEffects
+        ignore_failures: Optional[bool] = None,  # -> .webhooks.*.failurePolicy=Ignore
+        # Resource object specification:
+        labels: Optional[filters.MetaFilter] = None,
+        annotations: Optional[filters.MetaFilter] = None,
+        when: Optional[callbacks.WhenFilterFn] = None,
+        field: Optional[dicts.FieldSpec] = None,
+        value: Optional[filters.ValueFilter] = None,
+        # Operator specification:
+        registry: Optional[registries.OperatorRegistry] = None,
+) -> ResourceWebhookDecorator:
+    """ ``@kopf.on.mutate()`` handler for mutating admission webhooks. """
+    def decorator(  # lgtm[py/similar-function]
+            fn: callbacks.ResourceWebhookFn,
+    ) -> callbacks.ResourceWebhookFn:
+        _warn_conflicting_values(field, value)
+        _verify_filters(labels, annotations)
+        real_registry = registry if registry is not None else registries.get_default_registry()
+        real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
+        real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
+        selector = references.Selector(
+            __group_or_groupversion_or_name, __version_or_name, __name,
+            group=group, version=version,
+            kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
+        )
+        handler = handlers.ResourceWebhookHandler(
+            fn=fn, id=real_id, param=param,
+            errors=None, timeout=None, retries=None, backoff=None,  # TODO: add some meaning later
+            selector=selector, labels=labels, annotations=annotations, when=when,
+            field=real_field, value=value,
+            reason=handlers.WebhookType.MUTATING, operation=operation,
+            persistent=persistent, side_effects=side_effects, ignore_failures=ignore_failures,
+        )
+        real_registry._resource_webhooks.append(handler)
         return fn
     return decorator
 

@@ -86,6 +86,7 @@ def group1_404mock(resp_mocker, aresponses, hostname, apis_mock):
 @pytest.fixture(params=[
     kopf.on.event, kopf.daemon, kopf.timer, kopf.index,
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
+    kopf.on.validate, kopf.on.mutate,
 ])
 def handlers(request, registry):
     @request.param('group1', 'version1', 'plural1')

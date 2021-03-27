@@ -92,20 +92,30 @@ class ResourceMemories:
             *,
             memo: Optional[ephemera.AnyMemo] = None,
             noticed_by_listing: bool = False,
+            ephemeral: bool = False,
     ) -> ResourceMemory:
         """
         Either find a resource's memory, or create and remember a new one.
 
         Keep the last-seen body up to date for all the handlers.
+
+        Ephemeral memos are not remembered now
+        (later: will be remembered for short time, and then garbage-collected).
+        They are used by admission webhooks before the resource is created --
+        to not waste RAM for what might never exist. The persistent memo
+        will be created *after* the resource creation really happens.
         """
         key = self._build_key(raw_body)
-        if key not in self._items:
+        if key in self._items:
+            memory = self._items[key]
+        else:
             if memo is None:
                 memory = ResourceMemory(noticed_by_listing=noticed_by_listing)
             else:
                 memory = ResourceMemory(noticed_by_listing=noticed_by_listing, memo=copy.copy(memo))
-            self._items[key] = memory
-        return self._items[key]
+            if not ephemeral:
+                self._items[key] = memory
+        return memory
 
     async def forget(
             self,
