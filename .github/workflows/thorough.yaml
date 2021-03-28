@@ -128,7 +128,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        k8s: [v1.16.15, v1.15.12, v1.14.10]
+        k8s: [v1.16.15, v1.15.12]
         crdapi: [v1beta1]
     name: K8s ${{matrix.k8s}} ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
     runs-on: ubuntu-20.04
