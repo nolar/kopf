@@ -1,8 +1,40 @@
 import asyncio
-from typing import Collection, Optional, Set
+import ssl
+import urllib.parse
+from typing import Collection, Mapping, Optional, Set, Tuple
 
 from kopf.clients import auth, errors
 from kopf.structs import references
+
+
+@auth.reauthenticated_request
+async def read_sslcert(
+        *,
+        context: Optional[auth.APIContext] = None,
+) -> Tuple[str, bytes]:
+    if context is None:
+        raise RuntimeError("API instance is not injected by the decorator.")
+
+    parsed = urllib.parse.urlparse(context.server)
+    host = parsed.hostname or ''  # NB: it cannot be None/empty in our case.
+    port = parsed.port or 443
+    loop = asyncio.get_running_loop()
+    cert = await loop.run_in_executor(None, ssl.get_server_certificate, (host, port))
+    return host, cert.encode('ascii')
+
+
+@auth.reauthenticated_request
+async def read_version(
+        *,
+        context: Optional[auth.APIContext] = None,  # injected by the decorator
+) -> Mapping[str, str]:
+    if context is None:
+        raise RuntimeError("API instance is not injected by the decorator.")
+
+    server = context.server.rstrip('/')
+    url = f'{server}/version'
+    rsp: Mapping[str, str] = await errors.parse_response(await context.session.get(url))
+    return rsp
 
 
 @auth.reauthenticated_request

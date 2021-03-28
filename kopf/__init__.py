@@ -160,6 +160,8 @@ from kopf.toolkits.webhooks import (
     WebhookK3dServer,
     WebhookMinikubeServer,
     WebhookNgrokTunnel,
+    WebhookAutoServer,
+    WebhookAutoTunnel,
 )
 from kopf.utilities.piggybacking import (
     login_via_pykube,
@@ -194,6 +196,8 @@ __all__ = [
     'WebhookK3dServer',
     'WebhookMinikubeServer',
     'WebhookNgrokTunnel',
+    'WebhookAutoServer',
+    'WebhookAutoTunnel',
     'PermanentError',
     'TemporaryError',
     'HandlerTimeoutError',

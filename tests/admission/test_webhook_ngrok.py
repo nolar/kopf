@@ -1,20 +1,8 @@
 import asyncio
 
-import pyngrok.conf
-import pyngrok.ngrok
 import pytest
 
 from kopf.toolkits.webhooks import WebhookNgrokTunnel
-
-
-@pytest.fixture(autouse=True)
-def pyngrok_mock(mocker):
-    mocker.patch.object(pyngrok.conf, 'get_default')
-    mocker.patch.object(pyngrok.ngrok, 'set_auth_token')
-    mocker.patch.object(pyngrok.ngrok, 'connect')
-    mocker.patch.object(pyngrok.ngrok, 'disconnect')
-    pyngrok.ngrok.connect.return_value.public_url = 'https://nowhere'
-    return pyngrok
 
 
 async def test_missing_pyngrok(no_pyngrok, responder):
