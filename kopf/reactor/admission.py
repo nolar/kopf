@@ -98,7 +98,7 @@ async def serve_admission_request(
     if raw_body is None:
         raise MissingDataError("Either old or new object is missing from the admission request.")
 
-    memo = await memories.recall(raw_body, memo=memobase, ephemeral=operation=='CREATE')
+    memory = await memories.recall(raw_body, memo=memobase, ephemeral=operation=='CREATE')
     body = bodies.Body(raw_body)
     patch = patches.Patch()
     warnings: List[str] = []
@@ -107,7 +107,7 @@ async def serve_admission_request(
         indices=indices,
         logger=loggers.LocalObjectLogger(body=body, settings=settings),
         patch=patch,
-        memo=memo,
+        memo=memory.memo,
         body=body,
         userinfo=userinfo,
         warnings=warnings,
