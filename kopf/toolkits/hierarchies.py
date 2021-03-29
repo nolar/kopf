@@ -2,6 +2,7 @@
 All the functions to properly build the object hierarchies.
 """
 import collections.abc
+import enum
 import warnings
 from typing import Any, Iterable, Iterator, Mapping, MutableMapping, Optional, Union, cast
 
@@ -11,6 +12,10 @@ from kopf.utilities import thirdparty
 
 K8sObject = Union[MutableMapping[Any, Any], thirdparty.PykubeObject, thirdparty.KubernetesModel]
 K8sObjects = Union[K8sObject, Iterable[K8sObject]]
+
+
+class _UNSET(enum.Enum):
+    token = enum.auto()
 
 
 def append_owner_reference(
@@ -82,7 +87,7 @@ def remove_owner_reference(
 
 def label(
         objs: K8sObjects,
-        labels: Optional[Mapping[str, Union[None, str]]] = None,
+        labels: Union[Mapping[str, Union[None, str]], _UNSET] = _UNSET.token,
         *,
         forced: bool = False,
         nested: Optional[Union[str, Iterable[dicts.FieldSpec]]] = None,
@@ -97,9 +102,11 @@ def label(
         forced = force
 
     # Try to use the current object being handled if possible.
-    if labels is None:
+    if isinstance(labels, _UNSET):
         real_owner = _guess_owner(None)
         labels = real_owner.get('metadata', {}).get('labels', {})
+    if isinstance(labels, _UNSET):
+        raise RuntimeError("Impossible error: labels are not resolved.")  # for type-checking
 
     # Set labels based on the explicitly specified or guessed ones.
     for obj in cast(Iterator[K8sObject], dicts.walk(objs, nested=nested)):
@@ -124,7 +131,7 @@ def label(
 
 def harmonize_naming(
         objs: K8sObjects,
-        name: Optional[str] = None,
+        name: Union[None, str, _UNSET] = _UNSET.token,
         *,
         forced: bool = False,
         strict: bool = False,
@@ -145,9 +152,11 @@ def harmonize_naming(
     """
 
     # Try to use the current object being handled if possible.
-    if name is None:
+    if isinstance(name, _UNSET):
         real_owner = _guess_owner(None)
         name = real_owner.get('metadata', {}).get('name', None)
+    if isinstance(name, _UNSET):
+        raise RuntimeError("Impossible error: the name is not resolved.")  # for type-checking
     if name is None:
         raise LookupError("Name must be set explicitly: couldn't find it automatically.")
 
@@ -184,7 +193,7 @@ def harmonize_naming(
 
 def adjust_namespace(
         objs: K8sObjects,
-        namespace: Optional[str] = None,
+        namespace: Union[None, str, _UNSET] = _UNSET.token,
         *,
         forced: bool = False,
 ) -> None:
@@ -198,11 +207,11 @@ def adjust_namespace(
     """
 
     # Try to use the current object being handled if possible.
-    if namespace is None:
+    if isinstance(namespace, _UNSET):
         real_owner = _guess_owner(None)
         namespace = real_owner.get('metadata', {}).get('namespace', None)
-    if namespace is None:
-        raise LookupError("Namespace must be set explicitly: couldn't find it automatically.")
+    if isinstance(namespace, _UNSET):
+        raise RuntimeError("Impossible error: the namespace is not resolved.")  # for type-checking
 
     # Set namespace based on the explicitly specified or guessed namespace.
     for obj in cast(Iterator[K8sObject], dicts.walk(objs)):
