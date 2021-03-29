@@ -108,10 +108,11 @@ def test_when_empty_for_name_harmonization(owner):
 
 
 def test_when_empty_for_namespace_adjustment(owner):
+    # An absent namespace means a cluster-scoped resource -- a valid case.
+    obj = {}
     owner._replace_with({})
-    with pytest.raises(LookupError) as e:
-        kopf.adjust_namespace([])
-    assert 'Namespace must be set explicitly' in str(e.value)
+    kopf.adjust_namespace(obj)
+    assert obj['metadata']['namespace'] is None
 
 
 def test_when_empty_for_adopting(owner):
