@@ -418,7 +418,7 @@ async def _resource_daemon(
 
     # Similar to activities (in-memory execution), but applies patches on every attempt.
     state = states.State.from_scratch().with_handlers([handler])
-    while not stopper.is_set() and not state.done:
+    while not stopper.is_set() and not state.check_done([handler]):
 
         outcomes = await handling.execute_handlers_once(
             lifecycle=lifecycles.all_at_once,  # there is only one anyway
@@ -433,8 +433,7 @@ async def _resource_daemon(
         patch.clear()
 
         # The in-memory sleep does not react to resource changes, but only to stopping.
-        if state.delay:
-            await primitives.sleep_or_wait(state.delay, cause.stopper)
+        await primitives.sleep_or_wait(state.get_delays([handler]), cause.stopper)
 
     if stopper.is_set():
         logger.debug(f"{handler} has exited on request and will not be retried or restarted.")
@@ -485,7 +484,7 @@ async def _resource_timer(
 
         # Reset success/failure retry counters & timers if it has succeeded. Keep it if failed.
         # Every next invocation of a successful handler starts the retries from scratch (from zero).
-        if state.done:
+        if state.check_done([handler]):
             state = states.State.from_scratch().with_handlers([handler])
 
         # Both `now` and `last_seen_time` are moving targets: the last seen time is updated
@@ -515,8 +514,8 @@ async def _resource_timer(
 
         # For temporary errors, override the schedule by the one provided by errors themselves.
         # It can be either a delay from TemporaryError, or a backoff for an arbitrary exception.
-        if not state.done:
-            await primitives.sleep_or_wait(state.delays, stopper)
+        if not state.check_done([handler]):
+            await primitives.sleep_or_wait(state.get_delays([handler]), stopper)
 
         # For sharp timers, calculate how much time is left to fit the interval grid:
         #       |-----|-----|-----|-----|-----|-----|---> (interval=5, sharp=True)

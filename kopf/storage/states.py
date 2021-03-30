@@ -281,14 +281,35 @@ class State(Mapping[ids.HandlerId, HandlerState]):
     def __getitem__(self, item: ids.HandlerId) -> HandlerState:
         return self._states[item]
 
-    @property
-    def done(self) -> bool:
+    def check_done(self, handlers: Collection[handlers_.BaseHandler]) -> bool:
         # In particular, no handlers means that it is "done" even before doing.
         return all(
-            handler_state.finished for handler_state in self._states.values()
-            if self.purpose is None or handler_state.purpose is None
-               or handler_state.purpose == self.purpose
+            self._states[handler.id].finished
+            for handler in handlers
+            if handler.id in self._states
+            # TODO: useless? (if handlers are explicitly provided in args).
+            # if self.purpose is None or self._states[handler.id].purpose is None
+            #    or self._states[handler.id].purpose == self.purpose
         )
+
+    def get_delays(self, handlers: Collection[handlers_.BaseHandler]) -> Collection[float]:
+        """
+        Resulting delays for the handlers (only the postponed ones).
+
+        The delays are then reduced to one single sleep in the top-level
+        processing routine, based on all delays of different origin:
+        e.g. postponed daemons, stopping daemons, temporarily failed handlers.
+        """
+        now = datetime.datetime.utcnow()
+        return [
+            max(0, (self._states[handler.id].delayed - now).total_seconds()) if self._states[handler.id].delayed else 0
+            for handler in handlers
+            if handler.id in self._states
+            if not self._states[handler.id].finished
+            # TODO: useless? (if handlers are explicitly provided in args).
+            # if self.purpose is None or self._states[handler.id].purpose is None
+            #    or self._states[handler.id].purpose == self.purpose
+        ]
 
     @property
     def extras(self) -> Mapping[handlers_.Reason, StateCounters]:
@@ -318,29 +339,6 @@ class State(Mapping[ids.HandlerId, HandlerState]):
             failure=len([1 for handler_state in purposeful_states if handler_state.failure]),
             running=len([1 for handler_state in purposeful_states if not handler_state.finished]),
         )
-
-    @property
-    def delay(self) -> Optional[float]:
-        delays = self.delays  # calculate only once, to save bit of CPU
-        return min(delays) if delays else None
-
-    @property
-    def delays(self) -> Collection[float]:
-        """
-        Resulting delays for the handlers (only the postponed ones).
-
-        The delays are then reduced to one single sleep in the top-level
-        processing routine, based on all delays of different origin:
-        e.g. postponed daemons, stopping daemons, temporarily failed handlers.
-        """
-        now = datetime.datetime.utcnow()
-        return [
-            max(0, (handler_state.delayed - now).total_seconds()) if handler_state.delayed else 0
-            for handler_state in self._states.values()
-            if not handler_state.finished
-            if self.purpose is None or handler_state.purpose is None
-               or handler_state.purpose == self.purpose
-        ]
 
 
 def deliver_results(

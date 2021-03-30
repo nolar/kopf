@@ -120,7 +120,7 @@ async def run_activity(
     handlers = registry._activities.get_handlers(activity=activity)
     state = states.State.from_scratch().with_handlers(handlers)
     outcomes: MutableMapping[ids.HandlerId, states.HandlerOutcome] = {}
-    while not state.done:
+    while not state.check_done(handlers):
         current_outcomes = await handling.execute_handlers_once(
             lifecycle=lifecycle,
             settings=settings,
@@ -130,7 +130,7 @@ async def run_activity(
         )
         outcomes.update(current_outcomes)
         state = state.with_outcomes(current_outcomes)
-        await primitives.sleep_or_wait(state.delay)
+        await primitives.sleep_or_wait(state.get_delays(handlers))
 
     # Activities assume that all handlers must eventually succeed.
     # We raise from the 1st exception only: just to have something real in the tracebacks.

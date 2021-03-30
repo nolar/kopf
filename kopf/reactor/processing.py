@@ -415,7 +415,7 @@ async def process_resource_changing_cause(
             state.store(body=cause.body, patch=cause.patch, storage=storage)
             states.deliver_results(outcomes=outcomes, patch=cause.patch)
 
-            if state.done:
+            if state.check_done(cause_handlers):
                 counters = state.counts  # calculate only once
                 logger.info(f"{title.capitalize()} is processed: "
                             f"{counters.success} succeeded; "
@@ -423,8 +423,8 @@ async def process_resource_changing_cause(
                 state.purge(body=cause.body, patch=cause.patch,
                             storage=storage, handlers=owned_handlers)
 
-            done = state.done
-            delays = state.delays
+            done = state.check_done(cause_handlers)
+            delays = state.get_delays(cause_handlers)
         else:
             skip = True
 

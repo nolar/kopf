@@ -175,8 +175,8 @@ async def execute(
             subrefs_container.add(key)
 
     # Escalate `HandlerChildrenRetry` if the execute should be continued on the next iteration.
-    if not state.done:
-        raise HandlerChildrenRetry(delay=state.delay)
+    if not state.check_done(cause_handlers):
+        raise HandlerChildrenRetry(delay=min(state.get_delays(cause_handlers)))
 
 
 async def execute_handlers_once(
