@@ -84,6 +84,81 @@ def test_created_empty_from_filled_storage_without_handlers(storage, handler, bo
 
 
 #
+# Active/passive states.
+#
+
+
+def test_created_from_storage_as_passive(storage, handler):
+    body = {'status': {'kopf': {'progress': {'some-id': {}}}}}
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    assert len(state) == 1
+    assert state['some-id'].active is False
+
+
+def test_created_from_handlers_as_active(storage, handler):
+    state = State.from_scratch()
+    state = state.with_handlers([handler])
+    assert len(state) == 1
+    assert state['some-id'].active is True
+
+
+def test_switched_from_passive_to_active(storage, handler):
+    body = {'status': {'kopf': {'progress': {'some-id': {'purpose': None}}}}}
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    state = state.with_handlers([handler])
+    assert len(state) == 1
+    assert state['some-id'].active is True
+
+
+def test_passed_through_with_outcomes_when_passive(storage, handler):
+    body = {'status': {'kopf': {'progress': {'some-id': {'purpose': None}}}}}
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    state = state.with_outcomes({'some-id': HandlerOutcome(final=True)})
+    assert len(state) == 1
+    assert state['some-id'].active is False
+
+
+def test_passed_through_with_outcomes_when_active(storage, handler):
+    state = State.from_scratch()
+    state = state.with_handlers([handler])
+    state = state.with_outcomes({'some-id': HandlerOutcome(final=True)})
+    assert len(state) == 1
+    assert state['some-id'].active is True
+
+
+def test_passive_states_are_not_used_in_done_calculation(storage, handler):
+    body = {'status': {'kopf': {'progress': {'some-id': {}}}}}
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    assert len(state) == 1
+    assert state.done is True  # because the unfinished handler state is ignored
+
+
+def test_active_states_are_used_in_done_calculation(storage, handler):
+    body = {'status': {'kopf': {'progress': {'some-id': {}}}}}
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    state = state.with_handlers([handler])
+    assert len(state) == 1
+    assert state.done is False
+
+
+@freezegun.freeze_time(TS0)
+def test_passive_states_are_not_used_in_delays_calculation(storage, handler):
+    body = {'status': {'kopf': {'progress': {'some-id': {'delayed': TS1_ISO}}}}}
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    assert len(state) == 1
+    assert state.delays == []
+
+
+@freezegun.freeze_time(TS0)
+def test_active_states_are_used_in_delays_calculation(storage, handler):
+    body = {'status': {'kopf': {'progress': {'some-id': {'delayed': TS1_ISO}}}}}
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+    state = state.with_handlers([handler])
+    assert len(state) == 1
+    assert state.delays == [1.0]
+
+
+#
 # Purpose propagation and re-purposing of the states (overall and per-handler):
 #
 
@@ -205,7 +280,7 @@ def test_with_handlers_relevant_to_the_purpose(
         storage, handler, body, expected_counts, expected_done, expected_delays, reason):
     body['status']['kopf']['progress']['some-id']['purpose'] = reason.value
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
-    state = state.with_purpose(reason)
+    state = state.with_purpose(reason).with_handlers([handler])
     assert len(state) == 1
     assert state.extras == {}
     assert state.counts == expected_counts
@@ -225,7 +300,7 @@ def test_with_handlers_relevant_to_the_purpose_and_delayed(
     body['status']['kopf']['progress']['some-id']['delayed'] = TS1_ISO
     body['status']['kopf']['progress']['some-id']['purpose'] = reason.value
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
-    state = state.with_purpose(reason)
+    state = state.with_purpose(reason).with_handlers([handler])
     assert len(state) == 1
     assert state.extras == {}
     assert state.counts == expected_counts

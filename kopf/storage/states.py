@@ -49,7 +49,13 @@ class HandlerState:
 
     Note the difference: `HandlerOutcome` is for in-memory results of handlers,
     which is then additionally converted before being storing as a state.
+
+    Active handler states are those used in .done/.delays for the current
+    handling cycle & the current cause. Passive handler states are those
+    carried over for logging of counts/extras, and for final state purging,
+    but not participating in the current handling cycle.
     """
+    active: Optional[bool] = None  # is it used in done/delays [T]? or only in counters/purges [F]?
     started: Optional[datetime.datetime] = None  # None means this information was lost.
     stopped: Optional[datetime.datetime] = None  # None means it is still running (e.g. delayed).
     delayed: Optional[datetime.datetime] = None  # None means it is finished (succeeded/failed).
@@ -64,6 +70,7 @@ class HandlerState:
     @classmethod
     def from_scratch(cls, *, purpose: Optional[handlers_.Reason] = None) -> "HandlerState":
         return cls(
+            active=True,
             started=datetime.datetime.utcnow(),
             purpose=purpose,
         )
@@ -71,6 +78,7 @@ class HandlerState:
     @classmethod
     def from_storage(cls, __d: progress.ProgressRecord) -> "HandlerState":
         return cls(
+            active=False,
             started=_datetime_fromisoformat(__d.get('started')) or datetime.datetime.utcnow(),
             stopped=_datetime_fromisoformat(__d.get('stopped')),
             delayed=_datetime_fromisoformat(__d.get('delayed')),
@@ -100,6 +108,9 @@ class HandlerState:
         # Nones are not stored by Kubernetes, so we filter them out for comparison.
         return {key: val for key, val in self.for_storage().items() if val is not None}
 
+    def as_active(self) -> "HandlerState":
+        return dataclasses.replace(self, active=True)
+
     def with_purpose(
             self,
             purpose: Optional[handlers_.Reason],
@@ -113,6 +124,7 @@ class HandlerState:
         now = datetime.datetime.utcnow()
         cls = type(self)
         return cls(
+            active=self.active,
             purpose=self.purpose,
             started=self.started if self.started else now,
             stopped=self.stopped if self.stopped else now if outcome.final else None,
@@ -213,6 +225,8 @@ class State(Mapping[ids.HandlerId, HandlerState]):
         for handler in handlers:
             if handler.id not in handler_states:
                 handler_states[handler.id] = HandlerState.from_scratch(purpose=self.purpose)
+            else:
+                handler_states[handler.id] = handler_states[handler.id].as_active()
         cls = type(self)
         return cls(handler_states, purpose=self.purpose)
 
@@ -286,8 +300,7 @@ class State(Mapping[ids.HandlerId, HandlerState]):
         # In particular, no handlers means that it is "done" even before doing.
         return all(
             handler_state.finished for handler_state in self._states.values()
-            if self.purpose is None or handler_state.purpose is None
-               or handler_state.purpose == self.purpose
+            if handler_state.active
         )
 
     @property
@@ -337,9 +350,7 @@ class State(Mapping[ids.HandlerId, HandlerState]):
         return [
             max(0, (handler_state.delayed - now).total_seconds()) if handler_state.delayed else 0
             for handler_state in self._states.values()
-            if not handler_state.finished
-            if self.purpose is None or handler_state.purpose is None
-               or handler_state.purpose == self.purpose
+            if handler_state.active and not handler_state.finished
         ]
 
 
