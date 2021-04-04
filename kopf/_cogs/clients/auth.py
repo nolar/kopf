@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, Iterator, Mapping, Optional, TypeVar, ca
 import aiohttp
 
 from kopf._cogs.clients import errors
+from kopf._cogs.helpers import versions
 from kopf._cogs.structs import credentials
 
 # Per-operator storage and exchange point for authentication methods.
@@ -186,7 +187,7 @@ class APIContext:
             auth = None
 
         # It is a good practice to self-identify a bit.
-        headers['User-Agent'] = f'kopf/unknown'  # TODO: add version someday
+        headers['User-Agent'] = f'kopf/{versions.version or "unknown"}'
 
         # Generic aiohttp session based on the constructed credentials.
         self.session = aiohttp.ClientSession(

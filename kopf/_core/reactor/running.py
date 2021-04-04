@@ -9,6 +9,7 @@ from typing import Collection, Coroutine, MutableSequence, Optional, Sequence
 from kopf._cogs.aiokits import aioadapters, aiobindings, aiotasks, aiotoggles, aiovalues
 from kopf._cogs.clients import auth
 from kopf._cogs.configs import configuration
+from kopf._cogs.helpers import versions
 from kopf._cogs.structs import credentials, ephemera, references, reviews
 from kopf._core.actions import execution, lifecycles
 from kopf._core.engines import activities, admission, daemons, indexing, peering, posting, probing
@@ -488,6 +489,7 @@ async def _startup_cleanup_activities(
     Beside calling the startup/cleanup handlers, it performs few operator-scoped
     cleanups too (those that cannot be handled by garbage collection).
     """
+    logger.debug(f"Starting Kopf {versions.version or '(unknown version)'}.")
 
     # Execute the startup activity before any root task starts running (due to readiness flag).
     try:

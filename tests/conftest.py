@@ -411,6 +411,7 @@ def fake_vault(mocker, hostname):
     try:
         yield vault
     finally:
+        # await vault.close()  # TODO: but it runs in a different loop, w/ wrong contextvar.
         auth.vault_var.reset(token)
 
 #
