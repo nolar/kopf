@@ -149,11 +149,18 @@ class StorageKeyFormingConvention(CollisionEvadingConvention):
         v1_keys = [self.make_v1_key(key)] if self.v1 else []
         return v2_keys + list(set(v1_keys) - set(v2_keys))
 
+    @staticmethod
+    def make_safe_key(key: str) -> str:
+        replacements = {'/': '.', '<': '_', '>': '_'}
+        for k, v in replacements.items():
+            key = key.replace(k, v)
+        return key
+
     def make_v1_key(self, key: str, max_length: int = 63) -> str:
 
         # K8s has a limitation on the allowed charsets in annotation/label keys.
         # https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/#syntax-and-character-set
-        safe_key = key.replace('/', '.')
+        safe_key = self.make_safe_key(key)
 
         # K8s has a limitation of 63 chars per annotation/label key.
         # Force it to 63 chars by replacing the tail with a consistent hash (with full alphabet).
@@ -171,8 +178,8 @@ class StorageKeyFormingConvention(CollisionEvadingConvention):
         prefix = f'{self.prefix}/' if self.prefix else ''
         suffix = self.make_suffix(key) if len(key) > max_length else ''
         key_limit = max(0, max_length - len(suffix))
-        clean_key = key.replace('/', '.')
-        final_key = f'{prefix}{clean_key[:key_limit]}{suffix}'
+        safe_key =  self.make_safe_key(key)
+        final_key = f'{prefix}{safe_key[:key_limit]}{suffix}'
         return final_key
 
     def make_suffix(self, key: str) -> str:
