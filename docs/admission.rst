@@ -227,17 +227,27 @@ Unlike with regular handlers and their error handling logic (:doc:`/errors`),
 the webhooks cannot do retries or backoffs. So, the ``backoff=``, ``errors=``,
 ``retries=``, ``timeout=`` options are not accepted on the admission handlers.
 
-`kopf.PermanentError` and `kopf.TemporaryError` are treated ...TODO: how?
-
 A special exception `kopf.AdmissionError` is provided to customize the status
 code and the message of the admission review response.
+
+All other exceptions, including `kopf.PermanentError` and `kopf.TemporaryError`,
+equally fail the admission (be that validating or mutating admission).
+However, they return the general HTTP code 500 (non-customisable).
+
+One and only one error is returned to the user who make an API request.
+In cases when Kubernetes makes several parallel requests to several webhooks
+(typically with managed webhook configurations, the fastest error is used).
+Within Kopf (usually with custom webhook servers/tunnels or self-made
+non-managed webhook configurations), errors are prioritised: first, admission
+errors, then permanent errors, then temporary errors, then arbitrary errors
+are used to select the only error to report in the admission review response.
 
 .. code-block:: python
 
     @kopf.on.validate('kopfexamples')
     def validate1(spec, **_):
         if spec.get('field') == 'value':
-            raise kopf.AdmissionError("Meh! I don't like it. Change the field.")
+            raise kopf.AdmissionError("Meh! I don't like it. Change the field.", code=400)
 
 The admission errors look like this (manually indented for readability):
 
@@ -396,7 +406,7 @@ For simplicity, Kopf does not authenticate webhook clients.
 
 However, Kopf's built-in webhook servers & tunnels extract the very basic
 request information and pass it to the admission handlers
-for additional verifications and possibly for authentification:
+for additional verification and possibly for authentification:
 
 * :kwarg:`headers` (``Mapping[str, str]``) contains all HTTPS headers,
   including ``Authorization: Basic ...``, ``Authorization: Bearer ...``.
@@ -426,7 +436,10 @@ An example of a self-signed peer certificate presented to ``sslpeer``:
      'notBefore': 'Mar  7 17:12:20 2021 GMT',
      'notAfter': 'Mar  7 17:12:20 2022 GMT'}
 
-To reproduce this without configuring apiservers:
+To reproduce these examples without configuring the Kubernetes apiservers
+but only Kopf & CLI tools, do the following:
+
+Step 1: Generate a self-signed ceritificate to be used as a client certificate:
 
 .. code-block:: bash
 
@@ -438,6 +451,10 @@ To reproduce this without configuring apiservers:
     # Organizational Unit Name (eg, section) []:
     # Common Name (eg, fully qualified host name) []:Example Common Name
     # Email Address []:example@kopf.dev
+
+Step 2: Start an operator with the certificate as a CA (for simplicity;
+in normal setups, there is a separate CA, which signs the client certificates;
+explaining this topic is beyond the scope of this framework's documentation):
 
 .. code-block:: python
 
@@ -452,6 +469,8 @@ To reproduce this without configuring apiservers:
     def show_auth(headers, sslpeer, **_):
         print(f'{headers=}')
         print(f'{sslpeer=}')
+
+Step 3: Save the admission review payload into a local file:
 
 .. code-block:: bash
 
@@ -480,6 +499,10 @@ To reproduce this without configuring apiservers:
     }
     EOF
 
+Step 4: Send the admission review payload to the operator's webhook server
+using the generated client certificate, observe the client identity printed
+to stdout by the webhook server and returned in the warnings:
+
 .. code-block:: bash
 
     curl --insecure --cert client-cert.pem --key client-key.pem https://ussser:passsw@localhost:54321 -d @review.json
@@ -488,8 +511,8 @@ To reproduce this without configuring apiservers:
     #               "allowed": true,
     #               "warnings": ["SSL peer is Example Common Name."]}}
 
-When and if needed, the operator developers can implement their servers/tunnels
-with their customised authentication methods.
+Using this data, operator developers can implement servers/tunnels
+with custom authentication methods when and if needed.
 
 
 Debugging with SSL
@@ -552,7 +575,7 @@ do not support HTTPS tunnelling (or require paid subscriptions):
 
     @kopf.on.startup()
     def config(settings: kopf.OperatorSettings, **_):
-        settings.admission.server = kopf.¶ver(insecure=True)
+        settings.admission.server = kopf.WebhookServer(insecure=True)
 
 
 Custom servers/tunnels
