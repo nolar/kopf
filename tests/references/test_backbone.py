@@ -3,12 +3,15 @@ import asyncio
 import async_timeout
 import pytest
 
-from kopf.structs.references import CLUSTER_PEERINGS, CRDS, EVENTS, NAMESPACED_PEERINGS, \
+from kopf.structs.references import CLUSTER_PEERINGS_K, CLUSTER_PEERINGS_Z, CRDS, EVENTS, \
+                                    NAMESPACED_PEERINGS_K, NAMESPACED_PEERINGS_Z, \
                                     NAMESPACES, Backbone, Resource, Selector
 
 
 @pytest.mark.parametrize('selector', [
-    CRDS, EVENTS, NAMESPACES, CLUSTER_PEERINGS, NAMESPACED_PEERINGS,
+    CRDS, EVENTS, NAMESPACES,
+    CLUSTER_PEERINGS_K, NAMESPACED_PEERINGS_K,
+    CLUSTER_PEERINGS_Z, NAMESPACED_PEERINGS_Z,
 ])
 def test_empty_backbone(selector: Selector):
     backbone = Backbone()
@@ -24,10 +27,10 @@ def test_empty_backbone(selector: Selector):
     (CRDS, Resource('apiextensions.k8s.io', 'vX', 'customresourcedefinitions')),
     (EVENTS, Resource('', 'v1', 'events')),
     (NAMESPACES, Resource('', 'v1', 'namespaces')),
-    (CLUSTER_PEERINGS, Resource('kopf.dev', 'v1', 'clusterkopfpeerings')),
-    (NAMESPACED_PEERINGS, Resource('kopf.dev', 'v1', 'kopfpeerings')),
-    (CLUSTER_PEERINGS, Resource('zalando.org', 'v1', 'clusterkopfpeerings')),
-    (NAMESPACED_PEERINGS, Resource('zalando.org', 'v1', 'kopfpeerings')),
+    (CLUSTER_PEERINGS_K, Resource('kopf.dev', 'v1', 'clusterkopfpeerings')),
+    (NAMESPACED_PEERINGS_K, Resource('kopf.dev', 'v1', 'kopfpeerings')),
+    (CLUSTER_PEERINGS_Z, Resource('zalando.org', 'v1', 'clusterkopfpeerings')),
+    (NAMESPACED_PEERINGS_Z, Resource('zalando.org', 'v1', 'kopfpeerings')),
 ])
 async def test_refill_populates_the_resources(selector: Selector, resource: Resource):
     backbone = Backbone()

@@ -127,9 +127,8 @@ async def adjust_tasks(
         identity: peering.Identity,
         ensemble: Ensemble,
 ) -> None:
-    peering_selector = peering.guess_selector(settings=settings)
-    peering_resource = insights.backbone.get(peering_selector) if peering_selector else None
-    peering_resources = {peering_resource} if peering_resource is not None else set()
+    peering_selectors = peering.guess_selectors(settings=settings)
+    peering_resources = {insights.backbone[s] for s in peering_selectors if s in insights.backbone}
 
     # Pause or resume all streams if the peering CRDs are absent but required.
     # Ignore the CRD absence in auto-detection mode: pause only when (and if) the CRDs are added.

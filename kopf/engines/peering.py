@@ -265,13 +265,13 @@ def detect_own_id(*, manual: bool) -> Identity:
     return Identity(f'{user}@{host}' if manual else f'{user}@{host}/{now}/{rnd}')
 
 
-def guess_selector(settings: configuration.OperatorSettings) -> Optional[references.Selector]:
+def guess_selectors(settings: configuration.OperatorSettings) -> Iterable[references.Selector]:
     if settings.peering.standalone:
-        return None
+        return []
     elif settings.peering.clusterwide:
-        return references.CLUSTER_PEERINGS
+        return [references.CLUSTER_PEERINGS_K, references.CLUSTER_PEERINGS_Z]
     elif settings.peering.namespaced:
-        return references.NAMESPACED_PEERINGS
+        return [references.NAMESPACED_PEERINGS_K, references.NAMESPACED_PEERINGS_Z]
     else:
         raise TypeError("Unidentified peering mode (none of standalone/cluster/namespaced).")
 
@@ -289,10 +289,10 @@ async def touch_command(
         insights.ready_resources.wait(),
     })
 
-    selector = guess_selector(settings=settings)
-    resource = insights.backbone.get(selector) if selector else None
-    if resource is None:
-        raise RuntimeError(f"Cannot find the peering resource {selector}.")
+    selectors = guess_selectors(settings=settings)
+    resources = [insights.backbone[s] for s in selectors if s in insights.backbone]
+    if not resources:
+        raise RuntimeError(f"Cannot find the peering resource for {selectors}.")
 
     await aiotasks.wait({
         aiotasks.create_guarded_task(
@@ -305,4 +305,5 @@ async def touch_command(
                 lifetime=lifetime),
         )
         for namespace in insights.namespaces
+        for resource in resources
     })
