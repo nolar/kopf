@@ -79,7 +79,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        k3s: [latest, v1.20, v1.19, v1.18, v1.17, v1.16]
+        k3s: [latest, v1.21, v1.20, v1.19, v1.18, v1.17, v1.16]
         crdapi: ["", v1beta1]
         exclude:
           - crdapi: v1beta1
@@ -107,7 +107,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        k8s: [latest, v1.20.4, v1.19.8, v1.18.16, v1.17.17, v1.16.15]
+        k8s: [latest, v1.21.0, v1.20.5, v1.19.9, v1.18.17, v1.17.17, v1.16.15]
         crdapi: [""]
     name: K8s ${{matrix.k8s}} ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
     runs-on: ubuntu-20.04
