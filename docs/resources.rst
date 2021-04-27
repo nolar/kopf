@@ -194,3 +194,15 @@ if there are some accidental overlaps in the specifications.
     Keep the short forms only for prototyping and experimentation mode,
     and for ad-hoc operators with custom resources (not reusable and running
     in controlled clusters where no other similar resources can be defined).
+
+.. warning::
+
+    Some API groups are served by API extensions: e.g. ``metrics.k8s.io``.
+    If the extension's deployment/service/pods are down, such a group will
+    not be scannable (failing with "HTTP 503 Service Unavailable")
+    and will block scanning the whole cluster if resources are specified
+    with no group name (e.g. ``('pods')`` instead of ``('v1', 'pods')``).
+
+    To avoid scanning the whole cluster and all (even unused) API groups,
+    it is recommended to specify at least the group names for all resources,
+    especially in reusable and publicly distributed operators.
