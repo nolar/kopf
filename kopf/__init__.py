@@ -130,9 +130,10 @@ from kopf.structs.patches import (
     Patch,
 )
 from kopf.structs.primitives import (
+    DaemonStoppingFlag,
     DaemonStoppingReason,
-    SyncDaemonStopperChecker,
-    AsyncDaemonStopperChecker,
+    SyncDaemonStoppingFlag as SyncDaemonStopperChecker,  # deprecated
+    AsyncDaemonStoppingFlag as AsyncDaemonStopperChecker,  # deprecated
 )
 from kopf.structs.references import (
     Resource,
@@ -218,7 +219,6 @@ __all__ = [
     'StatusProgressStorage',
     'MultiProgressStorage',
     'SmartProgressStorage',
-    'DaemonStoppingReason',
     'RawEventType',
     'RawEvent',
     'RawBody',
@@ -243,7 +243,9 @@ __all__ = [
     'HandlerId',
     'Reason',
     'Patch',
-    'SyncDaemonStopperChecker',
-    'AsyncDaemonStopperChecker',
+    'DaemonStoppingFlag',
+    'DaemonStoppingReason',
+    'SyncDaemonStopperChecker',  # deprecated
+    'AsyncDaemonStopperChecker',  # deprecated
     'Resource', 'EVERYTHING',
 ]

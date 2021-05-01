@@ -166,7 +166,7 @@ else:
 
     ResourceDaemonFn = Callable[
         [
-            NamedArg(primitives.SyncAsyncDaemonStopperChecker, "stopped"),
+            NamedArg(primitives.DaemonStoppingFlag, "stopped"),
             NamedArg(int, "retry"),
             NamedArg(datetime.datetime, "started"),
             NamedArg(datetime.timedelta, "runtime"),

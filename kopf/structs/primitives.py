@@ -7,8 +7,8 @@ import concurrent.futures
 import enum
 import threading
 import time
-from typing import Any, AsyncIterator, Callable, Collection, Generic, \
-                   Iterable, Iterator, Optional, Set, TypeVar, Union
+from typing import Any, AsyncIterator, Awaitable, Callable, Collection, Generator, \
+                   Generic, Iterable, Iterator, Optional, Set, TypeVar, Union
 
 from kopf.utilities import aiotasks
 
@@ -342,8 +342,8 @@ class DaemonStopper:
         super().__init__()
         self.when: Optional[float] = None
         self.reason = DaemonStoppingReason.NONE
-        self.sync_checker = SyncDaemonStopperChecker(self)
-        self.async_checker = AsyncDaemonStopperChecker(self)
+        self.sync_flag = SyncDaemonStoppingFlag(stopper=self)
+        self.async_flag = AsyncDaemonStoppingFlag(stopper=self)
         self.sync_event = threading.Event()
         self.async_event = asyncio.Event()
 
@@ -363,16 +363,14 @@ class DaemonStopper:
         self.async_event.set()  # it is thread-safe: always called in operator's event loop.
 
 
-class DaemonStopperChecker:
-
+class DaemonStoppingFlag:
     """
     A minimalistic read-only checker for the daemons from the user side.
 
     This object is fed into the :kwarg:`stopped` kwarg for the handlers.
 
     The actual stopper is hidden from the users, and is an internal class.
-    The users should not be able to trigger the stopping activities or
-    check the reasons of stopping (or know about them at all).
+    The users should not be able to trigger the stopping activities.
 
     Usage::
 
@@ -383,7 +381,7 @@ class DaemonStopperChecker:
                 stopped.wait(60)
     """
 
-    def __init__(self, stopper: DaemonStopper) -> None:
+    def __init__(self, *, stopper: DaemonStopper) -> None:
         super().__init__()
         self._stopper = stopper
 
@@ -400,25 +398,84 @@ class DaemonStopperChecker:
     def reason(self) -> DaemonStoppingReason:
         return self._stopper.reason
 
+    # See the docstring for AsyncDaemonStoppingWaiter for explanation.
+    def wait(self, timeout: Optional[float] = None) -> "DaemonStoppingFlag":
+        # Presumably, `await stopped.wait(n).wait(m)` in async mode.
+        raise NotImplementedError("Please report the use-case in the issue tracker if needed.")
 
-class SyncDaemonStopperChecker(DaemonStopperChecker):
-    def wait(self, timeout: Optional[float] = None) -> bool:
+    # See the docstring for AsyncDaemonStoppingWaiter for explanation.
+    def __await__(self) -> Generator[None, None, "DaemonStoppingFlag"]:
+        # Presumably, `await stopped` in either sync or async mode.
+        raise NotImplementedError("Daemon stoppers should not be awaited directly. "
+                                  "Use `await stopped.wait()`.")
+
+
+class SyncDaemonStoppingFlag(DaemonStoppingFlag):
+    def wait(self, timeout: Optional[float] = None) -> "SyncDaemonStoppingFlag":
         self._stopper.sync_event.wait(timeout=timeout)
-        return bool(self)
+        return self
 
 
-class AsyncDaemonStopperChecker(DaemonStopperChecker):
-    async def wait(self, timeout: Optional[float] = None) -> bool:
+class AsyncDaemonStoppingFlag(DaemonStoppingFlag):
+    def wait(self, timeout: Optional[float] = None) -> "AsyncDaemonStoppingWaiter":
+        # A new checker instance, which is awaitable and returns the original checker in the end.
+        return AsyncDaemonStoppingWaiter(checker=self, timeout=timeout)
+
+
+class AsyncDaemonStoppingWaiter(DaemonStoppingFlag, Awaitable[AsyncDaemonStoppingFlag]):
+    """
+    An artificial future-like promise for ``await stopped.wait(...)``.
+
+    This is a low-level "clean hack" to simplify the publicly faced types.
+    As a trade-off, the complexity moves to the implementation side.
+
+    The only goal is to accept one and only one type for the ``stopped`` kwarg
+    in ``@kopf.daemon()`` handlers (protocol `callbacks.ResourceDaemonFn`)
+    regardless of whether they are sync or async, but still usable for both.
+
+    For this, the kwarg is announced with the base type `DaemonStoppingFlag`,
+    not as a union of sync or async, or any other double-typed approach.
+
+    The challenge is to support ``stopped.wait()`` in both sync & async modes:
+
+    * sync: ``stopped.wait(float) -> bool``.
+    * async: ``await stopped.wait(float) -> bool``.
+
+    The sync case is the primary case as there are no alternatives to it.
+    The async case is secondary because such use is discouraged (but supported);
+    it is recommended to rely on regular task cancellations in async daemons.
+
+    To solve it, instead of returning a ``bool``, a ``bool``-evaluable object
+    is returned --- the checker itself. This solves the primary (sync) use-case:
+    just sleep for the requested duration and return bool-evaluable self.
+
+    To follow the established signatures of the primary (sync) use-case,
+    the secondary (async) use-case also returns an instance of the checker:
+    but not "self"! Instead, it creates a new time-limited & awaitable checker
+    for every call to ``stopped.wait(n)``, limiting its life by ``n`` seconds.
+
+    Extra checker instances add some tiny memory overhead, but this is fine
+    since the use-case is discouraged and there is a better native alternative.
+
+    Then, going back through the class hierarchy, all classes are made awaitable
+    so that this functionality becomes exposed via the declared base class.
+    But all checkers except the time-limited one prohibit waiting for them.
+    """
+
+    def __init__(self, *, checker: AsyncDaemonStoppingFlag, timeout: Optional[float]) -> None:
+        super().__init__(stopper=checker._stopper)
+        self._checker = checker
+        self._timeout = timeout
+
+    def __await__(self) -> Generator[None, None, AsyncDaemonStoppingFlag]:
+        name = f"time-limited waiting for the daemon stopper {self._stopper!r}"
+        coro = asyncio.wait_for(self._stopper.async_event.wait(), timeout=self._timeout)
+        task = aiotasks.create_task(coro, name=name)
         try:
-            await asyncio.wait_for(self._stopper.async_event.wait(), timeout=timeout)
+            yield from task
         except asyncio.TimeoutError:
             pass
-        return bool(self)
-
-
-# Having this union allows both sync & async checkers in the same protocol,
-# while not restricting the use of `wait()` as if the base class would be used.
-SyncAsyncDaemonStopperChecker = Union[SyncDaemonStopperChecker, AsyncDaemonStopperChecker]
+        return self._checker  # the original checker! not the time-limited one!
 
 
 async def sleep_or_wait(

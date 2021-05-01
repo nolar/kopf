@@ -95,7 +95,7 @@ def build_kwargs(
         )
     if isinstance(cause, causation.DaemonCause) and _sync is not None:
         new_kwargs.update(
-            stopped=cause.stopper.sync_checker if _sync else cause.stopper.async_checker,
+            stopped=cause.stopper.sync_flag if _sync else cause.stopper.async_flag,
         )
 
     # Inject indices in the end, so that they overwrite regular kwargs.

@@ -86,7 +86,7 @@ def update_with_field_change_satisfied(logger, **kwargs):
 
 
 @kopf.daemon('kopfexamples', field='spec.field', value='value')
-def daemon_with_field(stopped, logger, **kwargs):
+def daemon_with_field(stopped: kopf.DaemonStoppingFlag, logger, **kwargs):
     while not stopped:
         logger.info("Field daemon is satisfied.")
         stopped.wait(1)

@@ -283,7 +283,7 @@ def test_daemon_sync_stopper(resource, indices):
         stopper=DaemonStopper(),
     )
     kwargs = build_kwargs(cause=cause, _sync=True)
-    assert kwargs['stopped'] is cause.stopper.sync_checker
+    assert kwargs['stopped'] is cause.stopper.sync_flag
 
 
 def test_daemon_async_stopper(resource, indices):
@@ -297,4 +297,4 @@ def test_daemon_async_stopper(resource, indices):
         stopper=DaemonStopper(),
     )
     kwargs = build_kwargs(cause=cause, _sync=False)
-    assert kwargs['stopped'] is cause.stopper.async_checker
+    assert kwargs['stopped'] is cause.stopper.async_flag
