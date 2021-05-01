@@ -3,6 +3,10 @@ Callback signatures for typing.
 
 Since these signatures contain a lot of copy-pasted kwargs and are
 not so important for the codebase, they are moved to this separate module.
+
+As a rule of thumb, for every kwarg named ``whatever``, there should be
+a corresponding type or class ``kopf.Whatever`` with all the typing tricks
+(``Union[...]``, ``Optional[...]``, partial ``Any`` values, etc) included.
 """
 import datetime
 import logging
@@ -12,37 +16,41 @@ from typing import TYPE_CHECKING, Any, Callable, Collection, \
 from kopf.structs import bodies, configuration, diffs, ephemera, \
                          patches, primitives, references, reviews
 
+# As publicly exposed: we only promise that it is based on one of the built-in loggable classes.
+# Mind that these classes have multi-versioned stubs, so we avoid redefining the protocol ourselves.
+Logger = Union[logging.Logger, logging.LoggerAdapter]
+
 # A specialised type to highlight the purpose or origin of the data of type Any,
 # to not be mixed with other arbitrary Any values, where it is indeed "any".
 Result = NewType('Result', object)
 
-# An internal typing hack to show that it can be a sync fn with the result,
-# or an async fn which returns a coroutine which returns the result.
-# Used in sync-and-async protocols only, and never exposed to other modules.
-_SyncOrAsyncResult = Union[Optional[Result], Coroutine[None, None, Optional[Result]]]
+# An internal typing hack shows that the handler can be sync fn with the result,
+# or an async fn which returns a coroutine which, in turn, returns the result.
+# Used in some protocols only and is never exposed to other modules.
+_R = TypeVar('_R')
+_SyncOrAsync = Union[_R, Coroutine[None, None, _R]]
 
 # A generic sync-or-async callable with no args/kwargs checks (unlike in protocols).
 # Used for the BaseHandler and generic invocation methods (which do not care about protocols).
-BaseFn = Callable[..., _SyncOrAsyncResult]
-
-LoggerType = Union[logging.Logger, logging.LoggerAdapter]
+BaseFn = Callable[..., _SyncOrAsync[Optional[object]]]
 
 if not TYPE_CHECKING:  # pragma: nocover
     # Define unspecified protocols for the runtime annotations -- to avoid "quoting".
-    ActivityFn = Callable[..., _SyncOrAsyncResult]
-    ResourceIndexingFn = Callable[..., _SyncOrAsyncResult]
-    ResourceWatchingFn = Callable[..., _SyncOrAsyncResult]
-    ResourceChangingFn = Callable[..., _SyncOrAsyncResult]
-    ResourceWebhookFn = Callable[..., None]
-    ResourceDaemonFn = Callable[..., _SyncOrAsyncResult]
-    ResourceTimerFn = Callable[..., _SyncOrAsyncResult]
-    WhenFilterFn = Callable[..., bool]
-    MetaFilterFn = Callable[..., bool]
+    ActivityFn = Callable[..., _SyncOrAsync[Optional[object]]]
+    ResourceIndexingFn = Callable[..., _SyncOrAsync[Optional[object]]]
+    ResourceWatchingFn = Callable[..., _SyncOrAsync[Optional[object]]]
+    ResourceChangingFn = Callable[..., _SyncOrAsync[Optional[object]]]
+    ResourceWebhookFn = Callable[..., _SyncOrAsync[None]]
+    ResourceDaemonFn = Callable[..., _SyncOrAsync[Optional[object]]]
+    ResourceTimerFn = Callable[..., _SyncOrAsync[Optional[object]]]
+    WhenFilterFn = Callable[..., bool]  # strictly sync, no async!
+    MetaFilterFn = Callable[..., bool]  # strictly sync, no async!
 else:
     from mypy_extensions import Arg, DefaultNamedArg, KwArg, NamedArg, VarArg
 
-    # TODO: Try using ParamSpec to support index type checking in callbacks 
-    # when PEP 612 is released (https://www.python.org/dev/peps/pep-0612/)
+    # TODO:1: Split to specialised LoginFn, ProbeFn, StartupFn, etc. -- with different result types.
+    # TODO:2: Try using ParamSpec to support index type checking in callbacks
+    #         when PEP 612 is released (https://www.python.org/dev/peps/pep-0612/)
     ActivityFn = Callable[
         [
             NamedArg(configuration.OperatorSettings, "settings"),
@@ -50,12 +58,12 @@ else:
             NamedArg(int, "retry"),
             NamedArg(datetime.datetime, "started"),
             NamedArg(datetime.timedelta, "runtime"),
-            NamedArg(LoggerType, "logger"),
-            NamedArg(ephemera.AnyMemo, "memo"),
+            NamedArg(Logger, "logger"),
+            NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        _SyncOrAsyncResult
+        _SyncOrAsync[Optional[object]]
     ]
 
     ResourceIndexingFn = Callable[
@@ -71,12 +79,12 @@ else:
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            NamedArg(LoggerType, "logger"),
-            NamedArg(ephemera.AnyMemo, "memo"),
+            NamedArg(Logger, "logger"),
+            NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        _SyncOrAsyncResult
+        _SyncOrAsync[Optional[object]]
     ]
 
     ResourceWatchingFn = Callable[
@@ -94,12 +102,12 @@ else:
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            NamedArg(LoggerType, "logger"),
-            NamedArg(ephemera.AnyMemo, "memo"),
+            NamedArg(Logger, "logger"),
+            NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        _SyncOrAsyncResult
+        _SyncOrAsync[Optional[object]]
     ]
 
     ResourceChangingFn = Callable[
@@ -122,12 +130,12 @@ else:
             NamedArg(diffs.Diff, "diff"),
             NamedArg(Optional[Union[bodies.BodyEssence, Any]], "old"),
             NamedArg(Optional[Union[bodies.BodyEssence, Any]], "new"),
-            NamedArg(LoggerType, "logger"),
-            NamedArg(ephemera.AnyMemo, "memo"),
+            NamedArg(Logger, "logger"),
+            NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        _SyncOrAsyncResult
+        _SyncOrAsync[Optional[object]]
     ]
 
     ResourceWebhookFn = Callable[
@@ -148,12 +156,12 @@ else:
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            NamedArg(LoggerType, "logger"),
-            NamedArg(ephemera.AnyMemo, "memo"),
+            NamedArg(Logger, "logger"),
+            NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        None
+        _SyncOrAsync[None]
     ]
 
     ResourceDaemonFn = Callable[
@@ -173,12 +181,12 @@ else:
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            NamedArg(LoggerType, "logger"),
-            NamedArg(ephemera.AnyMemo, "memo"),
+            NamedArg(Logger, "logger"),
+            NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        _SyncOrAsyncResult
+        _SyncOrAsync[Optional[object]]
     ]
 
     ResourceTimerFn = Callable[
@@ -195,12 +203,12 @@ else:
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            NamedArg(LoggerType, "logger"),
-            NamedArg(ephemera.AnyMemo, "memo"),
+            NamedArg(Logger, "logger"),
+            NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        _SyncOrAsyncResult
+        _SyncOrAsync[Optional[object]]
     ]
 
     WhenFilterFn = Callable[
@@ -221,12 +229,12 @@ else:
             NamedArg(diffs.Diff, "diff"),
             NamedArg(Optional[Union[bodies.BodyEssence, Any]], "old"),
             NamedArg(Optional[Union[bodies.BodyEssence, Any]], "new"),
-            NamedArg(LoggerType, "logger"),
-            NamedArg(ephemera.AnyMemo, "memo"),
+            NamedArg(Logger, "logger"),
+            NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        bool
+        bool  # strictly sync, no async!
     ]
 
     MetaFilterFn = Callable[
@@ -244,12 +252,12 @@ else:
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            NamedArg(LoggerType, "logger"),
-            NamedArg(ephemera.AnyMemo, "memo"),
+            NamedArg(Logger, "logger"),
+            NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        bool
+        bool  # strictly sync, no async!
     ]
 
 ResourceSpawningFn = Union[ResourceDaemonFn, ResourceTimerFn]

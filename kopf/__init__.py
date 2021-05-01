@@ -88,6 +88,7 @@ from kopf.structs.bodies import (
     build_owner_reference,
 )
 from kopf.structs.callbacks import (
+    Logger,
     not_,
     all_,
     any_,
@@ -231,6 +232,7 @@ __all__ = [
     'ObjectReference',
     'OwnerReference',
     'Memo', 'Index', 'Store',
+    'Logger',
     'ObjectLogger',
     'LocalObjectLogger',
     'FieldSpec',
