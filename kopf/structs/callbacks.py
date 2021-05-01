@@ -3,6 +3,10 @@ Callback signatures for typing.
 
 Since these signatures contain a lot of copy-pasted kwargs and are
 not so important for the codebase, they are moved to this separate module.
+
+As a rule of thumb, for every kwarg named ``whatever``, there should be
+a corresponding type or class ``kopf.Whatever`` with all the typing tricks
+(``Union[...]``, ``Optional[...]``, partial ``Any`` values, etc) included.
 """
 import datetime
 import logging
@@ -11,6 +15,10 @@ from typing import TYPE_CHECKING, Any, Callable, Collection, \
 
 from kopf.structs import bodies, configuration, diffs, ephemera, \
                          patches, primitives, references, reviews
+
+# As publicly exposed: we only promise that it is based on one of the built-in loggable classes.
+# Mind that these classes have multi-versioned stubs, so we avoid redefining the protocol ourselves.
+Logger = Union[logging.Logger, logging.LoggerAdapter]
 
 # A specialised type to highlight the purpose or origin of the data of type Any,
 # to not be mixed with other arbitrary Any values, where it is indeed "any".
@@ -24,8 +32,6 @@ _SyncOrAsyncResult = Union[Optional[Result], Coroutine[None, None, Optional[Resu
 # A generic sync-or-async callable with no args/kwargs checks (unlike in protocols).
 # Used for the BaseHandler and generic invocation methods (which do not care about protocols).
 BaseFn = Callable[..., _SyncOrAsyncResult]
-
-LoggerType = Union[logging.Logger, logging.LoggerAdapter]
 
 if not TYPE_CHECKING:  # pragma: nocover
     # Define unspecified protocols for the runtime annotations -- to avoid "quoting".
@@ -50,7 +56,7 @@ else:
             NamedArg(int, "retry"),
             NamedArg(datetime.datetime, "started"),
             NamedArg(datetime.timedelta, "runtime"),
-            NamedArg(LoggerType, "logger"),
+            NamedArg(Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
@@ -71,7 +77,7 @@ else:
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            NamedArg(LoggerType, "logger"),
+            NamedArg(Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
@@ -94,7 +100,7 @@ else:
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            NamedArg(LoggerType, "logger"),
+            NamedArg(Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
@@ -122,7 +128,7 @@ else:
             NamedArg(diffs.Diff, "diff"),
             NamedArg(Optional[Union[bodies.BodyEssence, Any]], "old"),
             NamedArg(Optional[Union[bodies.BodyEssence, Any]], "new"),
-            NamedArg(LoggerType, "logger"),
+            NamedArg(Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
@@ -148,7 +154,7 @@ else:
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            NamedArg(LoggerType, "logger"),
+            NamedArg(Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
@@ -173,7 +179,7 @@ else:
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            NamedArg(LoggerType, "logger"),
+            NamedArg(Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
@@ -195,7 +201,7 @@ else:
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            NamedArg(LoggerType, "logger"),
+            NamedArg(Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
@@ -221,7 +227,7 @@ else:
             NamedArg(diffs.Diff, "diff"),
             NamedArg(Optional[Union[bodies.BodyEssence, Any]], "old"),
             NamedArg(Optional[Union[bodies.BodyEssence, Any]], "new"),
-            NamedArg(LoggerType, "logger"),
+            NamedArg(Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
@@ -244,7 +250,7 @@ else:
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            NamedArg(LoggerType, "logger"),
+            NamedArg(Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
