@@ -24,31 +24,33 @@ Logger = Union[logging.Logger, logging.LoggerAdapter]
 # to not be mixed with other arbitrary Any values, where it is indeed "any".
 Result = NewType('Result', object)
 
-# An internal typing hack to show that it can be a sync fn with the result,
-# or an async fn which returns a coroutine which returns the result.
-# Used in sync-and-async protocols only, and never exposed to other modules.
-_SyncOrAsyncResult = Union[Optional[Result], Coroutine[None, None, Optional[Result]]]
+# An internal typing hack shows that the handler can be sync fn with the result,
+# or an async fn which returns a coroutine which, in turn, returns the result.
+# Used in some protocols only and is never exposed to other modules.
+_R = TypeVar('_R')
+_SyncOrAsync = Union[_R, Coroutine[None, None, _R]]
 
 # A generic sync-or-async callable with no args/kwargs checks (unlike in protocols).
 # Used for the BaseHandler and generic invocation methods (which do not care about protocols).
-BaseFn = Callable[..., _SyncOrAsyncResult]
+BaseFn = Callable[..., _SyncOrAsync[Optional[object]]]
 
 if not TYPE_CHECKING:  # pragma: nocover
     # Define unspecified protocols for the runtime annotations -- to avoid "quoting".
-    ActivityFn = Callable[..., _SyncOrAsyncResult]
-    ResourceIndexingFn = Callable[..., _SyncOrAsyncResult]
-    ResourceWatchingFn = Callable[..., _SyncOrAsyncResult]
-    ResourceChangingFn = Callable[..., _SyncOrAsyncResult]
-    ResourceWebhookFn = Callable[..., None]
-    ResourceDaemonFn = Callable[..., _SyncOrAsyncResult]
-    ResourceTimerFn = Callable[..., _SyncOrAsyncResult]
-    WhenFilterFn = Callable[..., bool]
-    MetaFilterFn = Callable[..., bool]
+    ActivityFn = Callable[..., _SyncOrAsync[Optional[object]]]
+    ResourceIndexingFn = Callable[..., _SyncOrAsync[Optional[object]]]
+    ResourceWatchingFn = Callable[..., _SyncOrAsync[Optional[object]]]
+    ResourceChangingFn = Callable[..., _SyncOrAsync[Optional[object]]]
+    ResourceWebhookFn = Callable[..., _SyncOrAsync[None]]
+    ResourceDaemonFn = Callable[..., _SyncOrAsync[Optional[object]]]
+    ResourceTimerFn = Callable[..., _SyncOrAsync[Optional[object]]]
+    WhenFilterFn = Callable[..., bool]  # strictly sync, no async!
+    MetaFilterFn = Callable[..., bool]  # strictly sync, no async!
 else:
     from mypy_extensions import Arg, DefaultNamedArg, KwArg, NamedArg, VarArg
 
-    # TODO: Try using ParamSpec to support index type checking in callbacks 
-    # when PEP 612 is released (https://www.python.org/dev/peps/pep-0612/)
+    # TODO:1: Split to specialised LoginFn, ProbeFn, StartupFn, etc. -- with different result types.
+    # TODO:2: Try using ParamSpec to support index type checking in callbacks
+    #         when PEP 612 is released (https://www.python.org/dev/peps/pep-0612/)
     ActivityFn = Callable[
         [
             NamedArg(configuration.OperatorSettings, "settings"),
@@ -61,7 +63,7 @@ else:
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        _SyncOrAsyncResult
+        _SyncOrAsync[Optional[object]]
     ]
 
     ResourceIndexingFn = Callable[
@@ -82,7 +84,7 @@ else:
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        _SyncOrAsyncResult
+        _SyncOrAsync[Optional[object]]
     ]
 
     ResourceWatchingFn = Callable[
@@ -105,7 +107,7 @@ else:
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        _SyncOrAsyncResult
+        _SyncOrAsync[Optional[object]]
     ]
 
     ResourceChangingFn = Callable[
@@ -133,7 +135,7 @@ else:
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        _SyncOrAsyncResult
+        _SyncOrAsync[Optional[object]]
     ]
 
     ResourceWebhookFn = Callable[
@@ -159,7 +161,7 @@ else:
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        None
+        _SyncOrAsync[None]
     ]
 
     ResourceDaemonFn = Callable[
@@ -184,7 +186,7 @@ else:
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        _SyncOrAsyncResult
+        _SyncOrAsync[Optional[object]]
     ]
 
     ResourceTimerFn = Callable[
@@ -206,7 +208,7 @@ else:
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        _SyncOrAsyncResult
+        _SyncOrAsync[Optional[object]]
     ]
 
     WhenFilterFn = Callable[
@@ -232,7 +234,7 @@ else:
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        bool
+        bool  # strictly sync, no async!
     ]
 
     MetaFilterFn = Callable[
@@ -255,7 +257,7 @@ else:
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        bool
+        bool  # strictly sync, no async!
     ]
 
 ResourceSpawningFn = Union[ResourceDaemonFn, ResourceTimerFn]
