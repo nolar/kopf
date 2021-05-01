@@ -37,7 +37,7 @@ def run(
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
-        memo: Optional[ephemera.AnyMemo] = None,
+        memo: Optional[object] = None,
         _command: Optional[Coroutine[None, None, None]] = None,
 ) -> None:
     """
@@ -91,7 +91,7 @@ async def operator(
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
-        memo: Optional[ephemera.AnyMemo] = None,
+        memo: Optional[object] = None,
         _command: Optional[Coroutine[None, None, None]] = None,
 ) -> None:
     """
@@ -146,7 +146,7 @@ async def spawn_tasks(
         stop_flag: Optional[primitives.Flag] = None,
         ready_flag: Optional[primitives.Flag] = None,
         vault: Optional[credentials.Vault] = None,
-        memo: Optional[ephemera.AnyMemo] = None,
+        memo: Optional[object] = None,
         _command: Optional[Coroutine[None, None, None]] = None,
 ) -> Collection[aiotasks.Task]:
     """
@@ -180,6 +180,7 @@ async def spawn_tasks(
     identity = identity if identity is not None else peering.detect_own_id(manual=False)
     vault = vault if vault is not None else credentials.Vault()
     memo = memo if memo is not None else ephemera.Memo()
+    memo = ephemera.AnyMemo(memo)  # type-casted
     event_queue: posting.K8sEventQueue = asyncio.Queue()
     signal_flag: aiotasks.Future = asyncio.Future()
     started_flag: asyncio.Event = asyncio.Event()
