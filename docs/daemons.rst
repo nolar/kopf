@@ -33,7 +33,7 @@ with ``@kopf.daemon`` and make it run for a long time or forever:
             await asyncio.sleep(10)
 
     @kopf.daemon('kopfexamples')
-    def monitor_kex_sync(stopped, **kwargs):
+    def monitor_kex_sync(stopped: kopf.DaemonStoppingFlag, **kwargs):
         while not stopped:
             ...  # check something
             time.sleep(10)
@@ -64,7 +64,7 @@ daemons SHOULD_ check for the value of this flag as often as possible:
     import kopf
 
     @kopf.daemon('kopfexamples')
-    def monitor_kex(stopped, **kwargs):
+    def monitor_kex(stopped: kopf.DaemonStoppingFlag, **kwargs):
         while not stopped:
             time.sleep(1.0)
         print("We are done. Bye.")
@@ -114,7 +114,7 @@ The termination sequence parameters can be controlled when declaring a daemon:
 
     @kopf.daemon('kopfexamples',
                  cancellation_backoff=1.0, cancellation_timeout=3.0)
-    async def monitor_kex(stopped, **kwargs):
+    async def monitor_kex(stopped: kopf.DaemonStoppingFlag, **kwargs):
         while not stopped:
             await asyncio.sleep(1)
 
@@ -174,26 +174,30 @@ instead of ``time.sleep()``: the wait will end when either the time is reached
     import kopf
 
     @kopf.daemon('kopfexamples')
-    def monitor_kex(stopped, **kwargs):
+    def monitor_kex(stopped: kopf.DaemonStoppingFlag, **kwargs):
         while not stopped:
             stopped.wait(10)
 
 For asynchronous handlers, regular ``asyncio.sleep()`` should be sufficient,
 as it is cancellable via `asyncio.CancelledError`. If cancellation is neither
-configured nor desired, ``stopped.wait()`` can be used too (with ``await``):
+configured nor desired, ``stopped.wait()`` can be used too -- with ``await``
+(though, such usage is discouraged in favour of regular asyncio cancellations):
 
 .. code-block:: python
 
     import kopf
 
     @kopf.daemon('kopfexamples')
-    async def monitor_kex(stopped, **kwargs):
+    async def monitor_kex(stopped: kopf.DaemonStoppingFlag, **kwargs):
         while not stopped:
             await stopped.wait(10)
 
 This way, the daemon will exit as soon as possible when the :kwarg:`stopped`
 is set, not when the next sleep is over. Therefore, the sleeps can be of any
 duration while the daemon remains terminable (leads to no OS resource leakage).
+
+.. seealso::
+    `kopf.DaemonStoppingFlag`, `kopf.DaemonStoppingReason`.
 
 .. note::
 
@@ -216,10 +220,9 @@ It is possible to postpone the daemon spawning:
     import kopf
 
     @kopf.daemon('kopfexamples', initial_delay=30)
-    async def monitor_kex(stopped, **kwargs):
+    async def monitor_kex(stopped: kopf.DaemonStoppingFlag, **kwargs):
         while True:
             await asyncio.sleep(1.0)
-
 
 The start of the daemon will be delayed by 30 seconds after the resource
 creation (or operator startup). For example, this can be used to give some time
@@ -246,7 +249,7 @@ To simulate restarting, raise `kopf.TemporaryError` with a delay set.
     import kopf
 
     @kopf.daemon('kopfexamples')
-    async def monitor_kex(stopped, **kwargs):
+    async def monitor_kex(**kwargs):
         await asyncio.sleep(10.0)
         raise kopf.TemporaryError("Need to restart.", delay=10)
 
@@ -287,7 +290,7 @@ modified during its lifecycle (not frozen as in the event-driven handlers):
     import kopf
 
     @kopf.daemon('kopfexamples')
-    def monitor_kex(stopped, logger, body, spec, **kwargs):
+    def monitor_kex(stopped: kopf.DaemonStoppingFlag, logger, spec, **kwargs):
         while not stopped:
             logger.info(f"FIELD={spec['field']}")
             time.sleep(1)
@@ -315,7 +318,7 @@ values to be put on the resource's status:
     import kopf
 
     @kopf.daemon('kopfexamples')
-    async def monitor_kex(stopped, **kwargs):
+    async def monitor_kex(**kwargs):
         await asyncio.sleep(10.0)
         return {'finished': True}
 
@@ -357,7 +360,7 @@ to only spawn daemons for specific resources:
                  annotations={'some-annotation': 'some-value'},
                  labels={'some-label': 'some-value'},
                  when=lambda name, **_: 'some' in name)
-    def monitor_selected_kexes(stopped, **kwargs):
+    def monitor_selected_kexes(stopped: kopf.DaemonStoppingFlag, **kwargs):
         while not stopped:
             time.sleep(1)
 

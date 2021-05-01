@@ -252,7 +252,7 @@ Stop-flag
 ---------
 
 The daemons also have ``stopped``. It is a flag object for sync daemons
-to check if they should stop. See also: `DaemonStoppingFlag`.
+to check if they should stop. See also: `kopf.DaemonStoppingFlag`.
 
 To check, ``.is_set()`` method can be called, or the object itself can be used
 as a boolean expression: e.g. ``while not stopped: ...``.
