@@ -9,4 +9,9 @@ or in the dependencies.
 Utilities do not depend on anything in the framework. For most cases,
 they do not even implement any entities or behaviours of the domain
 of K8s Operators, but rather some unrelated low-level patterns.
+
+As a rule of thumb, utilities MUST be abstracted from the framework
+to such an extent that they could be extracted as reusable libraries.
+If they implement concepts of the framework, they are not "utilities"
+(consider making them toolkits, structs, engines, or the reactor parts).
 """
