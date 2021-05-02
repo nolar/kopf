@@ -10,12 +10,13 @@ from typing import Any, Collection, Dict, Iterable, List, Mapping, Optional
 
 from typing_extensions import Literal, TypedDict
 
+from kopf.aiokits import aiovalues
 from kopf.clients import creating, errors, patching
 from kopf.engines import loggers
 from kopf.reactor import causation, handling, lifecycles, registries
 from kopf.storage import states
-from kopf.structs import bodies, configuration, ephemera, filters, handlers, \
-                         ids, patches, primitives, references, reviews
+from kopf.structs import bodies, configuration, ephemera, filters, \
+                         handlers, ids, patches, references, reviews
 
 logger = logging.getLogger(__name__)
 
@@ -236,7 +237,7 @@ async def admission_webhook_server(
         registry: registries.OperatorRegistry,
         insights: references.Insights,
         webhookfn: reviews.WebhookFn,
-        container: primitives.Container[reviews.WebhookClientConfig],
+        container: aiovalues.Container[reviews.WebhookClientConfig],
 ) -> None:
 
     # Verify that the operator is configured properly (after the startup activities are done).
@@ -265,7 +266,7 @@ async def validating_configuration_manager(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         insights: references.Insights,
-        container: primitives.Container[reviews.WebhookClientConfig],
+        container: aiovalues.Container[reviews.WebhookClientConfig],
 ) -> None:
     await configuration_manager(
         reason=causation.WebhookType.VALIDATING,
@@ -280,7 +281,7 @@ async def mutating_configuration_manager(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         insights: references.Insights,
-        container: primitives.Container[reviews.WebhookClientConfig],
+        container: aiovalues.Container[reviews.WebhookClientConfig],
 ) -> None:
     await configuration_manager(
         reason=causation.WebhookType.MUTATING,
@@ -297,7 +298,7 @@ async def configuration_manager(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         insights: references.Insights,
-        container: primitives.Container[reviews.WebhookClientConfig],
+        container: aiovalues.Container[reviews.WebhookClientConfig],
 ) -> None:
     """
     Manage the webhook configurations dynamically.

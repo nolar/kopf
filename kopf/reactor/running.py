@@ -6,7 +6,7 @@ import threading
 import warnings
 from typing import Collection, Coroutine, MutableSequence, Optional, Sequence
 
-from kopf.aiokits import aioadapters, aiotasks
+from kopf.aiokits import aioadapters, aiotasks, aiovalues
 from kopf.clients import auth
 from kopf.engines import peering, posting, probing
 from kopf.reactor import activities, admission, causation, daemons, handling, indexing, \
@@ -269,7 +269,7 @@ async def spawn_tasks(
 
     # Admission webhooks run as either a server or a tunnel or a fixed config.
     # The webhook manager automatically adjusts the cluster configuration at runtime.
-    container: primitives.Container[reviews.WebhookClientConfig] = primitives.Container()
+    container: aiovalues.Container[reviews.WebhookClientConfig] = aiovalues.Container()
     tasks.append(aiotasks.create_guarded_task(
         name="admission insights chain", flag=started_flag, logger=logger,
         coro=primitives.condition_chain(

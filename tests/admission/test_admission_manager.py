@@ -1,10 +1,10 @@
 import pytest
 
 import kopf
+from kopf.aiokits.aiovalues import Container
 from kopf.clients.errors import APIConflictError, APIError, APIForbiddenError, APIUnauthorizedError
 from kopf.reactor.admission import configuration_manager
 from kopf.reactor.causation import WebhookType
-from kopf.structs.primitives import Container
 from kopf.structs.references import MUTATING_WEBHOOK, VALIDATING_WEBHOOK
 
 

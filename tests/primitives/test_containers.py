@@ -3,7 +3,7 @@ import asyncio
 import async_timeout
 import pytest
 
-from kopf.structs.primitives import Container
+from kopf.aiokits.aiovalues import Container
 
 
 async def test_empty_by_default():
