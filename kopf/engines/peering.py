@@ -39,7 +39,7 @@ from typing import Any, Dict, Iterable, Mapping, NewType, NoReturn, Optional, ca
 
 import iso8601
 
-from kopf.aiokits import aiotasks
+from kopf.aiokits import aiotasks, aiotoggles
 from kopf.clients import patching
 from kopf.structs import bodies, configuration, patches, primitives, references
 from kopf.utilities import hostnames
@@ -95,10 +95,10 @@ async def process_peering_event(
         settings: configuration.OperatorSettings,
         autoclean: bool = True,
         stream_pressure: Optional[asyncio.Event] = None,  # None for tests
-        conflicts_found: Optional[primitives.Toggle] = None,  # None for tests & observation
+        conflicts_found: Optional[aiotoggles.Toggle] = None,  # None for tests & observation
         # Must be accepted whether used or not -- as passed by watcher()/worker().
-        resource_indexed: Optional[primitives.Toggle] = None,  # None for tests & observation
-        operator_indexed: Optional[primitives.ToggleSet] = None,  # None for tests & observation
+        resource_indexed: Optional[aiotoggles.Toggle] = None,  # None for tests & observation
+        operator_indexed: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
 ) -> None:
     """
     Handle a single update of the peers by us or by other operators.

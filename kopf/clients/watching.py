@@ -26,9 +26,9 @@ from typing import AsyncIterator, Dict, Optional, Union, cast
 
 import aiohttp
 
-from kopf.aiokits import aiotasks
+from kopf.aiokits import aiotasks, aiotoggles
 from kopf.clients import auth, errors, fetching
-from kopf.structs import bodies, configuration, primitives, references
+from kopf.structs import bodies, configuration, references
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ async def infinite_watch(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         namespace: references.Namespace,
-        operator_paused: Optional[primitives.ToggleSet] = None,  # None for tests & observation
+        operator_paused: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
         _iterations: Optional[int] = None,  # used in tests/mocks/fixtures
 ) -> AsyncIterator[Union[Bookmark, bodies.RawEvent]]:
     """
@@ -91,7 +91,7 @@ async def streaming_block(
         *,
         resource: references.Resource,
         namespace: references.Namespace,
-        operator_paused: Optional[primitives.ToggleSet] = None,  # None for tests & observation
+        operator_paused: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
 ) -> AsyncIterator[aiotasks.Future]:
     """
     Block the execution until un-paused; signal when it is active again.

@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from kopf.structs.primitives import Toggle, ToggleSet
+from kopf.aiokits.aiotoggles import Toggle, ToggleSet
 
 
 @pytest.mark.parametrize('fn, expected', [(all, True), (any, False)])

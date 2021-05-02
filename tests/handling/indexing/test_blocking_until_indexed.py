@@ -4,11 +4,11 @@ import logging
 import async_timeout
 import pytest
 
+from kopf.aiokits.aiotoggles import ToggleSet
 from kopf.reactor.lifecycles import all_at_once
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.ephemera import Memo
-from kopf.structs.primitives import ToggleSet
 
 EVENT_TYPES_WHEN_EXISTS = [None, 'ADDED', 'MODIFIED']
 EVENT_TYPES_WHEN_GONE = ['DELETED']

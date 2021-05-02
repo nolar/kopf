@@ -6,7 +6,7 @@ import threading
 import warnings
 from typing import Collection, Coroutine, MutableSequence, Optional, Sequence
 
-from kopf.aiokits import aioadapters, aiotasks, aiovalues
+from kopf.aiokits import aioadapters, aiotasks, aiotoggles, aiovalues
 from kopf.clients import auth
 from kopf.engines import peering, posting, probing
 from kopf.reactor import activities, admission, causation, daemons, handling, indexing, \
@@ -184,7 +184,7 @@ async def spawn_tasks(
     event_queue: posting.K8sEventQueue = asyncio.Queue()
     signal_flag: aiotasks.Future = asyncio.Future()
     started_flag: asyncio.Event = asyncio.Event()
-    operator_paused = primitives.ToggleSet(any)
+    operator_paused = aiotoggles.ToggleSet(any)
     tasks: MutableSequence[aiotasks.Task] = []
 
     # Map kwargs into the settings object.

@@ -31,7 +31,7 @@ from typing import Collection, Dict, Iterable, List, Mapping, \
 
 import aiojobs
 
-from kopf.aiokits import aiotasks
+from kopf.aiokits import aiotasks, aiotoggles
 from kopf.engines import loggers
 from kopf.reactor import causation, effects, handling, lifecycles
 from kopf.storage import states
@@ -246,7 +246,7 @@ async def daemon_killer(
         *,
         settings: configuration.OperatorSettings,
         memories: DaemonsMemoriesIterator,
-        operator_paused: primitives.ToggleSet,
+        operator_paused: aiotoggles.ToggleSet,
 ) -> None:
     """
     An operator's root task to kill the daemons on the operator's demand.

@@ -4,8 +4,9 @@ from unittest.mock import Mock
 import freezegun
 import pytest
 
+from kopf.aiokits import aiotoggles
 from kopf.engines.peering import process_peering_event
-from kopf.structs import bodies, primitives
+from kopf.structs import bodies
 
 
 @dataclasses.dataclass(frozen=True, eq=False)
@@ -70,7 +71,7 @@ async def test_toggled_on_for_higher_priority_peer_when_initially_off(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    conflicts_found = primitives.Toggle(False)
+    conflicts_found = aiotoggles.Toggle(False)
     k8s_mocked.sleep_or_wait.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
@@ -115,7 +116,7 @@ async def test_ignored_for_higher_priority_peer_when_already_on(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    conflicts_found = primitives.Toggle(True)
+    conflicts_found = aiotoggles.Toggle(True)
     k8s_mocked.sleep_or_wait.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
@@ -161,7 +162,7 @@ async def test_toggled_off_for_lower_priority_peer_when_initially_on(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    conflicts_found = primitives.Toggle(True)
+    conflicts_found = aiotoggles.Toggle(True)
     k8s_mocked.sleep_or_wait.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
@@ -206,7 +207,7 @@ async def test_ignored_for_lower_priority_peer_when_already_off(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    conflicts_found = primitives.Toggle(False)
+    conflicts_found = aiotoggles.Toggle(False)
     k8s_mocked.sleep_or_wait.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
@@ -252,7 +253,7 @@ async def test_toggled_on_for_same_priority_peer_when_initially_off(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    conflicts_found = primitives.Toggle(False)
+    conflicts_found = aiotoggles.Toggle(False)
     k8s_mocked.sleep_or_wait.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
@@ -299,7 +300,7 @@ async def test_ignored_for_same_priority_peer_when_already_on(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    conflicts_found = primitives.Toggle(True)
+    conflicts_found = aiotoggles.Toggle(True)
     k8s_mocked.sleep_or_wait.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
@@ -347,7 +348,7 @@ async def test_resumes_immediately_on_expiration_of_blocking_peers(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    conflicts_found = primitives.Toggle(True)
+    conflicts_found = aiotoggles.Toggle(True)
     k8s_mocked.sleep_or_wait.return_value = None  # as if finished sleeping uninterrupted
 
     caplog.set_level(0)

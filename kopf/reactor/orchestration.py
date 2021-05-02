@@ -29,10 +29,10 @@ import itertools
 import logging
 from typing import Any, Collection, Container, Dict, MutableMapping, NamedTuple, Optional
 
-from kopf.aiokits import aiotasks
+from kopf.aiokits import aiotasks, aiotoggles
 from kopf.engines import peering
 from kopf.reactor import queueing
-from kopf.structs import configuration, primitives, references
+from kopf.structs import configuration, references
 
 logger = logging.getLogger(__name__)
 
@@ -48,12 +48,12 @@ class Ensemble:
     # Global synchronisation point on the cache pre-populating stage and overall cache readiness.
     # Note: there is no need for ToggleSet; it is checked by emptiness of items inside.
     #       ToggleSet is used because it is the closest equivalent of such a primitive.
-    operator_indexed: primitives.ToggleSet
+    operator_indexed: aiotoggles.ToggleSet
 
     # Multidimentional pausing: for every namespace, and a few for the whole cluster (for CRDs).
-    operator_paused: primitives.ToggleSet
-    peering_missing: primitives.Toggle
-    conflicts_found: Dict[EnsembleKey, primitives.Toggle] = dataclasses.field(default_factory=dict)
+    operator_paused: aiotoggles.ToggleSet
+    peering_missing: aiotoggles.Toggle
+    conflicts_found: Dict[EnsembleKey, aiotoggles.Toggle] = dataclasses.field(default_factory=dict)
 
     # Multidimensional tasks -- one for every combination of relevant dimensions.
     watcher_tasks: Dict[EnsembleKey, aiotasks.Task] = dataclasses.field(default_factory=dict)
@@ -71,7 +71,7 @@ class Ensemble:
                 for tasks in [self.watcher_tasks, self.peering_tasks, self.pinging_tasks]
                 for key, task in tasks.items() if key in keys}
 
-    def get_flags(self, keys: Container[EnsembleKey]) -> Collection[primitives.Toggle]:
+    def get_flags(self, keys: Container[EnsembleKey]) -> Collection[aiotoggles.Toggle]:
         return {toggle for key, toggle in self.conflicts_found.items() if key in keys}
 
     def del_keys(self, keys: Container[EnsembleKey]) -> None:
@@ -92,13 +92,13 @@ async def ochestrator(
         settings: configuration.OperatorSettings,
         identity: peering.Identity,
         insights: references.Insights,
-        operator_paused: primitives.ToggleSet,
+        operator_paused: aiotoggles.ToggleSet,
 ) -> None:
     peering_missing = await operator_paused.make_toggle(name='peering CRD is missing')
     ensemble = Ensemble(
         peering_missing=peering_missing,
         operator_paused=operator_paused,
-        operator_indexed=primitives.ToggleSet(all),
+        operator_indexed=aiotoggles.ToggleSet(all),
     )
     try:
         async with insights.revised:
@@ -229,7 +229,7 @@ async def spawn_missing_watchers(
         dkey = EnsembleKey(resource=resource, namespace=namespace)
         if dkey not in ensemble.watcher_tasks:
             what = f"{resource}@{namespace}"
-            resource_indexed: Optional[primitives.Toggle] = None
+            resource_indexed: Optional[aiotoggles.Toggle] = None
             if resource in indexable:
                 resource_indexed = await ensemble.operator_indexed.make_toggle(name=what)
             ensemble.watcher_tasks[dkey] = aiotasks.create_guarded_task(

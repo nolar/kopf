@@ -31,8 +31,9 @@ from typing import TYPE_CHECKING, MutableMapping, NamedTuple, NewType, Optional,
 import aiojobs
 from typing_extensions import Protocol, TypedDict
 
+from kopf.aiokits import aiotoggles
 from kopf.clients import watching
-from kopf.structs import bodies, configuration, primitives, references
+from kopf.structs import bodies, configuration, references
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +51,8 @@ class WatchStreamProcessor(Protocol):
             *,
             raw_event: bodies.RawEvent,
             stream_pressure: Optional[asyncio.Event] = None,  # None for tests
-            resource_indexed: Optional[primitives.Toggle] = None,  # None for tests & observation
-            operator_indexed: Optional[primitives.ToggleSet] = None,  # None for tests & observation
+            resource_indexed: Optional[aiotoggles.Toggle] = None,  # None for tests & observation
+            operator_indexed: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
     ) -> None: ...
 
 
@@ -131,9 +132,9 @@ async def watcher(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         processor: WatchStreamProcessor,
-        operator_paused: Optional[primitives.ToggleSet] = None,  # None for tests & observation
-        operator_indexed: Optional[primitives.ToggleSet] = None,  # None for tests & observation
-        resource_indexed: Optional[primitives.Toggle] = None,  # None for tests & non-indexable
+        operator_paused: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
+        operator_indexed: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
+        resource_indexed: Optional[aiotoggles.Toggle] = None,  # None for tests & non-indexable
 ) -> None:
     """
     The watchers watches for the resource events via the API, and spawns the workers for every object.
@@ -202,7 +203,7 @@ async def watcher(
                 # Block the operator's readiness for individual resource's index handlers.
                 # But NOT when the readiness is already achieved once! After that, ignore it.
                 # NB: Strictly before the worker starts -- the processor can be too slow, too late.
-                resource_object_indexed: Optional[primitives.Toggle] = None
+                resource_object_indexed: Optional[aiotoggles.Toggle] = None
                 if operator_indexed is not None and operator_indexed.is_on():
                     operator_indexed = None
                 if operator_indexed is not None and resource_indexed is not None:
@@ -255,8 +256,8 @@ async def worker(
         signaller: asyncio.Condition,
         processor: WatchStreamProcessor,
         settings: configuration.OperatorSettings,
-        resource_indexed: Optional[primitives.Toggle],  # None for tests & observation
-        operator_indexed: Optional[primitives.ToggleSet],  # None for tests & observation
+        resource_indexed: Optional[aiotoggles.Toggle],  # None for tests & observation
+        operator_indexed: Optional[aiotoggles.ToggleSet],  # None for tests & observation
         streams: Streams,
         key: ObjectRef,
 ) -> None:

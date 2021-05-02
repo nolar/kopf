@@ -5,12 +5,12 @@ import logging
 import freezegun
 import pytest
 
+from kopf.aiokits.aiotoggles import Toggle
 from kopf.reactor.handling import PermanentError, TemporaryError
 from kopf.reactor.lifecycles import all_at_once
 from kopf.reactor.processing import process_resource_event
 from kopf.storage.states import HandlerState, State
 from kopf.structs.ephemera import Memo
-from kopf.structs.primitives import Toggle
 
 EVENT_TYPES_WHEN_EXISTS = [None, 'ADDED', 'MODIFIED']
 EVENT_TYPES_WHEN_GONE = ['DELETED']
