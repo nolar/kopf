@@ -1,6 +1,6 @@
 import asyncio
 
-from kopf.utilities.aiotasks import all_tasks, create_task
+from kopf.aiokits.aiotasks import all_tasks, create_task
 
 
 async def test_alltasks_exclusion():

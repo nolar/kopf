@@ -6,13 +6,13 @@ import threading
 import warnings
 from typing import Collection, Coroutine, MutableSequence, Optional, Sequence
 
+from kopf.aiokits import aiotasks
 from kopf.clients import auth
 from kopf.engines import peering, posting, probing
 from kopf.reactor import activities, admission, causation, daemons, handling, indexing, \
                          lifecycles, observation, orchestration, processing, registries
 from kopf.structs import configuration, containers, credentials, \
                          ephemera, primitives, references, reviews
-from kopf.utilities import aiotasks
 
 logger = logging.getLogger(__name__)
 

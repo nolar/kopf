@@ -31,11 +31,11 @@ from typing import Collection, Dict, Iterable, List, Mapping, \
 
 import aiojobs
 
+from kopf.aiokits import aiotasks
 from kopf.engines import loggers
 from kopf.reactor import causation, effects, handling, lifecycles
 from kopf.storage import states
 from kopf.structs import bodies, configuration, handlers as handlers_, ids, patches, primitives
-from kopf.utilities import aiotasks
 
 
 @dataclasses.dataclass(frozen=True)

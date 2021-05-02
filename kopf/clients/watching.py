@@ -26,9 +26,9 @@ from typing import AsyncIterator, Dict, Optional, Union, cast
 
 import aiohttp
 
+from kopf.aiokits import aiotasks
 from kopf.clients import auth, errors, fetching
 from kopf.structs import bodies, configuration, primitives, references
-from kopf.utilities import aiotasks
 
 logger = logging.getLogger(__name__)
 

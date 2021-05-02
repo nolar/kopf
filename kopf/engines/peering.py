@@ -39,9 +39,10 @@ from typing import Any, Dict, Iterable, Mapping, NewType, NoReturn, Optional, ca
 
 import iso8601
 
+from kopf.aiokits import aiotasks
 from kopf.clients import patching
 from kopf.structs import bodies, configuration, patches, primitives, references
-from kopf.utilities import aiotasks, hostnames
+from kopf.utilities import hostnames
 
 logger = logging.getLogger(__name__)
 

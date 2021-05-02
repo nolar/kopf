@@ -5,11 +5,11 @@ from unittest.mock import Mock
 
 import pytest
 
+from kopf.aiokits import aiotasks
 from kopf.engines.peering import Identity
 from kopf.reactor.orchestration import Ensemble, EnsembleKey, adjust_tasks
 from kopf.structs import bodies, primitives
 from kopf.structs.references import Insights, Resource
-from kopf.utilities import aiotasks
 
 
 async def processor(*, raw_event: bodies.RawEvent, stream_pressure: Optional[asyncio.Event]) -> None:

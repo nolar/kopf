@@ -14,8 +14,8 @@ from typing import Any, Callable, Coroutine, Iterable, Iterator, List, \
 
 from typing_extensions import final
 
+from kopf.aiokits import aiotasks
 from kopf.structs import configuration
-from kopf.utilities import aiotasks
 
 # An internal typing hack shows that the handler can be sync fn with the result,
 # or an async fn which returns a coroutine which, in turn, returns the result.

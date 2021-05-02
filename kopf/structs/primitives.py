@@ -10,7 +10,7 @@ import time
 from typing import Any, AsyncIterator, Awaitable, Callable, Collection, Generator, \
                    Generic, Iterable, Iterator, Optional, Set, TypeVar, Union
 
-from kopf.utilities import aiotasks
+from kopf.aiokits import aiotasks
 
 Flag = Union[aiotasks.Future, asyncio.Event, concurrent.futures.Future, threading.Event]
 

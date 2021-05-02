@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from kopf.utilities.aiotasks import create_task
+from kopf.aiokits.aiotasks import create_task
 
 
 async def sample() -> None:

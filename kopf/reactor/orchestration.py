@@ -29,10 +29,10 @@ import itertools
 import logging
 from typing import Any, Collection, Container, Dict, MutableMapping, NamedTuple, Optional
 
+from kopf.aiokits import aiotasks
 from kopf.engines import peering
 from kopf.reactor import queueing
 from kopf.structs import configuration, primitives, references
-from kopf.utilities import aiotasks
 
 logger = logging.getLogger(__name__)
 
