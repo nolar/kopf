@@ -129,7 +129,7 @@ class K8sMocks:
     patch_obj: Mock
     create_obj: Mock
     post_event: Mock
-    sleep_or_wait: Mock
+    sleep: Mock
 
 
 @pytest.fixture(autouse=True)
@@ -139,7 +139,7 @@ def k8s_mocked(mocker):
         patch_obj=mocker.patch('kopf.clients.patching.patch_obj', return_value={}),
         create_obj=mocker.patch('kopf.clients.creating.create_obj', return_value={}),
         post_event=mocker.patch('kopf.clients.events.post_event'),
-        sleep_or_wait=mocker.patch('kopf.structs.primitives.sleep_or_wait', return_value=None),
+        sleep=mocker.patch('kopf.aiokits.aiotime.sleep', return_value=None),
     )
 
 

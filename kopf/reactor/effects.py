@@ -23,9 +23,10 @@ import datetime
 import logging
 from typing import Collection, Optional, Union
 
+from kopf.aiokits import aiotime
 from kopf.clients import patching
 from kopf.engines import loggers
-from kopf.structs import bodies, configuration, dicts, diffs, patches, primitives, references
+from kopf.structs import bodies, configuration, dicts, diffs, patches, references
 
 # How often to wake up from the long sleep, to show liveness in the logs.
 WAITING_KEEPALIVE_INTERVAL = 10 * 60
@@ -67,10 +68,10 @@ async def apply(
         if delay > WAITING_KEEPALIVE_INTERVAL:
             limit = WAITING_KEEPALIVE_INTERVAL
             logger.debug(f"Sleeping for {delay} (capped {limit}) seconds for the delayed handlers.")
-            unslept_delay = await primitives.sleep_or_wait(limit, wakeup=stream_pressure)
+            unslept_delay = await aiotime.sleep(limit, wakeup=stream_pressure)
         elif delay > 0:
             logger.debug(f"Sleeping for {delay} seconds for the delayed handlers.")
-            unslept_delay = await primitives.sleep_or_wait(delay, wakeup=stream_pressure)
+            unslept_delay = await aiotime.sleep(delay, wakeup=stream_pressure)
         else:
             unslept_delay = None  # no need to sleep? means: slept in full.
 
