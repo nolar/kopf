@@ -10,7 +10,6 @@ from kopf.reactor.daemons import daemon_killer
 from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.bodies import RawBody
-from kopf.structs.containers import ResourceMemories
 from kopf.structs.ephemera import Memo
 from kopf.structs.primitives import ToggleSet
 
@@ -30,7 +29,7 @@ class DaemonDummy:
     async def wait_for_daemon_done(self):
         stopped = self.kwargs['stopped']
         await stopped.wait()
-        while not stopped._stopper.reason & stopped._stopper.reason.DONE:
+        while not stopped.reason & stopped.reason.DONE:
             await asyncio.sleep(0)  # give control back to asyncio event loop
 
 

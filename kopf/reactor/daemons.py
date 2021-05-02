@@ -380,7 +380,7 @@ async def _runner(
 
         # Prevent future re-spawns for those exited on their own, for no reason.
         # Only the filter-mismatching or peering-pausing daemons can be re-spawned.
-        if stopper.reason == primitives.DaemonStoppingReason.NONE:
+        if stopper.reason is None:
             memory.forever_stopped.add(handler.id)
 
         # Save the memory by not remembering the exited daemons (they may be never re-spawned).

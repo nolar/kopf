@@ -12,7 +12,7 @@ async def test_timer_is_spawned_at_least_once(
         dummy.mock()
         dummy.kwargs = kwargs
         dummy.steps['called'].set()
-        kwargs['stopped']._stopper.set(reason=kopf.DaemonStoppingReason.NONE)  # to exit the cycle
+        kwargs['stopped']._setter.set()  # to exit the cycle
 
     await simulate_cycle({})
     await dummy.steps['called'].wait()
@@ -34,7 +34,7 @@ async def test_timer_initial_delay_obeyed(
         dummy.mock()
         dummy.kwargs = kwargs
         dummy.steps['called'].set()
-        kwargs['stopped']._stopper.set(reason=kopf.DaemonStoppingReason.NONE)  # to exit the cycle
+        kwargs['stopped']._setter.set()  # to exit the cycle
 
     await simulate_cycle({})
     await dummy.steps['called'].wait()

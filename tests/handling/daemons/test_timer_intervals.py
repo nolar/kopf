@@ -17,7 +17,7 @@ async def test_timer_regular_interval(
         frozen_time.tick(0.3)
         if dummy.mock.call_count >= 2:
             dummy.steps['finish'].set()
-            kwargs['stopped']._stopper.set(reason=kopf.DaemonStoppingReason.NONE)  # to exit the cycle
+            kwargs['stopped']._setter.set()  # to exit the cycle
 
     await simulate_cycle({})
     await dummy.steps['called'].wait()
@@ -41,7 +41,7 @@ async def test_timer_sharp_interval(
         frozen_time.tick(0.3)
         if dummy.mock.call_count >= 2:
             dummy.steps['finish'].set()
-            kwargs['stopped']._stopper.set(reason=kopf.DaemonStoppingReason.NONE)  # to exit the cycle
+            kwargs['stopped']._setter.set()  # to exit the cycle
 
     await simulate_cycle({})
     await dummy.steps['called'].wait()
