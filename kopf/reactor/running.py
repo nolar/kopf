@@ -6,13 +6,12 @@ import threading
 import warnings
 from typing import Collection, Coroutine, MutableSequence, Optional, Sequence
 
-from kopf.aiokits import aioadapters, aiotasks, aiotoggles, aiovalues
+from kopf.aiokits import aioadapters, aiobindings, aiotasks, aiotoggles, aiovalues
 from kopf.clients import auth
 from kopf.engines import peering, posting, probing
 from kopf.reactor import activities, admission, causation, daemons, handling, indexing, \
                          lifecycles, observation, orchestration, processing, registries
-from kopf.structs import configuration, containers, credentials, \
-                         ephemera, primitives, references, reviews
+from kopf.structs import configuration, containers, credentials, ephemera, references, reviews
 
 logger = logging.getLogger(__name__)
 
@@ -272,7 +271,7 @@ async def spawn_tasks(
     container: aiovalues.Container[reviews.WebhookClientConfig] = aiovalues.Container()
     tasks.append(aiotasks.create_guarded_task(
         name="admission insights chain", flag=started_flag, logger=logger,
-        coro=primitives.condition_chain(
+        coro=aiobindings.condition_chain(
             source=insights.revised, target=container.changed)))
     tasks.append(aiotasks.create_guarded_task(
         name="admission validating configuration manager", flag=started_flag, logger=logger,
