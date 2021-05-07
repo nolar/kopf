@@ -17,7 +17,7 @@ def test_missing_certbuilder(no_certbuilder):
 
 
 def test_certificate_generation():
-    names = ['hostname1', 'hostname2', '001.002.003.004', '0:0:0:0:0:0:0:1']
+    names = ['hostname1', 'hostname2', '1.2.3.4', '0:0:0:0:0:0:0:1']
     cert, pkey = WebhookServer.build_certificate(names)
     context = certvalidator.ValidationContext(extra_trust_roots=[cert])
     validator = certvalidator.CertificateValidator(cert, validation_context=context)
