@@ -1,6 +1,6 @@
 # Kubernetes Operator Pythonic Framework (Kopf)
 
-[![CI](https://github.com/nolar/kopf/workflows/Thorough%20tests/badge.svg)](https://github.com/nolar/kopf/actions)
+[![CI](https://github.com/nolar/kopf/workflows/Thorough%20tests/badge.svg)](https://github.com/nolar/kopf/actions/workflows/thorough.yaml)
 [![codecov](https://codecov.io/gh/nolar/kopf/branch/main/graph/badge.svg)](https://codecov.io/gh/nolar/kopf)
 [![Coverage Status](https://coveralls.io/repos/github/nolar/kopf/badge.svg?branch=main)](https://coveralls.io/github/nolar/kopf?branch=main)
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/nolar/kopf.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/nolar/kopf/alerts/)
