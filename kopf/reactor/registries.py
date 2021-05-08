@@ -294,7 +294,7 @@ class SmartOperatorRegistry(OperatorRegistry):
         else:
             self._activities.append(handlers.ActivityHandler(
                 id=ids.HandlerId('login_via_pykube'),
-                fn=cast(callbacks.ActivityFn, piggybacking.login_via_pykube),
+                fn=piggybacking.login_via_pykube,
                 activity=handlers.Activity.AUTHENTICATION,
                 errors=handlers.ErrorsMode.IGNORED,
                 param=None, timeout=None, retries=None, backoff=None,
@@ -307,7 +307,7 @@ class SmartOperatorRegistry(OperatorRegistry):
         else:
             self._activities.append(handlers.ActivityHandler(
                 id=ids.HandlerId('login_via_client'),
-                fn=cast(callbacks.ActivityFn, piggybacking.login_via_client),
+                fn=piggybacking.login_via_client,
                 activity=handlers.Activity.AUTHENTICATION,
                 errors=handlers.ErrorsMode.IGNORED,
                 param=None, timeout=None, retries=None, backoff=None,
