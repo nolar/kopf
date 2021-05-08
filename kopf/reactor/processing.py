@@ -21,8 +21,8 @@ from kopf.engines import loggers, posting
 from kopf.reactor import causation, daemons, effects, handling, \
                          indexing, lifecycles, registries, subhandling
 from kopf.storage import finalizers, states
-from kopf.structs import bodies, configuration, containers, diffs, \
-                         ephemera, patches, primitives, references
+from kopf.structs import bodies, configuration, containers, diffs, ephemera, \
+                         patches, primitives, references, throttlers
 
 
 async def process_resource_event(
@@ -72,7 +72,7 @@ async def process_resource_event(
     # to prevent queue overfilling, but the processing is skipped (events are ignored).
     # Choice of place: late enough to have a per-resource memory for a throttler; also, a logger.
     # But early enough to catch environment errors from K8s API, and from most of the complex code.
-    async with effects.throttled(
+    async with throttlers.throttled(
         throttler=memory.error_throttler,
         logger=local_logger,
         delays=settings.batching.error_delays,

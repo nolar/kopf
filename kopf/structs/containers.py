@@ -14,7 +14,7 @@ import time
 from typing import Dict, Iterator, MutableMapping, Optional, Set, Union
 
 from kopf.storage import states
-from kopf.structs import bodies, ephemera, handlers, ids, primitives
+from kopf.structs import bodies, ephemera, handlers, ids, primitives, throttlers
 from kopf.utilities import aiotasks
 
 
@@ -27,26 +27,14 @@ class Daemon:
 
 
 @dataclasses.dataclass(frozen=False)
-class Throttler:
-    """ A state of throttling for one specific purpose (there can be a few). """
-    source_of_delays: Optional[Iterator[float]] = None
-    last_used_delay: Optional[float] = None
-    active_until: Optional[float] = None  # internal clock
-
-
-@dataclasses.dataclass(frozen=False)
 class ResourceMemory:
     """ A system memo about a single resource/object. Usually stored in `Memories`. """
-
-    # For arbitrary user data to be stored in memory, passed as `memo` to all the handlers.
     memo: ephemera.AnyMemo = dataclasses.field(default_factory=lambda: ephemera.AnyMemo(ephemera.Memo()))
+    error_throttler: throttlers.Throttler = dataclasses.field(default_factory=throttlers.Throttler)
 
     # For resuming handlers tracking and deciding on should they be called or not.
     noticed_by_listing: bool = False
     fully_handled_once: bool = False
-
-    # Throttling for API errors (mostly from PATCHing) and for processing in general.
-    error_throttler: Throttler = dataclasses.field(default_factory=Throttler)
 
     # For background and timed threads/tasks (invoked with the kwargs of the last-seen body).
     live_fresh_body: Optional[bodies.Body] = None
