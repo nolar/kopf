@@ -19,23 +19,16 @@ from typing import Any, Callable, Collection, Container, Generic, Iterable, Iter
                    Mapping, MutableMapping, Optional, Sequence, Set, Tuple, TypeVar, cast
 
 from kopf.reactor import causation, invocation
-from kopf.structs import callbacks, dicts, filters, handlers, ids, references
+from kopf.structs import dicts, filters, handlers, ids, references
 from kopf.utilities import piggybacking
 
 # We only type-check for known classes of handlers/callbacks, and ignore any custom subclasses.
 CauseT = TypeVar('CauseT', bound=causation.BaseCause)
 HandlerT = TypeVar('HandlerT', bound=handlers.BaseHandler)
 ResourceHandlerT = TypeVar('ResourceHandlerT', bound=handlers.ResourceHandler)
-HandlerFnT = TypeVar('HandlerFnT',
-                     callbacks.ActivityFn,
-                     callbacks.ResourceIndexingFn,
-                     callbacks.ResourceWatchingFn,
-                     callbacks.ResourceSpawningFn,
-                     callbacks.ResourceChangingFn,
-                     callbacks.ResourceWebhookFn)
 
 
-class GenericRegistry(Generic[HandlerFnT, HandlerT]):
+class GenericRegistry(Generic[HandlerT]):
     """ A generic base class of a simple registry (with no handler getters). """
     _handlers: List[HandlerT]
 
@@ -50,9 +43,7 @@ class GenericRegistry(Generic[HandlerFnT, HandlerT]):
         return list(self._handlers)
 
 
-class ActivityRegistry(GenericRegistry[
-        callbacks.ActivityFn,
-        handlers.ActivityHandler]):
+class ActivityRegistry(GenericRegistry[handlers.ActivityHandler]):
 
     def get_handlers(
             self,
@@ -79,9 +70,7 @@ class ActivityRegistry(GenericRegistry[
                     yield handler
 
 
-class ResourceRegistry(
-        GenericRegistry[HandlerFnT, ResourceHandlerT],
-        Generic[CauseT, HandlerFnT, ResourceHandlerT]):
+class ResourceRegistry(GenericRegistry[ResourceHandlerT], Generic[ResourceHandlerT, CauseT]):
 
     def has_handlers(
             self,
@@ -124,9 +113,9 @@ class ResourceRegistry(
 
 
 class ResourceIndexingRegistry(ResourceRegistry[
-        causation.ResourceIndexingCause,
-        callbacks.ResourceIndexingFn,
-        handlers.ResourceIndexingHandler]):
+    handlers.ResourceIndexingHandler,
+    causation.ResourceIndexingCause,
+]):
 
     def iter_handlers(
             self,
@@ -140,9 +129,9 @@ class ResourceIndexingRegistry(ResourceRegistry[
 
 
 class ResourceWatchingRegistry(ResourceRegistry[
-        causation.ResourceWatchingCause,
-        callbacks.ResourceWatchingFn,
-        handlers.ResourceWatchingHandler]):
+    handlers.ResourceWatchingHandler,
+    causation.ResourceWatchingCause,
+]):
 
     def iter_handlers(
             self,
@@ -156,9 +145,9 @@ class ResourceWatchingRegistry(ResourceRegistry[
 
 
 class ResourceSpawningRegistry(ResourceRegistry[
+        handlers.ResourceSpawningHandler,
         causation.ResourceSpawningCause,
-        callbacks.ResourceSpawningFn,
-        handlers.ResourceSpawningHandler]):
+]):
 
     def iter_handlers(
             self,
@@ -187,9 +176,9 @@ class ResourceSpawningRegistry(ResourceRegistry[
 
 
 class ResourceChangingRegistry(ResourceRegistry[
+        handlers.ResourceChangingHandler,
         causation.ResourceChangingCause,
-        callbacks.ResourceChangingFn,
-        handlers.ResourceChangingHandler]):
+]):
 
     def iter_handlers(
             self,
@@ -242,9 +231,9 @@ class ResourceChangingRegistry(ResourceRegistry[
 
 
 class ResourceWebhooksRegistry(ResourceRegistry[
+        handlers.ResourceWebhookHandler,
         causation.ResourceWebhookCause,
-        callbacks.ResourceWebhookFn,
-        handlers.ResourceWebhookHandler]):
+]):
 
     def iter_handlers(
             self,
@@ -294,7 +283,7 @@ class SmartOperatorRegistry(OperatorRegistry):
         else:
             self._activities.append(handlers.ActivityHandler(
                 id=ids.HandlerId('login_via_pykube'),
-                fn=cast(callbacks.ActivityFn, piggybacking.login_via_pykube),
+                fn=piggybacking.login_via_pykube,
                 activity=handlers.Activity.AUTHENTICATION,
                 errors=handlers.ErrorsMode.IGNORED,
                 param=None, timeout=None, retries=None, backoff=None,
@@ -307,7 +296,7 @@ class SmartOperatorRegistry(OperatorRegistry):
         else:
             self._activities.append(handlers.ActivityHandler(
                 id=ids.HandlerId('login_via_client'),
-                fn=cast(callbacks.ActivityFn, piggybacking.login_via_client),
+                fn=piggybacking.login_via_client,
                 activity=handlers.Activity.AUTHENTICATION,
                 errors=handlers.ErrorsMode.IGNORED,
                 param=None, timeout=None, retries=None, backoff=None,
