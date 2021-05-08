@@ -10,12 +10,23 @@ import asyncio
 import contextlib
 import contextvars
 import functools
-from typing import Any, Iterable, Iterator, List, Mapping, Optional, Tuple, cast
+from typing import Any, Callable, Coroutine, Iterable, Iterator, List, \
+                   Mapping, Optional, Tuple, TypeVar, Union, cast
 
 from typing_extensions import final
 
-from kopf.structs import callbacks, configuration
+from kopf.structs import configuration
 from kopf.utilities import aiotasks
+
+# An internal typing hack shows that the handler can be sync fn with the result,
+# or an async fn which returns a coroutine which, in turn, returns the result.
+# Used in some protocols only and is never exposed to other modules.
+_R = TypeVar('_R')
+SyncOrAsync = Union[_R, Coroutine[None, None, _R]]
+
+# A generic sync-or-async callable with no args/kwargs checks (unlike in protocols).
+# Used for the BaseHandler and generic invocation methods (which do not care about protocols).
+Invokable = Callable[..., SyncOrAsync[Optional[object]]]
 
 
 class Kwargable(metaclass=abc.ABCMeta):
@@ -81,7 +92,7 @@ def context(
 
 
 async def invoke(
-        fn: callbacks.BaseFn,
+        fn: Invokable,
         *,
         settings: Optional[configuration.OperatorSettings] = None,
         kwargsrc: Optional[Kwargable] = None,
@@ -139,7 +150,7 @@ async def invoke(
 
 
 def is_async_fn(
-        fn: Optional[callbacks.BaseFn],
+        fn: Optional[Invokable],
 ) -> bool:
     if fn is None:
         return False
