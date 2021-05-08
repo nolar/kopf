@@ -40,6 +40,8 @@ from kopf.reactor.handling import (
     PermanentError,
     HandlerTimeoutError,
     HandlerRetriesError,
+)
+from kopf.reactor.subhandling import (
     execute,
 )
 from kopf.reactor.lifecycles import (

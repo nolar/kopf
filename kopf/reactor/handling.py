@@ -8,12 +8,13 @@ The handler execution can also be used in other places, such as in-memory
 activities, when there is no underlying Kubernetes object to patch'n'watch.
 """
 import asyncio
-import collections.abc
+import contextlib
 import datetime
 from contextvars import ContextVar
-from typing import Collection, Iterable, Mapping, MutableMapping, Optional, Set, Union
+from typing import AsyncContextManager, AsyncIterator, Callable, Collection, \
+                   Iterable, Mapping, MutableMapping, Optional, Set
 
-from kopf.reactor import causation, invocation, lifecycles, registries
+from kopf.reactor import causation, invocation, lifecycles
 from kopf.storage import states
 from kopf.structs import callbacks, configuration, handlers as handlers_, ids
 
@@ -51,131 +52,18 @@ class HandlerChildrenRetry(TemporaryError):
 # The task-local context; propagated down the stack instead of multiple kwargs.
 # Used in `@kopf.subhandler` and `kopf.execute()` to add/get the sub-handlers.
 sublifecycle_var: ContextVar[Optional[lifecycles.LifeCycleFn]] = ContextVar('sublifecycle_var')
-subregistry_var: ContextVar[registries.ChangingRegistry] = ContextVar('subregistry_var')
 subsettings_var: ContextVar[configuration.OperatorSettings] = ContextVar('subsettings_var')
-subexecuted_var: ContextVar[bool] = ContextVar('subexecuted_var')
 subrefs_var: ContextVar[Iterable[Set[ids.HandlerId]]] = ContextVar('subrefs_var')
 handler_var: ContextVar[handlers_.BaseHandler] = ContextVar('handler_var')
 cause_var: ContextVar[causation.BaseCause] = ContextVar('cause_var')
 
 
-async def execute(
-        *,
-        fns: Optional[Iterable[callbacks.ChangingFn]] = None,
-        handlers: Optional[Iterable[handlers_.ChangingHandler]] = None,
-        registry: Optional[registries.ChangingRegistry] = None,
-        lifecycle: Optional[lifecycles.LifeCycleFn] = None,
-        cause: Optional[causation.BaseCause] = None,
-) -> None:
-    """
-    Execute the handlers in an isolated lifecycle.
+ExtraContext = Callable[[], AsyncContextManager[None]]
 
-    This function is just a public wrapper for `execute` with multiple
-    ways to specify the handlers: either as the raw functions, or as the
-    pre-created handlers, or as a registry (as used in the object handling).
 
-    If no explicit functions or handlers or registry are passed,
-    the sub-handlers of the current handler are assumed, as accumulated
-    in the per-handler registry with ``@kopf.subhandler``.
-
-    If the call to this method for the sub-handlers is not done explicitly
-    in the handler, it is done implicitly after the handler is exited.
-    One way or another, it is executed for the sub-handlers.
-    """
-
-    # Restore the current context as set in the handler execution cycle.
-    lifecycle = lifecycle if lifecycle is not None else sublifecycle_var.get()
-    lifecycle = lifecycle if lifecycle is not None else lifecycles.get_default_lifecycle()
-    cause = cause if cause is not None else cause_var.get()
-    parent_handler: handlers_.BaseHandler = handler_var.get()
-    parent_prefix = parent_handler.id if parent_handler is not None else None
-
-    # Validate the inputs; the function signatures cannot put these kind of restrictions, so we do.
-    if len([v for v in [fns, handlers, registry] if v is not None]) > 1:
-        raise TypeError("Only one of the fns, handlers, registry can be passed. Got more.")
-
-    elif fns is not None and isinstance(fns, collections.abc.Mapping):
-        subregistry = registries.ChangingRegistry()
-        for id, fn in fns.items():
-            real_id = registries.generate_id(fn=fn, id=id, prefix=parent_prefix)
-            handler = handlers_.ChangingHandler(
-                fn=fn, id=real_id, param=None,
-                errors=None, timeout=None, retries=None, backoff=None,
-                selector=None, labels=None, annotations=None, when=None,
-                initial=None, deleted=None, requires_finalizer=None,
-                reason=None, field=None, value=None, old=None, new=None,
-                field_needs_change=None,
-            )
-            subregistry.append(handler)
-
-    elif fns is not None and isinstance(fns, collections.abc.Iterable):
-        subregistry = registries.ChangingRegistry()
-        for fn in fns:
-            real_id = registries.generate_id(fn=fn, id=None, prefix=parent_prefix)
-            handler = handlers_.ChangingHandler(
-                fn=fn, id=real_id, param=None,
-                errors=None, timeout=None, retries=None, backoff=None,
-                selector=None, labels=None, annotations=None, when=None,
-                initial=None, deleted=None, requires_finalizer=None,
-                reason=None, field=None, value=None, old=None, new=None,
-                field_needs_change=None,
-            )
-            subregistry.append(handler)
-
-    elif fns is not None:
-        raise ValueError(f"fns must be a mapping or an iterable, got {fns.__class__}.")
-
-    elif handlers is not None:
-        subregistry = registries.ChangingRegistry()
-        for handler in handlers:
-            subregistry.append(handler)
-
-    # Use the registry as is; assume that the caller knows what they do.
-    elif registry is not None:
-        subregistry = registry
-
-    # Prevent double implicit execution.
-    elif subexecuted_var.get():
-        return
-
-    # If no explicit args were passed, use the accumulated handlers from `@kopf.subhandler`.
-    else:
-        subexecuted_var.set(True)
-        subregistry = subregistry_var.get()
-
-    # The sub-handlers are only for upper-level causes, not for lower-level events.
-    if not isinstance(cause, causation.ChangingCause):
-        raise RuntimeError("Sub-handlers of event-handlers are not supported and have "
-                           "no practical use (there are no retries or state tracking).")
-
-    # Execute the real handlers (all or few or one of them, as per the lifecycle).
-    settings: configuration.OperatorSettings = subsettings_var.get()
-    owned_handlers = subregistry.get_resource_handlers(resource=cause.resource)
-    cause_handlers = subregistry.get_handlers(cause=cause)
-    storage = settings.persistence.progress_storage
-    state = states.State.from_storage(body=cause.body, storage=storage, handlers=owned_handlers)
-    state = state.with_purpose(cause.reason).with_handlers(cause_handlers)
-    outcomes = await execute_handlers_once(
-        lifecycle=lifecycle,
-        settings=settings,
-        handlers=cause_handlers,
-        cause=cause,
-        state=state,
-    )
-    state = state.with_outcomes(outcomes)
-    state.store(body=cause.body, patch=cause.patch, storage=storage)
-    states.deliver_results(outcomes=outcomes, patch=cause.patch)
-
-    # Enrich all parents with references to sub-handlers of any level deep (sub-sub-handlers, etc).
-    # There is at least one container, as this function can be called only from a handler.
-    subrefs_containers: Iterable[Set[ids.HandlerId]] = subrefs_var.get()
-    for key in state:
-        for subrefs_container in subrefs_containers:
-            subrefs_container.add(key)
-
-    # Escalate `HandlerChildrenRetry` if the execute should be continued on the next iteration.
-    if not state.done:
-        raise HandlerChildrenRetry(delay=state.delay)
+@contextlib.asynccontextmanager
+async def no_extra_context() -> AsyncIterator[None]:
+    yield
 
 
 async def execute_handlers_once(
@@ -184,6 +72,7 @@ async def execute_handlers_once(
         handlers: Collection[handlers_.BaseHandler],
         cause: causation.BaseCause,
         state: states.State,
+        extra_context: ExtraContext = no_extra_context,
         default_errors: handlers_.ErrorsMode = handlers_.ErrorsMode.TEMPORARY,
 ) -> Mapping[ids.HandlerId, states.HandlerOutcome]:
     """
@@ -209,6 +98,7 @@ async def execute_handlers_once(
             state=state[handler.id],
             cause=cause,
             lifecycle=lifecycle,  # just a default for the sub-handlers, not used directly.
+            extra_context=extra_context,
             default_errors=default_errors,
         )
         outcomes[handler.id] = outcome
@@ -222,6 +112,7 @@ async def execute_handler_once(
         cause: causation.BaseCause,
         state: states.HandlerState,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
+        extra_context: ExtraContext = no_extra_context,
         default_errors: handlers_.ErrorsMode = handlers_.ErrorsMode.TEMPORARY,
 ) -> states.HandlerOutcome:
     """
@@ -264,6 +155,7 @@ async def execute_handler_once(
             runtime=state.runtime,
             settings=settings,
             lifecycle=lifecycle,  # just a default for the sub-handlers, not used directly.
+            extra_context=extra_context,
             subrefs=subrefs,
         )
 
@@ -325,6 +217,7 @@ async def invoke_handler(
         settings: configuration.OperatorSettings,
         lifecycle: Optional[lifecycles.LifeCycleFn],
         subrefs: Set[ids.HandlerId],
+        extra_context: ExtraContext,
 ) -> Optional[callbacks.Result]:
     """
     Invoke one handler only, according to the calling conventions.
@@ -339,34 +232,27 @@ async def invoke_handler(
     # For the field-handlers, the old/new/diff values must match the field, not the whole object.
     cause = handler.adjust_cause(cause)
 
-    # Store the context of the current handler, to be used in `@kopf.subhandler`,
-    # and maybe other places, and consumed in the recursive `execute()` calls for the children.
-    # This replaces the multiple kwargs passing through the whole call stack (easy to forget).
+    # The context makes it possible and easy to pass the kwargs _through_ the user-space handlers:
+    # from the framework to the framework's helper functions (e.g. sub-handling, hierarchies, etc).
     with invocation.context([
         (sublifecycle_var, lifecycle),
-        (subregistry_var, registries.ChangingRegistry()),
         (subsettings_var, settings),
-        (subexecuted_var, False),
         (subrefs_var, list(subrefs_var.get([])) + [subrefs]),
         (handler_var, handler),
         (cause_var, cause),
     ]):
-        # And call it. If the sub-handlers are not called explicitly, run them implicitly
-        # as if it was done inside of the handler (i.e. under try-finally block).
-        result = await invocation.invoke(
-            handler.fn,
-            settings=settings,
-            kwargsrc=cause,
-            kwargs=dict(
-                param=handler.param,
-                retry=retry,
-                started=started,
-                runtime=runtime,
-            ),
-        )
+        async with extra_context():
+            result = await invocation.invoke(
+                handler.fn,
+                settings=settings,
+                kwargsrc=cause,
+                kwargs=dict(
+                    param=handler.param,
+                    retry=retry,
+                    started=started,
+                    runtime=runtime,
+                ),
+            )
 
-        if not subexecuted_var.get() and isinstance(cause, causation.ChangingCause):
-            await execute()
-
-        # Since we know that we invoked the handler, we cast "any" result to a handler result.
-        return callbacks.Result(result)
+            # Since we know that we invoked the handler, we cast "any" result to a handler result.
+            return callbacks.Result(result)

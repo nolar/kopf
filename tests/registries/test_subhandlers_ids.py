@@ -1,6 +1,7 @@
 import kopf
-from kopf.reactor.handling import handler_var, subregistry_var
+from kopf.reactor.handling import handler_var
 from kopf.reactor.invocation import context
+from kopf.reactor.subhandling import subregistry_var
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.

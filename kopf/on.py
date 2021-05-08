@@ -13,7 +13,7 @@ This module is a part of the framework's public interface.
 # TODO: add cluster=True support (different API methods)
 from typing import Any, Callable, Optional, Union
 
-from kopf.reactor import causation, handling, registries
+from kopf.reactor import causation, handling, registries, subhandling
 from kopf.structs import callbacks, dicts, filters, handlers, references, reviews
 
 ActivityDecorator = Callable[[callbacks.ActivityFn], callbacks.ActivityFn]
@@ -814,7 +814,7 @@ def subhandler(  # lgtm[py/similar-function]
         _warn_incompatible_parent_with_oldnew(parent_handler, old, new)
         _warn_conflicting_values(field, value, old, new)
         _verify_filters(labels, annotations)
-        real_registry = handling.subregistry_var.get()
+        real_registry = subhandling.subregistry_var.get()
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id,
                                          prefix=parent_handler.id if parent_handler else None)

@@ -18,7 +18,8 @@ import time
 from typing import Collection, Optional, Tuple
 
 from kopf.engines import loggers, posting
-from kopf.reactor import causation, daemons, effects, handling, indexing, lifecycles, registries
+from kopf.reactor import causation, daemons, effects, handling, \
+                         indexing, lifecycles, registries, subhandling
 from kopf.storage import finalizers, states
 from kopf.structs import bodies, configuration, containers, diffs, ephemera, \
                          handlers as handlers_, patches, primitives, references
@@ -413,6 +414,7 @@ async def process_changing_cause(
                 handlers=cause_handlers,
                 cause=cause,
                 state=state,
+                extra_context=subhandling.subhandling_context,
             )
             state = state.with_outcomes(outcomes)
             state.store(body=cause.body, patch=cause.patch, storage=storage)
