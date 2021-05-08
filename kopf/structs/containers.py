@@ -39,8 +39,7 @@ class ResourceMemory:
     """ A system memo about a single resource/object. Usually stored in `Memories`. """
 
     # For arbitrary user data to be stored in memory, passed as `memo` to all the handlers.
-    memo: ephemera.AnyMemo = dataclasses.field(default_factory=
-                                               lambda: ephemera.AnyMemo(ephemera.Memo))
+    memo: ephemera.AnyMemo = dataclasses.field(default_factory=lambda: ephemera.AnyMemo(ephemera.Memo()))
 
     # For resuming handlers tracking and deciding on should they be called or not.
     noticed_by_listing: bool = False

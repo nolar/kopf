@@ -43,6 +43,12 @@ async def test_forgetting_ignores_when_absent():
     await memories.forget(BODY)
 
 
+async def test_memo_is_autocreated():
+    memories = ResourceMemories()
+    memory = await memories.recall(BODY)
+    assert isinstance(memory.memo, Memo)
+
+
 async def test_memo_is_shallow_copied():
 
     class MyMemo(Memo):
