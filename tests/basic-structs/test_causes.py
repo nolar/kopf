@@ -37,7 +37,7 @@ def test_resource_watching_cause(mocker):
     patch = mocker.Mock()
     memo = mocker.Mock()
     type = mocker.Mock()
-    raw = mocker.Mock()
+    event = mocker.Mock()
     cause = ResourceWatchingCause(
         resource=resource,
         indices=indices,
@@ -46,7 +46,7 @@ def test_resource_watching_cause(mocker):
         patch=patch,
         memo=memo,
         type=type,
-        raw=raw,
+        event=event,
     )
     assert cause.resource is resource
     assert cause.indices is indices
@@ -55,7 +55,7 @@ def test_resource_watching_cause(mocker):
     assert cause.patch is patch
     assert cause.memo is memo
     assert cause.type is type
-    assert cause.raw is raw
+    assert cause.event is event
 
 
 def test_resource_changing_cause_with_all_args(mocker):

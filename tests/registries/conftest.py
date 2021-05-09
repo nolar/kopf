@@ -86,8 +86,8 @@ def cause_factory(resource):
             cls=ResourceChangingCause,
             *,
             resource=resource,
+            event=None,
             type=None,
-            raw=None,
             body=None,
             diff=(),
             old=None,
@@ -123,7 +123,7 @@ def cause_factory(resource):
                 memo=Memo(),
                 body=Body(body if body is not None else {}),
                 type=type,
-                raw=raw,
+                event=event,
             )
         if cls is ResourceChangingCause or cls is ResourceChangingRegistry:
             return ResourceChangingCause(

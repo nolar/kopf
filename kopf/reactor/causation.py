@@ -23,16 +23,43 @@ import dataclasses
 import logging
 from typing import Any, List, Mapping, Optional, TypeVar, Union
 
+from kopf.reactor import invocation
 from kopf.storage import finalizers
 from kopf.structs import bodies, configuration, diffs, ephemera, handlers, \
                          ids, patches, primitives, references, reviews
 
 
 @dataclasses.dataclass
-class BaseCause:
+class BaseCause(invocation.Kwargable):
+    """
+    Base non-specific cause as used in the framework's reactor in most cases.
+
+    IMPORTANT! Indices overwrite any other kwargs, even the existing ones.
+
+    Why so? Here is why: for forwards & backwards compatibility.
+    If an handler uses an index named "children", and Kopf introduces
+    a new kwarg "children", the handler's code could break on the upgrade.
+    To prevent this, Kopf overwrites the framework's kwarg "children"
+    with the operator's index "children" and lets the developers rename it
+    when (and if) they want the new kwarg.
+
+    Naming the new indices the same as the known/existing kwargs
+    harms only the developers who do so, so this is considered safe.
+    """
     indices: ephemera.Indices
     logger: Union[logging.Logger, logging.LoggerAdapter]
     memo: ephemera.AnyMemo
+
+    @property
+    def _kwargs(self) -> Mapping[str, Any]:
+        # Similar to `dataclasses.asdict()`, but not recursive for other dataclasses.
+        kwargs = {field.name: getattr(self, field.name) for field in dataclasses.fields(self)}
+        del kwargs['indices']
+        return kwargs
+
+    @property
+    def _super_kwargs(self) -> Mapping[str, Any]:
+        return self.indices
 
 
 @dataclasses.dataclass
@@ -47,6 +74,20 @@ class ResourceCause(BaseCause):
     patch: patches.Patch
     body: bodies.Body
 
+    @property
+    def _kwargs(self) -> Mapping[str, Any]:
+        return dict(
+            super()._kwargs,
+            spec=self.body.spec,
+            meta=self.body.metadata,
+            status=self.body.status,
+            uid=self.body.metadata.uid,
+            name=self.body.metadata.name,
+            namespace=self.body.metadata.namespace,
+            labels=self.body.metadata.labels,
+            annotations=self.body.metadata.annotations,
+        )
+
 
 @dataclasses.dataclass
 class ResourceWebhookCause(ResourceCause):
@@ -58,6 +99,14 @@ class ResourceWebhookCause(ResourceCause):
     userinfo: reviews.UserInfo
     warnings: List[str]  # mutable!
     operation: Optional[reviews.Operation]  # None if not provided for some reason
+
+    @property
+    def _kwargs(self) -> Mapping[str, Any]:
+        kwargs = dict(super()._kwargs)
+        del kwargs['reason']
+        del kwargs['webhook']
+        del kwargs['operation']
+        return kwargs
 
 
 @dataclasses.dataclass
@@ -76,7 +125,7 @@ class ResourceWatchingCause(ResourceCause):
     It is a read-only mapping with some extra properties and methods.
     """
     type: bodies.RawEventType
-    raw: bodies.RawEvent
+    event: bodies.RawEvent
 
 
 @dataclasses.dataclass
@@ -88,6 +137,12 @@ class ResourceSpawningCause(ResourceCause):
     specific objects (loggers, etc).
     """
     reset: bool
+
+    @property
+    def _kwargs(self) -> Mapping[str, Any]:
+        kwargs = dict(super()._kwargs)
+        del kwargs['reset']
+        return kwargs
 
 
 @dataclasses.dataclass
@@ -103,6 +158,12 @@ class ResourceChangingCause(ResourceCause):
     diff: diffs.Diff = diffs.EMPTY
     old: Optional[bodies.BodyEssence] = None
     new: Optional[bodies.BodyEssence] = None
+
+    @property
+    def _kwargs(self) -> Mapping[str, Any]:
+        kwargs = dict(super()._kwargs)
+        del kwargs['initial']
+        return kwargs
 
     @property
     def deleted(self) -> bool:
@@ -131,6 +192,20 @@ class DaemonCause(ResourceCause):
     """
     stopper: primitives.DaemonStopper  # a signaller for the termination and its reason.
 
+    @property
+    def _kwargs(self) -> Mapping[str, Any]:
+        kwargs = dict(super()._kwargs)
+        del kwargs['stopper']
+        return kwargs
+
+    @property
+    def _sync_kwargs(self) -> Mapping[str, Any]:
+        return dict(super()._sync_kwargs, stopped=self.stopper.sync_checker)
+
+    @property
+    def _async_kwargs(self) -> Mapping[str, Any]:
+        return dict(super()._async_kwargs, stopped=self.stopper.async_checker)
+
 
 def detect_resource_watching_cause(
         raw_event: bodies.RawEvent,
@@ -138,7 +213,7 @@ def detect_resource_watching_cause(
         **kwargs: Any,
 ) -> ResourceWatchingCause:
     return ResourceWatchingCause(
-        raw=raw_event,
+        event=raw_event,
         type=raw_event['type'],
         body=body,
         **kwargs)

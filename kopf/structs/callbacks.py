@@ -10,9 +10,9 @@ a corresponding type or class ``kopf.Whatever`` with all the typing tricks
 """
 import datetime
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Collection, \
-                   Coroutine, List, NewType, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, Collection, List, NewType, Optional, TypeVar, Union
 
+from kopf.reactor import invocation
 from kopf.structs import bodies, configuration, diffs, ephemera, \
                          patches, primitives, references, reviews
 
@@ -24,25 +24,15 @@ Logger = Union[logging.Logger, logging.LoggerAdapter]
 # to not be mixed with other arbitrary Any values, where it is indeed "any".
 Result = NewType('Result', object)
 
-# An internal typing hack shows that the handler can be sync fn with the result,
-# or an async fn which returns a coroutine which, in turn, returns the result.
-# Used in some protocols only and is never exposed to other modules.
-_R = TypeVar('_R')
-_SyncOrAsync = Union[_R, Coroutine[None, None, _R]]
-
-# A generic sync-or-async callable with no args/kwargs checks (unlike in protocols).
-# Used for the BaseHandler and generic invocation methods (which do not care about protocols).
-BaseFn = Callable[..., _SyncOrAsync[Optional[object]]]
-
 if not TYPE_CHECKING:  # pragma: nocover
     # Define unspecified protocols for the runtime annotations -- to avoid "quoting".
-    ActivityFn = Callable[..., _SyncOrAsync[Optional[object]]]
-    ResourceIndexingFn = Callable[..., _SyncOrAsync[Optional[object]]]
-    ResourceWatchingFn = Callable[..., _SyncOrAsync[Optional[object]]]
-    ResourceChangingFn = Callable[..., _SyncOrAsync[Optional[object]]]
-    ResourceWebhookFn = Callable[..., _SyncOrAsync[None]]
-    ResourceDaemonFn = Callable[..., _SyncOrAsync[Optional[object]]]
-    ResourceTimerFn = Callable[..., _SyncOrAsync[Optional[object]]]
+    ActivityFn = Callable[...,  invocation.SyncOrAsync[Optional[object]]]
+    ResourceIndexingFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
+    ResourceWatchingFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
+    ResourceChangingFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
+    ResourceWebhookFn = Callable[..., invocation.SyncOrAsync[None]]
+    ResourceDaemonFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
+    ResourceTimerFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
     WhenFilterFn = Callable[..., bool]  # strictly sync, no async!
     MetaFilterFn = Callable[..., bool]  # strictly sync, no async!
 else:
@@ -63,7 +53,7 @@ else:
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        _SyncOrAsync[Optional[object]]
+        invocation.SyncOrAsync[Optional[object]]
     ]
 
     ResourceIndexingFn = Callable[
@@ -84,7 +74,7 @@ else:
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        _SyncOrAsync[Optional[object]]
+        invocation.SyncOrAsync[Optional[object]]
     ]
 
     ResourceWatchingFn = Callable[
@@ -107,7 +97,7 @@ else:
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        _SyncOrAsync[Optional[object]]
+        invocation.SyncOrAsync[Optional[object]]
     ]
 
     ResourceChangingFn = Callable[
@@ -135,7 +125,7 @@ else:
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        _SyncOrAsync[Optional[object]]
+        invocation.SyncOrAsync[Optional[object]]
     ]
 
     ResourceWebhookFn = Callable[
@@ -161,7 +151,7 @@ else:
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        _SyncOrAsync[None]
+        invocation.SyncOrAsync[None]
     ]
 
     ResourceDaemonFn = Callable[
@@ -186,7 +176,7 @@ else:
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        _SyncOrAsync[Optional[object]]
+        invocation.SyncOrAsync[Optional[object]]
     ]
 
     ResourceTimerFn = Callable[
@@ -208,7 +198,7 @@ else:
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        _SyncOrAsync[Optional[object]]
+        invocation.SyncOrAsync[Optional[object]]
     ]
 
     WhenFilterFn = Callable[

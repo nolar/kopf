@@ -2,6 +2,7 @@ import dataclasses
 import enum
 from typing import Any, Optional
 
+from kopf.reactor import invocation
 from kopf.structs import callbacks, dicts, filters, ids, references
 
 
@@ -73,7 +74,7 @@ TITLES = {
 @dataclasses.dataclass
 class BaseHandler:
     id: ids.HandlerId
-    fn: callbacks.BaseFn
+    fn: invocation.Invokable
     param: Optional[Any]
     errors: Optional[ErrorsMode]
     timeout: Optional[float]

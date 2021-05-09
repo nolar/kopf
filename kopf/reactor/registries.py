@@ -18,7 +18,7 @@ from types import FunctionType, MethodType
 from typing import Any, Callable, Collection, Container, Generic, Iterable, Iterator, List, \
                    Mapping, MutableMapping, Optional, Sequence, Set, Tuple, TypeVar, cast
 
-from kopf.reactor import causation, invocation
+from kopf.reactor import causation
 from kopf.structs import dicts, filters, handlers, ids, references
 from kopf.utilities import piggybacking
 
@@ -445,7 +445,7 @@ def _matches_metadata(
             continue
         elif callable(value):
             if not kwargs:
-                kwargs.update(invocation.build_kwargs(cause=cause))
+                kwargs.update(cause.kwargs)
             if value(content.get(key, None), **kwargs):
                 continue
             else:
@@ -468,7 +468,7 @@ def _matches_field_values(
         return True
 
     if not kwargs:
-        kwargs.update(invocation.build_kwargs(cause=cause))
+        kwargs.update(cause.kwargs)
 
     absent = _UNSET.token  # or any other identifyable object
     if isinstance(cause, causation.ResourceChangingCause):
@@ -502,7 +502,7 @@ def _matches_field_changes(
         return True
 
     if not kwargs:
-        kwargs.update(invocation.build_kwargs(cause=cause))
+        kwargs.update(cause.kwargs)
 
     absent = _UNSET.token  # or any other identifyable object
     old = dicts.resolve(cause.old, handler.field, absent)
@@ -533,7 +533,7 @@ def _matches_filter_callback(
     if handler.when is None:
         return True
     if not kwargs:
-        kwargs.update(invocation.build_kwargs(cause=cause))
+        kwargs.update(cause.kwargs)
     return handler.when(**kwargs)
 
 

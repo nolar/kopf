@@ -1,12 +1,15 @@
+import dataclasses
 import logging
+from typing import Type
+from unittest.mock import Mock
 
 import pytest
 
-from kopf.reactor.causation import ActivityCause, DaemonCause, \
-                                   ResourceChangingCause, ResourceSpawningCause, \
+from kopf.reactor.causation import ActivityCause, BaseCause, DaemonCause, \
+                                   ResourceCause, ResourceChangingCause, \
+                                   ResourceIndexingCause, ResourceSpawningCause, \
                                    ResourceWatchingCause, ResourceWebhookCause
 from kopf.reactor.indexing import OperatorIndexer, OperatorIndexers
-from kopf.reactor.invocation import build_kwargs
 from kopf.structs.bodies import Body, BodyEssence
 from kopf.structs.configuration import OperatorSettings
 from kopf.structs.diffs import Diff
@@ -15,61 +18,62 @@ from kopf.structs.handlers import Activity, Reason
 from kopf.structs.patches import Patch
 from kopf.structs.primitives import DaemonStopper
 
+ALL_CAUSES = [
+    BaseCause, ActivityCause, ResourceCause,
+    ResourceWatchingCause, ResourceSpawningCause,
+    ResourceChangingCause, ResourceIndexingCause,
+    ResourceWebhookCause, DaemonCause,
+]
+ALL_FIELDS = {
+    field.name
+    for cause_cls in ALL_CAUSES
+    for field in dataclasses.fields(cause_cls)
+} | {'stopped', 'body', 'spec', 'meta', 'status', 'name', 'namespace', 'labels', 'annotations'}
 
-@pytest.fixture()
-def indices():
+
+@pytest.mark.parametrize('cls', ALL_CAUSES)
+@pytest.mark.parametrize('name', ALL_FIELDS)
+@pytest.mark.parametrize('attr', ['kwargs', 'sync_kwargs', 'async_kwargs'])
+def test_indices_overwrite_kwargs(cls: Type[BaseCause], name, attr):
     indexers = OperatorIndexers()
     indexers['index1'] = OperatorIndexer()
     indexers['index2'] = OperatorIndexer()
-    return indexers.indices
+    indexers[name] = OperatorIndexer()
+    mocks = {field.name: Mock() for field in dataclasses.fields(cls)}
+    mocks['indices'] = indexers.indices
+    cause = cls(**mocks)
+    kwargs = getattr(cause, attr)  # cause.kwargs / cause.sync_kwargs / cause.async_kwargs
+    assert kwargs['index1'] is indexers['index1'].index
+    assert kwargs['index2'] is indexers['index2'].index
+    assert kwargs[name] is indexers[name].index
 
 
-@pytest.mark.parametrize('activity', set(Activity) - {Activity.STARTUP})
-def test_activity_kwargs(resource, activity, indices):
+@pytest.mark.parametrize('activity', set(Activity))
+@pytest.mark.parametrize('attr', ['kwargs', 'sync_kwargs', 'async_kwargs'])
+def test_activity_kwargs(resource, activity, attr):
     cause = ActivityCause(
         memo=Memo(),
         logger=logging.getLogger('kopf.test.fake.logger'),
-        indices=indices,
+        indices=OperatorIndexers().indices,
         activity=activity,
         settings=OperatorSettings(),
     )
-    kwargs = build_kwargs(cause=cause, extrakwarg=123)
-    assert set(kwargs) == {'extrakwarg', 'memo', 'logger', 'index1', 'index2', 'activity'}
-    assert kwargs['extrakwarg'] == 123
-    assert kwargs['index1'] is indices['index1']
-    assert kwargs['index2'] is indices['index2']
-    assert kwargs['logger'] is cause.logger
-    assert kwargs['activity'] is activity
-
-
-@pytest.mark.parametrize('activity', {Activity.STARTUP})
-def test_startup_kwargs(resource, activity, indices):
-    cause = ActivityCause(
-        memo=Memo(),
-        logger=logging.getLogger('kopf.test.fake.logger'),
-        indices=indices,
-        activity=activity,
-        settings=OperatorSettings(),
-    )
-    kwargs = build_kwargs(cause=cause, extrakwarg=123)
-    assert set(kwargs) == {'extrakwarg', 'memo', 'logger', 'index1', 'index2',
-                           'activity', 'settings'}
-    assert kwargs['extrakwarg'] == 123
-    assert kwargs['index1'] is indices['index1']
-    assert kwargs['index2'] is indices['index2']
+    kwargs = getattr(cause, attr)  # cause.kwargs / cause.sync_kwargs / cause.async_kwargs
+    assert set(kwargs) == {'memo', 'logger', 'activity', 'settings'}
     assert kwargs['logger'] is cause.logger
     assert kwargs['activity'] is activity
     assert kwargs['settings'] is cause.settings
 
 
-def test_resource_admission_kwargs(resource, indices):
+@pytest.mark.parametrize('attr', ['kwargs', 'sync_kwargs', 'async_kwargs'])
+def test_resource_admission_kwargs(resource, attr):
     body = {'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1',
                          'labels': {'l1': 'v1'}, 'annotations': {'a1': 'v1'}},
             'spec': {'field': 'value'},
             'status': {'info': 'payload'}}
     cause = ResourceWebhookCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
-        indices=indices,
+        indices=OperatorIndexers().indices,
         resource=resource,
         patch=Patch(),
         memo=Memo(),
@@ -83,16 +87,13 @@ def test_resource_admission_kwargs(resource, indices):
         reason=None,
         operation=None,
     )
-    kwargs = build_kwargs(cause=cause, extrakwarg=123)
-    assert set(kwargs) == {'extrakwarg', 'logger', 'index1', 'index2', 'resource',
+    kwargs = getattr(cause, attr)  # cause.kwargs / cause.sync_kwargs / cause.async_kwargs
+    assert set(kwargs) == {'logger', 'resource',
                            'dryrun', 'headers', 'sslpeer', 'userinfo', 'warnings',
                            'patch', 'memo',
                            'body', 'spec', 'status', 'meta', 'uid', 'name', 'namespace',
                            'labels', 'annotations'}
-    assert kwargs['extrakwarg'] == 123
     assert kwargs['resource'] is cause.resource
-    assert kwargs['index1'] is indices['index1']
-    assert kwargs['index2'] is indices['index2']
     assert kwargs['logger'] is cause.logger
     assert kwargs['dryrun'] is cause.dryrun
     assert kwargs['headers'] is cause.headers
@@ -112,33 +113,31 @@ def test_resource_admission_kwargs(resource, indices):
     assert kwargs['namespace'] == cause.body.metadata.namespace
 
 
-def test_resource_watching_kwargs(resource, indices):
+@pytest.mark.parametrize('attr', ['kwargs', 'sync_kwargs', 'async_kwargs'])
+def test_resource_watching_kwargs(resource, attr):
     body = {'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1',
                          'labels': {'l1': 'v1'}, 'annotations': {'a1': 'v1'}},
             'spec': {'field': 'value'},
             'status': {'info': 'payload'}}
     cause = ResourceWatchingCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
-        indices=indices,
+        indices=OperatorIndexers().indices,
         resource=resource,
         patch=Patch(),
         memo=Memo(),
         body=Body(body),
         type='ADDED',
-        raw={'type': 'ADDED', 'object': {}},
+        event={'type': 'ADDED', 'object': {}},
     )
-    kwargs = build_kwargs(cause=cause, extrakwarg=123)
-    assert set(kwargs) == {'extrakwarg', 'logger', 'index1', 'index2', 'resource',
+    kwargs = getattr(cause, attr)  # cause.kwargs / cause.sync_kwargs / cause.async_kwargs
+    assert set(kwargs) == {'logger', 'resource',
                            'patch', 'event', 'type', 'memo',
                            'body', 'spec', 'status', 'meta', 'uid', 'name', 'namespace',
                            'labels', 'annotations'}
-    assert kwargs['extrakwarg'] == 123
     assert kwargs['resource'] is cause.resource
-    assert kwargs['index1'] is indices['index1']
-    assert kwargs['index2'] is indices['index2']
     assert kwargs['logger'] is cause.logger
     assert kwargs['patch'] is cause.patch
-    assert kwargs['event'] is cause.raw
+    assert kwargs['event'] is cause.event
     assert kwargs['memo'] is cause.memo
     assert kwargs['type'] is cause.type
     assert kwargs['body'] is cause.body
@@ -152,14 +151,15 @@ def test_resource_watching_kwargs(resource, indices):
     assert kwargs['namespace'] == cause.body.metadata.namespace
 
 
-def test_resource_changing_kwargs(resource, indices):
+@pytest.mark.parametrize('attr', ['kwargs', 'sync_kwargs', 'async_kwargs'])
+def test_resource_changing_kwargs(resource, attr):
     body = {'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1',
                          'labels': {'l1': 'v1'}, 'annotations': {'a1': 'v1'}},
             'spec': {'field': 'value'},
             'status': {'info': 'payload'}}
     cause = ResourceChangingCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
-        indices=indices,
+        indices=OperatorIndexers().indices,
         resource=resource,
         patch=Patch(),
         initial=False,
@@ -170,15 +170,12 @@ def test_resource_changing_kwargs(resource, indices):
         old=BodyEssence(),
         new=BodyEssence(),
     )
-    kwargs = build_kwargs(cause=cause, extrakwarg=123)
-    assert set(kwargs) == {'extrakwarg', 'logger', 'index1', 'index2', 'resource',
+    kwargs = getattr(cause, attr)  # cause.kwargs / cause.sync_kwargs / cause.async_kwargs
+    assert set(kwargs) == {'logger', 'resource',
                            'patch', 'reason', 'memo',
                            'body', 'spec', 'status', 'meta', 'uid', 'name', 'namespace',
                            'labels', 'annotations', 'diff', 'old', 'new'}
-    assert kwargs['extrakwarg'] == 123
     assert kwargs['resource'] is cause.resource
-    assert kwargs['index1'] is indices['index1']
-    assert kwargs['index2'] is indices['index2']
     assert kwargs['reason'] is cause.reason
     assert kwargs['logger'] is cause.logger
     assert kwargs['patch'] is cause.patch
@@ -197,29 +194,26 @@ def test_resource_changing_kwargs(resource, indices):
     assert kwargs['namespace'] == cause.body.metadata.namespace
 
 
-def test_resource_spawning_kwargs(resource, indices):
+@pytest.mark.parametrize('attr', ['kwargs', 'sync_kwargs', 'async_kwargs'])
+def test_resource_spawning_kwargs(resource, attr):
     body = {'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1',
                          'labels': {'l1': 'v1'}, 'annotations': {'a1': 'v1'}},
             'spec': {'field': 'value'},
             'status': {'info': 'payload'}}
     cause = ResourceSpawningCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
-        indices=indices,
+        indices=OperatorIndexers().indices,
         resource=resource,
         patch=Patch(),
         memo=Memo(),
         body=Body(body),
         reset=False,
     )
-    kwargs = build_kwargs(cause=cause, extrakwarg=123)
-    assert set(kwargs) == {'extrakwarg', 'logger', 'index1', 'index2',
-                           'resource', 'patch', 'memo',
+    kwargs = getattr(cause, attr)  # cause.kwargs / cause.sync_kwargs / cause.async_kwargs
+    assert set(kwargs) == {'logger', 'resource', 'patch', 'memo',
                            'body', 'spec', 'status', 'meta', 'uid', 'name', 'namespace',
                            'labels', 'annotations'}
-    assert kwargs['extrakwarg'] == 123
     assert kwargs['resource'] is cause.resource
-    assert kwargs['index1'] is indices['index1']
-    assert kwargs['index2'] is indices['index2']
     assert kwargs['logger'] is cause.logger
     assert kwargs['patch'] is cause.patch
     assert kwargs['memo'] is cause.memo
@@ -234,29 +228,26 @@ def test_resource_spawning_kwargs(resource, indices):
     assert kwargs['namespace'] == cause.body.metadata.namespace
 
 
-def test_daemon_kwargs(resource, indices):
+@pytest.mark.parametrize('attr', ['kwargs'])
+def test_daemon_kwargs(resource, attr):
     body = {'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1',
                          'labels': {'l1': 'v1'}, 'annotations': {'a1': 'v1'}},
             'spec': {'field': 'value'},
             'status': {'info': 'payload'}}
     cause = DaemonCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
-        indices=indices,
+        indices=OperatorIndexers().indices,
         resource=resource,
         patch=Patch(),
         memo=Memo(),
         body=Body(body),
         stopper=DaemonStopper(),
     )
-    kwargs = build_kwargs(cause=cause, extrakwarg=123)
-    assert set(kwargs) == {'extrakwarg', 'logger', 'index1', 'index2',
-                           'resource', 'patch', 'memo',
+    kwargs = getattr(cause, attr)  # cause.kwargs
+    assert set(kwargs) == {'logger', 'resource', 'patch', 'memo',
                            'body', 'spec', 'status', 'meta', 'uid', 'name', 'namespace',
                            'labels', 'annotations'}
-    assert kwargs['extrakwarg'] == 123
     assert kwargs['resource'] is cause.resource
-    assert kwargs['index1'] is indices['index1']
-    assert kwargs['index2'] is indices['index2']
     assert kwargs['logger'] is cause.logger
     assert kwargs['patch'] is cause.patch
     assert kwargs['memo'] is cause.memo
@@ -269,32 +260,37 @@ def test_daemon_kwargs(resource, indices):
     assert kwargs['uid'] == cause.body.metadata.uid
     assert kwargs['name'] == cause.body.metadata.name
     assert kwargs['namespace'] == cause.body.metadata.namespace
+    assert 'stopper' not in kwargs
     assert 'stopped' not in kwargs
 
 
-def test_daemon_sync_stopper(resource, indices):
+@pytest.mark.parametrize('attr', ['sync_kwargs'])
+def test_daemon_sync_stopper(resource, attr):
     cause = DaemonCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
-        indices=indices,
+        indices=OperatorIndexers().indices,
         resource=resource,
         patch=Patch(),
         memo=Memo(),
         body=Body({}),
         stopper=DaemonStopper(),
     )
-    kwargs = build_kwargs(cause=cause, _sync=True)
+    kwargs = getattr(cause, attr)  # cause.sync_kwargs
+    assert 'stopper' not in kwargs
     assert kwargs['stopped'] is cause.stopper.sync_checker
 
 
-def test_daemon_async_stopper(resource, indices):
+@pytest.mark.parametrize('attr', ['async_kwargs'])
+def test_daemon_async_stopper(resource, attr):
     cause = DaemonCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
-        indices=indices,
+        indices=OperatorIndexers().indices,
         resource=resource,
         patch=Patch(),
         memo=Memo(),
         body=Body({}),
         stopper=DaemonStopper(),
     )
-    kwargs = build_kwargs(cause=cause, _sync=False)
+    kwargs = getattr(cause, attr)  # cause.async_kwargs
+    assert 'stopper' not in kwargs
     assert kwargs['stopped'] is cause.stopper.async_checker

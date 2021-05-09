@@ -9,9 +9,10 @@ activities, when there is no underlying Kubernetes object to patch'n'watch.
 """
 import asyncio
 import collections.abc
+import datetime
 import logging
 from contextvars import ContextVar
-from typing import Any, Collection, Iterable, Mapping, MutableMapping, Optional, Set, Union
+from typing import Collection, Iterable, Mapping, MutableMapping, Optional, Set, Union
 
 from kopf.engines import loggers
 from kopf.reactor import causation, invocation, lifecycles, registries
@@ -199,7 +200,7 @@ async def execute_handlers_once(
 
     # Filter and select the handlers to be executed right now, on this event reaction cycle.
     handlers_todo = [h for h in handlers if state[h.id].awakened]
-    handlers_plan = lifecycle(handlers_todo, **invocation.build_kwargs(cause=cause, state=state))
+    handlers_plan = lifecycle(handlers_todo, state=state, **cause.kwargs)
 
     # Execute all planned (selected) handlers in one event reaction cycle, even if there are few.
     outcomes: MutableMapping[ids.HandlerId, states.HandlerOutcome] = {}
@@ -264,10 +265,10 @@ async def execute_handler_once(
             raise HandlerRetriesError(f"{handler} has exceeded {state.retries} retries.")
 
         result = await invoke_handler(
-            handler,
+            handler=handler,
             cause=cause,
             retry=state.retries,
-            started=state.started,
+            started=state.started or datetime.datetime.utcnow(),  # "or" is for type-checking.
             runtime=state.runtime,
             settings=settings,
             lifecycle=lifecycle,  # just a default for the sub-handlers, not used directly.
@@ -323,13 +324,15 @@ async def execute_handler_once(
 
 
 async def invoke_handler(
+        *,
         handler: handlers_.BaseHandler,
-        *args: Any,
         cause: causation.BaseCause,
+        retry: int,
+        started: datetime.datetime,
+        runtime: datetime.timedelta,
         settings: configuration.OperatorSettings,
         lifecycle: Optional[lifecycles.LifeCycleFn],
         subrefs: Set[ids.HandlerId],
-        **kwargs: Any,
 ) -> Optional[callbacks.Result]:
     """
     Invoke one handler only, according to the calling conventions.
@@ -367,11 +370,14 @@ async def invoke_handler(
         # as if it was done inside of the handler (i.e. under try-finally block).
         result = await invocation.invoke(
             handler.fn,
-            *args,
             settings=settings,
-            cause=cause,
-            param=handler.param,
-            **kwargs,
+            kwargsrc=cause,
+            kwargs=dict(
+                param=handler.param,
+                retry=retry,
+                started=started,
+                runtime=runtime,
+            ),
         )
 
         if not subexecuted_var.get() and isinstance(cause, causation.ResourceChangingCause):
