@@ -13,7 +13,7 @@ import logging
 import time
 from typing import Dict, Iterator, MutableMapping, Optional, Set, Union
 
-from kopf.storage import states
+from kopf.reactor import indexing
 from kopf.structs import bodies, ephemera, handlers, ids, primitives, throttlers
 from kopf.utilities import aiotasks
 
@@ -31,6 +31,7 @@ class ResourceMemory:
     """ A system memo about a single resource/object. Usually stored in `Memories`. """
     memo: ephemera.AnyMemo = dataclasses.field(default_factory=lambda: ephemera.AnyMemo(ephemera.Memo()))
     error_throttler: throttlers.Throttler = dataclasses.field(default_factory=throttlers.Throttler)
+    indexing_memory: indexing.IndexingMemory = dataclasses.field(default_factory=indexing.IndexingMemory)
 
     # For resuming handlers tracking and deciding on should they be called or not.
     noticed_by_listing: bool = False
@@ -41,9 +42,6 @@ class ResourceMemory:
     idle_reset_time: float = dataclasses.field(default_factory=time.monotonic)
     forever_stopped: Set[ids.HandlerId] = dataclasses.field(default_factory=set)
     running_daemons: Dict[ids.HandlerId, Daemon] = dataclasses.field(default_factory=dict)
-
-    # For indexing errors backoffs/retries/timeouts. It is None when successfully indexed.
-    indexing_state: Optional[states.State] = None
 
 
 class ResourceMemories:

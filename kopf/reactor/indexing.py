@@ -1,12 +1,12 @@
 import collections.abc
+import dataclasses
 import logging
 from typing import Any, Dict, Generic, Iterable, Iterator, \
                    Mapping, Optional, Set, Tuple, TypeVar, Union
 
 from kopf.reactor import causation, handling, lifecycles, registries
 from kopf.storage import states
-from kopf.structs import bodies, configuration, containers, ephemera, \
-                         handlers, ids, patches, references
+from kopf.structs import bodies, configuration, ephemera, handlers, ids, patches, references
 
 Key = Tuple[references.Namespace, Optional[str], Optional[str]]
 _K = TypeVar('_K')
@@ -270,6 +270,12 @@ class OperatorIndices(ephemera.Indices):
         return id in self.__indexers
 
 
+@dataclasses.dataclass(frozen=False)
+class IndexingMemory:
+    # For indexing errors backoffs/retries/timeouts. It is None when successfully indexed.
+    indexing_state: Optional[states.State] = None
+
+
 async def index_resource(
         *,
         indexers: OperatorIndexers,
@@ -277,8 +283,9 @@ async def index_resource(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         raw_event: bodies.RawEvent,
-        memory: containers.ResourceMemory,
+        memory: IndexingMemory,
         logger: Union[logging.Logger, logging.LoggerAdapter],
+        memo: ephemera.AnyMemo,
         body: bodies.Body,
 ) -> None:
     """
@@ -303,8 +310,8 @@ async def index_resource(
             indices=indexers.indices,
             logger=logger,
             patch=patches.Patch(),  # NB: not applied. TODO: get rid of it!
+            memo=memo,
             body=body,
-            memo=memory.memo,
         )
 
         # Note: the indexing state contains only failures & retries. Successes will be re-executed.

@@ -30,7 +30,7 @@ async def test_successes_are_removed_from_the_indexing_state(
     caplog.set_level(logging.DEBUG)
     body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
     memory = await memories.recall(raw_body=body)
-    memory.indexing_state = State({'unrelated': HandlerState(success=True)})
+    memory.indexing_memory.indexing_state = State({'unrelated': HandlerState(success=True)})
     handlers.index_mock.side_effect = 123
     await process_resource_event(
         lifecycle=all_at_once,
@@ -45,7 +45,7 @@ async def test_successes_are_removed_from_the_indexing_state(
         resource_indexed=Toggle(),  # used! only to enable indexing.
     )
     assert handlers.index_mock.call_count == 1
-    assert memory.indexing_state is None
+    assert memory.indexing_memory.indexing_state is None
 
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
@@ -54,7 +54,7 @@ async def test_temporary_failures_with_no_delays_are_reindexed(
     caplog.set_level(logging.DEBUG)
     body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
     memory = await memories.recall(raw_body=body)
-    memory.indexing_state = State({'index_fn': HandlerState(delayed=None)})
+    memory.indexing_memory.indexing_state = State({'index_fn': HandlerState(delayed=None)})
     await process_resource_event(
         lifecycle=all_at_once,
         registry=registry,
@@ -78,7 +78,7 @@ async def test_temporary_failures_with_expired_delays_are_reindexed(
     body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
     delayed = datetime.datetime(2020, 12, 31, 23, 59, 59, 0)
     memory = await memories.recall(raw_body=body)
-    memory.indexing_state = State({'index_fn': HandlerState(delayed=delayed)})
+    memory.indexing_memory.indexing_state = State({'index_fn': HandlerState(delayed=delayed)})
     await process_resource_event(
         lifecycle=all_at_once,
         registry=registry,
@@ -100,7 +100,7 @@ async def test_permanent_failures_are_not_reindexed(
     caplog.set_level(logging.DEBUG)
     body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
     memory = await memories.recall(raw_body=body)
-    memory.indexing_state = State({'index_fn': HandlerState(failure=True)})
+    memory.indexing_memory.indexing_state = State({'index_fn': HandlerState(failure=True)})
     await process_resource_event(
         lifecycle=all_at_once,
         registry=registry,
@@ -144,11 +144,11 @@ async def test_removed_and_remembered_on_permanent_errors(
         resource_indexed=Toggle(),  # used! only to enable indexing.
     )
     assert set(index) == set()
-    assert memory.indexing_state['index_fn'].finished == True
-    assert memory.indexing_state['index_fn'].failure == True
-    assert memory.indexing_state['index_fn'].success == False
-    assert memory.indexing_state['index_fn'].message == 'boo!'
-    assert memory.indexing_state['index_fn'].delayed == None
+    assert memory.indexing_memory.indexing_state['index_fn'].finished == True
+    assert memory.indexing_memory.indexing_state['index_fn'].failure == True
+    assert memory.indexing_memory.indexing_state['index_fn'].success == False
+    assert memory.indexing_memory.indexing_state['index_fn'].message == 'boo!'
+    assert memory.indexing_memory.indexing_state['index_fn'].delayed == None
 
 
 @freezegun.freeze_time('2020-12-31T00:00:00')
@@ -180,11 +180,11 @@ async def test_removed_and_remembered_on_temporary_errors(
         resource_indexed=Toggle(),  # used! only to enable indexing.
     )
     assert set(index) == set()
-    assert memory.indexing_state['index_fn'].finished == False
-    assert memory.indexing_state['index_fn'].failure == False
-    assert memory.indexing_state['index_fn'].success == False
-    assert memory.indexing_state['index_fn'].message == 'boo!'
-    assert memory.indexing_state['index_fn'].delayed == expected_delayed
+    assert memory.indexing_memory.indexing_state['index_fn'].finished == False
+    assert memory.indexing_memory.indexing_state['index_fn'].failure == False
+    assert memory.indexing_memory.indexing_state['index_fn'].success == False
+    assert memory.indexing_memory.indexing_state['index_fn'].message == 'boo!'
+    assert memory.indexing_memory.indexing_state['index_fn'].delayed == expected_delayed
 
 
 @pytest.mark.usefixtures('indexed_123')
@@ -209,4 +209,4 @@ async def test_preserved_on_ignored_errors(
     )
     assert set(index) == {None}
     assert set(index[None]) == {123}
-    assert memory.indexing_state is None
+    assert memory.indexing_memory.indexing_state is None
