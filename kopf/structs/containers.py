@@ -9,21 +9,10 @@ object, even if that object does not show up in the event streams for long time.
 """
 import copy
 import dataclasses
-import logging
-import time
-from typing import Dict, Iterator, MutableMapping, Optional, Set, Union
+from typing import Iterator, MutableMapping, Optional
 
-from kopf.reactor import indexing
-from kopf.structs import bodies, ephemera, handlers, ids, primitives, throttlers
-from kopf.utilities import aiotasks
-
-
-@dataclasses.dataclass(frozen=True)
-class Daemon:
-    task: aiotasks.Task  # a guarding task of the daemon.
-    logger: Union[logging.Logger, logging.LoggerAdapter]
-    handler: handlers.SpawningHandler
-    stopper: primitives.DaemonStopper  # a signaller for the termination and its reason.
+from kopf.reactor import daemons, indexing
+from kopf.structs import bodies, ephemera, throttlers
 
 
 @dataclasses.dataclass(frozen=False)
@@ -32,19 +21,14 @@ class ResourceMemory:
     memo: ephemera.AnyMemo = dataclasses.field(default_factory=lambda: ephemera.AnyMemo(ephemera.Memo()))
     error_throttler: throttlers.Throttler = dataclasses.field(default_factory=throttlers.Throttler)
     indexing_memory: indexing.IndexingMemory = dataclasses.field(default_factory=indexing.IndexingMemory)
+    daemons_memory: daemons.DaemonsMemory = dataclasses.field(default_factory=daemons.DaemonsMemory)
 
     # For resuming handlers tracking and deciding on should they be called or not.
     noticed_by_listing: bool = False
     fully_handled_once: bool = False
 
-    # For background and timed threads/tasks (invoked with the kwargs of the last-seen body).
-    live_fresh_body: Optional[bodies.Body] = None
-    idle_reset_time: float = dataclasses.field(default_factory=time.monotonic)
-    forever_stopped: Set[ids.HandlerId] = dataclasses.field(default_factory=set)
-    running_daemons: Dict[ids.HandlerId, Daemon] = dataclasses.field(default_factory=dict)
 
-
-class ResourceMemories:
+class ResourceMemories(daemons.DaemonsMemoriesIterator):
     """
     A container of all memos about every existing resource in a single operator.
 
@@ -71,6 +55,10 @@ class ResourceMemories:
     def iter_all_memories(self) -> Iterator[ResourceMemory]:
         for memory in self._items.values():
             yield memory
+
+    def iter_all_daemon_memories(self) -> Iterator[daemons.DaemonsMemory]:
+        for memory in self._items.values():
+            yield memory.daemons_memory
 
     async def recall(
             self,

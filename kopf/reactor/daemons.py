@@ -20,27 +20,61 @@ Otherwise, all the daemons would be considered as "hung" tasks and will be
 force-killed after some timeout -- which can be avoided, since we are aware
 of the daemons, and they are not actually "hung".
 """
+import abc
 import asyncio
+import dataclasses
+import logging
 import time
 import warnings
-from typing import Collection, List, Mapping, MutableMapping, Sequence
+from typing import Collection, Dict, Iterable, List, Mapping, \
+                   MutableMapping, Optional, Sequence, Set, Union
 
 import aiojobs
 
 from kopf.engines import loggers
 from kopf.reactor import causation, effects, handling, lifecycles
 from kopf.storage import states
-from kopf.structs import configuration, containers, handlers as handlers_, ids, patches, primitives
+from kopf.structs import bodies, configuration, handlers as handlers_, ids, patches, primitives
 from kopf.utilities import aiotasks
+
+
+@dataclasses.dataclass(frozen=True)
+class Daemon:
+    task: aiotasks.Task  # a guarding task of the daemon.
+    logger: Union[logging.Logger, logging.LoggerAdapter]
+    handler: handlers_.SpawningHandler
+    stopper: primitives.DaemonStopper  # a signaller for the termination and its reason.
+
+
+@dataclasses.dataclass(frozen=False)
+class DaemonsMemory:
+    # For background and timed threads/tasks (invoked with the kwargs of the last-seen body).
+    live_fresh_body: Optional[bodies.Body] = None
+    idle_reset_time: float = dataclasses.field(default_factory=time.monotonic)
+    forever_stopped: Set[ids.HandlerId] = dataclasses.field(default_factory=set)
+    running_daemons: Dict[ids.HandlerId, Daemon] = dataclasses.field(default_factory=dict)
+
+
+class DaemonsMemoriesIterator(metaclass=abc.ABCMeta):
+    """
+    Re-iterable view of all the running daemons for the `daemon_killer`.
+
+    Implemented in `Memories`. This is a clean hack to resolve circular imports
+    (the daemon killer needs memories, but the memories contain Daemon records)
+    by splitting the specialised interface (this class) from the implementation.
+    """
+    @abc.abstractmethod
+    def iter_all_daemon_memories(self) -> Iterable[DaemonsMemory]:
+        raise NotImplementedError
 
 
 async def spawn_daemons(
         *,
         settings: configuration.OperatorSettings,
         handlers: Sequence[handlers_.SpawningHandler],
-        daemons: MutableMapping[ids.HandlerId, containers.Daemon],
+        daemons: MutableMapping[ids.HandlerId, Daemon],
         cause: causation.SpawningCause,
-        memory: containers.ResourceMemory,
+        memory: DaemonsMemory,
 ) -> Collection[float]:
     """
     Ensure that all daemons are spawned for this individual resource.
@@ -58,12 +92,12 @@ async def spawn_daemons(
                 resource=cause.resource,
                 indices=cause.indices,
                 logger=cause.logger,
+                memo=cause.memo,
                 body=memory.live_fresh_body,
-                memo=memory.memo,
                 patch=patches.Patch(),  # not the same as the one-shot spawning patch!
                 stopper=stopper,  # for checking (passed to kwargs)
             )
-            daemon = containers.Daemon(
+            daemon = Daemon(
                 stopper=stopper,  # for stopping (outside of causes)
                 handler=handler,
                 logger=loggers.LocalObjectLogger(body=cause.body, settings=settings),
@@ -83,7 +117,7 @@ async def match_daemons(
         *,
         settings: configuration.OperatorSettings,
         handlers: Sequence[handlers_.SpawningHandler],
-        daemons: MutableMapping[ids.HandlerId, containers.Daemon],
+        daemons: MutableMapping[ids.HandlerId, Daemon],
 ) -> Collection[float]:
     """
     Re-match the running daemons with the filters, and stop those mismatching.
@@ -107,7 +141,7 @@ async def match_daemons(
 async def stop_daemons(
         *,
         settings: configuration.OperatorSettings,
-        daemons: Mapping[ids.HandlerId, containers.Daemon],
+        daemons: Mapping[ids.HandlerId, Daemon],
         reason: primitives.DaemonStoppingReason = primitives.DaemonStoppingReason.RESOURCE_DELETED,
 ) -> Collection[float]:
     """
@@ -211,7 +245,7 @@ async def stop_daemons(
 async def daemon_killer(
         *,
         settings: configuration.OperatorSettings,
-        memories: containers.ResourceMemories,
+        memories: DaemonsMemoriesIterator,
         operator_paused: primitives.ToggleSet,
 ) -> None:
     """
@@ -250,7 +284,7 @@ async def daemon_killer(
 
             # The stopping tasks are "fire-and-forget" -- we do not get (or care of) the result.
             # The daemons remain resumable, since they exit not on their own accord.
-            for memory in memories.iter_all_memories():
+            for memory in memories.iter_all_daemon_memories():
                 for daemon in memory.running_daemons.values():
                     await scheduler.spawn(stop_daemon(
                         settings=settings,
@@ -263,7 +297,7 @@ async def daemon_killer(
 
     # Terminate all running daemons when the operator exits (and this task is cancelled).
     finally:
-        for memory in memories.iter_all_memories():
+        for memory in memories.iter_all_daemon_memories():
             for daemon in memory.running_daemons.values():
                 await scheduler.spawn(stop_daemon(
                     settings=settings,
@@ -275,7 +309,7 @@ async def daemon_killer(
 async def stop_daemon(
         *,
         settings: configuration.OperatorSettings,
-        daemon: containers.Daemon,
+        daemon: Daemon,
         reason: primitives.DaemonStoppingReason,
 ) -> None:
     """
@@ -325,7 +359,7 @@ async def stop_daemon(
 async def _wait_for_instant_exit(
         *,
         settings: configuration.OperatorSettings,
-        daemon: containers.Daemon,
+        daemon: Daemon,
 ) -> None:
     """
     Wait for a kind-of-instant exit of a daemon/timer.
@@ -355,9 +389,9 @@ async def _wait_for_instant_exit(
 async def _runner(
         *,
         settings: configuration.OperatorSettings,
-        daemons: MutableMapping[ids.HandlerId, containers.Daemon],
+        daemons: MutableMapping[ids.HandlerId, Daemon],
         handler: handlers_.SpawningHandler,
-        memory: containers.ResourceMemory,
+        memory: DaemonsMemory,
         cause: causation.DaemonCause,
 ) -> None:
     """
@@ -446,7 +480,7 @@ async def _timer(
         *,
         settings: configuration.OperatorSettings,
         handler: handlers_.TimerHandler,
-        memory: containers.ResourceMemory,
+        memory: DaemonsMemory,
         cause: causation.DaemonCause,
 ) -> None:
     """
