@@ -1,11 +1,21 @@
 """
-A in-memory storage of arbitrary information per resource/object.
+An internal in-memory storage of structured records about resource objects.
 
+Each object gets at most one record in the inventory of an operator's memories.
 The information is stored strictly in-memory and is not persistent.
 On the operator restart, all the memories are lost.
+The information is not exposed to the operator developers (except for memos).
 
 It is used internally to track allocated system resources for each Kubernetes
 object, even if that object does not show up in the event streams for long time.
+
+In the future, additional never-ending tasks can be running to maintain
+the operator's memories and inventory and garbage-collect all outdated records.
+
+The inventory memories are data structures, but they are a part of the reactor
+because they store specialised data structures of specialised reactor modules
+(e.g. daemons, admission, indexing, etc). For cohesion, these data structures
+must be kept together with their owning modules rather than mirrored in structs.
 """
 import copy
 import dataclasses
