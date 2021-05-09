@@ -9,7 +9,7 @@ import asyncio
 import contextlib
 import contextvars
 import functools
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, cast
+from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Tuple, cast
 
 from kopf.reactor import causation
 from kopf.structs import callbacks, configuration
@@ -111,10 +111,10 @@ def build_kwargs(
 
 async def invoke(
         fn: callbacks.BaseFn,
-        *args: Any,
+        *,
         settings: Optional[configuration.OperatorSettings] = None,
         cause: Optional[causation.BaseCause] = None,
-        **kwargs: Any,  # includes param, retry, started, runtime, etc.
+        kwargs: Optional[Mapping[str, Any]] = None,  # includes param, retry, started, runtime, etc.
 ) -> Any:
     """
     Invoke a single function, but safely for the main asyncio process.
@@ -131,15 +131,16 @@ async def invoke(
     thus making it non-blocking for the main event loop of the operator.
     See: https://pymotw.com/3/asyncio/executors.html
     """
+    kwargs = {} if kwargs is None else kwargs
     if is_async_fn(fn):
         kwargs = build_kwargs(cause=cause, _sync=False, **kwargs)
-        result = await fn(*args, **kwargs)  # type: ignore
+        result = await fn(**kwargs)  # type: ignore
     else:
         kwargs = build_kwargs(cause=cause, _sync=True, **kwargs)
 
         # Not that we want to use functools, but for executors kwargs, it is officially recommended:
         # https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.run_in_executor
-        real_fn = functools.partial(fn, *args, **kwargs)
+        real_fn = functools.partial(fn, **kwargs)
 
         # Copy the asyncio context from current thread to the handlr's thread.
         # It can be copied 2+ times if there are sub-sub-handlers (rare case).

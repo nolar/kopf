@@ -5,6 +5,7 @@ import pytest
 import kopf
 from kopf.reactor.causation import ResourceChangingCause
 from kopf.reactor.indexing import OperatorIndexers
+from kopf.reactor.invocation import build_kwargs
 from kopf.storage.states import State
 from kopf.structs.bodies import Body
 from kopf.structs.ephemera import Memo
@@ -37,6 +38,6 @@ async def test_protocol_invocation(lifecycle, resource):
         reason=Reason.NOOP,
     )
     handlers = []
-    selected = lifecycle(handlers, state=state, **cause.kwargs)
+    selected = lifecycle(handlers, **build_kwargs(cause=cause, state=state))
     assert isinstance(selected, (tuple, list))
     assert len(selected) == 0

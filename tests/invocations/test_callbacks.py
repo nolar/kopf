@@ -149,15 +149,12 @@ async def test_result_returned(fn):
 @fns
 async def test_explicit_args_passed_properly(fn):
     fn = MagicMock(fn)
-    await invoke(fn, 100, 200, kw1=300, kw2=400)
+    await invoke(fn, kwargs=dict(kw1=300, kw2=400))
 
     assert fn.called
     assert fn.call_count == 1
 
-    assert len(fn.call_args[0]) == 2
-    assert fn.call_args[0][0] == 100
-    assert fn.call_args[0][1] == 200
-
+    assert len(fn.call_args[0]) == 0
     assert len(fn.call_args[1]) >= 2  # also the magic kwargs
     assert fn.call_args[1]['kw1'] == 300
     assert fn.call_args[1]['kw2'] == 400
