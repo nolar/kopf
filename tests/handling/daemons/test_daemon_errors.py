@@ -1,8 +1,7 @@
 import logging
 
 import kopf
-from kopf.reactor.handling import PermanentError, TemporaryError
-from kopf.structs.handlers import ErrorsMode
+from kopf.reactor.handling import ErrorsMode, PermanentError, TemporaryError
 
 
 async def test_daemon_stopped_on_permanent_error(

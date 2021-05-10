@@ -18,13 +18,13 @@ from types import FunctionType, MethodType
 from typing import Any, Callable, Collection, Container, Generic, Iterable, Iterator, List, \
                    Mapping, MutableMapping, Optional, Sequence, Set, Tuple, TypeVar, cast
 
-from kopf.reactor import causation
+from kopf.reactor import causation, handling
 from kopf.structs import dicts, filters, handlers, ids, references
 from kopf.utilities import piggybacking
 
 # We only type-check for known classes of handlers/callbacks, and ignore any custom subclasses.
-CauseT = TypeVar('CauseT', bound=causation.BaseCause)
-HandlerT = TypeVar('HandlerT', bound=handlers.BaseHandler)
+CauseT = TypeVar('CauseT', bound=handling.Cause)
+HandlerT = TypeVar('HandlerT', bound=handling.Handler)
 ResourceHandlerT = TypeVar('ResourceHandlerT', bound=handlers.ResourceHandler)
 
 
@@ -47,13 +47,13 @@ class ActivityRegistry(GenericRegistry[handlers.ActivityHandler]):
 
     def get_handlers(
             self,
-            activity: handlers.Activity,
+            activity: causation.Activity,
     ) -> Sequence[handlers.ActivityHandler]:
         return list(_deduplicated(self.iter_handlers(activity=activity)))
 
     def iter_handlers(
             self,
-            activity: handlers.Activity,
+            activity: causation.Activity,
     ) -> Iterator[handlers.ActivityHandler]:
         found: bool = False
 
@@ -232,7 +232,7 @@ class WebhooksRegistry(ResourceRegistry[handlers.WebhookHandler, causation.Webho
                 matching_webhook = cause.webhook is None or cause.webhook == handler.id
                 if matching_reason and matching_webhook:
                     # For deletion, exclude all mutation handlers unless explicitly enabled.
-                    non_mutating = handler.reason != handlers.WebhookType.MUTATING
+                    non_mutating = handler.reason != causation.WebhookType.MUTATING
                     non_deletion = cause.operation != 'DELETE'
                     explicitly_for_deletion = handler.operation == 'DELETE'
                     if non_mutating or non_deletion or explicitly_for_deletion:
@@ -269,8 +269,8 @@ class SmartOperatorRegistry(OperatorRegistry):
             self._activities.append(handlers.ActivityHandler(
                 id=ids.HandlerId('login_via_pykube'),
                 fn=piggybacking.login_via_pykube,
-                activity=handlers.Activity.AUTHENTICATION,
-                errors=handlers.ErrorsMode.IGNORED,
+                activity=causation.Activity.AUTHENTICATION,
+                errors=handling.ErrorsMode.IGNORED,
                 param=None, timeout=None, retries=None, backoff=None,
                 _fallback=True,
             ))
@@ -282,8 +282,8 @@ class SmartOperatorRegistry(OperatorRegistry):
             self._activities.append(handlers.ActivityHandler(
                 id=ids.HandlerId('login_via_client'),
                 fn=piggybacking.login_via_client,
-                activity=handlers.Activity.AUTHENTICATION,
-                errors=handlers.ErrorsMode.IGNORED,
+                activity=causation.Activity.AUTHENTICATION,
+                errors=handling.ErrorsMode.IGNORED,
                 param=None, timeout=None, retries=None, backoff=None,
                 _fallback=True,
             ))

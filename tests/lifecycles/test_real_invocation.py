@@ -3,12 +3,11 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.causation import ChangingCause
+from kopf.reactor.causation import ChangingCause, Reason
 from kopf.reactor.indexing import OperatorIndexers
 from kopf.storage.states import State
 from kopf.structs.bodies import Body
 from kopf.structs.ephemera import Memo
-from kopf.structs.handlers import Reason
 from kopf.structs.patches import Patch
 
 

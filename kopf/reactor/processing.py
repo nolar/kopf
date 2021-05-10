@@ -18,14 +18,15 @@ import time
 from typing import Collection, Optional, Tuple
 
 from kopf.engines import loggers, posting
-from kopf.reactor import causation, daemons, effects, handling, indexing, lifecycles, registries
+from kopf.reactor import causation, daemons, effects, handling, \
+                         indexing, lifecycles, registries, subhandling
 from kopf.storage import finalizers, states
-from kopf.structs import bodies, configuration, containers, diffs, ephemera, \
-                         handlers as handlers_, patches, primitives, references
+from kopf.structs import bodies, configuration, containers, diffs, \
+                         ephemera, patches, primitives, references
 
 
 async def process_resource_event(
-        lifecycle: lifecycles.LifeCycleFn,
+        lifecycle: handling.LifeCycleFn,
         indexers: indexing.OperatorIndexers,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
@@ -62,20 +63,24 @@ async def process_resource_event(
     body = memory.live_fresh_body if memory.live_fresh_body is not None else bodies.Body(raw_body)
     patch = patches.Patch()
 
+    # Different loggers for different cases with different verbosity and exposure.
+    local_logger = loggers.LocalObjectLogger(body=body, settings=settings)
+    terse_logger = loggers.TerseObjectLogger(body=body, settings=settings)
+    event_logger = loggers.ObjectLogger(body=body, settings=settings)
+
     # Throttle the non-handler-related errors. The regular event watching/batching continues
     # to prevent queue overfilling, but the processing is skipped (events are ignored).
     # Choice of place: late enough to have a per-resource memory for a throttler; also, a logger.
     # But early enough to catch environment errors from K8s API, and from most of the complex code.
     async with effects.throttled(
         throttler=memory.error_throttler,
-        logger=loggers.LocalObjectLogger(body=body, settings=settings),
+        logger=local_logger,
         delays=settings.batching.error_delays,
         wakeup=stream_pressure,
     ) as should_run:
         if should_run:
 
             # Each object has its own prefixed logger, to distinguish parallel handling.
-            logger = loggers.ObjectLogger(body=body, settings=settings)
             posting.event_queue_loop_var.set(asyncio.get_running_loop())
             posting.event_queue_var.set(event_queue)  # till the end of this object's task.
 
@@ -88,7 +93,7 @@ async def process_resource_event(
                 raw_event=raw_event,
                 body=body,
                 memory=memory,
-                logger=loggers.TerseObjectLogger(body=body, settings=settings),
+                logger=terse_logger,
             )
 
             # Wait for all other individual resources and all other resource kinds' lists to finish.
@@ -111,7 +116,8 @@ async def process_resource_event(
                 body=body,
                 patch=patch,
                 memory=memory,
-                logger=logger,
+                local_logger=local_logger,
+                event_logger=event_logger,
             )
 
             # Whatever was done, apply the accumulated changes to the object, or sleep-n-touch for delays.
@@ -123,16 +129,16 @@ async def process_resource_event(
                     resource=resource,
                     body=body,
                     patch=patch,
-                    logger=logger,
+                    logger=local_logger,
                     delays=delays,
                     stream_pressure=stream_pressure,
                 )
                 if applied and matched:
-                    logger.debug(f"Handling cycle is finished, waiting for new changes since now.")
+                    local_logger.debug("Handling cycle is finished, waiting for new changes.")
 
 
 async def process_resource_causes(
-        lifecycle: lifecycles.LifeCycleFn,
+        lifecycle: handling.LifeCycleFn,
         indexers: indexing.OperatorIndexers,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
@@ -140,8 +146,9 @@ async def process_resource_causes(
         raw_event: bodies.RawEvent,
         body: bodies.Body,
         patch: patches.Patch,
-        logger: loggers.ObjectLogger,
         memory: containers.ResourceMemory,
+        local_logger: loggers.ObjectLogger,
+        event_logger: loggers.ObjectLogger,
 ) -> Tuple[Collection[float], bool]:
 
     finalizer = settings.persistence.finalizer
@@ -161,7 +168,7 @@ async def process_resource_causes(
         raw_event=raw_event,
         resource=resource,
         indices=indexers.indices,
-        logger=logger,
+        logger=local_logger,
         patch=patch,
         body=body,
         memo=memory.memo,
@@ -170,7 +177,7 @@ async def process_resource_causes(
     spawning_cause = causation.detect_spawning_cause(
         resource=resource,
         indices=indexers.indices,
-        logger=logger,
+        logger=event_logger,
         patch=patch,
         body=body,
         memo=memory.memo,
@@ -182,7 +189,7 @@ async def process_resource_causes(
         raw_event=raw_event,
         resource=resource,
         indices=indexers.indices,
-        logger=logger,
+        logger=event_logger,
         patch=patch,
         body=body,
         old=old,
@@ -216,12 +223,12 @@ async def process_resource_causes(
          )))
 
     if deletion_must_be_blocked and not deletion_is_blocked and not deletion_is_ongoing:
-        logger.debug("Adding the finalizer, thus preventing the actual deletion.")
+        local_logger.debug("Adding the finalizer, thus preventing the actual deletion.")
         finalizers.block_deletion(body=body, patch=patch, finalizer=finalizer)
         changing_cause = None  # prevent further high-level processing this time
 
     if not deletion_must_be_blocked and deletion_is_blocked:
-        logger.debug("Removing the finalizer, as there are no handlers requiring it.")
+        local_logger.debug("Removing the finalizer, as there are no handlers requiring it.")
         finalizers.allow_deletion(body=body, patch=patch, finalizer=finalizer)
         changing_cause = None  # prevent further high-level processing this time
 
@@ -258,7 +265,7 @@ async def process_resource_causes(
     # Release the object if everything is done, and it is marked for deletion.
     # But not when it has already gone.
     if deletion_is_ongoing and deletion_is_blocked and not spawning_delays and not changing_delays:
-        logger.debug("Removing the finalizer, thus allowing the actual deletion.")
+        local_logger.debug("Removing the finalizer, thus allowing the actual deletion.")
         finalizers.allow_deletion(body=body, patch=patch, finalizer=finalizer)
 
     delays = list(spawning_delays) + list(changing_delays)
@@ -266,7 +273,7 @@ async def process_resource_causes(
 
 
 async def process_watching_cause(
-        lifecycle: lifecycles.LifeCycleFn,
+        lifecycle: handling.LifeCycleFn,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         cause: causation.WatchingCause,
@@ -288,7 +295,7 @@ async def process_watching_cause(
         handlers=handlers,
         cause=cause,
         state=states.State.from_scratch().with_handlers(handlers),
-        default_errors=handlers_.ErrorsMode.IGNORED,
+        default_errors=handling.ErrorsMode.IGNORED,
     )
 
     # Store the results, but not the handlers' progress.
@@ -349,7 +356,7 @@ async def process_spawning_cause(
 
 
 async def process_changing_cause(
-        lifecycle: lifecycles.LifeCycleFn,
+        lifecycle: handling.LifeCycleFn,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         memory: containers.ResourceMemory,
@@ -366,8 +373,8 @@ async def process_changing_cause(
     skip: Optional[bool] = None
 
     # Regular causes invoke the handlers.
-    if cause.reason in handlers_.HANDLER_REASONS:
-        title = handlers_.TITLES.get(cause.reason, repr(cause.reason))
+    if cause.reason in causation.HANDLER_REASONS:
+        title = causation.TITLES.get(cause.reason.value, repr(cause.reason.value))
 
         resource_registry = registry._changing
         owned_handlers = resource_registry.get_resource_handlers(resource=cause.resource)
@@ -379,8 +386,8 @@ async def process_changing_cause(
         # Report the causes that have been superseded (intercepted, overridden) by the current one.
         # The mix-in causes (i.e. resuming) is re-purposed if its handlers are still selected.
         # To the next cycle, all extras are purged or re-purposed, so the message does not repeat.
-        for extra_reason, counters in state.extras.items():  # usually 0..1 items, rarely 2+.
-            extra_title = handlers_.TITLES.get(extra_reason, repr(extra_reason))
+        for extra_purpose, counters in state.extras.items():  # usually 0..1 items, rarely 2+.
+            extra_title = causation.TITLES.get(extra_purpose, repr(extra_purpose))
             logger.info(f"{extra_title.capitalize()} is superseded by {title.lower()}: "
                         f"{counters.success} succeeded; "
                         f"{counters.failure} failed; "
@@ -407,6 +414,7 @@ async def process_changing_cause(
                 handlers=cause_handlers,
                 cause=cause,
                 state=state,
+                extra_context=subhandling.subhandling_context,
             )
             state = state.with_outcomes(outcomes)
             state.store(body=cause.body, patch=cause.patch, storage=storage)
@@ -435,13 +443,13 @@ async def process_changing_cause(
         memory.fully_handled_once = True
 
     # Informational causes just print the log lines.
-    if cause.reason == handlers_.Reason.GONE:
+    if cause.reason == causation.Reason.GONE:
         logger.debug("Deleted, really deleted, and we are notified.")
 
-    if cause.reason == handlers_.Reason.FREE:
+    if cause.reason == causation.Reason.FREE:
         logger.debug("Deletion, but we are done with it, and we do not care.")
 
-    if cause.reason == handlers_.Reason.NOOP:
+    if cause.reason == causation.Reason.NOOP:
         logger.debug("Something has changed, but we are not interested (the essence is the same).")
 
     # The delay is then consumed by the main handling routine (in different ways).

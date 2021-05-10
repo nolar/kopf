@@ -3,10 +3,11 @@ import copy
 import pytest
 
 import kopf
+from kopf.reactor.causation import ALL_REASONS, Reason
 from kopf.structs.bodies import Body
 from kopf.structs.dicts import parse_field
 from kopf.structs.filters import ABSENT, PRESENT
-from kopf.structs.handlers import ALL_REASONS, ChangingHandler, Reason
+from kopf.structs.handlers import ChangingHandler
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.

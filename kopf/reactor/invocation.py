@@ -5,7 +5,6 @@ Both sync & async functions are supported, so as their partials.
 Also, decorated wrappers and lambdas are recognized.
 All of this goes via the same invocation logic and protocol.
 """
-import abc
 import asyncio
 import contextlib
 import contextvars
@@ -25,23 +24,22 @@ _R = TypeVar('_R')
 SyncOrAsync = Union[_R, Coroutine[None, None, _R]]
 
 # A generic sync-or-async callable with no args/kwargs checks (unlike in protocols).
-# Used for the BaseHandler and generic invocation methods (which do not care about protocols).
+# Used for the Handler and generic invocation methods (which do not care about protocols).
 Invokable = Callable[..., SyncOrAsync[Optional[object]]]
 
 
-class Kwargable(metaclass=abc.ABCMeta):
+class Kwargable:
     """
     Something that can provide kwargs to the function invocation rotuine.
 
     Technically, there is only one source of kwargs in the framework --
-    ``causes.py`` (`BaseCause` and descendants across the source code).
+    `Cause` and descendants across the source code (e.g. ``causes.py``).
     However, we do not want to introduce a new dependency of a low-level
     function invocation module on the specialised causation logic & structures.
-    For this reason, the `BaseCause` & `Kwargable` classes are split.
+    For this reason, the `Cause` & `Kwargable` classes are split.
     """
 
     @property
-    @abc.abstractmethod
     def _kwargs(self) -> Mapping[str, Any]:
         return {}
 

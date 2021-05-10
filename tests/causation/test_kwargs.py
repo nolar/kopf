@@ -5,15 +5,14 @@ from unittest.mock import Mock
 
 import pytest
 
-from kopf.reactor.causation import ActivityCause, BaseCause, ChangingCause, \
-                                   DaemonCause, IndexingCause, ResourceCause, \
+from kopf.reactor.causation import Activity, ActivityCause, BaseCause, ChangingCause, \
+                                   DaemonCause, IndexingCause, Reason, ResourceCause, \
                                    SpawningCause, WatchingCause, WebhookCause
 from kopf.reactor.indexing import OperatorIndexer, OperatorIndexers
 from kopf.structs.bodies import Body, BodyEssence
 from kopf.structs.configuration import OperatorSettings
 from kopf.structs.diffs import Diff
 from kopf.structs.ephemera import Memo
-from kopf.structs.handlers import Activity, Reason
 from kopf.structs.patches import Patch
 from kopf.structs.primitives import DaemonStopper
 

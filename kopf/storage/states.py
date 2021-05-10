@@ -18,36 +18,17 @@ import datetime
 from typing import Any, Collection, Dict, Iterable, Iterator, \
                    Mapping, NamedTuple, Optional, overload
 
+from kopf.reactor import handling
 from kopf.storage import progress
-from kopf.structs import bodies, callbacks, handlers as handlers_, ids, patches
+from kopf.structs import bodies, ids, patches
 
 
 @dataclasses.dataclass(frozen=True)
-class HandlerOutcome:
-    """
-    An in-memory outcome of one single invocation of one single handler.
-
-    Conceptually, an outcome is similar to the async futures, but some cases
-    are handled specially: e.g., the temporary errors have exceptions,
-    but the handler should be retried later, unlike with the permanent errors.
-
-    Note the difference: `HandlerState` is a persistent state of the handler,
-    possibly after few executions, and consisting of simple data types
-    (for YAML/JSON serialisation) rather than the actual in-memory objects.
-    """
-    final: bool
-    delay: Optional[float] = None
-    result: Optional[callbacks.Result] = None
-    exception: Optional[Exception] = None
-    subrefs: Collection[ids.HandlerId] = ()
-
-
-@dataclasses.dataclass(frozen=True)
-class HandlerState:
+class HandlerState(handling.HandlerState):
     """
     A persisted state of a single handler, as stored on the resource's status.
 
-    Note the difference: `HandlerOutcome` is for in-memory results of handlers,
+    Note the difference: `Outcome` is for in-memory results of handlers,
     which is then additionally converted before being storing as a state.
 
     Active handler states are those used in .done/.delays for the current
@@ -55,11 +36,13 @@ class HandlerState:
     carried over for logging of counts/extras, and for final state purging,
     but not participating in the current handling cycle.
     """
+
+    # Some fields may overlap the base class's fields, but this is fine (the types are the same).
     active: Optional[bool] = None  # is it used in done/delays [T]? or only in counters/purges [F]?
     started: Optional[datetime.datetime] = None  # None means this information was lost.
     stopped: Optional[datetime.datetime] = None  # None means it is still running (e.g. delayed).
     delayed: Optional[datetime.datetime] = None  # None means it is finished (succeeded/failed).
-    purpose: Optional[handlers_.Reason] = None  # None is a catch-all marker for upgrades/rollbacks.
+    purpose: Optional[str] = None  # None is a catch-all marker for upgrades/rollbacks.
     retries: int = 0
     success: bool = False
     failure: bool = False
@@ -68,7 +51,7 @@ class HandlerState:
     _origin: Optional[progress.ProgressRecord] = None  # to check later if it has actually changed.
 
     @classmethod
-    def from_scratch(cls, *, purpose: Optional[handlers_.Reason] = None) -> "HandlerState":
+    def from_scratch(cls, *, purpose: Optional[str] = None) -> "HandlerState":
         return cls(
             active=True,
             started=datetime.datetime.utcnow(),
@@ -82,7 +65,7 @@ class HandlerState:
             started=_datetime_fromisoformat(__d.get('started')) or datetime.datetime.utcnow(),
             stopped=_datetime_fromisoformat(__d.get('stopped')),
             delayed=_datetime_fromisoformat(__d.get('delayed')),
-            purpose=handlers_.Reason(__d.get('purpose')) if __d.get('purpose') else None,
+            purpose=__d.get('purpose') if __d.get('purpose') else None,
             retries=__d.get('retries') or 0,
             success=__d.get('success') or False,
             failure=__d.get('failure') or False,
@@ -96,7 +79,7 @@ class HandlerState:
             started=None if self.started is None else _datetime_toisoformat(self.started),
             stopped=None if self.stopped is None else _datetime_toisoformat(self.stopped),
             delayed=None if self.delayed is None else _datetime_toisoformat(self.delayed),
-            purpose=None if self.purpose is None else str(self.purpose.value),
+            purpose=None if self.purpose is None else str(self.purpose),
             retries=None if self.retries is None else int(self.retries),
             success=None if self.success is None else bool(self.success),
             failure=None if self.failure is None else bool(self.failure),
@@ -113,13 +96,13 @@ class HandlerState:
 
     def with_purpose(
             self,
-            purpose: Optional[handlers_.Reason],
+            purpose: Optional[str],
     ) -> "HandlerState":
         return dataclasses.replace(self, purpose=purpose)
 
     def with_outcome(
             self,
-            outcome: HandlerOutcome,
+            outcome: handling.Outcome,
     ) -> "HandlerState":
         now = datetime.datetime.utcnow()
         cls = type(self)
@@ -137,25 +120,6 @@ class HandlerState:
             _origin=self._origin,
         )
 
-    @property
-    def finished(self) -> bool:
-        return bool(self.success or self.failure)
-
-    @property
-    def sleeping(self) -> bool:
-        ts = self.delayed
-        now = datetime.datetime.utcnow()
-        return not self.finished and ts is not None and ts > now
-
-    @property
-    def awakened(self) -> bool:
-        return bool(not self.finished and not self.sleeping)
-
-    @property
-    def runtime(self) -> datetime.timedelta:
-        now = datetime.datetime.utcnow()
-        return now - (self.started if self.started else now)
-
 
 class StateCounters(NamedTuple):
     success: int
@@ -163,7 +127,7 @@ class StateCounters(NamedTuple):
     running: int
 
 
-class State(Mapping[ids.HandlerId, HandlerState]):
+class State(handling.State):
     """
     A state of selected handlers, as persisted in the object's status.
 
@@ -180,7 +144,7 @@ class State(Mapping[ids.HandlerId, HandlerState]):
             self,
             __src: Mapping[ids.HandlerId, HandlerState],
             *,
-            purpose: Optional[handlers_.Reason] = None,
+            purpose: Optional[str] = None,
     ):
         super().__init__()
         self._states = dict(__src)
@@ -196,7 +160,7 @@ class State(Mapping[ids.HandlerId, HandlerState]):
             *,
             body: bodies.Body,
             storage: progress.ProgressStorage,
-            handlers: Iterable[handlers_.BaseHandler],
+            handlers: Iterable[handling.Handler],
     ) -> "State":
         handler_ids = {handler.id for handler in handlers}
         handler_states: Dict[ids.HandlerId, HandlerState] = {}
@@ -208,8 +172,8 @@ class State(Mapping[ids.HandlerId, HandlerState]):
 
     def with_purpose(
             self,
-            purpose: Optional[handlers_.Reason],
-            handlers: Iterable[handlers_.BaseHandler] = (),  # to be re-purposed
+            purpose: Optional[str],
+            handlers: Iterable[handling.Handler] = (),  # to be re-purposed
     ) -> "State":
         handler_states: Dict[ids.HandlerId, HandlerState] = dict(self)
         for handler in handlers:
@@ -219,7 +183,7 @@ class State(Mapping[ids.HandlerId, HandlerState]):
 
     def with_handlers(
             self,
-            handlers: Iterable[handlers_.BaseHandler],
+            handlers: Iterable[handling.Handler],
     ) -> "State":
         handler_states: Dict[ids.HandlerId, HandlerState] = dict(self)
         for handler in handlers:
@@ -232,7 +196,7 @@ class State(Mapping[ids.HandlerId, HandlerState]):
 
     def with_outcomes(
             self,
-            outcomes: Mapping[ids.HandlerId, HandlerOutcome],
+            outcomes: Mapping[ids.HandlerId, handling.Outcome],
     ) -> "State":
         unknown_ids = [handler_id for handler_id in outcomes if handler_id not in self]
         if unknown_ids:
@@ -242,14 +206,14 @@ class State(Mapping[ids.HandlerId, HandlerState]):
         return cls({
             handler_id: (handler_state if handler_id not in outcomes else
                          handler_state.with_outcome(outcomes[handler_id]))
-            for handler_id, handler_state in self.items()
+            for handler_id, handler_state in self._states.items()
         }, purpose=self.purpose)
 
     def without_successes(self) -> "State":
         cls = type(self)
         return cls({
             handler_id: handler_state
-            for handler_id, handler_state in self.items()
+            for handler_id, handler_state in self._states.items()
             if not handler_state.success # i.e. failures & in-progress/retrying
         })
 
@@ -259,7 +223,7 @@ class State(Mapping[ids.HandlerId, HandlerState]):
             patch: patches.Patch,
             storage: progress.ProgressStorage,
     ) -> None:
-        for handler_id, handler_state in self.items():
+        for handler_id, handler_state in self._states.items():
             full_record = handler_state.for_storage()
             pure_record = handler_state.as_in_storage()
             if pure_record != handler_state._origin:
@@ -272,14 +236,14 @@ class State(Mapping[ids.HandlerId, HandlerState]):
             body: bodies.Body,
             patch: patches.Patch,
             storage: progress.ProgressStorage,
-            handlers: Iterable[handlers_.BaseHandler],
+            handlers: Iterable[handling.Handler],
     ) -> None:
         # Purge only our own handlers and their direct & indirect sub-handlers of all levels deep.
         # Ignore other handlers (e.g. handlers of other operators).
         handler_ids = {handler.id for handler in handlers}
         for handler_id in handler_ids:
             storage.purge(key=handler_id, body=body, patch=patch)
-        for handler_id, handler_state in self.items():
+        for handler_id, handler_state in self._states.items():
             if handler_id not in handler_ids:
                 storage.purge(key=handler_id, body=body, patch=patch)
             for subref in handler_state.subrefs:
@@ -304,20 +268,23 @@ class State(Mapping[ids.HandlerId, HandlerState]):
         )
 
     @property
-    def extras(self) -> Mapping[handlers_.Reason, StateCounters]:
-        return {
-            reason: StateCounters(
-                success=len([1 for handler_state in self._states.values()
-                            if handler_state.purpose == reason and handler_state.success]),
-                failure=len([1 for handler_state in self._states.values()
-                            if handler_state.purpose == reason and handler_state.failure]),
-                running=len([1 for handler_state in self._states.values()
-                            if handler_state.purpose == reason and not handler_state.finished]),
-            )
-            for reason in handlers_.HANDLER_REASONS
-            if self.purpose is not None and reason != self.purpose
-            if any(handler_state.purpose == reason for handler_state in self._states.values())
+    def extras(self) -> Mapping[str, StateCounters]:
+        purposes = {
+            handler_state.purpose for handler_state in self._states.values()
+            if handler_state.purpose is not None and handler_state.purpose != self.purpose
         }
+        counters = {
+            purpose: StateCounters(
+                success=len([1 for handler_state in self._states.values()
+                            if handler_state.purpose == purpose and handler_state.success]),
+                failure=len([1 for handler_state in self._states.values()
+                            if handler_state.purpose == purpose and handler_state.failure]),
+                running=len([1 for handler_state in self._states.values()
+                            if handler_state.purpose == purpose and not handler_state.finished]),
+            )
+            for purpose in purposes
+        }
+        return counters
 
     @property
     def counts(self) -> StateCounters:
@@ -356,7 +323,7 @@ class State(Mapping[ids.HandlerId, HandlerState]):
 
 def deliver_results(
         *,
-        outcomes: Mapping[ids.HandlerId, HandlerOutcome],
+        outcomes: Mapping[ids.HandlerId, handling.Outcome],
         patch: patches.Patch,
 ) -> None:
     """

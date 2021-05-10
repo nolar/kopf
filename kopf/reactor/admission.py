@@ -66,7 +66,7 @@ async def serve_admission_request(
         headers: Optional[Mapping[str, str]] = None,
         sslpeer: Optional[Mapping[str, Any]] = None,
         webhook: Optional[ids.HandlerId] = None,
-        reason: Optional[handlers.WebhookType] = None,  # TODO: undocumented: requires typing clarity!
+        reason: Optional[causation.WebhookType] = None,  # TODO: undocumented: requires typing clarity!
         # Injected by partial() from spawn_tasks():
         settings: configuration.OperatorSettings,
         memories: containers.ResourceMemories,
@@ -128,7 +128,7 @@ async def serve_admission_request(
         handlers=handlers_,
         cause=cause,
         state=state,
-        default_errors=handlers.ErrorsMode.PERMANENT,
+        default_errors=handling.ErrorsMode.PERMANENT,
     )
 
     # Construct the response as per Kubernetes's conventions and expectations.
@@ -168,7 +168,7 @@ def find_resource(
 def build_response(
         *,
         request: reviews.Request,
-        outcomes: Mapping[ids.HandlerId, states.HandlerOutcome],
+        outcomes: Mapping[ids.HandlerId, handling.Outcome],
         warnings: Collection[str],
         jsonpatch: patches.JSONPatch,
 ) -> reviews.Response:
@@ -243,7 +243,7 @@ async def validating_configuration_manager(
         container: primitives.Container[reviews.WebhookClientConfig],
 ) -> None:
     await configuration_manager(
-        reason=handlers.WebhookType.VALIDATING,
+        reason=causation.WebhookType.VALIDATING,
         selector=references.VALIDATING_WEBHOOK,
         registry=registry, settings=settings,
         insights=insights, container=container,
@@ -258,7 +258,7 @@ async def mutating_configuration_manager(
         container: primitives.Container[reviews.WebhookClientConfig],
 ) -> None:
     await configuration_manager(
-        reason=handlers.WebhookType.MUTATING,
+        reason=causation.WebhookType.MUTATING,
         selector=references.MUTATING_WEBHOOK,
         registry=registry, settings=settings,
         insights=insights, container=container,
@@ -267,7 +267,7 @@ async def mutating_configuration_manager(
 
 async def configuration_manager(
         *,
-        reason: handlers.WebhookType,
+        reason: causation.WebhookType,
         selector: references.Selector,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
