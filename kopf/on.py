@@ -17,12 +17,12 @@ from kopf.reactor import handling, registries
 from kopf.structs import callbacks, dicts, filters, handlers, references, reviews
 
 ActivityDecorator = Callable[[callbacks.ActivityFn], callbacks.ActivityFn]
-ResourceIndexingDecorator = Callable[[callbacks.ResourceIndexingFn], callbacks.ResourceIndexingFn]
-ResourceWatchingDecorator = Callable[[callbacks.ResourceWatchingFn], callbacks.ResourceWatchingFn]
-ResourceChangingDecorator = Callable[[callbacks.ResourceChangingFn], callbacks.ResourceChangingFn]
-ResourceWebhookDecorator = Callable[[callbacks.ResourceWebhookFn], callbacks.ResourceWebhookFn]
-ResourceDaemonDecorator = Callable[[callbacks.ResourceDaemonFn], callbacks.ResourceDaemonFn]
-ResourceTimerDecorator = Callable[[callbacks.ResourceTimerFn], callbacks.ResourceTimerFn]
+IndexingDecorator = Callable[[callbacks.IndexingFn], callbacks.IndexingFn]
+WatchingDecorator = Callable[[callbacks.WatchingFn], callbacks.WatchingFn]
+ChangingDecorator = Callable[[callbacks.ChangingFn], callbacks.ChangingFn]
+WebhookDecorator = Callable[[callbacks.WebhookFn], callbacks.WebhookFn]
+DaemonDecorator = Callable[[callbacks.DaemonFn], callbacks.DaemonFn]
+TimerDecorator = Callable[[callbacks.TimerFn], callbacks.TimerFn]
 
 
 def startup(  # lgtm[py/similar-function]
@@ -163,11 +163,11 @@ def validate(  # lgtm[py/similar-function]
         value: Optional[filters.ValueFilter] = None,
         # Operator specification:
         registry: Optional[registries.OperatorRegistry] = None,
-) -> ResourceWebhookDecorator:
+) -> WebhookDecorator:
     """ ``@kopf.on.validate()`` handler for validating admission webhooks. """
     def decorator(  # lgtm[py/similar-function]
-            fn: callbacks.ResourceWebhookFn,
-    ) -> callbacks.ResourceWebhookFn:
+            fn: callbacks.WebhookFn,
+    ) -> callbacks.WebhookFn:
         _warn_conflicting_values(field, value)
         _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -178,7 +178,7 @@ def validate(  # lgtm[py/similar-function]
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
-        handler = handlers.ResourceWebhookHandler(
+        handler = handlers.WebhookHandler(
             fn=fn, id=real_id, param=param,
             errors=None, timeout=None, retries=None, backoff=None,  # TODO: add some meaning later
             selector=selector, labels=labels, annotations=annotations, when=when,
@@ -186,7 +186,7 @@ def validate(  # lgtm[py/similar-function]
             reason=handlers.WebhookType.VALIDATING, operation=operation,
             persistent=persistent, side_effects=side_effects, ignore_failures=ignore_failures,
         )
-        real_registry._resource_webhooks.append(handler)
+        real_registry._webhooks.append(handler)
         return fn
     return decorator
 
@@ -219,11 +219,11 @@ def mutate(  # lgtm[py/similar-function]
         value: Optional[filters.ValueFilter] = None,
         # Operator specification:
         registry: Optional[registries.OperatorRegistry] = None,
-) -> ResourceWebhookDecorator:
+) -> WebhookDecorator:
     """ ``@kopf.on.mutate()`` handler for mutating admission webhooks. """
     def decorator(  # lgtm[py/similar-function]
-            fn: callbacks.ResourceWebhookFn,
-    ) -> callbacks.ResourceWebhookFn:
+            fn: callbacks.WebhookFn,
+    ) -> callbacks.WebhookFn:
         _warn_conflicting_values(field, value)
         _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -234,7 +234,7 @@ def mutate(  # lgtm[py/similar-function]
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
-        handler = handlers.ResourceWebhookHandler(
+        handler = handlers.WebhookHandler(
             fn=fn, id=real_id, param=param,
             errors=None, timeout=None, retries=None, backoff=None,  # TODO: add some meaning later
             selector=selector, labels=labels, annotations=annotations, when=when,
@@ -242,7 +242,7 @@ def mutate(  # lgtm[py/similar-function]
             reason=handlers.WebhookType.MUTATING, operation=operation,
             persistent=persistent, side_effects=side_effects, ignore_failures=ignore_failures,
         )
-        real_registry._resource_webhooks.append(handler)
+        real_registry._webhooks.append(handler)
         return fn
     return decorator
 
@@ -276,11 +276,11 @@ def resume(  # lgtm[py/similar-function]
         value: Optional[filters.ValueFilter] = None,
         # Operator specification:
         registry: Optional[registries.OperatorRegistry] = None,
-) -> ResourceChangingDecorator:
+) -> ChangingDecorator:
     """ ``@kopf.on.resume()`` handler for the object resuming on operator (re)start. """
     def decorator(  # lgtm[py/similar-function]
-            fn: callbacks.ResourceChangingFn,
-    ) -> callbacks.ResourceChangingFn:
+            fn: callbacks.ChangingFn,
+    ) -> callbacks.ChangingFn:
         _warn_conflicting_values(field, value)
         _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -291,7 +291,7 @@ def resume(  # lgtm[py/similar-function]
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
-        handler = handlers.ResourceChangingHandler(
+        handler = handlers.ChangingHandler(
             fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
@@ -299,7 +299,7 @@ def resume(  # lgtm[py/similar-function]
             initial=True, deleted=deleted, requires_finalizer=None,
             reason=None,
         )
-        real_registry._resource_changing.append(handler)
+        real_registry._changing.append(handler)
         return fn
     return decorator
 
@@ -332,11 +332,11 @@ def create(  # lgtm[py/similar-function]
         value: Optional[filters.ValueFilter] = None,
         # Operator specification:
         registry: Optional[registries.OperatorRegistry] = None,
-) -> ResourceChangingDecorator:
+) -> ChangingDecorator:
     """ ``@kopf.on.create()`` handler for the object creation. """
     def decorator(  # lgtm[py/similar-function]
-            fn: callbacks.ResourceChangingFn,
-    ) -> callbacks.ResourceChangingFn:
+            fn: callbacks.ChangingFn,
+    ) -> callbacks.ChangingFn:
         _warn_conflicting_values(field, value)
         _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -347,7 +347,7 @@ def create(  # lgtm[py/similar-function]
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
-        handler = handlers.ResourceChangingHandler(
+        handler = handlers.ChangingHandler(
             fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
@@ -355,7 +355,7 @@ def create(  # lgtm[py/similar-function]
             initial=None, deleted=None, requires_finalizer=None,
             reason=handlers.Reason.CREATE,
         )
-        real_registry._resource_changing.append(handler)
+        real_registry._changing.append(handler)
         return fn
     return decorator
 
@@ -390,11 +390,11 @@ def update(  # lgtm[py/similar-function]
         new: Optional[filters.ValueFilter] = None,
         # Operator specification:
         registry: Optional[registries.OperatorRegistry] = None,
-) -> ResourceChangingDecorator:
+) -> ChangingDecorator:
     """ ``@kopf.on.update()`` handler for the object update or change. """
     def decorator(  # lgtm[py/similar-function]
-            fn: callbacks.ResourceChangingFn,
-    ) -> callbacks.ResourceChangingFn:
+            fn: callbacks.ChangingFn,
+    ) -> callbacks.ChangingFn:
         _warn_conflicting_values(field, value, old, new)
         _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -405,7 +405,7 @@ def update(  # lgtm[py/similar-function]
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
-        handler = handlers.ResourceChangingHandler(
+        handler = handlers.ChangingHandler(
             fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
@@ -413,7 +413,7 @@ def update(  # lgtm[py/similar-function]
             initial=None, deleted=None, requires_finalizer=None,
             reason=handlers.Reason.UPDATE,
         )
-        real_registry._resource_changing.append(handler)
+        real_registry._changing.append(handler)
         return fn
     return decorator
 
@@ -447,11 +447,11 @@ def delete(  # lgtm[py/similar-function]
         value: Optional[filters.ValueFilter] = None,
         # Operator specification:
         registry: Optional[registries.OperatorRegistry] = None,
-) -> ResourceChangingDecorator:
+) -> ChangingDecorator:
     """ ``@kopf.on.delete()`` handler for the object deletion. """
     def decorator(  # lgtm[py/similar-function]
-            fn: callbacks.ResourceChangingFn,
-    ) -> callbacks.ResourceChangingFn:
+            fn: callbacks.ChangingFn,
+    ) -> callbacks.ChangingFn:
         _warn_conflicting_values(field, value)
         _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -462,7 +462,7 @@ def delete(  # lgtm[py/similar-function]
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
-        handler = handlers.ResourceChangingHandler(
+        handler = handlers.ChangingHandler(
             fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
@@ -470,7 +470,7 @@ def delete(  # lgtm[py/similar-function]
             initial=None, deleted=None, requires_finalizer=bool(not optional),
             reason=handlers.Reason.DELETE,
         )
-        real_registry._resource_changing.append(handler)
+        real_registry._changing.append(handler)
         return fn
     return decorator
 
@@ -505,11 +505,11 @@ def field(  # lgtm[py/similar-function]
         new: Optional[filters.ValueFilter] = None,
         # Operator specification:
         registry: Optional[registries.OperatorRegistry] = None,
-) -> ResourceChangingDecorator:
+) -> ChangingDecorator:
     """ ``@kopf.on.field()`` handler for the individual field changes. """
     def decorator(  # lgtm[py/similar-function]
-            fn: callbacks.ResourceChangingFn,
-    ) -> callbacks.ResourceChangingFn:
+            fn: callbacks.ChangingFn,
+    ) -> callbacks.ChangingFn:
         _warn_conflicting_values(field, value, old, new)
         _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -520,7 +520,7 @@ def field(  # lgtm[py/similar-function]
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
-        handler = handlers.ResourceChangingHandler(
+        handler = handlers.ChangingHandler(
             fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
@@ -528,7 +528,7 @@ def field(  # lgtm[py/similar-function]
             initial=None, deleted=None, requires_finalizer=None,
             reason=None,
         )
-        real_registry._resource_changing.append(handler)
+        real_registry._changing.append(handler)
         return fn
     return decorator
 
@@ -561,11 +561,11 @@ def index(  # lgtm[py/similar-function]
         value: Optional[filters.ValueFilter] = None,
         # Operator specification:
         registry: Optional[registries.OperatorRegistry] = None,
-) -> ResourceIndexingDecorator:
+) -> IndexingDecorator:
     """ ``@kopf.index()`` handler for the indexing callbacks. """
     def decorator(  # lgtm[py/similar-function]
-            fn: callbacks.ResourceIndexingFn,
-    ) -> callbacks.ResourceIndexingFn:
+            fn: callbacks.IndexingFn,
+    ) -> callbacks.IndexingFn:
         _warn_conflicting_values(field, value)
         _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -576,13 +576,13 @@ def index(  # lgtm[py/similar-function]
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
-        handler = handlers.ResourceIndexingHandler(
+        handler = handlers.IndexingHandler(
             fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value,
         )
-        real_registry._resource_indexing.append(handler)
+        real_registry._indexing.append(handler)
         return fn
     return decorator
 
@@ -611,11 +611,11 @@ def event(  # lgtm[py/similar-function]
         value: Optional[filters.ValueFilter] = None,
         # Operator specification:
         registry: Optional[registries.OperatorRegistry] = None,
-) -> ResourceWatchingDecorator:
+) -> WatchingDecorator:
     """ ``@kopf.on.event()`` handler for the silent spies on the events. """
     def decorator(  # lgtm[py/similar-function]
-            fn: callbacks.ResourceWatchingFn,
-    ) -> callbacks.ResourceWatchingFn:
+            fn: callbacks.WatchingFn,
+    ) -> callbacks.WatchingFn:
         _warn_conflicting_values(field, value)
         _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -626,13 +626,13 @@ def event(  # lgtm[py/similar-function]
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
-        handler = handlers.ResourceWatchingHandler(
+        handler = handlers.WatchingHandler(
             fn=fn, id=real_id, param=param,
             errors=None, timeout=None, retries=None, backoff=None,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value,
         )
-        real_registry._resource_watching.append(handler)
+        real_registry._watching.append(handler)
         return fn
     return decorator
 
@@ -669,11 +669,11 @@ def daemon(  # lgtm[py/similar-function]
         value: Optional[filters.ValueFilter] = None,
         # Operator specification:
         registry: Optional[registries.OperatorRegistry] = None,
-) -> ResourceDaemonDecorator:
+) -> DaemonDecorator:
     """ ``@kopf.daemon()`` decorator for the background threads/tasks. """
     def decorator(  # lgtm[py/similar-function]
-            fn: callbacks.ResourceDaemonFn,
-    ) -> callbacks.ResourceDaemonFn:
+            fn: callbacks.DaemonFn,
+    ) -> callbacks.DaemonFn:
         _warn_conflicting_values(field, value)
         _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -684,7 +684,7 @@ def daemon(  # lgtm[py/similar-function]
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
-        handler = handlers.ResourceDaemonHandler(
+        handler = handlers.DaemonHandler(
             fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
@@ -694,7 +694,7 @@ def daemon(  # lgtm[py/similar-function]
             cancellation_timeout=cancellation_timeout,
             cancellation_polling=cancellation_polling,
         )
-        real_registry._resource_spawning.append(handler)
+        real_registry._spawning.append(handler)
         return fn
     return decorator
 
@@ -731,11 +731,11 @@ def timer(  # lgtm[py/similar-function]
         value: Optional[filters.ValueFilter] = None,
         # Operator specification:
         registry: Optional[registries.OperatorRegistry] = None,
-) -> ResourceTimerDecorator:
+) -> TimerDecorator:
     """ ``@kopf.timer()`` handler for the regular events. """
     def decorator(  # lgtm[py/similar-function]
-            fn: callbacks.ResourceTimerFn,
-    ) -> callbacks.ResourceTimerFn:
+            fn: callbacks.TimerFn,
+    ) -> callbacks.TimerFn:
         _warn_conflicting_values(field, value)
         _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -746,7 +746,7 @@ def timer(  # lgtm[py/similar-function]
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
-        handler = handlers.ResourceTimerHandler(
+        handler = handlers.TimerHandler(
             fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
@@ -754,7 +754,7 @@ def timer(  # lgtm[py/similar-function]
             initial_delay=initial_delay, requires_finalizer=True,
             sharp=sharp, idle=idle, interval=interval,
         )
-        real_registry._resource_spawning.append(handler)
+        real_registry._spawning.append(handler)
         return fn
     return decorator
 
@@ -776,7 +776,7 @@ def subhandler(  # lgtm[py/similar-function]
         value: Optional[filters.ValueFilter] = None,
         old: Optional[filters.ValueFilter] = None,  # only for on.update's subhandlers
         new: Optional[filters.ValueFilter] = None,  # only for on.update's subhandlers
-) -> ResourceChangingDecorator:
+) -> ChangingDecorator:
     """
     ``@kopf.subhandler()`` decorator for the dynamically generated sub-handlers.
 
@@ -806,10 +806,10 @@ def subhandler(  # lgtm[py/similar-function]
     create function will have its own value, not the latest in the for-cycle.
     """
     def decorator(  # lgtm[py/similar-function]
-            fn: callbacks.ResourceChangingFn,
-    ) -> callbacks.ResourceChangingFn:
+            fn: callbacks.ChangingFn,
+    ) -> callbacks.ChangingFn:
         parent_handler = handling.handler_var.get()
-        if not isinstance(parent_handler, handlers.ResourceChangingHandler):
+        if not isinstance(parent_handler, handlers.ChangingHandler):
             raise TypeError("Sub-handlers are only supported for resource-changing handlers.")
         _warn_incompatible_parent_with_oldnew(parent_handler, old, new)
         _warn_conflicting_values(field, value, old, new)
@@ -818,7 +818,7 @@ def subhandler(  # lgtm[py/similar-function]
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id,
                                          prefix=parent_handler.id if parent_handler else None)
-        handler = handlers.ResourceChangingHandler(
+        handler = handlers.ChangingHandler(
             fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=None, labels=labels, annotations=annotations, when=when,
@@ -833,7 +833,7 @@ def subhandler(  # lgtm[py/similar-function]
 
 
 def register(  # lgtm[py/similar-function]
-        fn: callbacks.ResourceChangingFn,
+        fn: callbacks.ChangingFn,
         *,
         # Handler's behaviour specification:
         id: Optional[str] = None,
@@ -846,7 +846,7 @@ def register(  # lgtm[py/similar-function]
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
         when: Optional[callbacks.WhenFilterFn] = None,
-) -> callbacks.ResourceChangingFn:
+) -> callbacks.ChangingFn:
     """
     Register a function as a sub-handler of the currently executed handler.
 
@@ -913,7 +913,7 @@ def _warn_incompatible_parent_with_oldnew(
         new: Any,
 ) -> None:
     if old is not None or new is not None:
-        if isinstance(handler, handlers.ResourceChangingHandler):
+        if isinstance(handler, handlers.ChangingHandler):
             is_on_update = handler.reason == handlers.Reason.UPDATE
             is_on_field = handler.reason is None and not handler.initial
             if not is_on_update and not is_on_field:

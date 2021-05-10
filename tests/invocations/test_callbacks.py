@@ -5,7 +5,7 @@ import traceback
 import pytest
 from asynctest import MagicMock
 
-from kopf.reactor.causation import ResourceChangingCause
+from kopf.reactor.causation import ChangingCause
 from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.invocation import invoke, is_async_fn
 from kopf.structs.bodies import Body
@@ -167,7 +167,7 @@ async def test_special_kwargs_added(fn, resource):
             'status': {'info': 'payload'}}
 
     # Values can be any.
-    cause = ResourceChangingCause(
+    cause = ChangingCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
         indices=OperatorIndexers().indices,
         resource=resource,

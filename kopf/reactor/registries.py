@@ -112,48 +112,39 @@ class ResourceRegistry(GenericRegistry[ResourceHandlerT], Generic[ResourceHandle
                     yield handler.field
 
 
-class ResourceIndexingRegistry(ResourceRegistry[
-    handlers.ResourceIndexingHandler,
-    causation.ResourceIndexingCause,
-]):
+class IndexingRegistry(ResourceRegistry[handlers.IndexingHandler, causation.IndexingCause]):
 
     def iter_handlers(
             self,
-            cause: causation.ResourceIndexingCause,
+            cause: causation.IndexingCause,
             excluded: Container[ids.HandlerId] = frozenset(),
-    ) -> Iterator[handlers.ResourceIndexingHandler]:
+    ) -> Iterator[handlers.IndexingHandler]:
         for handler in self._handlers:
             if handler.id not in excluded:
                 if match(handler=handler, cause=cause):
                     yield handler
 
 
-class ResourceWatchingRegistry(ResourceRegistry[
-    handlers.ResourceWatchingHandler,
-    causation.ResourceWatchingCause,
-]):
+class WatchingRegistry(ResourceRegistry[handlers.WatchingHandler, causation.WatchingCause]):
 
     def iter_handlers(
             self,
-            cause: causation.ResourceWatchingCause,
+            cause: causation.WatchingCause,
             excluded: Container[ids.HandlerId] = frozenset(),
-    ) -> Iterator[handlers.ResourceWatchingHandler]:
+    ) -> Iterator[handlers.WatchingHandler]:
         for handler in self._handlers:
             if handler.id not in excluded:
                 if match(handler=handler, cause=cause):
                     yield handler
 
 
-class ResourceSpawningRegistry(ResourceRegistry[
-        handlers.ResourceSpawningHandler,
-        causation.ResourceSpawningCause,
-]):
+class SpawningRegistry(ResourceRegistry[handlers.SpawningHandler, causation.SpawningCause]):
 
     def iter_handlers(
             self,
-            cause: causation.ResourceSpawningCause,
+            cause: causation.SpawningCause,
             excluded: Container[ids.HandlerId] = frozenset(),
-    ) -> Iterator[handlers.ResourceSpawningHandler]:
+    ) -> Iterator[handlers.SpawningHandler]:
         for handler in self._handlers:
             if handler.id not in excluded:
                 if match(handler=handler, cause=cause):
@@ -161,7 +152,7 @@ class ResourceSpawningRegistry(ResourceRegistry[
 
     def requires_finalizer(
             self,
-            cause: causation.ResourceSpawningCause,
+            cause: causation.SpawningCause,
             excluded: Container[ids.HandlerId] = frozenset(),
     ) -> bool:
         """
@@ -175,16 +166,13 @@ class ResourceSpawningRegistry(ResourceRegistry[
         return False
 
 
-class ResourceChangingRegistry(ResourceRegistry[
-        handlers.ResourceChangingHandler,
-        causation.ResourceChangingCause,
-]):
+class ChangingRegistry(ResourceRegistry[handlers.ChangingHandler, causation.ChangingCause]):
 
     def iter_handlers(
             self,
-            cause: causation.ResourceChangingCause,
+            cause: causation.ChangingCause,
             excluded: Container[ids.HandlerId] = frozenset(),
-    ) -> Iterator[handlers.ResourceChangingHandler]:
+    ) -> Iterator[handlers.ChangingHandler]:
         for handler in self._handlers:
             if handler.id not in excluded:
                 if handler.reason is None or handler.reason == cause.reason:
@@ -212,7 +200,7 @@ class ResourceChangingRegistry(ResourceRegistry[
 
     def prematch(
             self,
-            cause: causation.ResourceChangingCause,
+            cause: causation.ChangingCause,
     ) -> bool:
         for handler in self._handlers:
             if prematch(handler=handler, cause=cause):
@@ -222,24 +210,21 @@ class ResourceChangingRegistry(ResourceRegistry[
     def get_resource_handlers(
             self,
             resource: references.Resource,
-    ) -> Sequence[handlers.ResourceChangingHandler]:
-        found_handlers: List[handlers.ResourceChangingHandler] = []
+    ) -> Sequence[handlers.ChangingHandler]:
+        found_handlers: List[handlers.ChangingHandler] = []
         for handler in self._handlers:
             if _matches_resource(handler, resource):
                 found_handlers.append(handler)
         return list(_deduplicated(found_handlers))
 
 
-class ResourceWebhooksRegistry(ResourceRegistry[
-        handlers.ResourceWebhookHandler,
-        causation.ResourceWebhookCause,
-]):
+class WebhooksRegistry(ResourceRegistry[handlers.WebhookHandler, causation.WebhookCause]):
 
     def iter_handlers(
             self,
-            cause: causation.ResourceWebhookCause,
+            cause: causation.WebhookCause,
             excluded: Container[ids.HandlerId] = frozenset(),
-    ) -> Iterator[handlers.ResourceWebhookHandler]:
+    ) -> Iterator[handlers.WebhookHandler]:
         for handler in self._handlers:
             if handler.id not in excluded:
                 # Only the handlers for the hinted webhook, if possible; if not hinted, then all.
@@ -266,11 +251,11 @@ class OperatorRegistry:
     def __init__(self) -> None:
         super().__init__()
         self._activities = ActivityRegistry()
-        self._resource_indexing = ResourceIndexingRegistry()
-        self._resource_watching = ResourceWatchingRegistry()
-        self._resource_spawning = ResourceSpawningRegistry()
-        self._resource_changing = ResourceChangingRegistry()
-        self._resource_webhooks = ResourceWebhooksRegistry()
+        self._indexing = IndexingRegistry()
+        self._watching = WatchingRegistry()
+        self._spawning = SpawningRegistry()
+        self._changing = ChangingRegistry()
+        self._webhooks = WebhooksRegistry()
 
 
 class SmartOperatorRegistry(OperatorRegistry):
@@ -471,7 +456,7 @@ def _matches_field_values(
         kwargs.update(cause.kwargs)
 
     absent = _UNSET.token  # or any other identifyable object
-    if isinstance(cause, causation.ResourceChangingCause):
+    if isinstance(cause, causation.ChangingCause):
         # For on.update/on.field, so as for on.create/resume/delete for uniformity and simplicity:
         old = dicts.resolve(cause.old, handler.field, absent)
         new = dicts.resolve(cause.new, handler.field, absent)
@@ -494,9 +479,9 @@ def _matches_field_changes(
         cause: causation.ResourceCause,
         kwargs: MutableMapping[str, Any],
 ) -> bool:
-    if not isinstance(handler, handlers.ResourceChangingHandler):
+    if not isinstance(handler, handlers.ChangingHandler):
         return True
-    if not isinstance(cause, causation.ResourceChangingCause):
+    if not isinstance(cause, causation.ChangingCause):
         return True
     if not handler.field:
         return True

@@ -27,12 +27,12 @@ Result = NewType('Result', object)
 if not TYPE_CHECKING:  # pragma: nocover
     # Define unspecified protocols for the runtime annotations -- to avoid "quoting".
     ActivityFn = Callable[...,  invocation.SyncOrAsync[Optional[object]]]
-    ResourceIndexingFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
-    ResourceWatchingFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
-    ResourceChangingFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
-    ResourceWebhookFn = Callable[..., invocation.SyncOrAsync[None]]
-    ResourceDaemonFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
-    ResourceTimerFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
+    IndexingFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
+    WatchingFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
+    ChangingFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
+    WebhookFn = Callable[..., invocation.SyncOrAsync[None]]
+    DaemonFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
+    TimerFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
     WhenFilterFn = Callable[..., bool]  # strictly sync, no async!
     MetaFilterFn = Callable[..., bool]  # strictly sync, no async!
 else:
@@ -56,7 +56,7 @@ else:
         invocation.SyncOrAsync[Optional[object]]
     ]
 
-    ResourceIndexingFn = Callable[
+    IndexingFn = Callable[
         [
             NamedArg(bodies.Annotations, "annotations"),
             NamedArg(bodies.Labels, "labels"),
@@ -77,7 +77,7 @@ else:
         invocation.SyncOrAsync[Optional[object]]
     ]
 
-    ResourceWatchingFn = Callable[
+    WatchingFn = Callable[
         [
             NamedArg(str, "type"),
             NamedArg(bodies.RawEvent, "event"),
@@ -100,7 +100,7 @@ else:
         invocation.SyncOrAsync[Optional[object]]
     ]
 
-    ResourceChangingFn = Callable[
+    ChangingFn = Callable[
         [
             NamedArg(int, "retry"),
             NamedArg(datetime.datetime, "started"),
@@ -128,7 +128,7 @@ else:
         invocation.SyncOrAsync[Optional[object]]
     ]
 
-    ResourceWebhookFn = Callable[
+    WebhookFn = Callable[
         [
             NamedArg(bool, "dryrun"),
             NamedArg(List[str], "warnings"),  # mutable!
@@ -154,7 +154,7 @@ else:
         invocation.SyncOrAsync[None]
     ]
 
-    ResourceDaemonFn = Callable[
+    DaemonFn = Callable[
         [
             NamedArg(primitives.SyncAsyncDaemonStopperChecker, "stopped"),
             NamedArg(int, "retry"),
@@ -179,7 +179,7 @@ else:
         invocation.SyncOrAsync[Optional[object]]
     ]
 
-    ResourceTimerFn = Callable[
+    TimerFn = Callable[
         [
             NamedArg(ephemera.Index, "*"),
             NamedArg(bodies.Annotations, "annotations"),
@@ -250,7 +250,7 @@ else:
         bool  # strictly sync, no async!
     ]
 
-ResourceSpawningFn = Union[ResourceDaemonFn, ResourceTimerFn]
+SpawningFn = Union[DaemonFn, TimerFn]
 _FnT = TypeVar('_FnT', WhenFilterFn, MetaFilterFn)
 
 

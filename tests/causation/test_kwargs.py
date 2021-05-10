@@ -5,10 +5,9 @@ from unittest.mock import Mock
 
 import pytest
 
-from kopf.reactor.causation import ActivityCause, BaseCause, DaemonCause, \
-                                   ResourceCause, ResourceChangingCause, \
-                                   ResourceIndexingCause, ResourceSpawningCause, \
-                                   ResourceWatchingCause, ResourceWebhookCause
+from kopf.reactor.causation import ActivityCause, BaseCause, ChangingCause, \
+                                   DaemonCause, IndexingCause, ResourceCause, \
+                                   SpawningCause, WatchingCause, WebhookCause
 from kopf.reactor.indexing import OperatorIndexer, OperatorIndexers
 from kopf.structs.bodies import Body, BodyEssence
 from kopf.structs.configuration import OperatorSettings
@@ -20,9 +19,9 @@ from kopf.structs.primitives import DaemonStopper
 
 ALL_CAUSES = [
     BaseCause, ActivityCause, ResourceCause,
-    ResourceWatchingCause, ResourceSpawningCause,
-    ResourceChangingCause, ResourceIndexingCause,
-    ResourceWebhookCause, DaemonCause,
+    WatchingCause, SpawningCause,
+    ChangingCause, IndexingCause,
+    WebhookCause, DaemonCause,
 ]
 ALL_FIELDS = {
     field.name
@@ -66,12 +65,12 @@ def test_activity_kwargs(resource, activity, attr):
 
 
 @pytest.mark.parametrize('attr', ['kwargs', 'sync_kwargs', 'async_kwargs'])
-def test_resource_admission_kwargs(resource, attr):
+def test_admission_kwargs(resource, attr):
     body = {'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1',
                          'labels': {'l1': 'v1'}, 'annotations': {'a1': 'v1'}},
             'spec': {'field': 'value'},
             'status': {'info': 'payload'}}
-    cause = ResourceWebhookCause(
+    cause = WebhookCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
         indices=OperatorIndexers().indices,
         resource=resource,
@@ -114,12 +113,12 @@ def test_resource_admission_kwargs(resource, attr):
 
 
 @pytest.mark.parametrize('attr', ['kwargs', 'sync_kwargs', 'async_kwargs'])
-def test_resource_watching_kwargs(resource, attr):
+def test_watching_kwargs(resource, attr):
     body = {'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1',
                          'labels': {'l1': 'v1'}, 'annotations': {'a1': 'v1'}},
             'spec': {'field': 'value'},
             'status': {'info': 'payload'}}
-    cause = ResourceWatchingCause(
+    cause = WatchingCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
         indices=OperatorIndexers().indices,
         resource=resource,
@@ -152,12 +151,12 @@ def test_resource_watching_kwargs(resource, attr):
 
 
 @pytest.mark.parametrize('attr', ['kwargs', 'sync_kwargs', 'async_kwargs'])
-def test_resource_changing_kwargs(resource, attr):
+def test_changing_kwargs(resource, attr):
     body = {'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1',
                          'labels': {'l1': 'v1'}, 'annotations': {'a1': 'v1'}},
             'spec': {'field': 'value'},
             'status': {'info': 'payload'}}
-    cause = ResourceChangingCause(
+    cause = ChangingCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
         indices=OperatorIndexers().indices,
         resource=resource,
@@ -195,12 +194,12 @@ def test_resource_changing_kwargs(resource, attr):
 
 
 @pytest.mark.parametrize('attr', ['kwargs', 'sync_kwargs', 'async_kwargs'])
-def test_resource_spawning_kwargs(resource, attr):
+def test_spawning_kwargs(resource, attr):
     body = {'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1',
                          'labels': {'l1': 'v1'}, 'annotations': {'a1': 'v1'}},
             'spec': {'field': 'value'},
             'status': {'info': 'payload'}}
-    cause = ResourceSpawningCause(
+    cause = SpawningCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
         indices=OperatorIndexers().indices,
         resource=resource,

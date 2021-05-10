@@ -3,11 +3,11 @@ from unittest.mock import Mock
 
 import pytest
 
-from kopf.reactor.causation import ResourceWatchingCause
+from kopf.reactor.causation import WatchingCause
 from kopf.reactor.registries import match, prematch
 from kopf.structs.bodies import Body
 from kopf.structs.dicts import parse_field
-from kopf.structs.handlers import ResourceWatchingHandler
+from kopf.structs.handlers import WatchingHandler
 from kopf.structs.references import Resource
 
 
@@ -25,7 +25,7 @@ def callback():
 
 @pytest.fixture(params=['annotations', 'labels', 'value', 'when'])
 def handler(request, callback, selector):
-    handler = ResourceWatchingHandler(
+    handler = WatchingHandler(
         selector=selector,
         annotations={'known': 'value'},
         labels={'known': 'value'},
@@ -44,7 +44,7 @@ def handler(request, callback, selector):
 @pytest.fixture()
 def cause(cause_factory, callback):
     return cause_factory(
-        cls=ResourceWatchingCause,
+        cls=WatchingCause,
         body=Body(dict(
             metadata=dict(
                 labels={'known': 'value'},

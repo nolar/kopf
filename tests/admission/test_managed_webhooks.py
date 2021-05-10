@@ -16,7 +16,7 @@ def handlers(resource, registry):
     def mutate_fn(**_):
         pass
 
-    return registry._resource_webhooks.get_all_handlers()
+    return registry._webhooks.get_all_handlers()
 
 
 @pytest.mark.parametrize('id, field, exp_name', [
@@ -37,7 +37,7 @@ def test_name_is_normalised(registry, resource, decorator, id, field, exp_name):
         pass
 
     webhooks = build_webhooks(
-        registry._resource_webhooks.get_all_handlers(),
+        registry._webhooks.get_all_handlers(),
         resources=[resource],
         name_suffix='sfx',
         client_config={})
@@ -64,7 +64,7 @@ def test_url_is_suffixed(registry, resource, decorator, id, field, exp_url):
         pass
 
     webhooks = build_webhooks(
-        registry._resource_webhooks.get_all_handlers(),
+        registry._webhooks.get_all_handlers(),
         resources=[resource],
         name_suffix='sfx',
         client_config={'url': 'https://hostname/p1/p2'})
@@ -91,7 +91,7 @@ def test_path_is_suffixed(registry, resource, decorator, id, field, exp_path):
         pass
 
     webhooks = build_webhooks(
-        registry._resource_webhooks.get_all_handlers(),
+        registry._webhooks.get_all_handlers(),
         resources=[resource],
         name_suffix='sfx',
         client_config={'service': {'path': 'p1/p2'}})
@@ -114,7 +114,7 @@ def test_flat_options_are_mapped(registry, resource, decorator, opts, key, val):
         pass
 
     webhooks = build_webhooks(
-        registry._resource_webhooks.get_all_handlers(),
+        registry._webhooks.get_all_handlers(),
         resources=[resource],
         name_suffix='sfx',
         client_config={})
@@ -140,7 +140,7 @@ def test_rule_options_are_mapped(registry, resource, decorator, opts, key, val):
         pass
 
     webhooks = build_webhooks(
-        registry._resource_webhooks.get_all_handlers(),
+        registry._webhooks.get_all_handlers(),
         resources=[resource],
         name_suffix='sfx',
         client_config={})
@@ -166,7 +166,7 @@ def test_multiple_handlers(registry, resource, decorator):
         pass
 
     webhooks = build_webhooks(
-        registry._resource_webhooks.get_all_handlers(),
+        registry._webhooks.get_all_handlers(),
         resources=[resource],
         name_suffix='sfx',
         client_config={})
@@ -185,7 +185,7 @@ def test_irrelevant_resources_are_ignored(registry, resource, decorator):
 
     irrelevant_resource = Resource('grp', 'vers', 'plural')
     webhooks = build_webhooks(
-        registry._resource_webhooks.get_all_handlers(),
+        registry._webhooks.get_all_handlers(),
         resources=[irrelevant_resource],
         name_suffix='sfx',
         client_config={})
@@ -208,7 +208,7 @@ def test_labels_specific_filter(registry, resource, decorator, label_value, exp_
 
     irrelevant_resource = Resource('grp', 'vers', 'plural')
     webhooks = build_webhooks(
-        registry._resource_webhooks.get_all_handlers(),
+        registry._webhooks.get_all_handlers(),
         resources=[irrelevant_resource],
         name_suffix='sfx',
         client_config={})
@@ -226,7 +226,7 @@ def test_labels_callable_filter(registry, resource, decorator):
 
     irrelevant_resource = Resource('grp', 'vers', 'plural')
     webhooks = build_webhooks(
-        registry._resource_webhooks.get_all_handlers(),
+        registry._webhooks.get_all_handlers(),
         resources=[irrelevant_resource],
         name_suffix='sfx',
         client_config={})

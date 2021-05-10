@@ -91,11 +91,11 @@ async def resource_observer(
 
     # Scan only the resource-related handlers, ignore activies & co.
     all_handlers: List[handlers.ResourceHandler] = []
-    all_handlers.extend(registry._resource_webhooks.get_all_handlers())
-    all_handlers.extend(registry._resource_indexing.get_all_handlers())
-    all_handlers.extend(registry._resource_watching.get_all_handlers())
-    all_handlers.extend(registry._resource_spawning.get_all_handlers())
-    all_handlers.extend(registry._resource_changing.get_all_handlers())
+    all_handlers.extend(registry._webhooks.get_all_handlers())
+    all_handlers.extend(registry._indexing.get_all_handlers())
+    all_handlers.extend(registry._watching.get_all_handlers())
+    all_handlers.extend(registry._spawning.get_all_handlers())
+    all_handlers.extend(registry._changing.get_all_handlers())
     groups = {handler.selector.group for handler in all_handlers if handler.selector is not None}
     groups.update({selector.group for selector in insights.backbone.selectors})
 
@@ -205,11 +205,11 @@ def revise_resources(
 
     # Scan only the resource-related handlers, ignore activies & co.
     all_handlers: List[handlers.ResourceHandler] = []
-    all_handlers.extend(registry._resource_webhooks.get_all_handlers())
-    all_handlers.extend(registry._resource_indexing.get_all_handlers())
-    all_handlers.extend(registry._resource_watching.get_all_handlers())
-    all_handlers.extend(registry._resource_spawning.get_all_handlers())
-    all_handlers.extend(registry._resource_changing.get_all_handlers())
+    all_handlers.extend(registry._webhooks.get_all_handlers())
+    all_handlers.extend(registry._indexing.get_all_handlers())
+    all_handlers.extend(registry._watching.get_all_handlers())
+    all_handlers.extend(registry._spawning.get_all_handlers())
+    all_handlers.extend(registry._changing.get_all_handlers())
     all_selectors = {handler.selector for handler in all_handlers if handler.selector is not None}
 
     if group is None:
@@ -224,7 +224,7 @@ def revise_resources(
     for selector in all_selectors:
         insights.resources.update(selector.select(resources))
         insights.indexable.update(resource for resource in selector.select(resources)
-                                  if registry._resource_indexing.has_handlers(resource))
+                                  if registry._indexing.has_handlers(resource))
 
     # Detect ambiguous selectors and stop watching: 2+ distinct resources for the same selector.
     # E.g.: "pods.v1" & "pods.v1beta1.metrics.k8s.io", when specified as just "pods" (but only

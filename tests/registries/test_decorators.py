@@ -1,10 +1,10 @@
 import pytest
 
 import kopf
-from kopf.reactor.causation import ResourceWebhookCause
+from kopf.reactor.causation import WebhookCause
 from kopf.reactor.handling import handler_var, subregistry_var
 from kopf.reactor.invocation import context
-from kopf.reactor.registries import OperatorRegistry, ResourceChangingRegistry
+from kopf.reactor.registries import ChangingRegistry, OperatorRegistry
 from kopf.structs.handlers import HANDLER_REASONS, Activity, ErrorsMode, Reason
 
 
@@ -69,7 +69,7 @@ def test_on_resume_minimal(reason, cause_factory, resource):
     def fn(**_):
         pass
 
-    handlers = registry._resource_changing.get_handlers(cause)
+    handlers = registry._changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
@@ -94,7 +94,7 @@ def test_on_create_minimal(cause_factory, resource):
     def fn(**_):
         pass
 
-    handlers = registry._resource_changing.get_handlers(cause)
+    handlers = registry._changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.CREATE
@@ -119,7 +119,7 @@ def test_on_update_minimal(cause_factory, resource):
     def fn(**_):
         pass
 
-    handlers = registry._resource_changing.get_handlers(cause)
+    handlers = registry._changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.UPDATE
@@ -144,7 +144,7 @@ def test_on_delete_minimal(cause_factory, resource):
     def fn(**_):
         pass
 
-    handlers = registry._resource_changing.get_handlers(cause)
+    handlers = registry._changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.DELETE
@@ -171,7 +171,7 @@ def test_on_field_minimal(cause_factory, resource):
     def fn(**_):
         pass
 
-    handlers = registry._resource_changing.get_handlers(cause)
+    handlers = registry._changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
@@ -275,7 +275,7 @@ def test_on_resume_with_most_kwargs(mocker, reason, cause_factory, resource):
     def fn(**_):
         pass
 
-    handlers = registry._resource_changing.get_handlers(cause)
+    handlers = registry._changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
@@ -311,7 +311,7 @@ def test_on_create_with_most_kwargs(mocker, cause_factory, resource):
     def fn(**_):
         pass
 
-    handlers = registry._resource_changing.get_handlers(cause)
+    handlers = registry._changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.CREATE
@@ -346,7 +346,7 @@ def test_on_update_with_most_kwargs(mocker, cause_factory, resource):
     def fn(**_):
         pass
 
-    handlers = registry._resource_changing.get_handlers(cause)
+    handlers = registry._changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.UPDATE
@@ -386,7 +386,7 @@ def test_on_delete_with_most_kwargs(mocker, cause_factory, optional, resource):
     def fn(**_):
         pass
 
-    handlers = registry._resource_changing.get_handlers(cause)
+    handlers = registry._changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.DELETE
@@ -423,7 +423,7 @@ def test_on_field_with_most_kwargs(mocker, cause_factory, resource):
     def fn(**_):
         pass
 
-    handlers = registry._resource_changing.get_handlers(cause)
+    handlers = registry._changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
@@ -443,7 +443,7 @@ def test_on_field_with_most_kwargs(mocker, cause_factory, resource):
 
 def test_subhandler_fails_with_no_parent_handler():
 
-    registry = ResourceChangingRegistry()
+    registry = ChangingRegistry()
     subregistry_var.set(registry)
 
     # Check if the contextvar is indeed not set (as a prerequisite).
@@ -460,7 +460,7 @@ def test_subhandler_fails_with_no_parent_handler():
 def test_subhandler_declaratively(parent_handler, cause_factory):
     cause = cause_factory(reason=Reason.UPDATE)
 
-    registry = ResourceChangingRegistry()
+    registry = ChangingRegistry()
     subregistry_var.set(registry)
 
     with context([(handler_var, parent_handler)]):
@@ -476,7 +476,7 @@ def test_subhandler_declaratively(parent_handler, cause_factory):
 def test_subhandler_imperatively(parent_handler, cause_factory):
     cause = cause_factory(reason=Reason.UPDATE)
 
-    registry = ResourceChangingRegistry()
+    registry = ChangingRegistry()
     subregistry_var.set(registry)
 
     def fn(**_):
@@ -529,17 +529,17 @@ def test_annotations_filter_with_nones(resource, decorator, kwargs):
 
 
 @pytest.mark.parametrize('decorator, causeargs, handlers_prop', [
-    pytest.param(kopf.index, dict(), '_resource_indexing', id='on-index'),
-    pytest.param(kopf.on.event, dict(), '_resource_watching', id='on-event'),
-    pytest.param(kopf.on.mutate, dict(cls=ResourceWebhookCause), '_resource_webhooks', id='on-mutation'),
-    pytest.param(kopf.on.validate, dict(cls=ResourceWebhookCause), '_resource_webhooks', id='on-validation'),
-    pytest.param(kopf.on.resume, dict(reason=None, initial=True), '_resource_changing', id='on-resume'),
-    pytest.param(kopf.on.create, dict(reason=Reason.CREATE), '_resource_changing', id='on-create'),
-    pytest.param(kopf.on.update, dict(reason=Reason.UPDATE), '_resource_changing', id='on-update'),
-    pytest.param(kopf.on.delete, dict(reason=Reason.DELETE), '_resource_changing', id='on-delete'),
-    pytest.param(kopf.on.field, dict(reason=Reason.UPDATE), '_resource_changing', id='on-field'),
-    pytest.param(kopf.daemon, dict(), '_resource_spawning', id='on-daemon'),
-    pytest.param(kopf.timer, dict(), '_resource_spawning', id='on-timer'),
+    pytest.param(kopf.index, dict(), '_indexing', id='on-index'),
+    pytest.param(kopf.on.event, dict(), '_watching', id='on-event'),
+    pytest.param(kopf.on.mutate, dict(cls=WebhookCause), '_webhooks', id='on-mutation'),
+    pytest.param(kopf.on.validate, dict(cls=WebhookCause), '_webhooks', id='on-validation'),
+    pytest.param(kopf.on.resume, dict(reason=None, initial=True), '_changing', id='on-resume'),
+    pytest.param(kopf.on.create, dict(reason=Reason.CREATE), '_changing', id='on-create'),
+    pytest.param(kopf.on.update, dict(reason=Reason.UPDATE), '_changing', id='on-update'),
+    pytest.param(kopf.on.delete, dict(reason=Reason.DELETE), '_changing', id='on-delete'),
+    pytest.param(kopf.on.field, dict(reason=Reason.UPDATE), '_changing', id='on-field'),
+    pytest.param(kopf.daemon, dict(), '_spawning', id='on-daemon'),
+    pytest.param(kopf.timer, dict(), '_spawning', id='on-timer'),
 ])
 def test_field_with_value(mocker, cause_factory, decorator, causeargs, handlers_prop, resource, registry):
     old = {'field': {'subfield': 'old'}}
@@ -559,8 +559,8 @@ def test_field_with_value(mocker, cause_factory, decorator, causeargs, handlers_
 
 
 @pytest.mark.parametrize('decorator, causeargs, handlers_prop', [
-    pytest.param(kopf.on.update, dict(reason=Reason.UPDATE), '_resource_changing', id='on-update'),
-    pytest.param(kopf.on.field, dict(reason=Reason.UPDATE), '_resource_changing', id='on-field'),
+    pytest.param(kopf.on.update, dict(reason=Reason.UPDATE), '_changing', id='on-update'),
+    pytest.param(kopf.on.field, dict(reason=Reason.UPDATE), '_changing', id='on-field'),
 ])
 def test_field_with_oldnew(mocker, cause_factory, decorator, causeargs, handlers_prop, resource, registry):
     cause = cause_factory(resource=resource, **causeargs)
@@ -626,8 +626,8 @@ def test_invalid_oldnew_for_inappropriate_subhandlers(resource, decorator, regis
         def fn2(**_):
             pass
 
-    subregistry = ResourceChangingRegistry()
-    handler = registry._resource_changing.get_all_handlers()[0]
+    subregistry = ChangingRegistry()
+    handler = registry._changing.get_all_handlers()[0]
     with context([(handler_var, handler), (subregistry_var, subregistry)]):
         with pytest.raises(TypeError, match="can only be used in update handlers"):
             handler.fn()

@@ -147,9 +147,9 @@ async def process_resource_causes(
     finalizer = settings.persistence.finalizer
     extra_fields = (
         # NB: indexing handlers are useless here, they are handled on their own.
-        registry._resource_watching.get_extra_fields(resource=resource) |
-        registry._resource_changing.get_extra_fields(resource=resource) |
-        registry._resource_spawning.get_extra_fields(resource=resource))
+        registry._watching.get_extra_fields(resource=resource) |
+        registry._changing.get_extra_fields(resource=resource) |
+        registry._spawning.get_extra_fields(resource=resource))
     old = settings.persistence.diffbase_storage.fetch(body=body)
     new = settings.persistence.diffbase_storage.build(body=body, extra_fields=extra_fields)
     old = settings.persistence.progress_storage.clear(essence=old) if old is not None else None
@@ -157,7 +157,7 @@ async def process_resource_causes(
     diff = diffs.diff(old, new)
 
     # Detect what are we going to do on this processing cycle.
-    resource_watching_cause = causation.detect_resource_watching_cause(
+    watching_cause = causation.detect_watching_cause(
         raw_event=raw_event,
         resource=resource,
         indices=indexers.indices,
@@ -165,9 +165,9 @@ async def process_resource_causes(
         patch=patch,
         body=body,
         memo=memory.memo,
-    ) if registry._resource_watching.has_handlers(resource=resource) else None
+    ) if registry._watching.has_handlers(resource=resource) else None
 
-    resource_spawning_cause = causation.detect_resource_spawning_cause(
+    spawning_cause = causation.detect_spawning_cause(
         resource=resource,
         indices=indexers.indices,
         logger=logger,
@@ -175,9 +175,9 @@ async def process_resource_causes(
         body=body,
         memo=memory.memo,
         reset=bool(diff),  # only essential changes reset idling, not every event
-    ) if registry._resource_spawning.has_handlers(resource=resource) else None
+    ) if registry._spawning.has_handlers(resource=resource) else None
 
-    resource_changing_cause = causation.detect_resource_changing_cause(
+    changing_cause = causation.detect_changing_cause(
         finalizer=finalizer,
         raw_event=raw_event,
         resource=resource,
@@ -190,13 +190,12 @@ async def process_resource_causes(
         diff=diff,
         memo=memory.memo,
         initial=memory.noticed_by_listing and not memory.fully_handled_once,
-    ) if registry._resource_changing.has_handlers(resource=resource) else None
+    ) if registry._changing.has_handlers(resource=resource) else None
 
     # If there are any handlers for this resource kind in general, but not for this specific object
     # due to filters, then be blind to it, store no state, and log nothing about the handling cycle.
-    if (resource_changing_cause is not None and
-        not registry._resource_changing.prematch(cause=resource_changing_cause)):
-        resource_changing_cause = None
+    if changing_cause is not None and not registry._changing.prematch(cause=changing_cause):
+        changing_cause = None
 
     # Block the object from deletion if we have anything to do in its end of life:
     # specifically, if there are daemons to kill or mandatory on-deletion handlers to call.
@@ -205,74 +204,72 @@ async def process_resource_causes(
     deletion_is_ongoing = finalizers.is_deletion_ongoing(body=body)
     deletion_is_blocked = finalizers.is_deletion_blocked(body=body, finalizer=finalizer)
     deletion_must_be_blocked = (
-        (resource_spawning_cause is not None and
-         registry._resource_spawning.requires_finalizer(
-             cause=resource_spawning_cause,
+        (spawning_cause is not None and
+         registry._spawning.requires_finalizer(
+             cause=spawning_cause,
              excluded=memory.forever_stopped,
          ))
         or
-        (resource_changing_cause is not None and
-         registry._resource_changing.requires_finalizer(
-             cause=resource_changing_cause,
+        (changing_cause is not None and
+         registry._changing.requires_finalizer(
+             cause=changing_cause,
          )))
 
     if deletion_must_be_blocked and not deletion_is_blocked and not deletion_is_ongoing:
         logger.debug("Adding the finalizer, thus preventing the actual deletion.")
         finalizers.block_deletion(body=body, patch=patch, finalizer=finalizer)
-        resource_changing_cause = None  # prevent further high-level processing this time
+        changing_cause = None  # prevent further high-level processing this time
 
     if not deletion_must_be_blocked and deletion_is_blocked:
         logger.debug("Removing the finalizer, as there are no handlers requiring it.")
         finalizers.allow_deletion(body=body, patch=patch, finalizer=finalizer)
-        resource_changing_cause = None  # prevent further high-level processing this time
+        changing_cause = None  # prevent further high-level processing this time
 
     # Invoke all the handlers that should or could be invoked at this processing cycle.
     # The low-level spies go ASAP always. However, the daemons are spawned before the high-level
     # handlers and killed after them: the daemons should live throughout the full object lifecycle.
-    if resource_watching_cause is not None:
-        await process_resource_watching_cause(
+    if watching_cause is not None:
+        await process_watching_cause(
             lifecycle=lifecycles.all_at_once,
             registry=registry,
             settings=settings,
-            cause=resource_watching_cause,
+            cause=watching_cause,
         )
 
-    resource_spawning_delays: Collection[float] = []
-    if resource_spawning_cause is not None:
-        resource_spawning_delays = await process_resource_spawning_cause(
+    spawning_delays: Collection[float] = []
+    if spawning_cause is not None:
+        spawning_delays = await process_spawning_cause(
             registry=registry,
             settings=settings,
             memory=memory,
-            cause=resource_spawning_cause,
+            cause=spawning_cause,
         )
 
-    resource_changing_delays: Collection[float] = []
-    if resource_changing_cause is not None:
-        resource_changing_delays = await process_resource_changing_cause(
+    changing_delays: Collection[float] = []
+    if changing_cause is not None:
+        changing_delays = await process_changing_cause(
             lifecycle=lifecycle,
             registry=registry,
             settings=settings,
             memory=memory,
-            cause=resource_changing_cause,
+            cause=changing_cause,
         )
 
     # Release the object if everything is done, and it is marked for deletion.
     # But not when it has already gone.
-    if deletion_is_ongoing and deletion_is_blocked \
-            and not resource_spawning_delays \
-            and not resource_changing_delays:
+    if deletion_is_ongoing and deletion_is_blocked and not spawning_delays and not changing_delays:
         logger.debug("Removing the finalizer, thus allowing the actual deletion.")
         finalizers.allow_deletion(body=body, patch=patch, finalizer=finalizer)
 
-    delays = list(resource_spawning_delays) + list(resource_changing_delays)
-    return (delays, resource_changing_cause is not None)
+    delays = list(spawning_delays) + list(changing_delays)
+    return (delays, changing_cause is not None)
 
 
-async def process_resource_watching_cause(
+async def process_watching_cause(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
-        cause: causation.ResourceWatchingCause,
+        cause: causation.WatchingCause,
 ) -> None:
     """
     Handle a received event, log but ignore all errors.
@@ -284,7 +281,7 @@ async def process_resource_watching_cause(
     Note: K8s-event posting is skipped for `kopf.on.event` handlers,
     as they should be silent. Still, the messages are logged normally.
     """
-    handlers = registry._resource_watching.get_handlers(cause=cause)
+    handlers = registry._watching.get_handlers(cause=cause)
     outcomes = await handling.execute_handlers_once(
         lifecycle=lifecycle,
         settings=settings,
@@ -298,11 +295,11 @@ async def process_resource_watching_cause(
     states.deliver_results(outcomes=outcomes, patch=cause.patch)
 
 
-async def process_resource_spawning_cause(
+async def process_spawning_cause(
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         memory: containers.ResourceMemory,
-        cause: causation.ResourceSpawningCause,
+        cause: causation.SpawningCause,
 ) -> Collection[float]:
     """
     Spawn/kill all the background tasks of a resource.
@@ -325,25 +322,25 @@ async def process_resource_spawning_cause(
         memory.idle_reset_time = time.monotonic()
 
     if finalizers.is_deletion_ongoing(cause.body):
-        stopping_delays = await daemons.stop_resource_daemons(
+        stopping_delays = await daemons.stop_daemons(
             settings=settings,
             daemons=memory.running_daemons,
         )
         return stopping_delays
 
     else:
-        handlers = registry._resource_spawning.get_handlers(
+        handlers = registry._spawning.get_handlers(
             cause=cause,
             excluded=memory.forever_stopped,
         )
-        spawning_delays = await daemons.spawn_resource_daemons(
+        spawning_delays = await daemons.spawn_daemons(
             settings=settings,
             daemons=memory.running_daemons,
             cause=cause,
             memory=memory,
             handlers=handlers,
         )
-        matching_delays = await daemons.match_resource_daemons(
+        matching_delays = await daemons.match_daemons(
             settings=settings,
             daemons=memory.running_daemons,
             handlers=handlers,
@@ -351,12 +348,12 @@ async def process_resource_spawning_cause(
         return list(spawning_delays) + list(matching_delays)
 
 
-async def process_resource_changing_cause(
+async def process_changing_cause(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         memory: containers.ResourceMemory,
-        cause: causation.ResourceChangingCause,
+        cause: causation.ChangingCause,
 ) -> Collection[float]:
     """
     Handle a detected cause, as part of the bigger handler routine.
@@ -372,7 +369,7 @@ async def process_resource_changing_cause(
     if cause.reason in handlers_.HANDLER_REASONS:
         title = handlers_.TITLES.get(cause.reason, repr(cause.reason))
 
-        resource_registry = registry._resource_changing
+        resource_registry = registry._changing
         owned_handlers = resource_registry.get_resource_handlers(resource=cause.resource)
         cause_handlers = resource_registry.get_handlers(cause=cause)
         storage = settings.persistence.progress_storage

@@ -111,8 +111,8 @@ class ResourceHandler(BaseHandler):
 
 
 @dataclasses.dataclass
-class ResourceWebhookHandler(ResourceHandler):
-    fn: callbacks.ResourceWebhookFn  # type clarification
+class WebhookHandler(ResourceHandler):
+    fn: callbacks.WebhookFn  # type clarification
     reason: WebhookType
     operation: Optional[str]
     persistent: Optional[bool]
@@ -128,8 +128,8 @@ class ResourceWebhookHandler(ResourceHandler):
 
 
 @dataclasses.dataclass
-class ResourceIndexingHandler(ResourceHandler):
-    fn: callbacks.ResourceIndexingFn  # type clarification
+class IndexingHandler(ResourceHandler):
+    fn: callbacks.IndexingFn  # type clarification
 
     def __str__(self) -> str:
         return f"Indexer {self.id!r}"
@@ -140,8 +140,8 @@ class ResourceIndexingHandler(ResourceHandler):
 
 
 @dataclasses.dataclass
-class ResourceWatchingHandler(ResourceHandler):
-    fn: callbacks.ResourceWatchingFn  # type clarification
+class WatchingHandler(ResourceHandler):
+    fn: callbacks.WatchingFn  # type clarification
 
     @property
     def requires_patching(self) -> bool:
@@ -149,8 +149,8 @@ class ResourceWatchingHandler(ResourceHandler):
 
 
 @dataclasses.dataclass
-class ResourceChangingHandler(ResourceHandler):
-    fn: callbacks.ResourceChangingFn  # type clarification
+class ChangingHandler(ResourceHandler):
+    fn: callbacks.ChangingFn  # type clarification
     reason: Optional[Reason]
     initial: Optional[bool]
     deleted: Optional[bool]  # used for mixed-in (initial==True) @on.resume handlers only.
@@ -161,14 +161,14 @@ class ResourceChangingHandler(ResourceHandler):
 
 
 @dataclasses.dataclass
-class ResourceSpawningHandler(ResourceHandler):
+class SpawningHandler(ResourceHandler):
     requires_finalizer: Optional[bool]
     initial_delay: Optional[float]
 
 
 @dataclasses.dataclass
-class ResourceDaemonHandler(ResourceSpawningHandler):
-    fn: callbacks.ResourceDaemonFn  # type clarification
+class DaemonHandler(SpawningHandler):
+    fn: callbacks.DaemonFn  # type clarification
     cancellation_backoff: Optional[float]  # how long to wait before actual cancellation.
     cancellation_timeout: Optional[float]  # how long to wait before giving up on cancellation.
     cancellation_polling: Optional[float]  # how often to check for cancellation status.
@@ -178,8 +178,8 @@ class ResourceDaemonHandler(ResourceSpawningHandler):
 
 
 @dataclasses.dataclass
-class ResourceTimerHandler(ResourceSpawningHandler):
-    fn: callbacks.ResourceTimerFn  # type clarification
+class TimerHandler(SpawningHandler):
+    fn: callbacks.TimerFn  # type clarification
     sharp: Optional[bool]
     idle: Optional[float]
     interval: Optional[float]

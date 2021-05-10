@@ -111,7 +111,7 @@ async def test_removed_on_filters_mismatch(
         resource, settings, registry, indexers, index, caplog, event_type, handlers, mocker):
 
     # Simulate the indexing handler is gone out of scope (this is only one of the ways to do it):
-    mocker.patch.object(registry._resource_indexing, 'get_handlers', return_value=[])
+    mocker.patch.object(registry._indexing, 'get_handlers', return_value=[])
 
     caplog.set_level(logging.DEBUG)
     body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
