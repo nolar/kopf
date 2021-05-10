@@ -251,8 +251,8 @@ Resource daemon kwargs
 Stop-flag
 ---------
 
-The daemons also have ``stopped``. It is a flag object for sync daemons
-to check if they should stop. See also: `DaemonStopperChecker`.
+Daemons also have ``stopped``. It is a flag object for sync & async daemons
+(mostly, sync) to check if they should stop. See also: `DaemonStopped`.
 
 To check, ``.is_set()`` method can be called, or the object itself can be used
 as a boolean expression: e.g. ``while not stopped: ...``.

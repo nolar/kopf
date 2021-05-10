@@ -200,11 +200,11 @@ class DaemonCause(ResourceCause):
 
     @property
     def _sync_kwargs(self) -> Mapping[str, Any]:
-        return dict(super()._sync_kwargs, stopped=self.stopper.sync_checker)
+        return dict(super()._sync_kwargs, stopped=self.stopper.sync_waiter)
 
     @property
     def _async_kwargs(self) -> Mapping[str, Any]:
-        return dict(super()._async_kwargs, stopped=self.stopper.async_checker)
+        return dict(super()._async_kwargs, stopped=self.stopper.async_waiter)
 
 
 def detect_watching_cause(

@@ -14,7 +14,7 @@ async def test_timer_stopped_on_permanent_error(
         dummy.mock()
         dummy.kwargs = kwargs
         dummy.steps['called'].set()
-        kwargs['stopped']._stopper.set(reason=kopf.DaemonStoppingReason.NONE)  # to exit the cycle
+        kwargs['stopped']._setter.set()  # to exit the cycle
         raise PermanentError("boo!")
 
     event_object = {'metadata': {'finalizers': [settings.persistence.finalizer]}}
@@ -43,7 +43,7 @@ async def test_timer_stopped_on_arbitrary_errors_with_mode_permanent(
         dummy.mock()
         dummy.kwargs = kwargs
         dummy.steps['called'].set()
-        kwargs['stopped']._stopper.set(reason=kopf.DaemonStoppingReason.NONE)  # to exit the cycle
+        kwargs['stopped']._setter.set()  # to exit the cycle
         raise Exception("boo!")
 
     event_object = {'metadata': {'finalizers': [settings.persistence.finalizer]}}
@@ -76,7 +76,7 @@ async def test_timer_retried_on_temporary_error(
         if not retry:
             raise TemporaryError("boo!", delay=1.0)
         else:
-            kwargs['stopped']._stopper.set(reason=kopf.DaemonStoppingReason.NONE)  # to exit the cycle
+            kwargs['stopped']._setter.set()  # to exit the cycle
             dummy.steps['finish'].set()
 
     event_object = {'metadata': {'finalizers': [settings.persistence.finalizer]}}
@@ -108,7 +108,7 @@ async def test_timer_retried_on_arbitrary_error_with_mode_temporary(
         if not retry:
             raise Exception("boo!")
         else:
-            kwargs['stopped']._stopper.set(reason=kopf.DaemonStoppingReason.NONE)  # to exit the cycle
+            kwargs['stopped']._setter.set()  # to exit the cycle
             dummy.steps['finish'].set()
 
     event_object = {'metadata': {'finalizers': [settings.persistence.finalizer]}}
@@ -138,7 +138,7 @@ async def test_timer_retried_until_retries_limit(
         dummy.kwargs = kwargs
         dummy.steps['called'].set()
         if dummy.mock.call_count >= 5:
-            kwargs['stopped']._stopper.set(reason=kopf.DaemonStoppingReason.NONE)  # to exit the cycle
+            kwargs['stopped']._setter.set()  # to exit the cycle
         raise TemporaryError("boo!", delay=1.0)
 
     await simulate_cycle({})
@@ -162,7 +162,7 @@ async def test_timer_retried_until_timeout(
         dummy.kwargs = kwargs
         dummy.steps['called'].set()
         if dummy.mock.call_count >= 5:
-            kwargs['stopped']._stopper.set(reason=kopf.DaemonStoppingReason.NONE)  # to exit the cycle
+            kwargs['stopped']._setter.set()  # to exit the cycle
         raise TemporaryError("boo!", delay=1.0)
 
     await simulate_cycle({})

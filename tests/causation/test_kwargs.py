@@ -276,7 +276,7 @@ def test_daemon_sync_stopper(resource, attr):
     )
     kwargs = getattr(cause, attr)  # cause.sync_kwargs
     assert 'stopper' not in kwargs
-    assert kwargs['stopped'] is cause.stopper.sync_checker
+    assert kwargs['stopped'] is cause.stopper.sync_waiter
 
 
 @pytest.mark.parametrize('attr', ['async_kwargs'])
@@ -292,4 +292,4 @@ def test_daemon_async_stopper(resource, attr):
     )
     kwargs = getattr(cause, attr)  # cause.async_kwargs
     assert 'stopper' not in kwargs
-    assert kwargs['stopped'] is cause.stopper.async_checker
+    assert kwargs['stopped'] is cause.stopper.async_waiter

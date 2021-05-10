@@ -7,8 +7,8 @@ import concurrent.futures
 import enum
 import threading
 import time
-from typing import Any, AsyncIterator, Callable, Collection, Generic, \
-                   Iterable, Iterator, Optional, Set, TypeVar, Union
+from typing import Any, AsyncIterator, Awaitable, Callable, Collection, Generator, \
+                   Generic, Iterable, Iterator, Optional, Set, TypeVar, Union
 
 from kopf.utilities import aiotasks
 
@@ -291,42 +291,21 @@ class ToggleSet(Collection[Toggle]):
             self._condition.notify_all()
 
 
-class DaemonStoppingReason(enum.Flag):
-    """
-    A reason or reasons of daemon being terminated.
-
-    Daemons are signalled to exit usually for two reasons: the operator itself
-    is exiting or restarting, so all daemons of all resources must stop;
-    or the individual resource was deleted, but the operator continues running.
-
-    No matter the reason, the daemons must exit, so one and only one stop-flag
-    is used. Some daemons can check the reason of exiting if it is important.
-
-    There can be multiple reasons combined (in rare cases, all of them).
-    """
-    NONE = 0
-    DONE = enum.auto()  # whatever the reason and the status, the asyncio task has exited.
-    FILTERS_MISMATCH = enum.auto()  # the resource does not match the filters anymore.
-    RESOURCE_DELETED = enum.auto()  # the resource was deleted, the asyncio task is still awaited.
-    OPERATOR_PAUSING = enum.auto()  # the operator is pausing, the asyncio task is still awaited.
-    OPERATOR_EXITING = enum.auto()  # the operator is exiting, the asyncio task is still awaited.
-    DAEMON_SIGNALLED = enum.auto()  # the stopper flag was set, the asyncio task is still awaited.
-    DAEMON_CANCELLED = enum.auto()  # the asyncio task was cancelled, the thread can be running.
-    DAEMON_ABANDONED = enum.auto()  # we gave up on the asyncio task, the thread can be running.
+FlagReasonT = TypeVar('FlagReasonT', bound=enum.Flag)
 
 
-class DaemonStopper:
+class FlagSetter(Generic[FlagReasonT]):
     """
     A boolean flag indicating that the daemon should stop and exit.
 
-    Every daemon gets a ``stopper`` kwarg, which is an event-like object.
-    The stopper is raised in two cases:
+    Every daemon gets a ``stopped`` kwarg, which is an event-like object.
+    The stopped flag is raised in two cases:
 
     * The corresponding k8s object is deleted, so the daemon should stop.
     * The whole operator is stopping, so all the daemons should stop too.
 
-    The stopper flag is a graceful way of a daemon termination.
-    If the daemons do not react to their stoppers, and continue running,
+    The stopped flag is a graceful way of a daemon termination.
+    If the daemons do not react to their stoppers and continue running,
     their tasks are cancelled by raising a `asyncio.CancelledError`.
 
     .. warning::
@@ -341,38 +320,37 @@ class DaemonStopper:
     def __init__(self) -> None:
         super().__init__()
         self.when: Optional[float] = None
-        self.reason = DaemonStoppingReason.NONE
-        self.sync_checker = SyncDaemonStopperChecker(self)
-        self.async_checker = AsyncDaemonStopperChecker(self)
+        self.reason: Optional[FlagReasonT] = None
         self.sync_event = threading.Event()
         self.async_event = asyncio.Event()
+        self.sync_waiter: SyncFlagWaiter[FlagReasonT] = SyncFlagWaiter(self)
+        self.async_waiter: AsyncFlagWaiter[FlagReasonT] = AsyncFlagWaiter(self)
 
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__}: {self.is_set()}, reason={self.reason}>'
 
-    def is_set(self, reason: Optional[DaemonStoppingReason] = None) -> bool:
+    def is_set(self, reason: Optional[FlagReasonT] = None) -> bool:
         """
-        Check if the daemon stopper is set: at all or for specific reason.
+        Check if the daemon stopper is set: at all or for a specific reason.
         """
-        return ((reason is None or reason in self.reason) and self.sync_event.is_set())
+        matching_reason = reason is None or (self.reason is not None and reason in self.reason)
+        return matching_reason and self.sync_event.is_set()
 
-    def set(self, *, reason: DaemonStoppingReason) -> None:
+    def set(self, reason: Optional[FlagReasonT] = None) -> None:
         self.when = self.when if self.when is not None else time.monotonic()
-        self.reason |= reason
+        self.reason = reason if self.reason is None or reason is None else self.reason | reason
         self.sync_event.set()
         self.async_event.set()  # it is thread-safe: always called in operator's event loop.
 
 
-class DaemonStopperChecker:
-
+class FlagWaiter(Generic[FlagReasonT]):
     """
     A minimalistic read-only checker for the daemons from the user side.
 
     This object is fed into the :kwarg:`stopped` kwarg for the handlers.
 
-    The actual stopper is hidden from the users, and is an internal class.
-    The users should not be able to trigger the stopping activities or
-    check the reasons of stopping (or know about them at all).
+    The flag setter is hidden from the users, and is an internal class.
+    The users should not be able to trigger the stopping activities.
 
     Usage::
 
@@ -383,47 +361,137 @@ class DaemonStopperChecker:
                 stopped.wait(60)
     """
 
-    def __init__(self, stopper: DaemonStopper) -> None:
+    def __init__(self, setter: FlagSetter[FlagReasonT]) -> None:
         super().__init__()
-        self._stopper = stopper
+        self._setter = setter
 
     def __repr__(self) -> str:
-        return repr(self._stopper)
+        return repr(self._setter)
 
     def __bool__(self) -> bool:
-        return self._stopper.is_set()
+        return self._setter.is_set()
 
     def is_set(self) -> bool:
-        return self._stopper.is_set()
+        return self._setter.is_set()
 
     @property
-    def reason(self) -> DaemonStoppingReason:
-        return self._stopper.reason
+    def reason(self) -> Optional[FlagReasonT]:
+        return self._setter.reason
+
+    # See the docstring for AsyncFlagPromise for explanation.
+    def wait(self, timeout: Optional[float] = None) -> "FlagWaiter[FlagReasonT]":
+        # Presumably, `await stopped.wait(n).wait(m)` in async mode.
+        raise NotImplementedError("Please report the use-case in the issue tracker if needed.")
+
+    # See the docstring for AsyncFlagPromise for explanation.
+    def __await__(self) -> Generator[None, None, "FlagWaiter[FlagReasonT]"]:
+        # Presumably, `await stopped` in either sync or async mode.
+        raise NotImplementedError("Daemon stoppers should not be awaited directly. "
+                                  "Use `await stopped.wait()`.")
 
 
-class SyncDaemonStopperChecker(DaemonStopperChecker):
-    def wait(self, timeout: Optional[float] = None) -> bool:
-        self._stopper.sync_event.wait(timeout=timeout)
-        return bool(self)
+class SyncFlagWaiter(FlagWaiter[FlagReasonT], Generic[FlagReasonT]):
+    def wait(self, timeout: Optional[float] = None) -> "SyncFlagWaiter[FlagReasonT]":
+        self._setter.sync_event.wait(timeout=timeout)
+        return self
 
 
-class AsyncDaemonStopperChecker(DaemonStopperChecker):
-    async def wait(self, timeout: Optional[float] = None) -> bool:
+class AsyncFlagWaiter(FlagWaiter[FlagReasonT], Generic[FlagReasonT]):
+    def wait(self, timeout: Optional[float] = None) -> "AsyncFlagPromise[FlagReasonT]":
+        # A new checker instance, which is awaitable and returns the original checker in the end.
+        return AsyncFlagPromise(self, timeout=timeout)
+
+
+class AsyncFlagPromise(FlagWaiter[FlagReasonT],
+                       Awaitable[AsyncFlagWaiter[FlagReasonT]],
+                       Generic[FlagReasonT]):
+    """
+    An artificial future-like promise for ``await stopped.wait(...)``.
+
+    This is a low-level "clean hack" to simplify the publicly faced types.
+    As a trade-off, the complexity moves to the implementation side.
+
+    The only goal is to accept one and only one type for the ``stopped`` kwarg
+    in ``@kopf.daemon()`` handlers (protocol `callbacks.ResourceDaemonFn`)
+    regardless of whether they are sync or async, but still usable for both.
+
+    For this, the kwarg is announced with the base type `DaemonStoppingFlag`,
+    not as a union of sync or async, or any other double-typed approach.
+
+    The challenge is to support ``stopped.wait()`` in both sync & async modes:
+
+    * sync: ``stopped.wait(float) -> bool``.
+    * async: ``await stopped.wait(float) -> bool``.
+
+    The sync case is the primary case as there are no alternatives to it.
+    The async case is secondary because such use is discouraged (but supported);
+    it is recommended to rely on regular task cancellations in async daemons.
+
+    To solve it, instead of returning a ``bool``, a ``bool``-evaluable object
+    is returned --- the checker itself. This solves the primary (sync) use-case:
+    just sleep for the requested duration and return bool-evaluable self.
+
+    To follow the established signatures of the primary (sync) use-case,
+    the secondary (async) use-case also returns an instance of the checker:
+    but not "self"! Instead, it creates a new time-limited & awaitable checker
+    for every call to ``stopped.wait(n)``, limiting its life by ``n`` seconds.
+
+    Extra checker instances add some tiny memory overhead, but this is fine
+    since the use-case is discouraged and there is a better native alternative.
+
+    Then, going back through the class hierarchy, all classes are made awaitable
+    so that this functionality becomes exposed via the declared base class.
+    But all checkers except the time-limited one prohibit waiting for them.
+    """
+
+    def __init__(self, waiter: AsyncFlagWaiter[FlagReasonT], *, timeout: Optional[float]) -> None:
+        super().__init__(waiter._setter)
+        self._timeout = timeout
+        self._waiter = waiter
+
+    def __await__(self) -> Generator[None, None, AsyncFlagWaiter[FlagReasonT]]:
+        name = f"time-limited waiting for the daemon stopper {self._setter!r}"
+        coro = asyncio.wait_for(self._setter.async_event.wait(), timeout=self._timeout)
+        task = aiotasks.create_task(coro, name=name)
         try:
-            await asyncio.wait_for(self._stopper.async_event.wait(), timeout=timeout)
+            yield from task
         except asyncio.TimeoutError:
             pass
-        return bool(self)
+        return self._waiter  # the original checker! not the time-limited one!
 
 
-# Having this union allows both sync & async checkers in the same protocol,
-# while not restricting the use of `wait()` as if the base class would be used.
-SyncAsyncDaemonStopperChecker = Union[SyncDaemonStopperChecker, AsyncDaemonStopperChecker]
+class DaemonStoppingReason(enum.Flag):
+    """
+    A reason or reasons of daemon being terminated.
+
+    Daemons are signalled to exit usually for two reasons: the operator itself
+    is exiting or restarting, so all daemons of all resources must stop;
+    or the individual resource was deleted, but the operator continues running.
+
+    No matter the reason, the daemons must exit, so one and only one stop-flag
+    is used. Some daemons can check the reason of exiting if it is important.
+
+    There can be multiple reasons combined (in rare cases, all of them).
+    """
+    DONE = enum.auto()  # whatever the reason and the status, the asyncio task has exited.
+    FILTERS_MISMATCH = enum.auto()  # the resource does not match the filters anymore.
+    RESOURCE_DELETED = enum.auto()  # the resource was deleted, the asyncio task is still awaited.
+    OPERATOR_PAUSING = enum.auto()  # the operator is pausing, the asyncio task is still awaited.
+    OPERATOR_EXITING = enum.auto()  # the operator is exiting, the asyncio task is still awaited.
+    DAEMON_SIGNALLED = enum.auto()  # the stopper flag was set, the asyncio task is still awaited.
+    DAEMON_CANCELLED = enum.auto()  # the asyncio task was cancelled, the thread can be running.
+    DAEMON_ABANDONED = enum.auto()  # we gave up on the asyncio task, the thread can be running.
+
+
+DaemonStopper = FlagSetter[DaemonStoppingReason]
+DaemonStopped = FlagWaiter[DaemonStoppingReason]
+SyncDaemonStopperChecker = SyncFlagWaiter[DaemonStoppingReason]  # deprecated
+AsyncDaemonStopperChecker = AsyncFlagWaiter[DaemonStoppingReason]  # deprecated
 
 
 async def sleep_or_wait(
         delays: Union[None, float, Collection[Union[None, float]]],
-        wakeup: Optional[Union[asyncio.Event, DaemonStopper]] = None,
+        wakeup: Optional[asyncio.Event] = None,
 ) -> Optional[float]:
     """
     Measure the sleep time: either until the timeout, or until the event is set.
@@ -441,11 +509,7 @@ async def sleep_or_wait(
     if minimal_delay <= 0:
         return None
 
-    awakening_event = (
-        wakeup.async_event if isinstance(wakeup, DaemonStopper) else
-        wakeup if wakeup is not None else
-        asyncio.Event())
-
+    awakening_event = wakeup if wakeup is not None else asyncio.Event()
     loop = asyncio.get_running_loop()
     try:
         start_time = loop.time()
