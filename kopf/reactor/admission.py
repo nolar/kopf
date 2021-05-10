@@ -1,3 +1,4 @@
+import abc
 import asyncio
 import base64
 import copy
@@ -13,8 +14,8 @@ from kopf.clients import creating, errors, patching
 from kopf.engines import loggers
 from kopf.reactor import causation, handling, lifecycles, registries
 from kopf.storage import states
-from kopf.structs import bodies, configuration, containers, ephemera, filters, \
-                         handlers, ids, patches, primitives, references, reviews
+from kopf.structs import bodies, configuration, ephemera, filters, handlers, \
+                         ids, patches, primitives, references, reviews
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,30 @@ class AmbiguousResourceError(WebhookError):
     """ An admission is made for one resource, but we (somehow) found a few. """
 
 
+class MemoGetter(metaclass=abc.ABCMeta):
+    """
+    An interface as a way to break the reversed dependency of modules:
+
+    * The lower-level admission engine needs `Memories` for memos.
+    * The memories are implemented in the higher-level `reactor.inventory`.
+    * The inventory must be there in the high-level reactor because
+      it requires specialised memory classes from `daemons`, `indexing`, etc.
+    * And the inventory cannot be shifted down from the reactor to engines
+      because it is not an engine semantically.
+
+    Implemented by `inventory.Memories` or by any of its views.
+    """
+    @abc.abstractmethod
+    async def recall_memo(
+            self,
+            raw_body: bodies.RawBody,
+            *,
+            memo: Optional[ephemera.AnyMemo] = None,
+            ephemeral: bool = False,
+    ) -> ephemera.AnyMemo:
+        raise NotImplementedError
+
+
 async def serve_admission_request(
         # Required for all webhook servers, meaningless without it:
         request: reviews.Request,
@@ -69,7 +94,7 @@ async def serve_admission_request(
         reason: Optional[causation.WebhookType] = None,  # TODO: undocumented: requires typing clarity!
         # Injected by partial() from spawn_tasks():
         settings: configuration.OperatorSettings,
-        memories: containers.ResourceMemories,
+        memories: MemoGetter,
         memobase: ephemera.AnyMemo,
         registry: registries.OperatorRegistry,
         insights: references.Insights,
@@ -98,7 +123,7 @@ async def serve_admission_request(
     if raw_body is None:
         raise MissingDataError("Either old or new object is missing from the admission request.")
 
-    memory = await memories.recall(raw_body, memo=memobase, ephemeral=operation=='CREATE')
+    memo = await memories.recall_memo(raw_body, memo=memobase, ephemeral=operation=='CREATE')
     body = bodies.Body(raw_body)
     patch = patches.Patch()
     warnings: List[str] = []
@@ -107,7 +132,7 @@ async def serve_admission_request(
         indices=indices,
         logger=loggers.LocalObjectLogger(body=body, settings=settings),
         patch=patch,
-        memo=memory.memo,
+        memo=memo,
         body=body,
         userinfo=userinfo,
         warnings=warnings,

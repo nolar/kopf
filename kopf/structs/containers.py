@@ -11,7 +11,7 @@ import copy
 import dataclasses
 from typing import Iterator, MutableMapping, Optional
 
-from kopf.reactor import daemons, indexing
+from kopf.reactor import admission, daemons, indexing
 from kopf.structs import bodies, ephemera, throttlers
 
 
@@ -28,7 +28,7 @@ class ResourceMemory:
     fully_handled_once: bool = False
 
 
-class ResourceMemories(daemons.DaemonsMemoriesIterator):
+class ResourceMemories(admission.MemoGetter, daemons.DaemonsMemoriesIterator):
     """
     A container of all memos about every existing resource in a single operator.
 
@@ -59,6 +59,16 @@ class ResourceMemories(daemons.DaemonsMemoriesIterator):
     def iter_all_daemon_memories(self) -> Iterator[daemons.DaemonsMemory]:
         for memory in self._items.values():
             yield memory.daemons_memory
+
+    async def recall_memo(
+            self,
+            raw_body: bodies.RawBody,
+            *,
+            memo: Optional[ephemera.AnyMemo] = None,
+            ephemeral: bool = False,
+    ) -> ephemera.AnyMemo:
+        memory = await self.recall(raw_body=raw_body, memo=memo, ephemeral=ephemeral)
+        return memory.memo
 
     async def recall(
             self,
