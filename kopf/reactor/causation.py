@@ -22,7 +22,7 @@ could execute on the yet-existing object (and its children, if created).
 import dataclasses
 import enum
 import logging
-from typing import Any, List, Mapping, Optional, TypeVar, Union
+from typing import Any, List, Mapping, Optional, Union
 
 from kopf.reactor import invocation
 from kopf.storage import finalizers
@@ -342,19 +342,3 @@ def detect_changing_cause(
 
     # And what is left, is the update operation on one of the useful fields of the existing object.
     return ChangingCause(reason=Reason.UPDATE, **kwargs)
-
-
-_CT = TypeVar('_CT', bound=BaseCause)
-
-
-def enrich_cause(
-        cause: _CT,
-        **kwargs: Any,
-) -> _CT:
-    """
-    Produce a new derived cause with some fields modified ().
-
-    Usually, those are the old/new/diff fields, and used when a field-handler
-    is invoked (the old/new/diff refer to the field's values only).
-    """
-    return dataclasses.replace(cause, **kwargs)

@@ -15,7 +15,7 @@ from typing import Collection, Iterable, Mapping, MutableMapping, Optional, Set,
 
 from kopf.reactor import causation, invocation, lifecycles, registries
 from kopf.storage import states
-from kopf.structs import callbacks, configuration, dicts, diffs, handlers as handlers_, ids
+from kopf.structs import callbacks, configuration, handlers as handlers_, ids
 
 DEFAULT_RETRY_DELAY = 1 * 60
 """ The default delay duration for the regular exception in retry-mode. """
@@ -337,14 +337,7 @@ async def invoke_handler(
     """
 
     # For the field-handlers, the old/new/diff values must match the field, not the whole object.
-    if (True and  # for readable indenting
-            isinstance(cause, causation.ChangingCause) and
-            isinstance(handler, handlers_.ChangingHandler) and
-            handler.field is not None):
-        old = dicts.resolve(cause.old, handler.field, None)
-        new = dicts.resolve(cause.new, handler.field, None)
-        diff = diffs.reduce(cause.diff, handler.field)
-        cause = causation.enrich_cause(cause=cause, old=old, new=new, diff=diff)
+    cause = handler.adjust_cause(cause)
 
     # Store the context of the current handler, to be used in `@kopf.subhandler`,
     # and maybe other places, and consumed in the recursive `execute()` calls for the children.

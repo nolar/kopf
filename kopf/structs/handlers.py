@@ -1,9 +1,11 @@
 import dataclasses
 import enum
-from typing import Any, Optional
+from typing import Any, Optional, TypeVar, cast
 
 from kopf.reactor import causation, invocation
-from kopf.structs import callbacks, dicts, filters, ids, references
+from kopf.structs import callbacks, dicts, diffs, filters, ids, references
+
+CauseT = TypeVar('CauseT', bound=causation.BaseCause)
 
 
 class ErrorsMode(enum.Enum):
@@ -31,6 +33,10 @@ class BaseHandler:
     def __str__(self) -> str:
         return f"Handler {self.id!r}"
 
+    # Overridden in handlers with fields for causes with field-specific old/new/diff.
+    def adjust_cause(self, cause: CauseT) -> CauseT:
+        return cause
+
 
 @dataclasses.dataclass
 class ActivityHandler(BaseHandler):
@@ -54,6 +60,16 @@ class ResourceHandler(BaseHandler):
     @property
     def requires_patching(self) -> bool:
         return True  # all typical handlers except several ones with overrides
+
+    def adjust_cause(self, cause: CauseT) -> CauseT:
+        if self.field is not None and isinstance(cause, causation.ChangingCause):
+            old = dicts.resolve(cause.old, self.field, None)
+            new = dicts.resolve(cause.new, self.field, None)
+            diff = diffs.reduce(cause.diff, self.field)
+            new_cause = dataclasses.replace(cause, old=old, new=new, diff=diff)
+            return cast(CauseT, new_cause)  # TODO: mypy bug?
+        else:
+            return cause
 
 
 @dataclasses.dataclass
