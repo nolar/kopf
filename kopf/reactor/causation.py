@@ -77,10 +77,10 @@ ALL_REASONS = HANDLER_REASONS + REACTOR_REASONS
 
 # The human-readable names of these causes. Will be capitalised when needed.
 TITLES = {
-    Reason.CREATE: 'creation',
-    Reason.UPDATE: 'updating',
-    Reason.DELETE: 'deletion',
-    Reason.RESUME: 'resuming',
+    Reason.CREATE.value: 'creation',
+    Reason.UPDATE.value: 'updating',
+    Reason.DELETE.value: 'deletion',
+    Reason.RESUME.value: 'resuming',
 }
 
 

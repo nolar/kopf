@@ -177,7 +177,7 @@ def test_created_from_purposeful_storage(storage, handler, reason):
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     assert len(state) == 1
     assert state.purpose is None
-    assert state['some-id'].purpose is reason
+    assert state['some-id'].purpose == reason
 
 
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
@@ -185,7 +185,7 @@ def test_enriched_with_handlers_keeps_the_original_purpose(handler, reason):
     state = State.from_scratch()
     state = state.with_purpose(reason)
     state = state.with_handlers([handler])
-    assert state.purpose is reason
+    assert state.purpose == reason
 
 
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
@@ -193,7 +193,7 @@ def test_enriched_with_outcomes_keeps_the_original_purpose(reason):
     state = State.from_scratch()
     state = state.with_purpose(reason)
     state = state.with_outcomes({})
-    assert state.purpose is reason
+    assert state.purpose == reason
 
 
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
@@ -201,8 +201,8 @@ def test_repurposed_before_handlers(handler, reason):
     state = State.from_scratch()
     state = state.with_purpose(reason).with_handlers([handler])
     assert len(state) == 1
-    assert state.purpose is reason
-    assert state['some-id'].purpose is reason
+    assert state.purpose == reason
+    assert state['some-id'].purpose == reason
 
 
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
@@ -210,7 +210,7 @@ def test_repurposed_after_handlers(handler, reason):
     state = State.from_scratch()
     state = state.with_handlers([handler]).with_purpose(reason)
     assert len(state) == 1
-    assert state.purpose is reason
+    assert state.purpose == reason
     assert state['some-id'].purpose is None
 
 
@@ -219,8 +219,8 @@ def test_repurposed_with_handlers(handler, reason):
     state = State.from_scratch()
     state = state.with_handlers([handler]).with_purpose(reason, handlers=[handler])
     assert len(state) == 1
-    assert state.purpose is reason
-    assert state['some-id'].purpose is reason
+    assert state.purpose == reason
+    assert state['some-id'].purpose == reason
 
 
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
@@ -228,7 +228,7 @@ def test_repurposed_not_affecting_the_existing_handlers_from_scratch(handler, re
     state = State.from_scratch()
     state = state.with_handlers([handler]).with_purpose(reason).with_handlers([handler])
     assert len(state) == 1
-    assert state.purpose is reason
+    assert state.purpose == reason
     assert state['some-id'].purpose is None
 
 
@@ -238,7 +238,7 @@ def test_repurposed_not_affecting_the_existing_handlers_from_storage(storage, ha
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler]).with_purpose(reason).with_handlers([handler])
     assert len(state) == 1
-    assert state.purpose is reason
+    assert state.purpose == reason
     assert state['some-id'].purpose is None
 
 

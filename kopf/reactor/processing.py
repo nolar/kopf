@@ -373,7 +373,7 @@ async def process_changing_cause(
 
     # Regular causes invoke the handlers.
     if cause.reason in causation.HANDLER_REASONS:
-        title = causation.TITLES.get(cause.reason, repr(cause.reason))
+        title = causation.TITLES.get(cause.reason.value, repr(cause.reason.value))
 
         resource_registry = registry._changing
         owned_handlers = resource_registry.get_resource_handlers(resource=cause.resource)
@@ -385,8 +385,8 @@ async def process_changing_cause(
         # Report the causes that have been superseded (intercepted, overridden) by the current one.
         # The mix-in causes (i.e. resuming) is re-purposed if its handlers are still selected.
         # To the next cycle, all extras are purged or re-purposed, so the message does not repeat.
-        for extra_reason, counters in state.extras.items():  # usually 0..1 items, rarely 2+.
-            extra_title = causation.TITLES.get(extra_reason, repr(extra_reason))
+        for extra_purpose, counters in state.extras.items():  # usually 0..1 items, rarely 2+.
+            extra_title = causation.TITLES.get(extra_purpose, repr(extra_purpose))
             logger.info(f"{extra_title.capitalize()} is superseded by {title.lower()}: "
                         f"{counters.success} succeeded; "
                         f"{counters.failure} failed; "
