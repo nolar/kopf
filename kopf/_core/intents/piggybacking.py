@@ -20,6 +20,24 @@ PRIORITY_OF_CLIENT: int = 10
 PRIORITY_OF_PYKUBE: int = 20
 
 
+def has_client() -> bool:
+    try:
+        import kubernetes
+    except ImportError:
+        return False
+    else:
+        return True
+
+
+def has_pykube() -> bool:
+    try:
+        import pykube
+    except ImportError:
+        return False
+    else:
+        return True
+
+
 # We keep the official client library auto-login only because it was
 # an implied behavior before switching to pykube -- to keep it so (implied).
 def login_via_client(

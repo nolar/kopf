@@ -24,6 +24,7 @@ jobs:
         with:
           python-version: "3.9"
       - run: pip install -r requirements.txt
+      - run: lint-imports
       - run: isort . --check --diff
         continue-on-error: true
       - run: isort examples --settings=examples --check --diff

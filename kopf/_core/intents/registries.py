@@ -261,11 +261,7 @@ class OperatorRegistry:
 class SmartOperatorRegistry(OperatorRegistry):
     def __init__(self) -> None:
         super().__init__()
-        try:
-            import pykube
-        except ImportError:
-            pass
-        else:
+        if piggybacking.has_pykube():
             self._activities.append(handlers.ActivityHandler(
                 id=ids.HandlerId('login_via_pykube'),
                 fn=piggybacking.login_via_pykube,
@@ -274,11 +270,7 @@ class SmartOperatorRegistry(OperatorRegistry):
                 param=None, timeout=None, retries=None, backoff=None,
                 _fallback=True,
             ))
-        try:
-            import kubernetes
-        except ImportError:
-            pass
-        else:
+        if piggybacking.has_client():
             self._activities.append(handlers.ActivityHandler(
                 id=ids.HandlerId('login_via_client'),
                 fn=piggybacking.login_via_client,
