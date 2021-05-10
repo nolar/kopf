@@ -36,6 +36,8 @@ from kopf.reactor.admission import (
     AdmissionError,
 )
 from kopf.reactor.handling import (
+    Logger,
+    ErrorsMode,
     TemporaryError,
     PermanentError,
     HandlerTimeoutError,
@@ -90,7 +92,6 @@ from kopf.structs.bodies import (
     build_owner_reference,
 )
 from kopf.structs.callbacks import (
-    Logger,
     not_,
     all_,
     any_,
@@ -120,9 +121,6 @@ from kopf.structs.ephemera import (
 from kopf.structs.filters import (
     ABSENT,
     PRESENT,
-)
-from kopf.structs.handlers import (
-    ErrorsMode,
 )
 from kopf.reactor.causation import (
     Reason,

@@ -18,13 +18,13 @@ from types import FunctionType, MethodType
 from typing import Any, Callable, Collection, Container, Generic, Iterable, Iterator, List, \
                    Mapping, MutableMapping, Optional, Sequence, Set, Tuple, TypeVar, cast
 
-from kopf.reactor import causation
+from kopf.reactor import causation, handling
 from kopf.structs import dicts, filters, handlers, ids, references
 from kopf.utilities import piggybacking
 
 # We only type-check for known classes of handlers/callbacks, and ignore any custom subclasses.
-CauseT = TypeVar('CauseT', bound=causation.BaseCause)
-HandlerT = TypeVar('HandlerT', bound=handlers.BaseHandler)
+CauseT = TypeVar('CauseT', bound=handling.Cause)
+HandlerT = TypeVar('HandlerT', bound=handling.Handler)
 ResourceHandlerT = TypeVar('ResourceHandlerT', bound=handlers.ResourceHandler)
 
 
@@ -270,7 +270,7 @@ class SmartOperatorRegistry(OperatorRegistry):
                 id=ids.HandlerId('login_via_pykube'),
                 fn=piggybacking.login_via_pykube,
                 activity=causation.Activity.AUTHENTICATION,
-                errors=handlers.ErrorsMode.IGNORED,
+                errors=handling.ErrorsMode.IGNORED,
                 param=None, timeout=None, retries=None, backoff=None,
                 _fallback=True,
             ))
@@ -283,7 +283,7 @@ class SmartOperatorRegistry(OperatorRegistry):
                 id=ids.HandlerId('login_via_client'),
                 fn=piggybacking.login_via_client,
                 activity=causation.Activity.AUTHENTICATION,
-                errors=handlers.ErrorsMode.IGNORED,
+                errors=handling.ErrorsMode.IGNORED,
                 param=None, timeout=None, retries=None, backoff=None,
                 _fallback=True,
             ))

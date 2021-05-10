@@ -1,45 +1,12 @@
 import dataclasses
-import enum
-from typing import Any, Optional, TypeVar, cast
+from typing import Optional, cast
 
-from kopf.reactor import causation, invocation
-from kopf.structs import callbacks, dicts, diffs, filters, ids, references
-
-CauseT = TypeVar('CauseT', bound=causation.BaseCause)
-
-
-class ErrorsMode(enum.Enum):
-    """ How arbitrary (non-temporary/non-permanent) exceptions are treated. """
-    IGNORED = enum.auto()
-    TEMPORARY = enum.auto()
-    PERMANENT = enum.auto()
-
-
-# A registered handler (function + meta info).
-# FIXME: Must be frozen, but mypy fails in _call_handler() with a cryptic error:
-# FIXME:    Argument 1 to "invoke" has incompatible type "Optional[HandlerResult]";
-# FIXME:    expected "Union[LifeCycleFn, ActivityHandlerFn, ResourceHandlerFn]"
-@dataclasses.dataclass
-class BaseHandler:
-    id: ids.HandlerId
-    fn: invocation.Invokable
-    param: Optional[Any]
-    errors: Optional[ErrorsMode]
-    timeout: Optional[float]
-    retries: Optional[int]
-    backoff: Optional[float]
-
-    # Used in the logs. Overridden in some (but not all) handler types for better log messages.
-    def __str__(self) -> str:
-        return f"Handler {self.id!r}"
-
-    # Overridden in handlers with fields for causes with field-specific old/new/diff.
-    def adjust_cause(self, cause: CauseT) -> CauseT:
-        return cause
+from kopf.reactor import causation, handling
+from kopf.structs import callbacks, dicts, diffs, filters, references
 
 
 @dataclasses.dataclass
-class ActivityHandler(BaseHandler):
+class ActivityHandler(handling.Handler):
     fn: callbacks.ActivityFn  # type clarification
     activity: Optional[causation.Activity]
     _fallback: bool = False  # non-public!
@@ -49,7 +16,7 @@ class ActivityHandler(BaseHandler):
 
 
 @dataclasses.dataclass
-class ResourceHandler(BaseHandler):
+class ResourceHandler(handling.Handler):
     selector: Optional[references.Selector]  # None is used only in sub-handlers
     labels: Optional[filters.MetaFilter]
     annotations: Optional[filters.MetaFilter]
@@ -61,13 +28,13 @@ class ResourceHandler(BaseHandler):
     def requires_patching(self) -> bool:
         return True  # all typical handlers except several ones with overrides
 
-    def adjust_cause(self, cause: CauseT) -> CauseT:
+    def adjust_cause(self, cause: handling.CauseT) -> handling.CauseT:
         if self.field is not None and isinstance(cause, causation.ChangingCause):
             old = dicts.resolve(cause.old, self.field, None)
             new = dicts.resolve(cause.new, self.field, None)
             diff = diffs.reduce(cause.diff, self.field)
             new_cause = dataclasses.replace(cause, old=old, new=new, diff=diff)
-            return cast(CauseT, new_cause)  # TODO: mypy bug?
+            return cast(handling.CauseT, new_cause)  # TODO: mypy bug?
         else:
             return cause
 

@@ -5,19 +5,18 @@ import pytest
 
 from kopf.reactor.activities import ActivityError, run_activity
 from kopf.reactor.causation import Activity
-from kopf.reactor.handling import PermanentError, TemporaryError
+from kopf.reactor.handling import Outcome, PermanentError, TemporaryError
 from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.lifecycles import all_at_once
 from kopf.reactor.registries import OperatorRegistry
-from kopf.storage.states import HandlerOutcome
 from kopf.structs.ephemera import Memo
 from kopf.structs.handlers import ActivityHandler
 from kopf.structs.ids import HandlerId
 
 
 def test_activity_error_exception():
-    outcome = HandlerOutcome(final=True)
-    outcomes: Mapping[HandlerId, HandlerOutcome]
+    outcome = Outcome(final=True)
+    outcomes: Mapping[HandlerId, Outcome]
     outcomes = {HandlerId('id'): outcome}
     error = ActivityError("message", outcomes=outcomes)
     assert str(error) == "message"

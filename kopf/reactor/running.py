@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 def run(
         *,
         loop: Optional[asyncio.AbstractEventLoop] = None,
-        lifecycle: Optional[lifecycles.LifeCycleFn] = None,
+        lifecycle: Optional[handling.LifeCycleFn] = None,
         indexers: Optional[indexing.OperatorIndexers] = None,
         registry: Optional[registries.OperatorRegistry] = None,
         settings: Optional[configuration.OperatorSettings] = None,
@@ -74,7 +74,7 @@ def run(
 
 async def operator(
         *,
-        lifecycle: Optional[lifecycles.LifeCycleFn] = None,
+        lifecycle: Optional[handling.LifeCycleFn] = None,
         indexers: Optional[indexing.OperatorIndexers] = None,
         registry: Optional[registries.OperatorRegistry] = None,
         settings: Optional[configuration.OperatorSettings] = None,
@@ -129,7 +129,7 @@ async def operator(
 
 async def spawn_tasks(
         *,
-        lifecycle: Optional[lifecycles.LifeCycleFn] = None,
+        lifecycle: Optional[handling.LifeCycleFn] = None,
         indexers: Optional[indexing.OperatorIndexers] = None,
         registry: Optional[registries.OperatorRegistry] = None,
         settings: Optional[configuration.OperatorSettings] = None,

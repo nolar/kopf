@@ -33,8 +33,8 @@ async def execute(
         fns: Optional[Iterable[callbacks.ChangingFn]] = None,
         handlers: Optional[Iterable[handlers_.ChangingHandler]] = None,
         registry: Optional[registries.ChangingRegistry] = None,
-        lifecycle: Optional[lifecycles.LifeCycleFn] = None,
-        cause: Optional[causation.BaseCause] = None,
+        lifecycle: Optional[handling.LifeCycleFn] = None,
+        cause: Optional[handling.Cause] = None,
 ) -> None:
     """
     Execute the handlers in an isolated lifecycle.
@@ -56,7 +56,7 @@ async def execute(
     lifecycle = lifecycle if lifecycle is not None else handling.sublifecycle_var.get()
     lifecycle = lifecycle if lifecycle is not None else lifecycles.get_default_lifecycle()
     cause = cause if cause is not None else handling.cause_var.get()
-    parent_handler: handlers_.BaseHandler = handling.handler_var.get()
+    parent_handler: handling.Handler = handling.handler_var.get()
     parent_prefix = parent_handler.id if parent_handler is not None else None
 
     # Validate the inputs; the function signatures cannot put these kind of restrictions, so we do.

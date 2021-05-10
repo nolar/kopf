@@ -21,10 +21,9 @@ could execute on the yet-existing object (and its children, if created).
 """
 import dataclasses
 import enum
-import logging
-from typing import Any, List, Mapping, Optional, Union
+from typing import Any, List, Mapping, Optional
 
-from kopf.reactor import invocation
+from kopf.reactor import handling
 from kopf.storage import finalizers
 from kopf.structs import bodies, configuration, diffs, ephemera, ids, \
                          patches, primitives, references, reviews
@@ -85,7 +84,7 @@ TITLES = {
 
 
 @dataclasses.dataclass
-class BaseCause(invocation.Kwargable):
+class BaseCause(handling.Cause):
     """
     Base non-specific cause as used in the framework's reactor in most cases.
 
@@ -102,13 +101,11 @@ class BaseCause(invocation.Kwargable):
     harms only the developers who do so, so this is considered safe.
     """
     indices: ephemera.Indices
-    logger: Union[logging.Logger, logging.LoggerAdapter]
     memo: ephemera.AnyMemo
 
     @property
     def _kwargs(self) -> Mapping[str, Any]:
-        # Similar to `dataclasses.asdict()`, but not recursive for other dataclasses.
-        kwargs = {field.name: getattr(self, field.name) for field in dataclasses.fields(self)}
+        kwargs = dict(super()._kwargs)
         del kwargs['indices']
         return kwargs
 

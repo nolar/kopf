@@ -128,7 +128,7 @@ async def serve_admission_request(
         handlers=handlers_,
         cause=cause,
         state=state,
-        default_errors=handlers.ErrorsMode.PERMANENT,
+        default_errors=handling.ErrorsMode.PERMANENT,
     )
 
     # Construct the response as per Kubernetes's conventions and expectations.
@@ -168,7 +168,7 @@ def find_resource(
 def build_response(
         *,
         request: reviews.Request,
-        outcomes: Mapping[ids.HandlerId, states.HandlerOutcome],
+        outcomes: Mapping[ids.HandlerId, handling.Outcome],
         warnings: Collection[str],
         jsonpatch: patches.JSONPatch,
 ) -> reviews.Response:

@@ -2,11 +2,10 @@ import pytest
 
 import kopf
 from kopf.reactor.causation import HANDLER_REASONS, Activity, Reason, WebhookCause
-from kopf.reactor.handling import handler_var
+from kopf.reactor.handling import ErrorsMode, handler_var
 from kopf.reactor.invocation import context
 from kopf.reactor.registries import ChangingRegistry, OperatorRegistry
 from kopf.reactor.subhandling import subregistry_var
-from kopf.structs.handlers import ErrorsMode
 
 
 def test_on_startup_minimal():

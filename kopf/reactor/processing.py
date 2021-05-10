@@ -21,12 +21,12 @@ from kopf.engines import loggers, posting
 from kopf.reactor import causation, daemons, effects, handling, \
                          indexing, lifecycles, registries, subhandling
 from kopf.storage import finalizers, states
-from kopf.structs import bodies, configuration, containers, diffs, ephemera, \
-                         handlers as handlers_, patches, primitives, references
+from kopf.structs import bodies, configuration, containers, diffs, \
+                         ephemera, patches, primitives, references
 
 
 async def process_resource_event(
-        lifecycle: lifecycles.LifeCycleFn,
+        lifecycle: handling.LifeCycleFn,
         indexers: indexing.OperatorIndexers,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
@@ -138,7 +138,7 @@ async def process_resource_event(
 
 
 async def process_resource_causes(
-        lifecycle: lifecycles.LifeCycleFn,
+        lifecycle: handling.LifeCycleFn,
         indexers: indexing.OperatorIndexers,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
@@ -273,7 +273,7 @@ async def process_resource_causes(
 
 
 async def process_watching_cause(
-        lifecycle: lifecycles.LifeCycleFn,
+        lifecycle: handling.LifeCycleFn,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         cause: causation.WatchingCause,
@@ -295,7 +295,7 @@ async def process_watching_cause(
         handlers=handlers,
         cause=cause,
         state=states.State.from_scratch().with_handlers(handlers),
-        default_errors=handlers_.ErrorsMode.IGNORED,
+        default_errors=handling.ErrorsMode.IGNORED,
     )
 
     # Store the results, but not the handlers' progress.
@@ -356,7 +356,7 @@ async def process_spawning_cause(
 
 
 async def process_changing_cause(
-        lifecycle: lifecycles.LifeCycleFn,
+        lifecycle: handling.LifeCycleFn,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
         memory: containers.ResourceMemory,

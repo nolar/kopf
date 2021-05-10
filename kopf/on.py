@@ -30,7 +30,7 @@ def startup(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handlers.ErrorsMode] = None,
+        errors: Optional[handling.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -57,7 +57,7 @@ def cleanup(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handlers.ErrorsMode] = None,
+        errors: Optional[handling.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -84,7 +84,7 @@ def login(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handlers.ErrorsMode] = None,
+        errors: Optional[handling.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -112,7 +112,7 @@ def probe(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handlers.ErrorsMode] = None,
+        errors: Optional[handling.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -263,7 +263,7 @@ def resume(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handlers.ErrorsMode] = None,
+        errors: Optional[handling.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -320,7 +320,7 @@ def create(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handlers.ErrorsMode] = None,
+        errors: Optional[handling.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -376,7 +376,7 @@ def update(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handlers.ErrorsMode] = None,
+        errors: Optional[handling.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -434,7 +434,7 @@ def delete(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handlers.ErrorsMode] = None,
+        errors: Optional[handling.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -491,7 +491,7 @@ def field(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handlers.ErrorsMode] = None,
+        errors: Optional[handling.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -549,7 +549,7 @@ def index(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handlers.ErrorsMode] = None,
+        errors: Optional[handling.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -653,7 +653,7 @@ def daemon(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handlers.ErrorsMode] = None,
+        errors: Optional[handling.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -715,7 +715,7 @@ def timer(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handlers.ErrorsMode] = None,
+        errors: Optional[handling.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -764,7 +764,7 @@ def subhandler(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handlers.ErrorsMode] = None,
+        errors: Optional[handling.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -838,7 +838,7 @@ def register(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handlers.ErrorsMode] = None,
+        errors: Optional[handling.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -908,7 +908,7 @@ def _warn_conflicting_values(
 
 
 def _warn_incompatible_parent_with_oldnew(
-        handler: handlers.BaseHandler,
+        handler: handling.Handler,
         old: Any,
         new: Any,
 ) -> None:
