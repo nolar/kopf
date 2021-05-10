@@ -20,13 +20,68 @@ not when it is actually deleted (as the events notify): so that the handlers
 could execute on the yet-existing object (and its children, if created).
 """
 import dataclasses
+import enum
 import logging
 from typing import Any, List, Mapping, Optional, TypeVar, Union
 
 from kopf.reactor import invocation
 from kopf.storage import finalizers
-from kopf.structs import bodies, configuration, diffs, ephemera, handlers, \
-                         ids, patches, primitives, references, reviews
+from kopf.structs import bodies, configuration, diffs, ephemera, ids, \
+                         patches, primitives, references, reviews
+
+
+class Activity(str, enum.Enum):
+    STARTUP = 'startup'
+    CLEANUP = 'cleanup'
+    AUTHENTICATION = 'authentication'
+    PROBE = 'probe'
+
+
+class WebhookType(str, enum.Enum):
+    VALIDATING = 'validating'
+    MUTATING = 'mutating'
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+
+# Constants for cause types, to prevent a direct usage of strings, and typos.
+# They are not exposed by the framework, but are used internally. See also: `kopf.on`.
+class Reason(str, enum.Enum):
+    CREATE = 'create'
+    UPDATE = 'update'
+    DELETE = 'delete'
+    RESUME = 'resume'
+    NOOP = 'noop'
+    FREE = 'free'
+    GONE = 'gone'
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+
+# These sets are checked in few places, so we keep them centralised:
+# the user-facing causes (for handlers) and internally facing (for the reactor).
+HANDLER_REASONS = (
+    Reason.CREATE,
+    Reason.UPDATE,
+    Reason.DELETE,
+    Reason.RESUME,
+)
+REACTOR_REASONS = (
+    Reason.NOOP,
+    Reason.FREE,
+    Reason.GONE,
+)
+ALL_REASONS = HANDLER_REASONS + REACTOR_REASONS
+
+# The human-readable names of these causes. Will be capitalised when needed.
+TITLES = {
+    Reason.CREATE: 'creation',
+    Reason.UPDATE: 'updating',
+    Reason.DELETE: 'deletion',
+    Reason.RESUME: 'resuming',
+}
 
 
 @dataclasses.dataclass
@@ -64,7 +119,7 @@ class BaseCause(invocation.Kwargable):
 
 @dataclasses.dataclass
 class ActivityCause(BaseCause):
-    activity: handlers.Activity
+    activity: Activity
     settings: configuration.OperatorSettings
 
 
@@ -92,7 +147,7 @@ class ResourceCause(BaseCause):
 @dataclasses.dataclass
 class WebhookCause(ResourceCause):
     dryrun: bool
-    reason: Optional[handlers.WebhookType]  # None means "all" or expects the webhook id
+    reason: Optional[WebhookType]  # None means "all" or expects the webhook id
     webhook: Optional[ids.HandlerId]  # None means "all"
     headers: Mapping[str, str]
     sslpeer: Mapping[str, Any]
@@ -154,7 +209,7 @@ class ChangingCause(ResourceCause):
     of actual field changes, including multi-handler changes.
     """
     initial: bool
-    reason: handlers.Reason
+    reason: Reason
     diff: diffs.Diff = diffs.EMPTY
     old: Optional[bodies.BodyEssence] = None
     new: Optional[bodies.BodyEssence] = None
@@ -255,38 +310,38 @@ def detect_changing_cause(
 
     # The object was really deleted from the cluster. But we do not care anymore.
     if raw_event['type'] == 'DELETED':
-        return ChangingCause(reason=handlers.Reason.GONE, **kwargs)
+        return ChangingCause(reason=Reason.GONE, **kwargs)
 
     # The finalizer has been just removed. We are fully done.
     deletion_is_ongoing = finalizers.is_deletion_ongoing(body=body)
     deletion_is_blocked = finalizers.is_deletion_blocked(body=body, finalizer=finalizer)
     if deletion_is_ongoing and not deletion_is_blocked:
-        return ChangingCause(reason=handlers.Reason.FREE, **kwargs)
+        return ChangingCause(reason=Reason.FREE, **kwargs)
 
     if deletion_is_ongoing:
-        return ChangingCause(reason=handlers.Reason.DELETE, **kwargs)
+        return ChangingCause(reason=Reason.DELETE, **kwargs)
 
     # For an object seen for the first time (i.e. just-created), call the creation handlers,
     # then mark the state as if it was seen when the creation has finished.
     # Creation never mixes with resuming, even if an object is detected on startup (first listing).
     if old is None:  # i.e. we have no essence stored
         kwargs['initial'] = False
-        return ChangingCause(reason=handlers.Reason.CREATE, **kwargs)
+        return ChangingCause(reason=Reason.CREATE, **kwargs)
 
     # Cases with no essence changes are usually ignored (NOOP). But for the not-yet-resumed objects,
     # we simulate a fake cause to invoke the resuming handlers. For cases with the essence changes,
     # the resuming handlers will be mixed-in to the regular cause handling ("cuckoo-style")
     # due to the ``initial=True`` flag on the cause, regardless of the reason.
     if not diff and initial:
-        return ChangingCause(reason=handlers.Reason.RESUME, **kwargs)
+        return ChangingCause(reason=Reason.RESUME, **kwargs)
 
     # The previous step triggers one more patch operation without actual changes. Ignore it.
     # Either the last-seen state or the status field has changed.
     if not diff:
-        return ChangingCause(reason=handlers.Reason.NOOP, **kwargs)
+        return ChangingCause(reason=Reason.NOOP, **kwargs)
 
     # And what is left, is the update operation on one of the useful fields of the existing object.
-    return ChangingCause(reason=handlers.Reason.UPDATE, **kwargs)
+    return ChangingCause(reason=Reason.UPDATE, **kwargs)
 
 
 _CT = TypeVar('_CT', bound=BaseCause)

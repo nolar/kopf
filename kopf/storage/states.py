@@ -18,6 +18,7 @@ import datetime
 from typing import Any, Collection, Dict, Iterable, Iterator, \
                    Mapping, NamedTuple, Optional, overload
 
+from kopf.reactor import causation
 from kopf.storage import progress
 from kopf.structs import bodies, callbacks, handlers as handlers_, ids, patches
 
@@ -59,7 +60,7 @@ class HandlerState:
     started: Optional[datetime.datetime] = None  # None means this information was lost.
     stopped: Optional[datetime.datetime] = None  # None means it is still running (e.g. delayed).
     delayed: Optional[datetime.datetime] = None  # None means it is finished (succeeded/failed).
-    purpose: Optional[handlers_.Reason] = None  # None is a catch-all marker for upgrades/rollbacks.
+    purpose: Optional[causation.Reason] = None  # None is a catch-all marker for upgrades/rollbacks.
     retries: int = 0
     success: bool = False
     failure: bool = False
@@ -68,7 +69,7 @@ class HandlerState:
     _origin: Optional[progress.ProgressRecord] = None  # to check later if it has actually changed.
 
     @classmethod
-    def from_scratch(cls, *, purpose: Optional[handlers_.Reason] = None) -> "HandlerState":
+    def from_scratch(cls, *, purpose: Optional[causation.Reason] = None) -> "HandlerState":
         return cls(
             active=True,
             started=datetime.datetime.utcnow(),
@@ -82,7 +83,7 @@ class HandlerState:
             started=_datetime_fromisoformat(__d.get('started')) or datetime.datetime.utcnow(),
             stopped=_datetime_fromisoformat(__d.get('stopped')),
             delayed=_datetime_fromisoformat(__d.get('delayed')),
-            purpose=handlers_.Reason(__d.get('purpose')) if __d.get('purpose') else None,
+            purpose=causation.Reason(__d.get('purpose')) if __d.get('purpose') else None,
             retries=__d.get('retries') or 0,
             success=__d.get('success') or False,
             failure=__d.get('failure') or False,
@@ -113,7 +114,7 @@ class HandlerState:
 
     def with_purpose(
             self,
-            purpose: Optional[handlers_.Reason],
+            purpose: Optional[causation.Reason],
     ) -> "HandlerState":
         return dataclasses.replace(self, purpose=purpose)
 
@@ -180,7 +181,7 @@ class State(Mapping[ids.HandlerId, HandlerState]):
             self,
             __src: Mapping[ids.HandlerId, HandlerState],
             *,
-            purpose: Optional[handlers_.Reason] = None,
+            purpose: Optional[causation.Reason] = None,
     ):
         super().__init__()
         self._states = dict(__src)
@@ -208,7 +209,7 @@ class State(Mapping[ids.HandlerId, HandlerState]):
 
     def with_purpose(
             self,
-            purpose: Optional[handlers_.Reason],
+            purpose: Optional[causation.Reason],
             handlers: Iterable[handlers_.BaseHandler] = (),  # to be re-purposed
     ) -> "State":
         handler_states: Dict[ids.HandlerId, HandlerState] = dict(self)
@@ -304,7 +305,7 @@ class State(Mapping[ids.HandlerId, HandlerState]):
         )
 
     @property
-    def extras(self) -> Mapping[handlers_.Reason, StateCounters]:
+    def extras(self) -> Mapping[causation.Reason, StateCounters]:
         return {
             reason: StateCounters(
                 success=len([1 for handler_state in self._states.values()
@@ -314,7 +315,7 @@ class State(Mapping[ids.HandlerId, HandlerState]):
                 running=len([1 for handler_state in self._states.values()
                             if handler_state.purpose == reason and not handler_state.finished]),
             )
-            for reason in handlers_.HANDLER_REASONS
+            for reason in causation.HANDLER_REASONS
             if self.purpose is not None and reason != self.purpose
             if any(handler_state.purpose == reason for handler_state in self._states.values())
         }

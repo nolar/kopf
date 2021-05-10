@@ -1,11 +1,12 @@
 import pytest
 
 from kopf.reactor.activities import authenticate
+from kopf.reactor.causation import Activity
 from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.registries import OperatorRegistry
 from kopf.structs.credentials import ConnectionInfo, LoginError, Vault
 from kopf.structs.ephemera import Memo
-from kopf.structs.handlers import Activity, ActivityHandler
+from kopf.structs.handlers import ActivityHandler
 
 
 async def test_empty_registry_produces_no_credentials(settings):

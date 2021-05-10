@@ -13,7 +13,7 @@ This module is a part of the framework's public interface.
 # TODO: add cluster=True support (different API methods)
 from typing import Any, Callable, Optional, Union
 
-from kopf.reactor import handling, registries
+from kopf.reactor import causation, handling, registries
 from kopf.structs import callbacks, dicts, filters, handlers, references, reviews
 
 ActivityDecorator = Callable[[callbacks.ActivityFn], callbacks.ActivityFn]
@@ -45,7 +45,7 @@ def startup(  # lgtm[py/similar-function]
         handler = handlers.ActivityHandler(
             fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
-            activity=handlers.Activity.STARTUP,
+            activity=causation.Activity.STARTUP,
         )
         real_registry._activities.append(handler)
         return fn
@@ -72,7 +72,7 @@ def cleanup(  # lgtm[py/similar-function]
         handler = handlers.ActivityHandler(
             fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
-            activity=handlers.Activity.CLEANUP,
+            activity=causation.Activity.CLEANUP,
         )
         real_registry._activities.append(handler)
         return fn
@@ -100,7 +100,7 @@ def login(  # lgtm[py/similar-function]
         handler = handlers.ActivityHandler(
             fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
-            activity=handlers.Activity.AUTHENTICATION,
+            activity=causation.Activity.AUTHENTICATION,
         )
         real_registry._activities.append(handler)
         return fn
@@ -128,7 +128,7 @@ def probe(  # lgtm[py/similar-function]
         handler = handlers.ActivityHandler(
             fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
-            activity=handlers.Activity.PROBE,
+            activity=causation.Activity.PROBE,
         )
         real_registry._activities.append(handler)
         return fn
@@ -183,7 +183,7 @@ def validate(  # lgtm[py/similar-function]
             errors=None, timeout=None, retries=None, backoff=None,  # TODO: add some meaning later
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value,
-            reason=handlers.WebhookType.VALIDATING, operation=operation,
+            reason=causation.WebhookType.VALIDATING, operation=operation,
             persistent=persistent, side_effects=side_effects, ignore_failures=ignore_failures,
         )
         real_registry._webhooks.append(handler)
@@ -239,7 +239,7 @@ def mutate(  # lgtm[py/similar-function]
             errors=None, timeout=None, retries=None, backoff=None,  # TODO: add some meaning later
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value,
-            reason=handlers.WebhookType.MUTATING, operation=operation,
+            reason=causation.WebhookType.MUTATING, operation=operation,
             persistent=persistent, side_effects=side_effects, ignore_failures=ignore_failures,
         )
         real_registry._webhooks.append(handler)
@@ -353,7 +353,7 @@ def create(  # lgtm[py/similar-function]
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=None, new=None, field_needs_change=False,
             initial=None, deleted=None, requires_finalizer=None,
-            reason=handlers.Reason.CREATE,
+            reason=causation.Reason.CREATE,
         )
         real_registry._changing.append(handler)
         return fn
@@ -411,7 +411,7 @@ def update(  # lgtm[py/similar-function]
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=old, new=new, field_needs_change=True,
             initial=None, deleted=None, requires_finalizer=None,
-            reason=handlers.Reason.UPDATE,
+            reason=causation.Reason.UPDATE,
         )
         real_registry._changing.append(handler)
         return fn
@@ -468,7 +468,7 @@ def delete(  # lgtm[py/similar-function]
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=None, new=None, field_needs_change=False,
             initial=None, deleted=None, requires_finalizer=bool(not optional),
-            reason=handlers.Reason.DELETE,
+            reason=causation.Reason.DELETE,
         )
         real_registry._changing.append(handler)
         return fn
@@ -914,7 +914,7 @@ def _warn_incompatible_parent_with_oldnew(
 ) -> None:
     if old is not None or new is not None:
         if isinstance(handler, handlers.ChangingHandler):
-            is_on_update = handler.reason == handlers.Reason.UPDATE
+            is_on_update = handler.reason == causation.Reason.UPDATE
             is_on_field = handler.reason is None and not handler.initial
             if not is_on_update and not is_on_field:
                 raise TypeError("Filters old=/new= can only be used in update handlers.")

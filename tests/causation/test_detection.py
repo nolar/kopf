@@ -3,9 +3,8 @@ import json
 
 import pytest
 
-from kopf.reactor.causation import detect_changing_cause
+from kopf.reactor.causation import Reason, detect_changing_cause
 from kopf.structs.bodies import Body
-from kopf.structs.handlers import Reason
 
 LAST_SEEN_ANNOTATION = 'kopf.zalando.org/last-handled-configuration'
 FINALIZER = 'fin'

@@ -1,7 +1,7 @@
 import pytest
 
 import kopf
-from kopf.structs.handlers import HANDLER_REASONS, Reason
+from kopf.reactor.causation import HANDLER_REASONS, Reason
 
 
 @pytest.mark.parametrize('deleted', [True, False, None])

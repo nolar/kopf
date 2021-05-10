@@ -4,10 +4,10 @@ from unittest.mock import Mock
 import freezegun
 import pytest
 
+from kopf.reactor.causation import HANDLER_REASONS, Reason
 from kopf.storage.progress import SmartProgressStorage, StatusProgressStorage
 from kopf.storage.states import HandlerOutcome, State, StateCounters, deliver_results
 from kopf.structs.bodies import Body
-from kopf.structs.handlers import HANDLER_REASONS, Reason
 from kopf.structs.patches import Patch
 
 # Timestamps: time zero (0), before (B), after (A), and time zero+1s (1).

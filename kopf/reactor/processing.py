@@ -372,8 +372,8 @@ async def process_changing_cause(
     skip: Optional[bool] = None
 
     # Regular causes invoke the handlers.
-    if cause.reason in handlers_.HANDLER_REASONS:
-        title = handlers_.TITLES.get(cause.reason, repr(cause.reason))
+    if cause.reason in causation.HANDLER_REASONS:
+        title = causation.TITLES.get(cause.reason, repr(cause.reason))
 
         resource_registry = registry._changing
         owned_handlers = resource_registry.get_resource_handlers(resource=cause.resource)
@@ -386,7 +386,7 @@ async def process_changing_cause(
         # The mix-in causes (i.e. resuming) is re-purposed if its handlers are still selected.
         # To the next cycle, all extras are purged or re-purposed, so the message does not repeat.
         for extra_reason, counters in state.extras.items():  # usually 0..1 items, rarely 2+.
-            extra_title = handlers_.TITLES.get(extra_reason, repr(extra_reason))
+            extra_title = causation.TITLES.get(extra_reason, repr(extra_reason))
             logger.info(f"{extra_title.capitalize()} is superseded by {title.lower()}: "
                         f"{counters.success} succeeded; "
                         f"{counters.failure} failed; "
@@ -441,13 +441,13 @@ async def process_changing_cause(
         memory.fully_handled_once = True
 
     # Informational causes just print the log lines.
-    if cause.reason == handlers_.Reason.GONE:
+    if cause.reason == causation.Reason.GONE:
         logger.debug("Deleted, really deleted, and we are notified.")
 
-    if cause.reason == handlers_.Reason.FREE:
+    if cause.reason == causation.Reason.FREE:
         logger.debug("Deletion, but we are done with it, and we do not care.")
 
-    if cause.reason == handlers_.Reason.NOOP:
+    if cause.reason == causation.Reason.NOOP:
         logger.debug("Something has changed, but we are not interested (the essence is the same).")
 
     # The delay is then consumed by the main handling routine (in different ways).

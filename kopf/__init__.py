@@ -121,6 +121,8 @@ from kopf.structs.filters import (
 )
 from kopf.structs.handlers import (
     ErrorsMode,
+)
+from kopf.reactor.causation import (
     Reason,
 )
 from kopf.structs.ids import (

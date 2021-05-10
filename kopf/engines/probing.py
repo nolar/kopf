@@ -6,8 +6,8 @@ from typing import MutableMapping, Optional, Tuple
 
 import aiohttp.web
 
-from kopf.reactor import activities, lifecycles, registries
-from kopf.structs import callbacks, configuration, ephemera, handlers, ids
+from kopf.reactor import activities, causation, lifecycles, registries
+from kopf.structs import callbacks, configuration, ephemera, ids
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ async def health_reporter(
                         lifecycle=lifecycles.all_at_once,
                         registry=registry,
                         settings=settings,
-                        activity=handlers.Activity.PROBE,
+                        activity=causation.Activity.PROBE,
                         indices=indices,
                         memo=memo,
                     )

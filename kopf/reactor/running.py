@@ -8,10 +8,10 @@ from typing import Collection, Coroutine, MutableSequence, Optional, Sequence
 
 from kopf.clients import auth
 from kopf.engines import peering, posting, probing
-from kopf.reactor import activities, admission, daemons, indexing, lifecycles, \
-                         observation, orchestration, processing, registries
-from kopf.structs import configuration, containers, credentials, ephemera, \
-                         handlers, primitives, references, reviews
+from kopf.reactor import activities, admission, causation, daemons, handling, indexing, \
+                         lifecycles, observation, orchestration, processing, registries
+from kopf.structs import configuration, containers, credentials, \
+                         ephemera, primitives, references, reviews
 from kopf.utilities import aiotasks
 
 logger = logging.getLogger(__name__)
@@ -494,7 +494,7 @@ async def _startup_cleanup_activities(
             lifecycle=lifecycles.all_at_once,
             registry=registry,
             settings=settings,
-            activity=handlers.Activity.STARTUP,
+            activity=causation.Activity.STARTUP,
             indices=indices,
             memo=memo,
         )
@@ -528,7 +528,7 @@ async def _startup_cleanup_activities(
             lifecycle=lifecycles.all_at_once,
             registry=registry,
             settings=settings,
-            activity=handlers.Activity.CLEANUP,
+            activity=causation.Activity.CLEANUP,
             indices=indices,
             memo=memo,
         )

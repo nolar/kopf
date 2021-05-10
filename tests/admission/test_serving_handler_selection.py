@@ -4,7 +4,7 @@ import pytest
 
 import kopf
 from kopf.reactor.admission import serve_admission_request
-from kopf.structs.handlers import WebhookType
+from kopf.reactor.causation import WebhookType
 from kopf.structs.ids import HandlerId
 
 

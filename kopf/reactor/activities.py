@@ -83,7 +83,7 @@ async def authenticate(
         lifecycle=lifecycles.all_at_once,
         registry=registry,
         settings=settings,
-        activity=handlers_.Activity.AUTHENTICATION,
+        activity=causation.Activity.AUTHENTICATION,
         indices=indices,
         memo=memo,
     )
@@ -103,7 +103,7 @@ async def run_activity(
         lifecycle: lifecycles.LifeCycleFn,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
-        activity: handlers_.Activity,
+        activity: causation.Activity,
         indices: ephemera.Indices,
         memo: ephemera.AnyMemo,
 ) -> Mapping[ids.HandlerId, callbacks.Result]:

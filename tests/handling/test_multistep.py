@@ -3,11 +3,11 @@ import asyncio
 import pytest
 
 import kopf
+from kopf.reactor.causation import HANDLER_REASONS, Reason
 from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.ephemera import Memo
-from kopf.structs.handlers import HANDLER_REASONS, Reason
 
 
 @pytest.mark.parametrize('deletion_ts', [
