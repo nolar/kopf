@@ -10,11 +10,9 @@ activities, when there is no underlying Kubernetes object to patch'n'watch.
 import asyncio
 import collections.abc
 import datetime
-import logging
 from contextvars import ContextVar
 from typing import Collection, Iterable, Mapping, MutableMapping, Optional, Set, Union
 
-from kopf.engines import loggers
 from kopf.reactor import causation, invocation, lifecycles, registries
 from kopf.storage import states
 from kopf.structs import callbacks, configuration, dicts, diffs, handlers as handlers_, ids
@@ -243,13 +241,7 @@ async def execute_handler_once(
     """
     errors_mode = handler.errors if handler.errors is not None else default_errors
     backoff = handler.backoff if handler.backoff is not None else DEFAULT_RETRY_DELAY
-
-    # Prevent successes/failures from posting k8s-events for resource-watching causes.
-    logger: Union[logging.Logger, logging.LoggerAdapter]
-    if isinstance(cause, causation.WatchingCause):
-        logger = loggers.LocalObjectLogger(body=cause.body, settings=settings)
-    else:
-        logger = cause.logger
+    logger = cause.logger
 
     # Mutable accumulator for all the sub-handlers of any level deep; populated in `kopf.execute`.
     subrefs: Set[ids.HandlerId] = set()

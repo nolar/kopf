@@ -62,20 +62,24 @@ async def process_resource_event(
     body = memory.live_fresh_body if memory.live_fresh_body is not None else bodies.Body(raw_body)
     patch = patches.Patch()
 
+    # Different loggers for different cases with different verbosity and exposure.
+    local_logger = loggers.LocalObjectLogger(body=body, settings=settings)
+    terse_logger = loggers.TerseObjectLogger(body=body, settings=settings)
+    event_logger = loggers.ObjectLogger(body=body, settings=settings)
+
     # Throttle the non-handler-related errors. The regular event watching/batching continues
     # to prevent queue overfilling, but the processing is skipped (events are ignored).
     # Choice of place: late enough to have a per-resource memory for a throttler; also, a logger.
     # But early enough to catch environment errors from K8s API, and from most of the complex code.
     async with effects.throttled(
         throttler=memory.error_throttler,
-        logger=loggers.LocalObjectLogger(body=body, settings=settings),
+        logger=local_logger,
         delays=settings.batching.error_delays,
         wakeup=stream_pressure,
     ) as should_run:
         if should_run:
 
             # Each object has its own prefixed logger, to distinguish parallel handling.
-            logger = loggers.ObjectLogger(body=body, settings=settings)
             posting.event_queue_loop_var.set(asyncio.get_running_loop())
             posting.event_queue_var.set(event_queue)  # till the end of this object's task.
 
@@ -88,7 +92,7 @@ async def process_resource_event(
                 raw_event=raw_event,
                 body=body,
                 memory=memory,
-                logger=loggers.TerseObjectLogger(body=body, settings=settings),
+                logger=terse_logger,
             )
 
             # Wait for all other individual resources and all other resource kinds' lists to finish.
@@ -111,7 +115,8 @@ async def process_resource_event(
                 body=body,
                 patch=patch,
                 memory=memory,
-                logger=logger,
+                local_logger=local_logger,
+                event_logger=event_logger,
             )
 
             # Whatever was done, apply the accumulated changes to the object, or sleep-n-touch for delays.
@@ -123,12 +128,12 @@ async def process_resource_event(
                     resource=resource,
                     body=body,
                     patch=patch,
-                    logger=logger,
+                    logger=local_logger,
                     delays=delays,
                     stream_pressure=stream_pressure,
                 )
                 if applied and matched:
-                    logger.debug(f"Handling cycle is finished, waiting for new changes since now.")
+                    local_logger.debug("Handling cycle is finished, waiting for new changes.")
 
 
 async def process_resource_causes(
@@ -140,8 +145,9 @@ async def process_resource_causes(
         raw_event: bodies.RawEvent,
         body: bodies.Body,
         patch: patches.Patch,
-        logger: loggers.ObjectLogger,
         memory: containers.ResourceMemory,
+        local_logger: loggers.ObjectLogger,
+        event_logger: loggers.ObjectLogger,
 ) -> Tuple[Collection[float], bool]:
 
     finalizer = settings.persistence.finalizer
@@ -161,7 +167,7 @@ async def process_resource_causes(
         raw_event=raw_event,
         resource=resource,
         indices=indexers.indices,
-        logger=logger,
+        logger=local_logger,
         patch=patch,
         body=body,
         memo=memory.memo,
@@ -170,7 +176,7 @@ async def process_resource_causes(
     spawning_cause = causation.detect_spawning_cause(
         resource=resource,
         indices=indexers.indices,
-        logger=logger,
+        logger=event_logger,
         patch=patch,
         body=body,
         memo=memory.memo,
@@ -182,7 +188,7 @@ async def process_resource_causes(
         raw_event=raw_event,
         resource=resource,
         indices=indexers.indices,
-        logger=logger,
+        logger=event_logger,
         patch=patch,
         body=body,
         old=old,
@@ -216,12 +222,12 @@ async def process_resource_causes(
          )))
 
     if deletion_must_be_blocked and not deletion_is_blocked and not deletion_is_ongoing:
-        logger.debug("Adding the finalizer, thus preventing the actual deletion.")
+        local_logger.debug("Adding the finalizer, thus preventing the actual deletion.")
         finalizers.block_deletion(body=body, patch=patch, finalizer=finalizer)
         changing_cause = None  # prevent further high-level processing this time
 
     if not deletion_must_be_blocked and deletion_is_blocked:
-        logger.debug("Removing the finalizer, as there are no handlers requiring it.")
+        local_logger.debug("Removing the finalizer, as there are no handlers requiring it.")
         finalizers.allow_deletion(body=body, patch=patch, finalizer=finalizer)
         changing_cause = None  # prevent further high-level processing this time
 
@@ -258,7 +264,7 @@ async def process_resource_causes(
     # Release the object if everything is done, and it is marked for deletion.
     # But not when it has already gone.
     if deletion_is_ongoing and deletion_is_blocked and not spawning_delays and not changing_delays:
-        logger.debug("Removing the finalizer, thus allowing the actual deletion.")
+        local_logger.debug("Removing the finalizer, thus allowing the actual deletion.")
         finalizers.allow_deletion(body=body, patch=patch, finalizer=finalizer)
 
     delays = list(spawning_delays) + list(changing_delays)
