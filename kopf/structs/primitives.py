@@ -337,6 +337,7 @@ class FlagSetter(Generic[FlagReasonT]):
         return matching_reason and self.sync_event.is_set()
 
     def set(self, reason: Optional[FlagReasonT] = None) -> None:
+        reason = reason if reason is not None else self.reason  # to keep existing values
         self.when = self.when if self.when is not None else time.monotonic()
         self.reason = reason if self.reason is None or reason is None else self.reason | reason
         self.sync_event.set()
