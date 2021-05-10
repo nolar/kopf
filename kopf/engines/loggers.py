@@ -16,8 +16,9 @@ from typing import Any, MutableMapping, Optional, Tuple
 
 import pythonjsonlogger.jsonlogger
 
-from kopf.engines import posting
 from kopf.structs import bodies, configuration
+
+logger = logging.getLogger('kopf.objects')
 
 DEFAULT_JSON_REFKEY = 'object'
 """ A key for object references in JSON logs, as seen by the log parsers. """
@@ -95,49 +96,6 @@ class ObjectPrefixingJsonFormatter(ObjectPrefixingMixin, ObjectJsonFormatter):
     pass
 
 
-class K8sPoster(logging.Handler):
-    """
-    A handler to post all log messages as K8s events.
-    """
-
-    def createLock(self) -> None:
-        # Save some time on unneeded locks. Events are posted in the background.
-        # We only put events to the queue, which is already lock-protected.
-        self.lock = None
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        # Only those which have a k8s object referred (see: `ObjectLogger`).
-        # Otherwise, we have nothing to post, and nothing to do.
-        settings: Optional[configuration.OperatorSettings]
-        settings = getattr(record, 'settings', None)
-        level_ok = settings is not None and record.levelno >= settings.posting.level
-        enabled = settings is not None and settings.posting.enabled
-        has_ref = hasattr(record, 'k8s_ref')
-        skipped = hasattr(record, 'k8s_skip') and getattr(record, 'k8s_skip')
-        return enabled and level_ok and has_ref and not skipped and super().filter(record)
-
-    def emit(self, record: logging.LogRecord) -> None:
-        # Same try-except as in e.g. `logging.StreamHandler`.
-        try:
-            ref = getattr(record, 'k8s_ref')
-            type = (
-                "Debug" if record.levelno <= logging.DEBUG else
-                "Normal" if record.levelno <= logging.INFO else
-                "Warning" if record.levelno <= logging.WARNING else
-                "Error" if record.levelno <= logging.ERROR else
-                "Fatal" if record.levelno <= logging.FATAL else
-                logging.getLevelName(record.levelno).capitalize())
-            reason = 'Logging'
-            message = self.format(record)
-            posting.enqueue(
-                ref=ref,
-                type=type,
-                reason=reason,
-                message=message)
-        except Exception:
-            self.handleError(record)
-
-
 class ObjectLogger(logging.LoggerAdapter):
     """
     A logger/adapter to carry the object identifiers for formatting.
@@ -207,10 +165,6 @@ class TerseObjectLogger(LocalObjectLogger):
     """
     def isEnabledFor(self, level: int) -> bool:
         return super().isEnabledFor(level if level >= logging.WARNING else level - 10)
-
-
-logger = logging.getLogger('kopf.objects')
-logger.addHandler(K8sPoster())
 
 
 def configure(
