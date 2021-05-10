@@ -139,7 +139,7 @@ async def throttled(
         *,
         throttler: containers.Throttler,
         delays: Iterable[float],
-        wakeup: Optional[Union[asyncio.Event, primitives.DaemonStopper]] = None,
+        wakeup: Optional[asyncio.Event] = None,
         logger: Union[logging.Logger, logging.LoggerAdapter],
         errors: Union[Type[BaseException], Tuple[Type[BaseException], ...]] = Exception,
 ) -> AsyncGenerator[bool, None]:

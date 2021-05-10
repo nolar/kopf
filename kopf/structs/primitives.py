@@ -423,7 +423,7 @@ SyncAsyncDaemonStopperChecker = Union[SyncDaemonStopperChecker, AsyncDaemonStopp
 
 async def sleep_or_wait(
         delays: Union[None, float, Collection[Union[None, float]]],
-        wakeup: Optional[Union[asyncio.Event, DaemonStopper]] = None,
+        wakeup: Optional[asyncio.Event] = None,
 ) -> Optional[float]:
     """
     Measure the sleep time: either until the timeout, or until the event is set.
@@ -441,11 +441,7 @@ async def sleep_or_wait(
     if minimal_delay <= 0:
         return None
 
-    awakening_event = (
-        wakeup.async_event if isinstance(wakeup, DaemonStopper) else
-        wakeup if wakeup is not None else
-        asyncio.Event())
-
+    awakening_event = wakeup if wakeup is not None else asyncio.Event()
     loop = asyncio.get_running_loop()
     try:
         start_time = loop.time()
