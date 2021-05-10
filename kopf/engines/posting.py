@@ -21,6 +21,7 @@ from contextvars import ContextVar
 from typing import TYPE_CHECKING, Iterable, Iterator, NamedTuple, NoReturn, Optional, Union, cast
 
 from kopf.clients import events
+from kopf.engines import loggers
 from kopf.structs import bodies, configuration, dicts, references
 
 if TYPE_CHECKING:
@@ -169,3 +170,49 @@ async def poster(
             reason=posted_event.reason,
             message=posted_event.message,
             resource=resource)
+
+
+class K8sPoster(logging.Handler):
+    """
+    A handler to post all log messages as K8s events.
+    """
+
+    def createLock(self) -> None:
+        # Save some time on unneeded locks. Events are posted in the background.
+        # We only put events to the queue, which is already lock-protected.
+        self.lock = None
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        # Only those which have a k8s object referred (see: `ObjectLogger`).
+        # Otherwise, we have nothing to post, and nothing to do.
+        settings: Optional[configuration.OperatorSettings]
+        settings = getattr(record, 'settings', None)
+        level_ok = settings is not None and record.levelno >= settings.posting.level
+        enabled = settings is not None and settings.posting.enabled
+        has_ref = hasattr(record, 'k8s_ref')
+        skipped = hasattr(record, 'k8s_skip') and getattr(record, 'k8s_skip')
+        return enabled and level_ok and has_ref and not skipped and super().filter(record)
+
+    def emit(self, record: logging.LogRecord) -> None:
+        # Same try-except as in e.g. `logging.StreamHandler`.
+        try:
+            ref = getattr(record, 'k8s_ref')
+            type = (
+                "Debug" if record.levelno <= logging.DEBUG else
+                "Normal" if record.levelno <= logging.INFO else
+                "Warning" if record.levelno <= logging.WARNING else
+                "Error" if record.levelno <= logging.ERROR else
+                "Fatal" if record.levelno <= logging.FATAL else
+                logging.getLevelName(record.levelno).capitalize())
+            reason = 'Logging'
+            message = self.format(record)
+            enqueue(
+                ref=ref,
+                type=type,
+                reason=reason,
+                message=message)
+        except Exception:
+            self.handleError(record)
+
+
+loggers.logger.addHandler(K8sPoster())
