@@ -1,9 +1,9 @@
 import pytest
 
-from kopf.reactor.causation import ActivityCause, ResourceChangingCause, ResourceWatchingCause
+from kopf.reactor.causation import ActivityCause, ChangingCause, WatchingCause
 
 
-@pytest.mark.parametrize('cls', [ActivityCause, ResourceWatchingCause, ResourceChangingCause])
+@pytest.mark.parametrize('cls', [ActivityCause, WatchingCause, ChangingCause])
 def test_cause_with_no_args(cls):
     with pytest.raises(TypeError):
         cls()
@@ -29,7 +29,7 @@ def test_activity_cause(mocker):
     assert cause.memo is memo
 
 
-def test_resource_watching_cause(mocker):
+def test_watching_cause(mocker):
     logger = mocker.Mock()
     indices = mocker.Mock()
     resource = mocker.Mock()
@@ -38,7 +38,7 @@ def test_resource_watching_cause(mocker):
     memo = mocker.Mock()
     type = mocker.Mock()
     event = mocker.Mock()
-    cause = ResourceWatchingCause(
+    cause = WatchingCause(
         resource=resource,
         indices=indices,
         logger=logger,
@@ -58,7 +58,7 @@ def test_resource_watching_cause(mocker):
     assert cause.event is event
 
 
-def test_resource_changing_cause_with_all_args(mocker):
+def test_changing_cause_with_all_args(mocker):
     logger = mocker.Mock()
     indices = mocker.Mock()
     resource = mocker.Mock()
@@ -70,7 +70,7 @@ def test_resource_changing_cause_with_all_args(mocker):
     diff = mocker.Mock()
     old = mocker.Mock()
     new = mocker.Mock()
-    cause = ResourceChangingCause(
+    cause = ChangingCause(
         resource=resource,
         indices=indices,
         logger=logger,
@@ -96,7 +96,7 @@ def test_resource_changing_cause_with_all_args(mocker):
     assert cause.new is new
 
 
-def test_resource_changing_cause_with_only_required_args(mocker):
+def test_changing_cause_with_only_required_args(mocker):
     logger = mocker.Mock()
     indices = mocker.Mock()
     resource = mocker.Mock()
@@ -105,7 +105,7 @@ def test_resource_changing_cause_with_only_required_args(mocker):
     body = mocker.Mock()
     patch = mocker.Mock()
     memo = mocker.Mock()
-    cause = ResourceChangingCause(
+    cause = ChangingCause(
         resource=resource,
         indices=indices,
         logger=logger,

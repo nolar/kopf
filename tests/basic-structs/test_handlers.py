@@ -1,9 +1,9 @@
 import pytest
 
-from kopf.structs.handlers import ActivityHandler, ResourceChangingHandler
+from kopf.structs.handlers import ActivityHandler, ChangingHandler
 
 
-@pytest.mark.parametrize('cls', [ActivityHandler, ResourceChangingHandler])
+@pytest.mark.parametrize('cls', [ActivityHandler, ChangingHandler])
 def test_handler_with_no_args(cls):
     with pytest.raises(TypeError):
         cls()
@@ -59,7 +59,7 @@ def test_resource_handler_with_all_args(mocker):
     new = mocker.Mock()
     field_needs_change = mocker.Mock()
     requires_finalizer = mocker.Mock()
-    handler = ResourceChangingHandler(
+    handler = ChangingHandler(
         fn=fn,
         id=id,
         param=param,

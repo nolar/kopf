@@ -175,7 +175,7 @@ class OperatorIndexers(Dict[ids.HandlerId, OperatorIndexer]):
         super().__init__()
         self.indices = OperatorIndices(self)
 
-    def ensure(self, __handlers: Iterable[handlers.ResourceIndexingHandler]) -> None:
+    def ensure(self, __handlers: Iterable[handlers.IndexingHandler]) -> None:
         """
         Pre-create indices/indexers to match the existing handlers.
 
@@ -243,7 +243,7 @@ class OperatorIndices(ephemera.Indices):
     Why? First, carrying the indexers creates a circular import chain:
 
     * "causation" requires "OperatorIndexers" from "indexing".
-    * "indexing" requires "ResourceIndexingCause" from "causation".
+    * "indexing" requires "IndexingCause" from "causation".
 
     The chain is broken by having a separate interface: `~ephemera.Indices`,
     while the implementation remains here.
@@ -291,14 +291,14 @@ async def index_resource(
     Note: K8s-event posting is skipped for `kopf.on.event` handlers,
     as they should be silent. Still, the messages are logged normally.
     """
-    if not registry._resource_indexing.has_handlers(resource=resource):
+    if not registry._indexing.has_handlers(resource=resource):
         pass
     elif raw_event['type'] == 'DELETED':
         # Do not index it if it is deleted. Just discard quickly (ASAP!).
         indexers.discard(body=body)
     else:
         # Otherwise, go for full indexing with handlers invocation with all kwargs.
-        cause = causation.ResourceIndexingCause(
+        cause = causation.IndexingCause(
             resource=resource,
             indices=indexers.indices,
             logger=logger,
@@ -308,7 +308,7 @@ async def index_resource(
         )
 
         # Note: the indexing state contains only failures & retries. Successes will be re-executed.
-        indexing_handlers = registry._resource_indexing.get_handlers(cause=cause)
+        indexing_handlers = registry._indexing.get_handlers(cause=cause)
         state = memory.indexing_state
         state = state if state is not None else states.State.from_scratch()
         state = state.with_handlers(indexing_handlers)

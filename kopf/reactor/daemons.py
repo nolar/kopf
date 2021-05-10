@@ -34,12 +34,12 @@ from kopf.structs import configuration, containers, handlers as handlers_, ids, 
 from kopf.utilities import aiotasks
 
 
-async def spawn_resource_daemons(
+async def spawn_daemons(
         *,
         settings: configuration.OperatorSettings,
-        handlers: Sequence[handlers_.ResourceSpawningHandler],
+        handlers: Sequence[handlers_.SpawningHandler],
         daemons: MutableMapping[ids.HandlerId, containers.Daemon],
-        cause: causation.ResourceSpawningCause,
+        cause: causation.SpawningCause,
         memory: containers.ResourceMemory,
 ) -> Collection[float]:
     """
@@ -79,16 +79,16 @@ async def spawn_resource_daemons(
     return []
 
 
-async def match_resource_daemons(
+async def match_daemons(
         *,
         settings: configuration.OperatorSettings,
-        handlers: Sequence[handlers_.ResourceSpawningHandler],
+        handlers: Sequence[handlers_.SpawningHandler],
         daemons: MutableMapping[ids.HandlerId, containers.Daemon],
 ) -> Collection[float]:
     """
     Re-match the running daemons with the filters, and stop those mismatching.
 
-    Stopping can take few iterations, same as `stop_resource_daemons` would do.
+    Stopping can take few iterations, same as `stop_daemons` would do.
     """
     matching_daemon_ids = {handler.id for handler in handlers}
     mismatching_daemons = {
@@ -96,7 +96,7 @@ async def match_resource_daemons(
         for daemon in daemons.values()
         if daemon.handler.id not in matching_daemon_ids
     }
-    delays = await stop_resource_daemons(
+    delays = await stop_daemons(
         settings=settings,
         daemons=mismatching_daemons,
         reason=primitives.DaemonStoppingReason.FILTERS_MISMATCH,
@@ -104,7 +104,7 @@ async def match_resource_daemons(
     return delays
 
 
-async def stop_resource_daemons(
+async def stop_daemons(
         *,
         settings: configuration.OperatorSettings,
         daemons: Mapping[ids.HandlerId, containers.Daemon],
@@ -158,11 +158,11 @@ async def stop_resource_daemons(
         age = (now - (stopper.when or now))
 
         handler = daemon.handler
-        if isinstance(handler, handlers_.ResourceDaemonHandler):
+        if isinstance(handler, handlers_.DaemonHandler):
             backoff = handler.cancellation_backoff
             timeout = handler.cancellation_timeout
             polling = handler.cancellation_polling or settings.background.cancellation_polling
-        elif isinstance(handler, handlers_.ResourceTimerHandler):
+        elif isinstance(handler, handlers_.TimerHandler):
             backoff = None
             timeout = None
             polling = settings.background.cancellation_polling
@@ -281,17 +281,17 @@ async def stop_daemon(
     """
     Stop a single daemon.
 
-    The purpose is the same as in `stop_resource_daemons`, but this function
+    The purpose is the same as in `stop_daemons`, but this function
     is called on operator exiting, so there is no multi-step handling,
     everything happens in memory and linearly (while respecting the timing).
 
-    For explanation on different implementations, see `stop_resource_daemons`.
+    For explanation on different implementations, see `stop_daemons`.
     """
     handler = daemon.handler
-    if isinstance(handler, handlers_.ResourceDaemonHandler):
+    if isinstance(handler, handlers_.DaemonHandler):
         backoff = handler.cancellation_backoff
         timeout = handler.cancellation_timeout
-    elif isinstance(handler, handlers_.ResourceTimerHandler):
+    elif isinstance(handler, handlers_.TimerHandler):
         backoff = None
         timeout = None
     else:
@@ -356,7 +356,7 @@ async def _runner(
         *,
         settings: configuration.OperatorSettings,
         daemons: MutableMapping[ids.HandlerId, containers.Daemon],
-        handler: handlers_.ResourceSpawningHandler,
+        handler: handlers_.SpawningHandler,
         memory: containers.ResourceMemory,
         cause: causation.DaemonCause,
 ) -> None:
@@ -369,10 +369,10 @@ async def _runner(
     stopper = cause.stopper
 
     try:
-        if isinstance(handler, handlers_.ResourceDaemonHandler):
-            await _resource_daemon(settings=settings, handler=handler, cause=cause)
-        elif isinstance(handler, handlers_.ResourceTimerHandler):
-            await _resource_timer(settings=settings, handler=handler, cause=cause, memory=memory)
+        if isinstance(handler, handlers_.DaemonHandler):
+            await _daemon(settings=settings, handler=handler, cause=cause)
+        elif isinstance(handler, handlers_.TimerHandler):
+            await _timer(settings=settings, handler=handler, cause=cause, memory=memory)
         else:
             raise RuntimeError("Cannot determine which task wrapper to use. This is a bug.")
 
@@ -392,10 +392,10 @@ async def _runner(
         stopper.set(reason=primitives.DaemonStoppingReason.DONE)
 
 
-async def _resource_daemon(
+async def _daemon(
         *,
         settings: configuration.OperatorSettings,
-        handler: handlers_.ResourceDaemonHandler,
+        handler: handlers_.DaemonHandler,
         cause: causation.DaemonCause,
 ) -> None:
     """
@@ -442,10 +442,10 @@ async def _resource_daemon(
         logger.debug(f"{handler} has exited on its own and will not be retried or restarted.")
 
 
-async def _resource_timer(
+async def _timer(
         *,
         settings: configuration.OperatorSettings,
-        handler: handlers_.ResourceTimerHandler,
+        handler: handlers_.TimerHandler,
         memory: containers.ResourceMemory,
         cause: causation.DaemonCause,
 ) -> None:

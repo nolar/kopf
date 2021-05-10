@@ -53,7 +53,7 @@ class HandlerChildrenRetry(TemporaryError):
 # The task-local context; propagated down the stack instead of multiple kwargs.
 # Used in `@kopf.subhandler` and `kopf.execute()` to add/get the sub-handlers.
 sublifecycle_var: ContextVar[Optional[lifecycles.LifeCycleFn]] = ContextVar('sublifecycle_var')
-subregistry_var: ContextVar[registries.ResourceChangingRegistry] = ContextVar('subregistry_var')
+subregistry_var: ContextVar[registries.ChangingRegistry] = ContextVar('subregistry_var')
 subsettings_var: ContextVar[configuration.OperatorSettings] = ContextVar('subsettings_var')
 subexecuted_var: ContextVar[bool] = ContextVar('subexecuted_var')
 subrefs_var: ContextVar[Iterable[Set[ids.HandlerId]]] = ContextVar('subrefs_var')
@@ -63,9 +63,9 @@ cause_var: ContextVar[causation.BaseCause] = ContextVar('cause_var')
 
 async def execute(
         *,
-        fns: Optional[Iterable[callbacks.ResourceChangingFn]] = None,
-        handlers: Optional[Iterable[handlers_.ResourceChangingHandler]] = None,
-        registry: Optional[registries.ResourceChangingRegistry] = None,
+        fns: Optional[Iterable[callbacks.ChangingFn]] = None,
+        handlers: Optional[Iterable[handlers_.ChangingHandler]] = None,
+        registry: Optional[registries.ChangingRegistry] = None,
         lifecycle: Optional[lifecycles.LifeCycleFn] = None,
         cause: Optional[causation.BaseCause] = None,
 ) -> None:
@@ -97,10 +97,10 @@ async def execute(
         raise TypeError("Only one of the fns, handlers, registry can be passed. Got more.")
 
     elif fns is not None and isinstance(fns, collections.abc.Mapping):
-        subregistry = registries.ResourceChangingRegistry()
+        subregistry = registries.ChangingRegistry()
         for id, fn in fns.items():
             real_id = registries.generate_id(fn=fn, id=id, prefix=parent_prefix)
-            handler = handlers_.ResourceChangingHandler(
+            handler = handlers_.ChangingHandler(
                 fn=fn, id=real_id, param=None,
                 errors=None, timeout=None, retries=None, backoff=None,
                 selector=None, labels=None, annotations=None, when=None,
@@ -111,10 +111,10 @@ async def execute(
             subregistry.append(handler)
 
     elif fns is not None and isinstance(fns, collections.abc.Iterable):
-        subregistry = registries.ResourceChangingRegistry()
+        subregistry = registries.ChangingRegistry()
         for fn in fns:
             real_id = registries.generate_id(fn=fn, id=None, prefix=parent_prefix)
-            handler = handlers_.ResourceChangingHandler(
+            handler = handlers_.ChangingHandler(
                 fn=fn, id=real_id, param=None,
                 errors=None, timeout=None, retries=None, backoff=None,
                 selector=None, labels=None, annotations=None, when=None,
@@ -128,7 +128,7 @@ async def execute(
         raise ValueError(f"fns must be a mapping or an iterable, got {fns.__class__}.")
 
     elif handlers is not None:
-        subregistry = registries.ResourceChangingRegistry()
+        subregistry = registries.ChangingRegistry()
         for handler in handlers:
             subregistry.append(handler)
 
@@ -146,7 +146,7 @@ async def execute(
         subregistry = subregistry_var.get()
 
     # The sub-handlers are only for upper-level causes, not for lower-level events.
-    if not isinstance(cause, causation.ResourceChangingCause):
+    if not isinstance(cause, causation.ChangingCause):
         raise RuntimeError("Sub-handlers of event-handlers are not supported and have "
                            "no practical use (there are no retries or state tracking).")
 
@@ -246,7 +246,7 @@ async def execute_handler_once(
 
     # Prevent successes/failures from posting k8s-events for resource-watching causes.
     logger: Union[logging.Logger, logging.LoggerAdapter]
-    if isinstance(cause, causation.ResourceWatchingCause):
+    if isinstance(cause, causation.WatchingCause):
         logger = loggers.LocalObjectLogger(body=cause.body, settings=settings)
     else:
         logger = cause.logger
@@ -346,8 +346,8 @@ async def invoke_handler(
 
     # For the field-handlers, the old/new/diff values must match the field, not the whole object.
     if (True and  # for readable indenting
-            isinstance(cause, causation.ResourceChangingCause) and
-            isinstance(handler, handlers_.ResourceChangingHandler) and
+            isinstance(cause, causation.ChangingCause) and
+            isinstance(handler, handlers_.ChangingHandler) and
             handler.field is not None):
         old = dicts.resolve(cause.old, handler.field, None)
         new = dicts.resolve(cause.new, handler.field, None)
@@ -359,7 +359,7 @@ async def invoke_handler(
     # This replaces the multiple kwargs passing through the whole call stack (easy to forget).
     with invocation.context([
         (sublifecycle_var, lifecycle),
-        (subregistry_var, registries.ResourceChangingRegistry()),
+        (subregistry_var, registries.ChangingRegistry()),
         (subsettings_var, settings),
         (subexecuted_var, False),
         (subrefs_var, list(subrefs_var.get([])) + [subrefs]),
@@ -380,7 +380,7 @@ async def invoke_handler(
             ),
         )
 
-        if not subexecuted_var.get() and isinstance(cause, causation.ResourceChangingCause):
+        if not subexecuted_var.get() and isinstance(cause, causation.ChangingCause):
             await execute()
 
         # Since we know that we invoked the handler, we cast "any" result to a handler result.

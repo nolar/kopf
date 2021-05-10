@@ -198,7 +198,7 @@ async def spawn_tasks(
         settings.peering.priority = priority
 
     # Prepopulate indexers with empty indices -- to be available startup handlers.
-    indexers.ensure(registry._resource_indexing.get_all_handlers())
+    indexers.ensure(registry._indexing.get_all_handlers())
 
     # Global credentials store for this operator, also for CRD-reading & peering mode detection.
     auth.vault_var.set(vault)

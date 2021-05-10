@@ -90,7 +90,7 @@ class ResourceCause(BaseCause):
 
 
 @dataclasses.dataclass
-class ResourceWebhookCause(ResourceCause):
+class WebhookCause(ResourceCause):
     dryrun: bool
     reason: Optional[handlers.WebhookType]  # None means "all" or expects the webhook id
     webhook: Optional[ids.HandlerId]  # None means "all"
@@ -110,7 +110,7 @@ class ResourceWebhookCause(ResourceCause):
 
 
 @dataclasses.dataclass
-class ResourceIndexingCause(ResourceCause):
+class IndexingCause(ResourceCause):
     """
     The raw event received from the API.
     """
@@ -118,7 +118,7 @@ class ResourceIndexingCause(ResourceCause):
 
 
 @dataclasses.dataclass
-class ResourceWatchingCause(ResourceCause):
+class WatchingCause(ResourceCause):
     """
     The raw event received from the API.
 
@@ -129,7 +129,7 @@ class ResourceWatchingCause(ResourceCause):
 
 
 @dataclasses.dataclass
-class ResourceSpawningCause(ResourceCause):
+class SpawningCause(ResourceCause):
     """
     An internal daemon is spawning: tasks, threads, timers.
 
@@ -146,7 +146,7 @@ class ResourceSpawningCause(ResourceCause):
 
 
 @dataclasses.dataclass
-class ResourceChangingCause(ResourceCause):
+class ChangingCause(ResourceCause):
     """
     The cause is what has caused the whole reaction as a chain of handlers.
 
@@ -207,28 +207,28 @@ class DaemonCause(ResourceCause):
         return dict(super()._async_kwargs, stopped=self.stopper.async_checker)
 
 
-def detect_resource_watching_cause(
+def detect_watching_cause(
         raw_event: bodies.RawEvent,
         body: bodies.Body,
         **kwargs: Any,
-) -> ResourceWatchingCause:
-    return ResourceWatchingCause(
+) -> WatchingCause:
+    return WatchingCause(
         event=raw_event,
         type=raw_event['type'],
         body=body,
         **kwargs)
 
 
-def detect_resource_spawning_cause(
+def detect_spawning_cause(
         body: bodies.Body,
         **kwargs: Any,
-) -> ResourceSpawningCause:
-    return ResourceSpawningCause(
+) -> SpawningCause:
+    return SpawningCause(
         body=body,
         **kwargs)
 
 
-def detect_resource_changing_cause(
+def detect_changing_cause(
         *,
         finalizer: str,
         raw_event: bodies.RawEvent,
@@ -238,7 +238,7 @@ def detect_resource_changing_cause(
         diff: Optional[diffs.Diff] = None,
         initial: bool = False,
         **kwargs: Any,
-) -> ResourceChangingCause:
+) -> ChangingCause:
     """
     Detect the cause of the event to be handled.
 
@@ -255,38 +255,38 @@ def detect_resource_changing_cause(
 
     # The object was really deleted from the cluster. But we do not care anymore.
     if raw_event['type'] == 'DELETED':
-        return ResourceChangingCause(reason=handlers.Reason.GONE, **kwargs)
+        return ChangingCause(reason=handlers.Reason.GONE, **kwargs)
 
     # The finalizer has been just removed. We are fully done.
     deletion_is_ongoing = finalizers.is_deletion_ongoing(body=body)
     deletion_is_blocked = finalizers.is_deletion_blocked(body=body, finalizer=finalizer)
     if deletion_is_ongoing and not deletion_is_blocked:
-        return ResourceChangingCause(reason=handlers.Reason.FREE, **kwargs)
+        return ChangingCause(reason=handlers.Reason.FREE, **kwargs)
 
     if deletion_is_ongoing:
-        return ResourceChangingCause(reason=handlers.Reason.DELETE, **kwargs)
+        return ChangingCause(reason=handlers.Reason.DELETE, **kwargs)
 
     # For an object seen for the first time (i.e. just-created), call the creation handlers,
     # then mark the state as if it was seen when the creation has finished.
     # Creation never mixes with resuming, even if an object is detected on startup (first listing).
     if old is None:  # i.e. we have no essence stored
         kwargs['initial'] = False
-        return ResourceChangingCause(reason=handlers.Reason.CREATE, **kwargs)
+        return ChangingCause(reason=handlers.Reason.CREATE, **kwargs)
 
     # Cases with no essence changes are usually ignored (NOOP). But for the not-yet-resumed objects,
     # we simulate a fake cause to invoke the resuming handlers. For cases with the essence changes,
     # the resuming handlers will be mixed-in to the regular cause handling ("cuckoo-style")
     # due to the ``initial=True`` flag on the cause, regardless of the reason.
     if not diff and initial:
-        return ResourceChangingCause(reason=handlers.Reason.RESUME, **kwargs)
+        return ChangingCause(reason=handlers.Reason.RESUME, **kwargs)
 
     # The previous step triggers one more patch operation without actual changes. Ignore it.
     # Either the last-seen state or the status field has changed.
     if not diff:
-        return ResourceChangingCause(reason=handlers.Reason.NOOP, **kwargs)
+        return ChangingCause(reason=handlers.Reason.NOOP, **kwargs)
 
     # And what is left, is the update operation on one of the useful fields of the existing object.
-    return ResourceChangingCause(reason=handlers.Reason.UPDATE, **kwargs)
+    return ChangingCause(reason=handlers.Reason.UPDATE, **kwargs)
 
 
 _CT = TypeVar('_CT', bound=BaseCause)

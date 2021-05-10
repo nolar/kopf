@@ -4,7 +4,7 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.causation import ResourceChangingCause, ResourceWatchingCause
+from kopf.reactor.causation import ChangingCause, WatchingCause
 from kopf.reactor.handling import cause_var
 from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.invocation import context
@@ -35,7 +35,7 @@ OWNER = RawBody(
 def owner(request, resource):
     body = Body(copy.deepcopy(OWNER))
     if request.param == 'state-changing-cause':
-        cause = ResourceChangingCause(
+        cause = ChangingCause(
             logger=logging.getLogger('kopf.test.fake.logger'),
             indices=OperatorIndexers().indices,
             resource=resource,
@@ -48,7 +48,7 @@ def owner(request, resource):
         with context([(cause_var, cause)]):
             yield body
     elif request.param == 'event-watching-cause':
-        cause = ResourceWatchingCause(
+        cause = WatchingCause(
             logger=logging.getLogger('kopf.test.fake.logger'),
             indices=OperatorIndexers().indices,
             resource=resource,

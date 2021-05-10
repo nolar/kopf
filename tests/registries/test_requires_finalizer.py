@@ -30,7 +30,7 @@ def test_requires_finalizer_deletion_handler(
     def fn(**_):
         pass
 
-    requires_finalizer = registry._resource_changing.requires_finalizer(cause)
+    requires_finalizer = registry._changing.requires_finalizer(cause)
     assert requires_finalizer == expected
 
 
@@ -50,7 +50,7 @@ def test_requires_finalizer_multiple_handlers(
     def fn2(**_):
         pass
 
-    requires_finalizer = registry._resource_changing.requires_finalizer(cause)
+    requires_finalizer = registry._changing.requires_finalizer(cause)
     assert requires_finalizer == expected
 
 
@@ -62,7 +62,7 @@ def test_requires_finalizer_no_deletion_handler(
     def fn1(**_):
         pass
 
-    requires_finalizer = registry._resource_changing.requires_finalizer(cause)
+    requires_finalizer = registry._changing.requires_finalizer(cause)
     assert requires_finalizer is False
 
 
@@ -82,7 +82,7 @@ def test_requires_finalizer_deletion_handler_matches_labels(
     def fn(**_):
         pass
 
-    requires_finalizer = registry._resource_changing.requires_finalizer(cause)
+    requires_finalizer = registry._changing.requires_finalizer(cause)
     assert requires_finalizer == expected
 
 
@@ -102,7 +102,7 @@ def test_requires_finalizer_deletion_handler_mismatches_labels(
     def fn(**_):
         pass
 
-    requires_finalizer = registry._resource_changing.requires_finalizer(cause)
+    requires_finalizer = registry._changing.requires_finalizer(cause)
     assert requires_finalizer == expected
 
 
@@ -122,7 +122,7 @@ def test_requires_finalizer_deletion_handler_matches_annotations(
     def fn(**_):
         pass
 
-    requires_finalizer = registry._resource_changing.requires_finalizer(cause)
+    requires_finalizer = registry._changing.requires_finalizer(cause)
     assert requires_finalizer == expected
 
 
@@ -142,5 +142,5 @@ def test_requires_finalizer_deletion_handler_mismatches_annotations(
     def fn(**_):
         pass
 
-    requires_finalizer = registry._resource_changing.requires_finalizer(cause)
+    requires_finalizer = registry._changing.requires_finalizer(cause)
     assert requires_finalizer == expected

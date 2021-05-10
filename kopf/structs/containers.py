@@ -22,7 +22,7 @@ from kopf.utilities import aiotasks
 class Daemon:
     task: aiotasks.Task  # a guarding task of the daemon.
     logger: Union[logging.Logger, logging.LoggerAdapter]
-    handler: handlers.ResourceSpawningHandler
+    handler: handlers.SpawningHandler
     stopper: primitives.DaemonStopper  # a signaller for the termination and its reason.
 
 

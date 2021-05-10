@@ -3,7 +3,7 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.causation import ResourceChangingCause
+from kopf.reactor.causation import ChangingCause
 from kopf.reactor.indexing import OperatorIndexers
 from kopf.storage.states import State
 from kopf.structs.bodies import Body
@@ -26,7 +26,7 @@ async def test_protocol_invocation(lifecycle, resource):
     """
     # The values are irrelevant, they can be anything.
     state = State.from_scratch()
-    cause = ResourceChangingCause(
+    cause = ChangingCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
         indices=OperatorIndexers().indices,
         resource=resource,

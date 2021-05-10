@@ -54,7 +54,7 @@ async def test_consistent_awakening(registry, settings, resource, k8s_mocked, mo
     body = {'status': {'kopf': {'progress': {'some-id': {'delayed': ts0_scheduled}}}}}
 
     # Simulate the call as if the event has just arrived on the watch-stream.
-    # Another way (same effect): handle_resource_changing_cause() and its result.
+    # Another way (the same effect): process_changing_cause() and its result.
     with freezegun.freeze_time(tsA_triggered) as frozen_dt:
         assert datetime.datetime.utcnow() < ts0  # extra precaution
         await process_resource_event(

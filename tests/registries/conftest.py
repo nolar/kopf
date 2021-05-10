@@ -2,25 +2,24 @@ import logging
 
 import pytest
 
-from kopf.reactor.causation import ActivityCause, ResourceCause, \
-                                   ResourceChangingCause, ResourceSpawningCause, \
-                                   ResourceWatchingCause, ResourceWebhookCause
+from kopf.reactor.causation import ActivityCause, ChangingCause, ResourceCause, \
+                                   SpawningCause, WatchingCause, WebhookCause
 from kopf.reactor.indexing import OperatorIndexers
-from kopf.reactor.registries import ActivityRegistry, OperatorRegistry, ResourceChangingRegistry, \
-                                    ResourceRegistry, ResourceSpawningRegistry, \
-                                    ResourceWatchingRegistry, ResourceWebhooksRegistry
+from kopf.reactor.registries import ActivityRegistry, ChangingRegistry, OperatorRegistry, \
+                                    ResourceRegistry, SpawningRegistry, WatchingRegistry, \
+                                    WebhooksRegistry
 from kopf.structs.bodies import Body
 from kopf.structs.diffs import Diff, DiffItem
 from kopf.structs.ephemera import Memo
-from kopf.structs.handlers import ResourceChangingHandler
+from kopf.structs.handlers import ChangingHandler
 from kopf.structs.ids import HandlerId
 from kopf.structs.patches import Patch
 
 
 @pytest.fixture(params=[
     pytest.param(ActivityRegistry, id='activity-registry'),
-    pytest.param(ResourceWatchingRegistry, id='resource-watching-registry'),
-    pytest.param(ResourceChangingRegistry, id='resource-changing-registry'),
+    pytest.param(WatchingRegistry, id='watching-registry'),
+    pytest.param(ChangingRegistry, id='changing-registry'),
 ])
 def generic_registry_cls(request):
     return request.param
@@ -34,8 +33,8 @@ def activity_registry_cls(request):
 
 
 @pytest.fixture(params=[
-    pytest.param(ResourceWatchingRegistry, id='resource-watching-registry'),
-    pytest.param(ResourceChangingRegistry, id='resource-changing-registry'),
+    pytest.param(WatchingRegistry, id='watching-registry'),
+    pytest.param(ChangingRegistry, id='changing-registry'),
 ])
 def resource_registry_cls(request):
     return request.param
@@ -54,7 +53,7 @@ def parent_handler(selector):
     def parent_fn(**_):
         pass
 
-    return ResourceChangingHandler(
+    return ChangingHandler(
         fn=parent_fn, id=HandlerId('parent_fn'), param=None,
         errors=None, retries=None, timeout=None, backoff=None,
         selector=selector, labels=None, annotations=None, when=None,
@@ -83,7 +82,7 @@ def cause_factory(resource):
     is not available to the users.
     """
     def make_cause(
-            cls=ResourceChangingCause,
+            cls=ChangingCause,
             *,
             resource=resource,
             event=None,
@@ -114,8 +113,8 @@ def cause_factory(resource):
                 memo=Memo(),
                 body=Body(body if body is not None else {}),
             )
-        if cls is ResourceWatchingCause or cls is ResourceWatchingRegistry:
-            return ResourceWatchingCause(
+        if cls is WatchingCause or cls is WatchingRegistry:
+            return WatchingCause(
                 logger=logging.getLogger('kopf.test.fake.logger'),
                 indices=OperatorIndexers().indices,
                 resource=resource,
@@ -125,8 +124,8 @@ def cause_factory(resource):
                 type=type,
                 event=event,
             )
-        if cls is ResourceChangingCause or cls is ResourceChangingRegistry:
-            return ResourceChangingCause(
+        if cls is ChangingCause or cls is ChangingRegistry:
+            return ChangingCause(
                 logger=logging.getLogger('kopf.test.fake.logger'),
                 indices=OperatorIndexers().indices,
                 resource=resource,
@@ -139,8 +138,8 @@ def cause_factory(resource):
                 initial=initial,
                 reason=reason,
             )
-        if cls is ResourceSpawningCause or cls is ResourceSpawningRegistry:
-            return ResourceSpawningCause(
+        if cls is SpawningCause or cls is SpawningRegistry:
+            return SpawningCause(
                 logger=logging.getLogger('kopf.test.fake.logger'),
                 indices=OperatorIndexers().indices,
                 resource=resource,
@@ -149,8 +148,8 @@ def cause_factory(resource):
                 body=Body(body if body is not None else {}),
                 reset=False,
             )
-        if cls is ResourceWebhookCause or cls is ResourceWebhooksRegistry:
-            return ResourceWebhookCause(
+        if cls is WebhookCause or cls is WebhooksRegistry:
+            return WebhookCause(
                 logger=logging.getLogger('kopf.test.fake.logger'),
                 indices=OperatorIndexers().indices,
                 resource=resource,

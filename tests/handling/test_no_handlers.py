@@ -8,7 +8,7 @@ from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.containers import ResourceMemories
 from kopf.structs.ephemera import Memo
-from kopf.structs.handlers import HANDLER_REASONS, ResourceChangingHandler
+from kopf.structs.handlers import HANDLER_REASONS, ChangingHandler
 
 LAST_SEEN_ANNOTATION = 'kopf.zalando.org/last-handled-configuration'
 
@@ -23,8 +23,8 @@ async def test_skipped_with_no_handlers(
     event_body = {'metadata': {'finalizers': []}}
     cause_mock.reason = cause_type
 
-    assert not registry._resource_changing.has_handlers(resource=resource)  # prerequisite
-    registry._resource_changing.append(ResourceChangingHandler(
+    assert not registry._changing.has_handlers(resource=resource)  # prerequisite
+    registry._changing.append(ChangingHandler(
         reason='a-non-existent-cause-type',
         fn=lambda **_: None, id='id', param=None,
         errors=None, timeout=None, retries=None, backoff=None,
@@ -79,8 +79,8 @@ async def test_stealth_mode_with_mismatching_handlers(
     event_body = {'metadata': {'finalizers': []}}
     cause_mock.reason = cause_type
 
-    assert not registry._resource_changing.has_handlers(resource=resource)  # prerequisite
-    registry._resource_changing.append(ResourceChangingHandler(
+    assert not registry._changing.has_handlers(resource=resource)  # prerequisite
+    registry._changing.append(ChangingHandler(
         reason=None,
         fn=lambda **_: None, id='id', param=None,
         errors=None, timeout=None, retries=None, backoff=None,

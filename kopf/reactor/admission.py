@@ -102,7 +102,7 @@ async def serve_admission_request(
     body = bodies.Body(raw_body)
     patch = patches.Patch()
     warnings: List[str] = []
-    cause = causation.ResourceWebhookCause(
+    cause = causation.WebhookCause(
         resource=resource,
         indices=indices,
         logger=loggers.LocalObjectLogger(body=body, settings=settings),
@@ -120,7 +120,7 @@ async def serve_admission_request(
     )
 
     # Retrieve the handlers to be executed; maybe only one if the webhook server provides a hint.
-    handlers_ = registry._resource_webhooks.get_handlers(cause)
+    handlers_ = registry._webhooks.get_handlers(cause)
     state = states.State.from_scratch().with_handlers(handlers_)
     outcomes = await handling.execute_handlers_once(
         lifecycle=lifecycles.all_at_once,
@@ -215,7 +215,7 @@ async def admission_webhook_server(
 ) -> None:
 
     # Verify that the operator is configured properly (after the startup activities are done).
-    has_admission = bool(registry._resource_webhooks.get_all_handlers())
+    has_admission = bool(registry._webhooks.get_all_handlers())
     if settings.admission.server is None and has_admission:
         raise Exception(
             "Admission handlers exist, but no admission server/tunnel is configured "
@@ -300,7 +300,7 @@ async def configuration_manager(
     # Wait until the prerequisites for managing are available (scanned from the cluster).
     await insights.ready_resources.wait()
     resource = await insights.backbone.wait_for(selector)
-    all_handlers = registry._resource_webhooks.get_all_handlers()
+    all_handlers = registry._webhooks.get_all_handlers()
     all_handlers = [h for h in all_handlers if h.reason == reason]
 
     # Optionally (if configured), pre-create the configuration objects if they are absent.
@@ -350,7 +350,7 @@ async def configuration_manager(
 
 
 def build_webhooks(
-        handlers_: Iterable[handlers.ResourceWebhookHandler],
+        handlers_: Iterable[handlers.WebhookHandler],
         *,
         resources: Iterable[references.Resource],
         name_suffix: str,

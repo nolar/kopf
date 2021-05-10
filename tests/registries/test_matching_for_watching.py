@@ -3,10 +3,10 @@ import copy
 import pytest
 
 import kopf
-from kopf.reactor.causation import ResourceWatchingCause
+from kopf.reactor.causation import WatchingCause
 from kopf.structs.dicts import parse_field
 from kopf.structs.filters import ABSENT, PRESENT
-from kopf.structs.handlers import ResourceWatchingHandler
+from kopf.structs.handlers import WatchingHandler
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.
@@ -25,13 +25,13 @@ def _always(*_, **__):
 @pytest.fixture()
 def handler_factory(registry, selector):
     def factory(**kwargs):
-        handler = ResourceWatchingHandler(**dict(dict(
+        handler = WatchingHandler(**dict(dict(
             fn=some_fn, id='a', param=None,
             errors=None, timeout=None, retries=None, backoff=None,
             selector=selector, annotations=None, labels=None, when=None,
             field=None, value=None,
         ), **kwargs))
-        registry._resource_watching.append(handler)
+        registry._watching.append(handler)
         return handler
     return factory
 
@@ -43,7 +43,7 @@ def cause_no_field(request, cause_factory):
     kwargs = copy.deepcopy(request.param)
     kwargs['body'].update({'metadata': {'labels': {'known': 'value'},
                                         'annotations': {'known': 'value'}}})
-    cause = cause_factory(cls=ResourceWatchingCause, **kwargs)
+    cause = cause_factory(cls=WatchingCause, **kwargs)
     return cause
 
 
@@ -54,7 +54,7 @@ def cause_with_field(request, cause_factory):
     kwargs = copy.deepcopy(request.param)
     kwargs['body'].update({'metadata': {'labels': {'known': 'value'},
                                         'annotations': {'known': 'value'}}})
-    cause = cause_factory(cls=ResourceWatchingCause, **kwargs)
+    cause = cause_factory(cls=WatchingCause, **kwargs)
     return cause
 
 
@@ -67,7 +67,7 @@ def cause_any_field(request, cause_factory):
     kwargs = copy.deepcopy(request.param)
     kwargs['body'].update({'metadata': {'labels': {'known': 'value'},
                                         'annotations': {'known': 'value'}}})
-    cause = cause_factory(cls=ResourceWatchingCause, **kwargs)
+    cause = cause_factory(cls=WatchingCause, **kwargs)
     return cause
 
 
@@ -79,7 +79,7 @@ def test_catchall_handlers_without_field_found(
         cause_any_field, registry, handler_factory):
     cause = cause_any_field
     handler_factory(field=None)
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert handlers
 
 
@@ -87,7 +87,7 @@ def test_catchall_handlers_with_field_found(
         cause_with_field, registry, handler_factory):
     cause = cause_with_field
     handler_factory(field=parse_field('known-field'))
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert handlers
 
 
@@ -95,7 +95,7 @@ def test_catchall_handlers_with_field_ignored(
         cause_no_field, registry, handler_factory):
     cause = cause_no_field
     handler_factory(field=parse_field('known-field'))
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert not handlers
 
 
@@ -107,7 +107,7 @@ def test_catchall_handlers_with_exact_labels_satisfied(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     handler_factory(labels={'known': 'value'})
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert handlers
 
 
@@ -120,7 +120,7 @@ def test_catchall_handlers_with_exact_labels_not_satisfied(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     handler_factory(labels={'known': 'value'})
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert not handlers
 
 
@@ -132,7 +132,7 @@ def test_catchall_handlers_with_desired_labels_present(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     handler_factory(labels={'known': PRESENT})
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert handlers
 
 
@@ -144,7 +144,7 @@ def test_catchall_handlers_with_desired_labels_absent(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     handler_factory(labels={'known': PRESENT})
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert not handlers
 
 
@@ -156,7 +156,7 @@ def test_catchall_handlers_with_undesired_labels_present(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     handler_factory(labels={'known': ABSENT})
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert not handlers
 
 
@@ -168,7 +168,7 @@ def test_catchall_handlers_with_undesired_labels_absent(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     handler_factory(labels={'known': ABSENT})
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert handlers
 
 
@@ -181,7 +181,7 @@ def test_catchall_handlers_with_labels_callback_says_true(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     handler_factory(labels={'known': _always})
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert handlers
 
 
@@ -194,7 +194,7 @@ def test_catchall_handlers_with_labels_callback_says_false(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     handler_factory(labels={'known': _never})
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert not handlers
 
 
@@ -209,7 +209,7 @@ def test_catchall_handlers_without_labels(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     handler_factory(labels=None)
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert handlers
 
 
@@ -221,7 +221,7 @@ def test_catchall_handlers_with_exact_annotations_satisfied(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
     handler_factory(annotations={'known': 'value'})
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert handlers
 
 
@@ -234,7 +234,7 @@ def test_catchall_handlers_with_exact_annotations_not_satisfied(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
     handler_factory(annotations={'known': 'value'})
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert not handlers
 
 
@@ -246,7 +246,7 @@ def test_catchall_handlers_with_desired_annotations_present(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
     handler_factory(annotations={'known': PRESENT})
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert handlers
 
 
@@ -258,7 +258,7 @@ def test_catchall_handlers_with_desired_annotations_absent(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
     handler_factory(annotations={'known': PRESENT})
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert not handlers
 
 
@@ -270,7 +270,7 @@ def test_catchall_handlers_with_undesired_annotations_present(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
     handler_factory(annotations={'known': ABSENT})
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert not handlers
 
 
@@ -282,7 +282,7 @@ def test_catchall_handlers_with_undesired_annotations_absent(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
     handler_factory(annotations={'known': ABSENT})
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert handlers
 
 
@@ -295,7 +295,7 @@ def test_catchall_handlers_with_annotations_callback_says_true(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
     handler_factory(annotations={'known': _always})
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert handlers
 
 
@@ -308,7 +308,7 @@ def test_catchall_handlers_with_annotations_callback_says_false(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
     handler_factory(annotations={'known': _never})
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert not handlers
 
 
@@ -323,7 +323,7 @@ def test_catchall_handlers_without_annotations(
         cause_factory, registry, handler_factory, annotations):
     cause = cause_factory(body={'metadata': {'annotations': annotations}})
     handler_factory()
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert handlers
 
 
@@ -337,7 +337,7 @@ def test_catchall_handlers_with_labels_and_annotations_satisfied(
         cause_factory, registry, handler_factory, labels, annotations):
     cause = cause_factory(body={'metadata': {'labels': labels, 'annotations': annotations}})
     handler_factory(labels={'known': 'value'}, annotations={'known': 'value'})
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert handlers
 
 
@@ -352,7 +352,7 @@ def test_catchall_handlers_with_labels_and_annotations_not_satisfied(
         cause_factory, registry, handler_factory, labels):
     cause = cause_factory(body={'metadata': {'labels': labels}})
     handler_factory(labels={'known': 'value'}, annotations={'known': 'value'})
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert not handlers
 
 
@@ -365,7 +365,7 @@ def test_catchall_handlers_with_when_callback_matching(
         cause_factory, registry, handler_factory, when):
     cause = cause_factory(body={'spec': {'name': 'test'}})
     handler_factory(when=when)
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert handlers
 
 
@@ -377,7 +377,7 @@ def test_catchall_handlers_with_when_callback_mismatching(
         cause_factory, registry, handler_factory, when):
     cause = cause_factory(body={'spec': {'name': 'test'}})
     handler_factory(when=when)
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert not handlers
 
 
@@ -388,7 +388,7 @@ def test_decorator_without_field_found(
     def some_fn(**_): ...
 
     cause = cause_any_field
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert handlers
 
 
@@ -399,7 +399,7 @@ def test_decorator_with_field_found(
     def some_fn(**_): ...
 
     cause = cause_with_field
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert handlers
 
 
@@ -410,7 +410,7 @@ def test_decorator_with_field_ignored(
     def some_fn(**_): ...
 
     cause = cause_no_field
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert not handlers
 
 
@@ -421,7 +421,7 @@ def test_decorator_with_labels_satisfied(
     def some_fn(**_): ...
 
     cause = cause_any_field
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert handlers
 
 
@@ -432,7 +432,7 @@ def test_decorator_with_labels_not_satisfied(
     def some_fn(**_): ...
 
     cause = cause_any_field
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert not handlers
 
 
@@ -443,7 +443,7 @@ def test_decorator_with_annotations_satisfied(
     def some_fn(**_): ...
 
     cause = cause_any_field
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert handlers
 
 
@@ -454,7 +454,7 @@ def test_decorator_with_annotations_not_satisfied(
     def some_fn(**_): ...
 
     cause = cause_any_field
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert not handlers
 
 
@@ -465,7 +465,7 @@ def test_decorator_with_filter_satisfied(
     def some_fn(**_): ...
 
     cause = cause_any_field
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert handlers
 
 
@@ -476,5 +476,5 @@ def test_decorator_with_filter_not_satisfied(
     def some_fn(**_): ...
 
     cause = cause_any_field
-    handlers = registry._resource_watching.get_handlers(cause)
+    handlers = registry._watching.get_handlers(cause)
     assert not handlers
