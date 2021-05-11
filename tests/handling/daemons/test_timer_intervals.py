@@ -24,9 +24,9 @@ async def test_timer_regular_interval(
     await dummy.wait_for_daemon_done()
 
     assert dummy.mock.call_count == 2
-    assert k8s_mocked.sleep_or_wait.call_count == 2
-    assert k8s_mocked.sleep_or_wait.call_args_list[0][0][0] == 1.0
-    assert k8s_mocked.sleep_or_wait.call_args_list[1][0][0] == 1.0
+    assert k8s_mocked.sleep.call_count == 2
+    assert k8s_mocked.sleep.call_args_list[0][0][0] == 1.0
+    assert k8s_mocked.sleep.call_args_list[1][0][0] == 1.0
 
 
 async def test_timer_sharp_interval(
@@ -49,6 +49,6 @@ async def test_timer_sharp_interval(
     await dummy.wait_for_daemon_done()
 
     assert dummy.mock.call_count == 2
-    assert k8s_mocked.sleep_or_wait.call_count == 2
-    assert 0.7 <= k8s_mocked.sleep_or_wait.call_args_list[0][0][0] < 0.71
-    assert 0.7 <= k8s_mocked.sleep_or_wait.call_args_list[1][0][0] < 0.71
+    assert k8s_mocked.sleep.call_count == 2
+    assert 0.7 <= k8s_mocked.sleep.call_args_list[0][0][0] < 0.71
+    assert 0.7 <= k8s_mocked.sleep.call_args_list[1][0][0] < 0.71

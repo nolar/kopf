@@ -34,7 +34,7 @@ async def test_daemon_exits_gracefully_and_instantly_on_termination_request(
         await dummy.wait_for_daemon_done()
 
     assert timer.seconds < 0.01  # near-instantly
-    assert k8s_mocked.sleep_or_wait.call_count == 0
+    assert k8s_mocked.sleep.call_count == 0
     assert k8s_mocked.patch_obj.call_count == 1
     assert k8s_mocked.patch_obj.call_args_list[0][1]['patch']['metadata']['finalizers'] == []
 
@@ -101,8 +101,8 @@ async def test_daemon_exits_instantly_via_cancellation_with_backoff(
     event_object.setdefault('metadata', {}).update({'deletionTimestamp': '...'})
     await simulate_cycle(event_object)
 
-    assert k8s_mocked.sleep_or_wait.call_count == 1
-    assert k8s_mocked.sleep_or_wait.call_args_list[0][0][0] == 5.0
+    assert k8s_mocked.sleep.call_count == 1
+    assert k8s_mocked.sleep.call_args_list[0][0][0] == 5.0
     assert k8s_mocked.patch_obj.call_count == 1
     assert k8s_mocked.patch_obj.call_args_list[0][1]['patch']['status']['kopf']['dummy']
 
@@ -111,7 +111,7 @@ async def test_daemon_exits_instantly_via_cancellation_with_backoff(
     frozen_time.tick(5)  # backoff time or slightly above it
     await simulate_cycle(event_object)
 
-    assert k8s_mocked.sleep_or_wait.call_count == 0
+    assert k8s_mocked.sleep.call_count == 0
     assert k8s_mocked.patch_obj.call_count == 1
     assert k8s_mocked.patch_obj.call_args_list[0][1]['patch']['metadata']['finalizers'] == []
 
@@ -145,8 +145,8 @@ async def test_daemon_exits_slowly_via_cancellation_with_backoff(
     event_object.setdefault('metadata', {}).update({'deletionTimestamp': '...'})
     await simulate_cycle(event_object)
 
-    assert k8s_mocked.sleep_or_wait.call_count == 1
-    assert k8s_mocked.sleep_or_wait.call_args_list[0][0][0] == 5.0
+    assert k8s_mocked.sleep.call_count == 1
+    assert k8s_mocked.sleep.call_args_list[0][0][0] == 5.0
     assert k8s_mocked.patch_obj.call_count == 1
     assert k8s_mocked.patch_obj.call_args_list[0][1]['patch']['status']['kopf']['dummy']
 
@@ -155,8 +155,8 @@ async def test_daemon_exits_slowly_via_cancellation_with_backoff(
     frozen_time.tick(5)  # backoff time or slightly above it
     await simulate_cycle(event_object)
 
-    assert k8s_mocked.sleep_or_wait.call_count == 1
-    assert k8s_mocked.sleep_or_wait.call_args_list[0][0][0] == 10.0
+    assert k8s_mocked.sleep.call_count == 1
+    assert k8s_mocked.sleep.call_args_list[0][0][0] == 10.0
     assert k8s_mocked.patch_obj.call_count == 1
     assert k8s_mocked.patch_obj.call_args_list[0][1]['patch']['status']['kopf']['dummy']
 
@@ -168,7 +168,7 @@ async def test_daemon_exits_slowly_via_cancellation_with_backoff(
     await simulate_cycle(event_object)
     await dummy.wait_for_daemon_done()
 
-    assert k8s_mocked.sleep_or_wait.call_count == 0
+    assert k8s_mocked.sleep.call_count == 0
     assert k8s_mocked.patch_obj.call_count == 1
     assert k8s_mocked.patch_obj.call_args_list[0][1]['patch']['metadata']['finalizers'] == []
 
@@ -199,8 +199,8 @@ async def test_daemon_is_abandoned_due_to_cancellation_timeout_reached(
     event_object.setdefault('metadata', {}).update({'deletionTimestamp': '...'})
     await simulate_cycle(event_object)
 
-    assert k8s_mocked.sleep_or_wait.call_count == 1
-    assert k8s_mocked.sleep_or_wait.call_args_list[0][0][0] == 10.0
+    assert k8s_mocked.sleep.call_count == 1
+    assert k8s_mocked.sleep.call_args_list[0][0][0] == 10.0
     assert k8s_mocked.patch_obj.call_count == 1
     assert k8s_mocked.patch_obj.call_args_list[0][1]['patch']['status']['kopf']['dummy']
 
@@ -210,7 +210,7 @@ async def test_daemon_is_abandoned_due_to_cancellation_timeout_reached(
     with pytest.warns(ResourceWarning, match=r"Daemon .+ did not exit in time"):
         await simulate_cycle(event_object)
 
-    assert k8s_mocked.sleep_or_wait.call_count == 0
+    assert k8s_mocked.sleep.call_count == 0
     assert k8s_mocked.patch_obj.call_count == 1
     assert k8s_mocked.patch_obj.call_args_list[0][1]['patch']['metadata']['finalizers'] == []
     assert_logs(["Daemon 'fn' did not exit in time. Leaving it orphaned."])

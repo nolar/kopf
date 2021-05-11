@@ -4,14 +4,15 @@ from unittest.mock import Mock
 import freezegun
 import pytest
 
+from kopf.aiokits import aiotoggles
 from kopf.engines.peering import process_peering_event
-from kopf.structs import bodies, primitives
+from kopf.structs import bodies
 
 
 @dataclasses.dataclass(frozen=True, eq=False)
 class K8sMocks:
     patch_obj: Mock
-    sleep_or_wait: Mock
+    sleep: Mock
 
 
 @pytest.fixture(autouse=True)
@@ -19,7 +20,7 @@ def k8s_mocked(mocker, resp_mocker):
     # We mock on the level of our own K8s API wrappers, not the K8s client.
     return K8sMocks(
         patch_obj=mocker.patch('kopf.clients.patching.patch_obj', return_value={}),
-        sleep_or_wait=mocker.patch('kopf.structs.primitives.sleep_or_wait', return_value=None),
+        sleep=mocker.patch('kopf.aiokits.aiotime.sleep', return_value=None),
     )
 
 
@@ -47,7 +48,7 @@ async def test_other_peering_objects_are_ignored(
     )
     assert not status.items.called
     assert not k8s_mocked.patch_obj.called
-    assert k8s_mocked.sleep_or_wait.call_count == 0
+    assert k8s_mocked.sleep.call_count == 0
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
@@ -70,8 +71,8 @@ async def test_toggled_on_for_higher_priority_peer_when_initially_off(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    conflicts_found = primitives.Toggle(False)
-    k8s_mocked.sleep_or_wait.return_value = 1  # as if interrupted by stream pressure
+    conflicts_found = aiotoggles.Toggle(False)
+    k8s_mocked.sleep.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
     assert conflicts_found.is_off()
@@ -85,8 +86,8 @@ async def test_toggled_on_for_higher_priority_peer_when_initially_off(
         settings=settings,
     )
     assert conflicts_found.is_on()
-    assert k8s_mocked.sleep_or_wait.call_count == 1
-    assert 9 < k8s_mocked.sleep_or_wait.call_args[0][0][0] < 10
+    assert k8s_mocked.sleep.call_count == 1
+    assert 9 < k8s_mocked.sleep.call_args[0][0][0] < 10
     assert not k8s_mocked.patch_obj.called
     assert_logs(["Pausing operations in favour of"], prohibited=[
         "Possibly conflicting operators",
@@ -115,8 +116,8 @@ async def test_ignored_for_higher_priority_peer_when_already_on(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    conflicts_found = primitives.Toggle(True)
-    k8s_mocked.sleep_or_wait.return_value = 1  # as if interrupted by stream pressure
+    conflicts_found = aiotoggles.Toggle(True)
+    k8s_mocked.sleep.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
     assert conflicts_found.is_on()
@@ -130,8 +131,8 @@ async def test_ignored_for_higher_priority_peer_when_already_on(
         settings=settings,
     )
     assert conflicts_found.is_on()
-    assert k8s_mocked.sleep_or_wait.call_count == 1
-    assert 9 < k8s_mocked.sleep_or_wait.call_args[0][0][0] < 10
+    assert k8s_mocked.sleep.call_count == 1
+    assert 9 < k8s_mocked.sleep.call_args[0][0][0] < 10
     assert not k8s_mocked.patch_obj.called
     assert_logs([], prohibited=[
         "Possibly conflicting operators",
@@ -161,8 +162,8 @@ async def test_toggled_off_for_lower_priority_peer_when_initially_on(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    conflicts_found = primitives.Toggle(True)
-    k8s_mocked.sleep_or_wait.return_value = 1  # as if interrupted by stream pressure
+    conflicts_found = aiotoggles.Toggle(True)
+    k8s_mocked.sleep.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
     assert conflicts_found.is_on()
@@ -176,8 +177,8 @@ async def test_toggled_off_for_lower_priority_peer_when_initially_on(
         settings=settings,
     )
     assert conflicts_found.is_off()
-    assert k8s_mocked.sleep_or_wait.call_count == 1
-    assert k8s_mocked.sleep_or_wait.call_args[0][0] == []
+    assert k8s_mocked.sleep.call_count == 1
+    assert k8s_mocked.sleep.call_args[0][0] == []
     assert not k8s_mocked.patch_obj.called
     assert_logs(["Resuming operations after the pause"], prohibited=[
         "Possibly conflicting operators",
@@ -206,8 +207,8 @@ async def test_ignored_for_lower_priority_peer_when_already_off(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    conflicts_found = primitives.Toggle(False)
-    k8s_mocked.sleep_or_wait.return_value = 1  # as if interrupted by stream pressure
+    conflicts_found = aiotoggles.Toggle(False)
+    k8s_mocked.sleep.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
     assert conflicts_found.is_off()
@@ -221,8 +222,8 @@ async def test_ignored_for_lower_priority_peer_when_already_off(
         settings=settings,
     )
     assert conflicts_found.is_off()
-    assert k8s_mocked.sleep_or_wait.call_count == 1
-    assert k8s_mocked.sleep_or_wait.call_args[0][0] == []
+    assert k8s_mocked.sleep.call_count == 1
+    assert k8s_mocked.sleep.call_args[0][0] == []
     assert not k8s_mocked.patch_obj.called
     assert_logs([], prohibited=[
         "Possibly conflicting operators",
@@ -252,8 +253,8 @@ async def test_toggled_on_for_same_priority_peer_when_initially_off(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    conflicts_found = primitives.Toggle(False)
-    k8s_mocked.sleep_or_wait.return_value = 1  # as if interrupted by stream pressure
+    conflicts_found = aiotoggles.Toggle(False)
+    k8s_mocked.sleep.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
     assert conflicts_found.is_off()
@@ -267,8 +268,8 @@ async def test_toggled_on_for_same_priority_peer_when_initially_off(
         settings=settings,
     )
     assert conflicts_found.is_on()
-    assert k8s_mocked.sleep_or_wait.call_count == 1
-    assert 9 < k8s_mocked.sleep_or_wait.call_args[0][0][0] < 10
+    assert k8s_mocked.sleep.call_count == 1
+    assert 9 < k8s_mocked.sleep.call_args[0][0][0] < 10
     assert not k8s_mocked.patch_obj.called
     assert_logs([
         "Possibly conflicting operators",
@@ -299,8 +300,8 @@ async def test_ignored_for_same_priority_peer_when_already_on(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    conflicts_found = primitives.Toggle(True)
-    k8s_mocked.sleep_or_wait.return_value = 1  # as if interrupted by stream pressure
+    conflicts_found = aiotoggles.Toggle(True)
+    k8s_mocked.sleep.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
     assert conflicts_found.is_on()
@@ -314,8 +315,8 @@ async def test_ignored_for_same_priority_peer_when_already_on(
         settings=settings,
     )
     assert conflicts_found.is_on()
-    assert k8s_mocked.sleep_or_wait.call_count == 1
-    assert 9 < k8s_mocked.sleep_or_wait.call_args[0][0][0] < 10
+    assert k8s_mocked.sleep.call_count == 1
+    assert 9 < k8s_mocked.sleep.call_args[0][0][0] < 10
     assert not k8s_mocked.patch_obj.called
     assert_logs([
         "Possibly conflicting operators",
@@ -347,8 +348,8 @@ async def test_resumes_immediately_on_expiration_of_blocking_peers(
     settings.peering.name = 'name'
     settings.peering.priority = 100
 
-    conflicts_found = primitives.Toggle(True)
-    k8s_mocked.sleep_or_wait.return_value = None  # as if finished sleeping uninterrupted
+    conflicts_found = aiotoggles.Toggle(True)
+    k8s_mocked.sleep.return_value = None  # as if finished sleeping uninterrupted
 
     caplog.set_level(0)
     assert conflicts_found.is_on()
@@ -362,6 +363,6 @@ async def test_resumes_immediately_on_expiration_of_blocking_peers(
         settings=settings,
     )
     assert conflicts_found.is_on()
-    assert k8s_mocked.sleep_or_wait.call_count == 1
-    assert 9 < k8s_mocked.sleep_or_wait.call_args[0][0][0] < 10
+    assert k8s_mocked.sleep.call_count == 1
+    assert 9 < k8s_mocked.sleep.call_args[0][0][0] < 10
     assert k8s_mocked.patch_obj.called

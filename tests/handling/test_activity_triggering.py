@@ -167,11 +167,10 @@ async def test_delays_are_simulated(settings, activity, mocker):
 
     with freezegun.freeze_time() as frozen:
 
-        async def sleep_or_wait_substitute(*_, **__):
+        async def sleep_substitute(*_, **__):
             frozen.tick(123)
 
-        sleep_or_wait = mocker.patch('kopf.structs.primitives.sleep_or_wait',
-                                     wraps=sleep_or_wait_substitute)
+        sleep = mocker.patch('kopf.aiokits.aiotime.sleep', wraps=sleep_substitute)
 
         with pytest.raises(ActivityError) as e:
             await run_activity(
@@ -183,7 +182,7 @@ async def test_delays_are_simulated(settings, activity, mocker):
                 memo=Memo(),
             )
 
-    assert sleep_or_wait.call_count >= 3  # 3 retries, 1 sleep each
-    assert sleep_or_wait.call_count <= 4  # 3 retries, 1 final success (delay=None), not more
-    if sleep_or_wait.call_count > 3:
-        sleep_or_wait.call_args_list[-1][0][0] is None
+    assert sleep.call_count >= 3  # 3 retries, 1 sleep each
+    assert sleep.call_count <= 4  # 3 retries, 1 final success (delay=None), not more
+    if sleep.call_count > 3:
+        sleep.call_args_list[-1][0][0] is None

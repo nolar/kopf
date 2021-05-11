@@ -46,7 +46,7 @@ async def test_1st_step_stores_progress_by_patching(
     assert handlers.delete_mock.call_count == (1 if cause_type == Reason.DELETE else 0)
     assert handlers.resume_mock.call_count == (1 if cause_type == Reason.RESUME else 0)
 
-    assert not k8s_mocked.sleep_or_wait.called
+    assert not k8s_mocked.sleep.called
     assert k8s_mocked.patch_obj.called
 
     patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
@@ -106,7 +106,7 @@ async def test_2nd_step_finishes_the_handlers(caplog,
     assert extrahandlers.delete_mock.call_count == (1 if cause_type == Reason.DELETE else 0)
     assert extrahandlers.resume_mock.call_count == (1 if cause_type == Reason.RESUME else 0)
 
-    assert not k8s_mocked.sleep_or_wait.called
+    assert not k8s_mocked.sleep.called
     assert k8s_mocked.patch_obj.called
 
     patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']

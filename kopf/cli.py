@@ -5,17 +5,18 @@ from typing import Any, Callable, Collection, List, Optional
 
 import click
 
+from kopf.aiokits import aioadapters
 from kopf.engines import loggers, peering
 from kopf.reactor import registries, running
-from kopf.structs import configuration, credentials, primitives, references
+from kopf.structs import configuration, credentials, references
 from kopf.utilities import loaders
 
 
 @dataclasses.dataclass()
 class CLIControls:
     """ `KopfRunner` controls, which are impossible to pass via CLI. """
-    ready_flag: Optional[primitives.Flag] = None
-    stop_flag: Optional[primitives.Flag] = None
+    ready_flag: Optional[aioadapters.Flag] = None
+    stop_flag: Optional[aioadapters.Flag] = None
     vault: Optional[credentials.Vault] = None
     registry: Optional[registries.OperatorRegistry] = None
     settings: Optional[configuration.OperatorSettings] = None

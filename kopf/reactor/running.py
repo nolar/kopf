@@ -6,13 +6,12 @@ import threading
 import warnings
 from typing import Collection, Coroutine, MutableSequence, Optional, Sequence
 
+from kopf.aiokits import aioadapters, aiobindings, aiotasks, aiotoggles, aiovalues
 from kopf.clients import auth
 from kopf.engines import peering, posting, probing
 from kopf.reactor import activities, admission, causation, daemons, handling, indexing, \
                          lifecycles, observation, orchestration, processing, registries
-from kopf.structs import configuration, containers, credentials, \
-                         ephemera, primitives, references, reviews
-from kopf.utilities import aiotasks
+from kopf.structs import configuration, containers, credentials, ephemera, references, reviews
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +33,8 @@ def run(
         clusterwide: bool = False,
         namespaces: Collection[references.NamespacePattern] = (),
         namespace: Optional[references.NamespacePattern] = None,  # deprecated
-        stop_flag: Optional[primitives.Flag] = None,
-        ready_flag: Optional[primitives.Flag] = None,
+        stop_flag: Optional[aioadapters.Flag] = None,
+        ready_flag: Optional[aioadapters.Flag] = None,
         vault: Optional[credentials.Vault] = None,
         memo: Optional[object] = None,
         _command: Optional[Coroutine[None, None, None]] = None,
@@ -88,8 +87,8 @@ async def operator(
         clusterwide: bool = False,
         namespaces: Collection[references.NamespacePattern] = (),
         namespace: Optional[references.NamespacePattern] = None,  # deprecated
-        stop_flag: Optional[primitives.Flag] = None,
-        ready_flag: Optional[primitives.Flag] = None,
+        stop_flag: Optional[aioadapters.Flag] = None,
+        ready_flag: Optional[aioadapters.Flag] = None,
         vault: Optional[credentials.Vault] = None,
         memo: Optional[object] = None,
         _command: Optional[Coroutine[None, None, None]] = None,
@@ -143,8 +142,8 @@ async def spawn_tasks(
         clusterwide: bool = False,
         namespaces: Collection[references.NamespacePattern] = (),
         namespace: Optional[references.NamespacePattern] = None,  # deprecated
-        stop_flag: Optional[primitives.Flag] = None,
-        ready_flag: Optional[primitives.Flag] = None,
+        stop_flag: Optional[aioadapters.Flag] = None,
+        ready_flag: Optional[aioadapters.Flag] = None,
         vault: Optional[credentials.Vault] = None,
         memo: Optional[object] = None,
         _command: Optional[Coroutine[None, None, None]] = None,
@@ -184,7 +183,7 @@ async def spawn_tasks(
     event_queue: posting.K8sEventQueue = asyncio.Queue()
     signal_flag: aiotasks.Future = asyncio.Future()
     started_flag: asyncio.Event = asyncio.Event()
-    operator_paused = primitives.ToggleSet(any)
+    operator_paused = aiotoggles.ToggleSet(any)
     tasks: MutableSequence[aiotasks.Task] = []
 
     # Map kwargs into the settings object.
@@ -269,10 +268,10 @@ async def spawn_tasks(
 
     # Admission webhooks run as either a server or a tunnel or a fixed config.
     # The webhook manager automatically adjusts the cluster configuration at runtime.
-    container: primitives.Container[reviews.WebhookClientConfig] = primitives.Container()
+    container: aiovalues.Container[reviews.WebhookClientConfig] = aiovalues.Container()
     tasks.append(aiotasks.create_guarded_task(
         name="admission insights chain", flag=started_flag, logger=logger,
-        coro=primitives.condition_chain(
+        coro=aiobindings.condition_chain(
             source=insights.revised, target=container.changed)))
     tasks.append(aiotasks.create_guarded_task(
         name="admission validating configuration manager", flag=started_flag, logger=logger,
@@ -409,7 +408,7 @@ async def run_tasks(
 
 async def _stop_flag_checker(
         signal_flag: aiotasks.Future,
-        stop_flag: Optional[primitives.Flag],
+        stop_flag: Optional[aioadapters.Flag],
 ) -> None:
     """
     A top-level task for external stopping by setting a stop-flag. Once set,
@@ -421,7 +420,7 @@ async def _stop_flag_checker(
     if signal_flag is not None:
         flags.append(signal_flag)
     if stop_flag is not None:
-        flags.append(aiotasks.create_task(primitives.wait_flag(stop_flag),
+        flags.append(aiotasks.create_task(aioadapters.wait_flag(stop_flag),
                                           name="stop-flag waiter"))
 
     # Wait until one of the stoppers is set/raised.
@@ -443,7 +442,7 @@ async def _stop_flag_checker(
 async def _ultimate_termination(
         *,
         settings: configuration.OperatorSettings,
-        stop_flag: Optional[primitives.Flag],
+        stop_flag: Optional[aioadapters.Flag],
 ) -> None:
     """
     Ensure that SIGKILL is sent regardless of the operator's stopping routines.
@@ -458,7 +457,7 @@ async def _ultimate_termination(
     try:
         await asyncio.Event().wait()
     except asyncio.CancelledError:
-        if not primitives.check_flag(stop_flag):
+        if not aioadapters.check_flag(stop_flag):
             if settings.process.ultimate_exiting_timeout is not None:
                 loop = asyncio.get_running_loop()
                 loop.call_later(settings.process.ultimate_exiting_timeout,
@@ -467,7 +466,7 @@ async def _ultimate_termination(
 
 async def _startup_cleanup_activities(
         root_tasks: Sequence[aiotasks.Task],  # mutated externally!
-        ready_flag: Optional[primitives.Flag],
+        ready_flag: Optional[aioadapters.Flag],
         started_flag: asyncio.Event,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
@@ -504,7 +503,7 @@ async def _startup_cleanup_activities(
 
     # Notify the caller that we are ready to be executed. This unfreezes all the root tasks.
     started_flag.set()
-    await primitives.raise_flag(ready_flag)
+    await aioadapters.raise_flag(ready_flag)
 
     # Sleep forever, or until cancelled, which happens when the operator begins its shutdown.
     try:

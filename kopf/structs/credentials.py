@@ -30,7 +30,7 @@ import random
 from typing import AsyncIterable, AsyncIterator, Callable, Dict, List, \
                    Mapping, NewType, Optional, Tuple, TypeVar, cast
 
-from kopf.structs import primitives
+from kopf.aiokits import aiotoggles
 
 
 class LoginError(Exception):
@@ -123,7 +123,7 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
 
         # Mark a pre-populated vault to be usable instantly,
         # or trigger the initial authentication for an empty vault.
-        self._ready = primitives.Toggle(bool(self))
+        self._ready = aiotoggles.Toggle(bool(self))
 
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__}: {self._current!r}>'

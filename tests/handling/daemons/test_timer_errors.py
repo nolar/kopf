@@ -23,8 +23,8 @@ async def test_timer_stopped_on_permanent_error(
     await dummy.wait_for_daemon_done()
 
     assert dummy.mock.call_count == 1
-    assert k8s_mocked.sleep_or_wait.call_count == 1  # one for each retry
-    assert k8s_mocked.sleep_or_wait.call_args_list[0][0][0] == 1.0
+    assert k8s_mocked.sleep.call_count == 1  # one for each retry
+    assert k8s_mocked.sleep.call_args_list[0][0][0] == 1.0
 
     assert_logs([
         "Timer 'fn' failed permanently: boo!",
@@ -52,8 +52,8 @@ async def test_timer_stopped_on_arbitrary_errors_with_mode_permanent(
     await dummy.wait_for_daemon_done()
 
     assert dummy.mock.call_count == 1
-    assert k8s_mocked.sleep_or_wait.call_count == 1  # one for each retry
-    assert k8s_mocked.sleep_or_wait.call_args_list[0][0][0] == 1.0
+    assert k8s_mocked.sleep.call_count == 1  # one for each retry
+    assert k8s_mocked.sleep.call_args_list[0][0][0] == 1.0
 
     assert_logs([
         "Timer 'fn' failed with an exception. Will stop.",
@@ -85,9 +85,9 @@ async def test_timer_retried_on_temporary_error(
     await dummy.steps['finish'].wait()
     await dummy.wait_for_daemon_done()
 
-    assert k8s_mocked.sleep_or_wait.call_count == 2  # one for each retry
-    assert k8s_mocked.sleep_or_wait.call_args_list[0][0][0] == [1.0]  # delays
-    assert k8s_mocked.sleep_or_wait.call_args_list[1][0][0] == 1.0  # interval
+    assert k8s_mocked.sleep.call_count == 2  # one for each retry
+    assert k8s_mocked.sleep.call_args_list[0][0][0] == [1.0]  # delays
+    assert k8s_mocked.sleep.call_args_list[1][0][0] == 1.0  # interval
 
     assert_logs([
         "Timer 'fn' failed temporarily: boo!",
@@ -117,9 +117,9 @@ async def test_timer_retried_on_arbitrary_error_with_mode_temporary(
     await dummy.steps['finish'].wait()
     await dummy.wait_for_daemon_done()
 
-    assert k8s_mocked.sleep_or_wait.call_count == 2  # one for each retry
-    assert k8s_mocked.sleep_or_wait.call_args_list[0][0][0] == [1.0]  # delays
-    assert k8s_mocked.sleep_or_wait.call_args_list[1][0][0] == 1.0  # interval
+    assert k8s_mocked.sleep.call_count == 2  # one for each retry
+    assert k8s_mocked.sleep.call_args_list[0][0][0] == [1.0]  # delays
+    assert k8s_mocked.sleep.call_args_list[1][0][0] == 1.0  # interval
 
     assert_logs([
         "Timer 'fn' failed with an exception. Will retry.",
@@ -144,11 +144,11 @@ async def test_timer_retried_until_retries_limit(
     await dummy.steps['called'].wait()
     await dummy.wait_for_daemon_done()
 
-    assert k8s_mocked.sleep_or_wait.call_count >= 4  # one for each retry
-    assert k8s_mocked.sleep_or_wait.call_args_list[0][0][0] == [1.0]  # delays
-    assert k8s_mocked.sleep_or_wait.call_args_list[1][0][0] == [1.0]  # delays
-    assert k8s_mocked.sleep_or_wait.call_args_list[2][0][0] == [1.0]  # delays
-    assert k8s_mocked.sleep_or_wait.call_args_list[3][0][0] == 1.0  # interval
+    assert k8s_mocked.sleep.call_count >= 4  # one for each retry
+    assert k8s_mocked.sleep.call_args_list[0][0][0] == [1.0]  # delays
+    assert k8s_mocked.sleep.call_args_list[1][0][0] == [1.0]  # delays
+    assert k8s_mocked.sleep.call_args_list[2][0][0] == [1.0]  # delays
+    assert k8s_mocked.sleep.call_args_list[3][0][0] == 1.0  # interval
 
 
 async def test_timer_retried_until_timeout(
@@ -168,8 +168,8 @@ async def test_timer_retried_until_timeout(
     await dummy.steps['called'].wait()
     await dummy.wait_for_daemon_done()
 
-    assert k8s_mocked.sleep_or_wait.call_count >= 4  # one for each retry
-    assert k8s_mocked.sleep_or_wait.call_args_list[0][0][0] == [1.0]  # delays
-    assert k8s_mocked.sleep_or_wait.call_args_list[1][0][0] == [1.0]  # delays
-    assert k8s_mocked.sleep_or_wait.call_args_list[2][0][0] == [1.0]  # delays
-    assert k8s_mocked.sleep_or_wait.call_args_list[3][0][0] == 1.0  # interval
+    assert k8s_mocked.sleep.call_count >= 4  # one for each retry
+    assert k8s_mocked.sleep.call_args_list[0][0][0] == [1.0]  # delays
+    assert k8s_mocked.sleep.call_args_list[1][0][0] == [1.0]  # delays
+    assert k8s_mocked.sleep.call_args_list[2][0][0] == [1.0]  # delays
+    assert k8s_mocked.sleep.call_args_list[3][0][0] == 1.0  # interval

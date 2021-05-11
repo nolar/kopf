@@ -17,12 +17,13 @@ import asyncio
 import time
 from typing import Collection, Optional, Tuple
 
+from kopf.aiokits import aiotoggles
 from kopf.engines import loggers, posting
 from kopf.reactor import causation, daemons, effects, handling, \
                          indexing, lifecycles, registries, subhandling
 from kopf.storage import finalizers, states
-from kopf.structs import bodies, configuration, containers, diffs, ephemera, \
-                         patches, primitives, references, throttlers
+from kopf.structs import bodies, configuration, containers, diffs, \
+                         ephemera, patches, references, throttlers
 
 
 async def process_resource_event(
@@ -36,8 +37,8 @@ async def process_resource_event(
         raw_event: bodies.RawEvent,
         event_queue: posting.K8sEventQueue,
         stream_pressure: Optional[asyncio.Event] = None,  # None for tests
-        resource_indexed: Optional[primitives.Toggle] = None,  # None for tests & observation
-        operator_indexed: Optional[primitives.ToggleSet] = None,  # None for tests & observation
+        resource_indexed: Optional[aiotoggles.Toggle] = None,  # None for tests & observation
+        operator_indexed: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
 ) -> None:
     """
     Handle a single custom object low-level watch-event.

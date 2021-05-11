@@ -31,11 +31,11 @@ from typing import Collection, Dict, Iterable, List, Mapping, \
 
 import aiojobs
 
+from kopf.aiokits import aiotasks, aiotime, aiotoggles
 from kopf.engines import loggers
 from kopf.reactor import causation, effects, handling, lifecycles
 from kopf.storage import states
 from kopf.structs import bodies, configuration, handlers as handlers_, ids, patches, primitives
-from kopf.utilities import aiotasks
 
 
 @dataclasses.dataclass(frozen=True)
@@ -246,7 +246,7 @@ async def daemon_killer(
         *,
         settings: configuration.OperatorSettings,
         memories: DaemonsMemoriesIterator,
-        operator_paused: primitives.ToggleSet,
+        operator_paused: aiotoggles.ToggleSet,
 ) -> None:
     """
     An operator's root task to kill the daemons on the operator's demand.
@@ -448,7 +448,7 @@ async def _daemon(
     body = cause.body
 
     if handler.initial_delay is not None:
-        await primitives.sleep_or_wait(handler.initial_delay, cause.stopper.async_event)
+        await aiotime.sleep(handler.initial_delay, wakeup=cause.stopper.async_event)
 
     # Similar to activities (in-memory execution), but applies patches on every attempt.
     state = states.State.from_scratch().with_handlers([handler])
@@ -468,7 +468,7 @@ async def _daemon(
 
         # The in-memory sleep does not react to resource changes, but only to stopping.
         if state.delay:
-            await primitives.sleep_or_wait(state.delay, cause.stopper.async_event)
+            await aiotime.sleep(state.delay, wakeup=cause.stopper.async_event)
 
     if stopper.is_set():
         logger.debug(f"{handler} has exited on request and will not be retried or restarted.")
@@ -511,7 +511,7 @@ async def _timer(
     body = cause.body
 
     if handler.initial_delay is not None:
-        await primitives.sleep_or_wait(handler.initial_delay, wakeup=stopper.async_event)
+        await aiotime.sleep(handler.initial_delay, wakeup=stopper.async_event)
 
     # Similar to activities (in-memory execution), but applies patches on every attempt.
     state = states.State.from_scratch().with_handlers([handler])
@@ -527,7 +527,7 @@ async def _timer(
         if handler.idle is not None:
             while not stopper.is_set() and time.monotonic() - memory.idle_reset_time < handler.idle:
                 delay = memory.idle_reset_time + handler.idle - time.monotonic()
-                await primitives.sleep_or_wait(delay, wakeup=stopper.async_event)
+                await aiotime.sleep(delay, wakeup=stopper.async_event)
             if stopper.is_set():
                 continue
 
@@ -550,7 +550,7 @@ async def _timer(
         # For temporary errors, override the schedule by the one provided by errors themselves.
         # It can be either a delay from TemporaryError, or a backoff for an arbitrary exception.
         if not state.done:
-            await primitives.sleep_or_wait(state.delays, wakeup=stopper.async_event)
+            await aiotime.sleep(state.delays, wakeup=stopper.async_event)
 
         # For sharp timers, calculate how much time is left to fit the interval grid:
         #       |-----|-----|-----|-----|-----|-----|---> (interval=5, sharp=True)
@@ -558,19 +558,19 @@ async def _timer(
         elif handler.interval is not None and handler.sharp:
             passed_duration = time.monotonic() - started
             remaining_delay = handler.interval - (passed_duration % handler.interval)
-            await primitives.sleep_or_wait(remaining_delay, wakeup=stopper.async_event)
+            await aiotime.sleep(remaining_delay, wakeup=stopper.async_event)
 
         # For regular (non-sharp) timers, simply sleep from last exit to the next call:
         #       |-----|-----|-----|-----|-----|-----|---> (interval=5, sharp=False)
         #       [slow_handler].....[slow_handler].....[slow...
         elif handler.interval is not None:
-            await primitives.sleep_or_wait(handler.interval, wakeup=stopper.async_event)
+            await aiotime.sleep(handler.interval, wakeup=stopper.async_event)
 
         # For idle-only no-interval timers, wait till the next change (i.e. idling reset).
         # NB: This will skip the handler in the same tact (1/64th of a second) even if changed.
         elif handler.idle is not None:
             while memory.idle_reset_time <= started:
-                await primitives.sleep_or_wait(handler.idle, wakeup=stopper.async_event)
+                await aiotime.sleep(handler.idle, wakeup=stopper.async_event)
 
         # Only in case there are no intervals and idling, treat it as a one-shot handler.
         # This makes the handler practically meaningless, but technically possible.

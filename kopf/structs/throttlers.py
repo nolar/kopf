@@ -5,7 +5,7 @@ import logging
 import time
 from typing import AsyncGenerator, Iterable, Iterator, Optional, Tuple, Type, Union
 
-from kopf.structs import primitives
+from kopf.aiokits import aiotime
 
 
 @dataclasses.dataclass(frozen=False)
@@ -33,7 +33,7 @@ async def throttled(
     # It is needed to properly process the latest known event after the successful sleep.
     if throttler.active_until is not None:
         remaining_time = throttler.active_until - time.monotonic()
-        unslept_time = await primitives.sleep_or_wait(remaining_time, wakeup=wakeup)
+        unslept_time = await aiotime.sleep(remaining_time, wakeup=wakeup)
         if unslept_time is None:
             logger.info("Throttling is over. Switching back to normal operations.")
             throttler.active_until = None
@@ -78,7 +78,7 @@ async def throttled(
     # It is needed to have better logging/sleeping without workers exiting for "no events".
     if throttler.active_until is not None and should_run:
         remaining_time = throttler.active_until - time.monotonic()
-        unslept_time = await primitives.sleep_or_wait(remaining_time, wakeup=wakeup)
+        unslept_time = await aiotime.sleep(remaining_time, wakeup=wakeup)
         if unslept_time is None:
             throttler.active_until = None
             logger.info("Throttling is over. Switching back to normal operations.")

@@ -39,9 +39,10 @@ from typing import Any, Dict, Iterable, Mapping, NewType, NoReturn, Optional, ca
 
 import iso8601
 
+from kopf.aiokits import aiotasks, aiotime, aiotoggles
 from kopf.clients import patching
-from kopf.structs import bodies, configuration, patches, primitives, references
-from kopf.utilities import aiotasks, hostnames
+from kopf.structs import bodies, configuration, patches, references
+from kopf.utilities import hostnames
 
 logger = logging.getLogger(__name__)
 
@@ -94,10 +95,10 @@ async def process_peering_event(
         settings: configuration.OperatorSettings,
         autoclean: bool = True,
         stream_pressure: Optional[asyncio.Event] = None,  # None for tests
-        conflicts_found: Optional[primitives.Toggle] = None,  # None for tests & observation
+        conflicts_found: Optional[aiotoggles.Toggle] = None,  # None for tests & observation
         # Must be accepted whether used or not -- as passed by watcher()/worker().
-        resource_indexed: Optional[primitives.Toggle] = None,  # None for tests & observation
-        operator_indexed: Optional[primitives.ToggleSet] = None,  # None for tests & observation
+        resource_indexed: Optional[aiotoggles.Toggle] = None,  # None for tests & observation
+        operator_indexed: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
 ) -> None:
     """
     Handle a single update of the peers by us or by other operators.
@@ -146,7 +147,7 @@ async def process_peering_event(
     # from other peers that existed a moment earlier, this should not be a problem.
     now = datetime.datetime.utcnow()
     delays = [(peer.deadline - now).total_seconds() for peer in same_peers + prio_peers]
-    unslept = await primitives.sleep_or_wait(delays, wakeup=stream_pressure)
+    unslept = await aiotime.sleep(delays, wakeup=stream_pressure)
     if unslept is None and delays:
         await touch(
             identity=identity,

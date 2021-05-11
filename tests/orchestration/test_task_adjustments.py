@@ -5,11 +5,11 @@ from unittest.mock import Mock
 
 import pytest
 
+from kopf.aiokits import aiotasks, aiotoggles
 from kopf.engines.peering import Identity
 from kopf.reactor.orchestration import Ensemble, EnsembleKey, adjust_tasks
-from kopf.structs import bodies, primitives
+from kopf.structs import bodies
 from kopf.structs.references import Insights, Resource
-from kopf.utilities import aiotasks
 
 
 async def processor(*, raw_event: bodies.RawEvent, stream_pressure: Optional[asyncio.Event]) -> None:
@@ -39,8 +39,8 @@ async def insights(settings, peering_resource):
 
 @pytest.fixture()
 async def ensemble(_no_asyncio_pending_tasks):
-    operator_indexed = primitives.ToggleSet(all)
-    operator_paused = primitives.ToggleSet(any)
+    operator_indexed = aiotoggles.ToggleSet(all)
+    operator_paused = aiotoggles.ToggleSet(any)
     peering_missing = await operator_paused.make_toggle()
     ensemble = Ensemble(
         operator_indexed=operator_indexed,

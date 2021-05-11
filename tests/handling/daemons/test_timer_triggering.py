@@ -19,8 +19,8 @@ async def test_timer_is_spawned_at_least_once(
 
     assert dummy.mock.call_count == 1
     assert dummy.kwargs['retry'] == 0
-    assert k8s_mocked.sleep_or_wait.call_count == 1
-    assert k8s_mocked.sleep_or_wait.call_args_list[0][0][0] == 1.0
+    assert k8s_mocked.sleep.call_count == 1
+    assert k8s_mocked.sleep.call_args_list[0][0][0] == 1.0
 
     await dummy.wait_for_daemon_done()
 
@@ -41,8 +41,8 @@ async def test_timer_initial_delay_obeyed(
 
     assert dummy.mock.call_count == 1
     assert dummy.kwargs['retry'] == 0
-    assert k8s_mocked.sleep_or_wait.call_count == 2
-    assert k8s_mocked.sleep_or_wait.call_args_list[0][0][0] == 5.0
-    assert k8s_mocked.sleep_or_wait.call_args_list[1][0][0] == 1.0
+    assert k8s_mocked.sleep.call_count == 2
+    assert k8s_mocked.sleep.call_args_list[0][0][0] == 5.0
+    assert k8s_mocked.sleep.call_args_list[1][0][0] == 1.0
 
     await dummy.wait_for_daemon_done()

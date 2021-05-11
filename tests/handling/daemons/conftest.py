@@ -6,12 +6,12 @@ import freezegun
 import pytest
 
 import kopf
+from kopf.aiokits.aiotoggles import ToggleSet
 from kopf.reactor.daemons import daemon_killer
 from kopf.reactor.indexing import OperatorIndexers
 from kopf.reactor.processing import process_resource_event
 from kopf.structs.bodies import RawBody
 from kopf.structs.ephemera import Memo
-from kopf.structs.primitives import ToggleSet
 
 
 class DaemonDummy:
@@ -116,7 +116,7 @@ def frozen_time():
 # This makes the sleep realistic for the app code, though executed instantly for the tests.
 @pytest.fixture()
 def manual_time(k8s_mocked, frozen_time):
-    async def sleep_or_wait_substitute(delay, *_, **__):
+    async def sleep_substitute(delay, *_, **__):
         if delay is None:
             pass
         elif isinstance(delay, float):
@@ -124,6 +124,6 @@ def manual_time(k8s_mocked, frozen_time):
         else:
             frozen_time.tick(min(delay))
 
-    k8s_mocked.sleep_or_wait.side_effect = sleep_or_wait_substitute
+    k8s_mocked.sleep.side_effect = sleep_substitute
     yield frozen_time
 

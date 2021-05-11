@@ -24,7 +24,7 @@ async def test_daemon_stopped_on_permanent_error(
 
     assert dummy.mock.call_count == 1
     assert k8s_mocked.patch_obj.call_count == 0
-    assert k8s_mocked.sleep_or_wait.call_count == 0
+    assert k8s_mocked.sleep.call_count == 0
 
     assert_logs([
         "Daemon 'fn' failed permanently: boo!",
@@ -53,7 +53,7 @@ async def test_daemon_stopped_on_arbitrary_errors_with_mode_permanent(
     await dummy.wait_for_daemon_done()
 
     assert dummy.mock.call_count == 1
-    assert k8s_mocked.sleep_or_wait.call_count == 0
+    assert k8s_mocked.sleep.call_count == 0
 
     assert_logs([
         "Daemon 'fn' failed with an exception. Will stop.",
@@ -86,8 +86,8 @@ async def test_daemon_retried_on_temporary_error(
     await dummy.steps['finish'].wait()
     await dummy.wait_for_daemon_done()
 
-    assert k8s_mocked.sleep_or_wait.call_count == 1  # one for each retry
-    assert k8s_mocked.sleep_or_wait.call_args_list[0][0][0] == 1.0  # [call#][args/kwargs][arg#]
+    assert k8s_mocked.sleep.call_count == 1  # one for each retry
+    assert k8s_mocked.sleep.call_args_list[0][0][0] == 1.0  # [call#][args/kwargs][arg#]
 
     assert_logs([
         "Daemon 'fn' failed temporarily: boo!",
@@ -118,8 +118,8 @@ async def test_daemon_retried_on_arbitrary_error_with_mode_temporary(
     await dummy.steps['finish'].wait()
     await dummy.wait_for_daemon_done()
 
-    assert k8s_mocked.sleep_or_wait.call_count == 1  # one for each retry
-    assert k8s_mocked.sleep_or_wait.call_args_list[0][0][0] == 1.0  # [call#][args/kwargs][arg#]
+    assert k8s_mocked.sleep.call_count == 1  # one for each retry
+    assert k8s_mocked.sleep.call_args_list[0][0][0] == 1.0  # [call#][args/kwargs][arg#]
 
     assert_logs([
         "Daemon 'fn' failed with an exception. Will retry.",
@@ -142,10 +142,10 @@ async def test_daemon_retried_until_retries_limit(
     await dummy.steps['called'].wait()
     await dummy.wait_for_daemon_done()
 
-    assert k8s_mocked.sleep_or_wait.call_count == 3  # one for each retry
-    assert k8s_mocked.sleep_or_wait.call_args_list[0][0][0] == 1.0  # [call#][args/kwargs][arg#]
-    assert k8s_mocked.sleep_or_wait.call_args_list[1][0][0] == 1.0  # [call#][args/kwargs][arg#]
-    assert k8s_mocked.sleep_or_wait.call_args_list[2][0][0] == 1.0  # [call#][args/kwargs][arg#]
+    assert k8s_mocked.sleep.call_count == 3  # one for each retry
+    assert k8s_mocked.sleep.call_args_list[0][0][0] == 1.0  # [call#][args/kwargs][arg#]
+    assert k8s_mocked.sleep.call_args_list[1][0][0] == 1.0  # [call#][args/kwargs][arg#]
+    assert k8s_mocked.sleep.call_args_list[2][0][0] == 1.0  # [call#][args/kwargs][arg#]
 
 
 async def test_daemon_retried_until_timeout(
@@ -162,7 +162,7 @@ async def test_daemon_retried_until_timeout(
     await dummy.steps['called'].wait()
     await dummy.wait_for_daemon_done()
 
-    assert k8s_mocked.sleep_or_wait.call_count == 3  # one for each retry
-    assert k8s_mocked.sleep_or_wait.call_args_list[0][0][0] == 1.0  # [call#][args/kwargs][arg#]
-    assert k8s_mocked.sleep_or_wait.call_args_list[1][0][0] == 1.0  # [call#][args/kwargs][arg#]
-    assert k8s_mocked.sleep_or_wait.call_args_list[2][0][0] == 1.0  # [call#][args/kwargs][arg#]
+    assert k8s_mocked.sleep.call_count == 3  # one for each retry
+    assert k8s_mocked.sleep.call_args_list[0][0][0] == 1.0  # [call#][args/kwargs][arg#]
+    assert k8s_mocked.sleep.call_args_list[1][0][0] == 1.0  # [call#][args/kwargs][arg#]
+    assert k8s_mocked.sleep.call_args_list[2][0][0] == 1.0  # [call#][args/kwargs][arg#]
