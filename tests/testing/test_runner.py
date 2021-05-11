@@ -1,7 +1,7 @@
 import pytest
 
-from kopf.reactor.registries import OperatorRegistry
-from kopf.structs.configuration import OperatorSettings
+from kopf._cogs.configs.configuration import OperatorSettings
+from kopf._core.intents.registries import OperatorRegistry
 from kopf.testing import KopfRunner
 
 
@@ -25,7 +25,7 @@ def test_command_invocation_works():
 
 
 def test_registry_and_settings_are_propagated(mocker):
-    operator_mock = mocker.patch('kopf.reactor.running.operator')
+    operator_mock = mocker.patch('kopf._core.reactor.running.operator')
     registry = OperatorRegistry()
     settings = OperatorSettings()
     with KopfRunner(['run', '--standalone'], registry=registry, settings=settings) as runner:

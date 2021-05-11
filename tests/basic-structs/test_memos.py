@@ -2,7 +2,7 @@ import collections.abc
 
 import pytest
 
-from kopf.structs.ephemera import Memo
+from kopf._cogs.structs.ephemera import Memo
 
 
 def test_creation_with_defaults():

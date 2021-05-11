@@ -2,7 +2,7 @@ import types
 
 import pytest
 
-from kopf.utilities.thirdparty import KubernetesModel
+from kopf._cogs.helpers.thirdparty import KubernetesModel
 
 
 @pytest.mark.parametrize('name', ['V1Pod', 'V1ObjectMeta', 'V1PodSpec', 'V1PodTemplateSpec'])

@@ -1,8 +1,8 @@
 import pytest
 
-from kopf.engines.peering import guess_selectors
-from kopf.structs.references import CLUSTER_PEERINGS_K, CLUSTER_PEERINGS_Z, \
-                                    NAMESPACED_PEERINGS_K, NAMESPACED_PEERINGS_Z
+from kopf._cogs.structs.references import CLUSTER_PEERINGS_K, CLUSTER_PEERINGS_Z, \
+                                          NAMESPACED_PEERINGS_K, NAMESPACED_PEERINGS_Z
+from kopf._core.engines.peering import guess_selectors
 
 
 @pytest.mark.parametrize('namespaced, expected_selectors', [

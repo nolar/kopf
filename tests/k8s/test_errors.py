@@ -1,9 +1,9 @@
 import aiohttp
 import pytest
 
-from kopf.clients.auth import APIContext, reauthenticated_request
-from kopf.clients.errors import APIConflictError, APIError, APIForbiddenError, \
-                                APINotFoundError, APIUnauthorizedError, check_response
+from kopf._cogs.clients.auth import APIContext, reauthenticated_request
+from kopf._cogs.clients.errors import APIConflictError, APIError, APIForbiddenError, \
+                                      APINotFoundError, APIUnauthorizedError, check_response
 
 
 @reauthenticated_request

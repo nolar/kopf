@@ -3,11 +3,11 @@ from typing import Type
 
 import pytest
 
-from kopf.storage.diffbase import AnnotationsDiffBaseStorage, DiffBaseStorage, \
-                                  MultiDiffBaseStorage, StatusDiffBaseStorage
-from kopf.structs.bodies import Body, BodyEssence
-from kopf.structs.dicts import FieldSpec
-from kopf.structs.patches import Patch
+from kopf._cogs.configs.diffbase import AnnotationsDiffBaseStorage, DiffBaseStorage, \
+                                        MultiDiffBaseStorage, StatusDiffBaseStorage
+from kopf._cogs.structs.bodies import Body, BodyEssence
+from kopf._cogs.structs.dicts import FieldSpec
+from kopf._cogs.structs.patches import Patch
 
 
 class DualDiffBaseStorage(MultiDiffBaseStorage):

@@ -3,9 +3,9 @@ import asyncio
 import async_timeout
 import pytest
 
-from kopf.structs.references import CLUSTER_PEERINGS_K, CLUSTER_PEERINGS_Z, CRDS, EVENTS, \
-                                    NAMESPACED_PEERINGS_K, NAMESPACED_PEERINGS_Z, \
-                                    NAMESPACES, Backbone, Resource, Selector
+from kopf._cogs.structs.references import CLUSTER_PEERINGS_K, CLUSTER_PEERINGS_Z, CRDS, EVENTS, \
+                                          NAMESPACED_PEERINGS_K, NAMESPACED_PEERINGS_Z, \
+                                          NAMESPACES, Backbone, Resource, Selector
 
 
 @pytest.mark.parametrize('selector', [

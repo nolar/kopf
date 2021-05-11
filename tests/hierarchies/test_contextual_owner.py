@@ -4,13 +4,13 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.causation import ChangingCause, Reason, WatchingCause
-from kopf.reactor.handling import cause_var
-from kopf.reactor.indexing import OperatorIndexers
-from kopf.reactor.invocation import context
-from kopf.structs.bodies import Body, RawBody, RawEvent, RawMeta
-from kopf.structs.ephemera import Memo
-from kopf.structs.patches import Patch
+from kopf._cogs.structs.bodies import Body, RawBody, RawEvent, RawMeta
+from kopf._cogs.structs.ephemera import Memo
+from kopf._cogs.structs.patches import Patch
+from kopf._core.actions.execution import cause_var
+from kopf._core.actions.invocation import context
+from kopf._core.engines.indexing import OperatorIndexers
+from kopf._core.intents.causes import ChangingCause, Reason, WatchingCause
 
 OWNER_API_VERSION = 'owner-api-version'
 OWNER_NAMESPACE = 'owner-namespace'

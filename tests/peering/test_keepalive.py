@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.engines.peering import keepalive
+from kopf._core.engines.peering import keepalive
 
 
 class StopInfiniteCycleException(Exception):
@@ -8,7 +8,7 @@ class StopInfiniteCycleException(Exception):
 
 
 async def test_background_task_runs(mocker, settings, namespaced_peering_resource):
-    touch_mock = mocker.patch('kopf.engines.peering.touch')
+    touch_mock = mocker.patch('kopf._core.engines.peering.touch')
 
     sleep_mock = mocker.patch('asyncio.sleep')
     sleep_mock.side_effect = [None, None, StopInfiniteCycleException]

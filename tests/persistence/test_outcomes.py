@@ -1,4 +1,4 @@
-from kopf.reactor.handling import Outcome, Result
+from kopf._core.actions.execution import Outcome, Result
 
 
 def test_creation_for_ignored_handlers():

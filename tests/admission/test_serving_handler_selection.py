@@ -3,9 +3,9 @@ from unittest.mock import Mock
 import pytest
 
 import kopf
-from kopf.reactor.admission import serve_admission_request
-from kopf.reactor.causation import WebhookType
-from kopf.structs.ids import HandlerId
+from kopf._cogs.structs.ids import HandlerId
+from kopf._core.engines.admission import serve_admission_request
+from kopf._core.intents.causes import WebhookType
 
 
 async def test_all_handlers_with_no_id_or_reason_requested(

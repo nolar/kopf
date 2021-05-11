@@ -1,7 +1,7 @@
 import pytest
 
 import kopf
-from kopf.structs.filters import PRESENT
+from kopf._core.intents.filters import PRESENT
 
 OBJECT_BODY = {
     'apiVersion': 'group/version',

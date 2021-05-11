@@ -5,11 +5,14 @@ from typing import Any, Callable, Collection, List, Optional
 
 import click
 
-from kopf.aiokits import aioadapters
-from kopf.engines import loggers, peering
-from kopf.reactor import registries, running
-from kopf.structs import configuration, credentials, references
-from kopf.utilities import loaders
+from kopf._cogs.aiokits import aioadapters
+from kopf._cogs.configs import configuration
+from kopf._cogs.helpers import loaders
+from kopf._cogs.structs import credentials, references
+from kopf._core.actions import loggers
+from kopf._core.engines import peering
+from kopf._core.intents import registries
+from kopf._core.reactor import running
 
 
 @dataclasses.dataclass()

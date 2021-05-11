@@ -1,7 +1,7 @@
 import pytest
 
-from kopf.reactor.indexing import OperatorIndexer, OperatorIndexers
-from kopf.structs.bodies import Body
+from kopf._cogs.structs.bodies import Body
+from kopf._core.engines.indexing import OperatorIndexer, OperatorIndexers
 
 
 @pytest.fixture()

@@ -10,18 +10,6 @@ The main Kopf module for all the exported functions & classes.
 from kopf import (
     on,  # as a separate name on the public namespace
 )
-from kopf.engines.loggers import (
-    configure,
-    LogFormat,
-    ObjectLogger,
-    LocalObjectLogger,
-)
-from kopf.engines.posting import (
-    event,
-    info,
-    warn,
-    exception,
-)
 from kopf.on import (
     subhandler,
     register,
@@ -29,45 +17,16 @@ from kopf.on import (
     timer,
     index,
 )
-from kopf.reactor import (
-    lifecycles,  # as a separate name on the public namespace
+from kopf._cogs.configs.configuration import (
+    OperatorSettings,
 )
-from kopf.reactor.admission import (
-    AdmissionError,
-)
-from kopf.reactor.handling import (
-    Logger,
-    ErrorsMode,
-    TemporaryError,
-    PermanentError,
-    HandlerTimeoutError,
-    HandlerRetriesError,
-)
-from kopf.reactor.subhandling import (
-    execute,
-)
-from kopf.reactor.lifecycles import (
-    get_default_lifecycle,
-    set_default_lifecycle,
-)
-from kopf.reactor.registries import (
-    OperatorRegistry,
-    get_default_registry,
-    set_default_registry,
-)
-from kopf.reactor.running import (
-    spawn_tasks,
-    run_tasks,
-    operator,
-    run,
-)
-from kopf.storage.diffbase import (
+from kopf._cogs.configs.diffbase import (
     DiffBaseStorage,
     AnnotationsDiffBaseStorage,
     StatusDiffBaseStorage,
     MultiDiffBaseStorage,
 )
-from kopf.storage.progress import (
+from kopf._cogs.configs.progress import (
     ProgressRecord,
     ProgressStorage,
     AnnotationsProgressStorage,
@@ -75,7 +34,7 @@ from kopf.storage.progress import (
     MultiProgressStorage,
     SmartProgressStorage,
 )
-from kopf.structs.bodies import (
+from kopf._cogs.structs.bodies import (
     RawEventType,
     RawEvent,
     RawBody,
@@ -91,57 +50,35 @@ from kopf.structs.bodies import (
     build_object_reference,
     build_owner_reference,
 )
-from kopf.structs.callbacks import (
-    not_,
-    all_,
-    any_,
-    none_,
-)
-from kopf.structs.configuration import (
-    OperatorSettings,
-)
-from kopf.structs.credentials import (
+from kopf._cogs.structs.credentials import (
     LoginError,
     ConnectionInfo,
 )
-from kopf.structs.dicts import (
+from kopf._cogs.structs.dicts import (
     FieldSpec,
     FieldPath,
 )
-from kopf.structs.diffs import (
+from kopf._cogs.structs.diffs import (
     Diff,
     DiffItem,
     DiffOperation,
 )
-from kopf.structs.ephemera import (
+from kopf._cogs.structs.ephemera import (
     Memo,
     Index,
     Store,
 )
-from kopf.structs.filters import (
-    ABSENT,
-    PRESENT,
-)
-from kopf.reactor.causation import (
-    Reason,
-)
-from kopf.structs.ids import (
+from kopf._cogs.structs.ids import (
     HandlerId,
 )
-from kopf.structs.patches import (
+from kopf._cogs.structs.patches import (
     Patch,
 )
-from kopf.structs.primitives import (
-    DaemonStopped,
-    DaemonStoppingReason,
-    SyncDaemonStopperChecker,  # deprecated
-    AsyncDaemonStopperChecker,  # deprecated
-)
-from kopf.structs.references import (
+from kopf._cogs.structs.references import (
     Resource,
     EVERYTHING,
 )
-from kopf.structs.reviews import (
+from kopf._cogs.structs.reviews import (
     WebhookClientConfigService,
     WebhookClientConfig,
     Operation,
@@ -151,7 +88,74 @@ from kopf.structs.reviews import (
     WebhookFn,
     WebhookServerProtocol,
 )
-from kopf.toolkits.hierarchies import (
+from kopf._core.actions import (
+    lifecycles,  # as a separate name on the public namespace
+)
+from kopf._core.actions.execution import (
+    Logger,
+    ErrorsMode,
+    TemporaryError,
+    PermanentError,
+    HandlerTimeoutError,
+    HandlerRetriesError,
+)
+from kopf._core.actions.lifecycles import (
+    get_default_lifecycle,
+    set_default_lifecycle,
+)
+from kopf._core.actions.loggers import (
+    configure,
+    LogFormat,
+    ObjectLogger,
+    LocalObjectLogger,
+)
+from kopf._core.engines.admission import (
+    AdmissionError,
+)
+from kopf._core.engines.posting import (
+    event,
+    info,
+    warn,
+    exception,
+)
+from kopf._core.intents.callbacks import (
+    not_,
+    all_,
+    any_,
+    none_,
+)
+from kopf._core.intents.causes import (
+    Reason,
+)
+from kopf._core.intents.filters import (
+    ABSENT,
+    PRESENT,
+)
+from kopf._core.intents.registries import (
+    OperatorRegistry,
+    get_default_registry,
+    set_default_registry,
+)
+from kopf._core.intents.stoppers import (
+    DaemonStopped,
+    DaemonStoppingReason,
+    SyncDaemonStopperChecker,  # deprecated
+    AsyncDaemonStopperChecker,  # deprecated
+)
+from kopf._core.intents.piggybacking import (
+    login_via_pykube,
+    login_via_client,
+)
+from kopf._core.reactor.running import (
+    spawn_tasks,
+    run_tasks,
+    operator,
+    run,
+)
+from kopf._core.reactor.subhandling import (
+    execute,
+)
+from kopf._kits.hierarchies import (
     adopt,
     label,
     harmonize_naming,
@@ -159,17 +163,13 @@ from kopf.toolkits.hierarchies import (
     append_owner_reference,
     remove_owner_reference,
 )
-from kopf.toolkits.webhooks import (
+from kopf._kits.webhooks import (
     WebhookServer,
     WebhookK3dServer,
     WebhookMinikubeServer,
     WebhookNgrokTunnel,
     WebhookAutoServer,
     WebhookAutoTunnel,
-)
-from kopf.utilities.piggybacking import (
-    login_via_pykube,
-    login_via_client,
 )
 
 __all__ = [

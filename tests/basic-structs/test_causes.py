@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.reactor.causation import ActivityCause, ChangingCause, WatchingCause
+from kopf._core.intents.causes import ActivityCause, ChangingCause, WatchingCause
 
 
 @pytest.mark.parametrize('cls', [ActivityCause, WatchingCause, ChangingCause])

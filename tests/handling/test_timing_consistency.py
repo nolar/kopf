@@ -4,10 +4,10 @@ import datetime
 import freezegun
 
 import kopf
-from kopf.reactor.indexing import OperatorIndexers
-from kopf.reactor.processing import process_resource_event
-from kopf.structs.containers import ResourceMemories
-from kopf.structs.ephemera import Memo
+from kopf._cogs.structs.ephemera import Memo
+from kopf._core.engines.indexing import OperatorIndexers
+from kopf._core.reactor.inventory import ResourceMemories
+from kopf._core.reactor.processing import process_resource_event
 
 
 async def test_consistent_awakening(registry, settings, resource, k8s_mocked, mocker):
@@ -50,7 +50,7 @@ async def test_consistent_awakening(registry, settings, resource, k8s_mocked, mo
     def move_to_tsB(*_, **__):
         frozen_dt.move_to(tsB_delivered)
 
-    state_store = mocker.patch('kopf.storage.states.State.store', side_effect=move_to_tsB)
+    state_store = mocker.patch('kopf._core.actions.progression.State.store', side_effect=move_to_tsB)
     body = {'status': {'kopf': {'progress': {'some-id': {'delayed': ts0_scheduled}}}}}
 
     # Simulate the call as if the event has just arrived on the watch-stream.

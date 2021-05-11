@@ -2,12 +2,13 @@ import json
 
 import pytest
 
-from kopf.storage.conventions import StorageKeyFormingConvention
-from kopf.storage.diffbase import AnnotationsDiffBaseStorage
-from kopf.storage.progress import AnnotationsProgressStorage, ProgressRecord, SmartProgressStorage
-from kopf.structs.bodies import Body
-from kopf.structs.ids import HandlerId
-from kopf.structs.patches import Patch
+from kopf._cogs.configs.conventions import StorageKeyFormingConvention
+from kopf._cogs.configs.diffbase import AnnotationsDiffBaseStorage
+from kopf._cogs.configs.progress import AnnotationsProgressStorage, \
+                                        ProgressRecord, SmartProgressStorage
+from kopf._cogs.structs.bodies import Body
+from kopf._cogs.structs.ids import HandlerId
+from kopf._cogs.structs.patches import Patch
 
 ANNOTATIONS_POPULATING_STORAGES = [
     AnnotationsProgressStorage,

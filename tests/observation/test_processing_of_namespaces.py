@@ -3,9 +3,9 @@ import asyncio
 import async_timeout
 import pytest
 
-from kopf.reactor.observation import process_discovered_namespace_event
-from kopf.structs.bodies import RawBody, RawEvent
-from kopf.structs.references import Insights
+from kopf._cogs.structs.bodies import RawBody, RawEvent
+from kopf._cogs.structs.references import Insights
+from kopf._core.reactor.observation import process_discovered_namespace_event
 
 
 async def test_initial_listing_is_ignored():

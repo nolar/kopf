@@ -2,7 +2,7 @@ import re
 
 import pytest
 
-from kopf.structs.references import match_namespace
+from kopf._cogs.structs.references import match_namespace
 
 
 @pytest.mark.parametrize('name, pattern, expected', [

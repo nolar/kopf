@@ -64,9 +64,9 @@ def invoke(runner):
 
 @pytest.fixture()
 def preload(mocker):
-    return mocker.patch('kopf.utilities.loaders.preload')
+    return mocker.patch('kopf._cogs.helpers.loaders.preload')
 
 
 @pytest.fixture()
 def real_run(mocker):
-    return mocker.patch('kopf.reactor.running.run')
+    return mocker.patch('kopf._core.reactor.running.run')

@@ -1,6 +1,6 @@
-from kopf.reactor.observation import revise_namespaces
-from kopf.structs.bodies import RawBody, RawEvent
-from kopf.structs.references import Insights
+from kopf._cogs.structs.bodies import RawBody, RawEvent
+from kopf._cogs.structs.references import Insights
+from kopf._core.reactor.observation import revise_namespaces
 
 
 def test_bodies_for_initial_population(registry):

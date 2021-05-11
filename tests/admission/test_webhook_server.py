@@ -5,9 +5,9 @@ import ssl
 import aiohttp
 import pytest
 
-from kopf.reactor.admission import AmbiguousResourceError, MissingDataError, \
-                                   UnknownResourceError, WebhookError
-from kopf.toolkits.webhooks import WebhookK3dServer, WebhookMinikubeServer, WebhookServer
+from kopf._core.engines.admission import AmbiguousResourceError, MissingDataError, \
+                                         UnknownResourceError, WebhookError
+from kopf._kits.webhooks import WebhookK3dServer, WebhookMinikubeServer, WebhookServer
 
 
 async def test_starts_as_http_ipv4(responder):

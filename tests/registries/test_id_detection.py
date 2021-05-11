@@ -1,6 +1,6 @@
 import functools
 
-from kopf.reactor.registries import get_callable_id
+from kopf._core.intents.registries import get_callable_id
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.

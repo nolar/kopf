@@ -4,8 +4,8 @@ import logging
 import async_timeout
 import pytest
 
-from kopf.aiokits.aiotoggles import ToggleSet
-from kopf.clients.watching import streaming_block
+from kopf._cogs.aiokits.aiotoggles import ToggleSet
+from kopf._cogs.clients.watching import streaming_block
 
 
 async def test_pausing_is_ignored_if_turned_off(

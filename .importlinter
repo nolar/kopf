@@ -1,0 +1,110 @@
+; Importing constraints for layered layout of modules and packages.
+; The goal is higher cohesion and lower coupling of components.
+; https://import-linter.readthedocs.io/en/stable/contract_types.html
+[importlinter]
+root_package = kopf
+include_external_packages = True
+contract_types =
+    conditional: _importlinter_conditional.ConditionalImportContract
+
+[importlinter:contract:root-layers]
+name = The root framework modules must be layered
+type = layers
+layers =
+    kopf.on
+    kopf._kits
+    kopf._core
+    kopf._cogs
+
+[importlinter:contract:core-layers]
+name = The internal core must be layered
+type = layers
+layers =
+    kopf._core.reactor
+    kopf._core.engines
+    kopf._core.intents
+    kopf._core.actions
+
+[importlinter:contract:cogs-layers]
+name = The internal cogs must be layered
+type = layers
+layers =
+    kopf._cogs.clients
+    kopf._cogs.configs
+    kopf._cogs.structs
+    kopf._cogs.aiokits
+    kopf._cogs.helpers
+
+[importlinter:contract:progress-storage]
+name = Progress storages must be persistence settings
+type = layers
+layers =
+    kopf._cogs.configs.configuration
+    kopf._cogs.configs.progress
+    kopf._cogs.configs.conventions
+
+[importlinter:contract:diffbase-storage]
+name = Diffbase storages must be persistence settings
+type = layers
+layers =
+    kopf._cogs.configs.configuration
+    kopf._cogs.configs.diffbase
+    kopf._cogs.configs.conventions
+
+[importlinter:contract:independent-storages]
+name = Storage types must be unaware of each other
+type = independence
+modules =
+    kopf._cogs.configs.diffbase
+    kopf._cogs.configs.progress
+
+[importlinter:contract:independent-aiokits]
+name = Most asyncio kits must be unaware of each other
+type = independence
+modules =
+    kopf._cogs.aiokits.aioadapters
+    kopf._cogs.aiokits.aiobindings
+    kopf._cogs.aiokits.aioenums
+    kopf._cogs.aiokits.aiotoggles
+    kopf._cogs.aiokits.aiovalues
+    ; but not aiotasks & aiotime!
+
+[importlinter:contract:ban-toolkits]
+name = The internals must be unaware of user-facing toolkits
+type = forbidden
+source_modules =
+    kopf._cogs
+    kopf._core
+forbidden_modules =
+    kopf._kits
+
+[importlinter:contract:indenpendent-toolkits]
+name = The user-facing toolkits must be unaware of each other
+type = independence
+modules =
+    kopf._kits.hierarchies
+    kopf._kits.runner
+    kopf._kits.webhooks
+
+[importlinter:contract:allow-3rd-party]
+name = 3rd-party clients must be explicitly allowed
+type = forbidden
+source_modules =
+    kopf
+forbidden_modules =
+    pykube
+    kubernetes
+ignore_imports =
+    kopf._core.intents.piggybacking -> pykube
+    kopf._core.intents.piggybacking -> kubernetes
+    kopf._cogs.helpers.thirdparty -> pykube
+    kopf._cogs.helpers.thirdparty -> kubernetes
+
+[importlinter:contract:secure-3rd-party]
+name = 3rd-party clients must be secured by conditional imports
+type = conditional
+source_modules =
+    kopf
+conditional_modules =
+    pykube
+    kubernetes

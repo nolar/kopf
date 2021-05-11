@@ -4,7 +4,7 @@ from unittest.mock import call
 
 import pytest
 
-from kopf.structs.throttlers import Throttler, throttled
+from kopf._core.actions.throttlers import Throttler, throttled
 
 
 @pytest.fixture(autouse=True)
@@ -14,7 +14,7 @@ def clock(mocker):
 
 @pytest.fixture(autouse=True)
 def sleep(mocker):
-    return mocker.patch('kopf.aiokits.aiotime.sleep', return_value=None)
+    return mocker.patch('kopf._cogs.aiokits.aiotime.sleep', return_value=None)
 
 
 async def test_remains_inactive_on_success():

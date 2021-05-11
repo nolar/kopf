@@ -2,7 +2,7 @@ import copy
 
 import pytest
 
-from kopf.structs.dicts import cherrypick
+from kopf._cogs.structs.dicts import cherrypick
 
 
 def test_overrides_existing_keys():

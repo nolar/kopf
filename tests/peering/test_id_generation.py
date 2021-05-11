@@ -3,7 +3,7 @@ import os
 import freezegun
 import pytest
 
-from kopf.engines.peering import detect_own_id
+from kopf._core.engines.peering import detect_own_id
 
 SAME_GOOD = [
     ('some-host.example.com', 'other-host.example.com'),

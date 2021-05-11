@@ -4,12 +4,12 @@ from unittest.mock import Mock
 import freezegun
 import pytest
 
-from kopf.reactor.causation import HANDLER_REASONS, Reason
-from kopf.reactor.handling import Outcome
-from kopf.storage.progress import SmartProgressStorage, StatusProgressStorage
-from kopf.storage.states import State, StateCounters, deliver_results
-from kopf.structs.bodies import Body
-from kopf.structs.patches import Patch
+from kopf._cogs.configs.progress import SmartProgressStorage, StatusProgressStorage
+from kopf._cogs.structs.bodies import Body
+from kopf._cogs.structs.patches import Patch
+from kopf._core.actions.execution import Outcome
+from kopf._core.actions.progression import State, StateCounters, deliver_results
+from kopf._core.intents.causes import HANDLER_REASONS, Reason
 
 # Timestamps: time zero (0), before (B), after (A), and time zero+1s (1).
 TSB = datetime.datetime(2020, 12, 31, 23, 59, 59, 000000)

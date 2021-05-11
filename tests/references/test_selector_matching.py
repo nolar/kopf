@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.structs.references import EVERYTHING, Resource, Selector
+from kopf._cogs.structs.references import EVERYTHING, Resource, Selector
 
 
 @pytest.fixture()

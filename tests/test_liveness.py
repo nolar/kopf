@@ -3,12 +3,12 @@ import asyncio
 import aiohttp
 import pytest
 
-from kopf.engines.probing import health_reporter
-from kopf.reactor.causation import Activity
-from kopf.reactor.indexing import OperatorIndexers
-from kopf.reactor.registries import OperatorRegistry
-from kopf.structs.ephemera import Memo
-from kopf.structs.handlers import ActivityHandler
+from kopf._cogs.structs.ephemera import Memo
+from kopf._core.engines.indexing import OperatorIndexers
+from kopf._core.engines.probing import health_reporter
+from kopf._core.intents.causes import Activity
+from kopf._core.intents.handlers import ActivityHandler
+from kopf._core.intents.registries import OperatorRegistry
 
 
 @pytest.fixture()

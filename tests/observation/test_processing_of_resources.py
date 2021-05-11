@@ -5,9 +5,9 @@ import async_timeout
 import pytest
 
 import kopf
-from kopf.reactor.observation import process_discovered_resource_event
-from kopf.structs.bodies import RawBody, RawEvent
-from kopf.structs.references import NAMESPACES, Insights, Resource
+from kopf._cogs.structs.bodies import RawBody, RawEvent
+from kopf._cogs.structs.references import NAMESPACES, Insights, Resource
+from kopf._core.reactor.observation import process_discovered_resource_event
 
 # Implementation awareness: the events only trigger the re-scan, so the fields can be reduced
 # to only the group name which is being rescanned. Other fields are ignored in the events.

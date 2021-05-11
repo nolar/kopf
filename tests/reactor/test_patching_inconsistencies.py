@@ -3,10 +3,10 @@ import logging
 import aiohttp.web
 import pytest
 
-from kopf.engines.loggers import LocalObjectLogger
-from kopf.reactor.effects import patch_and_check
-from kopf.structs.bodies import Body
-from kopf.structs.patches import Patch
+from kopf._cogs.structs.bodies import Body
+from kopf._cogs.structs.patches import Patch
+from kopf._core.actions.application import patch_and_check
+from kopf._core.actions.loggers import LocalObjectLogger
 
 # Assume that the underlying patch_obj() is already tested with/without status as a sub-resource.
 # Assume that the underlying diff() is already tested with left/right/full scopes and all values.

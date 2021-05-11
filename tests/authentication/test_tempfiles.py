@@ -1,7 +1,7 @@
 import gc
 import os.path
 
-from kopf.clients.auth import _TempFiles
+from kopf._cogs.clients.auth import _TempFiles
 
 
 def test_created():

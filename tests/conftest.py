@@ -15,14 +15,14 @@ import pytest
 import pytest_mock
 
 import kopf
-from kopf.clients.auth import APIContext
-from kopf.engines.loggers import ObjectPrefixingTextFormatter, configure
-from kopf.engines.posting import settings_var
-from kopf.reactor.registries import OperatorRegistry
-from kopf.structs.configuration import OperatorSettings
-from kopf.structs.containers import ResourceMemories
-from kopf.structs.credentials import ConnectionInfo, Vault, VaultKey
-from kopf.structs.references import Resource, Selector
+from kopf._cogs.clients.auth import APIContext
+from kopf._cogs.configs.configuration import OperatorSettings
+from kopf._cogs.structs.credentials import ConnectionInfo, Vault, VaultKey
+from kopf._cogs.structs.references import Resource, Selector
+from kopf._core.actions.loggers import ObjectPrefixingTextFormatter, configure
+from kopf._core.engines.posting import settings_var
+from kopf._core.intents.registries import OperatorRegistry
+from kopf._core.reactor.inventory import ResourceMemories
 
 
 def pytest_configure(config):
@@ -401,7 +401,7 @@ def fake_vault(mocker, hostname):
 
     Any blocking activities are mocked, so that the tests do not hang.
     """
-    from kopf.clients import auth
+    from kopf._cogs.clients import auth
 
     key = VaultKey('fixture')
     info = ConnectionInfo(server=f'https://{hostname}')

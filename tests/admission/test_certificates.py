@@ -1,7 +1,7 @@
 import certvalidator
 import pytest
 
-from kopf.toolkits.webhooks import WebhookServer
+from kopf._kits.webhooks import WebhookServer
 
 
 def test_missing_oscrypto(no_oscrypto):

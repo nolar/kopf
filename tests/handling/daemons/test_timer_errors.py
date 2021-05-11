@@ -1,7 +1,7 @@
 import logging
 
 import kopf
-from kopf.reactor.handling import ErrorsMode, PermanentError, TemporaryError
+from kopf._core.actions.execution import ErrorsMode, PermanentError, TemporaryError
 
 
 async def test_timer_stopped_on_permanent_error(

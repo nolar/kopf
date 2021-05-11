@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from kopf.toolkits.webhooks import WebhookNgrokTunnel
+from kopf._kits.webhooks import WebhookNgrokTunnel
 
 
 async def test_missing_pyngrok(no_pyngrok, responder):

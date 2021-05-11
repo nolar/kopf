@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.structs.references import EVERYTHING, Selector
+from kopf._cogs.structs.references import EVERYTHING, Selector
 
 
 def test_no_args():

@@ -1,8 +1,8 @@
 import pytest
 
 import kopf
-from kopf.reactor.admission import build_webhooks
-from kopf.structs.references import Resource
+from kopf._cogs.structs.references import Resource
+from kopf._core.engines.admission import build_webhooks
 
 
 @pytest.fixture()

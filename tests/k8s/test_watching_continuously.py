@@ -13,7 +13,7 @@ import logging
 
 import pytest
 
-from kopf.clients.watching import Bookmark, WatchingError, continuous_watch
+from kopf._cogs.clients.watching import Bookmark, WatchingError, continuous_watch
 
 STREAM_WITH_NORMAL_EVENTS = [
     {'type': 'ADDED', 'object': {'spec': 'a'}},

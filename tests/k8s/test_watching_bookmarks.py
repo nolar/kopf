@@ -1,11 +1,9 @@
 import asyncio
 import json
-import logging
 
 import aiohttp.web
-import pytest
 
-from kopf.clients.watching import Bookmark, continuous_watch
+from kopf._cogs.clients.watching import Bookmark, continuous_watch
 
 
 async def test_listed_is_inbetween(

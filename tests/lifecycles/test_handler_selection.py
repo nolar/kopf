@@ -1,8 +1,8 @@
 import pytest
 
 import kopf
-from kopf.reactor.handling import Outcome
-from kopf.storage.states import State
+from kopf._core.actions.execution import Outcome
+from kopf._core.actions.progression import State
 
 
 @pytest.mark.parametrize('lifecycle', [

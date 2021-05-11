@@ -1,7 +1,7 @@
 import pytest
 
 import kopf
-from kopf.structs.bodies import Body
+from kopf._cogs.structs.bodies import Body
 
 
 def test_in_owner_reference_appending():

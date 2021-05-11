@@ -1,11 +1,11 @@
 import pytest
 
 import kopf
-from kopf.reactor.causation import HANDLER_REASONS, Activity, Reason, WebhookCause
-from kopf.reactor.handling import ErrorsMode, handler_var
-from kopf.reactor.invocation import context
-from kopf.reactor.registries import ChangingRegistry, OperatorRegistry
-from kopf.reactor.subhandling import subregistry_var
+from kopf._core.actions.execution import ErrorsMode, handler_var
+from kopf._core.actions.invocation import context
+from kopf._core.intents.causes import HANDLER_REASONS, Activity, Reason, WebhookCause
+from kopf._core.intents.registries import ChangingRegistry, OperatorRegistry
+from kopf._core.reactor.subhandling import subregistry_var
 
 
 def test_on_startup_minimal():
@@ -260,7 +260,7 @@ def test_on_probe_with_all_kwargs():
 def test_on_resume_with_most_kwargs(mocker, reason, cause_factory, resource):
     registry = OperatorRegistry()
     cause = cause_factory(resource=resource, reason=reason, initial=True)
-    mocker.patch('kopf.reactor.registries.match', return_value=True)
+    mocker.patch('kopf._core.intents.registries.match', return_value=True)
 
     when = lambda **_: False
 
@@ -297,7 +297,7 @@ def test_on_resume_with_most_kwargs(mocker, reason, cause_factory, resource):
 def test_on_create_with_most_kwargs(mocker, cause_factory, resource):
     registry = OperatorRegistry()
     cause = cause_factory(resource=resource, reason=Reason.CREATE)
-    mocker.patch('kopf.reactor.registries.match', return_value=True)
+    mocker.patch('kopf._core.intents.registries.match', return_value=True)
 
     when = lambda **_: False
 
@@ -332,7 +332,7 @@ def test_on_create_with_most_kwargs(mocker, cause_factory, resource):
 def test_on_update_with_most_kwargs(mocker, cause_factory, resource):
     registry = OperatorRegistry()
     cause = cause_factory(resource=resource, reason=Reason.UPDATE)
-    mocker.patch('kopf.reactor.registries.match', return_value=True)
+    mocker.patch('kopf._core.intents.registries.match', return_value=True)
 
     when = lambda **_: False
 
@@ -371,7 +371,7 @@ def test_on_update_with_most_kwargs(mocker, cause_factory, resource):
 def test_on_delete_with_most_kwargs(mocker, cause_factory, optional, resource):
     registry = OperatorRegistry()
     cause = cause_factory(resource=resource, reason=Reason.DELETE)
-    mocker.patch('kopf.reactor.registries.match', return_value=True)
+    mocker.patch('kopf._core.intents.registries.match', return_value=True)
 
     when = lambda **_: False
 
@@ -409,7 +409,7 @@ def test_on_field_with_most_kwargs(mocker, cause_factory, resource):
     old = {'field': {'subfield': 'old'}}
     new = {'field': {'subfield': 'new'}}
     cause = cause_factory(resource=resource, reason=Reason.UPDATE, old=old, new=new, body=new)
-    mocker.patch('kopf.reactor.registries.match', return_value=True)
+    mocker.patch('kopf._core.intents.registries.match', return_value=True)
 
     when = lambda **_: False
 
@@ -545,7 +545,7 @@ def test_field_with_value(mocker, cause_factory, decorator, causeargs, handlers_
     old = {'field': {'subfield': 'old'}}
     new = {'field': {'subfield': 'new'}}
     cause = cause_factory(resource=resource, old=old, new=new, body=new, **causeargs)
-    mocker.patch('kopf.reactor.registries.match', return_value=True)
+    mocker.patch('kopf._core.intents.registries.match', return_value=True)
 
     @decorator(*resource, field='spec.field', value='value')
     def fn(**_):
@@ -564,7 +564,7 @@ def test_field_with_value(mocker, cause_factory, decorator, causeargs, handlers_
 ])
 def test_field_with_oldnew(mocker, cause_factory, decorator, causeargs, handlers_prop, resource, registry):
     cause = cause_factory(resource=resource, **causeargs)
-    mocker.patch('kopf.reactor.registries.match', return_value=True)
+    mocker.patch('kopf._core.intents.registries.match', return_value=True)
 
     @decorator(*resource, field='spec.field', old='old', new='new')
     def fn(**_):

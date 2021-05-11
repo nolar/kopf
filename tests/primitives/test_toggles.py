@@ -3,7 +3,7 @@ import asyncio
 import async_timeout
 import pytest
 
-from kopf.aiokits.aiotoggles import Toggle
+from kopf._cogs.aiokits.aiotoggles import Toggle
 
 
 async def test_created_as_off():

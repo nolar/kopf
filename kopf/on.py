@@ -13,8 +13,10 @@ This module is a part of the framework's public interface.
 # TODO: add cluster=True support (different API methods)
 from typing import Any, Callable, Optional, Union
 
-from kopf.reactor import causation, handling, registries, subhandling
-from kopf.structs import callbacks, dicts, filters, handlers, references, reviews
+from kopf._cogs.structs import dicts, references, reviews
+from kopf._core.actions import execution
+from kopf._core.intents import callbacks, causes, filters, handlers, registries
+from kopf._core.reactor import subhandling
 
 ActivityDecorator = Callable[[callbacks.ActivityFn], callbacks.ActivityFn]
 IndexingDecorator = Callable[[callbacks.IndexingFn], callbacks.IndexingFn]
@@ -30,7 +32,7 @@ def startup(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handling.ErrorsMode] = None,
+        errors: Optional[execution.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -45,7 +47,7 @@ def startup(  # lgtm[py/similar-function]
         handler = handlers.ActivityHandler(
             fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
-            activity=causation.Activity.STARTUP,
+            activity=causes.Activity.STARTUP,
         )
         real_registry._activities.append(handler)
         return fn
@@ -57,7 +59,7 @@ def cleanup(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handling.ErrorsMode] = None,
+        errors: Optional[execution.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -72,7 +74,7 @@ def cleanup(  # lgtm[py/similar-function]
         handler = handlers.ActivityHandler(
             fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
-            activity=causation.Activity.CLEANUP,
+            activity=causes.Activity.CLEANUP,
         )
         real_registry._activities.append(handler)
         return fn
@@ -84,7 +86,7 @@ def login(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handling.ErrorsMode] = None,
+        errors: Optional[execution.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -100,7 +102,7 @@ def login(  # lgtm[py/similar-function]
         handler = handlers.ActivityHandler(
             fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
-            activity=causation.Activity.AUTHENTICATION,
+            activity=causes.Activity.AUTHENTICATION,
         )
         real_registry._activities.append(handler)
         return fn
@@ -112,7 +114,7 @@ def probe(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handling.ErrorsMode] = None,
+        errors: Optional[execution.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -128,7 +130,7 @@ def probe(  # lgtm[py/similar-function]
         handler = handlers.ActivityHandler(
             fn=fn, id=real_id, param=param,
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
-            activity=causation.Activity.PROBE,
+            activity=causes.Activity.PROBE,
         )
         real_registry._activities.append(handler)
         return fn
@@ -183,7 +185,7 @@ def validate(  # lgtm[py/similar-function]
             errors=None, timeout=None, retries=None, backoff=None,  # TODO: add some meaning later
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value,
-            reason=causation.WebhookType.VALIDATING, operation=operation,
+            reason=causes.WebhookType.VALIDATING, operation=operation,
             persistent=persistent, side_effects=side_effects, ignore_failures=ignore_failures,
         )
         real_registry._webhooks.append(handler)
@@ -239,7 +241,7 @@ def mutate(  # lgtm[py/similar-function]
             errors=None, timeout=None, retries=None, backoff=None,  # TODO: add some meaning later
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value,
-            reason=causation.WebhookType.MUTATING, operation=operation,
+            reason=causes.WebhookType.MUTATING, operation=operation,
             persistent=persistent, side_effects=side_effects, ignore_failures=ignore_failures,
         )
         real_registry._webhooks.append(handler)
@@ -263,7 +265,7 @@ def resume(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handling.ErrorsMode] = None,
+        errors: Optional[execution.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -320,7 +322,7 @@ def create(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handling.ErrorsMode] = None,
+        errors: Optional[execution.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -353,7 +355,7 @@ def create(  # lgtm[py/similar-function]
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=None, new=None, field_needs_change=False,
             initial=None, deleted=None, requires_finalizer=None,
-            reason=causation.Reason.CREATE,
+            reason=causes.Reason.CREATE,
         )
         real_registry._changing.append(handler)
         return fn
@@ -376,7 +378,7 @@ def update(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handling.ErrorsMode] = None,
+        errors: Optional[execution.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -411,7 +413,7 @@ def update(  # lgtm[py/similar-function]
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=old, new=new, field_needs_change=True,
             initial=None, deleted=None, requires_finalizer=None,
-            reason=causation.Reason.UPDATE,
+            reason=causes.Reason.UPDATE,
         )
         real_registry._changing.append(handler)
         return fn
@@ -434,7 +436,7 @@ def delete(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handling.ErrorsMode] = None,
+        errors: Optional[execution.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -468,7 +470,7 @@ def delete(  # lgtm[py/similar-function]
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value, old=None, new=None, field_needs_change=False,
             initial=None, deleted=None, requires_finalizer=bool(not optional),
-            reason=causation.Reason.DELETE,
+            reason=causes.Reason.DELETE,
         )
         real_registry._changing.append(handler)
         return fn
@@ -491,7 +493,7 @@ def field(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handling.ErrorsMode] = None,
+        errors: Optional[execution.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -549,7 +551,7 @@ def index(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handling.ErrorsMode] = None,
+        errors: Optional[execution.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -653,7 +655,7 @@ def daemon(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handling.ErrorsMode] = None,
+        errors: Optional[execution.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -715,7 +717,7 @@ def timer(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handling.ErrorsMode] = None,
+        errors: Optional[execution.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -764,7 +766,7 @@ def subhandler(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handling.ErrorsMode] = None,
+        errors: Optional[execution.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -808,7 +810,7 @@ def subhandler(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ChangingFn,
     ) -> callbacks.ChangingFn:
-        parent_handler = handling.handler_var.get()
+        parent_handler = execution.handler_var.get()
         if not isinstance(parent_handler, handlers.ChangingHandler):
             raise TypeError("Sub-handlers are only supported for resource-changing handlers.")
         _warn_incompatible_parent_with_oldnew(parent_handler, old, new)
@@ -838,7 +840,7 @@ def register(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        errors: Optional[handling.ErrorsMode] = None,
+        errors: Optional[execution.ErrorsMode] = None,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         backoff: Optional[float] = None,
@@ -908,13 +910,13 @@ def _warn_conflicting_values(
 
 
 def _warn_incompatible_parent_with_oldnew(
-        handler: handling.Handler,
+        handler: execution.Handler,
         old: Any,
         new: Any,
 ) -> None:
     if old is not None or new is not None:
         if isinstance(handler, handlers.ChangingHandler):
-            is_on_update = handler.reason == causation.Reason.UPDATE
+            is_on_update = handler.reason == causes.Reason.UPDATE
             is_on_field = handler.reason is None and not handler.initial
             if not is_on_update and not is_on_field:
                 raise TypeError("Filters old=/new= can only be used in update handlers.")

@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.structs.dicts import parse_field
+from kopf._cogs.structs.dicts import parse_field
 
 
 def test_from_none():

@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.structs.credentials import ConnectionInfo, LoginError, Vault, VaultKey
+from kopf._cogs.structs.credentials import ConnectionInfo, LoginError, Vault, VaultKey
 
 
 async def test_evals_as_false_when_empty():

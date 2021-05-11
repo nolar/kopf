@@ -1,8 +1,8 @@
 import aiohttp.web
 import pytest
 
-from kopf.clients.creating import create_obj
-from kopf.clients.errors import APIError
+from kopf._cogs.clients.creating import create_obj
+from kopf._cogs.clients.errors import APIError
 
 
 async def test_simple_body_with_arguments(

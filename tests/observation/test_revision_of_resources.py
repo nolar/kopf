@@ -1,8 +1,8 @@
 import pytest
 
 import kopf
-from kopf.reactor.observation import revise_resources
-from kopf.structs.references import EVERYTHING, Insights, Resource
+from kopf._cogs.structs.references import EVERYTHING, Insights, Resource
+from kopf._core.reactor.observation import revise_resources
 
 VERBS = ['list', 'watch', 'patch']
 

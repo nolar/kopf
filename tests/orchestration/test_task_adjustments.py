@@ -5,11 +5,11 @@ from unittest.mock import Mock
 
 import pytest
 
-from kopf.aiokits import aiotasks, aiotoggles
-from kopf.engines.peering import Identity
-from kopf.reactor.orchestration import Ensemble, EnsembleKey, adjust_tasks
-from kopf.structs import bodies
-from kopf.structs.references import Insights, Resource
+from kopf._cogs.aiokits import aiotasks, aiotoggles
+from kopf._cogs.structs import bodies
+from kopf._cogs.structs.references import Insights, Resource
+from kopf._core.engines.peering import Identity
+from kopf._core.reactor.orchestration import Ensemble, EnsembleKey, adjust_tasks
 
 
 async def processor(*, raw_event: bodies.RawEvent, stream_pressure: Optional[asyncio.Event]) -> None:
@@ -25,7 +25,7 @@ class K8sMocks:
 def k8s_mocked(mocker, resp_mocker):
     # We mock on the level of our own K8s API wrappers, not the K8s client.
     return K8sMocks(
-        patch_obj=mocker.patch('kopf.clients.patching.patch_obj', return_value={}),
+        patch_obj=mocker.patch('kopf._cogs.clients.patching.patch_obj', return_value={}),
     )
 
 

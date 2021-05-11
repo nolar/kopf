@@ -3,12 +3,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from kopf.reactor.causation import WatchingCause
-from kopf.reactor.registries import match, prematch
-from kopf.structs.bodies import Body
-from kopf.structs.dicts import parse_field
-from kopf.structs.handlers import WatchingHandler
-from kopf.structs.references import Resource
+from kopf._cogs.structs.bodies import Body
+from kopf._cogs.structs.dicts import parse_field
+from kopf._cogs.structs.references import Resource
+from kopf._core.intents.causes import WatchingCause
+from kopf._core.intents.handlers import WatchingHandler
+from kopf._core.intents.registries import match, prematch
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.

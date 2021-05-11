@@ -5,7 +5,7 @@ import subprocess
 
 import pytest
 
-from kopf.reactor.registries import SmartOperatorRegistry
+from kopf._core.intents.registries import SmartOperatorRegistry
 
 root_dir = os.path.relpath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 examples = sorted(glob.glob(os.path.join(root_dir, 'examples/*/')))

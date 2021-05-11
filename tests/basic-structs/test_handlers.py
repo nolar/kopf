@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.structs.handlers import ActivityHandler, ChangingHandler
+from kopf._core.intents.handlers import ActivityHandler, ChangingHandler
 
 
 @pytest.mark.parametrize('cls', [ActivityHandler, ChangingHandler])

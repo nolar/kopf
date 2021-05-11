@@ -2,7 +2,7 @@ import collections.abc
 
 import pytest
 
-from kopf.structs.diffs import DiffOperation, DiffScope, diff
+from kopf._cogs.structs.diffs import DiffOperation, DiffScope, diff
 
 
 @pytest.mark.parametrize('scope', list(DiffScope))

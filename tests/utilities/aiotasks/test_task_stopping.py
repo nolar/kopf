@@ -4,7 +4,7 @@ import logging
 import async_timeout
 import pytest
 
-from kopf.aiokits.aiotasks import create_task, stop
+from kopf._cogs.aiokits.aiotasks import create_task, stop
 
 
 async def simple() -> None:

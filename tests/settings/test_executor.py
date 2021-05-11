@@ -3,7 +3,7 @@ import threading
 from unittest.mock import MagicMock
 
 import kopf
-from kopf.reactor.invocation import invoke
+from kopf._core.actions.invocation import invoke
 
 
 class CatchyExecutor(concurrent.futures.ThreadPoolExecutor):

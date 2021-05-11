@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.toolkits.webhooks import ClusterDetector, WebhookAutoServer, WebhookAutoTunnel
+from kopf._kits.webhooks import ClusterDetector, WebhookAutoServer, WebhookAutoTunnel
 
 
 # Reproducing the realistic environment would be costly and difficult,
