@@ -71,7 +71,7 @@ async def test_daemon_exits_gracefully_and_instantly_on_operator_pausing(
     # which are tested by the paused operators elsewhere (test_daemon_spawning.py).
     # We only test that it is capable for respawning (not forever-stopped):
     memory = await memories.recall(event_object)
-    assert not memory.forever_stopped
+    assert not memory.daemons_memory.forever_stopped
 
 
 async def test_daemon_exits_instantly_via_cancellation_with_backoff(

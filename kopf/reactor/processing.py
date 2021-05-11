@@ -21,8 +21,8 @@ from kopf.engines import loggers, posting
 from kopf.reactor import causation, daemons, effects, handling, \
                          indexing, lifecycles, registries, subhandling
 from kopf.storage import finalizers, states
-from kopf.structs import bodies, configuration, containers, diffs, \
-                         ephemera, patches, primitives, references
+from kopf.structs import bodies, configuration, containers, diffs, ephemera, \
+                         patches, primitives, references, throttlers
 
 
 async def process_resource_event(
@@ -49,9 +49,9 @@ async def process_resource_event(
     # Recall what is stored about that object. Share it in little portions with the consumers.
     # And immediately forget it if the object is deleted from the cluster (but keep in memory).
     raw_type, raw_body = raw_event['type'], raw_event['object']
-    memory = await memories.recall(raw_body, noticed_by_listing=raw_type is None, memo=memobase)
-    if memory.live_fresh_body is not None:
-        memory.live_fresh_body._replace_with(raw_body)
+    memory = await memories.recall(raw_body, noticed_by_listing=raw_type is None, memobase=memobase)
+    if memory.daemons_memory.live_fresh_body is not None:
+        memory.daemons_memory.live_fresh_body._replace_with(raw_body)
     if raw_type == 'DELETED':
         await memories.forget(raw_body)
 
@@ -60,7 +60,8 @@ async def process_resource_event(
     # Why here? 1. Before it splits into multiple causes & handlers for the same object's body;
     # 2. After it is batched (queueing); 3. While the "raw" parsed JSON is still known;
     # 4. Same as where a patch object of a similar wrapping semantics is created.
-    body = memory.live_fresh_body if memory.live_fresh_body is not None else bodies.Body(raw_body)
+    live_fresh_body = memory.daemons_memory.live_fresh_body
+    body = live_fresh_body if live_fresh_body is not None else bodies.Body(raw_body)
     patch = patches.Patch()
 
     # Different loggers for different cases with different verbosity and exposure.
@@ -72,7 +73,7 @@ async def process_resource_event(
     # to prevent queue overfilling, but the processing is skipped (events are ignored).
     # Choice of place: late enough to have a per-resource memory for a throttler; also, a logger.
     # But early enough to catch environment errors from K8s API, and from most of the complex code.
-    async with effects.throttled(
+    async with throttlers.throttled(
         throttler=memory.error_throttler,
         logger=local_logger,
         delays=settings.batching.error_delays,
@@ -92,7 +93,8 @@ async def process_resource_event(
                 resource=resource,
                 raw_event=raw_event,
                 body=body,
-                memory=memory,
+                memo=memory.memo,
+                memory=memory.indexing_memory,
                 logger=terse_logger,
             )
 
@@ -214,7 +216,7 @@ async def process_resource_causes(
         (spawning_cause is not None and
          registry._spawning.requires_finalizer(
              cause=spawning_cause,
-             excluded=memory.forever_stopped,
+             excluded=memory.daemons_memory.forever_stopped,
          ))
         or
         (changing_cause is not None and
@@ -323,33 +325,33 @@ async def process_spawning_cause(
     """
 
     # Refresh the up-to-date body & essential timestamp for all the daemons/timers.
-    if memory.live_fresh_body is None:
-        memory.live_fresh_body = cause.body
+    if memory.daemons_memory.live_fresh_body is None:
+        memory.daemons_memory.live_fresh_body = cause.body
     if cause.reset:
-        memory.idle_reset_time = time.monotonic()
+        memory.daemons_memory.idle_reset_time = time.monotonic()
 
     if finalizers.is_deletion_ongoing(cause.body):
         stopping_delays = await daemons.stop_daemons(
             settings=settings,
-            daemons=memory.running_daemons,
+            daemons=memory.daemons_memory.running_daemons,
         )
         return stopping_delays
 
     else:
         handlers = registry._spawning.get_handlers(
             cause=cause,
-            excluded=memory.forever_stopped,
+            excluded=memory.daemons_memory.forever_stopped,
         )
         spawning_delays = await daemons.spawn_daemons(
             settings=settings,
-            daemons=memory.running_daemons,
+            daemons=memory.daemons_memory.running_daemons,
             cause=cause,
-            memory=memory,
+            memory=memory.daemons_memory,
             handlers=handlers,
         )
         matching_delays = await daemons.match_daemons(
             settings=settings,
-            daemons=memory.running_daemons,
+            daemons=memory.daemons_memory.running_daemons,
             handlers=handlers,
         )
         return list(spawning_delays) + list(matching_delays)

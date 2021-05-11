@@ -4,8 +4,7 @@ from unittest.mock import call
 
 import pytest
 
-from kopf.reactor.effects import throttled
-from kopf.structs.containers import Throttler
+from kopf.structs.throttlers import Throttler, throttled
 
 
 @pytest.fixture(autouse=True)

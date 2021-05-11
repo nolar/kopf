@@ -1,64 +1,44 @@
 """
-A in-memory storage of arbitrary information per resource/object.
+An internal in-memory storage of structured records about resource objects.
 
+Each object gets at most one record in the inventory of an operator's memories.
 The information is stored strictly in-memory and is not persistent.
 On the operator restart, all the memories are lost.
+The information is not exposed to the operator developers (except for memos).
 
 It is used internally to track allocated system resources for each Kubernetes
 object, even if that object does not show up in the event streams for long time.
+
+In the future, additional never-ending tasks can be running to maintain
+the operator's memories and inventory and garbage-collect all outdated records.
+
+The inventory memories are data structures, but they are a part of the reactor
+because they store specialised data structures of specialised reactor modules
+(e.g. daemons, admission, indexing, etc). For cohesion, these data structures
+must be kept together with their owning modules rather than mirrored in structs.
 """
 import copy
 import dataclasses
-import logging
-import time
-from typing import Dict, Iterator, MutableMapping, Optional, Set, Union
+from typing import Iterator, MutableMapping, Optional
 
-from kopf.storage import states
-from kopf.structs import bodies, ephemera, handlers, ids, primitives
-from kopf.utilities import aiotasks
-
-
-@dataclasses.dataclass(frozen=True)
-class Daemon:
-    task: aiotasks.Task  # a guarding task of the daemon.
-    logger: Union[logging.Logger, logging.LoggerAdapter]
-    handler: handlers.SpawningHandler
-    stopper: primitives.DaemonStopper  # a signaller for the termination and its reason.
-
-
-@dataclasses.dataclass(frozen=False)
-class Throttler:
-    """ A state of throttling for one specific purpose (there can be a few). """
-    source_of_delays: Optional[Iterator[float]] = None
-    last_used_delay: Optional[float] = None
-    active_until: Optional[float] = None  # internal clock
+from kopf.reactor import admission, daemons, indexing
+from kopf.structs import bodies, ephemera, throttlers
 
 
 @dataclasses.dataclass(frozen=False)
 class ResourceMemory:
     """ A system memo about a single resource/object. Usually stored in `Memories`. """
-
-    # For arbitrary user data to be stored in memory, passed as `memo` to all the handlers.
     memo: ephemera.AnyMemo = dataclasses.field(default_factory=lambda: ephemera.AnyMemo(ephemera.Memo()))
+    error_throttler: throttlers.Throttler = dataclasses.field(default_factory=throttlers.Throttler)
+    indexing_memory: indexing.IndexingMemory = dataclasses.field(default_factory=indexing.IndexingMemory)
+    daemons_memory: daemons.DaemonsMemory = dataclasses.field(default_factory=daemons.DaemonsMemory)
 
     # For resuming handlers tracking and deciding on should they be called or not.
     noticed_by_listing: bool = False
     fully_handled_once: bool = False
 
-    # Throttling for API errors (mostly from PATCHing) and for processing in general.
-    error_throttler: Throttler = dataclasses.field(default_factory=Throttler)
 
-    # For background and timed threads/tasks (invoked with the kwargs of the last-seen body).
-    live_fresh_body: Optional[bodies.Body] = None
-    idle_reset_time: float = dataclasses.field(default_factory=time.monotonic)
-    forever_stopped: Set[ids.HandlerId] = dataclasses.field(default_factory=set)
-    running_daemons: Dict[ids.HandlerId, Daemon] = dataclasses.field(default_factory=dict)
-
-    # For indexing errors backoffs/retries/timeouts. It is None when successfully indexed.
-    indexing_state: Optional[states.State] = None
-
-
-class ResourceMemories:
+class ResourceMemories(admission.MemoGetter, daemons.DaemonsMemoriesIterator):
     """
     A container of all memos about every existing resource in a single operator.
 
@@ -86,11 +66,25 @@ class ResourceMemories:
         for memory in self._items.values():
             yield memory
 
+    def iter_all_daemon_memories(self) -> Iterator[daemons.DaemonsMemory]:
+        for memory in self._items.values():
+            yield memory.daemons_memory
+
+    async def recall_memo(
+            self,
+            raw_body: bodies.RawBody,
+            *,
+            memobase: Optional[ephemera.AnyMemo] = None,
+            ephemeral: bool = False,
+    ) -> ephemera.AnyMemo:
+        memory = await self.recall(raw_body=raw_body, memobase=memobase, ephemeral=ephemeral)
+        return memory.memo
+
     async def recall(
             self,
             raw_body: bodies.RawBody,
             *,
-            memo: Optional[ephemera.AnyMemo] = None,
+            memobase: Optional[ephemera.AnyMemo] = None,
             noticed_by_listing: bool = False,
             ephemeral: bool = False,
     ) -> ResourceMemory:
@@ -109,10 +103,11 @@ class ResourceMemories:
         if key in self._items:
             memory = self._items[key]
         else:
-            if memo is None:
+            if memobase is None:
                 memory = ResourceMemory(noticed_by_listing=noticed_by_listing)
             else:
-                memory = ResourceMemory(noticed_by_listing=noticed_by_listing, memo=copy.copy(memo))
+                memo = copy.copy(memobase)
+                memory = ResourceMemory(noticed_by_listing=noticed_by_listing, memo=memo)
             if not ephemeral:
                 self._items[key] = memory
         return memory

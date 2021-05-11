@@ -57,8 +57,8 @@ async def test_memo_is_shallow_copied():
             return MyMemo()
 
     mock = Mock()
-    memo = MyMemo()
+    memobase = MyMemo()
     memories = ResourceMemories()
-    memory = await memories.recall(BODY, memo=memo)
+    memory = await memories.recall(BODY, memobase=memobase)
     assert mock.call_count == 1
-    assert memory.memo is not memo
+    assert memory.memo is not memobase
