@@ -1,8 +1,8 @@
 import aiohttp.web
 import pytest
 
-from kopf.clients.errors import APIError
-from kopf.clients.fetching import list_objs_rv
+from kopf._cogs.clients.errors import APIError
+from kopf._cogs.clients.fetching import list_objs_rv
 
 
 async def test_listing_works(

@@ -2,7 +2,7 @@ import logging
 
 import pytest
 
-from kopf.engines.loggers import LocalObjectLogger, ObjectLogger
+from kopf._core.actions.loggers import LocalObjectLogger, ObjectLogger
 
 OBJ1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
         'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1'}}

@@ -1,6 +1,6 @@
 import asynctest
 
-from kopf.clients.watching import _iter_jsonlines
+from kopf._cogs.clients.watching import _iter_jsonlines
 
 
 async def test_empty_content():

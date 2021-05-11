@@ -4,9 +4,9 @@ from unittest.mock import Mock
 import freezegun
 import pytest
 
-from kopf.aiokits import aiotoggles
-from kopf.engines.peering import process_peering_event
-from kopf.structs import bodies
+from kopf._cogs.aiokits import aiotoggles
+from kopf._cogs.structs import bodies
+from kopf._core.engines.peering import process_peering_event
 
 
 @dataclasses.dataclass(frozen=True, eq=False)
@@ -19,8 +19,8 @@ class K8sMocks:
 def k8s_mocked(mocker, resp_mocker):
     # We mock on the level of our own K8s API wrappers, not the K8s client.
     return K8sMocks(
-        patch_obj=mocker.patch('kopf.clients.patching.patch_obj', return_value={}),
-        sleep=mocker.patch('kopf.aiokits.aiotime.sleep', return_value=None),
+        patch_obj=mocker.patch('kopf._cogs.clients.patching.patch_obj', return_value={}),
+        sleep=mocker.patch('kopf._cogs.aiokits.aiotime.sleep', return_value=None),
     )
 
 

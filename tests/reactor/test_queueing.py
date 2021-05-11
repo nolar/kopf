@@ -21,7 +21,7 @@ import weakref
 import async_timeout
 import pytest
 
-from kopf.reactor.queueing import EOS, watcher
+from kopf._core.reactor.queueing import EOS, watcher
 
 
 @pytest.mark.parametrize('uids, cnts, events', [

@@ -1,4 +1,4 @@
-from kopf.structs.patches import Patch
+from kopf._cogs.structs.patches import Patch
 
 
 def test_addition_of_the_key():

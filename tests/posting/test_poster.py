@@ -6,8 +6,8 @@ import pytest
 from asynctest import call
 
 from kopf import event, exception, info, warn
-from kopf.engines.posting import K8sEvent, event_queue_loop_var, event_queue_var, poster
-from kopf.structs.references import Backbone, Resource
+from kopf._cogs.structs.references import Backbone, Resource
+from kopf._core.engines.posting import K8sEvent, event_queue_loop_var, event_queue_var, poster
 
 OBJ1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
         'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1'}}
@@ -37,7 +37,7 @@ async def test_poster_polls_and_posts(mocker):
     def _cancel(*args, **kwargs):
         if post_event.call_count >= 2:
             raise asyncio.CancelledError()
-    post_event = mocker.patch('kopf.clients.events.post_event', side_effect=_cancel)
+    post_event = mocker.patch('kopf._cogs.clients.events.post_event', side_effect=_cancel)
 
     backbone = Backbone()
     await backbone.fill(resources=[EVENTS])
@@ -74,7 +74,7 @@ def test_queueing_fails_with_no_loop(event_queue):
 
 
 async def test_via_event_function(mocker, event_queue, event_queue_loop):
-    post_event = mocker.patch('kopf.clients.events.post_event')
+    post_event = mocker.patch('kopf._cogs.clients.events.post_event')
 
     event(OBJ1, type='type1', reason='reason1', message='message1')
 
@@ -96,7 +96,7 @@ async def test_via_event_function(mocker, event_queue, event_queue_loop):
 ])
 async def test_via_shortcut(settings, mocker, event_fn, event_type, min_levelno,
                             event_queue, event_queue_loop):
-    post_event = mocker.patch('kopf.clients.events.post_event')
+    post_event = mocker.patch('kopf._cogs.clients.events.post_event')
 
     settings.posting.level = min_levelno
     event_fn(OBJ1, reason='reason1', message='message1')  # posted

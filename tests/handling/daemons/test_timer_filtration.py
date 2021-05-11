@@ -42,7 +42,7 @@ async def test_timer_filtration_mismatched(
         settings, resource, mocker, labels, annotations,
         caplog, assert_logs, k8s_mocked, simulate_cycle):
     caplog.set_level(logging.DEBUG)
-    spawn_daemons = mocker.patch('kopf.reactor.daemons.spawn_daemons')
+    spawn_daemons = mocker.patch('kopf._core.engines.daemons.spawn_daemons')
 
     @kopf.timer(*resource, id='fn',
                 labels={'a': 'value', 'b': kopf.PRESENT, 'c': kopf.ABSENT},

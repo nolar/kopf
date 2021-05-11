@@ -3,7 +3,7 @@ import logging
 
 import pytest
 
-from kopf.aiokits.aiotasks import create_guarded_task, create_task, reraise
+from kopf._cogs.aiokits.aiotasks import create_guarded_task, create_task, reraise
 
 
 class Error(Exception):

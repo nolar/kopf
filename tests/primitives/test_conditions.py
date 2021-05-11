@@ -3,7 +3,7 @@ import asyncio
 import async_timeout
 import pytest
 
-from kopf.aiokits.aiobindings import condition_chain
+from kopf._cogs.aiokits.aiobindings import condition_chain
 
 
 async def test_no_triggering():

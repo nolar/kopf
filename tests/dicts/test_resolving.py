@@ -19,7 +19,7 @@ import types
 
 import pytest
 
-from kopf.structs.dicts import resolve, resolve_obj
+from kopf._cogs.structs.dicts import resolve, resolve_obj
 
 default = object()
 

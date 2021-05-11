@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.reactor.admission import serve_admission_request
+from kopf._core.engines.admission import serve_admission_request
 
 
 @pytest.mark.parametrize('operation', ['CREATE'])

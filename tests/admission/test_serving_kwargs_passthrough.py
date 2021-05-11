@@ -3,7 +3,7 @@ from unittest.mock import Mock
 import pytest
 
 import kopf
-from kopf.reactor.admission import serve_admission_request
+from kopf._core.engines.admission import serve_admission_request
 
 
 @pytest.mark.parametrize('dryrun', [True, False])

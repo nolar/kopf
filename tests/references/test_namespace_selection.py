@@ -1,6 +1,6 @@
 import re
 
-from kopf.structs.references import select_specific_namespaces
+from kopf._cogs.structs.references import select_specific_namespaces
 
 
 def test_empty_pattern_list():

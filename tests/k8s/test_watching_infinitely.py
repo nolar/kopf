@@ -1,7 +1,7 @@
 import pytest
 
-from kopf.clients.errors import APIError
-from kopf.clients.watching import Bookmark, infinite_watch
+from kopf._cogs.clients.errors import APIError
+from kopf._cogs.clients.watching import Bookmark, infinite_watch
 
 STREAM_WITH_UNKNOWN_EVENT = [
     {'type': 'ADDED', 'object': {'spec': 'a'}},

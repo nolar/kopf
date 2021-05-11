@@ -1,8 +1,8 @@
 import pytest
 
 import kopf
-from kopf.aiokits.aiovalues import Container
-from kopf.reactor.admission import admission_webhook_server
+from kopf._cogs.aiokits.aiovalues import Container
+from kopf._core.engines.admission import admission_webhook_server
 
 
 async def webhookfn(*_, **__):

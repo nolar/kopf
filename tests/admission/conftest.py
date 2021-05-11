@@ -7,11 +7,11 @@ import pyngrok.conf
 import pyngrok.ngrok
 import pytest
 
-from kopf.reactor.indexing import OperatorIndexers
-from kopf.structs.references import Insights, Resource
-from kopf.structs.reviews import CreateOptions, Request, RequestKind, RequestPayload, \
-                                 RequestResource, UserInfo, WebhookFn
-from kopf.toolkits.webhooks import WebhookServer
+from kopf._cogs.structs.references import Insights, Resource
+from kopf._cogs.structs.reviews import CreateOptions, Request, RequestKind, RequestPayload, \
+                                       RequestResource, UserInfo, WebhookFn
+from kopf._core.engines.indexing import OperatorIndexers
+from kopf._kits.webhooks import WebhookServer
 
 
 # TODO: LATER: Fix this issue some day later.
@@ -136,10 +136,10 @@ class K8sMocks:
 def k8s_mocked(mocker):
     # We mock on the level of our own K8s API wrappers, not the K8s client.
     return K8sMocks(
-        patch_obj=mocker.patch('kopf.clients.patching.patch_obj', return_value={}),
-        create_obj=mocker.patch('kopf.clients.creating.create_obj', return_value={}),
-        post_event=mocker.patch('kopf.clients.events.post_event'),
-        sleep=mocker.patch('kopf.aiokits.aiotime.sleep', return_value=None),
+        patch_obj=mocker.patch('kopf._cogs.clients.patching.patch_obj', return_value={}),
+        create_obj=mocker.patch('kopf._cogs.clients.creating.create_obj', return_value={}),
+        post_event=mocker.patch('kopf._cogs.clients.events.post_event'),
+        sleep=mocker.patch('kopf._cogs.aiokits.aiotime.sleep', return_value=None),
     )
 
 

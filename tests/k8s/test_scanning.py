@@ -1,8 +1,8 @@
 import aiohttp.web
 import pytest
 
-from kopf.clients.errors import APIError
-from kopf.clients.scanning import scan_resources
+from kopf._cogs.clients.errors import APIError
+from kopf._cogs.clients.scanning import scan_resources
 
 
 async def test_no_resources_in_empty_apis(

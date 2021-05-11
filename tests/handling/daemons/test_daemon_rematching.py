@@ -1,7 +1,7 @@
 import logging
 
 import kopf
-from kopf.structs.primitives import DaemonStoppingReason
+from kopf._core.intents.stoppers import DaemonStoppingReason
 
 
 async def test_running_daemon_is_stopped_when_mismatches(

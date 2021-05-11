@@ -2,7 +2,7 @@ import datetime
 
 import freezegun
 
-from kopf.engines.peering import Peer
+from kopf._core.engines.peering import Peer
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')

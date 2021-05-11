@@ -1,7 +1,7 @@
 import pytest
 
-from kopf.engines.loggers import LocalObjectLogger, ObjectLogger
-from kopf.structs.bodies import Body
+from kopf._cogs.structs.bodies import Body
+from kopf._core.actions.loggers import LocalObjectLogger, ObjectLogger
 
 
 # Async -- to make the log enqueueing loop running.

@@ -5,7 +5,7 @@ import threading
 import async_timeout
 import pytest
 
-from kopf.aiokits.aioadapters import check_flag, raise_flag, wait_flag
+from kopf._cogs.aiokits.aioadapters import check_flag, raise_flag, wait_flag
 
 
 @pytest.fixture(params=[

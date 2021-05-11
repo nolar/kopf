@@ -37,7 +37,7 @@ def test_all_examples_are_runnable(mocker, settings, with_crd, exampledir, caplo
             requires_finalizer = not eval(m.group(3))
 
     # To prevent lengthy sleeps on the simulated retries.
-    mocker.patch('kopf.reactor.handling.DEFAULT_RETRY_DELAY', 1)
+    mocker.patch('kopf._core.actions.execution.DEFAULT_RETRY_DELAY', 1)
 
     # To prevent lengthy threads in the loop executor when the process exits.
     settings.watching.server_timeout = 10

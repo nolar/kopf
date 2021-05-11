@@ -3,9 +3,9 @@ from typing import Collection
 
 import pytest
 
-from kopf.engines.loggers import LogFormat, ObjectFormatter, ObjectJsonFormatter, \
-                                 ObjectPrefixingJsonFormatter, ObjectPrefixingTextFormatter, \
-                                 ObjectTextFormatter, configure
+from kopf._core.actions.loggers import LogFormat, ObjectFormatter, ObjectJsonFormatter, \
+                                       ObjectPrefixingJsonFormatter, ObjectPrefixingTextFormatter, \
+                                       ObjectTextFormatter, configure
 
 
 @pytest.fixture(autouse=True)

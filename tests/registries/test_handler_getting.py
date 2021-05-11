@@ -2,7 +2,7 @@ import collections.abc
 
 import pytest
 
-from kopf.reactor.causation import Activity, ChangingCause, WatchingCause
+from kopf._core.intents.causes import Activity, ChangingCause, WatchingCause
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.

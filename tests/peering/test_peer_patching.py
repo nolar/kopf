@@ -2,7 +2,7 @@ import aiohttp.web
 import freezegun
 import pytest
 
-from kopf.engines.peering import Peer, clean, touch
+from kopf._core.engines.peering import Peer, clean, touch
 
 
 @pytest.mark.parametrize('lastseen', [

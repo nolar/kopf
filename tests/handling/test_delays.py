@@ -6,14 +6,14 @@ import freezegun
 import pytest
 
 import kopf
-from kopf.reactor.causation import HANDLER_REASONS, Reason
-from kopf.reactor.effects import WAITING_KEEPALIVE_INTERVAL
-from kopf.reactor.handling import TemporaryError
-from kopf.reactor.indexing import OperatorIndexers
-from kopf.reactor.processing import process_resource_event
-from kopf.storage.states import HandlerState
-from kopf.structs.containers import ResourceMemories
-from kopf.structs.ephemera import Memo
+from kopf._cogs.structs.ephemera import Memo
+from kopf._core.actions.application import WAITING_KEEPALIVE_INTERVAL
+from kopf._core.actions.execution import TemporaryError
+from kopf._core.actions.progression import HandlerState
+from kopf._core.engines.indexing import OperatorIndexers
+from kopf._core.intents.causes import HANDLER_REASONS, Reason
+from kopf._core.reactor.inventory import ResourceMemories
+from kopf._core.reactor.processing import process_resource_event
 
 
 @pytest.mark.parametrize('cause_reason', HANDLER_REASONS)

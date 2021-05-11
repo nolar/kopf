@@ -5,16 +5,16 @@ from unittest.mock import Mock
 
 import pytest
 
-from kopf.reactor.causation import Activity, ActivityCause, BaseCause, ChangingCause, \
-                                   DaemonCause, IndexingCause, Reason, ResourceCause, \
-                                   SpawningCause, WatchingCause, WebhookCause
-from kopf.reactor.indexing import OperatorIndexer, OperatorIndexers
-from kopf.structs.bodies import Body, BodyEssence
-from kopf.structs.configuration import OperatorSettings
-from kopf.structs.diffs import Diff
-from kopf.structs.ephemera import Memo
-from kopf.structs.patches import Patch
-from kopf.structs.primitives import DaemonStopper
+from kopf._cogs.configs.configuration import OperatorSettings
+from kopf._cogs.structs.bodies import Body, BodyEssence
+from kopf._cogs.structs.diffs import Diff
+from kopf._cogs.structs.ephemera import Memo
+from kopf._cogs.structs.patches import Patch
+from kopf._core.engines.indexing import OperatorIndexer, OperatorIndexers
+from kopf._core.intents.causes import Activity, ActivityCause, BaseCause, ChangingCause, \
+                                      DaemonCause, IndexingCause, Reason, ResourceCause, \
+                                      SpawningCause, WatchingCause, WebhookCause
+from kopf._core.intents.stoppers import DaemonStopper
 
 ALL_CAUSES = [
     BaseCause, ActivityCause, ResourceCause,

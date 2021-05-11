@@ -3,9 +3,9 @@ import dataclasses
 import aiohttp.web
 import pytest
 
-from kopf.clients.errors import APIError
-from kopf.clients.patching import patch_obj
-from kopf.structs.patches import Patch
+from kopf._cogs.clients.errors import APIError
+from kopf._cogs.clients.patching import patch_obj
+from kopf._cogs.structs.patches import Patch
 
 
 async def test_without_subresources(

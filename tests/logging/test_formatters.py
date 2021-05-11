@@ -3,10 +3,10 @@ import logging.handlers
 
 import pytest
 
-from kopf.engines.loggers import LocalObjectLogger, ObjectJsonFormatter, \
-                                 ObjectPrefixingJsonFormatter, ObjectPrefixingTextFormatter, \
-                                 ObjectTextFormatter
-from kopf.structs.bodies import Body
+from kopf._cogs.structs.bodies import Body
+from kopf._core.actions.loggers import LocalObjectLogger, ObjectJsonFormatter, \
+                                       ObjectPrefixingJsonFormatter, ObjectPrefixingTextFormatter, \
+                                       ObjectTextFormatter
 
 
 @pytest.fixture()

@@ -1,10 +1,10 @@
 import copy
-from unittest.mock import Mock, call
+from unittest.mock import call
 
 import pytest
 
 import kopf
-from kopf.structs.bodies import Body, RawBody, RawMeta
+from kopf._cogs.structs.bodies import Body, RawBody, RawMeta
 
 OWNER_API_VERSION = 'owner-api-version'
 OWNER_NAMESPACE = 'owner-namespace'
@@ -242,10 +242,10 @@ def test_removal_distinguishes_by_uid():
 def test_adopting(mocker, forced, strict, nested):
     # These methods are tested in their own tests.
     # We just check that they are called at all.
-    append_owner_ref = mocker.patch('kopf.toolkits.hierarchies.append_owner_reference')
-    harmonize_naming = mocker.patch('kopf.toolkits.hierarchies.harmonize_naming')
-    adjust_namespace = mocker.patch('kopf.toolkits.hierarchies.adjust_namespace')
-    label = mocker.patch('kopf.toolkits.hierarchies.label')
+    append_owner_ref = mocker.patch('kopf._kits.hierarchies.append_owner_reference')
+    harmonize_naming = mocker.patch('kopf._kits.hierarchies.harmonize_naming')
+    adjust_namespace = mocker.patch('kopf._kits.hierarchies.adjust_namespace')
+    label = mocker.patch('kopf._kits.hierarchies.label')
 
     obj = {}
     kopf.adopt(obj, owner=Body(OWNER), forced=forced, strict=strict, nested=nested)

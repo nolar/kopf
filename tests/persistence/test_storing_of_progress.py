@@ -3,11 +3,12 @@ from typing import Type
 
 import pytest
 
-from kopf.storage.progress import AnnotationsProgressStorage, ProgressRecord, ProgressStorage, \
-                                  SmartProgressStorage, StatusProgressStorage
-from kopf.structs.bodies import Body
-from kopf.structs.ids import HandlerId
-from kopf.structs.patches import Patch
+from kopf._cogs.configs.progress import AnnotationsProgressStorage, ProgressRecord, \
+                                        ProgressStorage, SmartProgressStorage, \
+                                        StatusProgressStorage
+from kopf._cogs.structs.bodies import Body
+from kopf._cogs.structs.ids import HandlerId
+from kopf._cogs.structs.patches import Patch
 
 ALL_STORAGES = [AnnotationsProgressStorage, StatusProgressStorage, SmartProgressStorage]
 ANNOTATIONS_POPULATING_STORAGES = [AnnotationsProgressStorage, SmartProgressStorage]

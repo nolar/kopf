@@ -3,7 +3,7 @@ import asyncio
 import async_timeout
 import pytest
 
-from kopf.aiokits.aiotime import sleep
+from kopf._cogs.aiokits.aiotime import sleep
 
 
 async def test_the_only_delay_is_awaited(timer):

@@ -6,12 +6,12 @@ import freezegun
 import pytest
 
 import kopf
-from kopf.aiokits.aiotoggles import ToggleSet
-from kopf.reactor.daemons import daemon_killer
-from kopf.reactor.indexing import OperatorIndexers
-from kopf.reactor.processing import process_resource_event
-from kopf.structs.bodies import RawBody
-from kopf.structs.ephemera import Memo
+from kopf._cogs.aiokits.aiotoggles import ToggleSet
+from kopf._cogs.structs.bodies import RawBody
+from kopf._cogs.structs.ephemera import Memo
+from kopf._core.engines.daemons import daemon_killer
+from kopf._core.engines.indexing import OperatorIndexers
+from kopf._core.reactor.processing import process_resource_event
 
 
 class DaemonDummy:

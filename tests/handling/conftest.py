@@ -40,7 +40,7 @@ from unittest.mock import Mock
 import pytest
 
 import kopf
-from kopf.reactor.causation import ChangingCause
+from kopf._core.intents.causes import ChangingCause
 
 
 @dataclasses.dataclass(frozen=True, eq=False)
@@ -54,9 +54,9 @@ class K8sMocks:
 def k8s_mocked(mocker, resp_mocker):
     # We mock on the level of our own K8s API wrappers, not the K8s client.
     return K8sMocks(
-        patch_obj=mocker.patch('kopf.clients.patching.patch_obj', return_value={}),
-        post_event=mocker.patch('kopf.clients.events.post_event'),
-        sleep=mocker.patch('kopf.aiokits.aiotime.sleep', return_value=None),
+        patch_obj=mocker.patch('kopf._cogs.clients.patching.patch_obj', return_value={}),
+        post_event=mocker.patch('kopf._cogs.clients.events.post_event'),
+        sleep=mocker.patch('kopf._cogs.aiokits.aiotime.sleep', return_value=None),
     )
 
 
@@ -210,7 +210,7 @@ def cause_mock(mocker, settings):
             **kwargs)
 
     # Substitute the real cause detector with out own mock-based one.
-    mocker.patch('kopf.reactor.causation.detect_changing_cause', new=new_detect_fn)
+    mocker.patch('kopf._core.intents.causes.detect_changing_cause', new=new_detect_fn)
 
     # The mock object stores some values later used by the factory substitute.
     # Note: ONLY those fields we mock in the tests. Other kwargs should be passed through.

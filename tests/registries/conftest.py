@@ -2,18 +2,18 @@ import logging
 
 import pytest
 
-from kopf.reactor.causation import ActivityCause, ChangingCause, ResourceCause, \
-                                   SpawningCause, WatchingCause, WebhookCause
-from kopf.reactor.indexing import OperatorIndexers
-from kopf.reactor.registries import ActivityRegistry, ChangingRegistry, OperatorRegistry, \
-                                    ResourceRegistry, SpawningRegistry, WatchingRegistry, \
-                                    WebhooksRegistry
-from kopf.structs.bodies import Body
-from kopf.structs.diffs import Diff, DiffItem
-from kopf.structs.ephemera import Memo
-from kopf.structs.handlers import ChangingHandler
-from kopf.structs.ids import HandlerId
-from kopf.structs.patches import Patch
+from kopf._cogs.structs.bodies import Body
+from kopf._cogs.structs.diffs import Diff, DiffItem
+from kopf._cogs.structs.ephemera import Memo
+from kopf._cogs.structs.ids import HandlerId
+from kopf._cogs.structs.patches import Patch
+from kopf._core.engines.indexing import OperatorIndexers
+from kopf._core.intents.causes import ActivityCause, ChangingCause, ResourceCause, \
+                                      SpawningCause, WatchingCause, WebhookCause
+from kopf._core.intents.handlers import ChangingHandler
+from kopf._core.intents.registries import ActivityRegistry, ChangingRegistry, OperatorRegistry, \
+                                          ResourceRegistry, SpawningRegistry, WatchingRegistry, \
+                                          WebhooksRegistry
 
 
 @pytest.fixture(params=[

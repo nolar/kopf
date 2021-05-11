@@ -3,10 +3,10 @@ import copy
 import pytest
 
 import kopf
-from kopf.reactor.causation import SpawningCause
-from kopf.structs.dicts import parse_field
-from kopf.structs.filters import ABSENT, PRESENT
-from kopf.structs.handlers import SpawningHandler
+from kopf._cogs.structs.dicts import parse_field
+from kopf._core.intents.causes import SpawningCause
+from kopf._core.intents.filters import ABSENT, PRESENT
+from kopf._core.intents.handlers import SpawningHandler
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.

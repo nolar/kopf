@@ -1,9 +1,9 @@
 import aiohttp.web
 import pytest
 
-from kopf.clients.events import post_event
-from kopf.structs.bodies import build_object_reference
-from kopf.structs.references import Resource
+from kopf._cogs.clients.events import post_event
+from kopf._cogs.structs.bodies import build_object_reference
+from kopf._cogs.structs.references import Resource
 
 EVENTS = Resource('', 'v1', 'events', namespaced=True)
 

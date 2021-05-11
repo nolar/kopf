@@ -2,8 +2,8 @@ from typing import AsyncIterator, Optional, Tuple
 
 import aiohttp.web
 
-from kopf.clients.auth import APIContext, reauthenticated_request, reauthenticated_stream
-from kopf.structs.credentials import ConnectionInfo
+from kopf._cogs.clients.auth import APIContext, reauthenticated_request, reauthenticated_stream
+from kopf._cogs.structs.credentials import ConnectionInfo
 
 
 @reauthenticated_request

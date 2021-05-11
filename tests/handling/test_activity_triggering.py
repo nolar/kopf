@@ -3,15 +3,15 @@ from typing import Mapping
 import freezegun
 import pytest
 
-from kopf.reactor.activities import ActivityError, run_activity
-from kopf.reactor.causation import Activity
-from kopf.reactor.handling import Outcome, PermanentError, TemporaryError
-from kopf.reactor.indexing import OperatorIndexers
-from kopf.reactor.lifecycles import all_at_once
-from kopf.reactor.registries import OperatorRegistry
-from kopf.structs.ephemera import Memo
-from kopf.structs.handlers import ActivityHandler
-from kopf.structs.ids import HandlerId
+from kopf._cogs.structs.ephemera import Memo
+from kopf._cogs.structs.ids import HandlerId
+from kopf._core.actions.execution import Outcome, PermanentError, TemporaryError
+from kopf._core.actions.lifecycles import all_at_once
+from kopf._core.engines.activities import ActivityError, run_activity
+from kopf._core.engines.indexing import OperatorIndexers
+from kopf._core.intents.causes import Activity
+from kopf._core.intents.handlers import ActivityHandler
+from kopf._core.intents.registries import OperatorRegistry
 
 
 def test_activity_error_exception():
@@ -170,7 +170,7 @@ async def test_delays_are_simulated(settings, activity, mocker):
         async def sleep_substitute(*_, **__):
             frozen.tick(123)
 
-        sleep = mocker.patch('kopf.aiokits.aiotime.sleep', wraps=sleep_substitute)
+        sleep = mocker.patch('kopf._cogs.aiokits.aiotime.sleep', wraps=sleep_substitute)
 
         with pytest.raises(ActivityError) as e:
             await run_activity(

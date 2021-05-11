@@ -4,8 +4,8 @@ import json
 import pytest
 
 import kopf
-from kopf.reactor.admission import AdmissionError, serve_admission_request
-from kopf.reactor.handling import PermanentError, TemporaryError
+from kopf._core.actions.execution import PermanentError, TemporaryError
+from kopf._core.engines.admission import AdmissionError, serve_admission_request
 
 
 async def test_metadata_reflects_the_request(

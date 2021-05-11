@@ -1,6 +1,6 @@
 import asyncio
 
-from kopf.aiokits.aiotasks import create_task, wait
+from kopf._cogs.aiokits.aiotasks import create_task, wait
 
 
 async def test_wait_with_no_tasks():

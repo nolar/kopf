@@ -5,11 +5,11 @@ import traceback
 import pytest
 from asynctest import MagicMock
 
-from kopf.reactor.causation import ChangingCause, Reason
-from kopf.reactor.indexing import OperatorIndexers
-from kopf.reactor.invocation import invoke, is_async_fn
-from kopf.structs.bodies import Body
-from kopf.structs.patches import Patch
+from kopf._cogs.structs.bodies import Body
+from kopf._cogs.structs.patches import Patch
+from kopf._core.actions.invocation import invoke, is_async_fn
+from kopf._core.engines.indexing import OperatorIndexers
+from kopf._core.intents.causes import ChangingCause, Reason
 
 STACK_TRACE_MARKER = object()
 

@@ -1,4 +1,4 @@
-from kopf.reactor.queueing import get_uid
+from kopf._core.reactor.queueing import get_uid
 
 
 def test_uid_is_used_if_present():

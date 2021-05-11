@@ -1,4 +1,4 @@
-from kopf.structs.dicts import walk
+from kopf._cogs.structs.dicts import walk
 
 
 def test_over_a_none():

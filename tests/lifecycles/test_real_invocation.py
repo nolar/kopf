@@ -3,12 +3,12 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.causation import ChangingCause, Reason
-from kopf.reactor.indexing import OperatorIndexers
-from kopf.storage.states import State
-from kopf.structs.bodies import Body
-from kopf.structs.ephemera import Memo
-from kopf.structs.patches import Patch
+from kopf._cogs.structs.bodies import Body
+from kopf._cogs.structs.ephemera import Memo
+from kopf._cogs.structs.patches import Patch
+from kopf._core.actions.progression import State
+from kopf._core.engines.indexing import OperatorIndexers
+from kopf._core.intents.causes import ChangingCause, Reason
 
 
 @pytest.mark.parametrize('lifecycle', [
