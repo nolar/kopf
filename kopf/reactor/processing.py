@@ -49,7 +49,7 @@ async def process_resource_event(
     # Recall what is stored about that object. Share it in little portions with the consumers.
     # And immediately forget it if the object is deleted from the cluster (but keep in memory).
     raw_type, raw_body = raw_event['type'], raw_event['object']
-    memory = await memories.recall(raw_body, noticed_by_listing=raw_type is None, memo=memobase)
+    memory = await memories.recall(raw_body, noticed_by_listing=raw_type is None, memobase=memobase)
     if memory.daemons_memory.live_fresh_body is not None:
         memory.daemons_memory.live_fresh_body._replace_with(raw_body)
     if raw_type == 'DELETED':

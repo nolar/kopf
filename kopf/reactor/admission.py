@@ -77,7 +77,7 @@ class MemoGetter(metaclass=abc.ABCMeta):
             self,
             raw_body: bodies.RawBody,
             *,
-            memo: Optional[ephemera.AnyMemo] = None,
+            memobase: Optional[ephemera.AnyMemo] = None,
             ephemeral: bool = False,
     ) -> ephemera.AnyMemo:
         raise NotImplementedError
@@ -123,7 +123,7 @@ async def serve_admission_request(
     if raw_body is None:
         raise MissingDataError("Either old or new object is missing from the admission request.")
 
-    memo = await memories.recall_memo(raw_body, memo=memobase, ephemeral=operation=='CREATE')
+    memo = await memories.recall_memo(raw_body, memobase=memobase, ephemeral=operation=='CREATE')
     body = bodies.Body(raw_body)
     patch = patches.Patch()
     warnings: List[str] = []

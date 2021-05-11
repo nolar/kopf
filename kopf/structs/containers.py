@@ -64,17 +64,17 @@ class ResourceMemories(admission.MemoGetter, daemons.DaemonsMemoriesIterator):
             self,
             raw_body: bodies.RawBody,
             *,
-            memo: Optional[ephemera.AnyMemo] = None,
+            memobase: Optional[ephemera.AnyMemo] = None,
             ephemeral: bool = False,
     ) -> ephemera.AnyMemo:
-        memory = await self.recall(raw_body=raw_body, memo=memo, ephemeral=ephemeral)
+        memory = await self.recall(raw_body=raw_body, memobase=memobase, ephemeral=ephemeral)
         return memory.memo
 
     async def recall(
             self,
             raw_body: bodies.RawBody,
             *,
-            memo: Optional[ephemera.AnyMemo] = None,
+            memobase: Optional[ephemera.AnyMemo] = None,
             noticed_by_listing: bool = False,
             ephemeral: bool = False,
     ) -> ResourceMemory:
@@ -93,10 +93,11 @@ class ResourceMemories(admission.MemoGetter, daemons.DaemonsMemoriesIterator):
         if key in self._items:
             memory = self._items[key]
         else:
-            if memo is None:
+            if memobase is None:
                 memory = ResourceMemory(noticed_by_listing=noticed_by_listing)
             else:
-                memory = ResourceMemory(noticed_by_listing=noticed_by_listing, memo=copy.copy(memo))
+                memo = copy.copy(memobase)
+                memory = ResourceMemory(noticed_by_listing=noticed_by_listing, memo=memo)
             if not ephemeral:
                 self._items[key] = memory
         return memory
