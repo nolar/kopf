@@ -40,7 +40,7 @@ def logging_options(fn: Callable[..., Any]) -> Callable[..., Any]:
     @click.option('-v', '--verbose', is_flag=True)
     @click.option('-d', '--debug', is_flag=True)
     @click.option('-q', '--quiet', is_flag=True)
-    @click.option('--log-format', type=LogFormatParamType(), default='full')
+    @click.option('--log-format', type=LogFormatParamType(), default=loggers.LogFormat.FULL)
     @click.option('--log-refkey', type=str)
     @click.option('--log-prefix/--no-log-prefix', default=None)
     @functools.wraps(fn)  # to preserve other opts/args
