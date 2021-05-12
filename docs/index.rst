@@ -78,6 +78,7 @@ Kopf: Kubernetes Operators Framework
 
    minikube
    contributing
+   architecture
    packages/kopf
 
 .. toctree::
