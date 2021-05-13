@@ -205,7 +205,9 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
             it can lead to improper items returned.
         """
         if not self._current:
-            raise LoginError("No valid credentials are available.")
+            raise LoginError("Ran out of valid credentials. Consider installing "
+                             "an API client library or adding a login handler. See more: "
+                             "https://kopf.readthedocs.io/en/stable/authentication/")
         prioritised: Dict[int, List[Tuple[VaultKey, VaultItem]]]
         prioritised = collections.defaultdict(list)
         for key, item in self._current.items():
@@ -252,11 +254,14 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
 
         # If the re-auth has failed, re-raise the original exception in the current stack.
         # If the original exception is unknown, raise normally on the next iteration's yield.
+        # The error here is optional -- for better stack traces of the original exception `exc`.
         # Keep in mind, this routine is called in parallel from many tasks for the same keys.
         async with self._lock:
             if not self._current:
                 if exc is not None:
-                    raise exc
+                    raise LoginError("Ran out of valid credentials. Consider installing "
+                                     "an API client library or adding a login handler. See more: "
+                                     "https://kopf.readthedocs.io/en/stable/authentication/") from exc
 
     async def populate(
             self,

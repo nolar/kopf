@@ -44,7 +44,12 @@ def reauthenticated_request(fn: _F) -> _F:
                 return await fn(*args, **kwargs, context=context)
             except errors.APIUnauthorizedError as e:
                 await vault.invalidate(key, exc=e)
-        raise credentials.LoginError("Ran out of connection credentials.")
+
+        # Normally, either `vault.extended()` or `vault.invalidate()` raise the login errors.
+        # The for-cycle can only end if the yielded credentials are not invalidated before trying
+        # the next ones -- but this case exits by `return` or by other (non-401) errors.
+        raise RuntimeError("Reached an impossible state: the end of the authentication cycle.")
+
     return cast(_F, wrapper)
 
 
@@ -76,7 +81,12 @@ def reauthenticated_stream(fn: _F) -> _F:
                 return
             except errors.APIUnauthorizedError as e:
                 await vault.invalidate(key, exc=e)
-        raise credentials.LoginError("Ran out of connection credentials.")
+
+        # Normally, either `vault.extended()` or `vault.invalidate()` raise the login errors.
+        # The for-cycle can only end if the yielded credentials are not invalidated before trying
+        # the next ones -- but this case exits by `return` or by other (non-401) errors.
+        raise RuntimeError("Reached an impossible state: the end of the authentication cycle.")
+
     return cast(_F, wrapper)
 
 

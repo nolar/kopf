@@ -177,7 +177,8 @@ async def test_ignores_absent_objects(
     assert result is None
 
 
-@pytest.mark.parametrize('status', [400, 401, 403, 500, 666])
+# Note: 401 is wrapped into a LoginError and is tested elsewhere.
+@pytest.mark.parametrize('status', [400, 403, 500, 666])
 async def test_raises_api_errors(
         resp_mocker, aresponses, hostname, status, resource, namespace,
         cluster_resource, namespaced_resource):
