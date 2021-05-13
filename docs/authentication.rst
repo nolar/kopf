@@ -14,6 +14,12 @@ authentication methods and piggybacks the existing Kubernetes clients.
 Custom authentication
 =====================
 
+In most setups, the normal authentication from one of the API client libraries
+is enough --- it works out of the box if those clients are installed
+(see :ref:`auth-piggybacking` below). Custom authentication is only needed
+if the normal authentication methods do not work for some reason, such as if
+you have a specific and unusual cluster setup (e.g. your own auth tokens).
+
 To implement a custom authentication method, one or a few login-handlers
 can be added. The login handlers should either return nothing (``None``)
 or an instance of `kopf.ConnectionInfo`::
