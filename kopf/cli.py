@@ -31,8 +31,11 @@ class LogFormatParamType(click.Choice):
         super().__init__(choices=[v.name.lower() for v in loggers.LogFormat])
 
     def convert(self, value: Any, param: Any, ctx: Any) -> loggers.LogFormat:
-        name: str = super().convert(value, param, ctx)
-        return loggers.LogFormat[name.upper()]
+        if isinstance(value, loggers.LogFormat):
+            return value
+        else:
+            name: str = super().convert(value, param, ctx)
+            return loggers.LogFormat[name.upper()]
 
 
 def logging_options(fn: Callable[..., Any]) -> Callable[..., Any]:
