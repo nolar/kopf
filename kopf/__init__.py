@@ -145,6 +145,8 @@ from kopf._core.intents.stoppers import (
 from kopf._core.intents.piggybacking import (
     login_via_pykube,
     login_via_client,
+    login_with_kubeconfig,
+    login_with_service_account,
 )
 from kopf._core.reactor.running import (
     spawn_tasks,
@@ -175,7 +177,12 @@ from kopf._kits.webhooks import (
 __all__ = [
     'on', 'lifecycles', 'register', 'execute', 'daemon', 'timer', 'index',
     'configure', 'LogFormat',
-    'login_via_pykube', 'login_via_client', 'LoginError', 'ConnectionInfo',
+    'login_via_pykube',
+    'login_via_client',
+    'login_with_kubeconfig',
+    'login_with_service_account',
+    'LoginError',
+    'ConnectionInfo',
     'event', 'info', 'warn', 'exception',
     'spawn_tasks', 'run_tasks', 'operator', 'run',
     'adopt', 'label',
