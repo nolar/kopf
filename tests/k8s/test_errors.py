@@ -3,7 +3,7 @@ import pytest
 
 from kopf._cogs.clients.auth import APIContext, reauthenticated_request
 from kopf._cogs.clients.errors import APIConflictError, APIError, APIForbiddenError, \
-                                      APINotFoundError, APIUnauthorizedError, check_response
+                                      APINotFoundError, check_response
 
 
 @reauthenticated_request
@@ -47,9 +47,9 @@ async def test_no_error_on_success(
     await get_it(f"http://{hostname}/")
 
 
+# Note: 401 is wrapped into a LoginError and is tested elsewhere.
 @pytest.mark.parametrize('status, exctype', [
     (400, APIError),
-    (401, APIUnauthorizedError),
     (403, APIForbiddenError),
     (404, APINotFoundError),
     (409, APIConflictError),

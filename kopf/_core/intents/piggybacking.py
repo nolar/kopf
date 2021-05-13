@@ -46,6 +46,7 @@ def login_via_client(
         **kwargs: Any,
 ) -> Optional[credentials.ConnectionInfo]:
 
+    # Keep imports in the function, as module imports are mocked in some tests.
     try:
         import kubernetes.config
     except ImportError:
@@ -59,7 +60,8 @@ def login_via_client(
             kubernetes.config.load_kube_config()  # developer's config files
             logger.debug("Client is configured via kubeconfig file.")
         except kubernetes.config.ConfigException as e2:
-            raise credentials.LoginError(f"Cannot authenticate client neither in-cluster, nor via kubeconfig.")
+            raise credentials.LoginError("Cannot authenticate the client library "
+                                         "neither in-cluster, nor via kubeconfig.")
 
     # We do not even try to understand how it works and why. Just load it, and extract the results.
     # For kubernetes client >= 12.0.0 use the new 'get_default_copy' method
@@ -100,6 +102,7 @@ def login_via_pykube(
         **kwargs: Any,
 ) -> Optional[credentials.ConnectionInfo]:
 
+    # Keep imports in the function, as module imports are mocked in some tests.
     try:
         import pykube
     except ImportError:
@@ -115,8 +118,8 @@ def login_via_pykube(
             config = pykube.KubeConfig.from_file()
             logger.debug("Pykube is configured via kubeconfig file.")
         except (pykube.PyKubeError, FileNotFoundError):
-            raise credentials.LoginError(f"Cannot authenticate pykube "
-                                         f"neither in-cluster, nor via kubeconfig.")
+            raise credentials.LoginError("Cannot authenticate pykube "
+                                         "neither in-cluster, nor via kubeconfig.")
 
     # We don't know how this token will be retrieved, we just get it afterwards.
     provider_token = None

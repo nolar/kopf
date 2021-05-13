@@ -55,7 +55,8 @@ async def test_invalidation_reraises_if_nothing_is_left_with_exception(mocker):
     with pytest.raises(Exception) as e:
         await vault.invalidate(key1, exc=exc)
 
-    assert e.value is exc
+    assert isinstance(e.value, LoginError)
+    assert e.value.__cause__ is exc
     assert vault._ready.wait_for.await_args_list == [((True,),)]
 
 

@@ -3,6 +3,7 @@ import pytest
 
 from kopf._cogs.clients.errors import APIError
 from kopf._cogs.clients.fetching import list_objs_rv
+from kopf._cogs.structs.credentials import LoginError
 
 
 async def test_listing_works(
@@ -23,8 +24,9 @@ async def test_listing_works(
     assert list_mock.call_count == 1
 
 
-@pytest.mark.parametrize('status', [400, 401, 403, 500, 666])
-async def test_raises_api_error(
+# Note: 401 is wrapped into a LoginError and is tested elsewhere.
+@pytest.mark.parametrize('status', [400, 403, 500, 666])
+async def test_raises_direct_api_errors(
         resp_mocker, aresponses, hostname, status, resource, namespace,
         cluster_resource, namespaced_resource):
 
