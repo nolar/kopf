@@ -33,7 +33,7 @@ else:
     def create_task(
             coro: Union[Generator[Any, None, _T], Awaitable[_T]],
             *,
-            name: Optional[str] = None,  # noqa
+            name: Optional[str] = None,  # noqa: W613  # pylint: disable=unused-argument
     ) -> Task:
         return asyncio.create_task(coro)
 

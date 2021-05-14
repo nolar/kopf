@@ -21,8 +21,8 @@ from kopf._cogs.structs import bodies
 
 logger = logging.getLogger('kopf.objects')
 
+# A key for object references in JSON logs, as seen by the log parsers.
 DEFAULT_JSON_REFKEY = 'object'
-""" A key for object references in JSON logs, as seen by the log parsers. """
 
 
 class LogFormat(enum.Enum):

@@ -44,7 +44,7 @@ FIELD CHANGED: value -> newvalue
 Finally, delete the object:
 
 ```bash
-$ kubectl delete -f ../obj.yaml 
+$ kubectl delete -f ../obj.yaml
 ```
 
 ```

@@ -144,7 +144,7 @@ def test_full_kubeconfig_reading(tmpdir, mocker):
               certificate-authority-data: base64dataA
               certificate-authority: /pathA
               insecure-skip-tls-verify: true
-          - name: hij            
+          - name: hij
         users:
           - name: usr
             user:

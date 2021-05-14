@@ -155,7 +155,7 @@ def test_storing_to_annotations_storage_populates_keys(cls):
     patch = Patch()
     body = Body({})
     storage.store(body=body, patch=patch, key=HandlerId('id1'), record=CONTENT_DATA_1)
-    
+
     assert patch
     assert patch['metadata']['annotations']['my-operator.example.com/id1'] == CONTENT_JSON_1
 

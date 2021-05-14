@@ -23,8 +23,8 @@ from kopf._cogs.configs import configuration
 from kopf._cogs.structs import ids
 from kopf._core.actions import invocation
 
+# The default delay duration for the regular exception in retry-mode.
 DEFAULT_RETRY_DELAY = 1 * 60
-""" The default delay duration for the regular exception in retry-mode. """
 
 
 class PermanentError(Exception):

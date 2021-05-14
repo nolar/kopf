@@ -100,7 +100,7 @@ as there are not sent there. Use the real clusters only when you have
 the strong reasons to do so, such as the system resource requests
 (CPU, RAM, PVC), which are not achievable in the minikube's VMs.
 
-**WARNING:** Running multiple operators for the same cluster without isolation 
+**WARNING:** Running multiple operators for the same cluster without isolation
 can cause infinite loops, conflicting changes, and duplicated side effects
 (such as the children object creation, e.g. jobs, pods, etc).
 It is your responsibility to design the deployment in such a way that

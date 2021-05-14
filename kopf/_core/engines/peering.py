@@ -128,15 +128,18 @@ async def process_peering_event(
 
     if conflicts_found is None:
         pass
+
     elif prio_peers:
         if conflicts_found.is_off():
             logger.info(f"Pausing operations in favour of {prio_peers}.")
             await conflicts_found.turn_to(True)
+
     elif same_peers:
         logger.warning(f"Possibly conflicting operators with the same priority: {same_peers}.")
         if conflicts_found.is_off():
             logger.warning(f"Pausing all operators, including self: {peers}")
             await conflicts_found.turn_to(True)
+
     else:
         if conflicts_found.is_on():
             logger.info(f"Resuming operations after the pause. Conflicting operators with the same priority are gone.")

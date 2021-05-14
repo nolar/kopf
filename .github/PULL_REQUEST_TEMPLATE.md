@@ -20,9 +20,9 @@
 
 ## Issues/PRs
 
-<!-- Cross-referencing is highly useful in hindsight. Put the main issue, and all the related/affected/causing/preceding issues and PRs related to this change. --> 
+<!-- Cross-referencing is highly useful in hindsight. Put the main issue, and all the related/affected/causing/preceding issues and PRs related to this change. -->
 
-> Issues: 
+> Issues:
 
 > Related:
 
@@ -46,5 +46,5 @@
 - [ ] Documentation reflects the changes
 - [ ] If you provide code modification, please add yourself to `CONTRIBUTORS.txt`
 
-<!-- Are there any questions or uncertainties left? 
+<!-- Are there any questions or uncertainties left?
      Any tasks that have to be done to complete the PR? -->

@@ -15,7 +15,7 @@ def create_fn(spec, **kwargs):
           - name: the-only-one
             image: busybox
             command: ["sh", "-x", "-c"]
-            args: 
+            args:
             - |
               echo "FIELD=$FIELD"
               sleep {spec.get('duration', 0)}
