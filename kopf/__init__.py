@@ -34,6 +34,9 @@ from kopf._cogs.configs.progress import (
     MultiProgressStorage,
     SmartProgressStorage,
 )
+from kopf._cogs.helpers.versions import (
+    version as __version__,
+)
 from kopf._cogs.structs.bodies import (
     RawEventType,
     RawEvent,
