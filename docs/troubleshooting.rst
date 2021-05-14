@@ -4,8 +4,8 @@ Troubleshooting
 
 .. _finalizers-blocking-deletion:
 
-`kubectl` freezes on object deletion
-====================================
+``kubectl`` freezes on object deletion
+======================================
 
 This can happen if the operator is down at the moment of deletion.
 

@@ -64,4 +64,4 @@ and level triggering (as opposed to edge triggering).
     as they may contain the Kopf's finalizers in ``metadata.finalizers``,
     and Kubernetes blocks the deletion until all finalizers are removed.
     If the operator is not running, the finalizers will never be removed.
-    See: :ref:`finalizers-blocking-deletion` for a workaround.
+    See: :ref:`finalizers-blocking-deletion` for a work-around.

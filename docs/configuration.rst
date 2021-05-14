@@ -30,7 +30,7 @@ The settings can be modified in the startup handlers (see :doc:`startup`):
 All the settings have reasonable defaults, so the configuration should be used
 only for fine-tuning when and if necessary.
 
-For more settings, see `kopf.OperatorSettings` and :kwarg:`settings` kwarg.
+For more settings, see :class:`kopf.OperatorSettings` and :kwarg:`settings`.
 
 
 Logging formats and levels
@@ -329,8 +329,8 @@ It is an equivalent of:
 
 It is also possible to implement custom state storage instead of storing
 the state directly in the resource's fields -- e.g., in external databases.
-For this, inherit from `kopf.ProgressStorage` and implement its abstract methods
-(``fetch()``, ``store()``, ``purge()``, optionally ``flush()``).
+For this, inherit from :class:`kopf.ProgressStorage` and implement its abstract
+methods (``fetch()``, ``store()``, ``purge()``, optionally ``flush()``).
 
 .. note::
 
@@ -377,6 +377,8 @@ For this, inherit from `kopf.ProgressStorage` and implement its abstract methods
     of Kopf-based operators to the new state location without special upgrade
     actions or conversions needed.
 
+
+.. _diffbase-storing:
 
 Change detection
 ================

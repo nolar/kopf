@@ -70,7 +70,7 @@ daemons SHOULD_ check for the value of this flag as often as possible:
         print("We are done. Bye.")
 
 The asynchronous daemons can skip these checks if they define the cancellation
-timeout (see below). In that case, they can expect an `asyncio.CancelledError`
+timeout. In that case, they can expect an :class:`asyncio.CancelledError`
 to be raised at any point of their code (specifically, at any ``await`` clause):
 
 .. code-block:: python
@@ -124,10 +124,10 @@ There are three stages of how the daemon is terminated:
   * ``stopped`` is set immediately (unconditionally).
   * ``cancellation_backoff`` is awaited (if set).
 * 2. Forced termination -- only if ``cancellation_timeout`` is set:
-  * `asyncio.CancelledError` is raised (for async daemons only).
+  * :class:`asyncio.CancelledError` is raised (for async daemons only).
   * ``cancellation_timeout`` is awaited (if set).
 * 3a. Giving up and abandoning -- only if ``cancellation_timeout`` is set:
-  * A `ResourceWarning` is issued for potential OS resource leaks.
+  * A :class:`ResourceWarning` is issued for potential OS resource leaks.
   * The finalizer is removed, and the object is released for potential deletion.
 * 3b. Forever polling -- only if ``cancellation_timeout`` is not set:
   * The daemon awaiting continues forever, logging from time to time.
@@ -179,8 +179,9 @@ instead of ``time.sleep()``: the wait will end when either the time is reached
             stopped.wait(10)
 
 For asynchronous handlers, regular ``asyncio.sleep()`` should be sufficient,
-as it is cancellable via `asyncio.CancelledError`. If cancellation is neither
-configured nor desired, ``stopped.wait()`` can be used too (with ``await``):
+as it is cancellable via :class:`asyncio.CancelledError`. If a cancellation
+is neither configured nor desired, ``stopped.wait()`` can be used too
+(with ``await``):
 
 .. code-block:: python
 
@@ -238,7 +239,7 @@ of this resource in this operator process (however, it will be spawned again
 if the operator restarts). This way, it becomes a long-running equivalent
 of on-creation/on-resuming handlers.
 
-To simulate restarting, raise `kopf.TemporaryError` with a delay set.
+To simulate restarting, raise :class:`kopf.TemporaryError` with a delay set.
 
 .. code-block:: python
 
@@ -368,7 +369,7 @@ Both the resource's state and the criteria can be highly dynamic (e.g.
 due to ``when=`` callable filters or labels/annotations value callbacks).
 
 Once the daemon stops matching the criteria (either because the resource
-or the criteria have been changed (e.g. for `when=` callbacks)),
+or the criteria have been changed (e.g. for ``when=`` callbacks)),
 the daemon is stopped. Once it matches the criteria again, it is re-spawned.
 
 The checking is done only when the resource changes (any watch-event arrives).

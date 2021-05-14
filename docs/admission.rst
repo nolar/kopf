@@ -227,10 +227,11 @@ Unlike with regular handlers and their error handling logic (:doc:`/errors`),
 the webhooks cannot do retries or backoffs. So, the ``backoff=``, ``errors=``,
 ``retries=``, ``timeout=`` options are not accepted on the admission handlers.
 
-A special exception `kopf.AdmissionError` is provided to customize the status
-code and the message of the admission review response.
+A special exception :class:`kopf.AdmissionError` is provided to customize
+the status code and the message of the admission review response.
 
-All other exceptions, including `kopf.PermanentError` and `kopf.TemporaryError`,
+All other exceptions,
+including :class:`kopf.PermanentError` and :class:`kopf.TemporaryError`,
 equally fail the admission (be that validating or mutating admission).
 However, they return the general HTTP code 500 (non-customisable).
 
@@ -352,27 +353,27 @@ each with its configuration parameters (see their descriptions):
 
 *Webhook servers* listen on an HTTPS port locally and handle requests.
 
-* `kopf.WebhookServer` is helpful for local development and ``curl`` and
+* :class:`kopf.WebhookServer` is helpful for local development and ``curl`` and
   a Kubernetes cluster that runs directly on the host machine and can access it.
   It is also used internally by most tunnels for a local target endpoint.
-* `kopf.WebhookK3dServer` is for local K3d/K3s clusters (even in a VM),
+* :class:`kopf.WebhookK3dServer` is for local K3d/K3s clusters (even in a VM),
   accessing the server via a magical hostname ``host.k3d.internal``.
-* `kopf.WebhookMinikubeServer` for local Minikube clusters (even in a VM),
+* :class:`kopf.WebhookMinikubeServer` for local Minikube clusters (even in VMs),
   accessing the server via a magical hostname ``host.minikube.internal``.
 
 *Webhook tunnels* forward the webhook requests through external endpoints
 usually to a locally running *webhook server*.
 
-* `kopf.WebhookNgrokTunnel` established a tunnel through ngrok_.
+* :class:`kopf.WebhookNgrokTunnel` established a tunnel through ngrok_.
 
 .. _ngrok: https://ngrok.com/
 
 For ease of use, the cluster type can be recognised automatically in some cases:
 
-* `kopf.WebhookAutoServer` runs locally, detects Minikube & K3s, and uses them
-  via their special hostnames. If it cannot detect the cluster type, it runs
-  a simple local webhook server. The auto-server never tunnels.
-* `kopf.WebhookAutoTunnel` attempts to use an auto-server if possible.
+* :class:`kopf.WebhookAutoServer` runs locally, detects Minikube & K3s, and
+  uses them via their special hostnames. If it cannot detect the cluster type,
+  it runs a simple local webhook server. The auto-server never tunnels.
+* :class:`kopf.WebhookAutoTunnel` attempts to use an auto-server if possible.
   If not, it uses one of the available tunnels (currently, only ngrok).
   This is the most universal way to make any environment work.
 
@@ -411,7 +412,7 @@ for additional verification and possibly for authentification:
 * :kwarg:`headers` (``Mapping[str, str]``) contains all HTTPS headers,
   including ``Authorization: Basic ...``, ``Authorization: Bearer ...``.
 * :kwarg:`sslpeer` (``Mapping[str, Any]``) contains the SSL peer information
-  as returned by `ssl.SSLSocket.getpeercert` or ``None`` if no proper SSL
+  as returned by :func:`ssl.SSLSocket.getpeercert` or ``None`` if no proper SSL
   certificate is provided by a client (i.e. by apiservers talking to webhooks).
 
 An example of headers:
@@ -550,7 +551,8 @@ It is possible to store the generated certificate itself and use as a CA:
 
 For production, a properly generated certificate should be used.
 The CA, if not specified, is assumed to be in the default trust chain.
-This applies to all servers: `kopf.WebhookServer`, `kopf.WebhookK3dServer`, etc.
+This applies to all servers:
+:class:`kopf.WebhookServer`, :class:`kopf.WebhookK3dServer`, etc.
 
 .. code-block:: python
 
@@ -612,7 +614,7 @@ Another one is a slightly more complex but configurable class:
     def configure(settings: kopf.OperatorSettings, **_):
         settings.admission.server = MyTunnel()  # arguments are possible.
 
-The iterator MUST accept a positional argument of type `kopf.WebhookFn`
+The iterator MUST accept a positional argument of type :class:`kopf.WebhookFn`
 and call it with the JSON-parsed payload when a review request is received;
 then, it MUST ``await`` the result and JSON-serialize it as a review response:
 
@@ -665,7 +667,7 @@ To sleep forever, use ``await asyncio.Event().wait()``. If the server/tunnel
 exits unexpectedly, this causes the whole operator to exit.
 
 If the goal is to implement a tunnel only, but not a custom webhook server,
-it is highly advised to inherit from or to directly use `kopf.WebhookServer`
+it is highly advised to inherit from or directly use :class:`kopf.WebhookServer`
 to run a locally listening endpoint. This server implements all URL parsing
 and request handling logic well-aligned with the rest of the framework:
 

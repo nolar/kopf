@@ -17,7 +17,7 @@ and reported via the object's events.
 Temporary errors
 ================
 
-If an exception raised inherits from `kopf.TemporaryError`,
+If an exception raised inherits from :class:`kopf.TemporaryError`,
 it will postpone the current handler for the next iteration,
 which can happen either immediately, or after some delay::
 
@@ -45,7 +45,7 @@ from being handled (such as deletion or parallel handlers/sub-handlers).
 Permanent errors
 ================
 
-If a raised exception inherits from `kopf.PermanentError`, the handler
+If a raised exception inherits from :class:`kopf.PermanentError`, the handler
 is considered as non-retriable and non-recoverable and completely failed.
 
 Use this when the domain logic of the application means that there
@@ -67,7 +67,7 @@ Regular errors
 ==============
 
 Kopf assumes that any arbitrary errors
-(i.e. not `TemporaryError` and not `PermanentError`)
+(i.e. not :class:`kopf.TemporaryError` and not :class:`kopf.PermanentError`)
 are the environment's issues and can self-resolve after some time.
 
 As such, as default behaviour,
@@ -84,9 +84,9 @@ The reaction to the arbitrary errors can be configured::
 
 Possible values of ``errors`` are:
 
-* `kopf.ErrorsMode.TEMPORARY` (the default).
-* `kopf.ErrorsMode.PERMANENT` (prevent retries).
-* `kopf.ErrorsMode.IGNORED` (same as in the resource watching handlers).
+* ``kopf.ErrorsMode.TEMPORARY`` (the default).
+* ``kopf.ErrorsMode.PERMANENT`` (prevent retries).
+* ``kopf.ErrorsMode.IGNORED`` (same as in the resource watching handlers).
 
 
 Timeouts
@@ -104,7 +104,7 @@ If the handler is not succeeded within this time, it is considered
 as fatally failed.
 
 If the handler is an async coroutine and it is still running at the moment,
-an `asyncio.TimeoutError` is raised;
+an :class:`asyncio.TimeoutError` is raised;
 there is no equivalent way of terminating the synchronous functions by force.
 
 By default, there is no timeout, so the retries continue forever.

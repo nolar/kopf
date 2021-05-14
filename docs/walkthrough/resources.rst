@@ -11,7 +11,7 @@ For Kubernetes 1.15 and below:
 
 .. code-block:: yaml
     :caption: crd.yaml
-    :name: crd-yaml
+    :name: crd-yaml-15
 
     apiVersion: apiextensions.k8s.io/v1beta1
     kind: CustomResourceDefinition

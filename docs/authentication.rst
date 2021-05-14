@@ -31,7 +31,7 @@ you have a specific and unusual cluster setup (e.g. your own auth tokens).
 
 To implement a custom authentication method, one or a few login-handlers
 can be added. The login handlers should either return nothing (``None``)
-or an instance of `kopf.ConnectionInfo`::
+or an instance of :class:`kopf.ConnectionInfo`::
 
     import kopf
 
@@ -61,7 +61,7 @@ communication is needed and async mode is supported::
     async def login_fn(**kwargs):
         pass
 
-A `kopf.ConnectionInfo` is a container to bring only the parameters necessary
+A :class:`kopf.ConnectionInfo` is a container to bring the parameters necessary
 for making the API calls, but not the ways of retrieving them. Specifically:
 
 * TCP server host & port.
@@ -177,4 +177,4 @@ In case the *vault* is depleted and no new credentials are provided
 by the login handlers, the API calls fail, and so does the operator.
 
 This internal logic is hidden from the operator developers, but it is worth
-knowing how it works internally. See `Vault`.
+knowing how it works internally. See :class:`Vault`.

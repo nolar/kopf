@@ -128,10 +128,10 @@ class AsyncFlagPromise(FlagWaiter[FlagReasonT],
     As a trade-off, the complexity moves to the implementation side.
 
     The only goal is to accept one and only one type for the ``stopped`` kwarg
-    in ``@kopf.daemon()`` handlers (protocol `callbacks.ResourceDaemonFn`)
+    in ``@kopf.daemon()`` handlers (protocol :class:`callbacks.DaemonFn`)
     regardless of whether they are sync or async, but still usable for both.
 
-    For this, the kwarg is announced with the base type `DaemonStoppingFlag`,
+    For this, the kwarg is announced with the base type :class:`DaemonStopped`,
     not as a union of sync or async, or any other double-typed approach.
 
     The challenge is to support ``stopped.wait()`` in both sync & async modes:

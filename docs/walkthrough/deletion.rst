@@ -22,7 +22,7 @@ Or maybe not.
 We want to make sure the child PVC is deleted when the parent EVC is deleted.
 
 The straightforward way would be to implement a deletion handler
-with `kopf.on.delete`. But we will go another way, and use the
+with ``@kopf.on.delete``. But we will go another way, and use the
 built-in feature of Kubernetes: `the owner references`__.
 
 __ https://kubernetes.io/docs/concepts/workloads/controllers/garbage-collection/
@@ -64,7 +64,7 @@ Let's extend the creation handler:
 
         return {'pvc-name': obj.metadata.name}
 
-With this one line, `kopf.adopt` marks the PVC as a child of EVC.
+With this one line, :func:`kopf.adopt` marks the PVC as a child of EVC.
 This includes the name auto-generation (if absent), the label propagation,
 the namespace assignment to the parent's object namespace,
 and, finally, the owner referencing.

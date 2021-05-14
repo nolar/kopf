@@ -88,7 +88,7 @@ Operator configuration
 ``settings`` is passed to activity handlers (but not to resource handlers).
 
 It is an object with a predefined nested structure of containers with values,
-which defines the operator's behaviour. See also: `kopf.OperatorSettings`.
+which defines the operator's behaviour. See: :class:`kopf.OperatorSettings`.
 
 It can be modified if needed (usually in the startup handlers). Every operator
 (if there are more than one in the same process) has its config.
@@ -192,7 +192,7 @@ For resource handlers, they are guaranteed to be populated before any handlers
 are invoked. For operator handlers, there is no such guarantee.
 
 .. seealso::
-    :doc:`indices`.
+    :doc:`/indexing`.
 
 
 Resource-watching kwargs
@@ -252,7 +252,7 @@ Stop-flag
 ---------
 
 Daemons also have ``stopped``. It is a flag object for sync & async daemons
-(mostly, sync) to check if they should stop. See also: `DaemonStopped`.
+(mostly, sync) to check if they should stop. See also: :class:`DaemonStopped`.
 
 To check, ``.is_set()`` method can be called, or the object itself can be used
 as a boolean expression: e.g. ``while not stopped: ...``.
@@ -323,7 +323,7 @@ without additional interpretation of it.
 including ``Authorization: Basic ...``, ``Authorization: Bearer ...``.
 
 ``sslpeer`` (``Mapping[str, Any]``) contains the SSL peer information
-as returned by `ssl.SSLSocket.getpeercert`. It is ``None`` if no proper
+as returned by :func:`ssl.SSLSocket.getpeercert`. It is ``None`` if no proper
 SSL client certificate was provided (i.e. by apiservers talking to webhooks),
 or if the SSL protocol could not verify the provided certificate with its CA.
 
