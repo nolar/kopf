@@ -1,10 +1,8 @@
 import asyncio
+from typing import Dict
 
 import kopf
 import pykube
-
-from typing import Dict
-
 
 tasks: Dict[str, Dict[str, asyncio.Task]] = {}  # dict{namespace: dict{name: asyncio.Task}}
 

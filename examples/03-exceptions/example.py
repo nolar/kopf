@@ -1,10 +1,5 @@
 import kopf
 
-E2E_TRACEBACKS = True
-E2E_CREATION_STOP_WORDS = ['Something has changed,']
-E2E_SUCCESS_COUNTS = {'eventual_success_with_few_messages': 1}
-E2E_FAILURE_COUNTS = {'eventual_failure_with_tracebacks': 1, 'instant_failure_with_traceback': 1, 'instant_failure_with_only_a_message': 1}
-
 
 class MyException(Exception):
     pass
@@ -29,3 +24,12 @@ def eventual_failure_with_tracebacks(**kwargs):
 @kopf.on.create('kopfexamples', errors=kopf.ErrorsMode.PERMANENT, backoff=1.0)
 def instant_failure_with_traceback(**kwargs):
     raise MyException("An error that is supposed to be recoverable.")
+
+
+# Marks for the e2e tests (see tests/e2e/test_examples.py):
+E2E_ALLOW_TRACEBACKS = True
+E2E_CREATION_STOP_WORDS = ['Something has changed,']
+E2E_SUCCESS_COUNTS = {'eventual_success_with_few_messages': 1}
+E2E_FAILURE_COUNTS = {'eventual_failure_with_tracebacks': 1,
+                      'instant_failure_with_traceback': 1,
+                      'instant_failure_with_only_a_message': 1}

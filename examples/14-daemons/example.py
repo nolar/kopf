@@ -33,5 +33,8 @@ async def background_async(spec, logger, retry, **_):
         await asyncio.sleep(5.0)
 
 
+# Marks for the e2e tests (see tests/e2e/test_examples.py):
 E2E_CREATION_STOP_WORDS = ["=> Ping from"]
-E2E_DELETION_STOP_WORDS = ["'background_async' is cancelled", "'background_sync' is cancelled", "'background_async' has exited"]
+E2E_DELETION_STOP_WORDS = ["'background_async' is cancelled",
+                           "'background_sync' is cancelled",
+                           "'background_async' has exited"]
