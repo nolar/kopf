@@ -73,7 +73,7 @@ def test_all_examples_are_runnable(mocker, settings, with_crd, exampledir, caplo
         assert '[default/kopf-example-1] Deletion is in progress:' in runner.stdout
     if e2e.has_changing_handlers:
         assert '[default/kopf-example-1] Deleted, really deleted' in runner.stdout
-    if not e2e.tracebacks:
+    if not e2e.allow_tracebacks:
         assert 'Traceback (most recent call last):' not in runner.stdout
 
     # Verify that once a handler succeeds, it is never re-executed again.
@@ -183,8 +183,8 @@ class E2EParser:
         return self.configs.get('E2E_DELETION_STOP_WORDS')
 
     @property
-    def tracebacks(self) -> Optional[bool]:
-        return self.configs.get('E2E_TRACEBACKS')
+    def allow_tracebacks(self) -> Optional[bool]:
+        return self.configs.get('E2E_ALLOW_TRACEBACKS')
 
     @property
     def success_counts(self) -> Optional[Dict[str, int]]:

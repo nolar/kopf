@@ -6,8 +6,8 @@ import kopf
 @kopf.index('pods')
 def is_running(namespace, name, status, **_):
     return {(namespace, name): status.get('phase') == 'Running'}
-    # {('kube-system', 'traefik-...-...'): True,
-    #  ('kube-system', 'helm-install-traefik-...'): False,
+    # {('kube-system', 'traefik-...-...'): [True],
+    #  ('kube-system', 'helm-install-traefik-...'): [False],
     #    ...}
 
 
@@ -42,4 +42,7 @@ def intervalled(is_running: kopf.Index, by_label: kopf.Index, patch: kopf.Patch,
 
 
 # Marks for the e2e tests (see tests/e2e/test_examples.py):
-E2E_SUCCESS_COUNTS = {}  # type: ignore # we do not care: pods can have 6-10 updates here.
+# We do not care: pods can have 6-10 updates here.
+from typing import Dict
+
+E2E_SUCCESS_COUNTS: Dict[str, int] = {}
