@@ -181,7 +181,7 @@ async def spawn_tasks(
     identity = identity if identity is not None else peering.detect_own_id(manual=False)
     vault = vault if vault is not None else credentials.Vault()
     memo = memo if memo is not None else ephemera.Memo()
-    memo = ephemera.AnyMemo(memo)  # type-casted
+    memo = ephemera.AnyMemo(memo)
     event_queue: posting.K8sEventQueue = asyncio.Queue()
     signal_flag: aiotasks.Future = asyncio.Future()
     started_flag: asyncio.Event = asyncio.Event()

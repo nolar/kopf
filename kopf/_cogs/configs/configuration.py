@@ -47,14 +47,14 @@ class ProcessSettings:
     This is the last resort to make the operator exit instead of getting stuck
     at exiting due to the framework's bugs, operator's bugs, threads left,
     daemons not exiting, etc.
-    
+
     The countdown goes from when a graceful signal arrives (SIGTERM/SIGINT),
     regardless of what is happening in the graceful exiting routine.
 
     Measured in seconds. Set to `None` to disable (on your own risk).
-    
+
     The default is 10 minutes -- high enough for all common sense cases,
-    and higher than K8s pods' ``terminationGracePeriodSeconds`` -- 
+    and higher than K8s pods' ``terminationGracePeriodSeconds`` --
     to let K8s kill the operator's pod instead, if it can.
     """
 
@@ -94,15 +94,15 @@ class PeeringSettings:
     stealth: bool = False
     """
     Should this operator log its keep-alives?
-    
+
     In some cases, it might be undesired to log regular keep-alives while
     they actually happen (to keep the logs clean and readable).
 
-    Note that some occasions are logged unconditionally: 
-    
+    Note that some occasions are logged unconditionally:
+
     * those affecting the operator's behaviour, such as pauses/resumes;
     * those requiring human intervention, such as absence of a peering object
-      in the auto-detection mode (to make the peering mandatory or standalone). 
+      in the auto-detection mode (to make the peering mandatory or standalone).
     """
 
     priority: int = 0
@@ -180,7 +180,7 @@ class WatchingSettings:
     """
     An HTTP/HTTPS connection timeout to use in watch requests.
     """
-    
+
     reconnect_backoff: float = 0.1
     """
     How long should a pause be between watch requests (to prevent API flooding).
@@ -229,7 +229,7 @@ class BatchingSettings:
     If needed, this value can be an arbitrary collection/iterator/object:
     only ``iter()`` is called on every new throttling cycle, no other protocols
     are required; but make sure that it is re-iterable for multiple uses.
-    
+
     To disable throttling (on your own risk), set it to ``[]`` or ``()``.
     """
 
@@ -253,7 +253,7 @@ class ScanningSettings:
     the specific namespaces will be served, with namespace patterns ignored;
     and only the resources detected at startup will be served, with added CRDs
     or CRD versions being ignored, and the deleted CRDs causing failures.
-    
+
     The default mode is good enough for most cases, unless the strict
     (non-dynamic) mode is intended -- to prevent the warnings in the logs.
     """
@@ -278,7 +278,7 @@ class AdmissionSettings:
     `kopf.WebhookServer`,
     `kopf.WebhookK3dServer`, `kopf.WebhookMinikubeServer`,
     `kopf.WebhookNgrokTunnel`, `kopf.WebhookInletsTunnel`.
-    
+
     .. seealso::
         :doc:`/admission`.
     """
@@ -383,7 +383,7 @@ class BackgroundSettings:
 
     The "instant exit" timeout is neither combined with any other timeouts, nor
     deducted from any other timeouts, such as the daemon cancellation timeout.
-    
+
     So, keep the timeout low: 0.001, 0.01, or 0.1 are good enough; 1.0 is risky.
     Big delays can cause slower operator reaction to the resource deletion
     or operator exiting, but can reduce the amount of unnecessary patches.
@@ -394,7 +394,7 @@ class BackgroundSettings:
 
     instant_exit_zero_time_cycles: Optional[int] = 10
     """
-    How many asyncio cycles to give to a daemon/timer to exit instantly. 
+    How many asyncio cycles to give to a daemon/timer to exit instantly.
 
     There is a speed-up hack to let the daemons/timers to exit instantly,
     without external patching & polling. For this, ``asyncio.sleep(0)`` is used

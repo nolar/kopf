@@ -23,7 +23,7 @@ assignees: ''
 import kopf
 ```
 
-<!-- Are there any other ways of achieving the same goal? 
+<!-- Are there any other ways of achieving the same goal?
      Why is this proposal better than those alternatives? -->
 
 

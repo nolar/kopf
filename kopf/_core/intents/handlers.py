@@ -8,7 +8,7 @@ from kopf._core.intents import callbacks, causes, filters
 
 @dataclasses.dataclass
 class ActivityHandler(execution.Handler):
-    fn: callbacks.ActivityFn  # type clarification
+    fn: callbacks.ActivityFn  # typing clarification
     activity: Optional[causes.Activity]
     _fallback: bool = False  # non-public!
 
@@ -42,7 +42,7 @@ class ResourceHandler(execution.Handler):
 
 @dataclasses.dataclass
 class WebhookHandler(ResourceHandler):
-    fn: callbacks.WebhookFn  # type clarification
+    fn: callbacks.WebhookFn  # typing clarification
     reason: causes.WebhookType
     operation: Optional[str]
     persistent: Optional[bool]
@@ -59,7 +59,7 @@ class WebhookHandler(ResourceHandler):
 
 @dataclasses.dataclass
 class IndexingHandler(ResourceHandler):
-    fn: callbacks.IndexingFn  # type clarification
+    fn: callbacks.IndexingFn  # typing clarification
 
     def __str__(self) -> str:
         return f"Indexer {self.id!r}"
@@ -71,7 +71,7 @@ class IndexingHandler(ResourceHandler):
 
 @dataclasses.dataclass
 class WatchingHandler(ResourceHandler):
-    fn: callbacks.WatchingFn  # type clarification
+    fn: callbacks.WatchingFn  # typing clarification
 
     @property
     def requires_patching(self) -> bool:
@@ -80,7 +80,7 @@ class WatchingHandler(ResourceHandler):
 
 @dataclasses.dataclass
 class ChangingHandler(ResourceHandler):
-    fn: callbacks.ChangingFn  # type clarification
+    fn: callbacks.ChangingFn  # typing clarification
     reason: Optional[causes.Reason]
     initial: Optional[bool]
     deleted: Optional[bool]  # used for mixed-in (initial==True) @on.resume handlers only.
@@ -98,7 +98,7 @@ class SpawningHandler(ResourceHandler):
 
 @dataclasses.dataclass
 class DaemonHandler(SpawningHandler):
-    fn: callbacks.DaemonFn  # type clarification
+    fn: callbacks.DaemonFn  # typing clarification
     cancellation_backoff: Optional[float]  # how long to wait before actual cancellation.
     cancellation_timeout: Optional[float]  # how long to wait before giving up on cancellation.
     cancellation_polling: Optional[float]  # how often to check for cancellation status.
@@ -109,7 +109,7 @@ class DaemonHandler(SpawningHandler):
 
 @dataclasses.dataclass
 class TimerHandler(SpawningHandler):
-    fn: callbacks.TimerFn  # type clarification
+    fn: callbacks.TimerFn  # typing clarification
     sharp: Optional[bool]
     idle: Optional[float]
     interval: Optional[float]

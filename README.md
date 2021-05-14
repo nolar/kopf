@@ -7,7 +7,7 @@
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/nolar/kopf.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/nolar/kopf/context:python)
 
 **Kopf** —Kubernetes Operator Pythonic Framework— is a framework and a library
-to make Kubernetes operators development easier, just in a few lines of Python code. 
+to make Kubernetes operators development easier, just in a few lines of Python code.
 
 The main goal is to bring the Domain-Driven Design to the infrastructure level,
 with Kubernetes being an orchestrator/database of the domain objects (custom resources),
@@ -27,7 +27,7 @@ the same packages, the same developer(s).
 
 * Simple, but powerful:
   * A full-featured operator in just 2 files: a `Dockerfile` + a Python file (*).
-  * Handling functions registered via decorators with a declarative approach. 
+  * Handling functions registered via decorators with a declarative approach.
   * No infrastructure boilerplate code with K8s API communication.
   * Both sync and async handlers, with sync ones being threaded under the hood.
   * Detailed documentation with examples.
@@ -92,7 +92,7 @@ def create_fn(spec, name, meta, status, **kwargs):
 ```
 
 Numerous kwargs are available, such as `body`, `meta`, `spec`, `status`,
-`name`, `namespace`, `retry`, `diff`, `old`, `new`, `logger`, etc: 
+`name`, `namespace`, `retry`, `diff`, `old`, `new`, `logger`, etc:
 see [Arguments](https://kopf.readthedocs.io/en/latest/kwargs/)
 
 To run a never-exiting function for every resource as long as it exists:
@@ -152,7 +152,7 @@ read [DEVELOPMENT.md](https://github.com/nolar/kopf/blob/main/DEVELOPMENT.md).
 ## Versioning
 
 We use [SemVer](http://semver.org/) for versioning. For the versions available,
-see the [releases on this repository](https://github.com/nolar/kopf/releases). 
+see the [releases on this repository](https://github.com/nolar/kopf/releases).
 
 
 ## License

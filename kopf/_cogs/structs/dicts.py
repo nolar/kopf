@@ -34,7 +34,7 @@ def parse_field(
     * ``["field", "subfield"]``
     """
     if field is None:
-        return tuple()
+        return ()
     elif isinstance(field, str):
         return tuple(field.split('.'))
     elif isinstance(field, (list, tuple)):
@@ -313,7 +313,7 @@ class MutableMappingView(MappingView[_K, _V], MutableMapping[_K, _V], Generic[_K
     >>> status.get('field', 'default')
     ... 'value'
     """
-    _src: MutableMapping[_K, _V]  # type clarification
+    _src: MutableMapping[_K, _V]  # typing clarification
 
     def __delitem__(self, item: _K) -> None:
         d = resolve(self._src, self._path)

@@ -44,10 +44,10 @@ kopf run ...
      `python --version`
 -->
 
-* Kopf version: 
-* Kubernetes version: 
-* Python version: 
-* OS/platform: 
+* Kopf version:
+* Kubernetes version:
+* Python version:
+* OS/platform:
 
 <details><summary>Python packages installed</summary>
 <!-- use `pip freeze --all` -->
@@ -55,4 +55,3 @@ kopf run ...
 ```
 ```
 </details>
-

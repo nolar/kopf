@@ -126,4 +126,3 @@ def manual_time(k8s_mocked, frozen_time):
 
     k8s_mocked.sleep.side_effect = sleep_substitute
     yield frozen_time
-
