@@ -10,10 +10,10 @@ in them, and extracts the basic credentials for its own use.
 .. seealso::
     :mod:`credentials` and :func:`authentication`.
 """
-import logging
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Optional, Sequence
 
 from kopf._cogs.structs import credentials
+from kopf._core.actions import execution
 
 # Keep as constants to make them patchable. Higher priority is more preferred.
 PRIORITY_OF_CLIENT: int = 10
@@ -41,9 +41,9 @@ def has_pykube() -> bool:
 # We keep the official client library auto-login only because it was
 # an implied behavior before switching to pykube -- to keep it so (implied).
 def login_via_client(
-        *args: Any,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
-        **kwargs: Any,
+        *,
+        logger: execution.Logger,
+        **_: Any,
 ) -> Optional[credentials.ConnectionInfo]:
 
     # Keep imports in the function, as module imports are mocked in some tests.
@@ -95,11 +95,10 @@ def login_via_client(
     )
 
 
-# Pykube login is mandatory. If it fails, the framework will not run at all.
 def login_via_pykube(
-        *args: Any,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
-        **kwargs: Any,
+        *,
+        logger: execution.Logger,
+        **_: Any,
 ) -> Optional[credentials.ConnectionInfo]:
 
     # Keep imports in the function, as module imports are mocked in some tests.
