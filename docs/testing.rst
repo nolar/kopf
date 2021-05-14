@@ -3,13 +3,13 @@ Operator testing
 ================
 
 Kopf provides some tools to test the Kopf-based operators
-via `kopf.testing` module (requires explicit importing).
+via :mod:`kopf.testing` module (requires explicit importing).
 
 
 Background runner
 =================
 
-`kopf.testing.KopfRunner` runs an arbitrary operator in the background,
+:class:`kopf.testing.KopfRunner` runs an arbitrary operator in the background,
 while the original testing thread does the object manipulation and assertions:
 
 When the ``with`` block exits, the operator stops, and its exceptions,

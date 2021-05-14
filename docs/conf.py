@@ -33,6 +33,9 @@ html_theme = 'sphinx_rtd_theme'
 
 default_role = 'py:obj'
 
+autodoc_typehints = 'description'
+autodoc_member_order = 'bysource'
+
 todo_include_todos = False
 todo_emit_warnings = True
 

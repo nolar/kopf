@@ -86,7 +86,7 @@ Simply submitting a contribution implies this agreement.
 However, please include a "Signed-off-by" tag in every patch
 (this tag is a conventional way to confirm that you agree to the DCO):
 
-The sign-off can be either written manually or added with `git commit -s`.
+The sign-off can be either written manually or added with ``git commit -s``.
 If you contribute often, you can automate this in Kopf's repo with
 a [Git hook](https://stackoverflow.com/a/46536244/857383).
 

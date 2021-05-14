@@ -14,8 +14,8 @@ notices that other operators start with a higher priority, it pauses
 its operation until those operators stop working.
 
 This is done to prevent collisions of multiple operators handling
-the same objects. If two operators run with the same priority, all operators
-issue a warning and pause, so that the cluster is not served anymore.
+the same objects. If two operators runs with the same priority  all operators
+issue a warning and freeze, so that the cluster becomes not served anymore.
 
 To set the operator's priority, use :option:`--priority`:
 

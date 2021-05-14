@@ -106,7 +106,7 @@ they are expected to have or automatically get the ``metadata`` structure added.
 
 The nested resources are labelled *in addition* to the target resources.
 To label only the nested resources without the root resource, pass them
-to the function directly (e.g., `kopf.label(obj['spec']['template'], ...)`).
+to the function directly (e.g., ``kopf.label(obj['spec']['template'], ...)``).
 
 
 Owner references

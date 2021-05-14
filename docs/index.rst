@@ -51,6 +51,7 @@ Kopf: Kubernetes Operators Framework
    authentication
    configuration
    peering
+   cli
 
 .. toctree::
    :maxdepth: 2

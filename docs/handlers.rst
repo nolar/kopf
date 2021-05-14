@@ -39,7 +39,7 @@ information to the keyword arguments.
 Registering
 ===========
 
-To register a handler for an event, use the `kopf.on` decorator::
+To register a handler for an event, use the ``@kopf.on`` decorator::
 
     import kopf
 

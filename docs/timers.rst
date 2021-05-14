@@ -135,8 +135,8 @@ The default behaviour is to retry arbitrary error
 When an error happens, its delay overrides the timer's schedule or life cycle:
 
 * For arbitrary exceptions, the timer's ``backoff=...`` option is used.
-* For `kopf.TemporaryError`, the error's ``delay=...`` option is used.
-* For `kopf.PermanentError`, the timer stops forever and is never retried.
+* For :class:`kopf.TemporaryError`, the error's ``delay=...`` option is used.
+* For :class:`kopf.PermanentError`, the timer stops forever and is not retried.
 
 The timer's own interval is only used if the function exits successfully.
 

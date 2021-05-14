@@ -88,7 +88,7 @@ Operator configuration
 ``settings`` is passed to activity handlers (but not to resource handlers).
 
 It is an object with a predefined nested structure of containers with values,
-which defines the operator's behaviour. See also: `kopf.OperatorSettings`.
+which defines the operator's behaviour. See: :class:`kopf.OperatorSettings`.
 
 It can be modified if needed (usually in the startup handlers). Every operator
 (if there are more than one in the same process) has its config.
@@ -119,6 +119,25 @@ Please note that it is not necessary the same selector as used in the decorator,
 as one selector can match multiple actual resources.
 
 ``body`` is the handled object's body, a read-only mapping (dict).
+It might look like this as an example:
+
+.. code-block:: python
+
+    {
+        'apiVersion': 'kopf.dev/v1',
+        'kind': 'KopfExample',
+        'metadata': {
+            'name': 'kopf-example-1',
+            'namespace': 'default',
+            'uid': '1234-5678-...',
+        },
+        'spec': {
+            'field': 'value',
+        },
+        'status': {
+            ...
+        },
+    }
 
 ``spec``, ``meta``, ``status`` are aliases for relevant stanzas, and are
 live-views into ``body['spec']``, ``body['metadata']``, ``body['status']``.
@@ -156,6 +175,16 @@ after the handler. It is actively used internally by the framework itself,
 and is shared to the handlers for convenience _(since patching happens anyway
 in the framework, why make separate API calls for patching?)_.
 
+.. note::
+    Currently, it is just a dictionary, and the changes are applied
+    as ``application/merge-patch+json``: ``None`` values delete the fields,
+    other values override, dicts are merged.
+
+    In the future, at discretion of this framework, it can be converted
+    to JSON-patch (a list of add/change/remove operation), while keeping
+    the same Python mutable mapping protocol and remembering the changes
+    in the order they were made.
+
 
 .. kwarg:: memo
 
@@ -192,7 +221,7 @@ For resource handlers, they are guaranteed to be populated before any handlers
 are invoked. For operator handlers, there is no such guarantee.
 
 .. seealso::
-    :doc:`indices`.
+    :doc:`/indexing`.
 
 
 Resource-watching kwargs
@@ -239,7 +268,19 @@ Diffing
 ``old`` & ``new`` are the old & new state of the object or a field within
 the detected changes. The new state usually corresponds to :kwarg:`body`.
 
+For the whole-object handlers, ``new`` is an equivalent of :kwarg:`body`.
+For the field handlers, it is the value of that field specifically.
+
 ``diff`` is a list of changes of the object between old & new states.
+
+The diff highlights which keys were added, changed, or removed
+in the dictionary, with old & new values being selectable,
+and generally ignores all other fields that were not changed.
+
+Due to specifics of Kubernetes, ``None`` is interpreted as absence
+of the value/field, not as a value of its own kind. In case of diffs,
+it means that the value did not exist before, or will not exist after
+the changes (for the old & new value positions respectively):
 
 
 Resource daemon kwargs
@@ -252,7 +293,7 @@ Stop-flag
 ---------
 
 Daemons also have ``stopped``. It is a flag object for sync & async daemons
-(mostly, sync) to check if they should stop. See also: `DaemonStopped`.
+(mostly, sync) to check if they should stop. See also: :class:`DaemonStopped`.
 
 To check, ``.is_set()`` method can be called, or the object itself can be used
 as a boolean expression: e.g. ``while not stopped: ...``.
@@ -323,7 +364,7 @@ without additional interpretation of it.
 including ``Authorization: Basic ...``, ``Authorization: Bearer ...``.
 
 ``sslpeer`` (``Mapping[str, Any]``) contains the SSL peer information
-as returned by `ssl.SSLSocket.getpeercert`. It is ``None`` if no proper
+as returned by :func:`ssl.SSLSocket.getpeercert`. It is ``None`` if no proper
 SSL client certificate was provided (i.e. by apiservers talking to webhooks),
 or if the SSL protocol could not verify the provided certificate with its CA.
 

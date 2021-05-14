@@ -71,4 +71,3 @@ Let's delete and re-create the same object to see the operator reacting:
 
     kubectl delete -f obj.yaml
     kubectl apply -f obj.yaml
-

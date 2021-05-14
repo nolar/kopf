@@ -19,7 +19,7 @@ restart (assuming that one operator process is one handling cycle for daemons).
 
 To prevent handlers or daemons from being invoked for a specific resource
 ever again, even after the operator restarts, use annotations and filters
-(or the same for labels or arbitrary fields with `when=` callback filtering):
+(or the same for labels or arbitrary fields with ``when=`` callback filtering):
 
 .. code-block:: python
 
