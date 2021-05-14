@@ -261,6 +261,7 @@ class OperatorRegistry:
 class SmartOperatorRegistry(OperatorRegistry):
     def __init__(self) -> None:
         super().__init__()
+
         if piggybacking.has_pykube():
             self._activities.append(handlers.ActivityHandler(
                 id=ids.HandlerId('login_via_pykube'),
@@ -274,6 +275,27 @@ class SmartOperatorRegistry(OperatorRegistry):
             self._activities.append(handlers.ActivityHandler(
                 id=ids.HandlerId('login_via_client'),
                 fn=piggybacking.login_via_client,
+                activity=causes.Activity.AUTHENTICATION,
+                errors=execution.ErrorsMode.IGNORED,
+                param=None, timeout=None, retries=None, backoff=None,
+                _fallback=True,
+            ))
+
+        # As a last resort, fall back to rudimentary logins if no advanced ones are available.
+        thirdparties_present = piggybacking.has_pykube() or piggybacking.has_client()
+        if not thirdparties_present and piggybacking.has_kubeconfig():
+            self._activities.append(handlers.ActivityHandler(
+                id=ids.HandlerId('login_with_kubeconfig'),
+                fn=piggybacking.login_with_kubeconfig,
+                activity=causes.Activity.AUTHENTICATION,
+                errors=execution.ErrorsMode.IGNORED,
+                param=None, timeout=None, retries=None, backoff=None,
+                _fallback=True,
+            ))
+        if not thirdparties_present and piggybacking.has_service_account():
+            self._activities.append(handlers.ActivityHandler(
+                id=ids.HandlerId('login_with_service_account'),
+                fn=piggybacking.login_with_service_account,
                 activity=causes.Activity.AUTHENTICATION,
                 errors=execution.ErrorsMode.IGNORED,
                 param=None, timeout=None, retries=None, backoff=None,

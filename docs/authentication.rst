@@ -6,9 +6,18 @@ To access a Kubernetes cluster, an endpoint and some credentials are needed.
 They are usually taken either from the environment (environment variables),
 or from the ``~/.kube/config`` file, or from external authentication services.
 
+Kopf provides rudimentary authentication out of the box: it can authenticate
+with the Kubernetes API either via the service account or raw kubeconfig data
+(with no additional interpretation or parsing of those).
+
+But this can be not enough in some setups and environments.
 Kopf does not try to maintain all the authentication methods possible.
 Instead, it allows the operator developers to implement their custom
-authentication methods and piggybacks the existing Kubernetes clients.
+authentication methods and "piggybacks" the existing Kubernetes clients.
+
+The latter ones can implement some advanced authentication techniques,
+such as the temporary token retrieval via the authentication services,
+token rotation, etc.
 
 
 Custom authentication
@@ -129,8 +138,18 @@ until succeeded, returned nothing, or explicitly failed)::
     def login_fn(**kwargs):
         return kopf.login_via_pykube(**kwargs)
 
+Similarly, if the libraries are installed and needed, but their credentials
+are not desired, the rudimentary login functions can be used directly::
+
+    import kopf
+
+    @kopf.on.login()
+    def login_fn(**kwargs):
+        return kopf.login_with_service_account(**kwargs) or kopf.login_with_kubeconfig(**kwargs)
+
 .. seealso::
-    `kopf.login_via_pykube`, `kopf.login_via_client`.
+    `kopf.login_via_pykube`, `kopf.login_via_client`,
+    `kopf.login_with_kubeconfig`, `kopf.login_with_service_account`.
 
 
 Credentials lifecycle

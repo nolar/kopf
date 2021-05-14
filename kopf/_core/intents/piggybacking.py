@@ -10,14 +10,21 @@ in them, and extracts the basic credentials for its own use.
 .. seealso::
     :mod:`credentials` and :func:`authentication`.
 """
-import logging
-from typing import Any, Optional, Sequence, Union
+import os
+from typing import Any, Dict, Optional, Sequence
+
+import yaml
 
 from kopf._cogs.structs import credentials
+from kopf._core.actions import execution
 
 # Keep as constants to make them patchable. Higher priority is more preferred.
 PRIORITY_OF_CLIENT: int = 10
 PRIORITY_OF_PYKUBE: int = 20
+
+# Rudimentary logins are added only if the clients are absent, so the priorities can overlap.
+PRIORITY_OF_KUBECONFIG: int = 10
+PRIORITY_OF_SERVICE_ACCOUNT: int = 20
 
 
 def has_client() -> bool:
@@ -41,9 +48,9 @@ def has_pykube() -> bool:
 # We keep the official client library auto-login only because it was
 # an implied behavior before switching to pykube -- to keep it so (implied).
 def login_via_client(
-        *args: Any,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
-        **kwargs: Any,
+        *,
+        logger: execution.Logger,
+        **_: Any,
 ) -> Optional[credentials.ConnectionInfo]:
 
     # Keep imports in the function, as module imports are mocked in some tests.
@@ -95,11 +102,10 @@ def login_via_client(
     )
 
 
-# Pykube login is mandatory. If it fails, the framework will not run at all.
 def login_via_pykube(
-        *args: Any,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
-        **kwargs: Any,
+        *,
+        logger: execution.Logger,
+        **_: Any,
 ) -> Optional[credentials.ConnectionInfo]:
 
     # Keep imports in the function, as module imports are mocked in some tests.
@@ -143,4 +149,121 @@ def login_via_pykube(
         private_key_path=pkey.filename() if pkey else None,  # can be a temporary file
         default_namespace=config.namespace,
         priority=PRIORITY_OF_PYKUBE,
+    )
+
+
+def has_service_account() -> bool:
+    return os.path.exists('/var/run/secrets/kubernetes.io/serviceaccount/token')
+
+
+def login_with_service_account(**_: Any) -> Optional[credentials.ConnectionInfo]:
+    """
+    A minimalistic login handler that can get raw data from a service account.
+
+    Authentication capabilities can be limited to keep the code short & simple.
+    No parsing or sophisticated multi-step token retrieval is performed.
+
+    This login function is intended to make Kopf runnable in trivial cases
+    when neither pykube-ng nor the official client library are installed.
+    """
+
+    # As per https://kubernetes.io/docs/tasks/run-application/access-api-from-pod/
+    token_path = '/var/run/secrets/kubernetes.io/serviceaccount/token'
+    ns_path = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'
+    ca_path = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
+
+    if os.path.exists(token_path):
+        with open(token_path, 'rt', encoding='utf-8') as f:
+            token = f.read().strip()
+
+        namespace: Optional[str] = None
+        if os.path.exists(ns_path):
+            with open(ns_path, 'rt', encoding='utf-8') as f:
+                namespace = f.read().strip()
+
+        return credentials.ConnectionInfo(
+            server='https://kubernetes.default.svc',
+            ca_path=ca_path if os.path.exists(ca_path) else None,
+            token=token or None,
+            default_namespace=namespace or None,
+            priority=PRIORITY_OF_SERVICE_ACCOUNT,
+        )
+    else:
+        return None
+
+
+def has_kubeconfig() -> bool:
+    env_var_set = bool(os.environ.get('KUBECONFIG'))
+    file_exists = os.path.exists(os.path.expanduser('~/.kube/config'))
+    return env_var_set or file_exists
+
+
+def login_with_kubeconfig(**_: Any) -> Optional[credentials.ConnectionInfo]:
+    """
+    A minimalistic login handler that can get raw data from a kubeconfig file.
+
+    Authentication capabilities can be limited to keep the code short & simple.
+    No parsing or sophisticated multi-step token retrieval is performed.
+
+    This login function is intended to make Kopf runnable in trivial cases
+    when neither pykube-ng nor the official client library are installed.
+    """
+
+    # As per https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/
+    kubeconfig = os.environ.get('KUBECONFIG')
+    if not kubeconfig and os.path.exists(os.path.expanduser('~/.kube/config')):
+        kubeconfig = '~/.kube/config'
+    if not kubeconfig:
+        return None
+
+    paths = [path.strip() for path in kubeconfig.split(os.pathsep)]
+    paths = [os.path.expanduser(path) for path in paths if path]
+
+    # As prescribed: if the file is absent or non-deserialisable, then fail. The first value wins.
+    current_context: Optional[str] = None
+    contexts: Dict[Any, Any] = {}
+    clusters: Dict[Any, Any] = {}
+    users: Dict[Any, Any] = {}
+    for path in paths:
+
+        with open(path, 'rt', encoding='utf-8') as f:
+            config = yaml.safe_load(f.read()) or {}
+
+        if current_context is None:
+            current_context = config.get('current-context')
+        for item in config.get('contexts', []):
+            if item['name'] not in contexts:
+                contexts[item['name']] = item.get('context') or {}
+        for item in config.get('clusters', []):
+            if item['name'] not in clusters:
+                clusters[item['name']] = item.get('cluster') or {}
+        for item in config.get('users', []):
+            if item['name'] not in users:
+                users[item['name']] = item.get('user') or {}
+
+    # Once fully parsed, use the current context only.
+    if current_context is None:
+        raise credentials.LoginError('Current context is not set in kubeconfigs.')
+    context = contexts[current_context]
+    cluster = clusters[context['cluster']]
+    user = users[context['user']]
+
+    # Unlike pykube's login, we do not make a fake API request to refresh the token.
+    provider_token = user.get('auth-provider', {}).get('config', {}).get('access-token')
+
+    # Map the retrieved fields into the credentials object.
+    return credentials.ConnectionInfo(
+        server=cluster.get('server'),
+        ca_path=cluster.get('certificate-authority'),
+        ca_data=cluster.get('certificate-authority-data'),
+        insecure=cluster.get('insecure-skip-tls-verify'),
+        certificate_path=user.get('client-certificate'),
+        certificate_data=user.get('client-certificate-data'),
+        private_key_path=user.get('client-key'),
+        private_key_data=user.get('client-key-data'),
+        username=user.get('username'),
+        password=user.get('password'),
+        token=user.get('token') or provider_token,
+        default_namespace=context.get('namespace'),
+        priority=PRIORITY_OF_KUBECONFIG,
     )
