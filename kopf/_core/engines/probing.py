@@ -87,7 +87,7 @@ async def health_reporter(
 
     # Log with the actual URL: normalised, with hostname/port set.
     url = urllib.parse.urlunsplit([parts.scheme, f'{host}:{port}', path, '', ''])
-    logger.debug("Serving health status at %s", url)
+    logger.debug(f"Serving health status at {url}")
     if ready_flag is not None:
         ready_flag.set()
 

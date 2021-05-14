@@ -45,7 +45,7 @@ with one additional line:
             body=data,
         )
 
-        logger.info(f"PVC child is created: %s", obj)
+        logger.info(f"PVC child is created: {obj}")
 
         return {'pvc-name': obj.metadata.name}
 
@@ -98,7 +98,7 @@ and patches the PVC with the new size from the EVC::
             body=pvc_patch,
         )
 
-        logger.info(f"PVC child is updated: %s", obj)
+        logger.info(f"PVC child is updated: {obj}")
 
 Now, let's change the EVC's size:
 

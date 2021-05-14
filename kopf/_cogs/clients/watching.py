@@ -194,7 +194,7 @@ async def continuous_watch(
 
             # Ensure that the event is something we understand and can handle.
             if raw_type not in ['ADDED', 'MODIFIED', 'DELETED']:
-                logger.warning("Ignoring an unsupported event type: %r", raw_input)
+                logger.warning(f"Ignoring an unsupported event type: {raw_input!r}")
                 continue
 
             # Keep the latest seen resource version for continuation of the stream on disconnects.

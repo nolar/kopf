@@ -73,7 +73,7 @@ async def guard(
         raise
     except Exception as e:
         if logger is not None:
-            logger.exception(f"{capname} has failed: %s", e)
+            logger.exception(f"{capname} has failed: {e}")
         raise
     else:
         if logger is not None and not finishable:
