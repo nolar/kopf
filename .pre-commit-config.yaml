@@ -40,8 +40,6 @@ repos:
         args: [--fix=auto]
       - id: name-tests-test
         args: [--django]
-      - id: no-commit-to-branch
-        args: [--branch, main, --pattern, release/.*]
       - id: requirements-txt-fixer
 
       # Intentionally disabled:
