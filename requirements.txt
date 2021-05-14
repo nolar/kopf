@@ -15,6 +15,7 @@ import-linter
 isort>=5.5.0
 lxml
 mypy==0.800
+pre-commit
 pyngrok
 pytest>=6.0.0
 pytest-aiohttp

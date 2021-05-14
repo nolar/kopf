@@ -5,6 +5,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/nolar/kopf/badge.svg?branch=main)](https://coveralls.io/github/nolar/kopf?branch=main)
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/nolar/kopf.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/nolar/kopf/alerts/)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/nolar/kopf.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/nolar/kopf/context:python)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 
 **Kopf** —Kubernetes Operator Pythonic Framework— is a framework and a library
 to make Kubernetes operators development easier, just in a few lines of Python code.

@@ -10,6 +10,8 @@ In a nutshell, to contribute, follow this scenario:
 * Clone the fork.
 * Check out a feature branch.
 * **Implement the changes.**
+  * Lint with ``pre-commit run``.
+  * Test with ``pytest``.
 * Sign-off your commits.
 * Create a pull request.
 * Ensure all required checks are passed.
@@ -99,14 +101,15 @@ Blend your code into the surrounding code style.
 
 Kopf does not use and will never use strict code formatters
 (at least until they acquire common sense and context awareness).
-In case of doubt, adhere to PEP-8 and [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html).
-
-For imports, use [isort](https://github.com/PyCQA/isort)::
-
-    isort .
+In case of doubt, adhere to PEP-8 and
+[Google Python Style Guide](https://google.github.io/styleguide/pyguide.html).
 
 The line length is 100 characters for code, 80 for docstrings and RsT files.
 Long URLs can exceed this length.
+
+For linting, minor code styling, import sorting, layered modules checks, run::
+
+    pre-commit run
 
 
 Tests

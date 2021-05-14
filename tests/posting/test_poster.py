@@ -49,10 +49,10 @@ async def test_poster_polls_and_posts(mocker):
 
     assert post_event.call_count == 2
     assert post_event.await_count == 2
-    assert post_event.called_with(
-        call(ref=REF1, type='type1', reason='reason1', message='message1'),
-        call(ref=REF2, type='type2', reason='reason2', message='message2'),
-    )
+    assert post_event.call_args_list == [
+        call(ref=REF1, type='type1', reason='reason1', message='message1', resource=EVENTS),
+        call(ref=REF2, type='type2', reason='reason2', message='message2', resource=EVENTS),
+    ]
 
 
 def test_queueing_fails_with_no_queue(event_queue_loop):
