@@ -131,6 +131,7 @@ async def execute(
         handlers=cause_handlers,
         cause=cause,
         state=state,
+        extra_context=subhandling_context,
     )
     state = state.with_outcomes(outcomes)
     state.store(body=cause.body, patch=cause.patch, storage=storage)
