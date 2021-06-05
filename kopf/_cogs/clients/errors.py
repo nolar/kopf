@@ -89,19 +89,27 @@ class APIError(Exception):
         return self._payload.get('details') if self._payload else None
 
 
-class APIUnauthorizedError(APIError):
+class APIClientError(APIError):  # all 4xx
     pass
 
 
-class APIForbiddenError(APIError):
+class APIServerError(APIError):  # all 5xx
     pass
 
 
-class APINotFoundError(APIError):
+class APIUnauthorizedError(APIClientError):
     pass
 
 
-class APIConflictError(APIError):
+class APIForbiddenError(APIClientError):
+    pass
+
+
+class APINotFoundError(APIClientError):
+    pass
+
+
+class APIConflictError(APIClientError):
     pass
 
 
@@ -129,6 +137,8 @@ async def check_response(
             APIForbiddenError if response.status == 403 else
             APINotFoundError if response.status == 404 else
             APIConflictError if response.status == 409 else
+            APIClientError if 400 <= response.status < 500 else
+            APIServerError if 500 <= response.status < 600 else
             APIError
         )
 

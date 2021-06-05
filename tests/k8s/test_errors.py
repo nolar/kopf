@@ -2,8 +2,9 @@ import aiohttp
 import pytest
 
 from kopf._cogs.clients.auth import APIContext, authenticated
-from kopf._cogs.clients.errors import APIConflictError, APIError, APIForbiddenError, \
-                                      APINotFoundError, check_response
+from kopf._cogs.clients.errors import APIClientError, APIConflictError, APIError, \
+                                      APIForbiddenError, APINotFoundError, \
+                                      APIServerError, check_response
 
 
 @authenticated
@@ -49,10 +50,15 @@ async def test_no_error_on_success(
 
 # Note: 401 is wrapped into a LoginError and is tested elsewhere.
 @pytest.mark.parametrize('status, exctype', [
-    (400, APIError),
     (403, APIForbiddenError),
     (404, APINotFoundError),
     (409, APIConflictError),
+    (400, APIClientError),
+    (403, APIClientError),
+    (404, APIClientError),
+    (500, APIServerError),
+    (503, APIServerError),
+    (400, APIError),
     (500, APIError),
     (666, APIError),
 ])
