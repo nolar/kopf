@@ -101,16 +101,18 @@ class KopfRunner(_AbstractKopfRunner):
             raise Exception("The operator didn't stop, still running.")
 
         # Re-raise the exceptions of the threading & invocation logic.
-        if self._future.exception() is not None:
+        e = self._future.exception()
+        if e is not None:
             if exc_val is None:
-                raise self._future.exception()  # type: ignore
+                raise e
             else:
-                raise self._future.exception() from exc_val  # type: ignore
-        if self._future.result().exception is not None and self.reraise:
+                raise e from exc_val
+        e = self._future.result().exception
+        if e is not None and self.reraise:
             if exc_val is None:
-                raise self._future.result().exception
+                raise e
             else:
-                raise self._future.result().exception from exc_val
+                raise e from exc_val
 
         return False
 
@@ -169,7 +171,7 @@ class KopfRunner(_AbstractKopfRunner):
 
     @property
     def stderr_bytes(self) -> bytes:
-        return self.future.result().stderr_bytes
+        return self.future.result().stderr_bytes or b''
 
     @property
     def exit_code(self) -> int:
