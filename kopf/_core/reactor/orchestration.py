@@ -180,6 +180,7 @@ async def spawn_missing_peerings(
         ensemble: Ensemble,
 ) -> None:
     for resource, namespace in itertools.product(resources, namespaces):
+        namespace = namespace if resource.namespaced else None
         dkey = EnsembleKey(resource=resource, namespace=namespace)
         if dkey not in ensemble.peering_tasks:
             what = f"{settings.peering.name}@{namespace}"

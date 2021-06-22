@@ -26,9 +26,9 @@ EVENT_TYPES = EVENT_TYPES_WHEN_EXISTS + EVENT_TYPES_WHEN_GONE
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_successes_are_removed_from_the_indexing_state(
-        resource, settings, registry, memories, indexers, caplog, event_type, handlers):
+        resource, namespace, settings, registry, memories, indexers, caplog, event_type, handlers):
     caplog.set_level(logging.DEBUG)
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     memory = await memories.recall(raw_body=body)
     memory.indexing_memory.indexing_state = State({'unrelated': HandlerState(success=True)})
     handlers.index_mock.side_effect = 123
@@ -50,9 +50,9 @@ async def test_successes_are_removed_from_the_indexing_state(
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_temporary_failures_with_no_delays_are_reindexed(
-        resource, settings, registry, memories, indexers, index, caplog, event_type, handlers):
+        resource, namespace, settings, registry, memories, indexers, index, caplog, event_type, handlers):
     caplog.set_level(logging.DEBUG)
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     memory = await memories.recall(raw_body=body)
     memory.indexing_memory.indexing_state = State({'index_fn': HandlerState(delayed=None)})
     await process_resource_event(
@@ -73,9 +73,9 @@ async def test_temporary_failures_with_no_delays_are_reindexed(
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_temporary_failures_with_expired_delays_are_reindexed(
-        resource, settings, registry, memories, indexers, index, caplog, event_type, handlers):
+        resource, namespace, settings, registry, memories, indexers, index, caplog, event_type, handlers):
     caplog.set_level(logging.DEBUG)
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     delayed = datetime.datetime(2020, 12, 31, 23, 59, 59, 0)
     memory = await memories.recall(raw_body=body)
     memory.indexing_memory.indexing_state = State({'index_fn': HandlerState(delayed=delayed)})
@@ -96,9 +96,9 @@ async def test_temporary_failures_with_expired_delays_are_reindexed(
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_permanent_failures_are_not_reindexed(
-        resource, settings, registry, memories, indexers, index, caplog, event_type, handlers):
+        resource, namespace, settings, registry, memories, indexers, index, caplog, event_type, handlers):
     caplog.set_level(logging.DEBUG)
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     memory = await memories.recall(raw_body=body)
     memory.indexing_memory.indexing_state = State({'index_fn': HandlerState(failure=True)})
     await process_resource_event(
@@ -126,9 +126,9 @@ async def test_permanent_failures_are_not_reindexed(
 @pytest.mark.usefixtures('indexed_123')
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_removed_and_remembered_on_permanent_errors(
-        resource, settings, registry, memories, indexers, index, caplog, event_type, handlers):
+        resource, namespace, settings, registry, memories, indexers, index, caplog, event_type, handlers):
     caplog.set_level(logging.DEBUG)
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     memory = await memories.recall(raw_body=body)
     handlers.index_mock.side_effect = PermanentError("boo!")
     await process_resource_event(
@@ -161,10 +161,10 @@ async def test_removed_and_remembered_on_permanent_errors(
 @pytest.mark.usefixtures('indexed_123')
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_removed_and_remembered_on_temporary_errors(
-        resource, settings, registry, memories, indexers, index, caplog, event_type, handlers,
-        delay_kwargs, expected_delayed):
+        resource, namespace, settings, registry, memories, indexers, index, handlers,
+        caplog, event_type, delay_kwargs, expected_delayed):
     caplog.set_level(logging.DEBUG)
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     memory = await memories.recall(raw_body=body)
     handlers.index_mock.side_effect = TemporaryError("boo!", **delay_kwargs)
     await process_resource_event(
@@ -190,9 +190,9 @@ async def test_removed_and_remembered_on_temporary_errors(
 @pytest.mark.usefixtures('indexed_123')
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_preserved_on_ignored_errors(
-        resource, settings, registry, memories, indexers, index, caplog, event_type, handlers):
+        resource, namespace, settings, registry, memories, indexers, index, caplog, event_type, handlers):
     caplog.set_level(logging.DEBUG)
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     memory = await memories.recall(raw_body=body)
     handlers.index_mock.side_effect = Exception("boo!")
     await process_resource_event(

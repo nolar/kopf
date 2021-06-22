@@ -17,8 +17,8 @@ def index(indexers):
 
 
 @pytest.fixture()
-async def indexed_123(indexers, index):
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+async def indexed_123(indexers, index, namespace):
+    body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     key = indexers.make_key(Body(body))
     indexers['index_fn'].replace(key, 123)
     assert set(index) == {None}

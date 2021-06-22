@@ -89,8 +89,9 @@ async def test_new_resources_and_namespaces_spawn_new_tasks(
     r1ns2 = EnsembleKey(resource=r1, namespace='ns2')
     r2ns1 = EnsembleKey(resource=r2, namespace='ns1')
     r2ns2 = EnsembleKey(resource=r2, namespace='ns2')
-    peer1 = EnsembleKey(resource=peering_resource, namespace='ns1')
-    peer2 = EnsembleKey(resource=peering_resource, namespace='ns2')
+    peerns = peering_resource.namespaced
+    peer1 = EnsembleKey(resource=peering_resource, namespace='ns1' if peerns else None)
+    peer2 = EnsembleKey(resource=peering_resource, namespace='ns2' if peerns else None)
 
     await adjust_tasks(
         processor=processor,
@@ -120,7 +121,8 @@ async def test_gone_resources_and_namespaces_stop_running_tasks(
     r1ns2 = EnsembleKey(resource=r1, namespace='ns2')
     r2ns1 = EnsembleKey(resource=r2, namespace='ns1')
     r2ns2 = EnsembleKey(resource=r2, namespace='ns2')
-    peer1 = EnsembleKey(resource=peering_resource, namespace='ns1')
+    peerns = peering_resource.namespaced
+    peer1 = EnsembleKey(resource=peering_resource, namespace='ns1' if peerns else None)
 
     await adjust_tasks(  # initialisation
         processor=processor,

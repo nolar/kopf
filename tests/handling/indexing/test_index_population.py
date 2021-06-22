@@ -16,9 +16,9 @@ EVENT_TYPES = EVENT_TYPES_WHEN_EXISTS + EVENT_TYPES_WHEN_GONE
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_initially_stored(
-        resource, settings, registry, indexers, index, caplog, event_type, handlers):
+        resource, namespace, settings, registry, indexers, index, caplog, event_type, handlers):
     caplog.set_level(logging.DEBUG)
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     handlers.index_mock.return_value = 123
     await process_resource_event(
         lifecycle=all_at_once,
@@ -39,9 +39,9 @@ async def test_initially_stored(
 @pytest.mark.usefixtures('indexed_123')
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_overwritten(
-        resource, settings, registry, indexers, index, caplog, event_type, handlers):
+        resource, namespace, settings, registry, indexers, index, caplog, event_type, handlers):
     caplog.set_level(logging.DEBUG)
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     handlers.index_mock.return_value = 456
     await process_resource_event(
         lifecycle=all_at_once,
@@ -62,9 +62,9 @@ async def test_overwritten(
 @pytest.mark.usefixtures('indexed_123')
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_preserved_on_logical_deletion(
-        resource, settings, registry, indexers, index, caplog, event_type, handlers):
+        resource, namespace, settings, registry, indexers, index, caplog, event_type, handlers):
     caplog.set_level(logging.DEBUG)
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1',
+    body = {'metadata': {'namespace': namespace, 'name': 'name1',
                          'deletionTimestamp': '...'}}
     handlers.index_mock.return_value = 456
     await process_resource_event(
@@ -86,9 +86,9 @@ async def test_preserved_on_logical_deletion(
 @pytest.mark.usefixtures('indexed_123')
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_GONE)
 async def test_removed_on_physical_deletion(
-        resource, settings, registry, indexers, index, caplog, event_type, handlers):
+        resource, namespace, settings, registry, indexers, index, caplog, event_type, handlers):
     caplog.set_level(logging.DEBUG)
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     handlers.index_mock.return_value = 456
     await process_resource_event(
         lifecycle=all_at_once,
@@ -108,13 +108,14 @@ async def test_removed_on_physical_deletion(
 @pytest.mark.usefixtures('indexed_123')
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_removed_on_filters_mismatch(
-        resource, settings, registry, indexers, index, caplog, event_type, handlers, mocker):
+        resource, namespace, settings, registry, indexers, index,
+        caplog, event_type, handlers, mocker):
 
     # Simulate the indexing handler is gone out of scope (this is only one of the ways to do it):
     mocker.patch.object(registry._indexing, 'get_handlers', return_value=[])
 
     caplog.set_level(logging.DEBUG)
-    body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     handlers.index_mock.return_value = 123
     await process_resource_event(
         lifecycle=all_at_once,

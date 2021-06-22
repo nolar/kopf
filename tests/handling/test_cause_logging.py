@@ -15,10 +15,10 @@ from kopf._core.reactor.processing import process_resource_event
 
 
 @pytest.mark.parametrize('cause_type', ALL_REASONS)
-async def test_all_logs_are_prefixed(registry, settings, resource, handlers,
+async def test_all_logs_are_prefixed(registry, settings, resource, namespace, handlers,
                                      logstream, cause_type, cause_mock):
     event_type = None if cause_type == Reason.RESUME else 'irrelevant'
-    event_body = {'metadata': {'namespace': 'ns1', 'name': 'name1'}}
+    event_body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     cause_mock.reason = cause_type
 
     await process_resource_event(
@@ -35,7 +35,10 @@ async def test_all_logs_are_prefixed(registry, settings, resource, handlers,
 
     lines = logstream.getvalue().splitlines()
     assert lines  # no messages means that we cannot test it
-    assert all(line.startswith('prefix [ns1/name1] ') for line in lines)
+    if namespace:
+        assert all(line.startswith(f'prefix [{namespace}/name1] ') for line in lines)
+    else:
+        assert all(line.startswith('prefix [name1] ') for line in lines)
 
 
 @pytest.mark.parametrize('diff', [

@@ -72,7 +72,7 @@ def pkeyfile(tmpdir, certpkey):
 
 
 @pytest.fixture()
-def adm_request(resource):
+def adm_request(resource, namespace):
     return Request(
         apiVersion='admission.k8s.io/v1',
         kind='AdmissionReview',
@@ -84,7 +84,7 @@ def adm_request(resource):
             requestResource=RequestResource(group=resource.group, version=resource.version, resource=resource.plural),
             userInfo=UserInfo(username='user1', uid='useruid1', groups=['group1']),
             name='name1',
-            namespace='ns1',
+            namespace=namespace,
             operation='CREATE',
             options=CreateOptions(apiVersion='meta.k8s.io/v1', kind='CreateOptions'),
             object={'spec': {'field': 'value'}},
