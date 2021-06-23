@@ -30,9 +30,13 @@ def k8s_mocked(mocker, resp_mocker):
 
 
 @pytest.fixture()
-async def insights(settings, peering_resource):
+async def insights(request, settings):
     insights = Insights()
-    await insights.backbone.fill(resources=[peering_resource])
+    await insights.backbone.fill(resources=[
+        request.getfixturevalue(name)
+        for name in ['peering_resource', 'cluster_peering_resource', 'namespaced_peering_resource']
+        if name in request.fixturenames
+    ])
     settings.peering.mandatory = True
     return insights
 
@@ -151,8 +155,8 @@ async def test_gone_resources_and_namespaces_stop_running_tasks(
 
 
 async def test_cluster_tasks_continue_running_on_namespace_deletion(
-        settings, ensemble: Ensemble, insights: Insights, peering_resource):
-    settings.peering.namespaced = peering_resource.namespaced
+        settings, ensemble: Ensemble, insights: Insights, cluster_peering_resource):
+    settings.peering.namespaced = cluster_peering_resource.namespaced
 
     r1 = Resource(group='group1', version='version1', plural='plural1', namespaced=True)
     r2 = Resource(group='group2', version='version2', plural='plural2', namespaced=True)
@@ -161,7 +165,7 @@ async def test_cluster_tasks_continue_running_on_namespace_deletion(
     insights.namespaces.add(None)
     r1nsN = EnsembleKey(resource=r1, namespace=None)
     r2nsN = EnsembleKey(resource=r2, namespace=None)
-    peerN = EnsembleKey(resource=peering_resource, namespace=None)
+    peerN = EnsembleKey(resource=cluster_peering_resource, namespace=None)
 
     await adjust_tasks(  # initialisation
         processor=processor,
