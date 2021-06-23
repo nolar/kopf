@@ -93,19 +93,19 @@ def enforce_asyncio_mocker(pytestconfig):
 
 
 @pytest.fixture(params=[
-    ('kopf.dev', 'v1', 'clusterkopfpeerings'),
-    ('zalando.org', 'v1', 'clusterkopfpeerings'),
+    ('kopf.dev', 'v1', 'kopfpeerings', True),
+    ('zalando.org', 'v1', 'kopfpeerings', True),
 ], ids=['kopf-dev-namespaced', 'zalando-org-namespaced'])
 def namespaced_peering_resource(request):
-    return Resource(*request.param[:3], namespaced=True)
+    return Resource(*request.param[:3], namespaced=request.param[3])
 
 
 @pytest.fixture(params=[
-    ('kopf.dev', 'v1', 'kopfpeerings'),
-    ('zalando.org', 'v1', 'kopfpeerings'),
+    ('kopf.dev', 'v1', 'clusterkopfpeerings', False),
+    ('zalando.org', 'v1', 'clusterkopfpeerings', False),
 ], ids=['kopf-dev-cluster', 'zalando-org-cluster'])
 def cluster_peering_resource(request):
-    return Resource(*request.param[:3], namespaced=False)
+    return Resource(*request.param[:3], namespaced=request.param[3])
 
 
 @pytest.fixture(params=[
