@@ -2,7 +2,7 @@ import aiohttp.web
 import pytest
 
 from kopf._cogs.clients.errors import APIError
-from kopf._cogs.clients.fetching import list_objs_rv
+from kopf._cogs.clients.fetching import list_objs
 from kopf._cogs.structs.credentials import LoginError
 
 
@@ -17,7 +17,7 @@ async def test_listing_works(
     aresponses.add(hostname, cluster_url, 'get', list_mock)
     aresponses.add(hostname, namespaced_url, 'get', list_mock)
 
-    items, resource_version = await list_objs_rv(resource=resource, namespace=namespace)
+    items, resource_version = await list_objs(resource=resource, namespace=namespace)
     assert items == result['items']
 
     assert list_mock.called
@@ -37,5 +37,5 @@ async def test_raises_direct_api_errors(
     aresponses.add(hostname, namespaced_url, 'get', list_mock)
 
     with pytest.raises(APIError) as e:
-        await list_objs_rv(resource=resource, namespace=namespace)
+        await list_objs(resource=resource, namespace=namespace)
     assert e.value.status == status

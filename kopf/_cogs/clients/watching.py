@@ -156,9 +156,12 @@ async def continuous_watch(
 
     # First, list the resources regularly, and get the list's resource version.
     # Simulate the events with type "None" event - used in detection of causes.
-    items, resource_version = await fetching.list_objs_rv(resource=resource, namespace=namespace)
-    for item in items:
-        yield {'type': None, 'object': item}
+    objs, resource_version = await fetching.list_objs(
+        resource=resource,
+        namespace=namespace,
+    )
+    for obj in objs:
+        yield {'type': None, 'object': obj}
 
     # Notify the watcher that the initial listing is over, even if there was nothing yielded.
     yield Bookmark.LISTED

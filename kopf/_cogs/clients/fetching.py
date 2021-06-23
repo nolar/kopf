@@ -5,7 +5,7 @@ from kopf._cogs.structs import bodies, references
 
 
 @auth.reauthenticated_request
-async def list_objs_rv(
+async def list_objs(
         *,
         resource: references.Resource,
         namespace: references.Namespace,
