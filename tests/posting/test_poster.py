@@ -18,7 +18,7 @@ OBJ2 = {'apiVersion': 'group2/version2', 'kind': 'Kind2',
 REF2 = {'apiVersion': 'group2/version2', 'kind': 'Kind2',
         'uid': 'uid2', 'name': 'name2', 'namespace': 'ns2'}
 
-EVENTS = Resource('', 'v1', 'events')
+EVENTS = Resource('', 'v1', 'events', namespaced=True)
 
 
 @pytest.fixture(autouse=True)
@@ -35,9 +35,9 @@ async def test_poster_polls_and_posts(mocker):
 
     # A way to cancel `while True` cycle when we need it (ASAP).
     def _cancel(*args, **kwargs):
-        if post_event.call_count >= 2:
+        if post.call_count >= 2:
             raise asyncio.CancelledError()
-    post_event = mocker.patch('kopf._cogs.clients.events.post_event', side_effect=_cancel)
+    post = mocker.patch('kopf._cogs.clients.api.post', side_effect=_cancel)
 
     backbone = Backbone()
     await backbone.fill(resources=[EVENTS])
@@ -47,12 +47,17 @@ async def test_poster_polls_and_posts(mocker):
         async with async_timeout.timeout(0.5):
             await poster(event_queue=event_queue, backbone=backbone)
 
-    assert post_event.call_count == 2
-    assert post_event.await_count == 2
-    assert post_event.call_args_list == [
-        call(ref=REF1, type='type1', reason='reason1', message='message1', resource=EVENTS),
-        call(ref=REF2, type='type2', reason='reason2', message='message2', resource=EVENTS),
-    ]
+    assert post.call_count == 2
+    assert post.call_args_list[0][1]['url'] == '/api/v1/namespaces/ns1/events'
+    assert post.call_args_list[0][1]['payload']['type'] == 'type1'
+    assert post.call_args_list[0][1]['payload']['reason'] == 'reason1'
+    assert post.call_args_list[0][1]['payload']['message'] == 'message1'
+    assert post.call_args_list[0][1]['payload']['involvedObject'] == REF1
+    assert post.call_args_list[1][1]['url'] == '/api/v1/namespaces/ns2/events'
+    assert post.call_args_list[1][1]['payload']['type'] == 'type2'
+    assert post.call_args_list[1][1]['payload']['reason'] == 'reason2'
+    assert post.call_args_list[1][1]['payload']['message'] == 'message2'
+    assert post.call_args_list[1][1]['payload']['involvedObject'] == REF2
 
 
 def test_queueing_fails_with_no_queue(event_queue_loop):
@@ -74,11 +79,11 @@ def test_queueing_fails_with_no_loop(event_queue):
 
 
 async def test_via_event_function(mocker, event_queue, event_queue_loop):
-    post_event = mocker.patch('kopf._cogs.clients.events.post_event')
+    post = mocker.patch('kopf._cogs.clients.api.post')
 
     event(OBJ1, type='type1', reason='reason1', message='message1')
 
-    assert not post_event.called
+    assert not post.called
     assert event_queue.qsize() == 1
     event1 = event_queue.get_nowait()
 
@@ -96,14 +101,14 @@ async def test_via_event_function(mocker, event_queue, event_queue_loop):
 ])
 async def test_via_shortcut(settings, mocker, event_fn, event_type, min_levelno,
                             event_queue, event_queue_loop):
-    post_event = mocker.patch('kopf._cogs.clients.events.post_event')
+    post = mocker.patch('kopf._cogs.clients.api.post')
 
     settings.posting.level = min_levelno
     event_fn(OBJ1, reason='reason1', message='message1')  # posted
     settings.posting.level = min_levelno + 1
     event_fn(OBJ1, reason='reason2', message='message2')  # not posted
 
-    assert not post_event.called
+    assert not post.called
     assert event_queue.qsize() == 1
     event1 = event_queue.get_nowait()
 

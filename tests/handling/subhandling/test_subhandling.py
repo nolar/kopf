@@ -58,7 +58,7 @@ async def test_1st_level(registry, settings, resource, cause_mock, event_type,
     assert sub1b_mock.call_count == 1
 
     assert k8s_mocked.sleep.call_count == 0
-    assert k8s_mocked.patch_obj.call_count == 1
+    assert k8s_mocked.patch.call_count == 1
     assert not event_queue.empty()
 
     assert_logs([
@@ -138,7 +138,7 @@ async def test_2nd_level(registry, settings, resource, cause_mock, event_type,
     assert sub1b2b_mock.call_count == 1
 
     assert k8s_mocked.sleep.call_count == 0
-    assert k8s_mocked.patch_obj.call_count == 1
+    assert k8s_mocked.patch.call_count == 1
     assert not event_queue.empty()
 
     assert_logs([

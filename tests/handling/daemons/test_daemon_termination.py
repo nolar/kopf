@@ -35,8 +35,8 @@ async def test_daemon_exits_gracefully_and_instantly_on_termination_request(
 
     assert timer.seconds < 0.01  # near-instantly
     assert k8s_mocked.sleep.call_count == 0
-    assert k8s_mocked.patch_obj.call_count == 1
-    assert k8s_mocked.patch_obj.call_args_list[0][1]['patch']['metadata']['finalizers'] == []
+    assert k8s_mocked.patch.call_count == 1
+    assert k8s_mocked.patch.call_args_list[0][1]['payload']['metadata']['finalizers'] == []
 
 
 @pytest.mark.usefixtures('background_daemon_killer')
@@ -103,8 +103,8 @@ async def test_daemon_exits_instantly_via_cancellation_with_backoff(
 
     assert k8s_mocked.sleep.call_count == 1
     assert k8s_mocked.sleep.call_args_list[0][0][0] == 5.0
-    assert k8s_mocked.patch_obj.call_count == 1
-    assert k8s_mocked.patch_obj.call_args_list[0][1]['patch']['status']['kopf']['dummy']
+    assert k8s_mocked.patch.call_count == 1
+    assert k8s_mocked.patch.call_args_list[0][1]['payload']['status']['kopf']['dummy']
 
     # 2nd cycle: cancelling after the backoff is reached. Wait for cancellation timeout.
     mocker.resetall()
@@ -112,8 +112,8 @@ async def test_daemon_exits_instantly_via_cancellation_with_backoff(
     await simulate_cycle(event_object)
 
     assert k8s_mocked.sleep.call_count == 0
-    assert k8s_mocked.patch_obj.call_count == 1
-    assert k8s_mocked.patch_obj.call_args_list[0][1]['patch']['metadata']['finalizers'] == []
+    assert k8s_mocked.patch.call_count == 1
+    assert k8s_mocked.patch.call_args_list[0][1]['payload']['metadata']['finalizers'] == []
 
     # Cleanup.
     await dummy.wait_for_daemon_done()
@@ -147,8 +147,8 @@ async def test_daemon_exits_slowly_via_cancellation_with_backoff(
 
     assert k8s_mocked.sleep.call_count == 1
     assert k8s_mocked.sleep.call_args_list[0][0][0] == 5.0
-    assert k8s_mocked.patch_obj.call_count == 1
-    assert k8s_mocked.patch_obj.call_args_list[0][1]['patch']['status']['kopf']['dummy']
+    assert k8s_mocked.patch.call_count == 1
+    assert k8s_mocked.patch.call_args_list[0][1]['payload']['status']['kopf']['dummy']
 
     # 2nd cycle: cancelling after the backoff is reached. Wait for cancellation timeout.
     mocker.resetall()
@@ -157,8 +157,8 @@ async def test_daemon_exits_slowly_via_cancellation_with_backoff(
 
     assert k8s_mocked.sleep.call_count == 1
     assert k8s_mocked.sleep.call_args_list[0][0][0] == 10.0
-    assert k8s_mocked.patch_obj.call_count == 1
-    assert k8s_mocked.patch_obj.call_args_list[0][1]['patch']['status']['kopf']['dummy']
+    assert k8s_mocked.patch.call_count == 1
+    assert k8s_mocked.patch.call_args_list[0][1]['payload']['status']['kopf']['dummy']
 
     # 3rd cycle: the daemon has exited, the resource should be unblocked from actual deletion.
     mocker.resetall()
@@ -169,8 +169,8 @@ async def test_daemon_exits_slowly_via_cancellation_with_backoff(
     await dummy.wait_for_daemon_done()
 
     assert k8s_mocked.sleep.call_count == 0
-    assert k8s_mocked.patch_obj.call_count == 1
-    assert k8s_mocked.patch_obj.call_args_list[0][1]['patch']['metadata']['finalizers'] == []
+    assert k8s_mocked.patch.call_count == 1
+    assert k8s_mocked.patch.call_args_list[0][1]['payload']['metadata']['finalizers'] == []
 
 
 async def test_daemon_is_abandoned_due_to_cancellation_timeout_reached(
@@ -201,8 +201,8 @@ async def test_daemon_is_abandoned_due_to_cancellation_timeout_reached(
 
     assert k8s_mocked.sleep.call_count == 1
     assert k8s_mocked.sleep.call_args_list[0][0][0] == 10.0
-    assert k8s_mocked.patch_obj.call_count == 1
-    assert k8s_mocked.patch_obj.call_args_list[0][1]['patch']['status']['kopf']['dummy']
+    assert k8s_mocked.patch.call_count == 1
+    assert k8s_mocked.patch.call_args_list[0][1]['payload']['status']['kopf']['dummy']
 
     # 2rd cycle: the daemon has exited, the resource should be unblocked from actual deletion.
     mocker.resetall()
@@ -211,8 +211,8 @@ async def test_daemon_is_abandoned_due_to_cancellation_timeout_reached(
         await simulate_cycle(event_object)
 
     assert k8s_mocked.sleep.call_count == 0
-    assert k8s_mocked.patch_obj.call_count == 1
-    assert k8s_mocked.patch_obj.call_args_list[0][1]['patch']['metadata']['finalizers'] == []
+    assert k8s_mocked.patch.call_count == 1
+    assert k8s_mocked.patch.call_args_list[0][1]['payload']['metadata']['finalizers'] == []
     assert_logs(["Daemon 'fn' did not exit in time. Leaving it orphaned."])
 
     # Cleanup.

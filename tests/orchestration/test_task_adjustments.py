@@ -1,7 +1,5 @@
 import asyncio
-import dataclasses
 from typing import Optional
-from unittest.mock import Mock
 
 import pytest
 
@@ -16,17 +14,9 @@ async def processor(*, raw_event: bodies.RawEvent, stream_pressure: Optional[asy
     pass
 
 
-@dataclasses.dataclass(frozen=True, eq=False)
-class K8sMocks:
-    patch_obj: Mock
-
-
 @pytest.fixture(autouse=True)
-def k8s_mocked(mocker, resp_mocker):
-    # We mock on the level of our own K8s API wrappers, not the K8s client.
-    return K8sMocks(
-        patch_obj=mocker.patch('kopf._cogs.clients.patching.patch_obj', return_value={}),
-    )
+def _auto_mocked(k8s_mocked):
+    pass
 
 
 @pytest.fixture()

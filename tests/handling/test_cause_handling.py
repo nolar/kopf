@@ -40,10 +40,10 @@ async def test_create(registry, settings, handlers, resource, cause_mock, event_
     assert not handlers.delete_mock.called
 
     assert k8s_mocked.sleep.call_count == 0
-    assert k8s_mocked.patch_obj.call_count == 1
+    assert k8s_mocked.patch.call_count == 1
     assert not event_queue.empty()
 
-    patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
+    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
     assert 'metadata' in patch
     assert 'annotations' in patch['metadata']
     assert LAST_SEEN_ANNOTATION in patch['metadata']['annotations']
@@ -81,10 +81,10 @@ async def test_update(registry, settings, handlers, resource, cause_mock, event_
     assert not handlers.delete_mock.called
 
     assert k8s_mocked.sleep.call_count == 0
-    assert k8s_mocked.patch_obj.call_count == 1
+    assert k8s_mocked.patch.call_count == 1
     assert not event_queue.empty()
 
-    patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
+    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
     assert 'metadata' in patch
     assert 'annotations' in patch['metadata']
     assert LAST_SEEN_ANNOTATION in patch['metadata']['annotations']
@@ -124,7 +124,7 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
     assert handlers.delete_mock.call_count == 1
 
     assert k8s_mocked.sleep.call_count == 0
-    assert k8s_mocked.patch_obj.call_count == 1
+    assert k8s_mocked.patch.call_count == 1
     assert not event_queue.empty()
 
     assert_logs([
@@ -164,7 +164,7 @@ async def test_gone(registry, settings, handlers, resource, cause_mock, event_ty
     assert not handlers.update_mock.called
     assert not handlers.delete_mock.called
 
-    assert not k8s_mocked.patch_obj.called
+    assert not k8s_mocked.patch.called
     assert event_queue.empty()
 
     assert_logs([
@@ -196,7 +196,7 @@ async def test_free(registry, settings, handlers, resource, cause_mock, event_ty
     assert not handlers.delete_mock.called
 
     assert not k8s_mocked.sleep.called
-    assert not k8s_mocked.patch_obj.called
+    assert not k8s_mocked.patch.called
     assert event_queue.empty()
 
     assert_logs([
@@ -228,7 +228,7 @@ async def test_noop(registry, settings, handlers, resource, cause_mock, event_ty
     assert not handlers.delete_mock.called
 
     assert not k8s_mocked.sleep.called
-    assert not k8s_mocked.patch_obj.called
+    assert not k8s_mocked.patch.called
     assert event_queue.empty()
 
     assert_logs([

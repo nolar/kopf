@@ -43,21 +43,9 @@ import kopf
 from kopf._core.intents.causes import ChangingCause
 
 
-@dataclasses.dataclass(frozen=True, eq=False)
-class K8sMocks:
-    patch_obj: Mock
-    post_event: Mock
-    sleep: Mock
-
-
 @pytest.fixture(autouse=True)
-def k8s_mocked(mocker, resp_mocker):
-    # We mock on the level of our own K8s API wrappers, not the K8s client.
-    return K8sMocks(
-        patch_obj=mocker.patch('kopf._cogs.clients.patching.patch_obj', return_value={}),
-        post_event=mocker.patch('kopf._cogs.clients.events.post_event'),
-        sleep=mocker.patch('kopf._cogs.aiokits.aiotime.sleep', return_value=None),
-    )
+def _auto_mocked(k8s_mocked):
+    pass
 
 
 @dataclasses.dataclass(frozen=True, eq=False, order=False)

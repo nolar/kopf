@@ -47,9 +47,9 @@ async def test_1st_step_stores_progress_by_patching(
     assert handlers.resume_mock.call_count == (1 if cause_type == Reason.RESUME else 0)
 
     assert not k8s_mocked.sleep.called
-    assert k8s_mocked.patch_obj.called
+    assert k8s_mocked.patch.called
 
-    patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
+    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
     assert patch['status']['kopf']['progress'] is not None
 
     assert patch['status']['kopf']['progress'][name1]['retries'] == 1
@@ -107,9 +107,9 @@ async def test_2nd_step_finishes_the_handlers(caplog,
     assert extrahandlers.resume_mock.call_count == (1 if cause_type == Reason.RESUME else 0)
 
     assert not k8s_mocked.sleep.called
-    assert k8s_mocked.patch_obj.called
+    assert k8s_mocked.patch.called
 
-    patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
+    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
     assert patch['status']['kopf']['progress'] == {name1: None, name2: None}
 
     # Finalizers could be removed for resources being deleted on the 2nd step.

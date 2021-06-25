@@ -32,8 +32,8 @@ async def test_nothing_happens_if_not_managed(
 
     assert not insights.ready_resources.wait.called
     assert not insights.backbone.wait_for.called
-    assert not k8s_mocked.create_obj.called
-    assert not k8s_mocked.patch_obj.called
+    assert not k8s_mocked.post.called
+    assert not k8s_mocked.patch.called
     assert not container.as_changed.called
 
 
@@ -55,9 +55,9 @@ async def test_creation_is_attempted(
         container=container,
     )
 
-    assert k8s_mocked.create_obj.call_count == 1
-    assert k8s_mocked.create_obj.call_args_list[0][1]['resource'].group == 'admissionregistration.k8s.io'
-    assert k8s_mocked.create_obj.call_args_list[0][1]['name'] == 'xyz'
+    assert k8s_mocked.post.call_count == 1
+    assert k8s_mocked.post.call_args_list[0][1]['url'].startswith('/apis/admissionregistration.k8s.io/')
+    assert k8s_mocked.post.call_args_list[0][1]['payload']['metadata']['name'] == 'xyz'
 
 
 @pytest.mark.parametrize('reason', set(WebhookType))
@@ -67,7 +67,7 @@ async def test_creation_ignores_if_exists_already(
 
     container = Container()
     mocker.patch.object(container, 'as_changed', return_value=aiter([]))
-    k8s_mocked.create_obj.side_effect = APIConflictError({}, status=409)
+    k8s_mocked.post.side_effect = APIConflictError({}, status=409)
 
     settings.admission.managed = 'xyz'
     await configuration_manager(
@@ -79,9 +79,9 @@ async def test_creation_ignores_if_exists_already(
         container=container,
     )
 
-    assert k8s_mocked.create_obj.call_count == 1
-    assert k8s_mocked.create_obj.call_args_list[0][1]['resource'].group == 'admissionregistration.k8s.io'
-    assert k8s_mocked.create_obj.call_args_list[0][1]['name'] == 'xyz'
+    assert k8s_mocked.post.call_count == 1
+    assert k8s_mocked.post.call_args_list[0][1]['url'].startswith('/apis/admissionregistration.k8s.io/')
+    assert k8s_mocked.post.call_args_list[0][1]['payload']['metadata']['name'] == 'xyz'
 
 
 @pytest.mark.parametrize('error', {APIError, APIForbiddenError, APIUnauthorizedError})
@@ -92,7 +92,7 @@ async def test_creation_escalates_on_errors(
 
     container = Container()
     mocker.patch.object(container, 'as_changed', return_value=aiter([]))
-    k8s_mocked.create_obj.side_effect = error({}, status=400)
+    k8s_mocked.post.side_effect = error({}, status=400)
 
     with pytest.raises(error):
         settings.admission.managed = 'xyz'
@@ -105,9 +105,9 @@ async def test_creation_escalates_on_errors(
             container=container,
         )
 
-    assert k8s_mocked.create_obj.call_count == 1
-    assert k8s_mocked.create_obj.call_args_list[0][1]['resource'].group == 'admissionregistration.k8s.io'
-    assert k8s_mocked.create_obj.call_args_list[0][1]['name'] == 'xyz'
+    assert k8s_mocked.post.call_count == 1
+    assert k8s_mocked.post.call_args_list[0][1]['url'].startswith('/apis/admissionregistration.k8s.io/')
+    assert k8s_mocked.post.call_args_list[0][1]['payload']['metadata']['name'] == 'xyz'
 
 
 @pytest.mark.parametrize('reason', set(WebhookType))
@@ -137,21 +137,21 @@ async def test_patching_on_changes(
         container=container,
     )
 
-    assert k8s_mocked.patch_obj.call_count == 3
-    assert k8s_mocked.patch_obj.call_args_list[0][1]['resource'].group == 'admissionregistration.k8s.io'
-    assert k8s_mocked.patch_obj.call_args_list[0][1]['name'] == 'xyz'
-    assert k8s_mocked.patch_obj.call_args_list[1][1]['resource'].group == 'admissionregistration.k8s.io'
-    assert k8s_mocked.patch_obj.call_args_list[1][1]['name'] == 'xyz'
-    assert k8s_mocked.patch_obj.call_args_list[2][1]['resource'].group == 'admissionregistration.k8s.io'
-    assert k8s_mocked.patch_obj.call_args_list[2][1]['name'] == 'xyz'
+    assert k8s_mocked.patch.call_count == 3
+    assert k8s_mocked.patch.call_args_list[0][1]['url'].startswith('/apis/admissionregistration.k8s.io/')
+    assert k8s_mocked.patch.call_args_list[0][1]['url'].endswith('/xyz')
+    assert k8s_mocked.patch.call_args_list[1][1]['url'].startswith('/apis/admissionregistration.k8s.io/')
+    assert k8s_mocked.patch.call_args_list[1][1]['url'].endswith('/xyz')
+    assert k8s_mocked.patch.call_args_list[2][1]['url'].startswith('/apis/admissionregistration.k8s.io/')
+    assert k8s_mocked.patch.call_args_list[2][1]['url'].endswith('/xyz')
 
-    patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
+    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
     assert patch['webhooks']
     assert patch['webhooks'][0]['clientConfig']['url'].startswith('https://hostname1/')
     assert patch['webhooks'][0]['rules']
     assert patch['webhooks'][0]['rules'][0]['resources'] == ['kopfexamples']
 
-    patch = k8s_mocked.patch_obj.call_args_list[1][1]['patch']
+    patch = k8s_mocked.patch.call_args_list[1][1]['payload']
     assert patch['webhooks']
     assert patch['webhooks'][0]['clientConfig']['url'].startswith('https://hostname2/')
     assert patch['webhooks'][0]['rules']
@@ -184,8 +184,8 @@ async def test_patching_purges_non_permanent_webhooks(
         container=container,
     )
 
-    assert k8s_mocked.patch_obj.call_count == 2
-    patch = k8s_mocked.patch_obj.call_args_list[-1][1]['patch']
+    assert k8s_mocked.patch.call_count == 2
+    patch = k8s_mocked.patch.call_args_list[-1][1]['payload']
     assert not patch['webhooks']
 
 
@@ -215,8 +215,8 @@ async def test_patching_leaves_permanent_webhooks(
         container=container,
     )
 
-    assert k8s_mocked.patch_obj.call_count == 2
-    patch = k8s_mocked.patch_obj.call_args_list[-1][1]['patch']
+    assert k8s_mocked.patch.call_count == 2
+    patch = k8s_mocked.patch.call_args_list[-1][1]['payload']
     assert patch['webhooks'][0]['clientConfig']['url'].startswith('https://hostname/')
     assert patch['webhooks'][0]['rules']
     assert patch['webhooks'][0]['rules'][0]['resources'] == ['kopfexamples']
