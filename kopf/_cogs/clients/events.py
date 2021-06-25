@@ -1,11 +1,10 @@
 import copy
 import datetime
 import logging
-from typing import Optional
 
 import aiohttp
 
-from kopf._cogs.clients import auth, errors
+from kopf._cogs.clients import api, errors
 from kopf._cogs.structs import bodies, references
 
 logger = logging.getLogger(__name__)
@@ -14,7 +13,6 @@ MAX_MESSAGE_LENGTH = 1024
 CUT_MESSAGE_INFIX = '...'
 
 
-@auth.reauthenticated_request
 async def post_event(
         *,
         ref: bodies.ObjectReference,
@@ -22,7 +20,6 @@ async def post_event(
         reason: str,
         message: str = '',
         resource: references.Resource,
-        context: Optional[auth.APIContext] = None,  # injected by the decorator
 ) -> None:
     """
     Issue an event for the object.
@@ -31,8 +28,6 @@ async def post_event(
     and where the rate-limits should be maintained. It can (and should)
     be done by the client library, as it is done in the Go client.
     """
-    if context is None:
-        raise RuntimeError("API instance is not injected by the decorator.")
 
     # Prevent "event explosion", when core v1 events are handled and create other core v1 events.
     # This can happen with `EVERYTHING` without additional filters, or by explicitly serving them.
@@ -41,7 +36,7 @@ async def post_event(
 
     # See #164. For cluster-scoped objects, use the current namespace from the current context.
     # It could be "default", but in some systems, we are limited to one specific namespace only.
-    namespace_name: str = ref.get('namespace') or context.default_namespace or 'default'
+    namespace_name: str = ref.get('namespace') or (await api.get_default_namespace()) or 'default'
     namespace = references.NamespaceName(namespace_name)
     full_ref: bodies.ObjectReference = copy.copy(ref)
     full_ref['namespace'] = namespace
@@ -77,12 +72,11 @@ async def post_event(
     }
 
     try:
-        response = await context.session.post(
-            url=resource.get_url(server=context.server, namespace=namespace),
+        await api.post(
+            url=resource.get_url(namespace=namespace),
             headers={'Content-Type': 'application/json'},
-            json=body,
+            payload=body,
         )
-        await errors.check_response(response)
 
     # Events are helpful but auxiliary, they should not fail the handling cycle.
     # Yet we want to notice that something went wrong (in logs).

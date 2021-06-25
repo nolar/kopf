@@ -1,53 +1,22 @@
 import asyncio
-import ssl
-import urllib.parse
-from typing import Collection, Mapping, Optional, Set, Tuple
+from typing import Collection, Mapping, Optional, Set
 
-from kopf._cogs.clients import auth, errors
+from kopf._cogs.clients import api, errors
 from kopf._cogs.structs import references
 
 
-@auth.reauthenticated_request
-async def read_sslcert(
-        *,
-        context: Optional[auth.APIContext] = None,
-) -> Tuple[str, bytes]:
-    if context is None:
-        raise RuntimeError("API instance is not injected by the decorator.")
-
-    parsed = urllib.parse.urlparse(context.server)
-    host = parsed.hostname or ''  # NB: it cannot be None/empty in our case.
-    port = parsed.port or 443
-    loop = asyncio.get_running_loop()
-    cert = await loop.run_in_executor(None, ssl.get_server_certificate, (host, port))
-    return host, cert.encode('ascii')
-
-
-@auth.reauthenticated_request
-async def read_version(
-        *,
-        context: Optional[auth.APIContext] = None,  # injected by the decorator
-) -> Mapping[str, str]:
-    if context is None:
-        raise RuntimeError("API instance is not injected by the decorator.")
-
-    server = context.server.rstrip('/')
-    url = f'{server}/version'
-    rsp: Mapping[str, str] = await errors.parse_response(await context.session.get(url))
+async def read_version() -> Mapping[str, str]:
+    rsp: Mapping[str, str] = await api.get('/version')
     return rsp
 
 
-@auth.reauthenticated_request
 async def scan_resources(
         *,
         groups: Optional[Collection[str]] = None,
-        context: Optional[auth.APIContext] = None,  # injected by the decorator
 ) -> Collection[references.Resource]:
-    if context is None:
-        raise RuntimeError("API instance is not injected by the decorator.")
     coros = {
-        _read_old_api(groups=groups, context=context),
-        _read_new_apis(groups=groups, context=context),
+        _read_old_api(groups=groups),
+        _read_new_apis(groups=groups),
     }
     resources: Set[references.Resource] = set()
     for coro in asyncio.as_completed(coros):
@@ -58,20 +27,16 @@ async def scan_resources(
 async def _read_old_api(
         *,
         groups: Optional[Collection[str]],
-        context: auth.APIContext,
 ) -> Collection[references.Resource]:
     resources: Set[references.Resource] = set()
     if groups is None or '' in groups:
-        server = context.server.rstrip('/')
-        url = f'{server}/api'
-        rsp = await errors.parse_response(await context.session.get(url))
+        rsp = await api.get('/api')
         coros = {
             _read_version(
-                url=f'{server}/api/{version_name}',
+                url=f'/api/{version_name}',
                 group='',
                 version=version_name,
-                preferred=True,
-                context=context)
+                preferred=True)
             for version_name in rsp['versions']
         }
         for coro in asyncio.as_completed(coros):
@@ -82,21 +47,17 @@ async def _read_old_api(
 async def _read_new_apis(
         *,
         groups: Optional[Collection[str]],
-        context: auth.APIContext,
 ) -> Collection[references.Resource]:
     resources: Set[references.Resource] = set()
     if groups is None or set(groups or {}) - {''}:
-        server = context.server.rstrip('/')
-        url = f'{server}/apis'
-        rsp = await errors.parse_response(await context.session.get(url))
+        rsp = await api.get('/apis')
         items = [d for d in rsp['groups'] if groups is None or d['name'] in groups]
         coros = {
             _read_version(
-                url=f'{server}/apis/{group_dat["name"]}/{version["version"]}',
+                url=f'/apis/{group_dat["name"]}/{version["version"]}',
                 group=group_dat['name'],
                 version=version['version'],
-                preferred=version['version'] == group_dat['preferredVersion']['version'],
-                context=context)
+                preferred=version['version'] == group_dat['preferredVersion']['version'])
             for group_dat in items
             for version in group_dat['versions']
         }
@@ -111,10 +72,9 @@ async def _read_version(
         group: str,
         version: str,
         preferred: bool,
-        context: auth.APIContext,
 ) -> Collection[references.Resource]:
     try:
-        rsp = await errors.parse_response(await context.session.get(url))
+        rsp = await api.get(url)
     except errors.APINotFoundError:
         # This happens when the last and the only resource of a group/version
         # has been deleted, the whole group/version is gone, and we rescan it.

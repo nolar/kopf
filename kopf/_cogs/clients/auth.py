@@ -21,12 +21,12 @@ vault_var: ContextVar[credentials.Vault] = ContextVar('vault_var')
 _F = TypeVar('_F', bound=Callable[..., Any])
 
 
-def reauthenticated_request(fn: _F) -> _F:
+def authenticated(fn: _F) -> _F:
     """
-    A client-specific decorator to re-authenticate a one-time request.
+    A decorator to inject a pre-authenticated session to a requesting routine.
 
     If a wrapped function fails on the authentication, this will be reported
-    back to the credentials container, which will trigger the re-authentication
+    back to the credentials vault, which will trigger the re-authentication
     activity. Meanwhile, the request-performing function will be awaiting
     for the new credentials, and re-executed once they are available.
     """
@@ -43,43 +43,6 @@ def reauthenticated_request(fn: _F) -> _F:
         async for key, info, context in vault.extended(APIContext, 'contexts'):
             try:
                 return await fn(*args, **kwargs, context=context)
-            except errors.APIUnauthorizedError as e:
-                await vault.invalidate(key, exc=e)
-
-        # Normally, either `vault.extended()` or `vault.invalidate()` raise the login errors.
-        # The for-cycle can only end if the yielded credentials are not invalidated before trying
-        # the next ones -- but this case exits by `return` or by other (non-401) errors.
-        raise RuntimeError("Reached an impossible state: the end of the authentication cycle.")
-
-    return cast(_F, wrapper)
-
-
-def reauthenticated_stream(fn: _F) -> _F:
-    """
-    A client-specific decorator to re-authenticate an iterator-generator.
-
-    If a wrapped function fails on the authentication, this will be reported
-    back to the credentials source, which will trigger the re-authentication
-    activity. Meanwhile, the function will be awaiting for the new credentials,
-    and re-executed once they are available.
-    """
-    @functools.wraps(fn)
-    async def wrapper(*args: Any, **kwargs: Any) -> Any:
-
-        # If a context is explicitly passed, make it a simple call without re-auth.
-        # Exceptions are escalated to a caller, which is probably wrapped itself.
-        if 'context' in kwargs:
-            async for item in fn(*args, **kwargs):
-                yield item
-            return
-
-        # Otherwise, attempt the execution with the vault credentials and re-authenticate on 401s.
-        vault: credentials.Vault = vault_var.get()
-        async for key, info, context in vault.extended(APIContext, 'contexts'):
-            try:
-                async for item in fn(*args, **kwargs, context=context):
-                    yield item
-                return
             except errors.APIUnauthorizedError as e:
                 await vault.invalidate(key, exc=e)
 

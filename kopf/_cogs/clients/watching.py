@@ -20,14 +20,13 @@ They would not be needed if the client library were natively asynchronous.
 import asyncio
 import contextlib
 import enum
-import json
 import logging
 from typing import AsyncIterator, Dict, Optional, Union, cast
 
 import aiohttp
 
 from kopf._cogs.aiokits import aiotasks, aiotoggles
-from kopf._cogs.clients import auth, errors, fetching
+from kopf._cogs.clients import api, fetching
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, references
 
@@ -208,7 +207,6 @@ async def continuous_watch(
             yield cast(bodies.RawEvent, raw_input)
 
 
-@auth.reauthenticated_stream
 async def watch_objs(
         *,
         settings: configuration.OperatorSettings,
@@ -216,7 +214,6 @@ async def watch_objs(
         namespace: references.Namespace,
         timeout: Optional[float] = None,
         since: Optional[str] = None,
-        context: Optional[auth.APIContext] = None,  # injected by the decorator
         operator_pause_waiter: aiotasks.Future,
 ) -> AsyncIterator[bodies.RawInput]:
     """
@@ -231,9 +228,6 @@ async def watch_objs(
 
     * The resource is namespace-scoped AND operator is namespaced-restricted.
     """
-    if context is None:
-        raise RuntimeError("API instance is not injected by the decorator.")
-
     params: Dict[str, str] = {}
     params['watch'] = 'true'
     if since is not None:
@@ -244,79 +238,15 @@ async def watch_objs(
     # Stream the parsed events from the response until it is closed server-side,
     # or until it is closed client-side by the pause-waiting future's callbacks.
     try:
-        response = await context.session.get(
-            url=resource.get_url(server=context.server, namespace=namespace, params=params),
+        async for raw_input in api.stream(
+            url=resource.get_url(namespace=namespace, params=params),
+            stopper=operator_pause_waiter,
             timeout=aiohttp.ClientTimeout(
                 total=settings.watching.client_timeout,
                 sock_connect=settings.watching.connect_timeout,
             ),
-        )
-        await errors.check_response(response)
-
-        response_close_callback = lambda _: response.close()
-        operator_pause_waiter.add_done_callback(response_close_callback)
-        try:
-            async with response:
-                async for line in _iter_jsonlines(response.content):
-                    raw_input = cast(bodies.RawInput, json.loads(line.decode("utf-8")))
-                    yield raw_input
-        finally:
-            operator_pause_waiter.remove_done_callback(response_close_callback)
+        ):
+            yield raw_input
 
     except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, asyncio.TimeoutError):
         pass
-
-
-async def _iter_jsonlines(
-        content: aiohttp.StreamReader,
-        chunk_size: int = 1024 * 1024,
-) -> AsyncIterator[bytes]:
-    """
-    Iterate line by line over the response's content.
-
-    Usage::
-
-        async for line in _iter_lines(response.content):
-            pass
-
-    This is an equivalent of::
-
-        async for line in response.content:
-            pass
-
-    Except that the aiohttp's line iteration fails if the accumulated buffer
-    length is above 2**17 bytes, i.e. 128 KB (`aiohttp.streams.DEFAULT_LIMIT`
-    for the buffer's low-watermark, multiplied by 2 for the high-watermark).
-    Kubernetes secrets and other fields can be much longer, up to MBs in length.
-
-    The chunk size of 1MB is an empirical guess for keeping the memory footprint
-    reasonably low on huge amount of small lines (limited to 1 MB in total),
-    while ensuring the near-instant reads of the huge lines (can be a problem
-    with a small chunk size due to too many iterations).
-
-    .. seealso::
-        https://github.com/zalando-incubator/kopf/issues/275
-    """
-
-    # Minimize the memory footprint by keeping at most 2 copies of a yielded line in memory
-    # (in the buffer and as a yielded value), and at most 1 copy of other lines (in the buffer).
-    buffer = b''
-    async for data in content.iter_chunked(chunk_size):
-        buffer += data
-        del data
-
-        start = 0
-        index = buffer.find(b'\n', start)
-        while index >= 0:
-            line = buffer[start:index]
-            if line:
-                yield line
-            del line
-            start = index + 1
-            index = buffer.find(b'\n', start)
-
-        if start > 0:
-            buffer = buffer[start:]
-
-    if buffer:
-        yield buffer

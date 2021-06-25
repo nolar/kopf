@@ -1,6 +1,6 @@
 import asynctest
 
-from kopf._cogs.clients.watching import _iter_jsonlines
+from kopf._cogs.clients.api import iter_jsonlines
 
 
 async def test_empty_content():
@@ -10,7 +10,7 @@ async def test_empty_content():
 
     content = asynctest.Mock(iter_chunked=iter_chunked)
     lines = []
-    async for line in _iter_jsonlines(content):
+    async for line in iter_jsonlines(content):
         lines.append(line)
 
     assert lines == []
@@ -22,7 +22,7 @@ async def test_empty_chunk():
 
     content = asynctest.Mock(iter_chunked=iter_chunked)
     lines = []
-    async for line in _iter_jsonlines(content):
+    async for line in iter_jsonlines(content):
         lines.append(line)
 
     assert lines == []
@@ -34,7 +34,7 @@ async def test_one_chunk_one_line():
 
     content = asynctest.Mock(iter_chunked=iter_chunked)
     lines = []
-    async for line in _iter_jsonlines(content):
+    async for line in iter_jsonlines(content):
         lines.append(line)
 
     assert lines == [b'hello']
@@ -46,7 +46,7 @@ async def test_one_chunk_two_lines():
 
     content = asynctest.Mock(iter_chunked=iter_chunked)
     lines = []
-    async for line in _iter_jsonlines(content):
+    async for line in iter_jsonlines(content):
         lines.append(line)
 
     assert lines == [b'hello', b'world']
@@ -58,7 +58,7 @@ async def test_one_chunk_empty_lines():
 
     content = asynctest.Mock(iter_chunked=iter_chunked)
     lines = []
-    async for line in _iter_jsonlines(content):
+    async for line in iter_jsonlines(content):
         lines.append(line)
 
     assert lines == [b'hello', b'world']
@@ -72,7 +72,7 @@ async def test_few_chunks_split():
 
     content = asynctest.Mock(iter_chunked=iter_chunked)
     lines = []
-    async for line in _iter_jsonlines(content):
+    async for line in iter_jsonlines(content):
         lines.append(line)
 
     assert lines == [b'hello', b'world']

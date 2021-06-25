@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, AsyncIterator, Collection, Dict, Iterable, Opt
 
 import aiohttp.web
 
-from kopf._cogs.clients import scanning
+from kopf._cogs.clients import api, scanning
 from kopf._cogs.structs import reviews
 from kopf._core.engines import admission
 
@@ -564,7 +564,7 @@ class ClusterDetector:
                 "run `pip install certvalidator` or `pip install kopf[dev]`. "
                 "More: https://kopf.readthedocs.io/en/stable/admission/")
 
-        hostname, cert = await scanning.read_sslcert()
+        hostname, cert = await api.read_sslcert()
         valcontext = certvalidator.ValidationContext(extra_trust_roots=[cert])
         validator = certvalidator.CertificateValidator(cert, validation_context=valcontext)
         certpath = validator.validate_tls(hostname)

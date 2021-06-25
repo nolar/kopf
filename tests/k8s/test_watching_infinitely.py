@@ -22,7 +22,7 @@ class SampleException(Exception):
 async def test_exception_escalates(
         settings, resource, stream, namespace, enforced_session, mocker):
 
-    enforced_session.get = mocker.Mock(side_effect=SampleException())
+    enforced_session.request = mocker.Mock(side_effect=SampleException())
     stream.feed([], namespace=namespace)
     stream.close(namespace=namespace)
 

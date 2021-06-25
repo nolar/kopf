@@ -1,15 +1,13 @@
-from typing import Collection, List, Optional, Tuple
+from typing import Collection, List, Tuple
 
-from kopf._cogs.clients import auth, errors
+from kopf._cogs.clients import api
 from kopf._cogs.structs import bodies, references
 
 
-@auth.reauthenticated_request
 async def list_objs(
         *,
         resource: references.Resource,
         namespace: references.Namespace,
-        context: Optional[auth.APIContext] = None,  # injected by the decorator
 ) -> Tuple[Collection[bodies.RawBody], str]:
     """
     List the objects of specific resource type.
@@ -23,15 +21,12 @@ async def list_objs(
 
     * The resource is namespace-scoped AND operator is namespaced-restricted.
     """
-    if context is None:
-        raise RuntimeError("API instance is not injected by the decorator.")
-
-    url = resource.get_url(server=context.server, namespace=namespace)
-    rsp = await errors.parse_response(await context.session.get(url))
+    url = resource.get_url(namespace=namespace)
+    rsp = await api.get(url)
 
     items: List[bodies.RawBody] = []
     resource_version = rsp.get('metadata', {}).get('resourceVersion', None)
-    for item in rsp['items']:
+    for item in rsp.get('items', []):
         if 'kind' in rsp:
             item.setdefault('kind', rsp['kind'][:-4] if rsp['kind'][-4:] == 'List' else rsp['kind'])
         if 'apiVersion' in rsp:
