@@ -27,7 +27,7 @@ as the reasons of failures. However, the errors are exposed to other packages.
 """
 import collections.abc
 import json
-from typing import Any, Collection, Optional
+from typing import Collection, Optional
 
 import aiohttp
 from typing_extensions import Literal, TypedDict
@@ -138,14 +138,3 @@ async def check_response(
             response.raise_for_status()
         except aiohttp.ClientResponseError as e:
             raise cls(payload, status=response.status) from e
-
-
-async def parse_response(
-        response: aiohttp.ClientResponse,
-) -> Any:
-    """
-    Check the response for errors, and either raise or returned the parsed data.
-    """
-    await check_response(response)
-    payload = await response.json()
-    return payload

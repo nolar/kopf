@@ -1,7 +1,6 @@
 import asyncio
 import dataclasses
 import warnings
-from unittest.mock import Mock
 
 import pyngrok.conf
 import pyngrok.ngrok
@@ -122,25 +121,6 @@ async def insights(settings, resource):
 def indices():
     indexers = OperatorIndexers()
     return indexers.indices
-
-
-@dataclasses.dataclass(frozen=True, eq=False)
-class K8sMocks:
-    patch_obj: Mock
-    create_obj: Mock
-    post_event: Mock
-    sleep: Mock
-
-
-@pytest.fixture(autouse=True)
-def k8s_mocked(mocker):
-    # We mock on the level of our own K8s API wrappers, not the K8s client.
-    return K8sMocks(
-        patch_obj=mocker.patch('kopf._cogs.clients.patching.patch_obj', return_value={}),
-        create_obj=mocker.patch('kopf._cogs.clients.creating.create_obj', return_value={}),
-        post_event=mocker.patch('kopf._cogs.clients.events.post_event'),
-        sleep=mocker.patch('kopf._cogs.aiokits.aiotime.sleep', return_value=None),
-    )
 
 
 @pytest.fixture(autouse=True)

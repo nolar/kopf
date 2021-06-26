@@ -203,6 +203,37 @@ def registry(registry_factory):
 #    The unit-tests must be fully isolated from the environment.
 #
 
+
+@dataclasses.dataclass(frozen=True, eq=False)
+class K8sMocks:
+    get: Mock
+    post: Mock
+    patch: Mock
+    delete: Mock
+    stream: Mock
+    sleep: Mock
+
+
+@pytest.fixture()
+def k8s_mocked(mocker, resp_mocker):
+    # We mock on the level of our own K8s API wrappers, not the HTTP client.
+    mocker.patch('kopf._cogs.clients.api.request', side_effect=Exception('Must not be called!'))
+
+    async def itr(*_, **__):
+        await asyncio.sleep(0)  # give up control
+        if False:  # make it an iterator without yielding anything.
+            yield
+
+    return K8sMocks(
+        get=mocker.patch('kopf._cogs.clients.api.get', return_value={}),
+        post=mocker.patch('kopf._cogs.clients.api.post', return_value={}),
+        patch=mocker.patch('kopf._cogs.clients.api.patch', return_value={}),
+        delete=mocker.patch('kopf._cogs.clients.api.delete', return_value={}),
+        stream=mocker.patch('kopf._cogs.clients.api.stream', side_effect=itr),
+        sleep=mocker.patch('kopf._cogs.aiokits.aiotime.sleep', return_value=None),
+    )
+
+
 @pytest.fixture()
 async def enforced_context(fake_vault, mocker):
     """

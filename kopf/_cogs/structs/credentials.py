@@ -103,8 +103,7 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
     * Populated by the authenticator background task when and if needed.
 
     .. seealso::
-        :func:`reauthenticated_request`/:func:`reauthenticated_stream`
-        and :func:`authentication`.
+        :func:`auth.authenticated` and :func:`authentication`.
     """
     _current: Dict[VaultKey, VaultItem]
     _invalid: Dict[VaultKey, List[VaultItem]]

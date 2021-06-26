@@ -1,12 +1,12 @@
 import aiohttp
 import pytest
 
-from kopf._cogs.clients.auth import APIContext, reauthenticated_request
+from kopf._cogs.clients.auth import APIContext, authenticated
 from kopf._cogs.clients.errors import APIConflictError, APIError, APIForbiddenError, \
                                       APINotFoundError, check_response
 
 
-@reauthenticated_request
+@authenticated
 async def get_it(url: str, *, context: APIContext) -> None:
     response = await context.session.get(url)
     await check_response(response)

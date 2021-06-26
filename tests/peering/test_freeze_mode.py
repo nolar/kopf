@@ -1,27 +1,9 @@
-import dataclasses
-from unittest.mock import Mock
-
 import freezegun
 import pytest
 
 from kopf._cogs.aiokits import aiotoggles
 from kopf._cogs.structs import bodies
 from kopf._core.engines.peering import process_peering_event
-
-
-@dataclasses.dataclass(frozen=True, eq=False)
-class K8sMocks:
-    patch_obj: Mock
-    sleep: Mock
-
-
-@pytest.fixture(autouse=True)
-def k8s_mocked(mocker, resp_mocker):
-    # We mock on the level of our own K8s API wrappers, not the K8s client.
-    return K8sMocks(
-        patch_obj=mocker.patch('kopf._cogs.clients.patching.patch_obj', return_value={}),
-        sleep=mocker.patch('kopf._cogs.aiokits.aiotime.sleep', return_value=None),
-    )
 
 
 async def test_other_peering_objects_are_ignored(
@@ -47,7 +29,7 @@ async def test_other_peering_objects_are_ignored(
         resource=peering_resource,
     )
     assert not status.items.called
-    assert not k8s_mocked.patch_obj.called
+    assert not k8s_mocked.patch.called
     assert k8s_mocked.sleep.call_count == 0
 
 
@@ -88,7 +70,7 @@ async def test_toggled_on_for_higher_priority_peer_when_initially_off(
     assert conflicts_found.is_on()
     assert k8s_mocked.sleep.call_count == 1
     assert 9 < k8s_mocked.sleep.call_args[0][0][0] < 10
-    assert not k8s_mocked.patch_obj.called
+    assert not k8s_mocked.patch.called
     assert_logs(["Pausing operations in favour of"], prohibited=[
         "Possibly conflicting operators",
         "Pausing all operators, including self",
@@ -133,7 +115,7 @@ async def test_ignored_for_higher_priority_peer_when_already_on(
     assert conflicts_found.is_on()
     assert k8s_mocked.sleep.call_count == 1
     assert 9 < k8s_mocked.sleep.call_args[0][0][0] < 10
-    assert not k8s_mocked.patch_obj.called
+    assert not k8s_mocked.patch.called
     assert_logs([], prohibited=[
         "Possibly conflicting operators",
         "Pausing all operators, including self",
@@ -179,7 +161,7 @@ async def test_toggled_off_for_lower_priority_peer_when_initially_on(
     assert conflicts_found.is_off()
     assert k8s_mocked.sleep.call_count == 1
     assert k8s_mocked.sleep.call_args[0][0] == []
-    assert not k8s_mocked.patch_obj.called
+    assert not k8s_mocked.patch.called
     assert_logs(["Resuming operations after the pause"], prohibited=[
         "Possibly conflicting operators",
         "Pausing all operators, including self",
@@ -224,7 +206,7 @@ async def test_ignored_for_lower_priority_peer_when_already_off(
     assert conflicts_found.is_off()
     assert k8s_mocked.sleep.call_count == 1
     assert k8s_mocked.sleep.call_args[0][0] == []
-    assert not k8s_mocked.patch_obj.called
+    assert not k8s_mocked.patch.called
     assert_logs([], prohibited=[
         "Possibly conflicting operators",
         "Pausing all operators, including self",
@@ -270,7 +252,7 @@ async def test_toggled_on_for_same_priority_peer_when_initially_off(
     assert conflicts_found.is_on()
     assert k8s_mocked.sleep.call_count == 1
     assert 9 < k8s_mocked.sleep.call_args[0][0][0] < 10
-    assert not k8s_mocked.patch_obj.called
+    assert not k8s_mocked.patch.called
     assert_logs([
         "Possibly conflicting operators",
         "Pausing all operators, including self",
@@ -317,7 +299,7 @@ async def test_ignored_for_same_priority_peer_when_already_on(
     assert conflicts_found.is_on()
     assert k8s_mocked.sleep.call_count == 1
     assert 9 < k8s_mocked.sleep.call_args[0][0][0] < 10
-    assert not k8s_mocked.patch_obj.called
+    assert not k8s_mocked.patch.called
     assert_logs([
         "Possibly conflicting operators",
     ], prohibited=[
@@ -365,4 +347,4 @@ async def test_resumes_immediately_on_expiration_of_blocking_peers(
     assert conflicts_found.is_on()
     assert k8s_mocked.sleep.call_count == 1
     assert 9 < k8s_mocked.sleep.call_args[0][0][0] < 10
-    assert k8s_mocked.patch_obj.called
+    assert k8s_mocked.patch.called

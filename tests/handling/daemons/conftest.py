@@ -67,8 +67,8 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
         )
 
         # Do the same as k8s does: merge the patches into the object.
-        for call in k8s_mocked.patch_obj.call_args_list:
-            _merge_dicts(call[1]['patch'], event_object)
+        for call in k8s_mocked.patch.call_args_list:
+            _merge_dicts(call[1]['payload'], event_object)
 
     return _simulate_cycle
 

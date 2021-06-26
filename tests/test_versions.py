@@ -3,7 +3,7 @@ from typing import Any, Dict
 
 import pytest
 
-from kopf._cogs.clients.auth import APIContext, reauthenticated_request
+from kopf._cogs.clients.auth import APIContext, authenticated
 
 
 def test_package_version():
@@ -22,7 +22,7 @@ async def test_http_user_agent_version(
 
     mocker.patch('kopf._cogs.helpers.versions.version', version)
 
-    @reauthenticated_request
+    @authenticated
     async def get_it(url: str, *, context: APIContext) -> Dict[str, Any]:
         response = await context.session.get(url)
         return await response.json()

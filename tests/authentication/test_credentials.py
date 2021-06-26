@@ -4,7 +4,7 @@ import textwrap
 
 import pytest
 
-from kopf._cogs.clients.auth import APIContext, reauthenticated_request, vault_var
+from kopf._cogs.clients.auth import APIContext, authenticated, vault_var
 from kopf._cogs.structs.credentials import ConnectionInfo, Vault
 
 # These are Minikube's locally geenrated certificates (CN=minikubeCA).
@@ -83,7 +83,7 @@ lUXVsCYgw8yNCm10xGCelpJ4nxxPhf5apbz4F3nGORGfsv5C+x++
 ''').strip()
 
 
-@reauthenticated_request
+@authenticated
 async def fn(context: APIContext):
     return context.session
 

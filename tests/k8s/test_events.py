@@ -79,7 +79,7 @@ async def test_regular_errors_escalate(
         resp_mocker, enforced_session, mocker):
 
     error = Exception('boo!')
-    enforced_session.post = mocker.Mock(side_effect=error)
+    enforced_session.request = mocker.Mock(side_effect=error)
 
     obj = {'apiVersion': 'group/version',
            'kind': 'kind',
@@ -116,7 +116,8 @@ async def test_message_is_cut_to_max_length(
     assert data['message'].endswith('end')
 
 
-@pytest.mark.parametrize('status', [555, 500, 404, 403, 401])
+# 401 causes LoginError from the vault, and this is out of scope of API testing.
+@pytest.mark.parametrize('status', [555, 500, 404, 403])
 async def test_headers_are_not_leaked(
         resp_mocker, aresponses, hostname, assert_logs, status):
 

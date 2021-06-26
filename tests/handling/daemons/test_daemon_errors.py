@@ -23,7 +23,7 @@ async def test_daemon_stopped_on_permanent_error(
     await dummy.wait_for_daemon_done()
 
     assert dummy.mock.call_count == 1
-    assert k8s_mocked.patch_obj.call_count == 0
+    assert k8s_mocked.patch.call_count == 0
     assert k8s_mocked.sleep.call_count == 0
 
     assert_logs([
