@@ -205,7 +205,29 @@ make sure to pre-scale the executor accordingly
 API timeouts
 ============
 
-Few timeouts can be controlled when communicating with Kubernetes API:
+Timeouts can be controlled when communicating with Kubernetes API:
+
+``settings.networking.request_timeout`` (seconds) is how long a regular
+request should take before failing. This applies to all atomic requests --
+cluster scanning, resource patching, etc. -- except the watch-streams.
+The default is 5 minutes (300 seconds).
+
+``settings.networking.connect_timeout`` (seconds) is how long a TCP handshake
+can take for regular requests before failing. There is no default (``None``),
+meaning that there is no timeout specifically for this; however, the handshake
+is limited by the overall time of the request.
+
+``settings.watching.connect_timeout`` (seconds) is how long a TCP handshake
+can take for watch-streams before failing. There is no default (``None``),
+which means that ``settings.networking.connect_timeout`` is used if set.
+If not set, then ``settings.networking.request_timeout`` is used.
+
+.. note::
+
+    With the current aiohttp-based implementation, both connection timeouts
+    correspond to ``sock_connect=`` timeout, not to ``connect=`` timeout,
+    which would also include the time for getting a connection from the pool.
+    Kopf uses unlimited aiohttp pools, so this should not be a problem.
 
 ``settings.watching.server_timeout`` (seconds) is how long the session
 with a watching request will exist before closing it from the **server** side.
@@ -217,11 +239,6 @@ The default is to use the server setup (``None``).
 with a watching request will exist before closing it from the **client** side.
 This includes establishing the connection and event streaming.
 The default is forever (``None``).
-
-``settings.watching.connect_timeout`` (seconds) is how long a connection
-can be established before failing. (With current aiohttp-based implementation,
-this corresponds to ``sock_connect=`` timeout, not to ``connect=`` timeout,
-which would also include the time for getting a connection from the pool.)
 
 It makes no sense to set the client-side timeout shorter than the server-side
 timeout, but it is given to the developers' responsibility to decide.
@@ -240,6 +257,8 @@ The default is 0.1 seconds (nearly instant, but not flooding).
 
     @kopf.on.startup()
     def configure(settings: kopf.OperatorSettings, **_):
+        settings.networking.connect_timeout = 10
+        settings.networking.request_timeout = 60
         settings.watching.server_timeout = 10 * 60
 
 

@@ -1,6 +1,5 @@
 import asyncio
 import textwrap
-import time
 
 import aiohttp.web
 import pytest
@@ -135,34 +134,80 @@ async def test_parsing_in_streams(
     (patch, 'patch'),
     (delete, 'delete'),
 ])
-async def test_timeout_in_requests(
-        resp_mocker, aresponses, hostname, fn, method, settings):
+async def test_direct_timeout_in_requests(
+        resp_mocker, aresponses, hostname, fn, method, settings, timer):
 
-    def serve_slowly():
-        time.sleep(0.2)
+    async def serve_slowly():
+        await asyncio.sleep(1.0)
         return aiohttp.web.json_response({})
 
     mock = resp_mocker(side_effect=serve_slowly)
     aresponses.add(hostname, '/url', method, mock)
 
-    with pytest.raises(asyncio.TimeoutError):
+    with timer, pytest.raises(asyncio.TimeoutError):
         await fn('/url', timeout=aiohttp.ClientTimeout(total=0.1), settings=settings)
+
+    assert 0.1 < timer.seconds < 0.2
+
+
+@pytest.mark.parametrize('fn, method', [
+    (get, 'get'),
+    (post, 'post'),
+    (patch, 'patch'),
+    (delete, 'delete'),
+])
+async def test_settings_timeout_in_requests(
+        resp_mocker, aresponses, hostname, fn, method, settings, timer):
+
+    async def serve_slowly():
+        await asyncio.sleep(1.0)
+        return aiohttp.web.json_response({})
+
+    mock = resp_mocker(side_effect=serve_slowly)
+    aresponses.add(hostname, '/url', method, mock)
+
+    with timer, pytest.raises(asyncio.TimeoutError):
+        settings.networking.request_timeout = 0.1
+        await fn('/url', settings=settings)
+
+    assert 0.1 < timer.seconds < 0.2
 
 
 @pytest.mark.parametrize('method', ['get'])  # the only supported method at the moment
-async def test_timeout_in_streams(
-        resp_mocker, aresponses, hostname, method, settings):
+async def test_direct_timeout_in_streams(
+        resp_mocker, aresponses, hostname, method, settings, timer):
 
-    def serve_slowly():
-        time.sleep(0.2)
+    async def serve_slowly():
+        await asyncio.sleep(1.0)
         return "{}"
 
     mock = resp_mocker(side_effect=serve_slowly)
     aresponses.add(hostname, '/url', method, mock)
 
-    with pytest.raises(asyncio.TimeoutError):
+    with timer, pytest.raises(asyncio.TimeoutError):
         async for _ in stream('/url', timeout=aiohttp.ClientTimeout(total=0.1), settings=settings):
             pass
+
+    assert 0.1 < timer.seconds < 0.2
+
+
+@pytest.mark.parametrize('method', ['get'])  # the only supported method at the moment
+async def test_settings_timeout_in_streams(
+        resp_mocker, aresponses, hostname, method, settings, timer):
+
+    async def serve_slowly():
+        await asyncio.sleep(1.0)
+        return "{}"
+
+    mock = resp_mocker(side_effect=serve_slowly)
+    aresponses.add(hostname, '/url', method, mock)
+
+    with timer, pytest.raises(asyncio.TimeoutError):
+        settings.networking.request_timeout = 0.1
+        async for _ in stream('/url', settings=settings):
+            pass
+
+    assert 0.1 < timer.seconds < 0.2
 
 
 @pytest.mark.parametrize('delay, expected', [

@@ -54,15 +54,18 @@ async def request(
     if '://' not in url:
         url = context.server.rstrip('/') + '/' + url.lstrip('/')
 
-    # NB: aiohttp uses an internal sentinel for default timeout; None has a different meaning.
-    # TODO: Replace this kwargs hack with our own timeout object.
-    timeout_kwarg = {'timeout': timeout} if timeout is not None else {}
+    if timeout is None:
+        timeout = aiohttp.ClientTimeout(
+            total=settings.networking.request_timeout,
+            sock_connect=settings.networking.connect_timeout,
+        )
+
     response = await context.session.request(
         method=method,
         url=url,
         json=payload,
         headers=headers,
-        **timeout_kwarg,
+        timeout=timeout,
     )
     await errors.check_response(response)  # but do not parse it!
     return response

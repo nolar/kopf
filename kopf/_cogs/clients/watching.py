@@ -175,7 +175,6 @@ async def continuous_watch(
             settings=settings,
             resource=resource,
             namespace=namespace,
-            timeout=settings.watching.server_timeout,
             since=resource_version,
             operator_pause_waiter=operator_pause_waiter,
         )
@@ -213,7 +212,6 @@ async def watch_objs(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         namespace: references.Namespace,
-        timeout: Optional[float] = None,
         since: Optional[str] = None,
         operator_pause_waiter: aiotasks.Future,
 ) -> AsyncIterator[bodies.RawInput]:
@@ -233,8 +231,14 @@ async def watch_objs(
     params['watch'] = 'true'
     if since is not None:
         params['resourceVersion'] = since
-    if timeout is not None:
-        params['timeoutSeconds'] = str(timeout)
+    if settings.watching.server_timeout is not None:
+        params['timeoutSeconds'] = str(settings.watching.server_timeout)
+
+    connect_timeout = (
+        settings.watching.connect_timeout if settings.watching.connect_timeout is not None else
+        settings.networking.connect_timeout if settings.networking.connect_timeout is not None else
+        settings.networking.request_timeout
+    )
 
     # Stream the parsed events from the response until it is closed server-side,
     # or until it is closed client-side by the pause-waiting future's callbacks.
@@ -245,7 +249,7 @@ async def watch_objs(
             stopper=operator_pause_waiter,
             timeout=aiohttp.ClientTimeout(
                 total=settings.watching.client_timeout,
-                sock_connect=settings.watching.connect_timeout,
+                sock_connect=connect_timeout,
             ),
         ):
             yield raw_input
