@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, AsyncIterator, Collection, Dict, Iterable, Opt
 import aiohttp.web
 
 from kopf._cogs.clients import api, scanning
+from kopf._cogs.configs import configuration
 from kopf._cogs.structs import reviews
 from kopf._core.engines import admission
 
@@ -577,7 +578,13 @@ class ClusterDetector:
         elif subject_cn == 'minikube' or issuer_cn == 'minikubeCA':
             return WebhookMinikubeServer.DEFAULT_HOST
         else:
-            versioninfo = await scanning.read_version()
+            # The default timeouts & backoffs are used to retrieve the cluster
+            # version, not those from the operator. It is too difficult to get
+            # the settings here in webhooks. The "proper" way is to retrieve
+            # the version in observation routines and pass it via contextvars,
+            # but this is too overcomplicated for a dev-mode helping utility.
+            settings = configuration.OperatorSettings()
+            versioninfo = await scanning.read_version(settings=settings)
             if '+k3s' in versioninfo.get('gitVersion', ''):
                 return WebhookK3dServer.DEFAULT_HOST
         return None

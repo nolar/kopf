@@ -1,11 +1,13 @@
 from typing import Optional, cast
 
 from kopf._cogs.clients import api
+from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, references
 
 
 async def create_obj(
         *,
+        settings: configuration.OperatorSettings,
         resource: references.Resource,
         namespace: references.Namespace = None,
         name: Optional[str] = None,
@@ -24,5 +26,6 @@ async def create_obj(
     created_body: bodies.RawBody = await api.post(
         url=resource.get_url(namespace=namespace),
         payload=body,
+        settings=settings,
     )
     return created_body

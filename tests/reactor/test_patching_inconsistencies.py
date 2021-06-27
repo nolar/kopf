@@ -54,6 +54,7 @@ async def test_patching_without_inconsistencies(
     body = Body({'metadata': {'namespace': namespace, 'name': 'name1'}})
     logger = LocalObjectLogger(body=body, settings=settings)
     await patch_and_check(
+        settings=settings,
         resource=resource,
         body=body,
         patch=Patch(patch),
@@ -116,6 +117,7 @@ async def test_patching_with_inconsistencies(
     body = Body({'metadata': {'namespace': namespace, 'name': 'name1'}})
     logger = LocalObjectLogger(body=body, settings=settings)
     await patch_and_check(
+        settings=settings,
         resource=resource,
         body=body,
         patch=Patch(patch),
@@ -141,6 +143,7 @@ async def test_patching_with_disappearance(
     body = Body({'metadata': {'namespace': namespace, 'name': 'name1'}})
     logger = LocalObjectLogger(body=body, settings=settings)
     await patch_and_check(
+        settings=settings,
         resource=resource,
         body=body,
         patch=Patch(patch),

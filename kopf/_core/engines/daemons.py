@@ -463,7 +463,13 @@ async def _daemon(
         )
         state = state.with_outcomes(outcomes)
         progression.deliver_results(outcomes=outcomes, patch=patch)
-        await application.patch_and_check(resource=resource, patch=patch, body=body, logger=logger)
+        await application.patch_and_check(
+            settings=settings,
+            resource=resource,
+            logger=logger,
+            patch=patch,
+            body=body,
+        )
         patch.clear()
 
         # The in-memory sleep does not react to resource changes, but only to stopping.
@@ -544,7 +550,13 @@ async def _timer(
         )
         state = state.with_outcomes(outcomes)
         progression.deliver_results(outcomes=outcomes, patch=patch)
-        await application.patch_and_check(resource=resource, patch=patch, body=body, logger=logger)
+        await application.patch_and_check(
+            settings=settings,
+            resource=resource,
+            logger=logger,
+            patch=patch,
+            body=body,
+        )
         patch.clear()
 
         # For temporary errors, override the schedule by the one provided by errors themselves.

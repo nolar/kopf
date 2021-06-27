@@ -2,21 +2,26 @@ import asyncio
 from typing import Collection, Mapping, Optional, Set
 
 from kopf._cogs.clients import api, errors
+from kopf._cogs.configs import configuration
 from kopf._cogs.structs import references
 
 
-async def read_version() -> Mapping[str, str]:
-    rsp: Mapping[str, str] = await api.get('/version')
+async def read_version(
+        *,
+        settings: configuration.OperatorSettings,
+) -> Mapping[str, str]:
+    rsp: Mapping[str, str] = await api.get('/version', settings=settings)
     return rsp
 
 
 async def scan_resources(
         *,
+        settings: configuration.OperatorSettings,
         groups: Optional[Collection[str]] = None,
 ) -> Collection[references.Resource]:
     coros = {
-        _read_old_api(groups=groups),
-        _read_new_apis(groups=groups),
+        _read_old_api(groups=groups, settings=settings),
+        _read_new_apis(groups=groups, settings=settings),
     }
     resources: Set[references.Resource] = set()
     for coro in asyncio.as_completed(coros):
@@ -26,17 +31,20 @@ async def scan_resources(
 
 async def _read_old_api(
         *,
+        settings: configuration.OperatorSettings,
         groups: Optional[Collection[str]],
 ) -> Collection[references.Resource]:
     resources: Set[references.Resource] = set()
     if groups is None or '' in groups:
-        rsp = await api.get('/api')
+        rsp = await api.get('/api', settings=settings)
         coros = {
             _read_version(
                 url=f'/api/{version_name}',
                 group='',
                 version=version_name,
-                preferred=True)
+                preferred=True,
+                settings=settings,
+            )
             for version_name in rsp['versions']
         }
         for coro in asyncio.as_completed(coros):
@@ -46,18 +54,21 @@ async def _read_old_api(
 
 async def _read_new_apis(
         *,
+        settings: configuration.OperatorSettings,
         groups: Optional[Collection[str]],
 ) -> Collection[references.Resource]:
     resources: Set[references.Resource] = set()
     if groups is None or set(groups or {}) - {''}:
-        rsp = await api.get('/apis')
+        rsp = await api.get('/apis', settings=settings)
         items = [d for d in rsp['groups'] if groups is None or d['name'] in groups]
         coros = {
             _read_version(
                 url=f'/apis/{group_dat["name"]}/{version["version"]}',
                 group=group_dat['name'],
                 version=version['version'],
-                preferred=version['version'] == group_dat['preferredVersion']['version'])
+                preferred=version['version'] == group_dat['preferredVersion']['version'],
+                settings=settings,
+            )
             for group_dat in items
             for version in group_dat['versions']
         }
@@ -72,9 +83,10 @@ async def _read_version(
         group: str,
         version: str,
         preferred: bool,
+        settings: configuration.OperatorSettings,
 ) -> Collection[references.Resource]:
     try:
-        rsp = await api.get(url)
+        rsp = await api.get(url, settings=settings)
     except errors.APINotFoundError:
         # This happens when the last and the only resource of a group/version
         # has been deleted, the whole group/version is gone, and we rescan it.

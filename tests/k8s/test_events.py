@@ -9,7 +9,7 @@ EVENTS = Resource('', 'v1', 'events', namespaced=True)
 
 
 async def test_posting(
-        resp_mocker, aresponses, hostname):
+        resp_mocker, aresponses, hostname, settings):
 
     post_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
     aresponses.add(hostname, '/api/v1/namespaces/ns/events', 'post', post_mock)
@@ -20,7 +20,14 @@ async def test_posting(
                         'name': 'name',
                         'uid': 'uid'}}
     ref = build_object_reference(obj)
-    await post_event(ref=ref, type='type', reason='reason', message='message', resource=EVENTS)
+    await post_event(
+        ref=ref,
+        type='type',
+        reason='reason',
+        message='message',
+        resource=EVENTS,
+        settings=settings,
+    )
 
     assert post_mock.called
     assert post_mock.call_count == 1
@@ -41,7 +48,7 @@ async def test_posting(
 
 
 async def test_no_events_for_events(
-        resp_mocker, aresponses, hostname):
+        resp_mocker, aresponses, hostname, settings):
 
     post_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
     aresponses.add(hostname, '/api/v1/namespaces/ns/events', 'post', post_mock)
@@ -52,13 +59,20 @@ async def test_no_events_for_events(
                         'name': 'name',
                         'uid': 'uid'}}
     ref = build_object_reference(obj)
-    await post_event(ref=ref, type='type', reason='reason', message='message', resource=EVENTS)
+    await post_event(
+        ref=ref,
+        type='type',
+        reason='reason',
+        message='message',
+        resource=EVENTS,
+        settings=settings,
+    )
 
     assert not post_mock.called
 
 
 async def test_api_errors_logged_but_suppressed(
-        resp_mocker, aresponses, hostname, assert_logs):
+        resp_mocker, aresponses, hostname, settings, assert_logs):
 
     post_mock = resp_mocker(return_value=aresponses.Response(status=555))
     aresponses.add(hostname, '/api/v1/namespaces/ns/events', 'post', post_mock)
@@ -69,14 +83,21 @@ async def test_api_errors_logged_but_suppressed(
                         'name': 'name',
                         'uid': 'uid'}}
     ref = build_object_reference(obj)
-    await post_event(ref=ref, type='type', reason='reason', message='message', resource=EVENTS)
+    await post_event(
+        ref=ref,
+        type='type',
+        reason='reason',
+        message='message',
+        resource=EVENTS,
+        settings=settings,
+    )
 
     assert post_mock.called
     assert_logs(["Failed to post an event."])
 
 
 async def test_regular_errors_escalate(
-        resp_mocker, enforced_session, mocker):
+        resp_mocker, enforced_session, mocker, settings):
 
     error = Exception('boo!')
     enforced_session.request = mocker.Mock(side_effect=error)
@@ -89,13 +110,20 @@ async def test_regular_errors_escalate(
     ref = build_object_reference(obj)
 
     with pytest.raises(Exception) as excinfo:
-        await post_event(ref=ref, type='type', reason='reason', message='message', resource=EVENTS)
+        await post_event(
+            ref=ref,
+            type='type',
+            reason='reason',
+            message='message',
+            resource=EVENTS,
+            settings=settings,
+        )
 
     assert excinfo.value is error
 
 
 async def test_message_is_cut_to_max_length(
-        resp_mocker, aresponses, hostname):
+        resp_mocker, aresponses, hostname, settings):
 
     post_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
     aresponses.add(hostname, '/api/v1/namespaces/ns/events', 'post', post_mock)
@@ -107,7 +135,14 @@ async def test_message_is_cut_to_max_length(
                         'uid': 'uid'}}
     ref = build_object_reference(obj)
     message = 'start' + ('x' * 2048) + 'end'
-    await post_event(ref=ref, type='type', reason='reason', message=message, resource=EVENTS)
+    await post_event(
+        ref=ref,
+        type='type',
+        reason='reason',
+        message=message,
+        resource=EVENTS,
+        settings=settings,
+    )
 
     data = post_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
     assert len(data['message']) <= 1024  # max supported API message length
@@ -119,7 +154,7 @@ async def test_message_is_cut_to_max_length(
 # 401 causes LoginError from the vault, and this is out of scope of API testing.
 @pytest.mark.parametrize('status', [555, 500, 404, 403])
 async def test_headers_are_not_leaked(
-        resp_mocker, aresponses, hostname, assert_logs, status):
+        resp_mocker, aresponses, hostname, settings, assert_logs, status):
 
     post_mock = resp_mocker(return_value=aresponses.Response(status=status))
     aresponses.add(hostname, '/api/v1/namespaces/ns/events', 'post', post_mock)
@@ -130,7 +165,14 @@ async def test_headers_are_not_leaked(
                         'name': 'name',
                         'uid': 'uid'}}
     ref = build_object_reference(obj)
-    await post_event(ref=ref, type='type', reason='reason', message='message', resource=EVENTS)
+    await post_event(
+        ref=ref,
+        type='type',
+        reason='reason',
+        message='message',
+        resource=EVENTS,
+        settings=settings,
+    )
 
     assert_logs([
         "Failed to post an event.",

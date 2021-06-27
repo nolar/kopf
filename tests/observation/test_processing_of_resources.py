@@ -94,14 +94,16 @@ def handlers(request, registry):
 
 
 
-async def test_initial_listing_is_ignored(registry, apis_mock, group1_mock):
+async def test_initial_listing_is_ignored(
+        settings, registry, apis_mock, group1_mock):
+
     insights = Insights()
     e1 = RawEvent(type=None, object=RawBody(spec={'group': 'group1'}))
 
     async def delayed_injection(delay: float):
         await asyncio.sleep(delay)
         await process_discovered_resource_event(
-            insights=insights, raw_event=e1, registry=registry)
+            insights=insights, raw_event=e1, registry=registry, settings=settings)
 
     task = asyncio.create_task(delayed_injection(0))
     with pytest.raises(asyncio.TimeoutError):
@@ -117,7 +119,9 @@ async def test_initial_listing_is_ignored(registry, apis_mock, group1_mock):
 
 @pytest.mark.usefixtures('handlers')
 @pytest.mark.parametrize('etype', ['ADDED', 'MODIFIED'])
-async def test_followups_for_addition(registry, apis_mock, group1_mock, timer, etype):
+async def test_followups_for_addition(
+        settings, registry, apis_mock, group1_mock, timer, etype):
+
     e1 = RawEvent(type=etype, object=RawBody(spec={'group': 'group1'}))
     r1 = Resource(group='group1', version='version1', plural='plural1')
     insights = Insights()
@@ -125,7 +129,7 @@ async def test_followups_for_addition(registry, apis_mock, group1_mock, timer, e
     async def delayed_injection(delay: float):
         await asyncio.sleep(delay)
         await process_discovered_resource_event(
-            insights=insights, raw_event=e1, registry=registry)
+            insights=insights, raw_event=e1, registry=registry, settings=settings)
 
     task = asyncio.create_task(delayed_injection(0.1))
     async with timer, async_timeout.timeout(1.0):
@@ -140,7 +144,9 @@ async def test_followups_for_addition(registry, apis_mock, group1_mock, timer, e
 
 @pytest.mark.usefixtures('handlers')
 @pytest.mark.parametrize('etype', ['ADDED', 'MODIFIED', 'DELETED'])
-async def test_followups_for_deletion_of_resource(registry, apis_mock, group1_empty_mock, timer, etype):
+async def test_followups_for_deletion_of_resource(
+        settings, registry, apis_mock, group1_empty_mock, timer, etype):
+
     e1 = RawEvent(type=etype, object=RawBody(spec={'group': 'group1'}))
     r1 = Resource(group='group1', version='version1', plural='plural1')
     insights = Insights()
@@ -149,7 +155,7 @@ async def test_followups_for_deletion_of_resource(registry, apis_mock, group1_em
     async def delayed_injection(delay: float):
         await asyncio.sleep(delay)
         await process_discovered_resource_event(
-            insights=insights, raw_event=e1, registry=registry)
+            insights=insights, raw_event=e1, registry=registry, settings=settings)
 
     task = asyncio.create_task(delayed_injection(0.1))
     async with timer, async_timeout.timeout(1.0):
@@ -164,7 +170,9 @@ async def test_followups_for_deletion_of_resource(registry, apis_mock, group1_em
 
 @pytest.mark.usefixtures('handlers')
 @pytest.mark.parametrize('etype', ['ADDED', 'MODIFIED', 'DELETED'])
-async def test_followups_for_deletion_of_group(registry, apis_mock, group1_404mock, timer, etype):
+async def test_followups_for_deletion_of_group(
+        settings, registry, apis_mock, group1_404mock, timer, etype):
+
     e1 = RawEvent(type=etype, object=RawBody(spec={'group': 'group1'}))
     r1 = Resource(group='group1', version='version1', plural='plural1')
     insights = Insights()
@@ -173,7 +181,7 @@ async def test_followups_for_deletion_of_group(registry, apis_mock, group1_404mo
     async def delayed_injection(delay: float):
         await asyncio.sleep(delay)
         await process_discovered_resource_event(
-            insights=insights, raw_event=e1, registry=registry)
+            insights=insights, raw_event=e1, registry=registry, settings=settings)
 
     task = asyncio.create_task(delayed_injection(0.1))
     async with timer, async_timeout.timeout(1.0):
@@ -188,7 +196,9 @@ async def test_followups_for_deletion_of_group(registry, apis_mock, group1_404mo
 
 @pytest.mark.usefixtures('handlers')
 @pytest.mark.parametrize('etype', ['DELETED'])
-async def test_followups_for_deletion_of_group(registry, apis_mock, group1_404mock, timer, etype):
+async def test_followups_for_deletion_of_group(
+        settings, registry, apis_mock, group1_404mock, timer, etype):
+
     e1 = RawEvent(type=etype, object=RawBody(spec={'group': 'group1'}))
     r1 = Resource(group='group1', version='version1', plural='plural1')
     insights = Insights()
@@ -197,7 +207,7 @@ async def test_followups_for_deletion_of_group(registry, apis_mock, group1_404mo
     async def delayed_injection(delay: float):
         await asyncio.sleep(delay)
         await process_discovered_resource_event(
-            insights=insights, raw_event=e1, registry=registry)
+            insights=insights, raw_event=e1, registry=registry, settings=settings)
 
     task = asyncio.create_task(delayed_injection(0.1))
     async with timer, async_timeout.timeout(1.0):
@@ -211,14 +221,16 @@ async def test_followups_for_deletion_of_group(registry, apis_mock, group1_404mo
 
 
 @pytest.mark.parametrize('etype', ['DELETED'])
-async def test_backbone_is_filled(registry, core_mock, corev1_mock, timer, etype):
+async def test_backbone_is_filled(
+        settings, registry, core_mock, corev1_mock, timer, etype):
+
     e1 = RawEvent(type=etype, object=RawBody(spec={'group': ''}))
     insights = Insights()
 
     async def delayed_injection(delay: float):
         await asyncio.sleep(delay)
         await process_discovered_resource_event(
-            insights=insights, raw_event=e1, registry=registry)
+            insights=insights, raw_event=e1, registry=registry, settings=settings)
 
     task = asyncio.create_task(delayed_injection(0.1))
     async with timer, async_timeout.timeout(1.0):

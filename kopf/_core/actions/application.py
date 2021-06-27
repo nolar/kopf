@@ -57,7 +57,13 @@ async def apply(
         settings.persistence.progress_storage.touch(body=body, patch=patch, value=None)
 
     # Actually patch if it was not empty originally or after the dummies removal.
-    await patch_and_check(resource=resource, patch=patch, body=body, logger=logger)
+    await patch_and_check(
+        settings=settings,
+        resource=resource,
+        logger=logger,
+        patch=patch,
+        body=body,
+    )
 
     # Sleep strictly after patching, never before -- to keep the status proper.
     # The patching above, if done, interrupts the sleep instantly, so we skip it at all.
@@ -86,7 +92,13 @@ async def apply(
             value = datetime.datetime.utcnow().isoformat()
             touch = patches.Patch()
             settings.persistence.progress_storage.touch(body=body, patch=touch, value=value)
-            await patch_and_check(resource=resource, patch=touch, body=body, logger=logger)
+            await patch_and_check(
+                settings=settings,
+                resource=resource,
+                logger=logger,
+                patch=touch,
+                body=body,
+            )
     elif not patch:  # no patch/touch and no delay
         applied = True
     return applied
@@ -94,6 +106,7 @@ async def apply(
 
 async def patch_and_check(
         *,
+        settings: configuration.OperatorSettings,
         resource: references.Resource,
         body: bodies.Body,
         patch: patches.Patch,
@@ -116,6 +129,7 @@ async def patch_and_check(
     if patch:
         logger.debug(f"Patching with: {patch!r}")
         resulting_body = await patching.patch_obj(
+            settings=settings,
             resource=resource,
             namespace=body.metadata.namespace,
             name=body.metadata.name,

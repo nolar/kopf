@@ -255,6 +255,7 @@ async def spawn_tasks(
     tasks.append(aiotasks.create_guarded_task(
         name="poster of events", flag=started_flag, logger=logger,
         coro=posting.poster(
+            settings=settings,
             backbone=insights.backbone,
             event_queue=event_queue)))
 
