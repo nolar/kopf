@@ -5,44 +5,7 @@ Custom Resources
 Custom Resource Definition
 ==========================
 
-Let us define a CRD (custom resource definition) for our object.
-
-For Kubernetes 1.15 and below:
-
-.. code-block:: yaml
-    :caption: crd.yaml
-    :name: crd-yaml-15
-
-    apiVersion: apiextensions.k8s.io/v1beta1
-    kind: CustomResourceDefinition
-    metadata:
-      name: ephemeralvolumeclaims.kopf.dev
-    spec:
-      scope: Namespaced
-      group: kopf.dev
-      names:
-        kind: EphemeralVolumeClaim
-        plural: ephemeralvolumeclaims
-        singular: ephemeralvolumeclaim
-        shortNames:
-          - evcs
-          - evc
-      versions:
-        - name: v1
-          served: true
-          storage: true
-          schema:
-            openAPIV3Schema:
-              type: object
-              properties:
-                spec:
-                  type: object
-                  x-kubernetes-preserve-unknown-fields: true
-                status:
-                  type: object
-                  x-kubernetes-preserve-unknown-fields: true
-
-For Kubernetes 1.16 and above:
+Let us define a CRD (custom resource definition) for our object:
 
 .. code-block:: yaml
     :caption: crd.yaml
