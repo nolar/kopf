@@ -76,18 +76,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        k3s: [latest, v1.21, v1.20, v1.19, v1.18, v1.17, v1.16]
-        crdapi: ["", v1beta1]
-        exclude:
-          - crdapi: v1beta1
-        include:
-          - k3s: v1.16
-            crdapi: v1beta1
-    name: K3s ${{matrix.k3s}} ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
+        k3s: [latest, v1.21, v1.20, v1.19, v1.18]
+    name: K3s ${{matrix.k3s}}
     runs-on: ubuntu-20.04
     timeout-minutes: 10  # usually 4-5 mins
-    env:
-      CRDAPI: ${{ matrix.crdapi || '' }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -100,39 +92,16 @@ jobs:
       - run: pip install -r requirements.txt -r examples/requirements.txt
       - run: pytest --color=yes --only-e2e
 
-  full-scale-crd-v1:
+  full-scale:
     strategy:
       fail-fast: false
       matrix:
-        k8s: [latest, v1.21.0, v1.20.5, v1.19.9, v1.18.17, v1.17.17, v1.16.15]
-        crdapi: [""]
-    name: K8s ${{matrix.k8s}} ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
+        k8s: [latest, v1.21.2, v1.20.8, v1.19.12, v1.18.20]
+    name: K8s ${{matrix.k8s}}
     runs-on: ubuntu-20.04
     timeout-minutes: 10  # usually 4-5 mins
     env:
       K8S: ${{ matrix.k8s }}
-      CRDAPI: ${{ matrix.crdapi || '' }}
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: "3.9"
-      - run: tools/install-minikube.sh
-      - run: pip install -r requirements.txt -r examples/requirements.txt
-      - run: pytest --color=yes --only-e2e
-
-  full-scale-crd-v1beta1:
-    strategy:
-      fail-fast: false
-      matrix:
-        k8s: [v1.16.15, v1.15.12]
-        crdapi: [v1beta1]
-    name: K8s ${{matrix.k8s}} ${{matrix.crdapi && format('CRD={0}', matrix.crdapi) || ''}}
-    runs-on: ubuntu-20.04
-    timeout-minutes: 10  # usually 4-5 mins
-    env:
-      K8S: ${{ matrix.k8s }}
-      CRDAPI: ${{ matrix.crdapi || '' }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2

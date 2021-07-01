@@ -5,19 +5,13 @@ import time
 import kopf.testing
 import pytest
 
+crd_yaml = os.path.relpath(os.path.join(os.path.dirname(__file__), '..', 'crd.yaml'))
 obj_yaml = os.path.relpath(os.path.join(os.path.dirname(__file__), '..', 'obj.yaml'))
 example_py = os.path.relpath(os.path.join(os.path.dirname(__file__), 'example.py'))
 
 
-@pytest.fixture(scope='session')
-def crd_yaml():
-    crd_api = os.environ.get('CRDAPI') or 'v1'
-    crd_file = 'crd.yaml' if crd_api == 'v1' else f'crd-{crd_api}.yaml'
-    return os.path.relpath(os.path.join(os.path.dirname(__file__), '..', crd_file))
-
-
 @pytest.fixture(autouse=True)
-def crd_exists(crd_yaml):
+def crd_exists():
     subprocess.run(f"kubectl apply -f {crd_yaml}",
                    check=True, timeout=10, capture_output=True, shell=True)
 

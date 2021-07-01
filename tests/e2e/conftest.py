@@ -24,30 +24,16 @@ def exampledir(request):
     return pathlib.Path(request.param)
 
 
-@pytest.fixture(scope='session')
-def peering_yaml():
-    crd_api = os.environ.get('CRDAPI') or 'v1'
-    crd_file = 'peering.yaml' if crd_api == 'v1' else f'peering-{crd_api}.yaml'
-    return f'{crd_file}'
-
-
-@pytest.fixture(scope='session')
-def crd_yaml():
-    crd_api = os.environ.get('CRDAPI') or 'v1'
-    crd_file = 'crd.yaml' if crd_api == 'v1' else f'crd-{crd_api}.yaml'
-    return f'examples/{crd_file}'
-
-
 @pytest.fixture()
-def with_crd(crd_yaml):
+def with_crd():
     # Our best guess on which Kubernetes version we are running on.
-    subprocess.run(f"kubectl apply -f {crd_yaml}",
+    subprocess.run(f"kubectl apply -f examples/crd.yaml",
                    shell=True, check=True, timeout=10, capture_output=True)
 
 
 @pytest.fixture()
-def with_peering(peering_yaml):
-    subprocess.run(f"kubectl apply -f {peering_yaml}",
+def with_peering():
+    subprocess.run(f"kubectl apply -f peering.yaml",
                    shell=True, check=True, timeout=10, capture_output=True)
 
 
