@@ -1,6 +1,5 @@
 import asyncio
 import textwrap
-import time
 
 import aiohttp.web
 import pytest
@@ -10,7 +9,9 @@ from kopf._cogs.clients.errors import APIError
 
 
 @pytest.mark.parametrize('method', ['get', 'post', 'patch', 'delete'])
-async def test_raw_requests_work(resp_mocker, aresponses, hostname, method):
+async def test_raw_requests_work(
+        resp_mocker, aresponses, hostname, method, settings):
+
     mock = resp_mocker(return_value=aiohttp.web.json_response({}))
     aresponses.add(hostname, '/url', method, mock)
     response = await request(
@@ -18,6 +19,7 @@ async def test_raw_requests_work(resp_mocker, aresponses, hostname, method):
         url='/url',
         payload={'fake': 'payload'},
         headers={'fake': 'headers'},
+        settings=settings,
     )
     assert isinstance(response, aiohttp.ClientResponse)  # unparsed!
     assert mock.call_count == 1
@@ -29,37 +31,45 @@ async def test_raw_requests_work(resp_mocker, aresponses, hostname, method):
 
 
 @pytest.mark.parametrize('method', ['get', 'post', 'patch', 'delete'])
-async def test_raw_requests_are_not_parsed(resp_mocker, aresponses, hostname, method):
+async def test_raw_requests_are_not_parsed(
+        resp_mocker, aresponses, hostname, method, settings):
+
     mock = resp_mocker(return_value=aresponses.Response(text='BAD JSON!'))
     aresponses.add(hostname, '/url', method, mock)
-    response = await request(method, '/url')
+    response = await request(method, '/url', settings=settings)
     assert isinstance(response, aiohttp.ClientResponse)
 
 
 @pytest.mark.parametrize('method', ['get', 'post', 'patch', 'delete'])
-async def test_server_errors_escalate(resp_mocker, aresponses, hostname, method):
+async def test_server_errors_escalate(
+        resp_mocker, aresponses, hostname, method, settings):
+
     mock = resp_mocker(return_value=aiohttp.web.json_response({}, status=666))
     aresponses.add(hostname, '/url', method, mock)
     with pytest.raises(APIError) as err:
-        await request(method, '/url')
+        await request(method, '/url', settings=settings)
     assert err.value.status == 666
 
 
 @pytest.mark.parametrize('method', ['get', 'post', 'patch', 'delete'])
-async def test_relative_urls_are_prepended_with_server(resp_mocker, aresponses, hostname, method):
+async def test_relative_urls_are_prepended_with_server(
+        resp_mocker, aresponses, hostname, method, settings):
+
     mock = resp_mocker(return_value=aiohttp.web.json_response({}))
     aresponses.add(hostname, '/url', method, mock)
-    await request(method, '/url')
+    await request(method, '/url', settings=settings)
     assert isinstance(mock.call_args[0][0], aiohttp.web.BaseRequest)
     assert str(mock.call_args[0][0].url) == f'http://{hostname}/url'
 
 
 @pytest.mark.parametrize('method', ['get', 'post', 'patch', 'delete'])
-async def test_absolute_urls_are_passed_through(resp_mocker, aresponses, hostname, method):
+async def test_absolute_urls_are_passed_through(
+        resp_mocker, aresponses, hostname, method, settings):
+
     mock = resp_mocker(return_value=aiohttp.web.json_response({}))
     aresponses.add(hostname, '/url', method, mock)
     aresponses.add('fakehost.localdomain', '/url', method, mock)
-    await request(method, 'http://fakehost.localdomain/url')
+    await request(method, 'http://fakehost.localdomain/url', settings=settings)
     assert isinstance(mock.call_args[0][0], aiohttp.web.BaseRequest)
     assert str(mock.call_args[0][0].url) == 'http://fakehost.localdomain/url'
 
@@ -70,13 +80,16 @@ async def test_absolute_urls_are_passed_through(resp_mocker, aresponses, hostnam
     (patch, 'patch'),
     (delete, 'delete'),
 ])
-async def test_parsing_in_requests(resp_mocker, aresponses, hostname, fn, method):
+async def test_parsing_in_requests(
+        resp_mocker, aresponses, hostname, fn, method, settings):
+
     mock = resp_mocker(return_value=aiohttp.web.json_response({'fake': 'result'}))
     aresponses.add(hostname, '/url', method, mock)
     response = await fn(
         url='/url',
         payload={'fake': 'payload'},
         headers={'fake': 'headers'},
+        settings=settings,
     )
     assert response == {'fake': 'result'}  # parsed!
     assert mock.call_count == 1
@@ -88,7 +101,9 @@ async def test_parsing_in_requests(resp_mocker, aresponses, hostname, fn, method
 
 
 @pytest.mark.parametrize('method', ['get'])  # the only supported method at the moment
-async def test_parsing_in_streams(resp_mocker, aresponses, hostname, method):
+async def test_parsing_in_streams(
+        resp_mocker, aresponses, hostname, method, settings):
+
     mock = resp_mocker(return_value=aresponses.Response(text=textwrap.dedent("""
         {"fake": "result1"}
         {"fake": "result2"}
@@ -100,6 +115,7 @@ async def test_parsing_in_streams(resp_mocker, aresponses, hostname, method):
         url='/url',
         payload={'fake': 'payload'},
         headers={'fake': 'headers'},
+        settings=settings,
     ):
         items.append(item)
 
@@ -118,32 +134,80 @@ async def test_parsing_in_streams(resp_mocker, aresponses, hostname, method):
     (patch, 'patch'),
     (delete, 'delete'),
 ])
-async def test_timeout_in_requests(resp_mocker, aresponses, hostname, fn, method):
+async def test_direct_timeout_in_requests(
+        resp_mocker, aresponses, hostname, fn, method, settings, timer):
 
-    def serve_slowly():
-        time.sleep(0.2)
+    async def serve_slowly():
+        await asyncio.sleep(1.0)
         return aiohttp.web.json_response({})
 
     mock = resp_mocker(side_effect=serve_slowly)
     aresponses.add(hostname, '/url', method, mock)
 
-    with pytest.raises(asyncio.TimeoutError):
-        await fn('/url', timeout=aiohttp.ClientTimeout(total=0.1))
+    with timer, pytest.raises(asyncio.TimeoutError):
+        await fn('/url', timeout=aiohttp.ClientTimeout(total=0.1), settings=settings)
+
+    assert 0.1 < timer.seconds < 0.2
+
+
+@pytest.mark.parametrize('fn, method', [
+    (get, 'get'),
+    (post, 'post'),
+    (patch, 'patch'),
+    (delete, 'delete'),
+])
+async def test_settings_timeout_in_requests(
+        resp_mocker, aresponses, hostname, fn, method, settings, timer):
+
+    async def serve_slowly():
+        await asyncio.sleep(1.0)
+        return aiohttp.web.json_response({})
+
+    mock = resp_mocker(side_effect=serve_slowly)
+    aresponses.add(hostname, '/url', method, mock)
+
+    with timer, pytest.raises(asyncio.TimeoutError):
+        settings.networking.request_timeout = 0.1
+        await fn('/url', settings=settings)
+
+    assert 0.1 < timer.seconds < 0.2
 
 
 @pytest.mark.parametrize('method', ['get'])  # the only supported method at the moment
-async def test_timeout_in_streams(resp_mocker, aresponses, hostname, method):
+async def test_direct_timeout_in_streams(
+        resp_mocker, aresponses, hostname, method, settings, timer):
 
-    def serve_slowly():
-        time.sleep(0.2)
+    async def serve_slowly():
+        await asyncio.sleep(1.0)
         return "{}"
 
     mock = resp_mocker(side_effect=serve_slowly)
     aresponses.add(hostname, '/url', method, mock)
 
-    with pytest.raises(asyncio.TimeoutError):
-        async for _ in stream('/url', timeout=aiohttp.ClientTimeout(total=0.1)):
+    with timer, pytest.raises(asyncio.TimeoutError):
+        async for _ in stream('/url', timeout=aiohttp.ClientTimeout(total=0.1), settings=settings):
             pass
+
+    assert 0.1 < timer.seconds < 0.2
+
+
+@pytest.mark.parametrize('method', ['get'])  # the only supported method at the moment
+async def test_settings_timeout_in_streams(
+        resp_mocker, aresponses, hostname, method, settings, timer):
+
+    async def serve_slowly():
+        await asyncio.sleep(1.0)
+        return "{}"
+
+    mock = resp_mocker(side_effect=serve_slowly)
+    aresponses.add(hostname, '/url', method, mock)
+
+    with timer, pytest.raises(asyncio.TimeoutError):
+        settings.networking.request_timeout = 0.1
+        async for _ in stream('/url', settings=settings):
+            pass
+
+    assert 0.1 < timer.seconds < 0.2
 
 
 @pytest.mark.parametrize('delay, expected', [
@@ -152,7 +216,8 @@ async def test_timeout_in_streams(resp_mocker, aresponses, hostname, method):
     pytest.param(9.9, [{'fake': 'result1'}, {'fake': 'result2'}], id='inf-double'),
 ])
 @pytest.mark.parametrize('method', ['get'])  # the only supported method at the moment
-async def test_stopper_in_streams(resp_mocker, aresponses, hostname, method, delay, expected):
+async def test_stopper_in_streams(
+        resp_mocker, aresponses, hostname, method, delay, expected, settings):
 
     async def stream_slowly(request: aiohttp.ClientRequest):
         response = aiohttp.web.StreamResponse()
@@ -170,7 +235,7 @@ async def test_stopper_in_streams(resp_mocker, aresponses, hostname, method, del
     asyncio.get_running_loop().call_later(delay, stopper.set_result, None)
 
     items = []
-    async for item in stream('/url', stopper=stopper):
+    async for item in stream('/url', stopper=stopper, settings=settings):
         items.append(item)
 
     assert items == expected

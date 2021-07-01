@@ -339,6 +339,24 @@ class ExecutionSettings:
 
 
 @dataclasses.dataclass
+class NetworkingSettings:
+
+    request_timeout: Optional[float] = 5 * 60  # == aiohttp.client.DEFAULT_TIMEOUT
+    """
+    A timeout for the entire duration of an API request (in seconds).
+
+    The timeout is only applied to all short atomic requests.
+    For watch-streams, use one of ``settings.watching.client_timeout``
+    or ``settings.watching.server_timeout``.
+    """
+
+    connect_timeout: Optional[float] = None
+    """
+    A timeout for the connection & handshake of an API request (in seconds).
+    """
+
+
+@dataclasses.dataclass
 class PersistenceSettings:
 
     finalizer: str = 'kopf.zalando.org/KopfFinalizerMarker'
@@ -430,4 +448,5 @@ class OperatorSettings:
     admission: AdmissionSettings =dataclasses.field(default_factory=AdmissionSettings)
     execution: ExecutionSettings = dataclasses.field(default_factory=ExecutionSettings)
     background: BackgroundSettings = dataclasses.field(default_factory=BackgroundSettings)
+    networking: NetworkingSettings = dataclasses.field(default_factory=NetworkingSettings)
     persistence: PersistenceSettings = dataclasses.field(default_factory=PersistenceSettings)

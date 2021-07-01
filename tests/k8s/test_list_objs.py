@@ -7,7 +7,7 @@ from kopf._cogs.structs.credentials import LoginError
 
 
 async def test_listing_works(
-        resp_mocker, aresponses, hostname, resource, namespace,
+        resp_mocker, aresponses, hostname, settings, resource, namespace,
         cluster_resource, namespaced_resource):
 
     result = {'items': [{}, {}]}
@@ -17,7 +17,11 @@ async def test_listing_works(
     aresponses.add(hostname, cluster_url, 'get', list_mock)
     aresponses.add(hostname, namespaced_url, 'get', list_mock)
 
-    items, resource_version = await list_objs(resource=resource, namespace=namespace)
+    items, resource_version = await list_objs(
+        settings=settings,
+        resource=resource,
+        namespace=namespace,
+    )
     assert items == result['items']
 
     assert list_mock.called
@@ -27,7 +31,7 @@ async def test_listing_works(
 # Note: 401 is wrapped into a LoginError and is tested elsewhere.
 @pytest.mark.parametrize('status', [400, 403, 500, 666])
 async def test_raises_direct_api_errors(
-        resp_mocker, aresponses, hostname, status, resource, namespace,
+        resp_mocker, aresponses, hostname, settings, status, resource, namespace,
         cluster_resource, namespaced_resource):
 
     list_mock = resp_mocker(return_value=aresponses.Response(status=status))
@@ -37,5 +41,9 @@ async def test_raises_direct_api_errors(
     aresponses.add(hostname, namespaced_url, 'get', list_mock)
 
     with pytest.raises(APIError) as e:
-        await list_objs(resource=resource, namespace=namespace)
+        await list_objs(
+            settings=settings,
+            resource=resource,
+            namespace=namespace,
+        )
     assert e.value.status == status

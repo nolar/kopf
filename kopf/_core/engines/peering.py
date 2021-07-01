@@ -218,7 +218,13 @@ async def touch(
 
     patch = patches.Patch()
     patch.update({'status': {identity: None if peer.is_dead else peer.as_dict()}})
-    rsp = await patching.patch_obj(resource=resource, namespace=namespace, name=name, patch=patch)
+    rsp = await patching.patch_obj(
+        settings=settings,
+        resource=resource,
+        namespace=namespace,
+        name=name,
+        patch=patch,
+    )
 
     if not settings.peering.stealth or rsp is None:
         where = f"in {namespace!r}" if namespace else "cluster-wide"
@@ -236,7 +242,13 @@ async def clean(
     name = settings.peering.name
     patch = patches.Patch()
     patch.update({'status': {peer.identity: None for peer in peers}})
-    await patching.patch_obj(resource=resource, namespace=namespace, name=name, patch=patch)
+    await patching.patch_obj(
+        settings=settings,
+        resource=resource,
+        namespace=namespace,
+        name=name,
+        patch=patch,
+    )
 
 
 def detect_own_id(*, manual: bool) -> Identity:

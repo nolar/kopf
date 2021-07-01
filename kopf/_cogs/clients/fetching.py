@@ -1,11 +1,13 @@
 from typing import Collection, List, Tuple
 
 from kopf._cogs.clients import api
+from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, references
 
 
 async def list_objs(
         *,
+        settings: configuration.OperatorSettings,
         resource: references.Resource,
         namespace: references.Namespace,
 ) -> Tuple[Collection[bodies.RawBody], str]:
@@ -21,8 +23,10 @@ async def list_objs(
 
     * The resource is namespace-scoped AND operator is namespaced-restricted.
     """
-    url = resource.get_url(namespace=namespace)
-    rsp = await api.get(url)
+    rsp = await api.get(
+        url=resource.get_url(namespace=namespace),
+        settings=settings,
+    )
 
     items: List[bodies.RawBody] = []
     resource_version = rsp.get('metadata', {}).get('resourceVersion', None)

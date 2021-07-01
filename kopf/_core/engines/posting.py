@@ -146,6 +146,7 @@ async def poster(
         *,
         event_queue: K8sEventQueue,
         backbone: references.Backbone,
+        settings: configuration.OperatorSettings,
 ) -> NoReturn:
     """
     Post events in the background as they are queued.
@@ -170,7 +171,9 @@ async def poster(
             type=posted_event.type,
             reason=posted_event.reason,
             message=posted_event.message,
-            resource=resource)
+            resource=resource,
+            settings=settings,
+        )
 
 
 class K8sPoster(logging.Handler):

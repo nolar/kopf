@@ -1,11 +1,13 @@
 from typing import Optional
 
 from kopf._cogs.clients import api, errors
+from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, patches, references
 
 
 async def patch_obj(
         *,
+        settings: configuration.OperatorSettings,
         resource: references.Resource,
         namespace: references.Namespace,
         name: Optional[str],
@@ -44,6 +46,7 @@ async def patch_obj(
                 url=resource.get_url(namespace=namespace, name=name),
                 headers={'Content-Type': 'application/merge-patch+json'},
                 payload=body_patch,
+                settings=settings,
             )
 
         if status_patch:
@@ -52,6 +55,7 @@ async def patch_obj(
                                      subresource='status' if as_subresource else None),
                 headers={'Content-Type': 'application/merge-patch+json'},
                 payload={'status': status_patch},
+                settings=settings,
             )
             patched_body['status'] = response.get('status')
 

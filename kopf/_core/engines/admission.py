@@ -331,7 +331,11 @@ async def configuration_manager(
     # Optionally (if configured), pre-create the configuration objects if they are absent.
     # Use the try-or-fail strategy instead of check-and-do -- to reduce the RBAC requirements.
     try:
-        await creating.create_obj(resource=resource, name=settings.admission.managed)
+        await creating.create_obj(
+            settings=settings,
+            resource=resource,
+            name=settings.admission.managed,
+        )
     except errors.APIConflictError:
         pass  # exists already
     except errors.APIForbiddenError:
@@ -351,6 +355,7 @@ async def configuration_manager(
                 name_suffix=settings.admission.managed,
                 client_config=client_config)
             await patching.patch_obj(
+                settings=settings,
                 resource=resource,
                 namespace=None,
                 name=settings.admission.managed,
@@ -367,6 +372,7 @@ async def configuration_manager(
                 client_config=client_config,
                 persistent_only=True)
             await patching.patch_obj(
+                settings=settings,
                 resource=resource,
                 namespace=None,
                 name=settings.admission.managed,

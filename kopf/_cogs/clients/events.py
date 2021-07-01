@@ -5,6 +5,7 @@ import logging
 import aiohttp
 
 from kopf._cogs.clients import api, errors
+from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, references
 
 logger = logging.getLogger(__name__)
@@ -20,6 +21,7 @@ async def post_event(
         reason: str,
         message: str = '',
         resource: references.Resource,
+        settings: configuration.OperatorSettings,
 ) -> None:
     """
     Issue an event for the object.
@@ -76,6 +78,7 @@ async def post_event(
             url=resource.get_url(namespace=namespace),
             headers={'Content-Type': 'application/json'},
             payload=body,
+            settings=settings,
         )
 
     # Events are helpful but auxiliary, they should not fail the handling cycle.

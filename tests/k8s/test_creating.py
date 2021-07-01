@@ -6,13 +6,19 @@ from kopf._cogs.clients.errors import APIError
 
 
 async def test_simple_body_with_arguments(
-        resp_mocker, aresponses, hostname, resource, namespace, caplog):
+        resp_mocker, aresponses, hostname, settings, resource, namespace, caplog):
 
     post_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
     aresponses.add(hostname, resource.get_url(namespace=namespace), 'post', post_mock)
 
     body = {'x': 'y'}
-    await create_obj(resource=resource, namespace=namespace, name='name1', body=body)
+    await create_obj(
+        settings=settings,
+        resource=resource,
+        namespace=namespace,
+        name='name1',
+        body=body,
+    )
 
     assert post_mock.called
     assert post_mock.call_count == 1
@@ -25,13 +31,17 @@ async def test_simple_body_with_arguments(
 
 
 async def test_full_body_with_identifiers(
-        resp_mocker, aresponses, hostname, resource, namespace, caplog):
+        resp_mocker, aresponses, hostname, settings, resource, namespace, caplog):
 
     post_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
     aresponses.add(hostname, resource.get_url(namespace=namespace), 'post', post_mock)
 
     body = {'x': 'y', 'metadata': {'name': 'name1', 'namespace': namespace}}
-    await create_obj(resource=resource, body=body)
+    await create_obj(
+        settings=settings,
+        resource=resource,
+        body=body,
+    )
 
     assert post_mock.called
     assert post_mock.call_count == 1
@@ -43,7 +53,7 @@ async def test_full_body_with_identifiers(
 # Note: 401 is wrapped into a LoginError and is tested elsewhere.
 @pytest.mark.parametrize('status', [400, 403, 404, 409, 500, 666])
 async def test_raises_api_errors(
-        resp_mocker, aresponses, hostname, status, resource, namespace,
+        resp_mocker, aresponses, hostname, settings, status, resource, namespace,
         cluster_resource, namespaced_resource):
 
     post_mock = resp_mocker(return_value=aresponses.Response(status=status))
@@ -54,5 +64,11 @@ async def test_raises_api_errors(
 
     body = {'x': 'y'}
     with pytest.raises(APIError) as e:
-        await create_obj(resource=resource, namespace=namespace, name='name1', body=body)
+        await create_obj(
+            settings=settings,
+            resource=resource,
+            namespace=namespace,
+            name='name1',
+            body=body,
+        )
     assert e.value.status == status

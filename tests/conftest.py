@@ -299,6 +299,8 @@ def resp_mocker(fake_vault, enforced_session, aresponses):
 
             # Get a response/error as it was intended (via return_value/side_effect).
             response = actual_response()
+            if asyncio.iscoroutine(response):
+                response = await response
             return response
 
         return asynctest.CoroutineMock(side_effect=resp_mock_effect)

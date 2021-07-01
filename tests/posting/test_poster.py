@@ -26,7 +26,8 @@ def _settings_via_contextvar(settings_via_contextvar):
     pass
 
 
-async def test_poster_polls_and_posts(mocker):
+async def test_poster_polls_and_posts(mocker, settings):
+
     event1 = K8sEvent(type='type1', reason='reason1', message='message1', ref=REF1)
     event2 = K8sEvent(type='type2', reason='reason2', message='message2', ref=REF2)
     event_queue = asyncio.Queue()
@@ -45,7 +46,7 @@ async def test_poster_polls_and_posts(mocker):
     # A way to cancel a `while True` cycle by timing, even if the routines are not called.
     with pytest.raises(asyncio.CancelledError):
         async with async_timeout.timeout(0.5):
-            await poster(event_queue=event_queue, backbone=backbone)
+            await poster(event_queue=event_queue, backbone=backbone, settings=settings)
 
     assert post.call_count == 2
     assert post.call_args_list[0][1]['url'] == '/api/v1/namespaces/ns1/events'

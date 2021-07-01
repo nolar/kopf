@@ -8,6 +8,7 @@ import aiohttp
 
 from kopf._cogs.aiokits import aiotasks
 from kopf._cogs.clients import auth, errors
+from kopf._cogs.configs import configuration
 
 
 @auth.authenticated
@@ -41,6 +42,7 @@ async def request(
         method: str,
         url: str,  # relative to the server/api root.
         *,
+        settings: configuration.OperatorSettings,
         payload: Optional[object] = None,
         headers: Optional[Mapping[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
@@ -52,15 +54,18 @@ async def request(
     if '://' not in url:
         url = context.server.rstrip('/') + '/' + url.lstrip('/')
 
-    # NB: aiohttp uses an internal sentinel for default timeout; None has a different meaning.
-    # TODO: Replace this kwargs hack with our own timeout object.
-    timeout_kwarg = {'timeout': timeout} if timeout is not None else {}
+    if timeout is None:
+        timeout = aiohttp.ClientTimeout(
+            total=settings.networking.request_timeout,
+            sock_connect=settings.networking.connect_timeout,
+        )
+
     response = await context.session.request(
         method=method,
         url=url,
         json=payload,
         headers=headers,
-        **timeout_kwarg,
+        timeout=timeout,
     )
     await errors.check_response(response)  # but do not parse it!
     return response
@@ -69,6 +74,7 @@ async def request(
 async def get(
         url: str,  # relative to the server/api root.
         *,
+        settings: configuration.OperatorSettings,
         payload: Optional[object] = None,
         headers: Optional[Mapping[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
@@ -79,6 +85,7 @@ async def get(
         payload=payload,
         headers=headers,
         timeout=timeout,
+        settings=settings,
     )
     return await response.json()
 
@@ -86,6 +93,7 @@ async def get(
 async def post(
         url: str,  # relative to the server/api root.
         *,
+        settings: configuration.OperatorSettings,
         payload: Optional[object] = None,
         headers: Optional[Mapping[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
@@ -96,6 +104,7 @@ async def post(
         payload=payload,
         headers=headers,
         timeout=timeout,
+        settings=settings,
     )
     return await response.json()
 
@@ -103,6 +112,7 @@ async def post(
 async def patch(
         url: str,  # relative to the server/api root.
         *,
+        settings: configuration.OperatorSettings,
         payload: Optional[object] = None,
         headers: Optional[Mapping[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
@@ -113,6 +123,7 @@ async def patch(
         payload=payload,
         headers=headers,
         timeout=timeout,
+        settings=settings,
     )
     return await response.json()
 
@@ -120,6 +131,7 @@ async def patch(
 async def delete(
         url: str,  # relative to the server/api root.
         *,
+        settings: configuration.OperatorSettings,
         payload: Optional[object] = None,
         headers: Optional[Mapping[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
@@ -130,6 +142,7 @@ async def delete(
         payload=payload,
         headers=headers,
         timeout=timeout,
+        settings=settings,
     )
     return await response.json()
 
@@ -137,6 +150,7 @@ async def delete(
 async def stream(
         url: str,  # relative to the server/api root.
         *,
+        settings: configuration.OperatorSettings,
         payload: Optional[object] = None,
         headers: Optional[Mapping[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
@@ -148,6 +162,7 @@ async def stream(
         payload=payload,
         headers=headers,
         timeout=timeout,
+        settings=settings,
     )
     response_close_callback = lambda _: response.close()  # to remove the positional arg.
     if stopper is not None:
