@@ -87,7 +87,8 @@ async def get(
         timeout=timeout,
         settings=settings,
     )
-    return await response.json()
+    async with response:
+        return await response.json()
 
 
 async def post(
@@ -106,7 +107,8 @@ async def post(
         timeout=timeout,
         settings=settings,
     )
-    return await response.json()
+    async with response:
+        return await response.json()
 
 
 async def patch(
@@ -125,7 +127,8 @@ async def patch(
         timeout=timeout,
         settings=settings,
     )
-    return await response.json()
+    async with response:
+        return await response.json()
 
 
 async def delete(
@@ -144,7 +147,8 @@ async def delete(
         timeout=timeout,
         settings=settings,
     )
-    return await response.json()
+    async with response:
+        return await response.json()
 
 
 async def stream(
