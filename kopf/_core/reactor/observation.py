@@ -48,7 +48,12 @@ async def namespace_observer(
     # Populate the namespaces atomically (instead of notifying on every item from the watch-stream).
     if not settings.scanning.disabled and not clusterwide:
         try:
-            objs, _ = await fetching.list_objs(settings=settings, resource=resource, namespace=None)
+            objs, _ = await fetching.list_objs(
+                settings=settings,
+                resource=resource,
+                namespace=None,
+                logger=logger,
+            )
             async with insights.revised:
                 revise_namespaces(raw_bodies=objs, insights=insights, namespaces=namespaces)
                 insights.revised.notify_all()
@@ -105,7 +110,7 @@ async def resource_observer(
     # Prepopulate the resources before the dimension watchers start, so that each initially listed
     # namespace would start a watcher, and each initially listed CRD is already on the list.
     group_filter = None if None in groups else {group for group in groups if group is not None}
-    resources = await scanning.scan_resources(groups=group_filter, settings=settings)
+    resources = await scanning.scan_resources(groups=group_filter, settings=settings, logger=logger)
     async with insights.revised:
         revise_resources(resources=resources, insights=insights, registry=registry, group=None)
         await insights.backbone.fill(resources=resources)
@@ -175,7 +180,7 @@ async def process_discovered_resource_event(
     # instead of mimicking K8s in interpreting them ourselves (a probable source of bugs).
     # As long as it is atomic (for asyncio, i.e. sync), the existing tasks will not be affected.
     group = raw_event['object']['spec']['group']
-    resources = await scanning.scan_resources(groups={group}, settings=settings)
+    resources = await scanning.scan_resources(groups={group}, settings=settings, logger=logger)
     async with insights.revised:
         revise_resources(resources=resources, insights=insights, registry=registry, group=group)
         await insights.backbone.fill(resources=resources)

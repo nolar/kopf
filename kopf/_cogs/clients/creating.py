@@ -1,4 +1,5 @@
-from typing import Optional, cast
+import logging
+from typing import Optional, Union, cast
 
 from kopf._cogs.clients import api
 from kopf._cogs.configs import configuration
@@ -12,6 +13,7 @@ async def create_obj(
         namespace: references.Namespace = None,
         name: Optional[str] = None,
         body: Optional[bodies.RawBody] = None,
+        logger: Union[logging.Logger, logging.LoggerAdapter],
 ) -> Optional[bodies.RawBody]:
     """
     Create a resource.
@@ -26,6 +28,7 @@ async def create_obj(
     created_body: bodies.RawBody = await api.post(
         url=resource.get_url(namespace=namespace),
         payload=body,
+        logger=logger,
         settings=settings,
     )
     return created_body

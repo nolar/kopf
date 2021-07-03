@@ -9,13 +9,14 @@ from kopf._cogs.structs.patches import Patch
 
 
 async def test_without_subresources(
-        resp_mocker, aresponses, hostname, settings, resource, namespace):
+        resp_mocker, aresponses, hostname, settings, resource, namespace, logger):
 
     patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
     aresponses.add(hostname, resource.get_url(namespace=namespace, name='name1'), 'patch', patch_mock)
 
     patch = Patch({'x': 'y'})
     await patch_obj(
+        logger=logger,
         settings=settings,
         resource=resource,
         namespace=namespace,
@@ -31,7 +32,7 @@ async def test_without_subresources(
 
 
 async def test_status_as_subresource_with_combined_payload(
-        resp_mocker, aresponses, hostname, settings, resource, namespace):
+        resp_mocker, aresponses, hostname, settings, resource, namespace, logger):
     resource = dataclasses.replace(resource, subresources=['status'])
 
     # Simulate Kopf's initial state and intention.
@@ -51,6 +52,7 @@ async def test_status_as_subresource_with_combined_payload(
     aresponses.add(hostname, status_url, 'patch', status_patch_mock)
 
     reconstructed = await patch_obj(
+        logger=logger,
         settings=settings,
         resource=resource,
         namespace=namespace,
@@ -74,7 +76,7 @@ async def test_status_as_subresource_with_combined_payload(
 
 
 async def test_status_as_subresource_with_object_fields_only(
-        resp_mocker, aresponses, hostname, settings, resource, namespace):
+        resp_mocker, aresponses, hostname, settings, resource, namespace, logger):
     resource = dataclasses.replace(resource, subresources=['status'])
 
     # Simulate Kopf's initial state and intention.
@@ -94,6 +96,7 @@ async def test_status_as_subresource_with_object_fields_only(
     aresponses.add(hostname, status_url, 'patch', status_patch_mock)
 
     reconstructed = await patch_obj(
+        logger=logger,
         settings=settings,
         resource=resource,
         namespace=namespace,
@@ -114,7 +117,7 @@ async def test_status_as_subresource_with_object_fields_only(
 
 
 async def test_status_as_subresource_with_status_fields_only(
-        resp_mocker, aresponses, hostname, settings, resource, namespace):
+        resp_mocker, aresponses, hostname, settings, resource, namespace, logger):
     resource = dataclasses.replace(resource, subresources=['status'])
 
     # Simulate Kopf's initial state and intention.
@@ -134,6 +137,7 @@ async def test_status_as_subresource_with_status_fields_only(
     aresponses.add(hostname, status_url, 'patch', status_patch_mock)
 
     reconstructed = await patch_obj(
+        logger=logger,
         settings=settings,
         resource=resource,
         namespace=namespace,
@@ -152,7 +156,7 @@ async def test_status_as_subresource_with_status_fields_only(
 
 
 async def test_status_as_body_field_with_combined_payload(
-        resp_mocker, aresponses, hostname, settings, resource, namespace):
+        resp_mocker, aresponses, hostname, settings, resource, namespace, logger):
 
     # Simulate Kopf's initial state and intention.
     patch = Patch({'spec': {'x': 'y'}, 'status': {'s': 't'}})
@@ -171,6 +175,7 @@ async def test_status_as_body_field_with_combined_payload(
     aresponses.add(hostname, status_url, 'patch', status_patch_mock)
 
     reconstructed = await patch_obj(
+        logger=logger,
         settings=settings,
         resource=resource,
         namespace=namespace,
@@ -192,7 +197,7 @@ async def test_status_as_body_field_with_combined_payload(
 
 @pytest.mark.parametrize('status', [404])
 async def test_ignores_absent_objects(
-        resp_mocker, aresponses, hostname, settings, status, resource, namespace,
+        resp_mocker, aresponses, hostname, settings, status, resource, namespace, logger,
         cluster_resource, namespaced_resource):
 
     patch_mock = resp_mocker(return_value=aresponses.Response(status=status))
@@ -203,6 +208,7 @@ async def test_ignores_absent_objects(
 
     patch = {'x': 'y'}
     result = await patch_obj(
+        logger=logger,
         settings=settings,
         resource=resource,
         namespace=namespace,
@@ -216,7 +222,7 @@ async def test_ignores_absent_objects(
 # Note: 401 is wrapped into a LoginError and is tested elsewhere.
 @pytest.mark.parametrize('status', [400, 403, 500, 666])
 async def test_raises_api_errors(
-        resp_mocker, aresponses, hostname, settings, status, resource, namespace,
+        resp_mocker, aresponses, hostname, settings, status, resource, namespace, logger,
         cluster_resource, namespaced_resource):
 
     patch_mock = resp_mocker(return_value=aresponses.Response(status=status))
@@ -228,6 +234,7 @@ async def test_raises_api_errors(
     patch = {'x': 'y'}
     with pytest.raises(APIError) as e:
         await patch_obj(
+            logger=logger,
             settings=settings,
             resource=resource,
             namespace=namespace,

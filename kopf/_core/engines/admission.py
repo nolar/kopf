@@ -334,6 +334,7 @@ async def configuration_manager(
         await creating.create_obj(
             settings=settings,
             resource=resource,
+            logger=logger,
             name=settings.admission.managed,
         )
     except errors.APIConflictError:
@@ -360,6 +361,7 @@ async def configuration_manager(
                 namespace=None,
                 name=settings.admission.managed,
                 patch=patches.Patch({'webhooks': webhooks}),
+                logger=logger,
             )
     finally:
         # Attempt to remove all managed webhooks, except for the strict ones.
@@ -377,6 +379,7 @@ async def configuration_manager(
                 namespace=None,
                 name=settings.admission.managed,
                 patch=patches.Patch({'webhooks': webhooks}),
+                logger=logger,
             )
 
 

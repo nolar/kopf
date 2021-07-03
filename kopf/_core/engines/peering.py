@@ -224,6 +224,7 @@ async def touch(
         namespace=namespace,
         name=name,
         patch=patch,
+        logger=logger,
     )
 
     if not settings.peering.stealth or rsp is None:
@@ -248,6 +249,7 @@ async def clean(
         namespace=namespace,
         name=name,
         patch=patch,
+        logger=logger,
     )
 
 

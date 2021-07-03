@@ -1,4 +1,5 @@
-from typing import Collection, List, Tuple
+import logging
+from typing import Collection, List, Tuple, Union
 
 from kopf._cogs.clients import api
 from kopf._cogs.configs import configuration
@@ -10,6 +11,7 @@ async def list_objs(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         namespace: references.Namespace,
+        logger: Union[logging.Logger, logging.LoggerAdapter],
 ) -> Tuple[Collection[bodies.RawBody], str]:
     """
     List the objects of specific resource type.
@@ -25,6 +27,7 @@ async def list_objs(
     """
     rsp = await api.get(
         url=resource.get_url(namespace=namespace),
+        logger=logger,
         settings=settings,
     )
 

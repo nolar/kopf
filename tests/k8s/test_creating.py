@@ -6,13 +6,14 @@ from kopf._cogs.clients.errors import APIError
 
 
 async def test_simple_body_with_arguments(
-        resp_mocker, aresponses, hostname, settings, resource, namespace, caplog):
+        resp_mocker, aresponses, hostname, settings, resource, namespace, logger, caplog):
 
     post_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
     aresponses.add(hostname, resource.get_url(namespace=namespace), 'post', post_mock)
 
     body = {'x': 'y'}
     await create_obj(
+        logger=logger,
         settings=settings,
         resource=resource,
         namespace=namespace,
@@ -31,13 +32,14 @@ async def test_simple_body_with_arguments(
 
 
 async def test_full_body_with_identifiers(
-        resp_mocker, aresponses, hostname, settings, resource, namespace, caplog):
+        resp_mocker, aresponses, hostname, settings, resource, namespace, caplog, logger):
 
     post_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
     aresponses.add(hostname, resource.get_url(namespace=namespace), 'post', post_mock)
 
     body = {'x': 'y', 'metadata': {'name': 'name1', 'namespace': namespace}}
     await create_obj(
+        logger=logger,
         settings=settings,
         resource=resource,
         body=body,
@@ -53,7 +55,7 @@ async def test_full_body_with_identifiers(
 # Note: 401 is wrapped into a LoginError and is tested elsewhere.
 @pytest.mark.parametrize('status', [400, 403, 404, 409, 500, 666])
 async def test_raises_api_errors(
-        resp_mocker, aresponses, hostname, settings, status, resource, namespace,
+        resp_mocker, aresponses, hostname, settings, status, resource, namespace, logger,
         cluster_resource, namespaced_resource):
 
     post_mock = resp_mocker(return_value=aresponses.Response(status=status))
@@ -65,6 +67,7 @@ async def test_raises_api_errors(
     body = {'x': 'y'}
     with pytest.raises(APIError) as e:
         await create_obj(
+            logger=logger,
             settings=settings,
             resource=resource,
             namespace=namespace,

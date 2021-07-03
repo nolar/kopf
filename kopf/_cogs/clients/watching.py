@@ -156,6 +156,7 @@ async def continuous_watch(
     # First, list the resources regularly, and get the list's resource version.
     # Simulate the events with type "None" event - used in detection of causes.
     objs, resource_version = await fetching.list_objs(
+        logger=logger,
         settings=settings,
         resource=resource,
         namespace=namespace,
@@ -245,6 +246,7 @@ async def watch_objs(
     try:
         async for raw_input in api.stream(
             url=resource.get_url(namespace=namespace, params=params),
+            logger=logger,
             settings=settings,
             stopper=operator_pause_waiter,
             timeout=aiohttp.ClientTimeout(

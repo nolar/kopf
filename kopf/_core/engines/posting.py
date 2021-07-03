@@ -25,6 +25,8 @@ from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, dicts, references
 from kopf._core.actions import loggers
 
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     K8sEventQueue = asyncio.Queue["K8sEvent"]
 else:
@@ -173,6 +175,7 @@ async def poster(
             message=posted_event.message,
             resource=resource,
             settings=settings,
+            logger=logger,
         )
 
 

@@ -9,7 +9,7 @@ EVENTS = Resource('', 'v1', 'events', namespaced=True)
 
 
 async def test_posting(
-        resp_mocker, aresponses, hostname, settings):
+        resp_mocker, aresponses, hostname, settings, logger):
 
     post_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
     aresponses.add(hostname, '/api/v1/namespaces/ns/events', 'post', post_mock)
@@ -27,6 +27,7 @@ async def test_posting(
         message='message',
         resource=EVENTS,
         settings=settings,
+        logger=logger,
     )
 
     assert post_mock.called
@@ -48,7 +49,7 @@ async def test_posting(
 
 
 async def test_no_events_for_events(
-        resp_mocker, aresponses, hostname, settings):
+        resp_mocker, aresponses, hostname, settings, logger):
 
     post_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
     aresponses.add(hostname, '/api/v1/namespaces/ns/events', 'post', post_mock)
@@ -66,13 +67,14 @@ async def test_no_events_for_events(
         message='message',
         resource=EVENTS,
         settings=settings,
+        logger=logger,
     )
 
     assert not post_mock.called
 
 
 async def test_api_errors_logged_but_suppressed(
-        resp_mocker, aresponses, hostname, settings, assert_logs):
+        resp_mocker, aresponses, hostname, settings, logger, assert_logs):
 
     post_mock = resp_mocker(return_value=aresponses.Response(status=555))
     aresponses.add(hostname, '/api/v1/namespaces/ns/events', 'post', post_mock)
@@ -90,6 +92,7 @@ async def test_api_errors_logged_but_suppressed(
         message='message',
         resource=EVENTS,
         settings=settings,
+        logger=logger,
     )
 
     assert post_mock.called
@@ -97,7 +100,7 @@ async def test_api_errors_logged_but_suppressed(
 
 
 async def test_regular_errors_escalate(
-        resp_mocker, enforced_session, mocker, settings):
+        resp_mocker, enforced_session, mocker, settings, logger):
 
     error = Exception('boo!')
     enforced_session.request = mocker.Mock(side_effect=error)
@@ -117,13 +120,14 @@ async def test_regular_errors_escalate(
             message='message',
             resource=EVENTS,
             settings=settings,
+            logger=logger,
         )
 
     assert excinfo.value is error
 
 
 async def test_message_is_cut_to_max_length(
-        resp_mocker, aresponses, hostname, settings):
+        resp_mocker, aresponses, hostname, settings, logger):
 
     post_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
     aresponses.add(hostname, '/api/v1/namespaces/ns/events', 'post', post_mock)
@@ -142,6 +146,7 @@ async def test_message_is_cut_to_max_length(
         message=message,
         resource=EVENTS,
         settings=settings,
+        logger=logger,
     )
 
     data = post_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
@@ -154,7 +159,7 @@ async def test_message_is_cut_to_max_length(
 # 401 causes LoginError from the vault, and this is out of scope of API testing.
 @pytest.mark.parametrize('status', [555, 500, 404, 403])
 async def test_headers_are_not_leaked(
-        resp_mocker, aresponses, hostname, settings, assert_logs, status):
+        resp_mocker, aresponses, hostname, settings, logger, assert_logs, status):
 
     post_mock = resp_mocker(return_value=aresponses.Response(status=status))
     aresponses.add(hostname, '/api/v1/namespaces/ns/events', 'post', post_mock)
@@ -172,6 +177,7 @@ async def test_headers_are_not_leaked(
         message='message',
         resource=EVENTS,
         settings=settings,
+        logger=logger,
     )
 
     assert_logs([

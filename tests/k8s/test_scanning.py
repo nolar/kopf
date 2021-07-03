@@ -6,7 +6,7 @@ from kopf._cogs.clients.scanning import scan_resources
 
 
 async def test_no_resources_in_empty_apis(
-        resp_mocker, aresponses, hostname, settings):
+        resp_mocker, aresponses, hostname, settings, logger):
 
     core_mock = resp_mocker(return_value=aiohttp.web.json_response({'versions': []}))
     apis_mock = resp_mocker(return_value=aiohttp.web.json_response({'groups': []}))
@@ -14,7 +14,7 @@ async def test_no_resources_in_empty_apis(
     aresponses.add(hostname, '/api', 'get', core_mock)
     aresponses.add(hostname, '/apis', 'get', apis_mock)
 
-    resources = await scan_resources(settings=settings)
+    resources = await scan_resources(settings=settings, logger=logger)
     assert len(resources) == 0
 
     assert core_mock.call_count == 1
@@ -23,7 +23,7 @@ async def test_no_resources_in_empty_apis(
 
 @pytest.mark.parametrize('namespaced', [True, False])
 async def test_resources_in_old_apis(
-        resp_mocker, aresponses, hostname, settings, namespaced):
+        resp_mocker, aresponses, hostname, settings, logger, namespaced):
 
 
     core_mock = resp_mocker(return_value=aiohttp.web.json_response({'versions': ['v1']}))
@@ -43,7 +43,7 @@ async def test_resources_in_old_apis(
     aresponses.add(hostname, '/apis', 'get', apis_mock)
     aresponses.add(hostname, '/api/v1', 'get', scan_mock)
 
-    resources = await scan_resources(settings=settings)
+    resources = await scan_resources(settings=settings, logger=logger)
     assert len(resources) == 1
 
     resource1 = list(resources)[0]
@@ -70,7 +70,7 @@ async def test_resources_in_old_apis(
     ('versionX', False),
 ])
 async def test_resources_in_new_apis(
-        resp_mocker, aresponses, hostname, settings, namespaced,
+        resp_mocker, aresponses, hostname, settings, logger, namespaced,
         preferred_version, expected_preferred):
 
     core_mock = resp_mocker(return_value=aiohttp.web.json_response({'versions': []}))
@@ -96,7 +96,7 @@ async def test_resources_in_new_apis(
     aresponses.add(hostname, '/apis', 'get', apis_mock)
     aresponses.add(hostname, '/apis/group1/version1', 'get', g1v1_mock)
 
-    resources = await scan_resources(settings=settings)
+    resources = await scan_resources(settings=settings, logger=logger)
     assert len(resources) == 1
 
     resource1 = list(resources)[0]
@@ -118,7 +118,7 @@ async def test_resources_in_new_apis(
 
 
 async def test_subresources_in_old_apis(
-        resp_mocker, aresponses, hostname, settings):
+        resp_mocker, aresponses, hostname, settings, logger):
 
     core_mock = resp_mocker(return_value=aiohttp.web.json_response({'versions': ['v1']}))
     apis_mock = resp_mocker(return_value=aiohttp.web.json_response({'groups': []}))
@@ -146,14 +146,14 @@ async def test_subresources_in_old_apis(
     aresponses.add(hostname, '/apis', 'get', apis_mock)
     aresponses.add(hostname, '/api/v1', 'get', v1v1_mock)
 
-    resources = await scan_resources(settings=settings)
+    resources = await scan_resources(settings=settings, logger=logger)
     assert len(resources) == 1
     resource1 = list(resources)[0]
     assert resource1.subresources == {'sub1', 'sub2'}
 
 
 async def test_subresources_in_new_apis(
-        resp_mocker, aresponses, hostname, settings):
+        resp_mocker, aresponses, hostname, settings, logger):
 
     core_mock = resp_mocker(return_value=aiohttp.web.json_response({'versions': []}))
     apis_mock = resp_mocker(return_value=aiohttp.web.json_response({'groups': [
@@ -187,7 +187,7 @@ async def test_subresources_in_new_apis(
     aresponses.add(hostname, '/apis', 'get', apis_mock)
     aresponses.add(hostname, '/apis/group1/version1', 'get', g1v1_mock)
 
-    resources = await scan_resources(settings=settings)
+    resources = await scan_resources(settings=settings, logger=logger)
     assert len(resources) == 1
     resource1 = list(resources)[0]
     assert resource1.subresources == {'sub1', 'sub2'}
@@ -206,7 +206,7 @@ async def test_subresources_in_new_apis(
     pytest.param(None, 1, 1, 1, 1, 1, id='unfiltered'),
 ])
 async def test_group_filtering(
-        resp_mocker, aresponses, hostname, settings,
+        resp_mocker, aresponses, hostname, settings, logger,
         group_filter, exp_core, exp_apis, exp_crv1, exp_g1v1, exp_g2v1):
 
     core_mock = resp_mocker(return_value=aiohttp.web.json_response({'versions': ['v1']}))
@@ -223,7 +223,7 @@ async def test_group_filtering(
     aresponses.add(hostname, '/apis/g1/g1v1', 'get', g1v1_mock)
     aresponses.add(hostname, '/apis/g2/g2v1', 'get', g2v1_mock)
 
-    await scan_resources(groups=group_filter, settings=settings)
+    await scan_resources(groups=group_filter, settings=settings, logger=logger)
 
     assert core_mock.call_count == exp_core
     assert apis_mock.call_count == exp_apis
@@ -236,7 +236,7 @@ async def test_group_filtering(
 
 @pytest.mark.parametrize('status', [404])
 async def test_http404_returns_no_resources_from_old_apis(
-        resp_mocker, aresponses, hostname, settings, status):
+        resp_mocker, aresponses, hostname, settings, logger, status):
 
     core_mock = resp_mocker(return_value=aiohttp.web.json_response({'versions': ['v1']}))
     apis_mock = resp_mocker(return_value=aiohttp.web.json_response({'groups': []}))
@@ -245,7 +245,7 @@ async def test_http404_returns_no_resources_from_old_apis(
     aresponses.add(hostname, '/apis', 'get', apis_mock)
     aresponses.add(hostname, '/api/v1', 'get', status_mock)
 
-    resources = await scan_resources(settings=settings)
+    resources = await scan_resources(settings=settings, logger=logger)
 
     assert not resources
     assert status_mock.call_count == 1
@@ -253,7 +253,7 @@ async def test_http404_returns_no_resources_from_old_apis(
 
 @pytest.mark.parametrize('status', [404])
 async def test_http404_returns_no_resources_from_new_apis(
-        resp_mocker, aresponses, hostname, settings, status):
+        resp_mocker, aresponses, hostname, settings, logger, status):
 
     core_mock = resp_mocker(return_value=aiohttp.web.json_response({'versions': []}))
     apis_mock = resp_mocker(return_value=aiohttp.web.json_response({'groups': [
@@ -264,7 +264,7 @@ async def test_http404_returns_no_resources_from_new_apis(
     aresponses.add(hostname, '/apis', 'get', apis_mock)
     aresponses.add(hostname, '/apis/g1/g1v1', 'get', status_mock)
 
-    resources = await scan_resources(settings=settings)
+    resources = await scan_resources(settings=settings, logger=logger)
 
     assert not resources
     assert status_mock.call_count == 1
@@ -272,7 +272,7 @@ async def test_http404_returns_no_resources_from_new_apis(
 
 @pytest.mark.parametrize('status', [403, 500, 666])
 async def test_unknown_api_statuses_escalate_from_old_apis(
-        resp_mocker, aresponses, hostname, settings, status):
+        resp_mocker, aresponses, hostname, settings, logger, status):
 
     core_mock = resp_mocker(return_value=aiohttp.web.json_response({'versions': ['v1']}))
     apis_mock = resp_mocker(return_value=aiohttp.web.json_response({'groups': []}))
@@ -282,7 +282,7 @@ async def test_unknown_api_statuses_escalate_from_old_apis(
     aresponses.add(hostname, '/api/v1', 'get', status_mock)
 
     with pytest.raises(APIError) as err:
-        await scan_resources(settings=settings)
+        await scan_resources(settings=settings, logger=logger)
 
     assert err.value.status == status
     assert status_mock.call_count == 1
@@ -290,7 +290,7 @@ async def test_unknown_api_statuses_escalate_from_old_apis(
 
 @pytest.mark.parametrize('status', [403, 500, 666])
 async def test_unknown_api_statuses_escalate_from_new_apis(
-        resp_mocker, aresponses, hostname, settings, status):
+        resp_mocker, aresponses, hostname, settings, logger, status):
 
     core_mock = resp_mocker(return_value=aiohttp.web.json_response({'versions': []}))
     apis_mock = resp_mocker(return_value=aiohttp.web.json_response({'groups': [
@@ -302,14 +302,14 @@ async def test_unknown_api_statuses_escalate_from_new_apis(
     aresponses.add(hostname, '/apis/g1/g1v1', 'get', status_mock)
 
     with pytest.raises(APIError) as err:
-        await scan_resources(settings=settings)
+        await scan_resources(settings=settings, logger=logger)
 
     assert err.value.status == status
     assert status_mock.call_count == 1
 
 
 async def test_empty_singulars_fall_back_to_kinds(
-        resp_mocker, aresponses, hostname, settings):
+        resp_mocker, aresponses, hostname, settings, logger):
 
     # Only one endpoint is enough, core v1 is easier to mock:
     core_mock = resp_mocker(return_value=aiohttp.web.json_response({'versions': ['v1']}))
@@ -329,7 +329,7 @@ async def test_empty_singulars_fall_back_to_kinds(
     aresponses.add(hostname, '/apis', 'get', apis_mock)
     aresponses.add(hostname, '/api/v1', 'get', scan_mock)
 
-    resources = await scan_resources(groups=[''], settings=settings)
+    resources = await scan_resources(groups=[''], settings=settings, logger=logger)
     assert len(resources) == 1
 
     resource1 = list(resources)[0]

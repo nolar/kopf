@@ -584,7 +584,7 @@ class ClusterDetector:
             # the version in observation routines and pass it via contextvars,
             # but this is too overcomplicated for a dev-mode helping utility.
             settings = configuration.OperatorSettings()
-            versioninfo = await scanning.read_version(settings=settings)
+            versioninfo = await scanning.read_version(settings=settings, logger=logger)
             if '+k3s' in versioninfo.get('gitVersion', ''):
                 return WebhookK3dServer.DEFAULT_HOST
         return None

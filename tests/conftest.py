@@ -163,6 +163,11 @@ def memories():
 
 
 @pytest.fixture()
+def logger():
+    return logging.getLogger('fake-logger')
+
+
+@pytest.fixture()
 def settings_via_contextvar(settings):
     token = settings_var.set(settings)
     try:

@@ -1,4 +1,5 @@
-from typing import Optional
+import logging
+from typing import Optional, Union
 
 from kopf._cogs.clients import api, errors
 from kopf._cogs.configs import configuration
@@ -12,6 +13,7 @@ async def patch_obj(
         namespace: references.Namespace,
         name: Optional[str],
         patch: patches.Patch,
+        logger: Union[logging.Logger, logging.LoggerAdapter],
 ) -> Optional[bodies.RawBody]:
     """
     Patch a resource of specific kind.
@@ -47,6 +49,7 @@ async def patch_obj(
                 headers={'Content-Type': 'application/merge-patch+json'},
                 payload=body_patch,
                 settings=settings,
+                logger=logger,
             )
 
         if status_patch:
@@ -56,6 +59,7 @@ async def patch_obj(
                 headers={'Content-Type': 'application/merge-patch+json'},
                 payload={'status': status_patch},
                 settings=settings,
+                logger=logger,
             )
             patched_body['status'] = response.get('status')
 
