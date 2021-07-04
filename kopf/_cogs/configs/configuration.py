@@ -28,7 +28,7 @@ the root object, while keeping the legacy names for backward compatibility.
 import concurrent.futures
 import dataclasses
 import logging
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Union
 
 from kopf._cogs.configs import diffbase, progress
 from kopf._cogs.structs import reviews
@@ -218,19 +218,9 @@ class BatchingSettings:
 
     error_delays: Iterable[float] = (1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610)
     """
-    Backoff intervals in case of unexpected errors in the framework (not the handlers).
+    Backoff intervals in case of unexpected errors in the framework.
 
-    Per-resource workers freeze all activities for this number of seconds in case of errors.
-    Once they are back to work, they process only the latest event seen (due to event batching).
-
-    Every further error leads to the next, even bigger delay (10m is enough for a default maximum).
-    Every success resets the backoff intervals, and it goes from the beginning on the next error.
-
-    If needed, this value can be an arbitrary collection/iterator/object:
-    only ``iter()`` is called on every new throttling cycle, no other protocols
-    are required; but make sure that it is re-iterable for multiple uses.
-
-    To disable throttling (on your own risk), set it to ``[]`` or ``()``.
+    For more information on error throttling, see :ref:`error-throttling`.
     """
 
 
@@ -353,6 +343,13 @@ class NetworkingSettings:
     connect_timeout: Optional[float] = None
     """
     A timeout for the connection & handshake of an API request (in seconds).
+    """
+
+    error_backoffs: Union[float, Iterable[float]] = (1, 1, 2, 3, 5, 8, 13, 21)
+    """
+    How many times and with which delays (seconds) to retry the API errors.
+
+    For more information on the API errors retrying, see :doc:`api-retrying`.
     """
 
 

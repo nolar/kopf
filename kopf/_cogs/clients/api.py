@@ -1,8 +1,11 @@
 import asyncio
+import collections.abc
+import itertools
 import json
+import logging
 import ssl
 import urllib.parse
-from typing import Any, AsyncIterator, Mapping, Optional, Tuple
+from typing import Any, AsyncIterator, Mapping, Optional, Tuple, Union
 
 import aiohttp
 
@@ -47,6 +50,7 @@ async def request(
         headers: Optional[Mapping[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
         context: Optional[auth.APIContext] = None,  # injected by the decorator
+        logger: Union[logging.Logger, logging.LoggerAdapter],
 ) -> aiohttp.ClientResponse:
     if context is None:  # for type-checking!
         raise RuntimeError("API instance is not injected by the decorator.")
@@ -60,15 +64,39 @@ async def request(
             sock_connect=settings.networking.connect_timeout,
         )
 
-    response = await context.session.request(
-        method=method,
-        url=url,
-        json=payload,
-        headers=headers,
-        timeout=timeout,
-    )
-    await errors.check_response(response)  # but do not parse it!
-    return response
+    backoffs = settings.networking.error_backoffs
+    backoffs = backoffs if isinstance(backoffs, collections.abc.Iterable) else [backoffs]
+    count = len(backoffs) + 1 if isinstance(backoffs, collections.abc.Sized) else None
+    backoff: Optional[float]
+    for retry, backoff in enumerate(itertools.chain(backoffs, [None]), start=1):
+        idx = f"#{retry}/{count}" if count is not None else f"#{retry}"
+        what = f"{method.upper()} {url}"
+        try:
+            if retry > 1:
+                logger.debug(f"Request attempt {idx}: {what}")
+
+            response = await context.session.request(
+                method=method,
+                url=url,
+                json=payload,
+                headers=headers,
+                timeout=timeout,
+            )
+            await errors.check_response(response)  # but do not parse it!
+
+        except (aiohttp.ClientConnectionError, errors.APIServerError) as e:
+            if backoff is None:  # i.e. the last or the only attempt.
+                logger.error(f"Request attempt {idx} failed; escalating: {what} -> {e!r}")
+                raise
+            else:
+                logger.error(f"Request attempt {idx} failed; will retry: {what} -> {e!r}")
+                await asyncio.sleep(backoff)  # non-awakable! but still cancellable.
+        else:
+            if retry > 1:
+                logger.debug(f"Request attempt {idx} succeeded: {what}")
+            return response
+
+    raise RuntimeError("Broken retryable routine.")  # impossible, but needed for type-checking.
 
 
 async def get(
@@ -78,6 +106,7 @@ async def get(
         payload: Optional[object] = None,
         headers: Optional[Mapping[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
+        logger: Union[logging.Logger, logging.LoggerAdapter],
 ) -> Any:
     response = await request(
         method='get',
@@ -86,6 +115,7 @@ async def get(
         headers=headers,
         timeout=timeout,
         settings=settings,
+        logger=logger,
     )
     async with response:
         return await response.json()
@@ -98,6 +128,7 @@ async def post(
         payload: Optional[object] = None,
         headers: Optional[Mapping[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
+        logger: Union[logging.Logger, logging.LoggerAdapter],
 ) -> Any:
     response = await request(
         method='post',
@@ -106,6 +137,7 @@ async def post(
         headers=headers,
         timeout=timeout,
         settings=settings,
+        logger=logger,
     )
     async with response:
         return await response.json()
@@ -118,6 +150,7 @@ async def patch(
         payload: Optional[object] = None,
         headers: Optional[Mapping[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
+        logger: Union[logging.Logger, logging.LoggerAdapter],
 ) -> Any:
     response = await request(
         method='patch',
@@ -126,6 +159,7 @@ async def patch(
         headers=headers,
         timeout=timeout,
         settings=settings,
+        logger=logger,
     )
     async with response:
         return await response.json()
@@ -138,6 +172,7 @@ async def delete(
         payload: Optional[object] = None,
         headers: Optional[Mapping[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
+        logger: Union[logging.Logger, logging.LoggerAdapter],
 ) -> Any:
     response = await request(
         method='delete',
@@ -146,6 +181,7 @@ async def delete(
         headers=headers,
         timeout=timeout,
         settings=settings,
+        logger=logger,
     )
     async with response:
         return await response.json()
@@ -159,6 +195,7 @@ async def stream(
         headers: Optional[Mapping[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
         stopper: Optional[aiotasks.Future] = None,
+        logger: Union[logging.Logger, logging.LoggerAdapter],
 ) -> AsyncIterator[Any]:
     response = await request(
         method='get',
@@ -167,6 +204,7 @@ async def stream(
         headers=headers,
         timeout=timeout,
         settings=settings,
+        logger=logger,
     )
     response_close_callback = lambda _: response.close()  # to remove the positional arg.
     if stopper is not None:

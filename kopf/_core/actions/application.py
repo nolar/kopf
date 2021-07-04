@@ -134,6 +134,7 @@ async def patch_and_check(
             namespace=body.metadata.namespace,
             name=body.metadata.name,
             patch=patch,
+            logger=logger,
         )
         inconsistencies = diffs.diff(patch, resulting_body, scope=diffs.DiffScope.LEFT)
         inconsistencies = diffs.Diff(

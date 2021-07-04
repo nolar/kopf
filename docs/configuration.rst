@@ -202,8 +202,8 @@ make sure to pre-scale the executor accordingly
         settings.execution.max_workers = 1000
 
 
-API timeouts
-============
+Networking timeouts
+===================
 
 Timeouts can be controlled when communicating with Kubernetes API:
 
@@ -471,11 +471,95 @@ e.g. by arbitrarily labelling them, so that a new diff-base is generated:
 Then, switch to the new storage alone, without the transitional setup.
 
 
-Error throttling
-================
+.. _api-retrying:
+
+Retrying of API errors
+======================
+
+In some cases, the Kubernetes API servers might be not ready on startup
+or occasionally at runtime; the network might have issues too. In most cases,
+these issues are of temporary nature and heal themselves withing seconds.
+
+The framework retries the TCP/SSL networking errors and the HTTP 5xx errors
+("the server is wrong") --- i.e. everything that is presumed to be temporary;
+other errors -- those presumed to be permanent, including HTTP 4xx errors
+("the client is wrong") -- escalate immediately without retrying.
+
+The setting ``settings.networking.error_backoffs`` contols for how many times
+and with which backoff interval (in seconds) the retries are performed.
+
+It is a sequence of back-offs between attempts (in seconds):
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.networking.error_backoffs = [10, 20, 30]
+
+Note that the number of attempts is one more than the number of back-off
+intervals (because the back-offs happen inbetween the attempts).
+
+A single integer or float value means a single backoff, i.e. 2 attempts:
+``(1.0)`` is equivalent to ``(1.0,)`` or ``[1.0]`` for convenience.
+
+To have a uniform back-off delay D with N+1 attempts, set to ``[D] * N``.
+
+To disable retrying (on your own risk), set it to ``[]`` or ``()``.
+
+The default value covers roughly a minute of attempts before giving up.
+
+Once the retries are over (if disabled, immediately on error), the API errors
+escalate and are then handled according to :ref:`error-throttling`.
+
+This value can be an arbitrary collection or an iterable object (even infinite):
+only ``iter()`` is called on every new retrying cycle, no other protocols
+are required; however, make sure that it is re-iterable for multiple uses:
+
+.. code-block:: python
+
+    import kopf
+    import random
+
+    class InfiniteBackoffsWithJitter:
+        def __iter__(self):
+            while True:
+                yield 10 + random.randint(-5, +5)
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.networking.error_backoffs = InfiniteBackoffsWithJitter()
+
+
+Retrying an API error blocks the task or the object's worker in which
+the API error happens. However, other objects and tasks run normally
+in parallel (unless they hit the same error in the same cluster).
+
+Every further consecutive error leads to the next, typically bigger backoff.
+Every success resets the backoff intervals, and it goes from the beginning
+on the next error.
+
+.. note::
+
+    The format is the same as for ``settings.batching.error_delays``.
+    The only difference: if the API operation does not succeed by the end
+    of the sequence, the error of the last attempt escalates instead of blocking
+    and retrying forever with the last delay in the sequence.
+
+.. seealso::
+    These back-offs cover only the server-side and networking errors.
+    For errors in handlers, see :doc:`/errors`.
+    For errors in the framework, see :ref:`error-throttling`.
+
+
+.. _error-throttling:
+
+Throttling of unexpected errors
+===============================
 
 To prevent an uncontrollable flood of activities in case of errors that prevent
-the resources being marked as handled, which could lead to Kubernetes API
+the resources being marked as handled, which could lead to the Kubernetes API
 flooding, it is possible to throttle the activities on a per-resource basis:
 
 .. code-block:: python
@@ -488,17 +572,22 @@ flooding, it is possible to throttle the activities on a per-resource basis:
 
 In that case, all unhandled errors in the framework or in the Kubernetes API
 would be backed-off by 10s after the 1st error, then by 20s after the 2nd one,
-and then by 30s after the 3rd, 4th, 5th errors and so on. On a first success,
+and then by 30s after the 3rd, 4th, 5th errors and so on. On the first success,
 the backoff intervals will be reset and re-used again on the next error.
+
+Once the errors stop and the operator is back to work, it processes only
+the latest event seen for that malfunctioning resource (due to event batching).
 
 The default is a sequence of Fibonacci numbers from 1 second to 10 minutes.
 
 The back-offs are not persisted, so they are lost on the operator restarts.
 
 These back-offs do not cover errors in the handlers -- the handlers have their
-own configurable per-handler back-off intervals. These back-offs are for Kopf
-and the Kubernetes API mostly (and other issues of the environment).
+own per-handler back-off intervals. These back-offs are for Kopf's own errors.
 
-To disable throttling (on your own risk!), set the error delays to
-an empty list (``[]``) or an empty tuple (``()``).
-Interpret as: no throttling delays set -- no throttling sleeps done.
+To disable throttling (on your own risk), set it to ``[]`` or ``()``.
+Interpret it as: no throttling delays set --- no throttling sleeps done.
+
+If needed, this value can be an arbitrary collection/iterator/object:
+only ``iter()`` is called on every new throttling cycle, no other protocols
+are required; but make sure that it is re-iterable for multiple uses.
