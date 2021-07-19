@@ -25,6 +25,7 @@ jobs:
           python-version: "3.9"
       - run: pip install -r requirements.txt
       - run: pre-commit run --all-files
+      - run: mypy kopf --strict
       - run: |
           # Mypying the examples
           exit_codes=0

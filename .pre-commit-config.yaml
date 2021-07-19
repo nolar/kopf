@@ -60,13 +60,6 @@ repos:
       # Intentionally disabled:
       # - id: python-no-log-warn  # overreacts to `kopf.warn()`.
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v0.812
-    hooks:
-      - id: mypy
-        args: [--strict, --pretty]
-        files: ^kopf/
-
   - repo: https://github.com/seddonym/import-linter
     rev: v1.2.1
     hooks:
