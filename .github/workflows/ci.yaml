@@ -21,6 +21,16 @@ jobs:
           python-version: "3.9"
       - run: pip install -r requirements.txt
       - run: pre-commit run --all-files
+      - run: |
+          # Mypying the examples
+          exit_codes=0
+          for d in $(find examples -maxdepth 1 -mindepth 1 -type d)
+          do
+            echo "Checking ${d}"
+            mypy $d
+            exit_codes=$[${exit_codes} + $?]
+          done
+          exit ${exit_codes}
 
   unit-tests:
     strategy:
@@ -40,18 +50,6 @@ jobs:
       - run: pip install -r requirements.txt
       - run: pip install -e .[${{ matrix.install-extras }}]
         if: ${{ matrix.install-extras }}
-
-      - run: mypy kopf --strict
-      - run: |
-          # Mypying the examples
-          exit_codes=0
-          for d in $(find examples -maxdepth 1 -mindepth 1 -type d)
-          do
-            echo "Checking ${d}"
-            mypy $d
-            exit_codes=$[${exit_codes} + $?]
-          done
-          exit ${exit_codes}
       - run: pytest --color=yes --cov=kopf --cov-branch
 
       - name: Publish coverage to Coveralls.io
