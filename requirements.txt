@@ -14,7 +14,7 @@ freezegun
 import-linter
 isort>=5.5.0
 lxml
-mypy==0.800
+mypy==0.910
 pre-commit
 pyngrok
 pytest>=6.0.0
@@ -22,3 +22,5 @@ pytest-aiohttp
 pytest-asyncio
 pytest-cov
 pytest-mock
+types-pkg_resources
+types-PyYAML

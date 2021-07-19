@@ -13,7 +13,7 @@ import asyncio
 import logging
 import sys
 from typing import TYPE_CHECKING, Any, Awaitable, Collection, Coroutine, \
-                   Generator, Optional, Set, Tuple, TypeVar, Union, cast
+                   Generator, Optional, Set, Tuple, TypeVar, Union
 
 _T = TypeVar('_T')
 
@@ -117,7 +117,7 @@ async def wait(
     if not tasks:
         return set(), set()
     done, pending = await asyncio.wait(tasks, timeout=timeout, return_when=return_when)
-    return cast(Set[Task], done), cast(Set[Task], pending)
+    return done, pending
 
 
 async def stop(

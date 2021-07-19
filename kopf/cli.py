@@ -59,10 +59,10 @@ def logging_options(fn: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 
-@click.version_option(prog_name='kopf')
 @click.group(name='kopf', context_settings=dict(
     auto_envvar_prefix='KOPF',
 ))
+@click.version_option(prog_name='kopf')
 def main() -> None:
     pass
 
