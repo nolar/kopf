@@ -153,7 +153,8 @@ async def test_patch_is_returned_to_kubernetes(
 
     @decorator(*resource)
     def fn(patch, **_):
-        patch['xyz'] = 123
+        patch['xyz'] = 'added'
+        patch.spec['field'] = 'replaced'
 
     response = await serve_admission_request(
         adm_request,
@@ -165,5 +166,6 @@ async def test_patch_is_returned_to_kubernetes(
     assert response['response']['allowed'] is True
     assert response['response']['patchType'] == 'JSONPatch'
     assert json.loads(base64.b64decode(response['response']['patch'])) == [
-        {'op': 'replace', 'path': '/xyz', 'value': 123},
+        {'op': 'add', 'path': '/xyz', 'value': 'added'},
+        {'op': 'replace', 'path': '/spec/field', 'value': 'replaced'},
     ]

@@ -63,6 +63,7 @@ class Patch(Dict[str, Any]):
         self._meta = MetaPatch(self)
         self._spec = SpecPatch(self)
         self._status = StatusPatch(self)
+        self._original = {}
 
     @property
     def metadata(self) -> MetaPatch:
@@ -80,6 +81,14 @@ class Patch(Dict[str, Any]):
     def status(self) -> StatusPatch:
         return self._status
 
+    @property
+    def original(self):
+        return self._original
+
+    @original.setter
+    def original(self, value):
+        self._original = value
+
     def as_json_patch(self) -> JSONPatch:
         return [] if not self else self._as_json_patch(self, keys=[''])
 
@@ -92,5 +101,21 @@ class Patch(Dict[str, Any]):
                 result.extend(self._as_json_patch(val, keys + [key]))
         else:
             # TODO: need to distinguish 'add' vs 'replace' -- need to know the original value.
-            result.append(JSONPatchItem(op='replace', path='/'.join(keys), value=value))
+            print(self._is_in_original_path(keys))
+            if self._original and self._is_in_original_path(keys):
+                result.append(JSONPatchItem(op='replace', path='/'.join(keys), value=value))
+            else:
+                result.append(JSONPatchItem(op='add', path='/'.join(keys), value=value))
         return result
+
+    def _is_in_original_path(self, keys: List[str]) -> bool:
+        _search = self._original
+        for key in keys:
+            if key == '':
+                continue
+            try:
+                _search = _search[key]
+            except KeyError:
+                return False
+        return True
+        

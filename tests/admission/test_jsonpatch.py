@@ -3,6 +3,17 @@ from kopf._cogs.structs.patches import Patch
 
 def test_addition_of_the_key():
     patch = Patch()
+    patch.original = {'abc': 456}
+    patch['xyz'] = 123
+    jsonpatch = patch.as_json_patch()
+    assert jsonpatch == [
+        {'op': 'add', 'path': '/xyz', 'value': 123},
+    ]
+
+
+def test_replacement_of_the_key():
+    patch = Patch()
+    patch.original = {'xyz': 456}
     patch['xyz'] = 123
     jsonpatch = patch.as_json_patch()
     assert jsonpatch == [
@@ -21,6 +32,16 @@ def test_removal_of_the_key():
 
 def test_addition_of_the_subkey():
     patch = Patch()
+    patch.original = {'xyz': {'def': 456}}
+    patch['xyz'] = {'abc': 123}
+    jsonpatch = patch.as_json_patch()
+    assert jsonpatch == [
+        {'op': 'add', 'path': '/xyz/abc', 'value': 123},
+    ]
+
+def test_replacement_of_the_subkey():
+    patch = Patch()
+    patch.original = {'xyz': {'abc': 456}}
     patch['xyz'] = {'abc': 123}
     jsonpatch = patch.as_json_patch()
     assert jsonpatch == [

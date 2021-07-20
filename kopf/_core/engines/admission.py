@@ -126,6 +126,7 @@ async def serve_admission_request(
     memo = await memories.recall_memo(raw_body, memobase=memobase, ephemeral=operation=='CREATE')
     body = bodies.Body(raw_body)
     patch = patches.Patch()
+    patch.original = raw_body
     warnings: List[str] = []
     cause = causes.WebhookCause(
         resource=resource,
