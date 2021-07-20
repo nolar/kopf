@@ -96,16 +96,13 @@ class Patch(Dict[str, Any]):
         result: JSONPatch = []
         if value is None:
             result.append(JSONPatchItem(op='remove', path='/'.join(keys)))
+        elif len(keys) > 1 and self._original and not self._is_in_original_path(keys):
+            result.append(JSONPatchItem(op='add', path='/'.join(keys), value=value))
         elif isinstance(value, collections.abc.Mapping) and value:
             for key, val in value.items():
                 result.extend(self._as_json_patch(val, keys + [key]))
         else:
-            # TODO: need to distinguish 'add' vs 'replace' -- need to know the original value.
-            print(self._is_in_original_path(keys))
-            if self._original and self._is_in_original_path(keys):
-                result.append(JSONPatchItem(op='replace', path='/'.join(keys), value=value))
-            else:
-                result.append(JSONPatchItem(op='add', path='/'.join(keys), value=value))
+            result.append(JSONPatchItem(op='replace', path='/'.join(keys), value=value))
         return result
 
     def _is_in_original_path(self, keys: List[str]) -> bool:
@@ -115,7 +112,7 @@ class Patch(Dict[str, Any]):
                 continue
             try:
                 _search = _search[key]
-            except KeyError:
+            except (KeyError, TypeError):
                 return False
         return True
         

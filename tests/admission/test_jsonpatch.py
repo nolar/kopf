@@ -49,6 +49,16 @@ def test_replacement_of_the_subkey():
     ]
 
 
+def test_addition_of_the_sub_subkey():
+    patch = Patch()
+    patch.original = {'xyz': {'uvw': 123}}
+    patch['xyz'] = {'abc': {'def': {'ghi': 456}}}
+    jsonpatch = patch.as_json_patch()
+    assert jsonpatch == [
+        {'op': 'add', 'path': '/xyz/abc', 'value': {'def': {'ghi': 456}}},
+    ]
+
+
 def test_removal_of_the_subkey():
     patch = Patch()
     patch['xyz'] = {'abc': None}
