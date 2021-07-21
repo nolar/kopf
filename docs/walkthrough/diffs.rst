@@ -31,7 +31,7 @@ but we will use another feature of Kopf to track one specific field only:
     :caption: ephemeral.py
     :emphasize-lines: 1, 5
 
-    @kopf.on.field('zalando.org', 'v1', 'ephemeralvolumeclaims', field='metadata.labels')
+    @kopf.on.field('ephemeralvolumeclaims', field='metadata.labels')
     def relabel(old, new, status, namespace, **kwargs):
 
         pvc_name = status['create_fn']['pvc-name']
@@ -64,7 +64,7 @@ since Kubernetes notifies the operators only with the newest state of the object
 Diffs
 =====
 
-Kopf tracks the state of the objects, and calculates the diffs.
+Kopf tracks the state of the objects and calculates the diffs.
 The diffs are provided as the :kwarg:`diff` kwarg; the old & new states
 of the object or field -- as the :kwarg:`old` & :kwarg:`new` kwargs.
 
@@ -84,7 +84,7 @@ For example, if the field is ``metadata.labels``::
      ('change', ('label2',), 'old-value', 'new-value'),
      ('remove', ('label3',), 'old-value', None)]
 
-Now, let's use this feature to explicitly react to re-labelling of the EVCs.
+Now, let's use this feature to explicitly react to the re-labelling of the EVCs.
 Note that the ``new`` value for the removed dict key is ``None``,
 exactly as needed for the patch object (i.e. the field is present there):
 
@@ -94,7 +94,7 @@ exactly as needed for the patch object (i.e. the field is present there):
     :caption: ephemeral.py
     :emphasize-lines: 4
 
-    @kopf.on.field('zalando.org', 'v1', 'ephemeralvolumeclaims', field='metadata.labels')
+    @kopf.on.field('ephemeralvolumeclaims', field='metadata.labels')
     def relabel(diff, status, namespace, **kwargs):
 
         labels_patch = {field[0]: new for op, field, old, new in diff}

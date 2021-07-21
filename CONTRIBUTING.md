@@ -4,15 +4,15 @@
 
 There are multiple ways of getting involved:
 
-- [Report a bug](#report-a-bug) 
-- [Suggest a feature](#suggest-a-feature) 
-- [Contribute code](#contribute-code) 
+- [Report a bug](#report-a-bug)
+- [Suggest a feature](#suggest-a-feature)
+- [Contribute code](#contribute-code)
 
 Below are a few guidelines we would like you to follow.
 If you need help, please reach out to us by opening an issue.
 
 
-## Report a bug 
+## Report a bug
 
 Reporting bugs is one of the best ways to contribute. Before creating a bug report, please check that an [issue](/issues) reporting the same problem does not already exist. If there is such an issue, you may add your information as a comment.
 
@@ -23,15 +23,15 @@ If you want to provide a fix along with your bug report: That is great! In this 
 
 ## Suggest a feature
 
-To request a new feature you should open an [issue](../../issues/new) and summarize the desired functionality and its use case. Set the issue label to "feature".  
+To request a new feature you should open an [issue](../../issues/new) and summarize the desired functionality and its use case. Set the issue label to "feature".
 
 
 ## Contribute code
 
 Check the list of open [issues](../../issues).
 Either assign an existing issue to yourself, or create a new one
-that you would like work on and discuss your ideas and use cases. 
-It is always best to discuss your plans beforehand, 
+that you would like work on and discuss your ideas and use cases.
+It is always best to discuss your plans beforehand,
 to ensure that your contribution is in line with our goals.
 
 Read https://kopf.readthedocs.io/en/stable/contributing/

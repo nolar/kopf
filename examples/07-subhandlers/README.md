@@ -37,7 +37,7 @@ sub-handlers must be executed.
 [2019-02-19 16:05:56,432] kopf.reactor.handlin [DEBUG   ] [default/kopf-example-1] First appearance: ...
 [2019-02-19 16:05:56,432] kopf.reactor.handlin [DEBUG   ] [default/kopf-example-1] Adding the finalizer, thus preventing the actual deletion.
 
-[2019-02-19 16:05:56,645] kopf.reactor.handlin [DEBUG   ] [default/kopf-example-1] Creation event: ...
+[2019-02-19 16:05:56,645] kopf.reactor.handlin [DEBUG   ] [default/kopf-example-1] Creation is in progress: ...
 [2019-02-19 16:05:56,650] kopf.reactor.handlin [DEBUG   ] [default/kopf-example-1] Invoking handler create_fn.
 [2019-02-19 16:05:56,654] kopf.reactor.handlin [DEBUG   ] [default/kopf-example-1] Invoking handler create_fn/item1.
 
@@ -46,7 +46,7 @@ sub-handlers must be executed.
 [2019-02-19 16:05:56,656] kopf.reactor.handlin [INFO    ] [default/kopf-example-1] Handler create_fn/item1 succeeded.
 [2019-02-19 16:05:56,982] kopf.reactor.handlin [INFO    ] [default/kopf-example-1] Handler create_fn has unfinished sub-handlers. Will retry soon.
 
-[2019-02-19 16:05:57,200] kopf.reactor.handlin [DEBUG   ] [default/kopf-example-1] Creation event: ...
+[2019-02-19 16:05:57,200] kopf.reactor.handlin [DEBUG   ] [default/kopf-example-1] Creation is in progress: ...
 [2019-02-19 16:05:57,201] kopf.reactor.handlin [DEBUG   ] [default/kopf-example-1] Invoking handler create_fn.
 [2019-02-19 16:05:57,203] kopf.reactor.handlin [DEBUG   ] [default/kopf-example-1] Invoking handler create_fn/item2.
 

@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.structs.diffs import Diff, DiffItem, DiffOperation
+from kopf._cogs.structs.diffs import Diff, DiffItem, DiffOperation
 
 
 @pytest.mark.parametrize('operation', list(DiffOperation))

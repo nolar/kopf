@@ -1,14 +1,9 @@
 import asyncio
 import random
-from typing import Dict, NoReturn
+from typing import Dict
 
 import kopf
 import pykube
-
-E2E_STARTUP_STOP_WORDS = ['Served by the background task.']
-E2E_CLEANUP_STOP_WORDS = ['Hung tasks', 'Root tasks']
-E2E_SUCCESS_COUNTS = {'startup_fn_simple': 1, 'startup_fn_retried': 1, 'cleanup_fn': 1}
-E2E_FAILURE_COUNTS = {}
 
 LOCK: asyncio.Lock  # requires a loop on creation
 STOPPERS: Dict[str, Dict[str, asyncio.Event]] = {}  # [namespace][name]
@@ -72,7 +67,7 @@ async def monitored_objects(**kwargs):
     return {namespace: sorted([name for name in STOPPERS[namespace]]) for namespace in STOPPERS}
 
 
-@kopf.on.event('', 'v1', 'pods')
+@kopf.on.event('pods')
 async def pod_task(namespace, name, logger, **_):
     async with LOCK:
         if namespace not in STOPPERS or name not in STOPPERS[namespace]:
@@ -81,8 +76,14 @@ async def pod_task(namespace, name, logger, **_):
             asyncio.create_task(_task_fn(logger, shouldstop=flag))
 
 
-async def _task_fn(logger, shouldstop: asyncio.Event) -> NoReturn:
+async def _task_fn(logger, shouldstop: asyncio.Event):
     while not shouldstop.is_set():
         await asyncio.sleep(random.randint(1, 10))
         logger.info("Served by the background task.")
     logger.info("Serving is finished by request.")
+
+
+# Marks for the e2e tests (see tests/e2e/test_examples.py):
+E2E_STARTUP_STOP_WORDS = ['Served by the background task.']
+E2E_CLEANUP_STOP_WORDS = ['Hung tasks', 'Root tasks']
+E2E_SUCCESS_COUNTS = {'startup_fn_simple': 1, 'startup_fn_retried': 1, 'cleanup_fn': 1}

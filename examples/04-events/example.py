@@ -4,7 +4,7 @@ Send the custom events for the handled or other objects.
 import kopf
 
 
-@kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+@kopf.on.create('kopfexamples')
 def create_fn(body, **kwargs):
 
     # The all-purpose function for the event creation.

@@ -5,9 +5,11 @@ import freezegun
 import pytest
 
 import kopf
-from kopf.reactor.processing import process_resource_event
-from kopf.structs.containers import ResourceMemories
-from kopf.structs.handlers import HANDLER_REASONS, Reason
+from kopf._cogs.structs.ephemera import Memo
+from kopf._core.engines.indexing import OperatorIndexers
+from kopf._core.intents.causes import HANDLER_REASONS, Reason
+from kopf._core.reactor.inventory import ResourceMemories
+from kopf._core.reactor.processing import process_resource_event
 
 
 # The timeout is hard-coded in conftest.py:handlers().
@@ -39,9 +41,10 @@ async def test_timed_out_handler_fails(
             registry=registry,
             settings=settings,
             resource=resource,
+            indexers=OperatorIndexers(),
             memories=ResourceMemories(),
+            memobase=Memo(),
             raw_event={'type': event_type, 'object': event_body},
-            replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
 
@@ -51,10 +54,10 @@ async def test_timed_out_handler_fails(
     assert not handlers.resume_mock.called
 
     # Progress is reset, as the handler is not going to retry.
-    assert not k8s_mocked.sleep_or_wait.called
-    assert k8s_mocked.patch_obj.called
+    assert not k8s_mocked.sleep.called
+    assert k8s_mocked.patch.called
 
-    patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
+    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
     assert patch['status']['kopf']['progress'] is not None
     assert patch['status']['kopf']['progress'][name1]['failure'] is True
 
@@ -88,9 +91,10 @@ async def test_retries_limited_handler_fails(
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 
@@ -100,10 +104,10 @@ async def test_retries_limited_handler_fails(
     assert not handlers.resume_mock.called
 
     # Progress is reset, as the handler is not going to retry.
-    assert not k8s_mocked.sleep_or_wait.called
-    assert k8s_mocked.patch_obj.called
+    assert not k8s_mocked.sleep.called
+    assert k8s_mocked.patch.called
 
-    patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
+    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
     assert patch['status']['kopf']['progress'] is not None
     assert patch['status']['kopf']['progress'][name1]['failure'] is True
 

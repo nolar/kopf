@@ -15,17 +15,18 @@ import pytest
 import pytest_mock
 
 import kopf
-from kopf.clients.auth import APIContext
-from kopf.engines.loggers import ObjectPrefixingTextFormatter, configure
-from kopf.engines.posting import settings_var
-from kopf.structs.configuration import OperatorSettings
-from kopf.structs.credentials import ConnectionInfo, Vault, VaultKey
-from kopf.structs.resources import Resource
+from kopf._cogs.clients.auth import APIContext
+from kopf._cogs.configs.configuration import OperatorSettings
+from kopf._cogs.structs.credentials import ConnectionInfo, Vault, VaultKey
+from kopf._cogs.structs.references import Resource, Selector
+from kopf._core.actions.loggers import ObjectPrefixingTextFormatter, configure
+from kopf._core.engines.posting import settings_var
+from kopf._core.intents.registries import OperatorRegistry
+from kopf._core.reactor.inventory import ResourceMemories
 
 
 def pytest_configure(config):
     config.addinivalue_line('markers', "e2e: end-to-end tests with real operators.")
-    config.addinivalue_line('markers', "resource_clustered: (internal parameterizatiom mark).")
 
     # Unexpected warnings should fail the tests. Use `-Wignore` to explicitly disable it.
     config.addinivalue_line('filterwarnings', 'error')
@@ -84,20 +85,86 @@ def pytest_collection_modifyitems(config, items):
 
 # Substitute the regular mock with the async-aware mock in the `mocker` fixture.
 @pytest.fixture(scope='session', autouse=True)
-def enforce_asyncio_mocker():
-    pytest_mock.plugin._get_mock_module = lambda config: asynctest
-    pytest_mock._get_mock_module = pytest_mock.plugin._get_mock_module
+def enforce_asyncio_mocker(pytestconfig):
+    pytest_mock.plugin.get_mock_module = lambda config: asynctest
+    pytest_mock.get_mock_module = pytest_mock.plugin.get_mock_module
+    fixture = pytest_mock.MockerFixture(pytestconfig)
+    assert fixture.mock_module is asynctest, "Mock replacement failed!"
+
+
+@pytest.fixture(params=[
+    ('kopf.dev', 'v1', 'kopfpeerings', True),
+    ('zalando.org', 'v1', 'kopfpeerings', True),
+], ids=['kopf-dev-namespaced', 'zalando-org-namespaced'])
+def namespaced_peering_resource(request):
+    return Resource(*request.param[:3], namespaced=request.param[3])
+
+
+@pytest.fixture(params=[
+    ('kopf.dev', 'v1', 'clusterkopfpeerings', False),
+    ('zalando.org', 'v1', 'clusterkopfpeerings', False),
+], ids=['kopf-dev-cluster', 'zalando-org-cluster'])
+def cluster_peering_resource(request):
+    return Resource(*request.param[:3], namespaced=request.param[3])
+
+
+@pytest.fixture(params=[
+    ('kopf.dev', 'v1', 'clusterkopfpeerings', False),
+    ('zalando.org', 'v1', 'clusterkopfpeerings', False),
+    ('kopf.dev', 'v1', 'kopfpeerings', True),
+    ('zalando.org', 'v1', 'kopfpeerings', True),
+], ids=['kopf-dev-cluster', 'zalando-org-cluster', 'kopf-dev-namespaced', 'zalando-org-namespaced'])
+def peering_resource(request):
+    return Resource(*request.param[:3], namespaced=request.param[3])
 
 
 @pytest.fixture()
-def resource():
+def namespaced_resource():
     """ The resource used in the tests. Usually mocked, so it does not matter. """
-    return Resource('zalando.org', 'v1', 'kopfexamples')
+    return Resource('kopf.dev', 'v1', 'kopfexamples', namespaced=True)
+
+
+@pytest.fixture()
+def cluster_resource():
+    """ The resource used in the tests. Usually mocked, so it does not matter. """
+    return Resource('kopf.dev', 'v1', 'kopfexamples', namespaced=False)
+
+
+@pytest.fixture(params=[True, False], ids=['namespaced', 'cluster'])
+def resource(request):
+    """ The resource used in the tests. Usually mocked, so it does not matter. """
+    return Resource('kopf.dev', 'v1', 'kopfexamples', namespaced=request.param)
+
+
+@pytest.fixture()
+def selector(resource):
+    """ The selector used in the tests. Usually mocked, so it does not matter. """
+    return Selector(group=resource.group, version=resource.version, plural=resource.plural)
+
+
+@pytest.fixture()
+def peering_namespace(peering_resource):
+    return 'ns' if peering_resource.namespaced else None
+
+
+@pytest.fixture()
+def namespace(resource):
+    return 'ns' if resource.namespaced else None
 
 
 @pytest.fixture()
 def settings():
     return OperatorSettings()
+
+
+@pytest.fixture()
+def memories():
+    return ResourceMemories()
+
+
+@pytest.fixture()
+def logger():
+    return logging.getLogger('fake-logger')
 
 
 @pytest.fixture()
@@ -114,18 +181,23 @@ def settings_via_contextvar(settings):
 #
 
 
+@pytest.fixture
+def registry_factory():
+    # For most tests: not SmartOperatorRegistry, but the empty one!
+    # For e2e tests: overridden to SmartOperatorRegistry.
+    return OperatorRegistry
+
+
 @pytest.fixture(autouse=True)
-def clear_default_registry():
+def registry(registry_factory):
     """
     Ensure that the tests have a fresh new global (not re-used) registry.
     """
     old_registry = kopf.get_default_registry()
-    new_registry = type(old_registry)()  # i.e. OperatorRegistry/GlobalRegistry
+    new_registry = registry_factory()
     kopf.set_default_registry(new_registry)
-    try:
-        yield new_registry
-    finally:
-        kopf.set_default_registry(old_registry)
+    yield new_registry
+    kopf.set_default_registry(old_registry)
 
 
 #
@@ -135,6 +207,37 @@ def clear_default_registry():
 # 2. No external calls must be made under any circumstances.
 #    The unit-tests must be fully isolated from the environment.
 #
+
+
+@dataclasses.dataclass(frozen=True, eq=False)
+class K8sMocks:
+    get: Mock
+    post: Mock
+    patch: Mock
+    delete: Mock
+    stream: Mock
+    sleep: Mock
+
+
+@pytest.fixture()
+def k8s_mocked(mocker, resp_mocker):
+    # We mock on the level of our own K8s API wrappers, not the HTTP client.
+    mocker.patch('kopf._cogs.clients.api.request', side_effect=Exception('Must not be called!'))
+
+    async def itr(*_, **__):
+        await asyncio.sleep(0)  # give up control
+        if False:  # make it an iterator without yielding anything.
+            yield
+
+    return K8sMocks(
+        get=mocker.patch('kopf._cogs.clients.api.get', return_value={}),
+        post=mocker.patch('kopf._cogs.clients.api.post', return_value={}),
+        patch=mocker.patch('kopf._cogs.clients.api.patch', return_value={}),
+        delete=mocker.patch('kopf._cogs.clients.api.delete', return_value={}),
+        stream=mocker.patch('kopf._cogs.clients.api.stream', side_effect=itr),
+        sleep=mocker.patch('kopf._cogs.aiokits.aiotime.sleep', return_value=None),
+    )
+
 
 @pytest.fixture()
 async def enforced_context(fake_vault, mocker):
@@ -163,7 +266,7 @@ async def enforced_session(enforced_context: APIContext):
 # Note: Unused `fake_vault` is to ensure that the client wrappers have the credentials.
 # Note: Unused `enforced_session` is to ensure that the session is closed for every test.
 @pytest.fixture()
-def resp_mocker(fake_vault, enforced_session, resource, aresponses):
+def resp_mocker(fake_vault, enforced_session, aresponses):
     """
     A factory of server-side callbacks for `aresponses` with mocking/spying.
 
@@ -201,6 +304,8 @@ def resp_mocker(fake_vault, enforced_session, resource, aresponses):
 
             # Get a response/error as it was intended (via return_value/side_effect).
             response = actual_response()
+            if asyncio.iscoroutine(response):
+                response = await response
             return response
 
         return asynctest.CoroutineMock(side_effect=resp_mock_effect)
@@ -213,26 +318,9 @@ def version_api(resp_mocker, aresponses, hostname, resource):
         'name': resource.plural,
         'namespaced': True,
     }]}
+    version_url = resource.get_url().rsplit('/', 1)[0]  # except the plural name
     list_mock = resp_mocker(return_value=aiohttp.web.json_response(result))
-    aresponses.add(hostname, resource.get_version_url(), 'get', list_mock)
-
-
-@pytest.fixture()
-def version_api_with_substatus(resp_mocker, aresponses, hostname, resource, version_api):
-
-    # TODO: stop auto-using `version_api` in all /k8s/ tests, then such purging will not be needed.
-    # TODO: but it is so convenient for all other /k8s/ tests, that removing it is undesired.
-    aresponses._responses[:] = []
-
-    result = {'resources': [{
-        'name': resource.plural,
-        'namespaced': True,
-    }, {
-        'name': f'{resource.plural}/status',
-        'namespaced': True,
-    }]}
-    list_mock = resp_mocker(return_value=aiohttp.web.json_response(result))
-    aresponses.add(hostname, resource.get_version_url(), 'get', list_mock)
+    aresponses.add(hostname, version_url, 'get', list_mock)
 
 
 @pytest.fixture()
@@ -266,7 +354,7 @@ def stream(fake_vault, resp_mocker, aresponses, hostname, resource, version_api)
     # TODO: One day, find a better way to terminate a ``while-true`` reconnection cycle.
     def close(*, namespace=None):
         """
-        A way to stop `streaming_watch` from reconnecting: say it the resource version is gone
+        A way to stop the stream from reconnecting: say it that the resource version is gone
         (we know a priori that it stops on this condition, and escalates to `infinite_stream`).
         """
         feed([{'type': 'ERROR', 'object': {'code': 410}}], namespace=namespace)
@@ -289,6 +377,7 @@ def hostname():
 class LoginMocks:
     pykube_in_cluster: Mock = None
     pykube_from_file: Mock = None
+    pykube_from_env: Mock = None
     client_in_cluster: Mock = None
     client_from_file: Mock = None
 
@@ -315,6 +404,7 @@ def login_mocks(mocker):
         kwargs.update(
             pykube_in_cluster=mocker.patch.object(pykube.KubeConfig, 'from_service_account', return_value=cfg),
             pykube_from_file=mocker.patch.object(pykube.KubeConfig, 'from_file', return_value=cfg),
+            pykube_from_env=mocker.patch.object(pykube.KubeConfig, 'from_env', return_value=cfg),
         )
     try:
         import kubernetes
@@ -349,17 +439,17 @@ def fake_vault(mocker, hostname):
 
     Any blocking activities are mocked, so that the tests do not hang.
     """
-    from kopf.clients import auth
+    from kopf._cogs.clients import auth
 
     key = VaultKey('fixture')
     info = ConnectionInfo(server=f'https://{hostname}')
     vault = Vault({key: info})
     token = auth.vault_var.set(vault)
-    mocker.patch.object(vault._ready, 'wait_for_on')
-    mocker.patch.object(vault._ready, 'wait_for_off')
+    mocker.patch.object(vault._ready, 'wait_for')
     try:
         yield vault
     finally:
+        # await vault.close()  # TODO: but it runs in a different loop, w/ wrong contextvar.
         auth.vault_var.reset(token)
 
 #
@@ -441,6 +531,27 @@ def any_pykube(request):
     else:
         yield from _with_module_absent('pykube')
 
+
+@pytest.fixture()
+def no_pyngrok():
+    yield from _with_module_absent('pyngrok')
+
+
+@pytest.fixture()
+def no_oscrypto():
+    yield from _with_module_absent('oscrypto')
+
+
+@pytest.fixture()
+def no_certbuilder():
+    yield from _with_module_absent('certbuilder')
+
+
+@pytest.fixture()
+def no_certvalidator():
+    yield from _with_module_absent('certvalidator')
+
+
 #
 # Helpers for the timing checks.
 #
@@ -491,6 +602,12 @@ class Timer(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._te = time.perf_counter()
+
+    async def __aenter__(self):
+        return self.__enter__()
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        return self.__exit__(exc_type, exc_val, exc_tb)
 
     def __int__(self):
         return int(self.seconds)

@@ -1,9 +1,12 @@
 import pytest
 
-from kopf.reactor.activities import authenticate
-from kopf.reactor.registries import OperatorRegistry
-from kopf.structs.credentials import ConnectionInfo, LoginError, Vault
-from kopf.structs.handlers import Activity, ActivityHandler
+from kopf._cogs.structs.credentials import ConnectionInfo, LoginError, Vault
+from kopf._cogs.structs.ephemera import Memo
+from kopf._core.engines.activities import authenticate
+from kopf._core.engines.indexing import OperatorIndexers
+from kopf._core.intents.causes import Activity
+from kopf._core.intents.handlers import ActivityHandler
+from kopf._core.intents.registries import OperatorRegistry
 
 
 async def test_empty_registry_produces_no_credentials(settings):
@@ -14,6 +17,8 @@ async def test_empty_registry_produces_no_credentials(settings):
         registry=registry,
         settings=settings,
         vault=vault,
+        memo=Memo(),
+        indices=OperatorIndexers().indices,
     )
 
     assert not vault
@@ -30,15 +35,17 @@ async def test_noreturn_handler_produces_no_credentials(settings):
         pass
 
     # NB: id auto-detection does not work, as it is local to the test function.
-    registry.activity_handlers.append(ActivityHandler(
+    registry._activities.append(ActivityHandler(
         fn=login_fn, id='login_fn', activity=Activity.AUTHENTICATION,
-        errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+        param=None, errors=None, timeout=None, retries=None, backoff=None,
     ))
 
     await authenticate(
         registry=registry,
         settings=settings,
         vault=vault,
+        memo=Memo(),
+        indices=OperatorIndexers().indices,
     )
 
     assert not vault
@@ -56,15 +63,17 @@ async def test_single_credentials_provided_to_vault(settings):
         return info
 
     # NB: id auto-detection does not work, as it is local to the test function.
-    registry.activity_handlers.append(ActivityHandler(
+    registry._activities.append(ActivityHandler(
         fn=login_fn, id='login_fn', activity=Activity.AUTHENTICATION,
-        errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+        param=None, errors=None, timeout=None, retries=None, backoff=None,
     ))
 
     await authenticate(
         registry=registry,
         settings=settings,
         vault=vault,
+        memo=Memo(),
+        indices=OperatorIndexers().indices,
     )
 
     assert vault

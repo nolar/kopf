@@ -6,12 +6,14 @@ import freezegun
 import pytest
 
 import kopf
-from kopf.reactor.effects import WAITING_KEEPALIVE_INTERVAL
-from kopf.reactor.handling import TemporaryError
-from kopf.reactor.processing import process_resource_event
-from kopf.storage.states import HandlerState
-from kopf.structs.containers import ResourceMemories
-from kopf.structs.handlers import HANDLER_REASONS, Reason
+from kopf._cogs.structs.ephemera import Memo
+from kopf._core.actions.application import WAITING_KEEPALIVE_INTERVAL
+from kopf._core.actions.execution import TemporaryError
+from kopf._core.actions.progression import HandlerState
+from kopf._core.engines.indexing import OperatorIndexers
+from kopf._core.intents.causes import HANDLER_REASONS, Reason
+from kopf._core.reactor.inventory import ResourceMemories
+from kopf._core.reactor.processing import process_resource_event
 
 
 @pytest.mark.parametrize('cause_reason', HANDLER_REASONS)
@@ -37,9 +39,10 @@ async def test_delayed_handlers_progress(
             registry=registry,
             settings=settings,
             resource=resource,
+            indexers=OperatorIndexers(),
             memories=ResourceMemories(),
+            memobase=Memo(),
             raw_event={'type': event_type, 'object': {}},
-            replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
 
@@ -48,11 +51,11 @@ async def test_delayed_handlers_progress(
     assert handlers.delete_mock.call_count == (1 if cause_reason == Reason.DELETE else 0)
     assert handlers.resume_mock.call_count == (1 if cause_reason == Reason.RESUME else 0)
 
-    assert not k8s_mocked.sleep_or_wait.called
-    assert k8s_mocked.patch_obj.called
+    assert not k8s_mocked.sleep.called
+    assert k8s_mocked.patch.called
 
     fname = f'{cause_reason}_fn'
-    patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
+    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
     assert patch['status']['kopf']['progress'][fname]['delayed'] == delayed_iso
 
     assert_logs([
@@ -93,9 +96,10 @@ async def test_delayed_handlers_sleep(
             registry=registry,
             settings=settings,
             resource=resource,
+            indexers=OperatorIndexers(),
             memories=ResourceMemories(),
+            memobase=Memo(),
             raw_event={'type': event_type, 'object': event_body},
-            replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
 
@@ -105,12 +109,12 @@ async def test_delayed_handlers_sleep(
     assert not handlers.resume_mock.called
 
     # The dummy patch is needed to trigger the further changes. The value is irrelevant.
-    assert k8s_mocked.patch_obj.called
-    assert 'dummy' in k8s_mocked.patch_obj.call_args_list[-1][1]['patch']['status']['kopf']
+    assert k8s_mocked.patch.called
+    assert 'dummy' in k8s_mocked.patch.call_args_list[-1][1]['payload']['status']['kopf']
 
     # The duration of sleep should be as expected.
-    assert k8s_mocked.sleep_or_wait.called
-    assert k8s_mocked.sleep_or_wait.call_args_list[0][0][0] == delay
+    assert k8s_mocked.sleep.called
+    assert k8s_mocked.sleep.call_args_list[0][0][0] == delay
 
     assert_logs([
         r"Sleeping for ([\d\.]+|[\d\.]+ \(capped [\d\.]+\)) seconds",

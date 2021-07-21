@@ -3,9 +3,8 @@ import json
 
 import pytest
 
-from kopf.reactor.causation import detect_resource_changing_cause
-from kopf.structs.bodies import Body
-from kopf.structs.handlers import Reason
+from kopf._cogs.structs.bodies import Body
+from kopf._core.intents.causes import Reason, detect_changing_cause
 
 LAST_SEEN_ANNOTATION = 'kopf.zalando.org/last-handled-configuration'
 FINALIZER = 'fin'
@@ -118,6 +117,7 @@ def kwargs():
     return dict(
         finalizer=FINALIZER,
         resource=object(),
+        indices=object(),
         logger=object(),
         patch=object(),
         memo=object(),
@@ -145,7 +145,7 @@ def test_for_gone(
     event = {'type': event, 'object': {'metadata': {}}}
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
-    cause = detect_resource_changing_cause(
+    cause = detect_changing_cause(
         raw_event=event,
         body=Body(event['object']),
         **kwargs)
@@ -162,7 +162,7 @@ def test_for_free(
     event = {'type': event, 'object': {'metadata': {}}}
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
-    cause = detect_resource_changing_cause(
+    cause = detect_changing_cause(
         raw_event=event,
         body=Body(event['object']),
         **kwargs)
@@ -179,7 +179,7 @@ def test_for_delete(
     event = {'type': event, 'object': {'metadata': {}}}
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
-    cause = detect_resource_changing_cause(
+    cause = detect_changing_cause(
         raw_event=event,
         body=Body(event['object']),
         **kwargs)
@@ -199,7 +199,7 @@ def test_for_create(
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
     event['object']['metadata'].update(annotations)
-    cause = detect_resource_changing_cause(
+    cause = detect_changing_cause(
         raw_event=event,
         body=Body(event['object']),
         old=old,
@@ -217,7 +217,7 @@ def test_for_create_skip_acquire(
     event = {'type': event, 'object': {'metadata': {}}}
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
-    cause = detect_resource_changing_cause(
+    cause = detect_changing_cause(
         raw_event=event,
         body=Body(event['object']),
         **kwargs)
@@ -237,7 +237,7 @@ def test_for_no_op(
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
     event['object']['metadata'].update(annotations)
-    cause = detect_resource_changing_cause(
+    cause = detect_changing_cause(
         raw_event=event,
         body=Body(event['object']),
         old=old,
@@ -258,7 +258,7 @@ def test_for_update(
     event['object']['metadata'].update(finalizers)
     event['object']['metadata'].update(deletion_ts)
     event['object']['metadata'].update(annotations)
-    cause = detect_resource_changing_cause(
+    cause = detect_changing_cause(
         raw_event=event,
         body=Body(event['object']),
         diff=True,

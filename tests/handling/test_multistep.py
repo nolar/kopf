@@ -3,9 +3,11 @@ import asyncio
 import pytest
 
 import kopf
-from kopf.reactor.processing import process_resource_event
-from kopf.structs.containers import ResourceMemories
-from kopf.structs.handlers import HANDLER_REASONS, Reason
+from kopf._cogs.structs.ephemera import Memo
+from kopf._core.engines.indexing import OperatorIndexers
+from kopf._core.intents.causes import HANDLER_REASONS, Reason
+from kopf._core.reactor.inventory import ResourceMemories
+from kopf._core.reactor.processing import process_resource_event
 
 
 @pytest.mark.parametrize('deletion_ts', [
@@ -32,9 +34,10 @@ async def test_1st_step_stores_progress_by_patching(
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 
@@ -43,10 +46,10 @@ async def test_1st_step_stores_progress_by_patching(
     assert handlers.delete_mock.call_count == (1 if cause_type == Reason.DELETE else 0)
     assert handlers.resume_mock.call_count == (1 if cause_type == Reason.RESUME else 0)
 
-    assert not k8s_mocked.sleep_or_wait.called
-    assert k8s_mocked.patch_obj.called
+    assert not k8s_mocked.sleep.called
+    assert k8s_mocked.patch.called
 
-    patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
+    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
     assert patch['status']['kopf']['progress'] is not None
 
     assert patch['status']['kopf']['progress'][name1]['retries'] == 1
@@ -79,8 +82,6 @@ async def test_2nd_step_finishes_the_handlers(caplog,
     event_body = {
         'metadata': {'finalizers': [settings.persistence.finalizer]},
         'status': {'kopf': {'progress': {
-            'resume_fn':  {'started': '1979-01-01T00:00:00', 'success': True},
-            'resume_fn2':  {'started': '1979-01-01T00:00:00', 'success': True},
             name1: {'started': '1979-01-01T00:00:00', 'success': True},
             name2: {'started': '1979-01-01T00:00:00'},
         }}}
@@ -93,9 +94,10 @@ async def test_2nd_step_finishes_the_handlers(caplog,
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 
@@ -104,10 +106,10 @@ async def test_2nd_step_finishes_the_handlers(caplog,
     assert extrahandlers.delete_mock.call_count == (1 if cause_type == Reason.DELETE else 0)
     assert extrahandlers.resume_mock.call_count == (1 if cause_type == Reason.RESUME else 0)
 
-    assert not k8s_mocked.sleep_or_wait.called
-    assert k8s_mocked.patch_obj.called
+    assert not k8s_mocked.sleep.called
+    assert k8s_mocked.patch.called
 
-    patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
+    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
     assert patch['status']['kopf']['progress'] == {name1: None, name2: None}
 
     # Finalizers could be removed for resources being deleted on the 2nd step.

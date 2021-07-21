@@ -1,0 +1,122 @@
+# The thorough tests run only on the main branch after everything is merged,
+# and regularly by time —- on order to detect bugs and incompatibility with
+# the new versions of freshly released software (e.g. K8s, K3s, Python libs).
+# The first part fully includes the CI workflow, with more versions of K3d/K3s.
+# The second part is unique to the thorough tests.
+name: Thorough tests
+on:
+  push:
+    branches:
+      - main
+      - release/**
+  schedule:
+    - cron: "13 3 * * 6"
+  workflow_dispatch: {}
+
+jobs:
+  linters:
+    name: Linting and static analysis
+    runs-on: ubuntu-20.04
+    timeout-minutes: 2  # usually 0.5-1 mins
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+      - run: pip install -r requirements.txt
+      - run: pre-commit run --all-files
+      - run: mypy kopf --strict
+      - run: |
+          # Mypying the examples
+          exit_codes=0
+          for d in $(find examples -maxdepth 1 -mindepth 1 -type d)
+          do
+            echo "Checking ${d}"
+            mypy $d
+            exit_codes=$[${exit_codes} + $?]
+          done
+          exit ${exit_codes}
+
+  unit-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        install-extras: [ "", "full-auth" ]
+        python-version: [ "3.7", "3.8", "3.9" ]
+    name: Python ${{ matrix.python-version }} ${{ matrix.install-extras }}
+    runs-on: ubuntu-20.04
+    timeout-minutes: 5  # usually 2-3 mins
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - run: pip install -r requirements.txt
+      - run: pip install -e .[${{ matrix.install-extras }}]
+        if: ${{ matrix.install-extras }}
+      - run: pytest --color=yes --cov=kopf --cov-branch
+
+      - name: Publish coverage to Coveralls.io
+        if: success()
+        run: coveralls --service=github
+        env:
+          GITHUB_TOKEN: ${{ secrets.github_token }}
+      - name: Publish coverage to CodeCov.io
+        uses: codecov/codecov-action@v1
+        if: success()
+        env:
+          PYTHON: ${{ matrix.python-version }}
+        with:
+          flags: unit
+          env_vars: PYTHON
+
+  functional:
+    strategy:
+      fail-fast: false
+      matrix:
+        k3s: [latest, v1.21, v1.20, v1.19, v1.18]
+    name: K3s ${{matrix.k3s}}
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10  # usually 4-5 mins
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+      - uses: nolar/setup-k3d-k3s@v1
+        with:
+          version: ${{ matrix.k3s }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - run: pip install -r requirements.txt -r examples/requirements.txt
+      - run: pytest --color=yes --only-e2e
+
+  full-scale:
+    strategy:
+      fail-fast: false
+      matrix:
+        k8s: [latest, v1.21.2, v1.20.8, v1.19.12, v1.18.20]
+    name: K8s ${{matrix.k8s}}
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10  # usually 4-5 mins
+    env:
+      K8S: ${{ matrix.k8s }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+      - run: tools/install-minikube.sh
+      - run: pip install -r requirements.txt -r examples/requirements.txt
+      - run: pytest --color=yes --only-e2e
+
+  coveralls-finish:
+    name: Finalize coveralls.io
+    needs: [unit-tests, functional]
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/setup-python@v2
+      - run: pip install coveralls
+      - run: coveralls --service=github --finish
+        env:
+          GITHUB_TOKEN: ${{ secrets.github_token }}

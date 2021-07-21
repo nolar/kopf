@@ -5,11 +5,11 @@ import traceback
 import pytest
 from asynctest import MagicMock
 
-from kopf.reactor.causation import ResourceChangingCause
-from kopf.reactor.invocation import invoke, is_async_fn
-from kopf.structs.bodies import Body
-from kopf.structs.handlers import Reason
-from kopf.structs.patches import Patch
+from kopf._cogs.structs.bodies import Body
+from kopf._cogs.structs.patches import Patch
+from kopf._core.actions.invocation import invoke, is_async_fn
+from kopf._core.engines.indexing import OperatorIndexers
+from kopf._core.intents.causes import ChangingCause, Reason
 
 STACK_TRACE_MARKER = object()
 
@@ -148,15 +148,12 @@ async def test_result_returned(fn):
 @fns
 async def test_explicit_args_passed_properly(fn):
     fn = MagicMock(fn)
-    await invoke(fn, 100, 200, kw1=300, kw2=400)
+    await invoke(fn, kwargs=dict(kw1=300, kw2=400))
 
     assert fn.called
     assert fn.call_count == 1
 
-    assert len(fn.call_args[0]) == 2
-    assert fn.call_args[0][0] == 100
-    assert fn.call_args[0][1] == 200
-
+    assert len(fn.call_args[0]) == 0
     assert len(fn.call_args[1]) >= 2  # also the magic kwargs
     assert fn.call_args[1]['kw1'] == 300
     assert fn.call_args[1]['kw2'] == 400
@@ -169,8 +166,9 @@ async def test_special_kwargs_added(fn, resource):
             'status': {'info': 'payload'}}
 
     # Values can be any.
-    cause = ResourceChangingCause(
+    cause = ChangingCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
+        indices=OperatorIndexers().indices,
         resource=resource,
         patch=Patch(),
         initial=False,
@@ -183,24 +181,11 @@ async def test_special_kwargs_added(fn, resource):
     )
 
     fn = MagicMock(fn)
-    await invoke(fn, cause=cause)
+    await invoke(fn, kwargsrc=cause)
 
     assert fn.called
     assert fn.call_count == 1
 
-    assert len(fn.call_args[1]) >= 2
-    assert fn.call_args[1]['cause'] is cause
-    assert fn.call_args[1]['event'] is cause.reason  # deprecated
-    assert fn.call_args[1]['reason'] is cause.reason
-    assert fn.call_args[1]['body'] is cause.body
-    assert fn.call_args[1]['spec'] == cause.body['spec']
-    assert fn.call_args[1]['meta'] == cause.body['metadata']
-    assert fn.call_args[1]['status'] == cause.body['status']
-    assert fn.call_args[1]['diff'] is cause.diff
-    assert fn.call_args[1]['old'] is cause.old
-    assert fn.call_args[1]['new'] is cause.new
-    assert fn.call_args[1]['patch'] is cause.patch
-    assert fn.call_args[1]['logger'] is cause.logger
-    assert fn.call_args[1]['uid'] == cause.body['metadata']['uid']
-    assert fn.call_args[1]['name'] == cause.body['metadata']['name']
-    assert fn.call_args[1]['namespace'] == cause.body['metadata']['namespace']
+    # Only check that kwargs are passed at all. The exact kwargs per cause are tested separately.
+    assert 'logger' in fn.call_args[1]
+    assert 'resource' in fn.call_args[1]

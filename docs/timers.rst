@@ -18,7 +18,7 @@ The interval defines how often to trigger the handler (in seconds):
     import time
     import kopf
 
-    @kopf.timer('zalando.org', 'v1', 'kopfexamples', interval=1.0)
+    @kopf.timer('kopfexamples', interval=1.0)
     def ping_kex(spec, **kwargs):
         pass
 
@@ -28,7 +28,7 @@ Sharpness
 
 Usually (by default), the timers are invoked with the specified interval
 between each call. The time taken by the handler itself is not taken into
-account. It is possible to define timers with sharp schedule: i.e. invoked
+account. It is possible to define timers with a sharp schedule: i.e. invoked
 every number of seconds sharp, no matter how long it takes to execute it:
 
 .. code-block:: python
@@ -37,7 +37,7 @@ every number of seconds sharp, no matter how long it takes to execute it:
     import time
     import kopf
 
-    @kopf.timer('zalando.org', 'v1', 'kopfexamples', interval=1.0, sharp=True)
+    @kopf.timer('kopfexamples', interval=1.0, sharp=True)
     def ping_kex(spec, **kwargs):
         time.sleep(0.3)
 
@@ -57,26 +57,27 @@ be invoked when it is stable for some time:
     import asyncio
     import kopf
 
-    @kopf.timer('zalando.org', 'v1', 'kopfexamples', idle=10)
+    @kopf.timer('kopfexamples', idle=10)
     def ping_kex(spec, **kwargs):
         print(f"FIELD={spec['field']}")
 
-Creation of a resource is considered as a change, so idling also shifts
+The creation of a resource is considered as a change, so idling also shifts
 the very first invocation by that time.
 
 The default is to have no idle time, just the intervals.
 
 It is possible to have a timer with both idling and interval. In that case,
-the timer will be invoked only if there were no changes for specified duration
-(idle), and every N seconds after that (interval), as long as the object does
-not change. Once changed, the timer will stop and wait for the new idling time:
+the timer will be invoked only if there were no changes in the resource
+for the specified duration (idle time),
+and every N seconds after that (interval) as long as the object does not change.
+Once changed, the timer will stop and wait for the new idling time:
 
 .. code-block:: python
 
     import asyncio
     import kopf
 
-    @kopf.timer('zalando.org', 'v1', 'kopfexamples', idle=10, interval=1)
+    @kopf.timer('kopfexamples', idle=10, interval=1)
     def ping_kex(spec, **kwargs):
         print(f"FIELD={spec['field']}")
 
@@ -95,7 +96,7 @@ It is possible to postpone the invocations:
     import time
     import kopf
 
-    @kopf.timer('zalando.org', 'v1', 'kopfexamples', interval=1, initial_delay=5)
+    @kopf.timer('kopfexamples', interval=1, initial_delay=5)
     def ping_kex(spec, **kwargs):
         print(f"FIELD={spec['field']}")
 
@@ -106,7 +107,7 @@ resource/operator lifecycle in the very beginning.
 Combined timing
 ===============
 
-It is possible to combine all schedule intervals to achieve the desired effect.
+It is possible to combine all scheduled intervals to achieve the desired effect.
 For example, to give an operator 1 minute for warming up, and then pinging
 the resources every 10 seconds if they are unmodified for 10 minutes:
 
@@ -114,7 +115,7 @@ the resources every 10 seconds if they are unmodified for 10 minutes:
 
     import kopf
 
-    @kopf.timer('zalando.org', 'v1', 'kopfexamples',
+    @kopf.timer('kopfexamples',
                 initial_delay=60, interval=10, idle=600)
     def ping_kex(spec, **kwargs):
         pass
@@ -134,8 +135,8 @@ The default behaviour is to retry arbitrary error
 When an error happens, its delay overrides the timer's schedule or life cycle:
 
 * For arbitrary exceptions, the timer's ``backoff=...`` option is used.
-* For `kopf.TemporaryError`, the error's ``delay=...`` option is used.
-* For `kopf.PermanentError`, the timer stops forever and is never retried.
+* For :class:`kopf.TemporaryError`, the error's ``delay=...`` option is used.
+* For :class:`kopf.PermanentError`, the timer stops forever and is not retried.
 
 The timer's own interval is only used if the function exits successfully.
 
@@ -147,7 +148,7 @@ from the first execution to the end of the retrying cycle:
 
     import kopf
 
-    @kopf.timer('zalando.org', 'v1', 'kopfexamples',
+    @kopf.timer('kopfexamples',
                 errors=kopf.ErrorsMode.TEMPORARY, interval=10, backoff=5)
     def monitor_kex_by_time(name, retry, **kwargs):
         if retry < 3:
@@ -184,7 +185,7 @@ as a key.
     import random
     import kopf
 
-    @kopf.timer('zalando.org', 'v1', 'kopfexamples', interval=10)
+    @kopf.timer('kopfexamples', interval=10)
     def ping_kex(spec, **kwargs):
         return random.randint(0, 100)
 
@@ -204,7 +205,7 @@ It is also possible to use the existing :doc:`filters`:
 
     import kopf
 
-    @kopf.timer('zalando.org', 'v1', 'kopfexamples', interval=10,
+    @kopf.timer('kopfexamples', interval=10,
                 annotations={'some-annotation': 'some-value'},
                 labels={'some-label': 'some-value'},
                 when=lambda name, **_: 'some' in name)

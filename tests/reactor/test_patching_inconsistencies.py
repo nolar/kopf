@@ -3,10 +3,10 @@ import logging
 import aiohttp.web
 import pytest
 
-from kopf.engines.loggers import LocalObjectLogger
-from kopf.reactor.effects import patch_and_check
-from kopf.structs.bodies import Body
-from kopf.structs.patches import Patch
+from kopf._cogs.structs.bodies import Body
+from kopf._cogs.structs.patches import Patch
+from kopf._core.actions.application import patch_and_check
+from kopf._core.actions.loggers import LocalObjectLogger
 
 # Assume that the underlying patch_obj() is already tested with/without status as a sub-resource.
 # Assume that the underlying diff() is already tested with left/right/full scopes and all values.
@@ -42,18 +42,19 @@ from kopf.structs.patches import Patch
 
 ])
 async def test_patching_without_inconsistencies(
-        resource, settings, caplog, assert_logs, version_api,
+        resource, namespace, settings, caplog, assert_logs, version_api,
         aresponses, hostname, resp_mocker,
         patch, response):
     caplog.set_level(logging.DEBUG)
 
-    url = resource.get_url(namespace='ns1', name='name1')
+    url = resource.get_url(namespace=namespace, name='name1')
     patch_mock = resp_mocker(return_value=aiohttp.web.json_response(response))
     aresponses.add(hostname, url, 'patch', patch_mock)
 
-    body = Body({'metadata': {'namespace': 'ns1', 'name': 'name1'}})
+    body = Body({'metadata': {'namespace': namespace, 'name': 'name1'}})
     logger = LocalObjectLogger(body=body, settings=settings)
     await patch_and_check(
+        settings=settings,
         resource=resource,
         body=body,
         patch=Patch(patch),
@@ -104,18 +105,19 @@ async def test_patching_without_inconsistencies(
 
 ])
 async def test_patching_with_inconsistencies(
-        resource, settings, caplog, assert_logs, version_api,
+        resource, namespace, settings, caplog, assert_logs, version_api,
         aresponses, hostname, resp_mocker,
         patch, response):
     caplog.set_level(logging.DEBUG)
 
-    url = resource.get_url(namespace='ns1', name='name1')
+    url = resource.get_url(namespace=namespace, name='name1')
     patch_mock = resp_mocker(return_value=aiohttp.web.json_response(response))
     aresponses.add(hostname, url, 'patch', patch_mock)
 
-    body = Body({'metadata': {'namespace': 'ns1', 'name': 'name1'}})
+    body = Body({'metadata': {'namespace': namespace, 'name': 'name1'}})
     logger = LocalObjectLogger(body=body, settings=settings)
     await patch_and_check(
+        settings=settings,
         resource=resource,
         body=body,
         patch=Patch(patch),
@@ -125,4 +127,32 @@ async def test_patching_with_inconsistencies(
     assert_logs([
         "Patching with:",
         "Patching failed with inconsistencies:",
+    ])
+
+
+async def test_patching_with_disappearance(
+        resource, namespace, settings, caplog, assert_logs, version_api,
+        aresponses, hostname, resp_mocker):
+    caplog.set_level(logging.DEBUG)
+
+    patch = {'spec': {'x': 'y'}, 'status': {'s': 't'}}  # irrelevant
+    url = resource.get_url(namespace=namespace, name='name1')
+    patch_mock = resp_mocker(return_value=aresponses.Response(status=404))
+    aresponses.add(hostname, url, 'patch', patch_mock)
+
+    body = Body({'metadata': {'namespace': namespace, 'name': 'name1'}})
+    logger = LocalObjectLogger(body=body, settings=settings)
+    await patch_and_check(
+        settings=settings,
+        resource=resource,
+        body=body,
+        patch=Patch(patch),
+        logger=logger,
+    )
+
+    assert_logs([
+        "Patching with:",
+        "Patching was skipped: the object does not exist anymore",
+    ], prohibited=[
+        "inconsistencies"
     ])

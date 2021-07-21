@@ -9,11 +9,11 @@ These values are then put to the resource status under the name of the handler:
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexampls')
+    @kopf.on.create('kopfexamples')
     def create_kex_1(**_):
         return 100
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexampls')
+    @kopf.on.create('kopfexamples')
     def create_kex_2(uid, **_):
         return {'r1': random.randint(0, 100), 'r2': random.randint(100, 999)}
 
@@ -42,7 +42,7 @@ restore in case of operator failures & restarts:
     import kopf
     import pykube
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     def create_job(status, **_):
         if not status.get('create_pvc', {}):
             raise kopf.TemporaryError("PVC is not created yet.", delay=10)
@@ -54,7 +54,7 @@ restore in case of operator failures & restarts:
         obj.create()
         return {'name': obj.name}
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     def create_pvc(**_):
         api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         obj = pykube.PersistentVolumeClaim(api, {...})

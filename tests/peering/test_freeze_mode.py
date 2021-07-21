@@ -1,52 +1,47 @@
-import asyncio
-
 import freezegun
 import pytest
 
-from kopf.engines.peering import Peer, process_peering_event
-from kopf.structs import bodies, primitives
+from kopf._cogs.aiokits import aiotoggles
+from kopf._cogs.structs import bodies
+from kopf._core.engines.peering import process_peering_event
 
 
-@pytest.mark.parametrize('our_name, our_namespace, their_name, their_namespace', [
-    ['our-name', 'our-namespace', 'their-name', 'their-namespace'],
-    ['our-name', 'our-namespace', 'their-name', 'our-namespace'],
-    ['our-name', 'our-namespace', 'their-name', None],
-    ['our-name', 'our-namespace', 'our-name', 'their-namespace'],
-    ['our-name', 'our-namespace', 'our-name', None],
-    ['our-name', None, 'their-name', 'their-namespace'],
-    ['our-name', None, 'their-name', 'our-namespace'],
-    ['our-name', None, 'their-name', None],
-    ['our-name', None, 'our-name', 'their-namespace'],
-    ['our-name', None, 'their-name', 'our-namespace'],
-])
 async def test_other_peering_objects_are_ignored(
-        mocker, our_name, our_namespace, their_name, their_namespace):
+        mocker, k8s_mocked, settings,
+        peering_resource, peering_namespace):
 
-    ourselves = Peer(id='id', name=our_name, namespace=our_namespace)
     status = mocker.Mock()
     status.items.side_effect = Exception("This should not be called.")
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
         object={
-            'metadata': {'name': their_name, 'namespace': their_namespace},
+            'metadata': {'name': 'their-name'},
             'status': status,
         })
+
+    settings.peering.name = 'our-name'
     await process_peering_event(
         raw_event=event,
-        ourselves=ourselves,
-        freeze_mode=primitives.Toggle(),
-        replenished=asyncio.Event(),
         autoclean=False,
+        identity='id',
+        settings=settings,
+        namespace=peering_namespace,
+        resource=peering_resource,
     )
     assert not status.items.called
+    assert not k8s_mocked.patch.called
+    assert k8s_mocked.sleep.call_count == 0
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
-async def test_toggled_on_for_higher_priority_peer_when_initially_off(caplog, assert_logs):
+async def test_toggled_on_for_higher_priority_peer_when_initially_off(
+        k8s_mocked, caplog, assert_logs, settings,
+        peering_resource, peering_namespace):
+
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
         object={
-            'metadata': {'name': 'name', 'namespace': 'namespace'},  # for matching
+            'metadata': {'name': 'name', 'namespace': peering_namespace},  # for matching
             'status': {
                 'higher-prio': {
                     'priority': 101,
@@ -55,34 +50,43 @@ async def test_toggled_on_for_higher_priority_peer_when_initially_off(caplog, as
                 },
             },
         })
+    settings.peering.name = 'name'
+    settings.peering.priority = 100
 
-    replenished = asyncio.Event()
-    freeze_mode = primitives.Toggle(False)
-    ourselves = Peer(id='id', name='name', namespace='namespace', priority=100)
+    conflicts_found = aiotoggles.Toggle(False)
+    k8s_mocked.sleep.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
-    assert freeze_mode.is_off()
+    assert conflicts_found.is_off()
     await process_peering_event(
         raw_event=event,
-        freeze_mode=freeze_mode,
-        ourselves=ourselves,
-        replenished=replenished,
+        conflicts_found=conflicts_found,
         autoclean=False,
+        namespace=peering_namespace,
+        resource=peering_resource,
+        identity='id',
+        settings=settings,
     )
-    assert freeze_mode.is_on()
-    assert_logs(["Freezing operations in favour of"], prohibited=[
+    assert conflicts_found.is_on()
+    assert k8s_mocked.sleep.call_count == 1
+    assert 9 < k8s_mocked.sleep.call_args[0][0][0] < 10
+    assert not k8s_mocked.patch.called
+    assert_logs(["Pausing operations in favour of"], prohibited=[
         "Possibly conflicting operators",
-        "Freezing all operators, including self",
-        "Resuming operations after the freeze",
+        "Pausing all operators, including self",
+        "Resuming operations after the pause",
     ])
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
-async def test_ignored_for_higher_priority_peer_when_already_on(caplog, assert_logs):
+async def test_ignored_for_higher_priority_peer_when_already_on(
+        k8s_mocked, caplog, assert_logs, settings,
+        peering_resource, peering_namespace):
+
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
         object={
-            'metadata': {'name': 'name', 'namespace': 'namespace'},  # for matching
+            'metadata': {'name': 'name', 'namespace': peering_namespace},  # for matching
             'status': {
                 'higher-prio': {
                     'priority': 101,
@@ -91,35 +95,44 @@ async def test_ignored_for_higher_priority_peer_when_already_on(caplog, assert_l
                 },
             },
         })
+    settings.peering.name = 'name'
+    settings.peering.priority = 100
 
-    replenished = asyncio.Event()
-    freeze_mode = primitives.Toggle(True)
-    ourselves = Peer(id='id', name='name', namespace='namespace', priority=100)
+    conflicts_found = aiotoggles.Toggle(True)
+    k8s_mocked.sleep.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
-    assert freeze_mode.is_on()
+    assert conflicts_found.is_on()
     await process_peering_event(
         raw_event=event,
-        freeze_mode=freeze_mode,
-        ourselves=ourselves,
-        replenished=replenished,
+        conflicts_found=conflicts_found,
         autoclean=False,
+        namespace=peering_namespace,
+        resource=peering_resource,
+        identity='id',
+        settings=settings,
     )
-    assert freeze_mode.is_on()
+    assert conflicts_found.is_on()
+    assert k8s_mocked.sleep.call_count == 1
+    assert 9 < k8s_mocked.sleep.call_args[0][0][0] < 10
+    assert not k8s_mocked.patch.called
     assert_logs([], prohibited=[
         "Possibly conflicting operators",
-        "Freezing all operators, including self",
-        "Freezing operations in favour of",
-        "Resuming operations after the freeze",
+        "Pausing all operators, including self",
+        "Pausing operations in favour of",
+        "Resuming operations after the pause",
     ])
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
-async def test_toggled_off_for_lower_priority_peer_when_initially_on(caplog, assert_logs):
+async def test_toggled_off_for_lower_priority_peer_when_initially_on(
+        k8s_mocked, caplog, assert_logs, settings,
+        peering_resource, peering_namespace):
+
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
         object={
-            'metadata': {'name': 'name', 'namespace': 'namespace'},  # for matching
+            'metadata': {'name': 'name', 'namespace': peering_namespace},  # for matching
             'status': {
                 'higher-prio': {
                     'priority': 99,
@@ -128,34 +141,43 @@ async def test_toggled_off_for_lower_priority_peer_when_initially_on(caplog, ass
                 },
             },
         })
+    settings.peering.name = 'name'
+    settings.peering.priority = 100
 
-    replenished = asyncio.Event()
-    freeze_mode = primitives.Toggle(True)
-    ourselves = Peer(id='id', name='name', namespace='namespace', priority=100)
+    conflicts_found = aiotoggles.Toggle(True)
+    k8s_mocked.sleep.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
-    assert freeze_mode.is_on()
+    assert conflicts_found.is_on()
     await process_peering_event(
         raw_event=event,
-        freeze_mode=freeze_mode,
-        ourselves=ourselves,
-        replenished=replenished,
+        conflicts_found=conflicts_found,
         autoclean=False,
+        namespace=peering_namespace,
+        resource=peering_resource,
+        identity='id',
+        settings=settings,
     )
-    assert freeze_mode.is_off()
-    assert_logs(["Resuming operations after the freeze"], prohibited=[
+    assert conflicts_found.is_off()
+    assert k8s_mocked.sleep.call_count == 1
+    assert k8s_mocked.sleep.call_args[0][0] == []
+    assert not k8s_mocked.patch.called
+    assert_logs(["Resuming operations after the pause"], prohibited=[
         "Possibly conflicting operators",
-        "Freezing all operators, including self",
-        "Freezing operations in favour of",
+        "Pausing all operators, including self",
+        "Pausing operations in favour of",
     ])
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
-async def test_ignored_for_lower_priority_peer_when_already_off(caplog, assert_logs):
+async def test_ignored_for_lower_priority_peer_when_already_off(
+        k8s_mocked, caplog, assert_logs, settings,
+        peering_resource, peering_namespace):
+
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
         object={
-            'metadata': {'name': 'name', 'namespace': 'namespace'},  # for matching
+            'metadata': {'name': 'name', 'namespace': peering_namespace},  # for matching
             'status': {
                 'higher-prio': {
                     'priority': 99,
@@ -164,35 +186,44 @@ async def test_ignored_for_lower_priority_peer_when_already_off(caplog, assert_l
                 },
             },
         })
+    settings.peering.name = 'name'
+    settings.peering.priority = 100
 
-    replenished = asyncio.Event()
-    freeze_mode = primitives.Toggle(False)
-    ourselves = Peer(id='id', name='name', namespace='namespace', priority=100)
+    conflicts_found = aiotoggles.Toggle(False)
+    k8s_mocked.sleep.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
-    assert freeze_mode.is_off()
+    assert conflicts_found.is_off()
     await process_peering_event(
         raw_event=event,
-        freeze_mode=freeze_mode,
-        ourselves=ourselves,
-        replenished=replenished,
+        conflicts_found=conflicts_found,
         autoclean=False,
+        namespace=peering_namespace,
+        resource=peering_resource,
+        identity='id',
+        settings=settings,
     )
-    assert freeze_mode.is_off()
+    assert conflicts_found.is_off()
+    assert k8s_mocked.sleep.call_count == 1
+    assert k8s_mocked.sleep.call_args[0][0] == []
+    assert not k8s_mocked.patch.called
     assert_logs([], prohibited=[
         "Possibly conflicting operators",
-        "Freezing all operators, including self",
-        "Freezing operations in favour of",
-        "Resuming operations after the freeze",
+        "Pausing all operators, including self",
+        "Pausing operations in favour of",
+        "Resuming operations after the pause",
     ])
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
-async def test_toggled_on_for_same_priority_peer_when_initially_off(caplog, assert_logs):
+async def test_toggled_on_for_same_priority_peer_when_initially_off(
+        k8s_mocked, caplog, assert_logs, settings,
+        peering_resource, peering_namespace):
+
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
         object={
-            'metadata': {'name': 'name', 'namespace': 'namespace'},  # for matching
+            'metadata': {'name': 'name', 'namespace': peering_namespace},  # for matching
             'status': {
                 'higher-prio': {
                     'priority': 100,
@@ -201,36 +232,45 @@ async def test_toggled_on_for_same_priority_peer_when_initially_off(caplog, asse
                 },
             },
         })
+    settings.peering.name = 'name'
+    settings.peering.priority = 100
 
-    replenished = asyncio.Event()
-    freeze_mode = primitives.Toggle(False)
-    ourselves = Peer(id='id', name='name', namespace='namespace', priority=100)
+    conflicts_found = aiotoggles.Toggle(False)
+    k8s_mocked.sleep.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
-    assert freeze_mode.is_off()
+    assert conflicts_found.is_off()
     await process_peering_event(
         raw_event=event,
-        freeze_mode=freeze_mode,
-        ourselves=ourselves,
-        replenished=replenished,
+        conflicts_found=conflicts_found,
         autoclean=False,
+        namespace=peering_namespace,
+        resource=peering_resource,
+        identity='id',
+        settings=settings,
     )
-    assert freeze_mode.is_on()
+    assert conflicts_found.is_on()
+    assert k8s_mocked.sleep.call_count == 1
+    assert 9 < k8s_mocked.sleep.call_args[0][0][0] < 10
+    assert not k8s_mocked.patch.called
     assert_logs([
         "Possibly conflicting operators",
-        "Freezing all operators, including self",
+        "Pausing all operators, including self",
     ], prohibited=[
-        "Freezing operations in favour of",
-        "Resuming operations after the freeze",
+        "Pausing operations in favour of",
+        "Resuming operations after the pause",
     ])
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
-async def test_ignored_for_same_priority_peer_when_already_on(caplog, assert_logs):
+async def test_ignored_for_same_priority_peer_when_already_on(
+        k8s_mocked, caplog, assert_logs, settings,
+        peering_resource, peering_namespace):
+
     event = bodies.RawEvent(
         type='ADDED',  # irrelevant
         object={
-            'metadata': {'name': 'name', 'namespace': 'namespace'},  # for matching
+            'metadata': {'name': 'name', 'namespace': peering_namespace},  # for matching
             'status': {
                 'higher-prio': {
                     'priority': 100,
@@ -239,25 +279,72 @@ async def test_ignored_for_same_priority_peer_when_already_on(caplog, assert_log
                 },
             },
         })
+    settings.peering.name = 'name'
+    settings.peering.priority = 100
 
-    replenished = asyncio.Event()
-    freeze_mode = primitives.Toggle(True)
-    ourselves = Peer(id='id', name='name', namespace='namespace', priority=100)
+    conflicts_found = aiotoggles.Toggle(True)
+    k8s_mocked.sleep.return_value = 1  # as if interrupted by stream pressure
 
     caplog.set_level(0)
-    assert freeze_mode.is_on()
+    assert conflicts_found.is_on()
     await process_peering_event(
         raw_event=event,
-        freeze_mode=freeze_mode,
-        ourselves=ourselves,
-        replenished=replenished,
+        conflicts_found=conflicts_found,
         autoclean=False,
+        namespace=peering_namespace,
+        resource=peering_resource,
+        identity='id',
+        settings=settings,
     )
-    assert freeze_mode.is_on()
+    assert conflicts_found.is_on()
+    assert k8s_mocked.sleep.call_count == 1
+    assert 9 < k8s_mocked.sleep.call_args[0][0][0] < 10
+    assert not k8s_mocked.patch.called
     assert_logs([
         "Possibly conflicting operators",
     ], prohibited=[
-        "Freezing all operators, including self",
-        "Freezing operations in favour of",
-        "Resuming operations after the freeze",
+        "Pausing all operators, including self",
+        "Pausing operations in favour of",
+        "Resuming operations after the pause",
     ])
+
+
+@freezegun.freeze_time('2020-12-31T23:59:59.123456')
+@pytest.mark.parametrize('priority', [100, 101])
+async def test_resumes_immediately_on_expiration_of_blocking_peers(
+        k8s_mocked, caplog, assert_logs, settings, priority,
+        peering_resource, peering_namespace):
+
+    event = bodies.RawEvent(
+        type='ADDED',  # irrelevant
+        object={
+            'metadata': {'name': 'name', 'namespace': peering_namespace},  # for matching
+            'status': {
+                'higher-prio': {
+                    'priority': priority,
+                    'lifetime': 10,
+                    'lastseen': '2020-12-31T23:59:59'
+                },
+            },
+        })
+    settings.peering.name = 'name'
+    settings.peering.priority = 100
+
+    conflicts_found = aiotoggles.Toggle(True)
+    k8s_mocked.sleep.return_value = None  # as if finished sleeping uninterrupted
+
+    caplog.set_level(0)
+    assert conflicts_found.is_on()
+    await process_peering_event(
+        raw_event=event,
+        conflicts_found=conflicts_found,
+        autoclean=False,
+        namespace=peering_namespace,
+        resource=peering_resource,
+        identity='id',
+        settings=settings,
+    )
+    assert conflicts_found.is_on()
+    assert k8s_mocked.sleep.call_count == 1
+    assert 9 < k8s_mocked.sleep.call_args[0][0][0] < 10
+    assert k8s_mocked.patch.called

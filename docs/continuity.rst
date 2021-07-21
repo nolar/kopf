@@ -7,12 +7,13 @@ Persistence
 
 Kopf does not have any database. It stores all the information directly
 on the objects in the Kubernetes cluster (which means ``etcd`` usually).
-All information is retrieved and stored via Kubernetes API.
+All information is retrieved and stored via the Kubernetes API.
 
 Specifically:
 
 * The cross-operator exchange is performed via peering objects of type
-  ``KopfPeering`` or ``ClusterKopfPeering`` (API version: ``zalando.org/v1``).
+  ``KopfPeering`` or ``ClusterKopfPeering``
+  (API versions: either ``kopf.dev/v1`` or ``zalando.org/v1``).
   See :doc:`peering` for more info.
 * The last handled state of the object is stored in ``metadata.annotations``
   (the ``kopf.zalando.org/last-handled-configuration`` annotation).
@@ -31,7 +32,7 @@ See how to configure the stores in :doc:`configuration`
 Restarts
 ========
 
-It is safe to kill the operator's pod (or process), and allow it to restart.
+It is safe to kill the operator's pod (or process) and allow it to restart.
 
 The handlers that succeeded previously will not be re-executed.
 The handlers that did not execute yet, or were scheduled for retrying,
@@ -48,14 +49,14 @@ Downtime
 
 If the operator is down and not running, any changes to the objects
 are ignored and not handled. They will be handled when the operator starts:
-every time a Kopf-based operator starts, it lists all objects of the served
+every time a Kopf-based operator starts, it lists all objects of the
 resource kind, and checks for their state; if the state has changed since
 the object was last handled (no matter how long time ago),
 a new handling cycle starts.
 
 Only the last state is taken into account. All the intermediate changes
 are accumulated and handled together.
-This corresponds to the Kubernetes's concept of eventual consistency
+This corresponds to Kubernetes's concept of eventual consistency
 and level triggering (as opposed to edge triggering).
 
 .. warning::
@@ -63,4 +64,4 @@ and level triggering (as opposed to edge triggering).
     as they may contain the Kopf's finalizers in ``metadata.finalizers``,
     and Kubernetes blocks the deletion until all finalizers are removed.
     If the operator is not running, the finalizers will never be removed.
-    See: :ref:`finalizers-blocking-deletion` for a work-around. 
+    See: :ref:`finalizers-blocking-deletion` for a work-around.

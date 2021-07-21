@@ -1,21 +1,25 @@
-import asyncio
 import dataclasses
 import functools
-from typing import Any, Callable, List, Optional
+import os
+from typing import Any, Callable, Collection, List, Optional
 
 import click
 
-from kopf.engines import loggers, peering
-from kopf.reactor import registries, running
-from kopf.structs import configuration, credentials, primitives
-from kopf.utilities import loaders
+from kopf._cogs.aiokits import aioadapters
+from kopf._cogs.configs import configuration
+from kopf._cogs.helpers import loaders
+from kopf._cogs.structs import credentials, references
+from kopf._core.actions import loggers
+from kopf._core.engines import peering
+from kopf._core.intents import registries
+from kopf._core.reactor import running
 
 
 @dataclasses.dataclass()
 class CLIControls:
     """ `KopfRunner` controls, which are impossible to pass via CLI. """
-    ready_flag: Optional[primitives.Flag] = None
-    stop_flag: Optional[primitives.Flag] = None
+    ready_flag: Optional[aioadapters.Flag] = None
+    stop_flag: Optional[aioadapters.Flag] = None
     vault: Optional[credentials.Vault] = None
     registry: Optional[registries.OperatorRegistry] = None
     settings: Optional[configuration.OperatorSettings] = None
@@ -27,8 +31,11 @@ class LogFormatParamType(click.Choice):
         super().__init__(choices=[v.name.lower() for v in loggers.LogFormat])
 
     def convert(self, value: Any, param: Any, ctx: Any) -> loggers.LogFormat:
-        name: str = super().convert(value, param, ctx)
-        return loggers.LogFormat[name.upper()]
+        if isinstance(value, loggers.LogFormat):
+            return value
+        else:
+            name: str = super().convert(value, param, ctx)
+            return loggers.LogFormat[name.upper()]
 
 
 def logging_options(fn: Callable[..., Any]) -> Callable[..., Any]:
@@ -52,22 +59,23 @@ def logging_options(fn: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 
-@click.version_option(prog_name='kopf')
 @click.group(name='kopf', context_settings=dict(
     auto_envvar_prefix='KOPF',
 ))
+@click.version_option(prog_name='kopf')
 def main() -> None:
     pass
 
 
 @main.command()
 @logging_options
-@click.option('-n', '--namespace', default=None)
-@click.option('--standalone', is_flag=True, default=False)
+@click.option('-A', '--all-namespaces', 'clusterwide', is_flag=True)
+@click.option('-n', '--namespace', 'namespaces', multiple=True)
+@click.option('--standalone', is_flag=True, default=None)
 @click.option('--dev', 'priority', type=int, is_flag=True, flag_value=666)
 @click.option('-L', '--liveness', 'liveness_endpoint', type=str)
-@click.option('-P', '--peering', 'peering_name', type=str, default=None, envvar='KOPF_RUN_PEERING')
-@click.option('-p', '--priority', type=int, default=0)
+@click.option('-P', '--peering', 'peering_name', type=str, envvar='KOPF_RUN_PEERING')
+@click.option('-p', '--priority', type=int)
 @click.option('-m', '--module', 'modules', multiple=True)
 @click.argument('paths', nargs=-1)
 @click.make_pass_decorator(CLIControls, ensure=True)
@@ -76,12 +84,17 @@ def run(
         paths: List[str],
         modules: List[str],
         peering_name: Optional[str],
-        priority: int,
-        standalone: bool,
-        namespace: Optional[str],
+        priority: Optional[int],
+        standalone: Optional[bool],
+        namespaces: Collection[references.NamespacePattern],
+        clusterwide: bool,
         liveness_endpoint: Optional[str],
 ) -> None:
     """ Start an operator process and handle all the requests. """
+    if os.environ.get('KOPF_RUN_NAMESPACE'):  # legacy for single-namespace mode
+        namespaces = tuple(namespaces) + (os.environ.get('KOPF_RUN_NAMESPACE'),)
+    if namespaces and clusterwide:
+        raise click.UsageError("Either --namespace or --all-namespaces can be used, not both.")
     if __controls.registry is not None:
         registries.set_default_registry(__controls.registry)
     loaders.preload(
@@ -90,7 +103,8 @@ def run(
     )
     return running.run(
         standalone=standalone,
-        namespace=namespace,
+        namespaces=namespaces,
+        clusterwide=clusterwide,
         priority=priority,
         peering_name=peering_name,
         liveness_endpoint=liveness_endpoint,
@@ -104,10 +118,11 @@ def run(
 
 @main.command()
 @logging_options
-@click.option('-n', '--namespace', default=None)
+@click.option('-n', '--namespace', 'namespaces', multiple=True)
+@click.option('-A', '--all-namespaces', 'clusterwide', is_flag=True)
 @click.option('-i', '--id', type=str, default=None)
 @click.option('--dev', 'priority', flag_value=666)
-@click.option('-P', '--peering', 'peering_name', type=str, required=True, envvar='KOPF_FREEZE_PEERING')
+@click.option('-P', '--peering', 'peering_name', required=True, envvar='KOPF_FREEZE_PEERING')
 @click.option('-p', '--priority', type=int, default=100, required=True)
 @click.option('-t', '--lifetime', type=int, required=True)
 @click.option('-m', '--message', type=str)
@@ -115,37 +130,55 @@ def freeze(
         id: Optional[str],
         message: Optional[str],
         lifetime: int,
-        namespace: Optional[str],
+        namespaces: Collection[references.NamespacePattern],
+        clusterwide: bool,
         peering_name: str,
         priority: int,
 ) -> None:
-    """ Freeze the resource handling in the cluster. """
-    ourserlves = peering.Peer(
-        id=id or peering.detect_own_id(),
-        name=peering_name,
-        namespace=namespace,
-        priority=priority,
-        lifetime=lifetime,
-    )
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(ourserlves.keepalive())
+    """ Pause the resource handling in the operator(s). """
+    identity = peering.Identity(id) if id else peering.detect_own_id(manual=True)
+    insights = references.Insights()
+    settings = configuration.OperatorSettings()
+    settings.peering.name = peering_name
+    settings.peering.priority = priority
+    return running.run(
+        clusterwide=clusterwide,
+        namespaces=namespaces,
+        insights=insights,
+        identity=identity,
+        settings=settings,
+        _command=peering.touch_command(
+            insights=insights,
+            identity=identity,
+            settings=settings,
+            lifetime=lifetime))
 
 
 @main.command()
 @logging_options
-@click.option('-n', '--namespace', default=None)
+@click.option('-n', '--namespace', 'namespaces', multiple=True)
+@click.option('-A', '--all-namespaces', 'clusterwide', is_flag=True)
 @click.option('-i', '--id', type=str, default=None)
-@click.option('-P', '--peering', 'peering_name', type=str, required=True, envvar='KOPF_RESUME_PEERING')
+@click.option('-P', '--peering', 'peering_name', required=True, envvar='KOPF_RESUME_PEERING')
 def resume(
         id: Optional[str],
-        namespace: Optional[str],
+        namespaces: Collection[references.NamespacePattern],
+        clusterwide: bool,
         peering_name: str,
 ) -> None:
-    """ Resume the resource handling in the cluster. """
-    ourselves = peering.Peer(
-        id=id or peering.detect_own_id(),
-        name=peering_name,
-        namespace=namespace,
-    )
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(ourselves.disappear())
+    """ Resume the resource handling in the operator(s). """
+    identity = peering.Identity(id) if id else peering.detect_own_id(manual=True)
+    insights = references.Insights()
+    settings = configuration.OperatorSettings()
+    settings.peering.name = peering_name
+    return running.run(
+        clusterwide=clusterwide,
+        namespaces=namespaces,
+        insights=insights,
+        identity=identity,
+        settings=settings,
+        _command=peering.touch_command(
+            insights=insights,
+            identity=identity,
+            settings=settings,
+            lifetime=0))

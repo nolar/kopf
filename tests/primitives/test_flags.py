@@ -2,9 +2,10 @@ import asyncio
 import concurrent.futures
 import threading
 
+import async_timeout
 import pytest
 
-from kopf.structs.primitives import check_flag, raise_flag, wait_flag
+from kopf._cogs.aiokits.aioadapters import check_flag, raise_flag, wait_flag
 
 
 @pytest.fixture(params=[
@@ -134,17 +135,19 @@ async def test_waiting_of_none_does_nothing():
 
 
 async def test_waiting_for_unraised_times_out(flag, timer):
-    with timer:
-        with pytest.raises(asyncio.TimeoutError):
-            await asyncio.wait_for(wait_flag(flag), timeout=0.1)
+    with pytest.raises(asyncio.TimeoutError):
+        async with timer, async_timeout.timeout(0.1) as timeout:
+            await wait_flag(flag)
     assert timer.seconds >= 0.1
+    assert timeout.expired
 
 
 async def test_waiting_for_preraised_is_instant(flag, timer):
     await raise_flag(flag)  # tested separately above
-    with timer:
-        await asyncio.wait_for(wait_flag(flag), timeout=1.0)
+    async with timer, async_timeout.timeout(1.0) as timeout:
+        await wait_flag(flag)
     assert timer.seconds < 0.5  # near-instant, plus code overhead
+    assert not timeout.expired
 
 
 async def test_waiting_for_raised_during_the_wait(flag, timer):
@@ -154,6 +157,7 @@ async def test_waiting_for_raised_during_the_wait(flag, timer):
         await raise_flag(flag)  # tested separately above
 
     asyncio.create_task(raise_delayed(0.2))
-    with timer:
-        await asyncio.wait_for(wait_flag(flag), timeout=1.0)
+    async with timer, async_timeout.timeout(1.0) as timeout:
+        await wait_flag(flag)
     assert 0.2 <= timer.seconds < 0.5  # near-instant once raised
+    assert not timeout.expired

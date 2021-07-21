@@ -1,13 +1,11 @@
 import asyncio
-import dataclasses
-from typing import List
+import functools
 
 import pytest
 from asynctest import CoroutineMock
 
-from kopf.clients.watching import streaming_watch
-from kopf.reactor.queueing import watcher, worker as original_worker
-from kopf.structs.configuration import OperatorSettings
+from kopf._cogs.clients.watching import infinite_watch
+from kopf._core.reactor.queueing import watcher, worker as original_worker
 
 
 @pytest.fixture(autouse=True)
@@ -25,19 +23,21 @@ def processor():
 def worker_spy(mocker):
     """ Spy on the watcher: actually call it, but provide the mock-fields. """
     spy = CoroutineMock(spec=original_worker, wraps=original_worker)
-    return mocker.patch('kopf.reactor.queueing.worker', spy)
+    return mocker.patch('kopf._core.reactor.queueing.worker', spy)
 
 
 @pytest.fixture()
 def worker_mock(mocker):
     """ Prevent the queue consumption, so that the queues could be checked. """
-    return mocker.patch('kopf.reactor.queueing.worker')
+    return mocker.patch('kopf._core.reactor.queueing.worker')
 
 
 @pytest.fixture()
-def watcher_limited(mocker):
+def watcher_limited(mocker, settings):
     """ Make event streaming finite, watcher exits after depletion. """
-    mocker.patch('kopf.clients.watching.infinite_watch', new=streaming_watch)
+    settings.watching.reconnect_backoff = 0
+    mocker.patch('kopf._cogs.clients.watching.infinite_watch',
+                 new=functools.partial(infinite_watch, _iterations=1))
 
 
 @pytest.fixture()

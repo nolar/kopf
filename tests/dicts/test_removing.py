@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.structs.dicts import remove
+from kopf._cogs.structs.dicts import remove
 
 
 def test_existing_key():

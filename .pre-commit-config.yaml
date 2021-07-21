@@ -1,0 +1,82 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+exclude: |
+  (?x)^(
+    docs/.*\.xml|
+    docs/.*\.png
+  )
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.4.0
+    hooks:
+      - id: check-ast
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: fix-byte-order-marker
+      - id: check-xml
+      - id: check-toml
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-json
+      - id: pretty-format-json
+      - id: check-added-large-files
+      - id: check-builtin-literals
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-vcs-permalinks
+      - id: check-docstring-first
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: destroyed-symlinks
+      - id: debug-statements
+      - id: detect-aws-credentials
+        args: [--allow-missing-credentials]
+      - id: detect-private-key
+        exclude: ^tests/authentication/test_credentials.py$
+      - id: fix-encoding-pragma
+        args: [--remove]
+      - id: forbid-new-submodules
+      - id: mixed-line-ending
+        args: [--fix=auto]
+      - id: name-tests-test
+        args: [--django]
+      - id: requirements-txt-fixer
+
+      # Intentionally disabled:
+      # - id: double-quote-string-fixer
+
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.8.0
+    hooks:
+      - id: python-check-blanket-noqa
+      - id: python-check-mock-methods
+      - id: python-no-eval
+      - id: python-use-type-annotations
+      - id: rst-backticks
+      - id: rst-directive-colons
+      - id: rst-inline-touching-normal
+      - id: text-unicode-replacement-char
+
+      # Intentionally disabled:
+      # - id: python-no-log-warn  # overreacts to `kopf.warn()`.
+
+  - repo: https://github.com/seddonym/import-linter
+    rev: v1.2.1
+    hooks:
+      - id: import-linter
+        additional_dependencies:
+          - astpath[xpath]
+
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.8.0
+    hooks:
+      - id: isort
+        name: isort-source-code
+
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.8.0
+    hooks:
+      - id: isort
+        name: isort-examples
+        args: [--settings=examples]
+        files: '^examples/'

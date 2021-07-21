@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.structs.dicts import ensure
+from kopf._cogs.structs.dicts import ensure
 
 
 def test_existing_key():

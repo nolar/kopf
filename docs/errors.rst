@@ -17,13 +17,13 @@ and reported via the object's events.
 Temporary errors
 ================
 
-If an exception raised inherits from `kopf.TemporaryError`,
+If an exception raised inherits from :class:`kopf.TemporaryError`,
 it will postpone the current handler for the next iteration,
 which can happen either immediately, or after some delay::
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     def create_fn(spec, **_):
         if not is_data_ready():
             raise kopf.TemporaryError("The data is not yet ready.", delay=60)
@@ -39,13 +39,13 @@ from being handled (such as deletion or parallel handlers/sub-handlers).
     as to be retried immediately, where it continues with the remaining
     handlers.
 
-    The only difference is that this special case produces less logs.
+    The only difference is that this special case produces fewer logs.
 
 
 Permanent errors
 ================
 
-If a raised exception inherits from `kopf.PermanentError`, the handler
+If a raised exception inherits from :class:`kopf.PermanentError`, the handler
 is considered as non-retriable and non-recoverable and completely failed.
 
 Use this when the domain logic of the application means that there
@@ -53,24 +53,24 @@ is no need to retry over time, as it will not become better::
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     def create_fn(spec, **_):
         valid_until = datetime.datetime.fromisoformat(spec['validUntil'])
         if valid_until <= datetime.datetime.utcnow():
             raise kopf.PermanentError("The object is not valid anymore.")
 
 See also: :ref:`never-again-filters` to prevent handlers from being invoked
-for the future change-sets even after operator restarts.
+for the future change-sets even after the operator restarts.
 
 
 Regular errors
 ==============
 
 Kopf assumes that any arbitrary errors
-(i.e. not `TemporaryError` and not `PermanentError`)
-are environment issues and can self-resolve after some time.
+(i.e. not :class:`kopf.TemporaryError` and not :class:`kopf.PermanentError`)
+are the environment's issues and can self-resolve after some time.
 
-As such, as a default behaviour,
+As such, as default behaviour,
 Kopf retries the handlers with arbitrary errors
 infinitely until the handlers either succeed or fail permanently.
 
@@ -78,15 +78,15 @@ The reaction to the arbitrary errors can be configured::
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', errors=kopf.ErrorsMode.PERMANENT)
+    @kopf.on.create('kopfexamples', errors=kopf.ErrorsMode.PERMANENT)
     def create_fn(spec, **_):
         raise Exception()
 
 Possible values of ``errors`` are:
 
-* `kopf.ErrorsMode.TEMPORARY` (the default).
-* `kopf.ErrorsMode.PERMANENT` (prevent retries).
-* `kopf.ErrorsMode.IGNORED` (same as in the resource watching handlers).
+* ``kopf.ErrorsMode.TEMPORARY`` (the default).
+* ``kopf.ErrorsMode.PERMANENT`` (prevent retries).
+* ``kopf.ErrorsMode.IGNORED`` (same as in the resource watching handlers).
 
 
 Timeouts
@@ -96,7 +96,7 @@ The overall runtime of the handler can be limited::
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', timeout=60*60)
+    @kopf.on.create('kopfexamples', timeout=60*60)
     def create_fn(spec, **_):
         raise kopf.TemporaryError(delay=60)
 
@@ -104,7 +104,7 @@ If the handler is not succeeded within this time, it is considered
 as fatally failed.
 
 If the handler is an async coroutine and it is still running at the moment,
-an `asyncio.TimeoutError` is raised;
+an :class:`asyncio.TimeoutError` is raised;
 there is no equivalent way of terminating the synchronous functions by force.
 
 By default, there is no timeout, so the retries continue forever.
@@ -117,7 +117,7 @@ The number of retries can be limited too::
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', retries=3)
+    @kopf.on.create('kopfexamples', retries=3)
     def create_fn(spec, **_):
         raise Exception()
 
@@ -135,7 +135,7 @@ can be configured::
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', backoff=30)
+    @kopf.on.create('kopfexamples', backoff=30)
     def create_fn(spec, **_):
         raise Exception()
 

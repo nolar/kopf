@@ -4,11 +4,10 @@ import kopf
 
 
 async def test_daemon_is_spawned_at_least_once(
-        registry, resource, dummy,
-        caplog, assert_logs, k8s_mocked, simulate_cycle):
+        resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle):
     caplog.set_level(logging.DEBUG)
 
-    @kopf.daemon(resource.group, resource.version, resource.plural, registry=registry, id='fn')
+    @kopf.daemon(*resource, id='fn')
     async def fn(**kwargs):
         dummy.mock()
         dummy.kwargs = kwargs
@@ -23,12 +22,10 @@ async def test_daemon_is_spawned_at_least_once(
 
 
 async def test_daemon_initial_delay_obeyed(
-        registry, resource, dummy,
-        caplog, assert_logs, k8s_mocked, simulate_cycle):
+        resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle):
     caplog.set_level(logging.DEBUG)
 
-    @kopf.daemon(resource.group, resource.version, resource.plural, registry=registry, id='fn',
-                 initial_delay=1.0)
+    @kopf.daemon(*resource, id='fn', initial_delay=1.0)
     async def fn(**kwargs):
         dummy.mock()
         dummy.kwargs = kwargs
@@ -39,6 +36,6 @@ async def test_daemon_initial_delay_obeyed(
     await dummy.steps['called'].wait()
     await dummy.wait_for_daemon_done()
 
-    assert k8s_mocked.sleep_or_wait.call_count >= 1
-    assert k8s_mocked.sleep_or_wait.call_count <= 2  # one optional extra call for sleep(None)
-    assert k8s_mocked.sleep_or_wait.call_args_list[0][0][0] == 1.0  # [call#][args/kwargs][arg#]
+    assert k8s_mocked.sleep.call_count >= 1
+    assert k8s_mocked.sleep.call_count <= 2  # one optional extra call for sleep(None)
+    assert k8s_mocked.sleep.call_args_list[0][0][0] == 1.0  # [call#][args/kwargs][arg#]

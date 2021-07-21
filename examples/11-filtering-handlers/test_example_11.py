@@ -5,19 +5,13 @@ import time
 import kopf.testing
 import pytest
 
+crd_yaml = os.path.relpath(os.path.join(os.path.dirname(__file__), '..', 'crd.yaml'))
 obj_yaml = os.path.relpath(os.path.join(os.path.dirname(__file__), '..', 'obj.yaml'))
 example_py = os.path.relpath(os.path.join(os.path.dirname(__file__), 'example.py'))
 
 
-@pytest.fixture(scope='session')
-def crd_yaml():
-    crd_api = os.environ.get('CRDAPI', 'v1')
-    crd_file = 'crd.yaml' if crd_api == 'v1' else f'crd-{crd_api}.yaml'
-    return os.path.relpath(os.path.join(os.path.dirname(__file__), '..', crd_file))
-
-
 @pytest.fixture(autouse=True)
-def crd_exists(crd_yaml):
+def crd_exists():
     subprocess.run(f"kubectl apply -f {crd_yaml}",
                    check=True, timeout=10, capture_output=True, shell=True)
 
@@ -40,12 +34,17 @@ def test_handler_filtering():
     settings.watching.server_timeout = 10
 
     # Run an operator and simulate some activity with the operated resource.
-    with kopf.testing.KopfRunner(['run', '--verbose', '--standalone', example_py],
-                                 settings=settings) as runner:
+    with kopf.testing.KopfRunner(
+        ['run', '--all-namespaces', '--verbose', '--standalone', example_py],
+        settings=settings,
+    ) as runner:
 
         subprocess.run(f"kubectl create -f {obj_yaml}",
                        shell=True, check=True, timeout=10, capture_output=True)
         time.sleep(5)  # give it some time to react
+        subprocess.run(f"kubectl patch -f {obj_yaml} --type merge -p '" '{"spec":{"field":"changed"}}' "'",
+                       shell=True, check=True, timeout=10, capture_output=True)
+        time.sleep(2)  # give it some time to react
         subprocess.run(f"kubectl delete -f {obj_yaml}",
                        shell=True, check=True, timeout=10, capture_output=True)
         time.sleep(1)  # give it some time to react
@@ -65,3 +64,9 @@ def test_handler_filtering():
     assert '[default/kopf-example-1] Annotation callback mismatch.' not in runner.stdout
     assert '[default/kopf-example-1] Filter satisfied.' in runner.stdout
     assert '[default/kopf-example-1] Filter not satisfied.' not in runner.stdout
+    assert '[default/kopf-example-1] Field value is satisfied.' in runner.stdout
+    assert '[default/kopf-example-1] Field value is not satisfied.' not in runner.stdout
+    assert '[default/kopf-example-1] Field presence is satisfied.' in runner.stdout
+    assert '[default/kopf-example-1] Field presence is not satisfied.' not in runner.stdout
+    assert '[default/kopf-example-1] Field change is satisfied.' in runner.stdout
+    assert '[default/kopf-example-1] Field daemon is satisfied.' in runner.stdout

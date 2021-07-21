@@ -3,17 +3,17 @@ Operator testing
 ================
 
 Kopf provides some tools to test the Kopf-based operators
-via `kopf.testing` module (requires explicit importing).
+via :mod:`kopf.testing` module (requires explicit importing).
 
 
 Background runner
 =================
 
-`kopf.testing.KopfRunner` runs an arbitrary operator in the background,
+:class:`kopf.testing.KopfRunner` runs an arbitrary operator in the background,
 while the original testing thread does the object manipulation and assertions:
 
 When the ``with`` block exits, the operator stops, and its exceptions,
-exit code, and output are available to the test (for additional assertions).
+exit code and output are available to the test (for additional assertions).
 
 .. code-block:: python
     :caption: test_example_operator.py
@@ -23,7 +23,7 @@ exit code, and output are available to the test (for additional assertions).
     from kopf.testing import KopfRunner
 
     def test_operator():
-        with KopfRunner(['run', '--verbose', 'examples/01-minimal/example.py']) as runner:
+        with KopfRunner(['run', '-A', '--verbose', 'examples/01-minimal/example.py']) as runner:
             # do something while the operator is running.
 
             subprocess.run("kubectl apply -f examples/obj.yaml", shell=True, check=True)

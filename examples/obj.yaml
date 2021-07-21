@@ -1,5 +1,5 @@
 # A demo custom resource for the Kopf example operators.
-apiVersion: zalando.org/v1
+apiVersion: kopf.dev/v1
 kind: KopfExample
 metadata:
   name: kopf-example-1

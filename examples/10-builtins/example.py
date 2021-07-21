@@ -1,13 +1,14 @@
 import asyncio
+from typing import Dict
 
 import kopf
 import pykube
 
-tasks = {}  # dict{namespace: dict{name: asyncio.Task}}
+tasks: Dict[str, Dict[str, asyncio.Task]] = {}  # dict{namespace: dict{name: asyncio.Task}}
 
 
-@kopf.on.resume('', 'v1', 'pods')
-@kopf.on.create('', 'v1', 'pods')
+@kopf.on.resume('pods')
+@kopf.on.create('pods')
 async def pod_in_sight(namespace, name, logger, **kwargs):
     if namespace.startswith('kube-'):
         return
@@ -17,7 +18,7 @@ async def pod_in_sight(namespace, name, logger, **kwargs):
         tasks[namespace][name] = task
 
 
-@kopf.on.delete('', 'v1', 'pods')
+@kopf.on.delete('pods')
 async def pod_deleted(namespace, name, **kwargs):
     if namespace in tasks and name in tasks[namespace]:
         task = tasks[namespace][name]

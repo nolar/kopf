@@ -33,6 +33,9 @@ html_theme = 'sphinx_rtd_theme'
 
 default_role = 'py:obj'
 
+autodoc_typehints = 'description'
+autodoc_member_order = 'bysource'
+
 todo_include_todos = False
 todo_emit_warnings = True
 
@@ -52,7 +55,7 @@ def linkcode_resolve(domain, info):
     if not info['module']:
         return None
     filename = info['module'].replace('.', '/')
-    return "https://github.com/nolar/kopf/blob/master/%s.py" % filename
+    return "https://github.com/nolar/kopf/blob/main/%s.py" % filename
 
 
 ###############################################################################

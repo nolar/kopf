@@ -51,20 +51,15 @@ def test_verbosity(invoke, caplog, options, envvars, expect_debug, expect_info, 
     (['--verbose']),
 ], ids=['default', 'q', 'quiet', 'v', 'verbose'])
 def test_no_lowlevel_dumps_in_nondebug(invoke, caplog, options, preload, real_run):
-    kubernetes = pytest.importorskip('kubernetes')
-
     result = invoke(['run'] + options)
     assert result.exit_code == 0
 
     # TODO: This also goes to the pytest's output. Try to suppress it there (how?).
-    logging.getLogger('kubernetes').error('boom!')
     logging.getLogger('asyncio').error('boom!')
-    logging.getLogger('urllib3').error('boom!')
 
     alien_records = [m for m in caplog.records if not m.name.startswith('kopf')]
     assert len(alien_records) == 0
     assert not asyncio.get_event_loop().get_debug()
-    assert not kubernetes.client.configuration.Configuration().debug
 
 
 @pytest.mark.parametrize('options', [
@@ -72,16 +67,11 @@ def test_no_lowlevel_dumps_in_nondebug(invoke, caplog, options, preload, real_ru
     (['--debug']),
 ], ids=['d', 'debug'])
 def test_lowlevel_dumps_in_debug_mode(invoke, caplog, options, preload, real_run):
-    kubernetes = pytest.importorskip('kubernetes')
-
     result = invoke(['run'] + options)
     assert result.exit_code == 0
 
-    logging.getLogger('kubernetes').debug('hello!')
     logging.getLogger('asyncio').debug('hello!')
-    logging.getLogger('urllib3').debug('hello!')
 
     alien_records = [m for m in caplog.records if not m.name.startswith('kopf')]
-    assert len(alien_records) == 3
+    assert len(alien_records) == 1
     assert asyncio.get_event_loop().get_debug()
-    assert kubernetes.client.configuration.Configuration().debug

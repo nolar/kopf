@@ -3,9 +3,9 @@ from typing import Collection
 
 import pytest
 
-from kopf.engines.loggers import LogFormat, ObjectFormatter, ObjectJsonFormatter, \
-                                 ObjectPrefixingJsonFormatter, ObjectPrefixingTextFormatter, \
-                                 ObjectTextFormatter, configure
+from kopf._core.actions.loggers import LogFormat, ObjectFormatter, ObjectJsonFormatter, \
+                                       ObjectPrefixingJsonFormatter, ObjectPrefixingTextFormatter, \
+                                       ObjectTextFormatter, configure
 
 
 @pytest.fixture(autouse=True)
@@ -16,6 +16,9 @@ def _clear_own_handlers():
         if not isinstance(handler, logging.StreamHandler) or
            not isinstance(handler.formatter, ObjectFormatter)
     ]
+    original_handlers = logger.handlers[:]
+    yield
+    logger.handlers[:] = original_handlers
 
 
 def _get_own_handlers(logger: logging.Logger) -> Collection[logging.Handler]:

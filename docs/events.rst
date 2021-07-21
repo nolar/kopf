@@ -21,14 +21,14 @@ for the handled objects as Kubernetes events::
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     def create_fn(body, **_):
         kopf.event(body,
                    type='SomeType',
                    reason='SomeReason',
                    message='Some message')
 
-The type and reason are arbitrary, and can be anything.
+The type and reason are arbitrary and can be anything.
 Some restrictions apply (e.g. no spaces).
 The message is also arbitrary free-text.
 However, newlines are not rendered nicely
@@ -38,7 +38,7 @@ For convenience, a few shortcuts are provided to mimic the Python's ``logging``:
 
     import kopf
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     def create_fn(body, **_):
         kopf.warn(body, reason='SomeReason', message='Some message')
         kopf.info(body, reason='SomeReason', message='Some message')
@@ -78,7 +78,7 @@ at the moment (and not event the children)::
     import kopf
     import kubernetes
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+    @kopf.on.create('kopfexamples')
     def create_fn(name, namespace, uid, **_):
 
         pod = kubernetes.client.V1Pod()
@@ -91,4 +91,21 @@ at the moment (and not event the children)::
 .. note::
     Events are not persistent.
     They are usually garbage-collected after some time, e.g. one hour.
-    All the reported information must be only for a short-term use.
+    All the reported information must be only for short-term use.
+
+
+Events for events
+=================
+
+As a rule of thumb, it is impossible to create "events for events".
+
+No error will be raised. The event creation will be silently skipped.
+
+As the primary purpose, this is done to prevent "event explosions"
+when handling the core v1 events, which creates new core v1 events,
+causing more handling, so on (similar to "fork-bombs").
+Such cases are possible, for example, when using ``kopf.EVERYTHING``
+(globally or for the v1 API), or when explicitly handling the core v1 events.
+
+As a side-effect, "events for events" are also silenced when manually created
+via :func:`kopf.event`, :func:`kopf.info`, :func:`kopf.warn`, etc.

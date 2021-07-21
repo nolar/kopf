@@ -3,9 +3,12 @@ import asyncio
 import aiohttp
 import pytest
 
-from kopf.engines.probing import health_reporter
-from kopf.reactor.registries import OperatorRegistry
-from kopf.structs.handlers import Activity, ActivityHandler
+from kopf._cogs.structs.ephemera import Memo
+from kopf._core.engines.indexing import OperatorIndexers
+from kopf._core.engines.probing import health_reporter
+from kopf._core.intents.causes import Activity
+from kopf._core.intents.handlers import ActivityHandler
+from kopf._core.intents.registries import OperatorRegistry
 
 
 @pytest.fixture()
@@ -26,6 +29,8 @@ async def liveness_url(settings, liveness_registry, aiohttp_unused_port):
             registry=liveness_registry,
             settings=settings,
             ready_flag=ready_flag,
+            indices=OperatorIndexers().indices,
+            memo=Memo(),
         )
     )
 
@@ -55,13 +60,13 @@ async def test_liveness_with_reporting(liveness_url, liveness_registry):
     def fn2(**kwargs):
         return {'y': '200'}
 
-    liveness_registry.activity_handlers.append(ActivityHandler(
+    liveness_registry._activities.append(ActivityHandler(
         fn=fn1, id='id1', activity=Activity.PROBE,
-        errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+        param=None, errors=None, timeout=None, retries=None, backoff=None,
     ))
-    liveness_registry.activity_handlers.append(ActivityHandler(
+    liveness_registry._activities.append(ActivityHandler(
         fn=fn2, id='id2', activity=Activity.PROBE,
-        errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+        param=None, errors=None, timeout=None, retries=None, backoff=None,
     ))
 
     async with aiohttp.ClientSession() as session:
@@ -79,9 +84,9 @@ async def test_liveness_data_is_cached(liveness_url, liveness_registry):
         counter += 1
         return {'counter': counter}
 
-    liveness_registry.activity_handlers.append(ActivityHandler(
+    liveness_registry._activities.append(ActivityHandler(
         fn=fn1, id='id1', activity=Activity.PROBE,
-        errors=None, timeout=None, retries=None, backoff=None, cooldown=None,
+        param=None, errors=None, timeout=None, retries=None, backoff=None,
     ))
 
     async with aiohttp.ClientSession() as session:

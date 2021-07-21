@@ -40,33 +40,17 @@ from unittest.mock import Mock
 import pytest
 
 import kopf
-from kopf.reactor.causation import ResourceChangingCause
-
-
-@dataclasses.dataclass(frozen=True, eq=False)
-class K8sMocks:
-    patch_obj: Mock
-    post_event: Mock
-    sleep_or_wait: Mock
+from kopf._core.intents.causes import ChangingCause
 
 
 @pytest.fixture(autouse=True)
-def k8s_mocked(mocker, resp_mocker):
-    # We mock on the level of our own K8s API wrappers, not the K8s client.
-    return K8sMocks(
-        patch_obj=mocker.patch('kopf.clients.patching.patch_obj', return_value={}),
-        post_event=mocker.patch('kopf.clients.events.post_event'),
-        sleep_or_wait=mocker.patch('kopf.reactor.effects.sleep_or_wait', return_value=None),
-    )
-
-
-@pytest.fixture()
-def registry(clear_default_registry):
-    return clear_default_registry
+def _auto_mocked(k8s_mocked):
+    pass
 
 
 @dataclasses.dataclass(frozen=True, eq=False, order=False)
 class HandlersContainer:
+    index_mock: Mock
     event_mock: Mock
     create_mock: Mock
     update_mock: Mock
@@ -80,36 +64,42 @@ class HandlersContainer:
 
 
 @pytest.fixture()
-def handlers(clear_default_registry):
+def handlers(registry):
+    index_mock = Mock(return_value=None)
     event_mock = Mock(return_value=None)
     create_mock = Mock(return_value=None)
     update_mock = Mock(return_value=None)
     delete_mock = Mock(return_value=None)
     resume_mock = Mock(return_value=None)
 
-    @kopf.on.event('zalando.org', 'v1', 'kopfexamples', id='event_fn')
+    @kopf.index('kopfexamples', id='index_fn')
+    async def index_fn(**kwargs):
+        return index_mock(**kwargs)
+
+    @kopf.on.event('kopfexamples', id='event_fn')
     async def event_fn(**kwargs):
         return event_mock(**kwargs)
 
     # Keep on-resume on top, to catch any issues with the test design (where it could be skipped).
-    @kopf.on.resume('zalando.org', 'v1', 'kopfexamples', id='resume_fn', timeout=600, retries=100,
+    @kopf.on.resume('kopfexamples', id='resume_fn', timeout=600, retries=100,
                     deleted=True)  # only for resuming handles, to cover the resource being deleted.
     async def resume_fn(**kwargs):
         return resume_mock(**kwargs)
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', id='create_fn', timeout=600, retries=100)
+    @kopf.on.create('kopfexamples', id='create_fn', timeout=600, retries=100)
     async def create_fn(**kwargs):
         return create_mock(**kwargs)
 
-    @kopf.on.update('zalando.org', 'v1', 'kopfexamples', id='update_fn', timeout=600, retries=100)
+    @kopf.on.update('kopfexamples', id='update_fn', timeout=600, retries=100)
     async def update_fn(**kwargs):
         return update_mock(**kwargs)
 
-    @kopf.on.delete('zalando.org', 'v1', 'kopfexamples', id='delete_fn', timeout=600, retries=100)
+    @kopf.on.delete('kopfexamples', id='delete_fn', timeout=600, retries=100)
     async def delete_fn(**kwargs):
         return delete_mock(**kwargs)
 
     return HandlersContainer(
+        index_mock=index_mock,
         event_mock=event_mock,
         create_mock=create_mock,
         update_mock=update_mock,
@@ -124,36 +114,42 @@ def handlers(clear_default_registry):
 
 
 @pytest.fixture()
-def extrahandlers(clear_default_registry, handlers):
+def extrahandlers(registry, handlers):
+    index_mock = Mock(return_value=None)
     event_mock = Mock(return_value=None)
     create_mock = Mock(return_value=None)
     update_mock = Mock(return_value=None)
     delete_mock = Mock(return_value=None)
     resume_mock = Mock(return_value=None)
 
-    @kopf.on.event('zalando.org', 'v1', 'kopfexamples', id='event_fn2')
+    @kopf.index('kopfexamples', id='index_fn2')
+    async def index_fn2(**kwargs):
+        return index_mock(**kwargs)
+
+    @kopf.on.event('kopfexamples', id='event_fn2')
     async def event_fn2(**kwargs):
         return event_mock(**kwargs)
 
     # Keep on-resume on top, to catch any issues with the test design (where it could be skipped).
-    @kopf.on.resume('zalando.org', 'v1', 'kopfexamples', id='resume_fn2',
-                    deleted=True)  # only for resuming handles, to cover the resource being deleted.
+    # Note: deleted=True -- only for resuming handles, to cover the resource being deleted.
+    @kopf.on.resume('kopfexamples', id='resume_fn2', deleted=True)
     async def resume_fn2(**kwargs):
         return resume_mock(**kwargs)
 
-    @kopf.on.create('zalando.org', 'v1', 'kopfexamples', id='create_fn2')
+    @kopf.on.create('kopfexamples', id='create_fn2')
     async def create_fn2(**kwargs):
         return create_mock(**kwargs)
 
-    @kopf.on.update('zalando.org', 'v1', 'kopfexamples', id='update_fn2')
+    @kopf.on.update('kopfexamples', id='update_fn2')
     async def update_fn2(**kwargs):
         return update_mock(**kwargs)
 
-    @kopf.on.delete('zalando.org', 'v1', 'kopfexamples', id='delete_fn2')
+    @kopf.on.delete('kopfexamples', id='delete_fn2')
     async def delete_fn2(**kwargs):
         return delete_mock(**kwargs)
 
     return HandlersContainer(
+        index_mock=index_mock,
         event_mock=event_mock,
         create_mock=create_mock,
         update_mock=update_mock,
@@ -168,7 +164,7 @@ def extrahandlers(clear_default_registry, handlers):
 
 
 @pytest.fixture()
-def cause_mock(mocker, settings, resource):
+def cause_mock(mocker, settings):
     """
     Mock the resulting _cause_ of the resource change detection logic.
 
@@ -194,7 +190,7 @@ def cause_mock(mocker, settings, resource):
 
         # Pass through kwargs: resource, logger, patch, diff, old, new.
         # I.e. everything except what we mock -- for them, use the mocked values (if not None).
-        return ResourceChangingCause(
+        return ChangingCause(
             reason=mock.reason,
             diff=mock.diff if mock.diff is not None else diff,
             new=mock.new if mock.new is not None else new,
@@ -202,7 +198,7 @@ def cause_mock(mocker, settings, resource):
             **kwargs)
 
     # Substitute the real cause detector with out own mock-based one.
-    mocker.patch('kopf.reactor.causation.detect_resource_changing_cause', new=new_detect_fn)
+    mocker.patch('kopf._core.intents.causes.detect_changing_cause', new=new_detect_fn)
 
     # The mock object stores some values later used by the factory substitute.
     # Note: ONLY those fields we mock in the tests. Other kwargs should be passed through.

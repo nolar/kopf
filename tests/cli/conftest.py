@@ -9,7 +9,7 @@ from kopf.cli import main
 SCRIPT1 = """
 import kopf
 
-@kopf.on.create('zalando.org', 'v1', 'kopfexamples')
+@kopf.on.create('kopfexamples')
 def create_fn(spec, **_):
     print('Hello from create_fn!')
     print(repr(spec))
@@ -18,7 +18,7 @@ def create_fn(spec, **_):
 SCRIPT2 = """
 import kopf
 
-@kopf.on.update('zalando.org', 'v1', 'kopfexamples')
+@kopf.on.update('kopfexamples')
 def update_fn(spec, **_):
     print('Hello from create_fn!')
     print(repr(spec))
@@ -64,9 +64,9 @@ def invoke(runner):
 
 @pytest.fixture()
 def preload(mocker):
-    return mocker.patch('kopf.utilities.loaders.preload')
+    return mocker.patch('kopf._cogs.helpers.loaders.preload')
 
 
 @pytest.fixture()
 def real_run(mocker):
-    return mocker.patch('kopf.reactor.running.run')
+    return mocker.patch('kopf._core.reactor.running.run')

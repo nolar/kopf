@@ -1,8 +1,10 @@
 import copy
-from unittest.mock import Mock, call
+from unittest.mock import call
+
+import pytest
 
 import kopf
-from kopf.structs.bodies import Body, RawBody, RawMeta
+from kopf._cogs.structs.bodies import Body, RawBody, RawMeta
 
 OWNER_API_VERSION = 'owner-api-version'
 OWNER_NAMESPACE = 'owner-namespace'
@@ -38,7 +40,7 @@ def test_appending_to_dict():
     assert obj['metadata']['ownerReferences'][0]['uid'] == OWNER_UID
 
 
-def test_appending_to_multiple_objects(multicls):
+def test_appending_to_dicts(multicls):
     obj1 = {}
     obj2 = {}
     objs = multicls([obj1, obj2])
@@ -58,6 +60,33 @@ def test_appending_to_multiple_objects(multicls):
     assert obj2['metadata']['ownerReferences'][0]['kind'] == OWNER_KIND
     assert obj2['metadata']['ownerReferences'][0]['name'] == OWNER_NAME
     assert obj2['metadata']['ownerReferences'][0]['uid'] == OWNER_UID
+
+
+def test_appending_to_pykube_object(pykube_object):
+    del pykube_object.obj['metadata']
+    kopf.append_owner_reference(pykube_object, owner=Body(OWNER))
+    assert 'metadata' in pykube_object.obj
+    assert 'ownerReferences' in pykube_object.obj['metadata']
+    assert isinstance(pykube_object.obj['metadata']['ownerReferences'], list)
+    assert len(pykube_object.obj['metadata']['ownerReferences']) == 1
+    assert isinstance(pykube_object.obj['metadata']['ownerReferences'][0], dict)
+    assert pykube_object.obj['metadata']['ownerReferences'][0]['apiVersion'] == OWNER_API_VERSION
+    assert pykube_object.obj['metadata']['ownerReferences'][0]['kind'] == OWNER_KIND
+    assert pykube_object.obj['metadata']['ownerReferences'][0]['name'] == OWNER_NAME
+    assert pykube_object.obj['metadata']['ownerReferences'][0]['uid'] == OWNER_UID
+
+
+def test_appending_to_kubernetes_model(kubernetes_model):
+    kubernetes_model.metadata = None
+    kopf.append_owner_reference(kubernetes_model, owner=Body(OWNER))
+    assert kubernetes_model.metadata is not None
+    assert kubernetes_model.metadata.owner_references is not None
+    assert isinstance(kubernetes_model.metadata.owner_references, list)
+    assert len(kubernetes_model.metadata.owner_references) == 1
+    assert kubernetes_model.metadata.owner_references[0].api_version == OWNER_API_VERSION
+    assert kubernetes_model.metadata.owner_references[0].kind == OWNER_KIND
+    assert kubernetes_model.metadata.owner_references[0].name == OWNER_NAME
+    assert kubernetes_model.metadata.owner_references[0].uid == OWNER_UID
 
 
 def test_appending_deduplicates_by_uid():
@@ -117,7 +146,7 @@ def test_removal_from_dict():
     assert len(obj['metadata']['ownerReferences']) == 0
 
 
-def test_removal_from_multiple_objects(multicls):
+def test_removal_from_dicts(multicls):
     obj1 = {}
     obj2 = {}
     objs = multicls([obj1, obj2])
@@ -134,6 +163,26 @@ def test_removal_from_multiple_objects(multicls):
     assert 'ownerReferences' in obj2['metadata']
     assert isinstance(obj2['metadata']['ownerReferences'], list)
     assert len(obj2['metadata']['ownerReferences']) == 0
+
+
+def test_removal_from_pykube_object(pykube_object):
+    del pykube_object.obj['metadata']
+    kopf.append_owner_reference(pykube_object, owner=Body(OWNER))
+    kopf.remove_owner_reference(pykube_object, owner=Body(OWNER))
+    assert 'metadata' in pykube_object.obj
+    assert 'ownerReferences' in pykube_object.obj['metadata']
+    assert isinstance(pykube_object.obj['metadata']['ownerReferences'], list)
+    assert len(pykube_object.obj['metadata']['ownerReferences']) == 0
+
+
+def test_removal_from_kubernetes_model(kubernetes_model):
+    kubernetes_model.metadata = None
+    kopf.append_owner_reference(kubernetes_model, owner=Body(OWNER))
+    kopf.remove_owner_reference(kubernetes_model, owner=Body(OWNER))
+    assert kubernetes_model.metadata is not None
+    assert kubernetes_model.metadata.owner_references is not None
+    assert isinstance(kubernetes_model.metadata.owner_references, list)
+    assert len(kubernetes_model.metadata.owner_references) == 0
 
 
 def test_removal_identifies_by_uid():
@@ -180,27 +229,33 @@ def test_removal_distinguishes_by_uid():
     uids = {ref['uid'] for ref in obj['metadata']['ownerReferences']}
     assert uids == {'uid-b', 'uid-c'}
 
-#
-# Not related to owner references only, but uses the OWNER constants.
-#
 
-def test_adopting(mocker):
+# Not related to owner references only, but uses the OWNER constants.
+@pytest.mark.parametrize('nested', [
+    pytest.param(('spec.template',), id='tuple'),
+    pytest.param(['spec.template'], id='list'),
+    pytest.param({'spec.template'}, id='set'),
+    pytest.param('spec.template', id='string'),
+])
+@pytest.mark.parametrize('strict', [True, False])
+@pytest.mark.parametrize('forced', [True, False])
+def test_adopting(mocker, forced, strict, nested):
     # These methods are tested in their own tests.
     # We just check that they are called at all.
-    append_owner_ref = mocker.patch('kopf.toolkits.hierarchies.append_owner_reference')
-    harmonize_naming = mocker.patch('kopf.toolkits.hierarchies.harmonize_naming')
-    adjust_namespace = mocker.patch('kopf.toolkits.hierarchies.adjust_namespace')
-    label = mocker.patch('kopf.toolkits.hierarchies.label')
+    append_owner_ref = mocker.patch('kopf._kits.hierarchies.append_owner_reference')
+    harmonize_naming = mocker.patch('kopf._kits.hierarchies.harmonize_naming')
+    adjust_namespace = mocker.patch('kopf._kits.hierarchies.adjust_namespace')
+    label = mocker.patch('kopf._kits.hierarchies.label')
 
-    obj = Mock()
-    kopf.adopt(obj, owner=Body(OWNER), nested=['template'])
+    obj = {}
+    kopf.adopt(obj, owner=Body(OWNER), forced=forced, strict=strict, nested=nested)
 
     assert append_owner_ref.called
     assert harmonize_naming.called
     assert adjust_namespace.called
     assert label.called
 
-    assert append_owner_ref.call_args_list == [call(obj, owner=Body(OWNER))]
-    assert harmonize_naming.call_args_list == [call(obj, name=OWNER_NAME)]
-    assert adjust_namespace.call_args_list == [call(obj, namespace=OWNER_NAMESPACE)]
-    assert label.call_args_list == [call(obj, labels=OWNER_LABELS, nested=['template'])]
+    assert append_owner_ref.call_args == call(obj, owner=Body(OWNER))
+    assert harmonize_naming.call_args == call(obj, name=OWNER_NAME, forced=forced, strict=strict)
+    assert adjust_namespace.call_args == call(obj, namespace=OWNER_NAMESPACE, forced=forced)
+    assert label.call_args == call(obj, labels=OWNER_LABELS, nested=nested, forced=forced)

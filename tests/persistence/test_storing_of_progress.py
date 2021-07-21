@@ -3,11 +3,12 @@ from typing import Type
 
 import pytest
 
-from kopf.storage.progress import AnnotationsProgressStorage, ProgressRecord, ProgressStorage, \
-                                  SmartProgressStorage, StatusProgressStorage
-from kopf.structs.bodies import Body
-from kopf.structs.handlers import HandlerId
-from kopf.structs.patches import Patch
+from kopf._cogs.configs.progress import AnnotationsProgressStorage, ProgressRecord, \
+                                        ProgressStorage, SmartProgressStorage, \
+                                        StatusProgressStorage
+from kopf._cogs.structs.bodies import Body
+from kopf._cogs.structs.ids import HandlerId
+from kopf._cogs.structs.patches import Patch
 
 ALL_STORAGES = [AnnotationsProgressStorage, StatusProgressStorage, SmartProgressStorage]
 ANNOTATIONS_POPULATING_STORAGES = [AnnotationsProgressStorage, SmartProgressStorage]
@@ -60,12 +61,6 @@ def test_status_storage_with_field():
     storage = StatusProgressStorage(field='status.my-operator', touch_field='status.my-dummy')
     assert storage.field == ('status', 'my-operator')
     assert storage.touch_field == ('status', 'my-dummy')
-
-
-def test_annotations_store_deprecates_nonprefixed():
-    with pytest.deprecated_call(match=r'Non-prefixed storages are deprecated'):
-        storage = AnnotationsProgressStorage(prefix=None)
-    assert storage.prefix is None
 
 
 def test_annotations_storage_with_defaults():
@@ -160,7 +155,7 @@ def test_storing_to_annotations_storage_populates_keys(cls):
     patch = Patch()
     body = Body({})
     storage.store(body=body, patch=patch, key=HandlerId('id1'), record=CONTENT_DATA_1)
-    
+
     assert patch
     assert patch['metadata']['annotations']['my-operator.example.com/id1'] == CONTENT_JSON_1
 

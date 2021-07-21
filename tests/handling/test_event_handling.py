@@ -4,9 +4,11 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.processing import process_resource_event
-from kopf.structs.containers import ResourceMemories
-from kopf.structs.handlers import ALL_REASONS
+from kopf._cogs.structs.ephemera import Memo
+from kopf._core.engines.indexing import OperatorIndexers
+from kopf._core.intents.causes import ALL_REASONS
+from kopf._core.reactor.inventory import ResourceMemories
+from kopf._core.reactor.processing import process_resource_event
 
 
 @pytest.mark.parametrize('cause_type', ALL_REASONS)
@@ -21,9 +23,10 @@ async def test_handlers_called_always(
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': 'ev-type', 'object': {'field': 'value'}},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 
@@ -56,9 +59,10 @@ async def test_errors_are_ignored(
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': 'ev-type', 'object': {}},
-        replenished=asyncio.Event(),
         event_queue=asyncio.Queue(),
     )
 

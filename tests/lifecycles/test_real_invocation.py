@@ -3,13 +3,12 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.causation import ResourceChangingCause
-from kopf.reactor.invocation import invoke
-from kopf.storage.states import State
-from kopf.structs.bodies import Body
-from kopf.structs.containers import Memo
-from kopf.structs.handlers import Reason
-from kopf.structs.patches import Patch
+from kopf._cogs.structs.bodies import Body
+from kopf._cogs.structs.ephemera import Memo
+from kopf._cogs.structs.patches import Patch
+from kopf._core.actions.progression import State
+from kopf._core.engines.indexing import OperatorIndexers
+from kopf._core.intents.causes import ChangingCause, Reason
 
 
 @pytest.mark.parametrize('lifecycle', [
@@ -25,9 +24,10 @@ async def test_protocol_invocation(lifecycle, resource):
     Especially when the new kwargs are added or an invocation protocol changed.
     """
     # The values are irrelevant, they can be anything.
-    state = State.from_scratch(handlers=[])
-    cause = ResourceChangingCause(
+    state = State.from_scratch()
+    cause = ChangingCause(
         logger=logging.getLogger('kopf.test.fake.logger'),
+        indices=OperatorIndexers().indices,
         resource=resource,
         patch=Patch(),
         memo=Memo(),
@@ -36,6 +36,6 @@ async def test_protocol_invocation(lifecycle, resource):
         reason=Reason.NOOP,
     )
     handlers = []
-    selected = await invoke(lifecycle, handlers, cause=cause, state=state)
+    selected = lifecycle(handlers, state=state, **cause.kwargs)
     assert isinstance(selected, (tuple, list))
     assert len(selected) == 0

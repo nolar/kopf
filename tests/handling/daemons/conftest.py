@@ -6,9 +6,12 @@ import freezegun
 import pytest
 
 import kopf
-from kopf.reactor.processing import process_resource_event
-from kopf.structs.bodies import RawBody
-from kopf.structs.containers import ResourceMemories
+from kopf._cogs.aiokits.aiotoggles import ToggleSet
+from kopf._cogs.structs.bodies import RawBody
+from kopf._cogs.structs.ephemera import Memo
+from kopf._core.engines.daemons import daemon_killer
+from kopf._core.engines.indexing import OperatorIndexers
+from kopf._core.reactor.processing import process_resource_event
 
 
 class DaemonDummy:
@@ -26,18 +29,13 @@ class DaemonDummy:
     async def wait_for_daemon_done(self):
         stopped = self.kwargs['stopped']
         await stopped.wait()
-        while not stopped._stopper.reason & stopped._stopper.reason.DONE:
+        while not stopped.reason & stopped.reason.DONE:
             await asyncio.sleep(0)  # give control back to asyncio event loop
 
 
 @pytest.fixture()
 def dummy():
     return DaemonDummy()
-
-
-@pytest.fixture()
-def memories():
-    return ResourceMemories()
 
 
 @pytest.fixture()
@@ -62,16 +60,42 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
             settings=settings,
             resource=resource,
             memories=memories,
+            memobase=Memo(),
+            indexers=OperatorIndexers(),
             raw_event={'type': 'irrelevant', 'object': event_object},
-            replenished=asyncio.Event(),
             event_queue=asyncio.Queue(),
         )
 
         # Do the same as k8s does: merge the patches into the object.
-        for call in k8s_mocked.patch_obj.call_args_list:
-            _merge_dicts(call[1]['patch'], event_object)
+        for call in k8s_mocked.patch.call_args_list:
+            _merge_dicts(call[1]['payload'], event_object)
 
     return _simulate_cycle
+
+
+@pytest.fixture()
+async def operator_paused():
+    return ToggleSet(any)
+
+
+@pytest.fixture()
+async def conflicts_found(operator_paused: ToggleSet):
+    return await operator_paused.make_toggle(name="conflicts_found fixture")
+
+
+@pytest.fixture()
+async def background_daemon_killer(settings, memories, operator_paused):
+    """
+    Run the daemon killer in the background.
+    """
+    task = asyncio.create_task(daemon_killer(
+        settings=settings, memories=memories, operator_paused=operator_paused))
+    yield
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
 
 
 @pytest.fixture()
@@ -92,7 +116,7 @@ def frozen_time():
 # This makes the sleep realistic for the app code, though executed instantly for the tests.
 @pytest.fixture()
 def manual_time(k8s_mocked, frozen_time):
-    async def sleep_or_wait_substitute(delay, *_, **__):
+    async def sleep_substitute(delay, *_, **__):
         if delay is None:
             pass
         elif isinstance(delay, float):
@@ -100,6 +124,5 @@ def manual_time(k8s_mocked, frozen_time):
         else:
             frozen_time.tick(min(delay))
 
-    k8s_mocked.sleep_or_wait.side_effect = sleep_or_wait_substitute
+    k8s_mocked.sleep.side_effect = sleep_substitute
     yield frozen_time
-

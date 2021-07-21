@@ -4,17 +4,17 @@ import threading
 import time
 
 import kopf
-import kubernetes.client.rest
+import pykube
 
 
-@kopf.on.create('zalando.org', 'v1', 'kopfexamples')
-def create_fn(**_):
-    pass
+@kopf.on.create('kopfexamples')
+def create_fn(memo: kopf.Memo, **kwargs):
+    print(memo.create_tpl.format(**kwargs))  # type: ignore
 
 
-@kopf.on.delete('zalando.org', 'v1', 'kopfexamples')
-def delete_fn(**_):
-    pass
+@kopf.on.delete('kopfexamples')
+def delete_fn(memo: kopf.Memo, **kwargs):
+    print(memo.delete_tpl.format(**kwargs))  # type: ignore
 
 
 def kopf_thread(
@@ -30,6 +30,10 @@ def kopf_thread(
         loop.run_until_complete(kopf.operator(
             ready_flag=ready_flag,
             stop_flag=stop_flag,
+            memo=kopf.Memo(
+                create_tpl="Hello, {name}!",
+                delete_tpl="Good bye, {name}!",
+            ),
         ))
 
 
@@ -60,22 +64,26 @@ def main(steps=3):
     thread.join()
 
 
+class KopfExample(pykube.objects.NamespacedAPIObject):
+    version = "kopf.dev/v1"
+    endpoint = "kopfexamples"
+    kind = "KopfExample"
+
+
 def _create_object(step):
     try:
-        api = kubernetes.client.CustomObjectsApi()
-        api.create_namespaced_custom_object(
-            group='zalando.org',
-            version='v1',
-            plural='kopfexamples',
-            namespace='default',
-            body=dict(
-                apiVersion='zalando.org/v1',
-                kind='KopfExample',
-                metadata=dict(name=f'kopf-example-{step}'),
+        api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+        kex = KopfExample(api, dict(
+            apiVersion='kopf.dev/v1',
+            kind='KopfExample',
+            metadata=dict(
+                namespace='default',
+                name=f'kopf-example-{step}',
             ),
-        )
-    except kubernetes.client.rest.ApiException as e:
-        if e.status in [409]:
+        ))
+        kex.create()
+    except pykube.exceptions.HTTPError as e:
+        if e.code in [409]:
             pass
         else:
             raise
@@ -83,17 +91,11 @@ def _create_object(step):
 
 def _delete_object(step):
     try:
-        api = kubernetes.client.CustomObjectsApi()
-        api.delete_namespaced_custom_object(
-            group='zalando.org',
-            version='v1',
-            plural='kopfexamples',
-            namespace='default',
-            name=f'kopf-example-{step}',
-            body={},
-        )
-    except kubernetes.client.rest.ApiException as e:
-        if e.status in [404]:
+        api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+        kex = KopfExample.objects(api, namespace='default').get_by_name(f'kopf-example-{step}')
+        kex.delete()
+    except pykube.exceptions.HTTPError as e:
+        if e.code in [404]:
             pass
         else:
             raise

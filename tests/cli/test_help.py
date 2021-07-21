@@ -11,8 +11,8 @@ def test_help_in_root(invoke, mocker):
 
 
 def test_help_in_subcommand(invoke, mocker):
-    preload = mocker.patch('kopf.utilities.loaders.preload')
-    real_run = mocker.patch('kopf.reactor.running.run')
+    preload = mocker.patch('kopf._cogs.helpers.loaders.preload')
+    real_run = mocker.patch('kopf._core.reactor.running.run')
 
     result = invoke(['run', '--help'])
 

@@ -19,20 +19,18 @@ restart (assuming that one operator process is one handling cycle for daemons).
 
 To prevent handlers or daemons from being invoked for a specific resource
 ever again, even after the operator restarts, use annotations and filters
-(or the same for labels or arbitrary fields with `when=` callback filtering):
+(or the same for labels or arbitrary fields with ``when=`` callback filtering):
 
 .. code-block:: python
 
     import kopf
 
-    @kopf.on.update('zalando.org', 'v1', 'kopfexamples',
-                    annotations={'update-fn-never-again': kopf.ABSENT})
+    @kopf.on.update('kopfexamples', annotations={'update-fn-never-again': kopf.ABSENT})
     def update_fn(patch, **_):
         patch.metadata.annotations['update-fn-never-again'] = 'yes'
         raise kopf.PermanentError("Never call update-fn again.")
 
-    @kopf.daemon('zalando.org', 'v1', 'kopfexamples',
-                 annotations={'monitor-never-again': kopf.ABSENT})
+    @kopf.daemon('kopfexamples', annotations={'monitor-never-again': kopf.ABSENT})
     async def monitor_kex(patch, **kwargs):
         patch.metadata.annotations['monitor-never-again'] = 'yes'
 

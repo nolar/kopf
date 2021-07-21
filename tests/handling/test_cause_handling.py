@@ -4,9 +4,11 @@ import logging
 import pytest
 
 import kopf
-from kopf.reactor.processing import process_resource_event
-from kopf.structs.containers import ResourceMemories
-from kopf.structs.handlers import Reason
+from kopf._cogs.structs.ephemera import Memo
+from kopf._core.engines.indexing import OperatorIndexers
+from kopf._core.intents.causes import Reason
+from kopf._core.reactor.inventory import ResourceMemories
+from kopf._core.reactor.processing import process_resource_event
 
 LAST_SEEN_ANNOTATION = 'kopf.zalando.org/last-handled-configuration'
 
@@ -26,9 +28,10 @@ async def test_create(registry, settings, handlers, resource, cause_mock, event_
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
-        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 
@@ -36,20 +39,20 @@ async def test_create(registry, settings, handlers, resource, cause_mock, event_
     assert not handlers.update_mock.called
     assert not handlers.delete_mock.called
 
-    assert k8s_mocked.sleep_or_wait.call_count == 0
-    assert k8s_mocked.patch_obj.call_count == 1
+    assert k8s_mocked.sleep.call_count == 0
+    assert k8s_mocked.patch.call_count == 1
     assert not event_queue.empty()
 
-    patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
+    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
     assert 'metadata' in patch
     assert 'annotations' in patch['metadata']
     assert LAST_SEEN_ANNOTATION in patch['metadata']['annotations']
 
     assert_logs([
-        "Creation event:",
+        "Creation is in progress:",
         "Handler 'create_fn' is invoked",
         "Handler 'create_fn' succeeded",
-        "Creation event is processed:",
+        "Creation is processed:",
         "Patching with",
     ])
 
@@ -66,9 +69,10 @@ async def test_update(registry, settings, handlers, resource, cause_mock, event_
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
-        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 
@@ -76,20 +80,20 @@ async def test_update(registry, settings, handlers, resource, cause_mock, event_
     assert handlers.update_mock.call_count == 1
     assert not handlers.delete_mock.called
 
-    assert k8s_mocked.sleep_or_wait.call_count == 0
-    assert k8s_mocked.patch_obj.call_count == 1
+    assert k8s_mocked.sleep.call_count == 0
+    assert k8s_mocked.patch.call_count == 1
     assert not event_queue.empty()
 
-    patch = k8s_mocked.patch_obj.call_args_list[0][1]['patch']
+    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
     assert 'metadata' in patch
     assert 'annotations' in patch['metadata']
     assert LAST_SEEN_ANNOTATION in patch['metadata']['annotations']
 
     assert_logs([
-        "Update event:",
+        "Updating is in progress:",
         "Handler 'update_fn' is invoked",
         "Handler 'update_fn' succeeded",
-        "Update event is processed:",
+        "Updating is processed:",
         "Patching with",
     ])
 
@@ -108,9 +112,10 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': event_body},
-        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 
@@ -118,15 +123,15 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
     assert not handlers.update_mock.called
     assert handlers.delete_mock.call_count == 1
 
-    assert k8s_mocked.sleep_or_wait.call_count == 0
-    assert k8s_mocked.patch_obj.call_count == 1
+    assert k8s_mocked.sleep.call_count == 0
+    assert k8s_mocked.patch.call_count == 1
     assert not event_queue.empty()
 
     assert_logs([
-        "Deletion event",
+        "Deletion is in progress:",
         "Handler 'delete_fn' is invoked",
         "Handler 'delete_fn' succeeded",
-        "Deletion event is processed:",
+        "Deletion is processed:",
         "Removing the finalizer",
         "Patching with",
     ])
@@ -148,9 +153,10 @@ async def test_gone(registry, settings, handlers, resource, cause_mock, event_ty
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
-        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 
@@ -158,7 +164,7 @@ async def test_gone(registry, settings, handlers, resource, cause_mock, event_ty
     assert not handlers.update_mock.called
     assert not handlers.delete_mock.called
 
-    assert not k8s_mocked.patch_obj.called
+    assert not k8s_mocked.patch.called
     assert event_queue.empty()
 
     assert_logs([
@@ -178,9 +184,10 @@ async def test_free(registry, settings, handlers, resource, cause_mock, event_ty
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
-        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 
@@ -188,12 +195,12 @@ async def test_free(registry, settings, handlers, resource, cause_mock, event_ty
     assert not handlers.update_mock.called
     assert not handlers.delete_mock.called
 
-    assert not k8s_mocked.sleep_or_wait.called
-    assert not k8s_mocked.patch_obj.called
+    assert not k8s_mocked.sleep.called
+    assert not k8s_mocked.patch.called
     assert event_queue.empty()
 
     assert_logs([
-        "Deletion event, but we are done with it",
+        "Deletion, but we are done with it",
     ])
 
 
@@ -209,9 +216,10 @@ async def test_noop(registry, settings, handlers, resource, cause_mock, event_ty
         registry=registry,
         settings=settings,
         resource=resource,
+        indexers=OperatorIndexers(),
         memories=ResourceMemories(),
+        memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
-        replenished=asyncio.Event(),
         event_queue=event_queue,
     )
 
@@ -219,8 +227,8 @@ async def test_noop(registry, settings, handlers, resource, cause_mock, event_ty
     assert not handlers.update_mock.called
     assert not handlers.delete_mock.called
 
-    assert not k8s_mocked.sleep_or_wait.called
-    assert not k8s_mocked.patch_obj.called
+    assert not k8s_mocked.sleep.called
+    assert not k8s_mocked.patch.called
     assert event_queue.empty()
 
     assert_logs([

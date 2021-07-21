@@ -4,8 +4,7 @@ from unittest.mock import call
 
 import pytest
 
-from kopf.reactor.effects import throttled
-from kopf.structs.containers import Throttler
+from kopf._core.actions.throttlers import Throttler, throttled
 
 
 @pytest.fixture(autouse=True)
@@ -15,7 +14,7 @@ def clock(mocker):
 
 @pytest.fixture(autouse=True)
 def sleep(mocker):
-    return mocker.patch('kopf.reactor.effects.sleep_or_wait', return_value=None)
+    return mocker.patch('kopf._cogs.aiokits.aiotime.sleep', return_value=None)
 
 
 async def test_remains_inactive_on_success():
@@ -33,6 +32,7 @@ async def test_remains_inactive_on_success():
     pytest.param(Exception, dict(errors=ValueError), id='child'),
     pytest.param(RuntimeError, dict(errors=ValueError), id='sibling'),
     pytest.param(RuntimeError, dict(errors=(ValueError, TypeError)), id='tuple'),
+    pytest.param(asyncio.CancelledError, dict(), id='cancelled'),
 ])
 async def test_escalates_unexpected_errors(exc_cls, kwargs):
     logger = logging.getLogger()
@@ -290,10 +290,10 @@ async def test_logging_when_deactivates_immediately(caplog):
     throttler = Throttler()
 
     async with throttled(throttler=throttler, logger=logger, delays=[123]):
-        raise Exception()
+        raise Exception("boo!")
 
     assert caplog.messages == [
-        "Throttling for 123 seconds due to an unexpected error:",
+        "Throttling for 123 seconds due to an unexpected error: Exception('boo!')",
         "Throttling is over. Switching back to normal operations.",
     ]
 
@@ -305,13 +305,13 @@ async def test_logging_when_deactivates_on_reentry(sleep, caplog):
 
     sleep.return_value = 55  # simulated sleep time left
     async with throttled(throttler=throttler, logger=logger, delays=[123]):
-        raise Exception()
+        raise Exception("boo!")
 
     sleep.return_value = None  # simulated sleep time left
     async with throttled(throttler=throttler, logger=logger, delays=[...]):
         pass
 
     assert caplog.messages == [
-        "Throttling for 123 seconds due to an unexpected error:",
+        "Throttling for 123 seconds due to an unexpected error: Exception('boo!')",
         "Throttling is over. Switching back to normal operations.",
     ]

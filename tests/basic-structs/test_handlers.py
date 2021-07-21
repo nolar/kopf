@@ -1,9 +1,9 @@
 import pytest
 
-from kopf.structs.handlers import ActivityHandler, ResourceChangingHandler
+from kopf._core.intents.handlers import ActivityHandler, ChangingHandler
 
 
-@pytest.mark.parametrize('cls', [ActivityHandler, ResourceChangingHandler])
+@pytest.mark.parametrize('cls', [ActivityHandler, ChangingHandler])
 def test_handler_with_no_args(cls):
     with pytest.raises(TypeError):
         cls()
@@ -12,6 +12,7 @@ def test_handler_with_no_args(cls):
 def test_activity_handler_with_all_args(mocker):
     fn = mocker.Mock()
     id = mocker.Mock()
+    param = mocker.Mock()
     errors = mocker.Mock()
     timeout = mocker.Mock()
     retries = mocker.Mock()
@@ -20,15 +21,16 @@ def test_activity_handler_with_all_args(mocker):
     handler = ActivityHandler(
         fn=fn,
         id=id,
+        param=param,
         errors=errors,
         timeout=timeout,
         retries=retries,
         backoff=backoff,
-        cooldown=None,  # deprecated, but still required
         activity=activity,
     )
     assert handler.fn is fn
     assert handler.id is id
+    assert handler.param is param
     assert handler.errors is errors
     assert handler.timeout is timeout
     assert handler.retries is retries
@@ -39,8 +41,9 @@ def test_activity_handler_with_all_args(mocker):
 def test_resource_handler_with_all_args(mocker):
     fn = mocker.Mock()
     id = mocker.Mock()
+    param = mocker.Mock()
+    selector = mocker.Mock()
     reason = mocker.Mock()
-    field = mocker.Mock()
     errors = mocker.Mock()
     timeout = mocker.Mock()
     retries = mocker.Mock()
@@ -50,28 +53,39 @@ def test_resource_handler_with_all_args(mocker):
     labels = mocker.Mock()
     annotations = mocker.Mock()
     when = mocker.Mock()
+    field = mocker.Mock()
+    value = mocker.Mock()
+    old = mocker.Mock()
+    new = mocker.Mock()
+    field_needs_change = mocker.Mock()
     requires_finalizer = mocker.Mock()
-    handler = ResourceChangingHandler(
+    handler = ChangingHandler(
         fn=fn,
         id=id,
+        param=param,
+        selector=selector,
         reason=reason,
-        field=field,
         errors=errors,
         timeout=timeout,
         retries=retries,
         backoff=backoff,
-        cooldown=None,  # deprecated, but still required
         initial=initial,
         deleted=deleted,
         labels=labels,
         annotations=annotations,
         when=when,
+        field=field,
+        value=value,
+        old=old,
+        new=new,
+        field_needs_change=field_needs_change,
         requires_finalizer=requires_finalizer,
     )
     assert handler.fn is fn
     assert handler.id is id
+    assert handler.param is param
+    assert handler.selector is selector
     assert handler.reason is reason
-    assert handler.field is field
     assert handler.errors is errors
     assert handler.timeout is timeout
     assert handler.retries is retries
@@ -81,10 +95,9 @@ def test_resource_handler_with_all_args(mocker):
     assert handler.labels is labels
     assert handler.annotations is annotations
     assert handler.when is when
+    assert handler.field is field
+    assert handler.value is value
+    assert handler.old is old
+    assert handler.new is new
+    assert handler.field_needs_change is field_needs_change
     assert handler.requires_finalizer is requires_finalizer
-
-    with pytest.deprecated_call(match=r"use handler.reason"):
-        assert handler.event is reason
-
-    with pytest.deprecated_call(match=r"use handler.backoff"):
-        assert handler.cooldown is backoff

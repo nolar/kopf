@@ -19,7 +19,7 @@ the loop-bound variables -- which is impossible in the module-level code::
         global LOCK
         LOCK = asyncio.Lock()  # uses the running asyncio loop by default
 
-If any of the startup handlers fails, the operator fails to start
+If any of the startup handlers fail, the operator fails to start
 without making any external API calls.
 
 .. note::

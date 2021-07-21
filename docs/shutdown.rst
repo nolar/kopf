@@ -3,7 +3,7 @@ Shutdown
 ========
 
 The cleanup handlers are executed when the operator exits
-either by a signal (e.g. SIGTERM), or by catching an exception,
+either by a signal (e.g. SIGTERM) or by catching an exception,
 or by raising the stop-flag, or by cancelling the operator's task
 (for :doc:`embedded operators </embedding>`)::
 
@@ -16,7 +16,7 @@ or by raising the stop-flag, or by cancelling the operator's task
 The cleanup handlers are not guaranteed to be fully executed if they take
 too long -- due to a limited graceful period or non-graceful termination.
 
-Similarly, the cleanup handlers are not executed if the operator
+Similarly, the clean up handlers are not executed if the operator
 is force-killed with no possibility to react (e.g. by SIGKILL).
 
 .. note::

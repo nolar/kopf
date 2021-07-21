@@ -1,11 +1,11 @@
 import pytest
 
 import kopf
-from kopf.reactor.handling import handler_var, subregistry_var
-from kopf.reactor.invocation import context
-from kopf.reactor.registries import OperatorRegistry, ResourceChangingRegistry
-from kopf.structs.handlers import HANDLER_REASONS, Activity, ErrorsMode, Reason
-from kopf.structs.resources import Resource
+from kopf._core.actions.execution import ErrorsMode, handler_var
+from kopf._core.actions.invocation import context
+from kopf._core.intents.causes import HANDLER_REASONS, Activity, Reason, WebhookCause
+from kopf._core.intents.registries import ChangingRegistry, OperatorRegistry
+from kopf._core.reactor.subhandling import subregistry_var
 
 
 def test_on_startup_minimal():
@@ -15,7 +15,7 @@ def test_on_startup_minimal():
     def fn(**_):
         pass
 
-    handlers = registry.activity_handlers.get_handlers(activity=Activity.STARTUP)
+    handlers = registry._activities.get_handlers(activity=Activity.STARTUP)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].activity == Activity.STARTUP
@@ -32,7 +32,7 @@ def test_on_cleanup_minimal():
     def fn(**_):
         pass
 
-    handlers = registry.activity_handlers.get_handlers(activity=Activity.CLEANUP)
+    handlers = registry._activities.get_handlers(activity=Activity.CLEANUP)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].activity == Activity.CLEANUP
@@ -49,7 +49,7 @@ def test_on_probe_minimal():
     def fn(**_):
         pass
 
-    handlers = registry.activity_handlers.get_handlers(activity=Activity.PROBE)
+    handlers = registry._activities.get_handlers(activity=Activity.PROBE)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].activity == Activity.PROBE
@@ -61,16 +61,15 @@ def test_on_probe_minimal():
 
 # Resume handlers are mixed-in into all resource-changing reactions with initial listing.
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
-def test_on_resume_minimal(reason, cause_factory):
+def test_on_resume_minimal(reason, cause_factory, resource):
     registry = kopf.get_default_registry()
-    resource = Resource('group', 'version', 'plural')
     cause = cause_factory(resource=resource, reason=reason, initial=True)
 
-    @kopf.on.resume('group', 'version', 'plural')
+    @kopf.on.resume(*resource)
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry._changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
@@ -82,18 +81,20 @@ def test_on_resume_minimal(reason, cause_factory):
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
     assert handlers[0].when is None
+    assert handlers[0].field is None
+    assert handlers[0].old is None
+    assert handlers[0].new is None
 
 
-def test_on_create_minimal(cause_factory):
+def test_on_create_minimal(cause_factory, resource):
     registry = kopf.get_default_registry()
-    resource = Resource('group', 'version', 'plural')
     cause = cause_factory(resource=resource, reason=Reason.CREATE)
 
-    @kopf.on.create('group', 'version', 'plural')
+    @kopf.on.create(*resource)
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry._changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.CREATE
@@ -105,18 +106,20 @@ def test_on_create_minimal(cause_factory):
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
     assert handlers[0].when is None
+    assert handlers[0].field is None
+    assert handlers[0].old is None
+    assert handlers[0].new is None
 
 
-def test_on_update_minimal(cause_factory):
+def test_on_update_minimal(cause_factory, resource):
     registry = kopf.get_default_registry()
-    resource = Resource('group', 'version', 'plural')
     cause = cause_factory(resource=resource, reason=Reason.UPDATE)
 
-    @kopf.on.update('group', 'version', 'plural')
+    @kopf.on.update(*resource)
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry._changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.UPDATE
@@ -128,18 +131,20 @@ def test_on_update_minimal(cause_factory):
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
     assert handlers[0].when is None
+    assert handlers[0].field is None
+    assert handlers[0].old is None
+    assert handlers[0].new is None
 
 
-def test_on_delete_minimal(cause_factory):
+def test_on_delete_minimal(cause_factory, resource):
     registry = kopf.get_default_registry()
-    resource = Resource('group', 'version', 'plural')
     cause = cause_factory(resource=resource, reason=Reason.DELETE)
 
-    @kopf.on.delete('group', 'version', 'plural')
+    @kopf.on.delete(*resource)
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry._changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.DELETE
@@ -151,23 +156,25 @@ def test_on_delete_minimal(cause_factory):
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
     assert handlers[0].when is None
+    assert handlers[0].field is None
+    assert handlers[0].old is None
+    assert handlers[0].new is None
 
 
-def test_on_field_minimal(cause_factory):
+def test_on_field_minimal(cause_factory, resource):
     registry = kopf.get_default_registry()
-    resource = Resource('group', 'version', 'plural')
-    diff = [('op', ('field', 'subfield'), 'old', 'new')]
-    cause = cause_factory(resource=resource, reason=Reason.UPDATE, diff=diff)
+    old = {'field': {'subfield': 'old'}}
+    new = {'field': {'subfield': 'new'}}
+    cause = cause_factory(resource=resource, reason=Reason.UPDATE, old=old, new=new, body=new)
 
-    @kopf.on.field('group', 'version', 'plural', 'field.subfield')
+    @kopf.on.field(*resource, field='field.subfield')
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry._changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
-    assert handlers[0].field == ('field', 'subfield')
     assert handlers[0].errors is None
     assert handlers[0].timeout is None
     assert handlers[0].retries is None
@@ -175,11 +182,15 @@ def test_on_field_minimal(cause_factory):
     assert handlers[0].labels is None
     assert handlers[0].annotations is None
     assert handlers[0].when is None
+    assert handlers[0].field == ('field', 'subfield')
+    assert handlers[0].value is None
+    assert handlers[0].old is None
+    assert handlers[0].new is None
 
 
-def test_on_field_fails_without_field():
+def test_on_field_fails_without_field(resource):
     with pytest.raises(TypeError):
-        @kopf.on.field('group', 'version', 'plural')
+        @kopf.on.field(*resource)
         def fn(**_):
             pass
 
@@ -193,7 +204,7 @@ def test_on_startup_with_all_kwargs():
     def fn(**_):
         pass
 
-    handlers = registry.activity_handlers.get_handlers(activity=Activity.STARTUP)
+    handlers = registry._activities.get_handlers(activity=Activity.STARTUP)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].activity == Activity.STARTUP
@@ -204,7 +215,7 @@ def test_on_startup_with_all_kwargs():
     assert handlers[0].backoff == 78
 
 
-def test_on_cleanup_with_all_kwargs(mocker):
+def test_on_cleanup_with_all_kwargs():
     registry = OperatorRegistry()
 
     @kopf.on.cleanup(
@@ -213,7 +224,7 @@ def test_on_cleanup_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.activity_handlers.get_handlers(activity=Activity.CLEANUP)
+    handlers = registry._activities.get_handlers(activity=Activity.CLEANUP)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].activity == Activity.CLEANUP
@@ -224,7 +235,7 @@ def test_on_cleanup_with_all_kwargs(mocker):
     assert handlers[0].backoff == 78
 
 
-def test_on_probe_with_all_kwargs(mocker):
+def test_on_probe_with_all_kwargs():
     registry = OperatorRegistry()
 
     @kopf.on.probe(
@@ -233,7 +244,7 @@ def test_on_probe_with_all_kwargs(mocker):
     def fn(**_):
         pass
 
-    handlers = registry.activity_handlers.get_handlers(activity=Activity.PROBE)
+    handlers = registry._activities.get_handlers(activity=Activity.PROBE)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].activity == Activity.PROBE
@@ -246,30 +257,29 @@ def test_on_probe_with_all_kwargs(mocker):
 
 # Resume handlers are mixed-in into all resource-changing reactions with initial listing.
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
-def test_on_resume_with_all_kwargs(mocker, reason, cause_factory):
+def test_on_resume_with_most_kwargs(mocker, reason, cause_factory, resource):
     registry = OperatorRegistry()
-    resource = Resource('group', 'version', 'plural')
     cause = cause_factory(resource=resource, reason=reason, initial=True)
-    mocker.patch('kopf.reactor.registries.match', return_value=True)
+    mocker.patch('kopf._core.intents.registries.match', return_value=True)
 
     when = lambda **_: False
 
-    @kopf.on.resume('group', 'version', 'plural',
+    @kopf.on.resume(*resource,
                     id='id', registry=registry,
                     errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
                     deleted=True,
+                    field='field.subfield', value=999,
                     labels={'somelabel': 'somevalue'},
                     annotations={'someanno': 'somevalue'},
                     when=when)
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry._changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason is None
-    assert handlers[0].field is None
-    assert handlers[0].id == 'id'
+    assert handlers[0].id == 'id/field.subfield'
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
     assert handlers[0].retries == 456
@@ -278,132 +288,33 @@ def test_on_resume_with_all_kwargs(mocker, reason, cause_factory):
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert handlers[0].when == when
+    assert handlers[0].field == ('field', 'subfield')
+    assert handlers[0].value == 999
+    assert handlers[0].old is None
+    assert handlers[0].new is None
 
 
-def test_on_create_with_all_kwargs(mocker, cause_factory):
+def test_on_create_with_most_kwargs(mocker, cause_factory, resource):
     registry = OperatorRegistry()
-    resource = Resource('group', 'version', 'plural')
     cause = cause_factory(resource=resource, reason=Reason.CREATE)
-    mocker.patch('kopf.reactor.registries.match', return_value=True)
+    mocker.patch('kopf._core.intents.registries.match', return_value=True)
 
     when = lambda **_: False
 
-    @kopf.on.create('group', 'version', 'plural',
+    @kopf.on.create(*resource,
                     id='id', registry=registry,
                     errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
+                    field='field.subfield', value=999,
                     labels={'somelabel': 'somevalue'},
                     annotations={'someanno': 'somevalue'},
                     when=when)
     def fn(**_):
         pass
 
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
+    handlers = registry._changing.get_handlers(cause)
     assert len(handlers) == 1
     assert handlers[0].fn is fn
     assert handlers[0].reason == Reason.CREATE
-    assert handlers[0].field is None
-    assert handlers[0].id == 'id'
-    assert handlers[0].errors == ErrorsMode.PERMANENT
-    assert handlers[0].timeout == 123
-    assert handlers[0].retries == 456
-    assert handlers[0].backoff == 78
-    assert handlers[0].labels == {'somelabel': 'somevalue'}
-    assert handlers[0].annotations == {'someanno': 'somevalue'}
-    assert handlers[0].when == when
-
-
-def test_on_update_with_all_kwargs(mocker, cause_factory):
-    registry = OperatorRegistry()
-    resource = Resource('group', 'version', 'plural')
-    cause = cause_factory(resource=resource, reason=Reason.UPDATE)
-    mocker.patch('kopf.reactor.registries.match', return_value=True)
-
-    when = lambda **_: False
-
-    @kopf.on.update('group', 'version', 'plural',
-                    id='id', registry=registry,
-                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
-                    labels={'somelabel': 'somevalue'},
-                    annotations={'someanno': 'somevalue'},
-                    when=when)
-    def fn(**_):
-        pass
-
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
-    assert len(handlers) == 1
-    assert handlers[0].fn is fn
-    assert handlers[0].reason == Reason.UPDATE
-    assert handlers[0].field is None
-    assert handlers[0].id == 'id'
-    assert handlers[0].errors == ErrorsMode.PERMANENT
-    assert handlers[0].timeout == 123
-    assert handlers[0].retries == 456
-    assert handlers[0].backoff == 78
-    assert handlers[0].labels == {'somelabel': 'somevalue'}
-    assert handlers[0].annotations == {'someanno': 'somevalue'}
-    assert handlers[0].when == when
-
-
-@pytest.mark.parametrize('optional', [
-    pytest.param(True, id='optional'),
-    pytest.param(False, id='mandatory'),
-])
-def test_on_delete_with_all_kwargs(mocker, cause_factory, optional):
-    registry = OperatorRegistry()
-    resource = Resource('group', 'version', 'plural')
-    cause = cause_factory(resource=resource, reason=Reason.DELETE)
-    mocker.patch('kopf.reactor.registries.match', return_value=True)
-
-    when = lambda **_: False
-
-    @kopf.on.delete('group', 'version', 'plural',
-                    id='id', registry=registry,
-                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
-                    optional=optional,
-                    labels={'somelabel': 'somevalue'},
-                    annotations={'someanno': 'somevalue'},
-                    when=when)
-    def fn(**_):
-        pass
-
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
-    assert len(handlers) == 1
-    assert handlers[0].fn is fn
-    assert handlers[0].reason == Reason.DELETE
-    assert handlers[0].field is None
-    assert handlers[0].id == 'id'
-    assert handlers[0].errors == ErrorsMode.PERMANENT
-    assert handlers[0].timeout == 123
-    assert handlers[0].retries == 456
-    assert handlers[0].backoff == 78
-    assert handlers[0].labels == {'somelabel': 'somevalue'}
-    assert handlers[0].annotations == {'someanno': 'somevalue'}
-    assert handlers[0].when == when
-
-
-def test_on_field_with_all_kwargs(mocker, cause_factory):
-    registry = OperatorRegistry()
-    resource = Resource('group', 'version', 'plural')
-    diff = [('op', ('field', 'subfield'), 'old', 'new')]
-    cause = cause_factory(resource=resource, reason=Reason.UPDATE, diff=diff)
-    mocker.patch('kopf.reactor.registries.match', return_value=True)
-
-    when = lambda **_: False
-
-    @kopf.on.field('group', 'version', 'plural', 'field.subfield',
-                   id='id', registry=registry,
-                   errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
-                   labels={'somelabel': 'somevalue'},
-                   annotations={'someanno': 'somevalue'},
-                   when=when)
-    def fn(**_):
-        pass
-
-    handlers = registry.resource_changing_handlers[resource].get_handlers(cause)
-    assert len(handlers) == 1
-    assert handlers[0].fn is fn
-    assert handlers[0].reason is None
-    assert handlers[0].field ==('field', 'subfield')
     assert handlers[0].id == 'id/field.subfield'
     assert handlers[0].errors == ErrorsMode.PERMANENT
     assert handlers[0].timeout == 123
@@ -412,11 +323,127 @@ def test_on_field_with_all_kwargs(mocker, cause_factory):
     assert handlers[0].labels == {'somelabel': 'somevalue'}
     assert handlers[0].annotations == {'someanno': 'somevalue'}
     assert handlers[0].when == when
+    assert handlers[0].field == ('field', 'subfield')
+    assert handlers[0].value == 999
+    assert handlers[0].old is None
+    assert handlers[0].new is None
+
+
+def test_on_update_with_most_kwargs(mocker, cause_factory, resource):
+    registry = OperatorRegistry()
+    cause = cause_factory(resource=resource, reason=Reason.UPDATE)
+    mocker.patch('kopf._core.intents.registries.match', return_value=True)
+
+    when = lambda **_: False
+
+    @kopf.on.update(*resource,
+                    id='id', registry=registry,
+                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
+                    field='field.subfield', value=999,
+                    labels={'somelabel': 'somevalue'},
+                    annotations={'someanno': 'somevalue'},
+                    when=when)
+    def fn(**_):
+        pass
+
+    handlers = registry._changing.get_handlers(cause)
+    assert len(handlers) == 1
+    assert handlers[0].fn is fn
+    assert handlers[0].reason == Reason.UPDATE
+    assert handlers[0].id == 'id/field.subfield'
+    assert handlers[0].errors == ErrorsMode.PERMANENT
+    assert handlers[0].timeout == 123
+    assert handlers[0].retries == 456
+    assert handlers[0].backoff == 78
+    assert handlers[0].labels == {'somelabel': 'somevalue'}
+    assert handlers[0].annotations == {'someanno': 'somevalue'}
+    assert handlers[0].when == when
+    assert handlers[0].field == ('field', 'subfield')
+    assert handlers[0].value == 999
+    assert handlers[0].old is None
+    assert handlers[0].new is None
+
+
+@pytest.mark.parametrize('optional', [
+    pytest.param(True, id='optional'),
+    pytest.param(False, id='mandatory'),
+])
+def test_on_delete_with_most_kwargs(mocker, cause_factory, optional, resource):
+    registry = OperatorRegistry()
+    cause = cause_factory(resource=resource, reason=Reason.DELETE)
+    mocker.patch('kopf._core.intents.registries.match', return_value=True)
+
+    when = lambda **_: False
+
+    @kopf.on.delete(*resource,
+                    id='id', registry=registry,
+                    errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
+                    optional=optional,
+                    field='field.subfield', value=999,
+                    labels={'somelabel': 'somevalue'},
+                    annotations={'someanno': 'somevalue'},
+                    when=when)
+    def fn(**_):
+        pass
+
+    handlers = registry._changing.get_handlers(cause)
+    assert len(handlers) == 1
+    assert handlers[0].fn is fn
+    assert handlers[0].reason == Reason.DELETE
+    assert handlers[0].id == 'id/field.subfield'
+    assert handlers[0].errors == ErrorsMode.PERMANENT
+    assert handlers[0].timeout == 123
+    assert handlers[0].retries == 456
+    assert handlers[0].backoff == 78
+    assert handlers[0].labels == {'somelabel': 'somevalue'}
+    assert handlers[0].annotations == {'someanno': 'somevalue'}
+    assert handlers[0].when == when
+    assert handlers[0].field == ('field', 'subfield')
+    assert handlers[0].value == 999
+    assert handlers[0].old is None
+    assert handlers[0].new is None
+
+
+def test_on_field_with_most_kwargs(mocker, cause_factory, resource):
+    registry = OperatorRegistry()
+    old = {'field': {'subfield': 'old'}}
+    new = {'field': {'subfield': 'new'}}
+    cause = cause_factory(resource=resource, reason=Reason.UPDATE, old=old, new=new, body=new)
+    mocker.patch('kopf._core.intents.registries.match', return_value=True)
+
+    when = lambda **_: False
+
+    @kopf.on.field(*resource,
+                   id='id', registry=registry,
+                   errors=ErrorsMode.PERMANENT, timeout=123, retries=456, backoff=78,
+                   field='field.subfield', value=999,
+                   labels={'somelabel': 'somevalue'},
+                   annotations={'someanno': 'somevalue'},
+                   when=when)
+    def fn(**_):
+        pass
+
+    handlers = registry._changing.get_handlers(cause)
+    assert len(handlers) == 1
+    assert handlers[0].fn is fn
+    assert handlers[0].reason is None
+    assert handlers[0].id == 'id/field.subfield'
+    assert handlers[0].errors == ErrorsMode.PERMANENT
+    assert handlers[0].timeout == 123
+    assert handlers[0].retries == 456
+    assert handlers[0].backoff == 78
+    assert handlers[0].labels == {'somelabel': 'somevalue'}
+    assert handlers[0].annotations == {'someanno': 'somevalue'}
+    assert handlers[0].when == when
+    assert handlers[0].field == ('field', 'subfield')
+    assert handlers[0].value == 999
+    assert handlers[0].old is None
+    assert handlers[0].new is None
 
 
 def test_subhandler_fails_with_no_parent_handler():
 
-    registry = ResourceChangingRegistry()
+    registry = ChangingRegistry()
     subregistry_var.set(registry)
 
     # Check if the contextvar is indeed not set (as a prerequisite).
@@ -425,7 +452,7 @@ def test_subhandler_fails_with_no_parent_handler():
 
     # Check the actual behaviour of the decorator.
     with pytest.raises(LookupError):
-        @kopf.on.this()
+        @kopf.subhandler()
         def fn(**_):
             pass
 
@@ -433,11 +460,11 @@ def test_subhandler_fails_with_no_parent_handler():
 def test_subhandler_declaratively(parent_handler, cause_factory):
     cause = cause_factory(reason=Reason.UPDATE)
 
-    registry = ResourceChangingRegistry()
+    registry = ChangingRegistry()
     subregistry_var.set(registry)
 
     with context([(handler_var, parent_handler)]):
-        @kopf.on.this()
+        @kopf.subhandler()
         def fn(**_):
             pass
 
@@ -449,7 +476,7 @@ def test_subhandler_declaratively(parent_handler, cause_factory):
 def test_subhandler_imperatively(parent_handler, cause_factory):
     cause = cause_factory(reason=Reason.UPDATE)
 
-    registry = ResourceChangingRegistry()
+    registry = ChangingRegistry()
     subregistry_var.set(registry)
 
     def fn(**_):
@@ -464,7 +491,10 @@ def test_subhandler_imperatively(parent_handler, cause_factory):
 
 
 @pytest.mark.parametrize('decorator, kwargs', [
+    (kopf.index, {}),
     (kopf.on.event, {}),
+    (kopf.on.mutate, {}),
+    (kopf.on.validate, {}),
     (kopf.on.resume, {}),
     (kopf.on.create, {}),
     (kopf.on.update, {}),
@@ -473,15 +503,17 @@ def test_subhandler_imperatively(parent_handler, cause_factory):
 ])
 def test_labels_filter_with_nones(resource, decorator, kwargs):
 
-    with pytest.deprecated_call(match=r"`None` for label filters is deprecated"):
-        @decorator(resource.group, resource.version, resource.plural, **kwargs,
-                   labels={'x': None})
+    with pytest.raises(ValueError):
+        @decorator(*resource, **kwargs, labels={'x': None})
         def fn(**_):
             pass
 
 
 @pytest.mark.parametrize('decorator, kwargs', [
+    (kopf.index, {}),
     (kopf.on.event, {}),
+    (kopf.on.mutate, {}),
+    (kopf.on.validate, {}),
     (kopf.on.resume, {}),
     (kopf.on.create, {}),
     (kopf.on.update, {}),
@@ -490,8 +522,112 @@ def test_labels_filter_with_nones(resource, decorator, kwargs):
 ])
 def test_annotations_filter_with_nones(resource, decorator, kwargs):
 
-    with pytest.deprecated_call(match=r"`None` for annotation filters is deprecated"):
-        @decorator(resource.group, resource.version, resource.plural, **kwargs,
-                   annotations={'x': None})
+    with pytest.raises(ValueError):
+        @decorator(*resource, **kwargs, annotations={'x': None})
         def fn(**_):
             pass
+
+
+@pytest.mark.parametrize('decorator, causeargs, handlers_prop', [
+    pytest.param(kopf.index, dict(), '_indexing', id='on-index'),
+    pytest.param(kopf.on.event, dict(), '_watching', id='on-event'),
+    pytest.param(kopf.on.mutate, dict(cls=WebhookCause), '_webhooks', id='on-mutation'),
+    pytest.param(kopf.on.validate, dict(cls=WebhookCause), '_webhooks', id='on-validation'),
+    pytest.param(kopf.on.resume, dict(reason=None, initial=True), '_changing', id='on-resume'),
+    pytest.param(kopf.on.create, dict(reason=Reason.CREATE), '_changing', id='on-create'),
+    pytest.param(kopf.on.update, dict(reason=Reason.UPDATE), '_changing', id='on-update'),
+    pytest.param(kopf.on.delete, dict(reason=Reason.DELETE), '_changing', id='on-delete'),
+    pytest.param(kopf.on.field, dict(reason=Reason.UPDATE), '_changing', id='on-field'),
+    pytest.param(kopf.daemon, dict(), '_spawning', id='on-daemon'),
+    pytest.param(kopf.timer, dict(), '_spawning', id='on-timer'),
+])
+def test_field_with_value(mocker, cause_factory, decorator, causeargs, handlers_prop, resource, registry):
+    old = {'field': {'subfield': 'old'}}
+    new = {'field': {'subfield': 'new'}}
+    cause = cause_factory(resource=resource, old=old, new=new, body=new, **causeargs)
+    mocker.patch('kopf._core.intents.registries.match', return_value=True)
+
+    @decorator(*resource, field='spec.field', value='value')
+    def fn(**_):
+        pass
+
+    handlers_registry = getattr(registry, handlers_prop)
+    handlers = handlers_registry.get_handlers(cause)
+    assert len(handlers) == 1
+    assert handlers[0].field == ('spec', 'field')
+    assert handlers[0].value == 'value'
+
+
+@pytest.mark.parametrize('decorator, causeargs, handlers_prop', [
+    pytest.param(kopf.on.update, dict(reason=Reason.UPDATE), '_changing', id='on-update'),
+    pytest.param(kopf.on.field, dict(reason=Reason.UPDATE), '_changing', id='on-field'),
+])
+def test_field_with_oldnew(mocker, cause_factory, decorator, causeargs, handlers_prop, resource, registry):
+    cause = cause_factory(resource=resource, **causeargs)
+    mocker.patch('kopf._core.intents.registries.match', return_value=True)
+
+    @decorator(*resource, field='spec.field', old='old', new='new')
+    def fn(**_):
+        pass
+
+    handlers_registry = getattr(registry, handlers_prop)
+    handlers = handlers_registry.get_handlers(cause)
+    assert len(handlers) == 1
+    assert handlers[0].field == ('spec', 'field')
+    assert handlers[0].value is None
+    assert handlers[0].old == 'old'
+    assert handlers[0].new == 'new'
+
+
+@pytest.mark.parametrize('decorator', [
+    pytest.param(kopf.index, id='on-index'),
+    pytest.param(kopf.on.event, id='on-event'),
+    pytest.param(kopf.on.mutate, id='on-mutation'),
+    pytest.param(kopf.on.validate, id='on-validation'),
+    pytest.param(kopf.on.resume, id='on-resume'),
+    pytest.param(kopf.on.create, id='on-create'),
+    pytest.param(kopf.on.update, id='on-update'),
+    pytest.param(kopf.on.delete, id='on-delete'),
+    pytest.param(kopf.daemon, id='on-daemon'),
+    pytest.param(kopf.timer, id='on-timer'),
+])
+def test_missing_field_with_specified_value(resource, decorator):
+    with pytest.raises(TypeError, match="without a mandatory field"):
+        @decorator(*resource, value='v')
+        def fn(**_):
+            pass
+
+
+@pytest.mark.parametrize('kwargs', [
+    pytest.param(dict(field='f', value='v', old='x'), id='value-vs-old'),
+    pytest.param(dict(field='f', value='v', new='x'), id='value-vs-new'),
+])
+@pytest.mark.parametrize('decorator', [
+    pytest.param(kopf.on.update, id='on-update'),
+    pytest.param(kopf.on.field, id='on-field'),
+])
+def test_conflicts_of_values_vs_oldnew(resource, decorator, kwargs):
+    with pytest.raises(TypeError, match="Either value= or old=/new="):
+        @decorator(*resource, **kwargs)
+        def fn(**_):
+            pass
+
+
+@pytest.mark.parametrize('decorator', [
+    pytest.param(kopf.on.resume, id='on-resume'),
+    pytest.param(kopf.on.create, id='on-create'),
+    pytest.param(kopf.on.delete, id='on-delete'),
+])
+def test_invalid_oldnew_for_inappropriate_subhandlers(resource, decorator, registry):
+
+    @decorator(*resource)
+    def fn(**_):
+        @kopf.subhandler(field='f', old='x')
+        def fn2(**_):
+            pass
+
+    subregistry = ChangingRegistry()
+    handler = registry._changing.get_all_handlers()[0]
+    with context([(handler_var, handler), (subregistry_var, subregistry)]):
+        with pytest.raises(TypeError, match="can only be used in update handlers"):
+            handler.fn()

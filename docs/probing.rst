@@ -13,7 +13,7 @@ To specify an endpoint to listen for probes, use :option:`--liveness`:
 
 .. code-block:: bash
 
-    kopf run --liveness=http://:8080/healthz --verbose handlers.py
+    kopf run --liveness=http://0.0.0.0:8080/healthz --verbose handlers.py
 
 Currently, only HTTP is supported.
 Other protocols (TCP, HTTPS) can be added in the future.
@@ -49,7 +49,7 @@ __ https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-r
 .. seealso::
 
     Please be aware of the readiness vs. liveness probing.
-    In case of operators, readiness probing makes no practical sense,
+    In the case of operators, readiness probing makes no practical sense,
     as operators do not serve traffic under the load balancing or with services.
     Liveness probing can help in disastrous cases (e.g. the operator is stuck),
     but will not help in case of partial failures (one of the API calls stuck).
@@ -83,7 +83,7 @@ probing handlers:
         return random.randint(0, 1_000_000)
 
 The probe handlers will be executed on the requests to the liveness URL,
-and cached for a reasonable period of time to prevent overloading
+and cached for a reasonable time to prevent overloading
 by mass-requesting the status.
 
 The handler results will be reported as the content of the liveness response:
@@ -94,13 +94,13 @@ The handler results will be reported as the content of the liveness response:
     {"now": "2019-11-07T18:03:52.513803", "random": 765846}
 
 .. note::
-    Liveless status report is simplistic and minimalistic at the moment.
+    The liveness status report is simplistic and minimalistic at the moment.
     It only reports success if the health-reporting task runs at all.
     It can happen so that some of the operator's tasks, threads, or streams
     do break, freeze, or become unresponsive, while the health-reporting task
-    continues to run. The probability of such case is low, but not zero.
+    continues to run. The probability of such a case is low, but not zero.
 
-    There are no checks that operator actually operates anything
+    There are no checks that the operator operates anything
     (unless they are implemented explicitly with the probe-handlers),
     as there are no reliable criteria for that -- total absence of handled
     resources or events can be an expected state of the cluster.

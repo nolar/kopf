@@ -1,26 +1,12 @@
 import kopf
-from kopf.reactor.handling import handler_var
-from kopf.reactor.invocation import context
+from kopf._core.actions.execution import handler_var
+from kopf._core.actions.invocation import context
+from kopf._core.reactor.subhandling import subregistry_var
 
 
 # Used in the tests. Must be global-scoped, or its qualname will be affected.
 def child_fn(**_):
     pass
-
-
-def test_with_no_parent(
-        resource_registry_cls, cause_factory):
-
-    cause = cause_factory(resource_registry_cls)
-    registry = resource_registry_cls()
-
-    with context([(handler_var, None)]):
-        kopf.on.this(registry=registry)(child_fn)
-
-    handlers = registry.get_handlers(cause)
-    assert len(handlers) == 1
-    assert handlers[0].fn is child_fn
-    assert handlers[0].id == 'child_fn'
 
 
 def test_with_parent(
@@ -29,8 +15,8 @@ def test_with_parent(
     cause = cause_factory(resource_registry_cls)
     registry = resource_registry_cls()
 
-    with context([(handler_var, parent_handler)]):
-        kopf.on.this(registry=registry)(child_fn)
+    with context([(handler_var, parent_handler), (subregistry_var, registry)]):
+        kopf.subhandler()(child_fn)
 
     handlers = registry.get_handlers(cause)
     assert len(handlers) == 1

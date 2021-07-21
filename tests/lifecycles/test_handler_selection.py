@@ -1,7 +1,8 @@
 import pytest
 
 import kopf
-from kopf.storage.states import HandlerOutcome, State
+from kopf._core.actions.execution import Outcome
+from kopf._core.actions.progression import State
 
 
 @pytest.mark.parametrize('lifecycle', [
@@ -12,7 +13,7 @@ from kopf.storage.states import HandlerOutcome, State
     kopf.lifecycles.asap,
 ])
 def test_with_empty_input(lifecycle):
-    state = State.from_scratch(handlers=[])
+    state = State.from_scratch()
     handlers = []
     selected = lifecycle(handlers, state=state)
     assert isinstance(selected, (tuple, list))
@@ -83,7 +84,7 @@ def test_asap_takes_the_first_one_when_no_retries(mocker):
     handler2 = mocker.Mock(id='id2', spec_set=['id'])
     handler3 = mocker.Mock(id='id3', spec_set=['id'])
 
-    state = State.from_scratch(handlers=[handler1, handler2, handler3])
+    state = State.from_scratch().with_handlers([handler1, handler2, handler3])
     handlers = [handler1, handler2, handler3]
     selected = kopf.lifecycles.asap(handlers, state=state)
     assert isinstance(selected, (tuple, list))
@@ -97,10 +98,10 @@ def test_asap_takes_the_least_retried(mocker):
     handler3 = mocker.Mock(id='id3', spec_set=['id'])
 
     # Set the pre-existing state, and verify that it was set properly.
-    state = State.from_scratch(handlers=[handler1, handler2, handler3])
-    state = state.with_outcomes({handler1.id: HandlerOutcome(final=False)})
-    state = state.with_outcomes({handler1.id: HandlerOutcome(final=False)})
-    state = state.with_outcomes({handler3.id: HandlerOutcome(final=False)})
+    state = State.from_scratch().with_handlers([handler1, handler2, handler3])
+    state = state.with_outcomes({handler1.id: Outcome(final=False)})
+    state = state.with_outcomes({handler1.id: Outcome(final=False)})
+    state = state.with_outcomes({handler3.id: Outcome(final=False)})
     assert state[handler1.id].retries == 2
     assert state[handler2.id].retries == 0
     assert state[handler3.id].retries == 1

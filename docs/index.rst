@@ -32,10 +32,14 @@ Kopf: Kubernetes Operators Framework
    kwargs
    async
    loading
+   resources
    filters
    results
    errors
    scopes
+   memos
+   indexing
+   admission
 
 .. toctree::
    :maxdepth: 2
@@ -47,6 +51,7 @@ Kopf: Kubernetes Operators Framework
    authentication
    configuration
    peering
+   cli
 
 .. toctree::
    :maxdepth: 2
@@ -74,6 +79,7 @@ Kopf: Kubernetes Operators Framework
 
    minikube
    contributing
+   architecture
    packages/kopf
 
 .. toctree::

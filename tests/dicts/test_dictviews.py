@@ -1,6 +1,6 @@
 import pytest
 
-from kopf.structs.dicts import MappingView, MutableMappingView, ReplaceableMappingView
+from kopf._cogs.structs.dicts import MappingView, MutableMappingView, ReplaceableMappingView
 
 all_classes = pytest.mark.parametrize('cls', [
     MappingView, MutableMappingView, ReplaceableMappingView])

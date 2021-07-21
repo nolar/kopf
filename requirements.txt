@@ -1,17 +1,26 @@
+# Everything needed to develop (test, debug) the framework.
 # The runtime dependencies of the framework, as if via `pip install kopf`.
 -e .
-
-# Everything needed to develop (test, debug) the framework.
+aresponses
+astpath[xpath]
+async-timeout
+asynctest
+certbuilder
+certvalidator
+codecov
 coverage
+coveralls
+freezegun
+import-linter
+isort>=5.5.0
+lxml
+mypy==0.910
+pre-commit
+pyngrok
+pytest>=6.0.0
 pytest-aiohttp
 pytest-asyncio
-pytest-mock
 pytest-cov
-pytest>=6.0.0
-aresponses
-asynctest
-freezegun
-codecov
-coveralls
-mypy==0.770
-isort>=5.5.0
+pytest-mock
+types-pkg_resources
+types-PyYAML

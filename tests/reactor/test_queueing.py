@@ -2,7 +2,7 @@
 Only the tests from the watching (simulated) to the handling (substituted).
 
 Excluded: the watching-streaming routines
-(see ``tests_streaming.py`` and ``test_watching.py``).
+(see ``tests_streaming.py`` and ``test_watching_*.py``).
 
 Excluded: the causation and handling routines
 (to be done later).
@@ -10,13 +10,18 @@ Excluded: the causation and handling routines
 Used for internal control that the event queueing works are intended.
 If the intentions change, the tests should be rewritten.
 They are NOT part of the public interface of the framework.
+
+NOTE: These tests also check that the bookmarks are ignored
+by checking that they are not multiplexed into workers.
 """
 import asyncio
+import contextlib
 import weakref
 
+import async_timeout
 import pytest
 
-from kopf.reactor.queueing import EOS, watcher
+from kopf._core.reactor.queueing import EOS, watcher
 
 
 @pytest.mark.parametrize('uids, cnts, events', [
@@ -85,8 +90,8 @@ async def test_watchevent_demultiplexing(worker_mock, timer, resource, processor
         assert key in streams
 
         queue_events = []
-        while not streams[key].watchevents.empty():
-            queue_events.append(streams[key].watchevents.get_nowait())
+        while not streams[key].backlog.empty():
+            queue_events.append(streams[key].backlog.get_nowait())
 
         assert len(queue_events) == cnt + 1
         assert queue_events[-1] is EOS.token
@@ -203,15 +208,14 @@ async def test_garbage_collection_of_streams(settings, stream, events, unique, w
 
     # Give the workers some time to finish waiting for the events.
     # After the idle timeout is reached, they will exit and gc their streams.
-    async with signaller:
-        try:
-            await asyncio.wait_for(
-                signaller.wait_for(lambda: not streams),
-                timeout=(settings.batching.batch_window +  # depleting the queues.
-                         settings.batching.idle_timeout +  # idling on empty queues.
-                         1.0))  # the code itself takes time: add a max tolerable delay.
-        except asyncio.TimeoutError:
-            pass
+    allowed_timeout = (
+        settings.batching.batch_window +  # depleting the queues.
+        settings.batching.idle_timeout +  # idling on empty queues.
+        1.0)  # the code itself takes time: add a max tolerable delay.
+    with contextlib.suppress(asyncio.TimeoutError):
+        async with async_timeout.timeout(allowed_timeout):
+            async with signaller:
+                await signaller.wait_for(lambda: not streams)
 
     # The mutable(!) streams dict is now empty, i.e. garbage-collected.
     assert len(streams) == 0
