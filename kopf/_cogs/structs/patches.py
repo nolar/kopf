@@ -58,12 +58,12 @@ class StatusPatch(dicts.MutableMappingView[str, Any]):
 # Event-handling structures, used internally in the framework and handlers only.
 class Patch(Dict[str, Any]):
 
-    def __init__(self, __src: Optional[MutableMapping[str, Any]] = None) -> None:
+    def __init__(self, __src: Optional[MutableMapping[str, Any]] = None, body = {}) -> None:
         super().__init__(__src or {})
         self._meta = MetaPatch(self)
         self._spec = SpecPatch(self)
         self._status = StatusPatch(self)
-        self._original = {}
+        self._original = body
 
     @property
     def metadata(self) -> MetaPatch:
@@ -84,10 +84,6 @@ class Patch(Dict[str, Any]):
     @property
     def original(self):
         return self._original
-
-    @original.setter
-    def original(self, value):
-        self._original = value
 
     def as_json_patch(self) -> JSONPatch:
         return [] if not self else self._as_json_patch(self, keys=[''])
@@ -115,4 +111,3 @@ class Patch(Dict[str, Any]):
             except (KeyError, TypeError):
                 return False
         return True
-        
