@@ -2,8 +2,8 @@ from kopf._cogs.structs.patches import Patch
 
 
 def test_addition_of_the_key():
-    patch = Patch()
-    patch.original = {'abc': 456}
+    body = {'abc': 456}
+    patch = Patch(body=body)
     patch['xyz'] = 123
     jsonpatch = patch.as_json_patch()
     assert jsonpatch == [
@@ -12,8 +12,8 @@ def test_addition_of_the_key():
 
 
 def test_replacement_of_the_key():
-    patch = Patch()
-    patch.original = {'xyz': 456}
+    body = {'xyz': 456}
+    patch = Patch(body=body)
     patch['xyz'] = 123
     jsonpatch = patch.as_json_patch()
     assert jsonpatch == [
@@ -31,8 +31,8 @@ def test_removal_of_the_key():
 
 
 def test_addition_of_the_subkey():
-    patch = Patch()
-    patch.original = {'xyz': {'def': 456}}
+    body = {'xyz': {'def': 456}}
+    patch = Patch(body=body)
     patch['xyz'] = {'abc': 123}
     jsonpatch = patch.as_json_patch()
     assert jsonpatch == [
@@ -40,8 +40,8 @@ def test_addition_of_the_subkey():
     ]
 
 def test_replacement_of_the_subkey():
-    patch = Patch()
-    patch.original = {'xyz': {'abc': 456}}
+    body = {'xyz': {'abc': 456}}
+    patch = Patch(body=body)
     patch['xyz'] = {'abc': 123}
     jsonpatch = patch.as_json_patch()
     assert jsonpatch == [
@@ -50,8 +50,8 @@ def test_replacement_of_the_subkey():
 
 
 def test_addition_of_the_sub_subkey():
-    patch = Patch()
-    patch.original = {'xyz': {'uvw': 123}}
+    body = {'xyz': {'uvw': 123}}
+    patch = Patch(body=body)
     patch['xyz'] = {'abc': {'def': {'ghi': 456}}}
     jsonpatch = patch.as_json_patch()
     assert jsonpatch == [
