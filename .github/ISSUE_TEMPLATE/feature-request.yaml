@@ -1,0 +1,74 @@
+name: Feature Request
+description: Suggest an idea for this project
+labels: [enhancement, triage]
+body:
+
+  - type: markdown
+    attributes:
+      value: >
+        Please provide as much information as possible.
+        All fields are optional, but a lack of information
+        may result in a delayed response and time-consumung iterations.
+
+  - type: markdown
+    attributes:
+      value: >
+        _If you feel confident with English, please use English.
+        If not, feel free to use your native or preferred language
+        (avoid metaphors and idioms — they do not auto-translate well).
+        The answers will be in English._
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: >
+        What problem do you currently face so that you want this feature?
+        Are there existing features or tools close to solving this problem?
+        Why don't they work?
+      placeholder: >
+        E.g.: I want to access several in-memory indicies anywhere in the code
+        nested in multiple levels of function calls. Currently, I have to pass
+        the indicies from the handlers down the stack in every call,
+        which complicates the code and makes it too wordy.
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: >
+        Describe the solution you would like to have.
+        Are there any other ways of achieving the same goal?
+        Why is this proposal better than those alternatives?
+      placeholder: >
+        E.g.: Either store the indicies in global variables,
+        or pass a single kwarg with all indicies at once,
+        not as separate kwargs.
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Code
+      description: >
+        A code snippet showing the new feature in action, at least as an idea.
+        (No backticks — the code will be formatted automatically.)
+      placeholder: |
+        # E.g.:
+        import kopf
+
+        my_index = kopf.Index()
+
+        @kopf.index('pods', target=my_index)
+        def fn(**_):
+            ...
+
+        def any_function():
+            for key, val in my_index.items():
+                ...
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional information
+      description: >
+        Additional information in free form — everything you would like to add.

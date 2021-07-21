@@ -1,0 +1,42 @@
+name: Question
+description: Ask an advice on how to do something
+labels: [question, triage]
+body:
+
+  - type: markdown
+    attributes:
+      value: >
+        Please provide as much information as possible.
+        All fields are optional, but a lack of information
+        may result in a delayed response and time-consuming iterations.
+
+  - type: markdown
+    attributes:
+      value: >
+        _If you feel confident with English, please use English.
+        If not, feel free to use your native or preferred language
+        (avoid metaphors and idioms — they do not auto-translate well).
+        The answers will be in English._
+
+  - type: markdown
+    attributes:
+      value: >
+        Before asking the question, please first try looking for the answers
+        in the [documentation](https://kopf.readthedocs.io/en/stable/)
+        and similar [issues & questions](https://github.com/nolar/kopf/issues).
+
+  - type: input
+    id: keywords
+    attributes:
+      label: Keywords
+      description: >
+        Which keywords did you search for in the documentation/issues
+        for this problem? (Space or comma separated.)
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: >
+        What problem do you currently face and see no solution for it?
+        If possible, explain what other ways did you try to solve the problem?

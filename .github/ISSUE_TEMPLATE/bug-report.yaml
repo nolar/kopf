@@ -1,0 +1,82 @@
+name: Bug Report
+description: File a bug report
+labels: [bug, triage]
+body:
+
+  - type: markdown
+    attributes:
+      value: >
+        Please provide as much information as possible.
+        All fields are optional, but a lack of information
+        may result in a delayed response and time-consuming iterations.
+
+  - type: markdown
+    attributes:
+      value: >
+        _If you feel confident with English, please use English.
+        If not, feel free to use your native or preferred language
+        (avoid metaphors and idioms — they do not auto-translate well).
+        The answers will be in English._
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Long story short
+      description: >
+        Please describe your problem in 1-3 sentences.
+        What has happened? What has not happened, but should have?
+      placeholder: >
+        A feature X behaves "this" way, but expected to behave "that" way.
+        The misbehaviour leads to unexpected results or side-effects A, B, C.
+
+  - type: input
+    id: kopf-version
+    attributes:
+      label: Kopf version
+      placeholder: e.g. 1.31.2
+  - type: input
+    id: kubernetes-version
+    attributes:
+      label: Kubernetes version
+      placeholder: e.g. 1.22 or 1.22.0
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      placeholder: e.g. 3.9 or pypy-3.7-7.3.3
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Code
+      description: >
+        The code snippet of the operator to reproduce the issue.
+        (No backticks — the code will be formatted automatically.)
+      placeholder: |
+        # For example:
+        import kopf
+
+        @kopf.on.create('kopfexamples')
+        def create_fn(**_):
+            pass
+      render: python
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: >
+        The output that highlights the failure of the operator
+        and shows what happened immediately before and after.
+        (No backticks — the logs will be formatted automatically.)
+      placeholder: |
+        [2020-01-01 12:34:56,789] [DEBUG   ] Starting Kopf 1.31.1.
+        [2020-01-01 12:34:56,890] [DEBUG   ] ...
+      render: none
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional information
+      description: >
+        Everything you would like to add that can help to identify the issue.
