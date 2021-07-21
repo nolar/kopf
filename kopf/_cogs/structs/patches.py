@@ -81,10 +81,6 @@ class Patch(Dict[str, Any]):
     def status(self) -> StatusPatch:
         return self._status
 
-    @property
-    def original(self):
-        return self._original
-
     def as_json_patch(self) -> JSONPatch:
         return [] if not self else self._as_json_patch(self, keys=[''])
 
