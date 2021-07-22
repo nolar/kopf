@@ -13,7 +13,7 @@ from typing import Any, Dict, List, MutableMapping, Optional
 
 from typing_extensions import Literal, TypedDict
 
-from kopf._cogs.structs import dicts
+from kopf._cogs.structs import bodies, dicts
 
 JSONPatchOp = Literal["add", "replace", "remove"]
 
@@ -58,7 +58,11 @@ class StatusPatch(dicts.MutableMappingView[str, Any]):
 # Event-handling structures, used internally in the framework and handlers only.
 class Patch(Dict[str, Any]):
 
-    def __init__(self, __src: Optional[MutableMapping[str, Any]] = None, body = {}) -> None:
+    def __init__(
+        self,
+        __src: Optional[MutableMapping[str, Any]] = None,
+        body: Optional[bodies.RawBody] = None
+    ) -> None:
         super().__init__(__src or {})
         self._meta = MetaPatch(self)
         self._spec = SpecPatch(self)
@@ -103,7 +107,7 @@ class Patch(Dict[str, Any]):
             if key == '':
                 continue
             try:
-                _search = _search[key]
+                _search = _search[key]  # type: ignore
             except (KeyError, TypeError):
                 return False
         return True
