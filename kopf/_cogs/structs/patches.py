@@ -13,7 +13,7 @@ from typing import Any, Dict, List, MutableMapping, Optional
 
 from typing_extensions import Literal, TypedDict
 
-from kopf._cogs.structs import dicts
+from kopf._cogs.structs import bodies, dicts
 
 JSONPatchOp = Literal["add", "replace", "remove"]
 
@@ -58,11 +58,16 @@ class StatusPatch(dicts.MutableMappingView[str, Any]):
 # Event-handling structures, used internally in the framework and handlers only.
 class Patch(Dict[str, Any]):
 
-    def __init__(self, __src: Optional[MutableMapping[str, Any]] = None) -> None:
+    def __init__(
+        self,
+        __src: Optional[MutableMapping[str, Any]] = None,
+        body: Optional[bodies.RawBody] = None
+    ) -> None:
         super().__init__(__src or {})
         self._meta = MetaPatch(self)
         self._spec = SpecPatch(self)
         self._status = StatusPatch(self)
+        self._original = body
 
     @property
     def metadata(self) -> MetaPatch:
@@ -87,10 +92,22 @@ class Patch(Dict[str, Any]):
         result: JSONPatch = []
         if value is None:
             result.append(JSONPatchItem(op='remove', path='/'.join(keys)))
+        elif len(keys) > 1 and self._original and not self._is_in_original_path(keys):
+            result.append(JSONPatchItem(op='add', path='/'.join(keys), value=value))
         elif isinstance(value, collections.abc.Mapping) and value:
             for key, val in value.items():
                 result.extend(self._as_json_patch(val, keys + [key]))
         else:
-            # TODO: need to distinguish 'add' vs 'replace' -- need to know the original value.
             result.append(JSONPatchItem(op='replace', path='/'.join(keys), value=value))
         return result
+
+    def _is_in_original_path(self, keys: List[str]) -> bool:
+        _search = self._original
+        for key in keys:
+            if key == '':
+                continue
+            try:
+                _search = _search[key]  # type: ignore
+            except (KeyError, TypeError):
+                return False
+        return True
