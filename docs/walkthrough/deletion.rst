@@ -31,7 +31,6 @@ Let's extend the creation handler:
 
 .. code-block:: python
     :name: adopting
-    :linenos:
     :caption: ephemeral.py
     :emphasize-lines: 18
 

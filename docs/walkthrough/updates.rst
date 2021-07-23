@@ -21,7 +21,6 @@ Let's extend the creation handler we already have from the previous step
 with one additional line:
 
 .. code-block:: python
-    :linenos:
     :caption: ephemeral.py
     :emphasize-lines: 24
 

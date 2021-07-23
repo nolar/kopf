@@ -27,7 +27,6 @@ but we will use another feature of Kopf to track one specific field only:
 
 .. code-block:: python
     :name: with-new
-    :linenos:
     :caption: ephemeral.py
     :emphasize-lines: 1, 5
 
@@ -90,7 +89,6 @@ exactly as needed for the patch object (i.e. the field is present there):
 
 .. code-block:: python
     :name: with-diff
-    :linenos:
     :caption: ephemeral.py
     :emphasize-lines: 4
 
