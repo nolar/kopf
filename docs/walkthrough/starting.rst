@@ -12,7 +12,6 @@ just to see how it can be started.
 
 .. code-block:: python
     :name: skeleton
-    :linenos:
     :caption: ephemeral.py
 
     import kopf

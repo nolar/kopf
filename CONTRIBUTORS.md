@@ -13,6 +13,7 @@ and [Historic GitHub Contributors](https://github.com/zalando-incubator/kopf/gra
 - [Clement Liaw](https://github.com/iexalt)
 - [Ismail Kaboubi](https://github.com/smileisak)
 - [Michael Narodovitch](https://github.com/michaelnarodovitch)
+- [Rodrigo Tavares](https://github.com/tavaresrodrigo)
 - [Sergey Vasilyev](https://github.com/nolar)
 - [Soroosh Sarabadani](https://github.com/psycho-ir)
 - [Trond Hindenes](https://github.com/trondhindenes)

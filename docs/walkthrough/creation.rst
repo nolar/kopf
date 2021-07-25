@@ -50,7 +50,6 @@ We will use the official Kubernetes client library (``pip install kubernetes``):
 
 .. code-block:: python
     :name: creation
-    :linenos:
     :caption: ephemeral.py
 
     import os
