@@ -35,6 +35,8 @@ class KubernetesModel(abc.ABC):
         if cls is KubernetesModel:
             if any(C.__module__.startswith('kubernetes.client.models.') for C in subcls.__mro__):
                 return True
+            if any(C.__module__.startswith('kubernetes_asyncio.client.models.') for C in subcls.__mro__):
+                return True
         return NotImplemented
 
     @property
