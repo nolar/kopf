@@ -21,10 +21,16 @@ try:
 except ImportError:
     PykubeObject = _dummy
 
+V1ObjectMeta = V1OwnerReference = None
+
+try:
+    from kubernetes_asyncio.client import V1ObjectMeta as V1ObjectMeta, V1OwnerReference as V1OwnerReference
+except ImportError:
+    pass
 try:
     from kubernetes.client import V1ObjectMeta as V1ObjectMeta, V1OwnerReference as V1OwnerReference
 except ImportError:
-    V1ObjectMeta = V1OwnerReference = None
+    pass
 
 
 # Kubernetes client does not have any common base classes, its code is fully generated.
