@@ -194,32 +194,6 @@ async def test_followups_for_deletion_of_group(
     assert group1_404mock.called
 
 
-@pytest.mark.usefixtures('handlers')
-@pytest.mark.parametrize('etype', ['DELETED'])
-async def test_followups_for_deletion_of_group(
-        settings, registry, apis_mock, group1_404mock, timer, etype):
-
-    e1 = RawEvent(type=etype, object=RawBody(spec={'group': 'group1'}))
-    r1 = Resource(group='group1', version='version1', plural='plural1')
-    insights = Insights()
-    insights.resources.add(r1)
-
-    async def delayed_injection(delay: float):
-        await asyncio.sleep(delay)
-        await process_discovered_resource_event(
-            insights=insights, raw_event=e1, registry=registry, settings=settings)
-
-    task = asyncio.create_task(delayed_injection(0.1))
-    async with timer, async_timeout.timeout(1.0):
-        async with insights.revised:
-            await insights.revised.wait()
-    await task
-    assert 0.1 < timer.seconds < 1.0
-    assert not insights.resources
-    assert apis_mock.called
-    assert group1_404mock.called
-
-
 @pytest.mark.parametrize('etype', ['DELETED'])
 async def test_backbone_is_filled(
         settings, registry, core_mock, corev1_mock, timer, etype):
