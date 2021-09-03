@@ -153,10 +153,9 @@ async def continuous_watch(
         operator_pause_waiter: aiotasks.Future,
 ) -> AsyncIterator[Union[Bookmark, bodies.RawEvent]]:
 
-    where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
+    # First, list the resources regularly, and get the list's resource version.
+    # Simulate the events with type "None" event - used in detection of causes.
     try:
-        # First, list the resources regularly, and get the list's resource version.
-        # Simulate the events with type "None" event - used in detection of causes.
         objs, resource_version = await fetching.list_objs(
             logger=logger,
             settings=settings,
@@ -167,7 +166,6 @@ async def continuous_watch(
             yield {'type': None, 'object': obj}
 
     except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, asyncio.TimeoutError):
-        logger.debug(f"Could not list objs for {resource} {where}.")
         return
 
     # Notify the watcher that the initial listing is over, even if there was nothing yielded.
@@ -193,6 +191,7 @@ async def continuous_watch(
             # The resource versions are lost by k8s after few minutes (5, as per the official doc).
             # The error occurs when there is nothing happening for few minutes. This is normal.
             if raw_type == 'ERROR' and cast(bodies.RawError, raw_object)['code'] == 410:
+                where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
                 logger.debug(f"Restarting the watch-stream for {resource} {where}.")
                 return  # out of the regular stream, to the infinite stream.
 
