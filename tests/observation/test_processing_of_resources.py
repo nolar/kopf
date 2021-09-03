@@ -86,12 +86,37 @@ def group1_404mock(resp_mocker, aresponses, hostname, apis_mock):
 @pytest.fixture(params=[
     kopf.on.event, kopf.daemon, kopf.timer, kopf.index,
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
-    kopf.on.validate, kopf.on.mutate,
 ])
 def handlers(request, registry):
     @request.param('group1', 'version1', 'plural1')
     def fn(**_): ...
 
+
+@pytest.mark.parametrize('decorator', [kopf.on.validate, kopf.on.mutate])
+@pytest.mark.parametrize('etype', ['ADDED', 'MODIFIED'])
+async def test_nonwatchable_resources_are_ignored(
+        settings, registry, apis_mock, group1_mock, timer, etype, decorator):
+
+    @decorator('group1', 'version1', 'plural1')
+    def fn(**_): ...
+
+    e1 = RawEvent(type=etype, object=RawBody(spec={'group': 'group1'}))
+    insights = Insights()
+
+    async def delayed_injection(delay: float):
+        await asyncio.sleep(delay)
+        await process_discovered_resource_event(
+            insights=insights, raw_event=e1, registry=registry, settings=settings)
+
+    task = asyncio.create_task(delayed_injection(0.1))
+    async with timer, async_timeout.timeout(1.0):
+        async with insights.revised:
+            await insights.revised.wait()
+    await task
+    assert 0.1 < timer.seconds < 1.0
+    assert not insights.resources
+    assert apis_mock.called
+    assert group1_mock.called
 
 
 async def test_initial_listing_is_ignored(
