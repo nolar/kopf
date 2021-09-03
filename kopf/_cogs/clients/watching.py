@@ -155,14 +155,18 @@ async def continuous_watch(
 
     # First, list the resources regularly, and get the list's resource version.
     # Simulate the events with type "None" event - used in detection of causes.
-    objs, resource_version = await fetching.list_objs(
-        logger=logger,
-        settings=settings,
-        resource=resource,
-        namespace=namespace,
-    )
-    for obj in objs:
-        yield {'type': None, 'object': obj}
+    try:
+        objs, resource_version = await fetching.list_objs(
+            logger=logger,
+            settings=settings,
+            resource=resource,
+            namespace=namespace,
+        )
+        for obj in objs:
+            yield {'type': None, 'object': obj}
+
+    except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, asyncio.TimeoutError):
+        return
 
     # Notify the watcher that the initial listing is over, even if there was nothing yielded.
     yield Bookmark.LISTED

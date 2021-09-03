@@ -11,6 +11,7 @@ They are NOT part of the public interface of the framework.
 import asyncio
 import logging
 
+import aiohttp
 import pytest
 
 from kopf._cogs.clients.watching import Bookmark, WatchingError, continuous_watch
@@ -180,3 +181,26 @@ async def test_long_line_parsing(
     assert len(events[1]['object']['spec']['field']) == 1
     assert len(events[2]['object']['spec']['field']) == 2 * 1024 * 1024
     assert len(events[3]['object']['spec']['field']) == 4 * 1024 * 1024
+
+@pytest.mark.parametrize("connection_error",
+    [
+        aiohttp.ClientConnectionError,
+        aiohttp.ClientPayloadError,
+        asyncio.TimeoutError
+    ]
+)
+async def test_list_objs_connection_errors_are_caught(
+        settings, resource, stream, namespace, enforced_session, mocker, connection_error):
+
+    enforced_session.request = mocker.Mock(side_effect=connection_error())
+    stream.feed([], namespace=namespace)
+    stream.close(namespace=namespace)
+
+    events = []
+    async for event in continuous_watch(settings=settings,
+                                            resource=resource,
+                                            namespace=namespace,
+                                            operator_pause_waiter=asyncio.Future()):
+        events.append(event)
+
+    assert len(events) == 0
