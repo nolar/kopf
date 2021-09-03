@@ -190,9 +190,8 @@ async def test_long_line_parsing(
     ]
 )
 async def test_list_objs_connection_errors_are_caught(
-        settings, resource, stream, namespace, enforced_session, mocker, caplog, connection_error):
+        settings, resource, stream, namespace, enforced_session, mocker, connection_error):
 
-    caplog.set_level(logging.DEBUG)
     enforced_session.request = mocker.Mock(side_effect=connection_error())
     stream.feed([], namespace=namespace)
     stream.close(namespace=namespace)
@@ -202,7 +201,6 @@ async def test_list_objs_connection_errors_are_caught(
                                             resource=resource,
                                             namespace=namespace,
                                             operator_pause_waiter=asyncio.Future()):
-            events.append(event)
+        events.append(event)
 
     assert len(events) == 0
-    assert "Could not list objs" in caplog.text
