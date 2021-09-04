@@ -15,6 +15,7 @@ Multiple files/modules can be specified. They will be loaded in the order.
 """
 
 import importlib
+import importlib.abc
 import importlib.util
 import os.path
 import sys
