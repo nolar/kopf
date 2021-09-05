@@ -45,9 +45,15 @@ def run(
     """
     Run the whole operator synchronously.
 
-    This function should be used to run an operator in normal sync mode.
+    If the loop is not specified, the operator runs in the event loop
+    of the current _context_ (by asyncio's default, the current thread).
+    See: https://docs.python.org/3/library/asyncio-policy.html for details.
+
+    Alternatively, use `asyncio.run(kopf.operator(...))` with the same options.
+    It will take care of a new event loop's creation and finalization for this
+    call. See: :func:`asyncio.run`.
     """
-    loop = loop if loop is not None else asyncio.get_event_loop()
+    loop = loop if loop is not None else asyncio.get_event_loop_policy().get_event_loop()
     try:
         loop.run_until_complete(operator(
             lifecycle=lifecycle,

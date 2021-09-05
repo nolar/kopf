@@ -9,12 +9,12 @@ This can be used, for example, in desktop applications or web APIs/UIs
 to keep the state of the cluster and its resources in memory.
 
 
-Manual orchestration
-====================
+Manual execution
+================
 
 Since Kopf is fully asynchronous, the best way to run Kopf is to provide
-an event-loop dedicated to Kopf in a separate thread, while running
-the main application in the main thread.
+an event-loop in a separate thread, which is dedicated to Kopf,
+while running the main application in the main thread:
 
 .. code-block:: python
 
@@ -28,8 +28,7 @@ the main application in the main thread.
         pass
 
     def kopf_thread():
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(kopf.operator())
+        asyncio.run(kopf.operator())
 
     def main():
         thread = threading.Thread(target=kopf_thread)
@@ -45,13 +44,17 @@ so its event-loop runs in the main thread.
     the OS signal handlers, so a developer should implement the termination
     themselves (cancellation of an operator task is enough).
 
+
+Manual orchestration
+====================
+
 Alternatively, a developer can orchestrate the operator's tasks and sub-tasks
 themselves. The example above is an equivalent of the following:
 
 .. code-block:: python
 
     def kopf_thread():
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_event_loop_policy().get_event_loop()
         tasks = loop.run_until_complete(kopf.spawn_tasks())
         loop.run_until_complete(kopf.run_tasks(tasks, return_when=asyncio.FIRST_COMPLETED))
 
@@ -60,9 +63,18 @@ Or, if proper cancellation and termination are not expected, of the following:
 .. code-block:: python
 
     def kopf_thread():
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_event_loop_policy().get_event_loop()
         tasks = loop.run_until_complete(kopf.spawn_tasks())
         loop.run_until_complete(asyncio.wait(tasks))
+
+In all cases, make sure that asyncio event loops are properly used.
+Specifically, :func:`asyncio.run` creates and finalises a new event loop
+for a single call. Several calls cannot share the coroutines and tasks.
+To make several calls, either create a new event loop, or get the event loop
+of the current asyncio _context_ (by default, of the current thread).
+See more on the asyncio event loops and _contexts_ in `Asyncio Policies`__.
+
+__ https://docs.python.org/3/library/asyncio-policy.html
 
 
 Multiple operators
@@ -90,8 +102,7 @@ in :mod:`contextvars` containers with values isolated per-loop and per-task.
         pass
 
     def kopf_thread():
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(kopf.operator(
+        asyncio.run(kopf.operator(
             registry=registry,
         ))
 
