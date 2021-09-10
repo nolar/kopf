@@ -304,16 +304,17 @@ async def worker(
                 else:
                     continue
             else:
-                try:
-                    while True:
-                        prev_event = raw_event
-                        next_event = await asyncio.wait_for(
-                            backlog.get(),
-                            timeout=settings.batching.batch_window)
-                        shouldstop = shouldstop or isinstance(next_event, EOS)
-                        raw_event = prev_event if isinstance(next_event, EOS) else next_event
-                except asyncio.TimeoutError:
-                    pass
+                if settings.batching.batch_window is not None:
+                    try:
+                        while True:
+                            prev_event = raw_event
+                            next_event = await asyncio.wait_for(
+                                backlog.get(),
+                                timeout=settings.batching.batch_window)
+                            shouldstop = shouldstop or isinstance(next_event, EOS)
+                            raw_event = prev_event if isinstance(next_event, EOS) else next_event
+                    except asyncio.TimeoutError:
+                        pass
 
             # Exit gracefully and immediately on the end-of-stream marker sent by the watcher.
             if isinstance(raw_event, EOS):
