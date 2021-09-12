@@ -322,6 +322,19 @@ unless they declare themselves as ``side_effects=True``.
 See more: :doc:`admission`.
 
 
+.. kwarg:: subresource
+
+Subresources
+------------
+
+``subresource`` (``str|None``) is the name of a subresource being checked.
+``None`` means that the main body of the resource is being checked.
+Otherwise, it is usually ``"status"`` or ``"scale"``; other values are possible.
+(The value is never ``"*"``, as the star mask is used only for handler filters.)
+
+See more: :doc:`admission`.
+
+
 .. kwarg:: warnings
 
 Admission warnings

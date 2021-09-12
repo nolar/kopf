@@ -152,6 +152,7 @@ class WebhookCause(ResourceCause):
     userinfo: reviews.UserInfo
     warnings: List[str]  # mutable!
     operation: Optional[reviews.Operation]  # None if not provided for some reason
+    subresource: Optional[str]  # e.g. "status", "scale"; None for the main resource body
 
     @property
     def _kwargs(self) -> Mapping[str, Any]:

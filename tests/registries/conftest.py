@@ -164,6 +164,7 @@ def cause_factory(resource):
                 reason=None,
                 webhook=None,
                 operation=None,
+                subresource=None,
             )
         raise TypeError(f"Cause/registry type {cls} is not supported by this fixture.")
     return make_cause

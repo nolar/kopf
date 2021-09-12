@@ -84,10 +84,11 @@ def test_admission_kwargs(resource, attr):
         webhook=None,
         reason=None,
         operation=None,
+        subresource=None,
     )
     kwargs = getattr(cause, attr)  # cause.kwargs / cause.sync_kwargs / cause.async_kwargs
     assert set(kwargs) == {'logger', 'resource',
-                           'dryrun', 'headers', 'sslpeer', 'userinfo', 'warnings',
+                           'dryrun', 'headers', 'sslpeer', 'userinfo', 'warnings', 'subresource',
                            'patch', 'memo',
                            'body', 'spec', 'status', 'meta', 'uid', 'name', 'namespace',
                            'labels', 'annotations'}

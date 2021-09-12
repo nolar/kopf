@@ -50,8 +50,10 @@ class RequestPayload(TypedDict):
     uid: str
     kind: RequestKind
     resource: RequestResource
+    subResource: Optional[str]
     requestKind: RequestKind
     requestResource: RequestResource
+    requestSubResource: Optional[str]
     userInfo: UserInfo
     name: str
     namespace: Optional[str]

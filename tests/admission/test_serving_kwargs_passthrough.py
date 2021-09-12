@@ -112,3 +112,21 @@ async def test_userinfo_passed(
     )
     assert mock.call_count == 1
     assert mock.call_args[1]['userinfo'] == userinfo
+
+
+async def test_subresource_passed(
+        settings, registry, resource, memories, insights, indices, adm_request):
+    mock = Mock()
+
+    @kopf.on.validate(*resource, subresource='*')
+    def fn(**kwargs):
+        mock(**kwargs)
+
+    adm_request['request']['subResource'] = 'xyz'
+    await serve_admission_request(
+        adm_request,
+        settings=settings, registry=registry, insights=insights,
+        memories=memories, memobase=object(), indices=indices,
+    )
+    assert mock.call_count == 1
+    assert mock.call_args[1]['subresource'] == 'xyz'

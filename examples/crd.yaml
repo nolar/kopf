@@ -19,6 +19,7 @@ spec:
     - name: v1
       served: true
       storage: true
+      subresources: { status: { } }  # comment/uncomment for experiments
       schema:
         openAPIV3Schema:
           type: object

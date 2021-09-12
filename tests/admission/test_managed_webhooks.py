@@ -155,6 +155,60 @@ def test_rule_options_are_mapped(registry, resource, decorator, opts, key, val):
 
 
 @pytest.mark.parametrize('decorator', [kopf.on.validate, kopf.on.mutate])
+def test_subresource_specific(registry, resource, decorator):
+
+    @decorator(*resource, registry=registry, subresource='xyz')
+    def fn(**_):
+        pass
+
+    webhooks = build_webhooks(
+        registry._webhooks.get_all_handlers(),
+        resources=[resource],
+        name_suffix='sfx',
+        client_config={})
+
+    assert len(webhooks) == 1
+    assert len(webhooks[0]['rules']) == 1
+    assert webhooks[0]['rules'][0]['resources'] == [f'{resource.plural}/xyz']
+
+
+@pytest.mark.parametrize('decorator', [kopf.on.validate, kopf.on.mutate])
+def test_subresource_catchall(registry, resource, decorator):
+
+    @decorator(*resource, registry=registry, subresource='*')
+    def fn(**_):
+        pass
+
+    webhooks = build_webhooks(
+        registry._webhooks.get_all_handlers(),
+        resources=[resource],
+        name_suffix='sfx',
+        client_config={})
+
+    assert len(webhooks) == 1
+    assert len(webhooks[0]['rules']) == 1
+    assert webhooks[0]['rules'][0]['resources'] == [f'{resource.plural}/*']
+
+
+@pytest.mark.parametrize('decorator', [kopf.on.validate, kopf.on.mutate])
+def test_subresource_absent(registry, resource, decorator):
+
+    @decorator(*resource, registry=registry)
+    def fn(**_):
+        pass
+
+    webhooks = build_webhooks(
+        registry._webhooks.get_all_handlers(),
+        resources=[resource],
+        name_suffix='sfx',
+        client_config={})
+
+    assert len(webhooks) == 1
+    assert len(webhooks[0]['rules']) == 1
+    assert webhooks[0]['rules'][0]['resources'] == [f'{resource.plural}']
+
+
+@pytest.mark.parametrize('decorator', [kopf.on.validate, kopf.on.mutate])
 def test_multiple_handlers(registry, resource, decorator):
 
     @decorator(*resource, registry=registry)

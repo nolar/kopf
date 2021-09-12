@@ -154,6 +154,7 @@ def validate(  # lgtm[py/similar-function]
         id: Optional[str] = None,
         param: Optional[Any] = None,
         operation: Optional[reviews.Operation] = None,  # -> .webhooks.*.rules.*.operations[0]
+        subresource: Optional[str] = None,  # -> .webhooks.*.rules.*.resources[]
         persistent: Optional[bool] = None,
         side_effects: Optional[bool] = None,  # -> .webhooks.*.sideEffects
         ignore_failures: Optional[bool] = None,  # -> .webhooks.*.failurePolicy=Ignore
@@ -185,7 +186,7 @@ def validate(  # lgtm[py/similar-function]
             errors=None, timeout=None, retries=None, backoff=None,  # TODO: add some meaning later
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value,
-            reason=causes.WebhookType.VALIDATING, operation=operation,
+            reason=causes.WebhookType.VALIDATING, operation=operation, subresource=subresource,
             persistent=persistent, side_effects=side_effects, ignore_failures=ignore_failures,
         )
         real_registry._webhooks.append(handler)
@@ -210,6 +211,7 @@ def mutate(  # lgtm[py/similar-function]
         id: Optional[str] = None,
         param: Optional[Any] = None,
         operation: Optional[reviews.Operation] = None,  # -> .webhooks.*.rules.*.operations[0]
+        subresource: Optional[str] = None,  # -> .webhooks.*.rules.*.resources[]
         persistent: Optional[bool] = None,
         side_effects: Optional[bool] = None,  # -> .webhooks.*.sideEffects
         ignore_failures: Optional[bool] = None,  # -> .webhooks.*.failurePolicy=Ignore
@@ -241,7 +243,7 @@ def mutate(  # lgtm[py/similar-function]
             errors=None, timeout=None, retries=None, backoff=None,  # TODO: add some meaning later
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value,
-            reason=causes.WebhookType.MUTATING, operation=operation,
+            reason=causes.WebhookType.MUTATING, operation=operation, subresource=subresource,
             persistent=persistent, side_effects=side_effects, ignore_failures=ignore_failures,
         )
         real_registry._webhooks.append(handler)

@@ -131,6 +131,12 @@ for a specific operation. For multiple operations, add several decorators.
 Possible values are ``"CREATE"``, ``"UPDATE"``, ``"DELETE"``, ``"CONNECT"``.
 The default is ``None``, i.e. all operations (equivalent to ``"*"``).
 
+``subresource`` (``str``) will only react when to the specified subresource.
+Usually it is ``"status"`` or ``"scale"``, but can be anything else.
+The value ``None`` means that only the main resource body will be checked.
+The value ``"*"`` means that both the main body and any subresource are checked.
+The default is ``None``, i.e. only the main body to be checked.
+
 ``side_effects`` (``bool``) tells Kubernetes that the handler can have side
 effects in non-dry-run mode. In dry-run mode, it must have no side effects.
 The dry-run mode is passed to the handler as a :kwarg:`dryrun` kwarg.
