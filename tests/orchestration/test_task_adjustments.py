@@ -71,8 +71,8 @@ async def test_new_resources_and_namespaces_spawn_new_tasks(
 
     r1 = Resource(group='group1', version='version1', plural='plural1', namespaced=True)
     r2 = Resource(group='group2', version='version2', plural='plural2', namespaced=True)
-    insights.resources.add(r1)
-    insights.resources.add(r2)
+    insights.watched_resources.add(r1)
+    insights.watched_resources.add(r2)
     insights.namespaces.add('ns1')
     insights.namespaces.add('ns2')
     r1ns1 = EnsembleKey(resource=r1, namespace='ns1')
@@ -103,8 +103,8 @@ async def test_gone_resources_and_namespaces_stop_running_tasks(
 
     r1 = Resource(group='group1', version='version1', plural='plural1', namespaced=True)
     r2 = Resource(group='group2', version='version2', plural='plural2', namespaced=True)
-    insights.resources.add(r1)
-    insights.resources.add(r2)
+    insights.watched_resources.add(r1)
+    insights.watched_resources.add(r2)
     insights.namespaces.add('ns1')
     insights.namespaces.add('ns2')
     r1ns1 = EnsembleKey(resource=r1, namespace='ns1')
@@ -126,7 +126,7 @@ async def test_gone_resources_and_namespaces_stop_running_tasks(
     r2ns1_task = ensemble.watcher_tasks[r2ns1]
     r2ns2_task = ensemble.watcher_tasks[r2ns2]
 
-    insights.resources.discard(r2)
+    insights.watched_resources.discard(r2)
     insights.namespaces.discard('ns2')
 
     await adjust_tasks(  # action-under-test
@@ -152,8 +152,8 @@ async def test_cluster_tasks_continue_running_on_namespace_deletion(
 
     r1 = Resource(group='group1', version='version1', plural='plural1', namespaced=True)
     r2 = Resource(group='group2', version='version2', plural='plural2', namespaced=True)
-    insights.resources.add(r1)
-    insights.resources.add(r2)
+    insights.watched_resources.add(r1)
+    insights.watched_resources.add(r2)
     insights.namespaces.add(None)
     r1nsN = EnsembleKey(resource=r1, namespace=None)
     r2nsN = EnsembleKey(resource=r2, namespace=None)
@@ -196,7 +196,7 @@ async def test_no_peering_tasks_with_no_peering_resources(
     settings.peering.mandatory = False
     insights = Insights()
     r1 = Resource(group='group1', version='version1', plural='plural1', namespaced=True)
-    insights.resources.add(r1)
+    insights.watched_resources.add(r1)
     insights.namespaces.add('ns1')
 
     await adjust_tasks(

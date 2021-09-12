@@ -25,10 +25,6 @@ class ResourceHandler(execution.Handler):
     field: Optional[dicts.FieldPath]
     value: Optional[filters.ValueFilter]
 
-    @property
-    def requires_patching(self) -> bool:
-        return True  # all typical handlers except several ones with overrides
-
     def adjust_cause(self, cause: execution.CauseT) -> execution.CauseT:
         if self.field is not None and isinstance(cause, causes.ChangingCause):
             old = dicts.resolve(cause.old, self.field, None)
@@ -52,10 +48,6 @@ class WebhookHandler(ResourceHandler):
     def __str__(self) -> str:
         return f"Webhook {self.id!r}"
 
-    @property
-    def requires_patching(self) -> bool:
-        return False
-
 
 @dataclasses.dataclass
 class IndexingHandler(ResourceHandler):
@@ -64,18 +56,10 @@ class IndexingHandler(ResourceHandler):
     def __str__(self) -> str:
         return f"Indexer {self.id!r}"
 
-    @property
-    def requires_patching(self) -> bool:
-        return False
-
 
 @dataclasses.dataclass
 class WatchingHandler(ResourceHandler):
     fn: callbacks.WatchingFn  # typing clarification
-
-    @property
-    def requires_patching(self) -> bool:
-        return False
 
 
 @dataclasses.dataclass

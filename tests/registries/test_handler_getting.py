@@ -2,6 +2,8 @@ import collections.abc
 
 import pytest
 
+import kopf
+from kopf._cogs.structs.references import Selector
 from kopf._core.intents.causes import Activity, ChangingCause, WatchingCause
 
 
@@ -124,3 +126,44 @@ def test_operator_registry_changing_handlers_via_list(
     assert isinstance(handlers, collections.abc.Container)
     assert isinstance(handlers, collections.abc.Collection)
     assert not handlers
+
+
+def test_all_handlers(operator_registry_cls):
+    registry = operator_registry_cls()
+
+    @kopf.index('resource', registry=registry)
+    @kopf.on.event('resource', registry=registry)
+    @kopf.on.event('resource', registry=registry)
+    @kopf.on.create('resource', registry=registry)
+    @kopf.on.update('resource', registry=registry)
+    @kopf.on.delete('resource', registry=registry)
+    @kopf.on.resume('resource', registry=registry)
+    @kopf.on.timer('resource', registry=registry)
+    @kopf.on.daemon('resource', registry=registry)
+    def fn(**_): ...
+
+    assert len(registry._indexing.get_all_handlers()) == 1
+    assert len(registry._watching.get_all_handlers()) == 2
+    assert len(registry._spawning.get_all_handlers()) == 2
+    assert len(registry._changing.get_all_handlers()) == 4
+
+
+def test_all_selectors(operator_registry_cls):
+    registry = operator_registry_cls()
+
+    @kopf.index('resource0', registry=registry)
+    @kopf.on.event('resource1', registry=registry)
+    @kopf.on.event('resource2', registry=registry)
+    @kopf.on.create('resource1', registry=registry)
+    @kopf.on.update('resource2', registry=registry)
+    @kopf.on.delete('resource3', registry=registry)
+    @kopf.on.resume('resource4', registry=registry)
+    @kopf.on.timer('resource5', registry=registry)
+    @kopf.on.daemon('resource6', registry=registry)
+    def fn(**_): ...
+
+    assert registry._indexing.get_all_selectors() == {Selector('resource0')}
+    assert registry._watching.get_all_selectors() == {Selector('resource1'), Selector('resource2')}
+    assert registry._spawning.get_all_selectors() == {Selector('resource5'), Selector('resource6')}
+    assert registry._changing.get_all_selectors() == {Selector('resource1'), Selector('resource2'),
+                                                      Selector('resource3'), Selector('resource4')}

@@ -181,7 +181,7 @@ def find_resource(
     version = request_resource['version']
     plural = request_resource['resource']
     selector = references.Selector(group=group, version=version, plural=plural)
-    resources = selector.select(insights.resources)
+    resources = selector.select(insights.webhook_resources)
     if not resources:
         raise UnknownResourceError(f"The specified resource has no handlers: {request_resource}")
     elif len(resources) > 1:
@@ -352,7 +352,7 @@ async def configuration_manager(
             logger.info(f"Reconfiguring the {reason.value} webhook {settings.admission.managed}.")
             webhooks = build_webhooks(
                 all_handlers,
-                resources=insights.resources,
+                resources=insights.webhook_resources,
                 name_suffix=settings.admission.managed,
                 client_config=client_config)
             await patching.patch_obj(
@@ -369,7 +369,7 @@ async def configuration_manager(
             logger.info(f"Cleaning up the admission webhook {settings.admission.managed}.")
             webhooks = build_webhooks(
                 all_handlers,
-                resources=insights.resources,
+                resources=insights.webhook_resources,
                 name_suffix=settings.admission.managed,
                 client_config=client_config,
                 persistent_only=True)
