@@ -478,8 +478,15 @@ class Insights:
     """
     Actual resources & namespaces served by the operator.
     """
+
+    # The precomputed specialised sets of resources as used in independent parts of the framework.
+    # - **Indexed** resources block the operator startup until all objects are initially indexed.
+    # - **Watched** resources spawn the watch-streams; the set excludes all webhook-only resources.
+    # - **Webhook** resources are served via webhooks; the set excludes all watch-only resources.
+    webhook_resources: Set[Resource] = dataclasses.field(default_factory=set)
+    indexed_resources: Set[Resource] = dataclasses.field(default_factory=set)
+    watched_resources: Set[Resource] = dataclasses.field(default_factory=set)
     namespaces: Set[Namespace] = dataclasses.field(default_factory=set)
-    resources: Set[Resource] = dataclasses.field(default_factory=set)
     backbone: Backbone = dataclasses.field(default_factory=Backbone)
 
     # Signalled when anything changes in the insights.
@@ -488,6 +495,3 @@ class Insights:
     # The flags that are set after the initial listing is finished. Not cleared afterwards.
     ready_namespaces: asyncio.Event = dataclasses.field(default_factory=asyncio.Event)
     ready_resources: asyncio.Event = dataclasses.field(default_factory=asyncio.Event)
-
-    # The resources that are part of indices and can block the operator readiness on start.
-    indexable: Set[Resource] = dataclasses.field(default_factory=set)

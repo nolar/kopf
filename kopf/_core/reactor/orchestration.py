@@ -27,7 +27,7 @@ import dataclasses
 import functools
 import itertools
 import logging
-from typing import Any, Collection, Container, Dict, MutableMapping, NamedTuple, Optional
+from typing import Any, Collection, Container, Dict, Iterable, MutableMapping, NamedTuple, Optional
 
 from kopf._cogs.aiokits import aiotasks, aiotoggles
 from kopf._cogs.configs import configuration
@@ -138,7 +138,7 @@ async def adjust_tasks(
     # Stop & start the tasks to match the task matrix with the cluster insights.
     # As a rule of thumb, stop the tasks first, start later -- not vice versa!
     await terminate_redundancies(ensemble=ensemble,
-                                 remaining_resources=insights.resources | peering_resources,
+                                 remaining_resources=insights.watched_resources | peering_resources,
                                  remaining_namespaces=insights.namespaces | {None})
     await spawn_missing_peerings(ensemble=ensemble,
                                  settings=settings,
@@ -148,9 +148,9 @@ async def adjust_tasks(
     await spawn_missing_watchers(ensemble=ensemble,
                                  settings=settings,
                                  processor=processor,
-                                 indexable=insights.indexable,
-                                 resources=insights.resources,
-                                 namespaces=insights.namespaces)
+                                 indexed_resources=insights.indexed_resources,
+                                 watched_resources=insights.watched_resources,
+                                 watched_namespaces=insights.namespaces)
 
 
 async def terminate_redundancies(
@@ -215,9 +215,9 @@ async def spawn_missing_watchers(
         *,
         processor: queueing.WatchStreamProcessor,
         settings: configuration.OperatorSettings,
-        resources: Collection[references.Resource],
-        indexable: Collection[references.Resource],
-        namespaces: Collection[references.Namespace],
+        indexed_resources: Container[references.Resource],  # only "if in", never "for in"!
+        watched_resources: Iterable[references.Resource],
+        watched_namespaces: Iterable[references.Namespace],
         ensemble: Ensemble,
 ) -> None:
 
@@ -226,13 +226,13 @@ async def spawn_missing_watchers(
     operator_blocked = await ensemble.operator_indexed.make_toggle(name="orchestration blocker")
 
     # Spawn watchers and create the specialised per-resource-kind blockers.
-    for resource, namespace in itertools.product(resources, namespaces):
+    for resource, namespace in itertools.product(watched_resources, watched_namespaces):
         namespace = namespace if resource.namespaced else None
         dkey = EnsembleKey(resource=resource, namespace=namespace)
         if dkey not in ensemble.watcher_tasks:
             what = f"{resource}@{namespace}"
             resource_indexed: Optional[aiotoggles.Toggle] = None
-            if resource in indexable:
+            if resource in indexed_resources:
                 resource_indexed = await ensemble.operator_indexed.make_toggle(name=what)
             ensemble.watcher_tasks[dkey] = aiotasks.create_guarded_task(
                 name=f"watcher for {what}", logger=logger, cancellable=True,

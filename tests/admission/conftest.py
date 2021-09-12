@@ -111,7 +111,8 @@ async def insights(settings, resource):
     val_resource = Resource('admissionregistration.k8s.io', 'v1', 'validatingwebhookconfigurations')
     mut_resource = Resource('admissionregistration.k8s.io', 'v1', 'mutatingwebhookconfigurations')
     insights = Insights()
-    insights.resources.add(resource)
+    insights.watched_resources.add(resource)
+    insights.webhook_resources.add(resource)
     await insights.backbone.fill(resources=[val_resource, mut_resource])
     insights.ready_resources.set()
     return insights

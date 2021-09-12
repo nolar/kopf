@@ -23,7 +23,7 @@ to declare this restricted mode as the desired mode of operation.
 import asyncio
 import functools
 import logging
-from typing import Collection, List, Optional
+from typing import Collection, FrozenSet, Iterable, List, Optional, Set
 
 from kopf._cogs.aiokits import aiotoggles
 from kopf._cogs.clients import errors, fetching, scanning
@@ -213,61 +213,122 @@ def revise_resources(
         resources: Collection[references.Resource],
 ) -> None:
 
-    # Scan only the resource-related handlers, ignore activies & co.
-    all_handlers: List[handlers.ResourceHandler] = []
-    all_handlers.extend(registry._webhooks.get_all_handlers())
-    all_handlers.extend(registry._indexing.get_all_handlers())
-    all_handlers.extend(registry._watching.get_all_handlers())
-    all_handlers.extend(registry._spawning.get_all_handlers())
-    all_handlers.extend(registry._changing.get_all_handlers())
-    all_selectors = {handler.selector for handler in all_handlers if handler.selector is not None}
+    # Scan only the resource-related handlers grouped by purpose; ignore activities & co.
+    webhook_selectors = registry._webhooks.get_all_selectors()
+    indexed_selectors = registry._indexing.get_all_selectors()
+    watched_selectors = (
+        registry._indexing.get_all_selectors() |
+        registry._watching.get_all_selectors() |
+        registry._spawning.get_all_selectors() |
+        registry._changing.get_all_selectors()
+    )
+    patched_selectors = (
+        registry._spawning.get_all_selectors() |
+        registry._changing.get_all_selectors()
+    )
 
-    if group is None:
-        insights.resources.clear()
-    else:
-        group_resources = {resource for resource in insights.resources if resource.group == group}
-        insights.resources.difference_update(group_resources)
+    # Note: indexed and webhook resources are not checked for ambiguity or empty matching:
+    # - the indexed resources are not served/watched directly and are only used as an utility cache;
+    # - the webhook resources are PASSIVELY matched per HTTP request, so ambiguity is not a problem.
+    # Ambiguity is a potential problem only for regular resource handlers because the operators
+    # ACTIVELY trigger them and produce irreversible side-effects --- even if improperly configured.
+    _update_resources(insights.webhook_resources, webhook_selectors, group=group, source=resources)
+    _update_resources(insights.indexed_resources, indexed_selectors, group=group, source=resources)
+    _update_resources(insights.watched_resources, watched_selectors, group=group, source=resources)
+    _disable_ambiguous_selectors(resources=insights.watched_resources, selectors=watched_selectors)
+    _disable_mismatched_selectors(resources=insights.watched_resources, selectors=watched_selectors)
+    _disable_unsuitable_resources(resources=insights.watched_resources, selectors=patched_selectors)
 
-    # Stop watching a CRD when it is deleted. However, we don't block the CRDs with finalizers, so
-    # it can be so that we miss the event and continue watching attempts (and fail with HTTP 404).
-    # Also stop watching the resources that were changed to not hit any selectors (e.g. categories).
-    for selector in all_selectors:
-        insights.resources.update(selector.select(resources))
-        insights.indexable.update(resource for resource in selector.select(resources)
-                                  if registry._indexing.has_handlers(resource))
 
-    # Detect ambiguous selectors and stop watching: 2+ distinct resources for the same selector.
-    # E.g.: "pods.v1" & "pods.v1beta1.metrics.k8s.io", when specified as just "pods" (but only
-    # if non-v1 resources cannot be filtered out completely; otherwise, implicitly prefer v1).
-    resolved = {selector: selector.select(insights.resources) for selector in all_selectors}
-    for selector, selected in resolved.items():
+def _update_resources(
+        resources: Set[references.Resource],
+        selectors: Iterable[references.Selector],
+        *,
+        group: Optional[str],
+        source: Collection[references.Resource],
+) -> None:
+    """
+    Update all or the group's resources from the source of resources.
+
+    This also excludes the resources that continue to exist but stop matching
+    the selectors: e.g. by category --- if a CRD's categories were modified.
+
+    WARNING: We do not block the CRDs by adding finalizers (for simplicity),
+    so it can be so that we miss the CRD deletion event and continue
+    the watching attempts (and fail with HTTP 404).
+    """
+
+    # Exclude previously served resources that are gone now.
+    group_resources = {resource for resource in resources if group in [None, resource.group]}
+    resources.difference_update(group_resources)
+
+    # Include or re-include the resources that are [still] served.
+    for selector in selectors:
+        resources.update(selector.select(source))
+
+
+def _disable_ambiguous_selectors(
+        *,
+        resources: Set[references.Resource],
+        selectors: Iterable[references.Selector],
+) -> None:
+    """
+    Detect ambiguous selectors and stop serving/watching them.
+
+    Ambiguous selectors are those matching 2+ distinct resources.
+    For example, if a selector specifies "pods" and there are resources
+    "pods.v1" and "pods.v1beta1.metrics.k8s.io" (but only if non-v1 resources
+    cannot be filtered out completely; otherwise, implicitly prefer v1).
+    """
+    for selector in selectors:
+        selected = selector.select(resources)
         if selector.is_specific and len(selected) > 1:
             logger.warning("Ambiguous resources will not be served (try specifying API groups):"
                            f" {selector} => {selected}")
-            insights.resources.difference_update(selected)
+            resources.difference_update(selected)
 
-    # Warn for handlers that specify unexistent resources (maybe a typo or a misconfiguration).
-    resolved_selectors = {selector for selector, selected in resolved.items() if selected}
-    unresolved_selectors = all_selectors - resolved_selectors
-    unresolved_names = ', '.join(f"{selector}" for selector in unresolved_selectors)
-    if unresolved_selectors:
+
+def _disable_mismatched_selectors(
+        *,
+        resources: Set[references.Resource],
+        selectors: FrozenSet[references.Selector],
+) -> None:
+    """
+    Warn for handlers that specify nonexistent resources.
+
+    This can be due to a typo or a misconfiguration or CRDs are not yet created.
+    """
+    selector_names = ", ".join(
+        f"{selector}"
+        for selector in selectors
+        if not selector.select(resources)
+    )
+    if selector_names:
         logger.warning("Unresolved resources cannot be served (try creating their CRDs):"
-                       f" {unresolved_names}")
+                       f" {selector_names}")
 
-    # For patching, only react if there are handlers that store a state (i.e. any except @on.event).
-    nonwatchable = {resource for resource in insights.resources
-                    if 'watch' not in resource.verbs and 'list' not in resource.verbs}
-    nonpatchable = {resource for resource in insights.resources
-                    if 'patch' not in resource.verbs} - nonwatchable
-    if nonwatchable:
-        logger.warning(f"Non-watchable resources will not be served: {nonwatchable}")
-        insights.resources.difference_update(nonwatchable)
-    if nonpatchable and any(handler.requires_patching for handler in all_handlers):
-        logger.warning(f"Non-patchable resources will not be served: {nonpatchable}")
-        insights.resources.difference_update(nonpatchable)
 
-    # Keep the secondary set clean of irrelevant resources. Though, it does not harm if it is not.
-    insights.indexable.intersection_update(insights.resources)
+def _disable_unsuitable_resources(
+        *,
+        resources: Set[references.Resource],
+        selectors: FrozenSet[references.Selector],
+) -> None:
+
+    # For both watching & patching, only look at watched resources, ignore webhook-only resources.
+    nonwatchable_resources = {resource for resource in resources
+                              if 'watch' not in resource.verbs and 'list' not in resource.verbs}
+    nonpatchable_resources = {resource for resource in resources
+                              if 'patch' not in resource.verbs} - nonwatchable_resources
+
+    # For patching, only react if there are handlers that store a state (i.e. not on-event/index).
+    patching_required = any(selector.select(nonpatchable_resources) for selector in selectors)
+
+    if nonwatchable_resources:
+        logger.warning(f"Non-watchable resources will not be served: {nonwatchable_resources}")
+        resources.difference_update(nonwatchable_resources)
+    if nonpatchable_resources and patching_required:
+        logger.warning(f"Non-patchable resources will not be served: {nonpatchable_resources}")
+        resources.difference_update(nonpatchable_resources)
 
 
 def is_deleted(raw_event: bodies.RawEvent) -> bool:

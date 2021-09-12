@@ -15,8 +15,8 @@ import abc
 import enum
 import functools
 from types import FunctionType, MethodType
-from typing import Any, Callable, Collection, Container, Generic, Iterable, Iterator, List, \
-                   Mapping, MutableMapping, Optional, Sequence, Set, Tuple, TypeVar, cast
+from typing import Any, Callable, Collection, Container, FrozenSet, Generic, Iterable, Iterator, \
+                   List, Mapping, MutableMapping, Optional, Sequence, Set, Tuple, TypeVar, cast
 
 from kopf._cogs.structs import dicts, ids, references
 from kopf._core.actions import execution
@@ -71,6 +71,13 @@ class ActivityRegistry(GenericRegistry[handlers.ActivityHandler]):
 
 
 class ResourceRegistry(GenericRegistry[ResourceHandlerT], Generic[ResourceHandlerT, CauseT]):
+
+    def get_all_selectors(self) -> FrozenSet[references.Selector]:
+        return frozenset(
+            handler.selector
+            for handler in self.get_all_handlers()
+            if handler.selector is not None  # None is reserved for sub-handlers
+        )
 
     def has_handlers(
             self,
