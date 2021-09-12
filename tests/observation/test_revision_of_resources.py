@@ -10,25 +10,12 @@ VERBS = ['list', 'watch', 'patch']
 @pytest.fixture(params=[
     kopf.on.event, kopf.daemon, kopf.timer, kopf.index,
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
+    kopf.on.validate, kopf.on.mutate,
 ])
 def handlers(request, registry):
     @request.param('group1', 'version1', 'plural1')
     @request.param('group2', 'version2', 'plural2')
     def fn(**_): ...
-
-
-@pytest.mark.parametrize('decorator', [kopf.on.validate, kopf.on.mutate])
-def test_nonwatchable_resources_are_ignored(registry, decorator):
-
-    @decorator('group1', 'version1', 'plural1')
-    @decorator('group2', 'version2', 'plural2')
-    def fn(**_): ...
-
-    r1 = Resource(group='group1', version='version1', plural='plural1', verbs=VERBS)
-    r2 = Resource(group='group2', version='version2', plural='plural2', verbs=VERBS)
-    insights = Insights()
-    revise_resources(registry=registry, insights=insights, group=None, resources=[r1, r2])
-    assert not insights.resources
 
 
 @pytest.mark.usefixtures('handlers')
@@ -72,6 +59,7 @@ def test_replacing_a_new_group(registry):
 @pytest.mark.parametrize('decorator', [
     kopf.on.event, kopf.daemon, kopf.timer, kopf.index,
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
+    kopf.on.validate, kopf.on.mutate,
 ])
 def test_ambiguity_in_specific_selectors(registry, decorator, caplog, assert_logs):
     r1 = Resource(group='g1', version='v1', plural='plural', verbs=VERBS)
@@ -89,6 +77,7 @@ def test_ambiguity_in_specific_selectors(registry, decorator, caplog, assert_log
 @pytest.mark.parametrize('decorator', [
     kopf.on.event, kopf.daemon, kopf.timer, kopf.index,
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
+    kopf.on.validate, kopf.on.mutate,
 ])
 def test_corev1_overrides_ambuigity(registry, decorator, caplog, assert_logs):
     r1 = Resource(group='', version='v1', plural='pods', verbs=VERBS)
@@ -106,6 +95,7 @@ def test_corev1_overrides_ambuigity(registry, decorator, caplog, assert_logs):
 @pytest.mark.parametrize('decorator', [
     kopf.on.event, kopf.daemon, kopf.timer, kopf.index,
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
+    kopf.on.validate, kopf.on.mutate,
 ])
 def test_no_ambiguity_in_generic_selector(registry, decorator, caplog, assert_logs):
     r1 = Resource(group='g1', version='v1', plural='plural', verbs=VERBS)
@@ -123,6 +113,7 @@ def test_no_ambiguity_in_generic_selector(registry, decorator, caplog, assert_lo
 @pytest.mark.parametrize('decorator', [
     kopf.on.event, kopf.daemon, kopf.timer, kopf.index,
     kopf.on.resume, kopf.on.create, kopf.on.update, kopf.on.delete,
+    kopf.on.validate, kopf.on.mutate,
 ])
 def test_selectors_with_no_resources(registry, decorator, caplog, assert_logs):
     r1 = Resource(group='group1', version='version1', plural='plural1', verbs=VERBS)
