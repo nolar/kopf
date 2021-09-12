@@ -384,6 +384,7 @@ def prematch(
     kwargs: MutableMapping[str, Any] = {}
     return (
         _matches_resource(handler, cause.resource) and
+        _matches_subresource(handler, cause) and
         _matches_labels(handler, cause, kwargs) and
         _matches_annotations(handler, cause, kwargs) and
         _matches_field_values(handler, cause, kwargs) and
@@ -399,6 +400,7 @@ def match(
     kwargs: MutableMapping[str, Any] = {}
     return (
         _matches_resource(handler, cause.resource) and
+        _matches_subresource(handler, cause) and
         _matches_labels(handler, cause, kwargs) and
         _matches_annotations(handler, cause, kwargs) and
         _matches_field_values(handler, cause, kwargs) and
@@ -413,6 +415,18 @@ def _matches_resource(
 ) -> bool:
     return (handler.selector is None or
             handler.selector.check(resource))
+
+
+def _matches_subresource(
+        handler: handlers.ResourceHandler,
+        cause: causes.ResourceCause,
+) -> bool:
+    if not isinstance(handler, handlers.WebhookHandler):
+        return True
+    if not isinstance(cause, causes.WebhookCause):
+        return True
+    return (handler.subresource == '*' or
+            handler.subresource == cause.subresource)  # incl. None==None case
 
 
 def _matches_labels(

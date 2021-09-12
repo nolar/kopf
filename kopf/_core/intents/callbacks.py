@@ -124,6 +124,7 @@ else:
         [
             NamedArg(bool, "dryrun"),
             NamedArg(List[str], "warnings"),  # mutable!
+            NamedArg(Optional[str], "subresource"),
             NamedArg(reviews.UserInfo, "userinfo"),
             NamedArg(reviews.SSLPeer, "sslpeer"),
             NamedArg(reviews.Headers, "headers"),

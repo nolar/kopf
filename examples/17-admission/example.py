@@ -69,6 +69,15 @@ def validate2(**_):
     raise kopf.AdmissionError("I'm too lazy anyway. Go away!", code=555)
 
 
+@kopf.on.validate('kex', subresource='*')
+def validate_subresources(spec, subresource, status, warnings: List[str], **_):
+    if subresource == 'status' and status.get('field') != spec.get('field'):
+        raise kopf.AdmissionError("status.field MUST be equal to spec.field!")
+    elif subresource is None and status.get('field') != spec.get('field'):
+        warnings.append("Also update status.field to match spec.field: "
+                        f"{spec.get('field')!r} != {status.get('field')!r}")
+
+
 @kopf.on.mutate('kex', labels={'somelabel': 'somevalue'})
 def mutate1(patch: kopf.Patch, **_):
     patch.spec['injected'] = 123

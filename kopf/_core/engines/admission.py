@@ -113,6 +113,7 @@ async def serve_admission_request(
 
     # Reconstruct the cause specially for web handlers.
     resource = find_resource(request=request, insights=insights)
+    subresource = request.get('request', {}).get('subResource')
     operation = request.get('request', {}).get('operation')
     userinfo = request.get('request', {}).get('userInfo')
     new_body = request.get('request', {}).get('object')
@@ -137,6 +138,7 @@ async def serve_admission_request(
         userinfo=userinfo,
         warnings=warnings,
         operation=operation,
+        subresource=subresource,
         dryrun=bool(request.get('request', {}).get('dryRun')),
         sslpeer=sslpeer if sslpeer is not None else {},  # ensure a mapping even if not provided.
         headers=headers if headers is not None else {},  # ensure a mapping even if not provided.
@@ -406,7 +408,10 @@ def build_webhooks(
                 {
                     'apiGroups': [resource.group],
                     'apiVersions': [resource.version],
-                    'resources': [resource.plural],
+                    'resources': (
+                        [resource.plural] if handler.subresource is None else
+                        [f'{resource.plural}/{handler.subresource}']
+                    ),
                     'operations': ['*'] if handler.operation is None else [handler.operation],
                     'scope': '*',  # doesn't matter since a specific resource is used.
                 }

@@ -228,3 +228,41 @@ async def test_mutating_handlers_are_selected_for_deletion_if_explicitly_marked(
     assert response['response']['allowed'] is True
     assert v_mock.call_count == 1
     assert m_mock.call_count == 1
+
+
+@pytest.mark.parametrize('handler_sub, request_sub, exp_calls', [
+    ('*', 'no', 1),
+    ('*', 'sb', 1),
+    ('*', None, 1),
+    ('sb', 'no', 0),
+    ('sb', 'sb', 1),
+    ('sb', None, 0),
+    (None, 'no', 0),
+    (None, 'sb', 0),
+    (None, None, 1),
+])
+async def test_subresources(
+        settings, registry, resource, memories, insights, indices, adm_request,
+        handler_sub, request_sub, exp_calls):
+
+    v_mock = Mock()
+    m_mock = Mock()
+
+    @kopf.on.validate(*resource, subresource=handler_sub)
+    def v_fn(**kwargs):
+        v_mock(**kwargs)
+
+    @kopf.on.mutate(*resource, subresource=handler_sub)
+    def m_fn(**kwargs):
+        m_mock(**kwargs)
+
+    adm_request['request']['subResource'] = request_sub
+    adm_request['request']['requestSubResource'] = request_sub
+    response = await serve_admission_request(
+        adm_request,
+        settings=settings, registry=registry, insights=insights,
+        memories=memories, memobase=object(), indices=indices,
+    )
+    assert response['response']['allowed'] is True
+    assert v_mock.call_count == exp_calls
+    assert m_mock.call_count == exp_calls

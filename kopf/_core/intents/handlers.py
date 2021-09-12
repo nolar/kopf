@@ -41,6 +41,7 @@ class WebhookHandler(ResourceHandler):
     fn: callbacks.WebhookFn  # typing clarification
     reason: causes.WebhookType
     operation: Optional[str]
+    subresource: Optional[str]
     persistent: Optional[bool]
     side_effects: Optional[bool]
     ignore_failures: Optional[bool]
