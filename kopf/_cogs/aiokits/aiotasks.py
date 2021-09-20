@@ -38,6 +38,40 @@ else:
         return asyncio.create_task(coro)
 
 
+async def cancel_coro(
+        coro: Coroutine[Any, Any, Any],
+        *,
+        name: Optional[str] = None,
+) -> None:
+    """
+    Cancel the coroutine if the wrapped code block is cancelled or fails.
+
+    All coroutines must be awaited to prevent RuntimeWarnings/ResourceWarnings.
+    As such, we generally need to create a dummy task and cancel it immediately.
+    Despite asyncio tasks are lightweight, they still create an object and thus
+    consume memory. This can be undesired when applied at scale --- e.g.
+    in the multiplexer: when the watcher exits, it cancels all pending workers.
+
+    To save memory, we first try to close the coroutine with no dummy task.
+    As a fallback, the coroutine is cancelled gracefully via a dummy task.
+
+    The context manager should be applied to all async code in the managing
+    (i.e. parent/wrapping) coroutine from the beginning of it till the managed
+    coro is actually awaited and executed.
+    """
+    try:
+        # A dirty (undocumented) way to close a coro, but it saves memory.
+        coro.close()  # OR: coro.throw(asyncio.CancelledError())
+    except AttributeError:
+        # The official way is to create an extra task object, thus to waste some memory.
+        corotask = create_task(coro=coro, name=name)
+        corotask.cancel()
+        try:
+            await corotask
+        except asyncio.CancelledError:
+            pass
+
+
 async def guard(
         coro: Coroutine[Any, Any, Any],
         name: str,
@@ -63,7 +97,11 @@ async def guard(
 
     # Guarded tasks can have prerequisites, which are set in other tasks.
     if flag is not None:
-        await flag.wait()
+        try:
+            await flag.wait()
+        except asyncio.CancelledError:
+            await cancel_coro(coro=coro, name=name)
+            raise
 
     try:
         await coro
