@@ -34,7 +34,7 @@ def pytest_configure(config):
     # Warnings from the testing tools out of our control should not fail the tests.
     config.addinivalue_line('filterwarnings', 'ignore:"@coroutine":DeprecationWarning:asynctest.mock')
     config.addinivalue_line('filterwarnings', 'ignore:The loop argument:DeprecationWarning:aiohttp')
-    config.addinivalue_line('filterwarnings', 'ignore:The loop argument:DeprecationWarning:asyncio.queues')
+    config.addinivalue_line('filterwarnings', 'ignore:The loop argument:DeprecationWarning:asyncio')
 
 
 def pytest_addoption(parser):
