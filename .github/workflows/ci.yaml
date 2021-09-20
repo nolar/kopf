@@ -13,7 +13,7 @@ jobs:
   linters:
     name: Linting and static analysis
     runs-on: ubuntu-20.04
-    timeout-minutes: 2  # usually 0.5-1 mins
+    timeout-minutes: 5  # usually 1-2, rarely 3 mins (because of installations)
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
