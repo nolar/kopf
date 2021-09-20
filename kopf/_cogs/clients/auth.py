@@ -120,7 +120,7 @@ class APIContext:
         context: ssl.SSLContext
         if certificate_path and private_key_path:
             context = ssl.create_default_context(
-                purpose=ssl.Purpose.CLIENT_AUTH,
+                purpose=ssl.Purpose.SERVER_AUTH,
                 cafile=ca_path)
             context.load_cert_chain(
                 certfile=certificate_path,
