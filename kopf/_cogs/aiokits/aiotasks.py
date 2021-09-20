@@ -12,8 +12,8 @@ so there is no added overhead; instead, the implicit overhead is made explicit.
 import asyncio
 import logging
 import sys
-from typing import TYPE_CHECKING, Any, Awaitable, Collection, Coroutine, \
-                   Generator, Optional, Set, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Collection, Coroutine, \
+                   Generator, NamedTuple, Optional, Set, Tuple, TypeVar, Union
 
 _T = TypeVar('_T')
 
@@ -253,3 +253,158 @@ async def all_tasks(
     current_task = asyncio.current_task()
     return {task for task in asyncio.all_tasks()
             if task is not current_task and task not in ignored}
+
+
+class SchedulerJob(NamedTuple):
+    coro: Coroutine[Any, Any, Any]
+    name: Optional[str]
+
+
+class Scheduler:
+    """
+    An scheduler/orchestrator/executor for "fire-and-forget" tasks.
+
+    Coroutines can be spawned via this scheduler and forgotten: no need to wait
+    for them or to check their status --- the scheduler will take care of it.
+
+    It is a simplified equivalent of aiojobs, but compatible with Python 3.10.
+    Python 3.10 removed the explicit event loops (deprecated since Python 3.7),
+    which broke aiojobs. At the same time, aiojobs looks unmaintained
+    and contains no essential changes since July 2019 (i.e. for 2+ years).
+    Hence the necessity to replicate the functionality.
+
+    The scheduler is needed only for internal use and is not exposed to users.
+    It is mainly used in the multiplexer (splitting a single stream of events
+    of a resource kind into multiple queues of individual resource objects).
+    Therefore, many of the features of aiojobs are removed as unnecessary:
+    no individual task/job handling or closing, no timeouts, etc.
+
+    .. note::
+
+        Despite all coros will be wrapped into tasks sooner or later,
+        and despite it is convincing to do this earlier and manage the tasks
+        rather than our own queue of coros+names, do not do this:
+        we want all tasks to refer to their true coros in their reprs,
+        not to wrappers which wait until the running capacity is available.
+    """
+
+    def __init__(
+            self,
+            *,
+            limit: Optional[int] = None,
+            exception_handler: Optional[Callable[[BaseException], None]] = None,
+    ) -> None:
+        super().__init__()
+        self._closed = False
+        self._limit = limit
+        self._exception_handler = exception_handler
+        self._condition = asyncio.Condition()
+        self._pending_coros: asyncio.Queue[SchedulerJob] = asyncio.Queue()
+        self._running_tasks: Set[Task] = set()
+        self._cleaning_queue: asyncio.Queue[Task] = asyncio.Queue()
+        self._cleaning_task = create_task(self._task_cleaner(), name=f"task cleaner of {self!r}")
+        self._spawning_task = create_task(self._task_spawner(), name=f"task spawner of {self!r}")
+
+    def empty(self) -> bool:
+        """ Check if the scheduler has nothing to do. """
+        return self._pending_coros.empty() and not self._running_tasks
+
+    async def wait(self) -> None:
+        """
+        Wait until the scheduler does nothing, i.e. idling (all tasks are done).
+        """
+        async with self._condition:
+            await self._condition.wait_for(self.empty)
+
+    async def close(self) -> None:
+        """
+        Stop accepting new tasks and cancel all running/pending ones.
+        """
+
+        # Ensure that all pending coros are awaited -- to prevent RuntimeWarnings/ResourceWarnings.
+        # But do it via the normal flow, i.e. without exceeding the limit of the scheduler (if any).
+        self._closed = True
+        for task in self._running_tasks:
+            task.cancel()
+
+        # Wait until all tasks are fully done (it can take some time). This also includes
+        # the pending coros, which are spawned and instantly cancelled (to prevent RuntimeWarnings).
+        await self.wait()
+
+        # Cleanup the scheduler's own resources.
+        await stop({self._spawning_task, self._cleaning_task}, title="scheduler", quiet=True)
+
+    async def spawn(
+            self,
+            coro: Coroutine[Any, Any, Any],
+            *,
+            name: Optional[str] = None,
+    ) -> None:
+        """
+        Schedule a coroutine for ownership and eventual execution.
+
+        Coroutine ownership ensures that all "fire-and-forget" coroutines
+        that were passed to the scheduler will be awaited (to prevent warnings),
+        even if the scheduler is closed before the coroutines are started.
+        If a coroutine is added to a closed scheduler, it will be instantly
+        cancelled before raising the scheduler's exception.
+        """
+        if self._closed:
+            await cancel_coro(coro=coro, name=name)
+            raise RuntimeError("Cannot add new coroutines to a closed and inactive scheduler.")
+        async with self._condition:
+            await self._pending_coros.put(SchedulerJob(coro=coro, name=name))
+            self._condition.notify_all()  # -> task_spawner()
+
+    def _can_spawn(self) -> bool:
+        return (not self._pending_coros.empty() and
+                (self._limit is None or len(self._running_tasks) < self._limit))
+
+    async def _task_spawner(self) -> None:
+        """ An internal meta-task to actually start pending coros as tasks. """
+        while True:
+            async with self._condition:
+                await self._condition.wait_for(self._can_spawn)
+
+                # Spawn as many tasks as allowed and as many coros as available at the moment.
+                # Since nothing monitors the tasks "actively", we configure them to report back
+                # when they are finished --- to be awaited and released "passively".
+                while self._can_spawn():
+                    coro, name = self._pending_coros.get_nowait()  # guaranteed by the predicate
+                    task = create_task(coro=coro, name=name)
+                    task.add_done_callback(self._task_done_callback)
+                    self._running_tasks.add(task)
+                    if self._closed:
+                        task.cancel()  # used to await the coros without executing them.
+
+    async def _task_cleaner(self) -> None:
+        """ An internal meta-task to cleanup the actually finished tasks. """
+        while True:
+            task = await self._cleaning_queue.get()
+
+            # Await the task from an outer context to prevent RuntimeWarnings/ResourceWarnings.
+            try:
+                await task
+            except BaseException:
+                pass
+
+            # Ping other tasks to refill the pool of running tasks (or to close the scheduler).
+            async with self._condition:
+                self._running_tasks.discard(task)
+                self._condition.notify_all()  # -> task_spawner() & close()
+
+    def _task_done_callback(self, task: Task) -> None:
+        # When a "fire-and-forget" task is done, release its system resources immediately:
+        # nothing else is going to explicitly "await" for it any time soon, so we must do it.
+        # But since a callback cannot be async, "awaiting" is done in a background utility task.
+        self._running_tasks.discard(task)
+        self._cleaning_queue.put_nowait(task)
+
+        # If failed, initiate a callback defined by the owner of the task (if any).
+        exc: Optional[BaseException]
+        try:
+            exc = task.exception()
+        except asyncio.CancelledError:
+            exc = None
+        if exc is not None and self._exception_handler is not None:
+            self._exception_handler(exc)
