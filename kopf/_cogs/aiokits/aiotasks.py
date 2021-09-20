@@ -7,7 +7,7 @@ as we not only wait for them, but also cancel them.
 
 Anyway, ``asyncio`` wraps all awaitables and coroutines into tasks on almost
 all function calls with multiple awaiables (e.g. :func:`asyncio.wait`),
-so there is no added overhead; intstead, the implicit overhead is made explicit.
+so there is no added overhead; instead, the implicit overhead is made explicit.
 """
 import asyncio
 import logging
