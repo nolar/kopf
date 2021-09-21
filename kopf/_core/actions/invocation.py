@@ -131,7 +131,7 @@ async def invoke(
         # in the task than to have orphan threads which deplete the executor's pool capacity.
         # Cancellation is postponed until the thread exits, but it happens anyway (for consistency).
         # Note: the docs say the result is a future, but typesheds say it is a coroutine => cast()!
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         executor = settings.execution.executor if settings is not None else None
         future = cast(aiotasks.Future, loop.run_in_executor(executor, real_fn))
         cancellation: Optional[asyncio.CancelledError] = None
