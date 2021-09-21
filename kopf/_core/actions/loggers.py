@@ -192,7 +192,8 @@ def configure(
         if not debug:
             logger.handlers[:] = [logging.NullHandler()]
 
-    loop = asyncio.get_event_loop()
+    # Since Python 3.10, get_event_loop() is deprecated, issues a warning. Here is a way around:
+    loop = asyncio.get_event_loop_policy().get_event_loop()
     loop.set_debug(bool(debug))
 
 
