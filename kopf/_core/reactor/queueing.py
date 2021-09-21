@@ -28,22 +28,14 @@ import enum
 import logging
 from typing import TYPE_CHECKING, MutableMapping, NamedTuple, NewType, Optional, Tuple, Union
 
-import aiojobs
-from typing_extensions import Protocol, TypedDict
+from typing_extensions import Protocol
 
-from kopf._cogs.aiokits import aiotoggles
+from kopf._cogs.aiokits import aiotasks, aiotoggles
 from kopf._cogs.clients import watching
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, references
 
 logger = logging.getLogger(__name__)
-
-
-# This should be aiojobs' type, but they do not provide it. So, we simulate it.
-class _aiojobs_Context(TypedDict, total=False):
-    exception: BaseException
-    # message: str
-    # job: aiojobs._job.Job
 
 
 class WatchStreamProcessor(Protocol):
@@ -158,19 +150,18 @@ async def watcher(
     # In case of a failed worker, stop the watcher, and escalate to the operator to stop it.
     watcher_task = asyncio.current_task()
     worker_error: Optional[BaseException] = None
-    def exception_handler(scheduler: aiojobs.Scheduler, context: _aiojobs_Context) -> None:
+    def exception_handler(exc: BaseException) -> None:
         nonlocal worker_error
         if worker_error is None:
-            worker_error = context['exception']
+            worker_error = exc
             if watcher_task is not None:  # never happens, but is needed for type-checking.
                 watcher_task.cancel()
 
     # All per-object workers are handled as fire-and-forget jobs via the scheduler,
     # and communicated via the per-object event queues.
-    scheduler: aiojobs.Scheduler
     signaller = asyncio.Condition()
-    scheduler = await aiojobs.create_scheduler(limit=settings.batching.worker_limit,
-                                               exception_handler=exception_handler)
+    scheduler = aiotasks.Scheduler(limit=settings.batching.worker_limit,
+                                   exception_handler=exception_handler)
     streams: Streams = {}
 
     try:
@@ -214,15 +205,17 @@ async def watcher(
                 streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
                 streams[key].pressure.set()  # interrupt current sleeps, if any.
                 await streams[key].backlog.put(raw_event)
-                await scheduler.spawn(worker(
-                    signaller=signaller,
-                    resource_indexed=resource_object_indexed,
-                    operator_indexed=operator_indexed,
-                    processor=processor,
-                    settings=settings,
-                    streams=streams,
-                    key=key,
-                ))
+                await scheduler.spawn(
+                    name=f'worker for {key}',
+                    coro=worker(
+                        signaller=signaller,
+                        resource_indexed=resource_object_indexed,
+                        operator_indexed=operator_indexed,
+                        processor=processor,
+                        settings=settings,
+                        streams=streams,
+                        key=key,
+                    ))
 
     except asyncio.CancelledError:
         if worker_error is None:
@@ -352,7 +345,7 @@ async def worker(
 async def _wait_for_depletion(
         *,
         signaller: asyncio.Condition,
-        scheduler: aiojobs.Scheduler,
+        scheduler: aiotasks.Scheduler,
         settings: configuration.OperatorSettings,
         streams: Streams,
 ) -> None:
@@ -367,7 +360,7 @@ async def _wait_for_depletion(
     async with signaller:
         try:
             await asyncio.wait_for(
-                signaller.wait_for(lambda: not streams or not scheduler.active_count),
+                signaller.wait_for(lambda: not streams or scheduler.empty()),
                 timeout=settings.batching.exit_timeout)
         except asyncio.TimeoutError:
             pass

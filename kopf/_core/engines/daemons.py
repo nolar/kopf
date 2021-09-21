@@ -29,8 +29,6 @@ import warnings
 from typing import Collection, Dict, Iterable, List, Mapping, \
                    MutableMapping, Optional, Sequence, Set, Union
 
-import aiojobs
-
 from kopf._cogs.aiokits import aiotasks, aiotime, aiotoggles
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, ids, patches
@@ -172,7 +170,7 @@ async def stop_daemons(
 
     * EITHER the operator should block this resource's processing and wait until
       the daemons are terminated -- thus leaking daemon's abstractions and logic
-      and tools (e.g. aiojobs scheduler) to the upper level of processing;
+      and tools (e.g. a task scheduler) to the upper level of processing;
 
     * OR the daemons termination should mimic the change-detection handlers
       and simulate the delays with multiple handling cycles -- in order to
@@ -275,7 +273,7 @@ async def daemon_killer(
     """
     # Unlimited job pool size —- the same as if we would be managing the tasks directly.
     # Unlimited timeout in `close()` -- since we have our own per-daemon timeout management.
-    scheduler: aiojobs.Scheduler = await aiojobs.create_scheduler(limit=None, close_timeout=99999)
+    scheduler = aiotasks.Scheduler()
     try:
         while True:
 
@@ -286,10 +284,12 @@ async def daemon_killer(
             # The daemons remain resumable, since they exit not on their own accord.
             for memory in memories.iter_all_daemon_memories():
                 for daemon in memory.running_daemons.values():
-                    await scheduler.spawn(stop_daemon(
-                        settings=settings,
-                        daemon=daemon,
-                        reason=stoppers.DaemonStoppingReason.OPERATOR_PAUSING))
+                    await scheduler.spawn(
+                        name=f"pausing stopper of {daemon}",
+                        coro=stop_daemon(
+                            settings=settings,
+                            daemon=daemon,
+                            reason=stoppers.DaemonStoppingReason.OPERATOR_PAUSING))
 
             # Stay here while the operator is paused, until it is resumed.
             # The fresh stream of watch-events will spawn new daemons naturally.
@@ -299,10 +299,12 @@ async def daemon_killer(
     finally:
         for memory in memories.iter_all_daemon_memories():
             for daemon in memory.running_daemons.values():
-                await scheduler.spawn(stop_daemon(
-                    settings=settings,
-                    daemon=daemon,
-                    reason=stoppers.DaemonStoppingReason.OPERATOR_EXITING))
+                await scheduler.spawn(
+                    name=f"exiting stopper of {daemon}",
+                    coro=stop_daemon(
+                        settings=settings,
+                        daemon=daemon,
+                        reason=stoppers.DaemonStoppingReason.OPERATOR_EXITING))
         await scheduler.close()
 
 
