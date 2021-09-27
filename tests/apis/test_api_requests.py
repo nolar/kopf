@@ -149,6 +149,9 @@ async def test_direct_timeout_in_requests(
 
     with timer, pytest.raises(asyncio.TimeoutError):
         timeout = aiohttp.ClientTimeout(total=0.1)
+        # aiohttp raises an asyncio.TimeoutError which is automatically retried.
+        # To reduce the test duration we disable retries for this test.
+        settings.networking.error_backoffs = None
         await fn('/url', timeout=timeout, settings=settings, logger=logger)
 
     assert 0.1 < timer.seconds < 0.2
@@ -172,6 +175,9 @@ async def test_settings_timeout_in_requests(
 
     with timer, pytest.raises(asyncio.TimeoutError):
         settings.networking.request_timeout = 0.1
+        # aiohttp raises an asyncio.TimeoutError which is automatically retried.
+        # To reduce the test duration we disable retries for this test.
+        settings.networking.error_backoffs = None
         await fn('/url', settings=settings, logger=logger)
 
     assert 0.1 < timer.seconds < 0.2
@@ -190,6 +196,9 @@ async def test_direct_timeout_in_streams(
 
     with timer, pytest.raises(asyncio.TimeoutError):
         timeout = aiohttp.ClientTimeout(total=0.1)
+        # aiohttp raises an asyncio.TimeoutError which is automatically retried.
+        # To reduce the test duration we disable retries for this test.
+        settings.networking.error_backoffs = None
         async for _ in stream('/url', timeout=timeout, settings=settings, logger=logger):
             pass
 
@@ -209,6 +218,9 @@ async def test_settings_timeout_in_streams(
 
     with timer, pytest.raises(asyncio.TimeoutError):
         settings.networking.request_timeout = 0.1
+        # aiohttp raises an asyncio.TimeoutError which is automatically retried.
+        # To reduce the test duration we disable retries for this test.
+        settings.networking.error_backoffs = None
         async for _ in stream('/url', settings=settings, logger=logger):
             pass
 
