@@ -1,3 +1,5 @@
+import asyncio
+
 import aiohttp.web
 import pytest
 
@@ -86,6 +88,25 @@ async def test_connection_errors_escalate_with_retries(
 
     settings.networking.error_backoffs = [0, 0, 0]
     with pytest.raises(aiohttp.ClientConnectionError):
+        await request('get', '/url', settings=settings, logger=logger)
+
+    assert request_fn.call_count == 4
+    assert_logs([
+        "attempt #1/4 failed; will retry",
+        "attempt #2/4 failed; will retry",
+        "attempt #3/4 failed; will retry",
+        "attempt #4/4 failed; escalating",
+    ])
+
+
+async def test_timeout_errors_escalate_with_retries(
+        caplog, assert_logs, settings, logger, resp_mocker, aresponses, hostname, request_fn):
+    caplog.set_level(0)
+
+    request_fn.side_effect = asyncio.TimeoutError()
+
+    settings.networking.error_backoffs = [0, 0, 0]
+    with pytest.raises(asyncio.TimeoutError):
         await request('get', '/url', settings=settings, logger=logger)
 
     assert request_fn.call_count == 4
