@@ -270,6 +270,61 @@ The default is 0.1 seconds (nearly instant, but not flooding).
         settings.watching.server_timeout = 10 * 60
 
 
+.. _consistency:
+
+Consistency
+===========
+
+Generally, Kopf processes the resource events and updates streamed
+from the Kubernetes API as soon as possible, with no delays or skipping.
+However, high-level change-detection handlers (creation/resume/update/deletion)
+require a consistent state of the resource. _Consistency_ means that all
+patches applied by Kopf itself have arrived back via the watch-stream.
+If Kopf did not patch the resource recently, it is consistent by definition.
+
+The _inconsistent_ states can happen in relatively rare circumstances
+on slow networks (with high latency between operator and api-servers)
+or under high load (high number of resources or changes), especially when
+an unrelated application or another operator patches the resources on their own.
+
+Handling the _inconsistent_ states could cause double-processing
+(i.e. double handler execution) and some other undesired side effects.
+To prevent handling the inconsistent states, all state-dependent handlers
+wait the _consistency_ is reached via one of the following two ways:
+
+* The expected resource version from the PATCH API operation arrives
+  via the watch-stream of the resource within the specified time window.
+* The expected resource version from the PATCH API operation does not arrive
+  via the watch-stream within the specified time window, in which case
+  Kopf assumes the consistency after the time window ends,
+  and the processing continues as if the version has arrived,
+  possibly causing the mentioned side-effects.
+
+The time window is measured relative to the time of the latest ``PATCH`` call.
+The timeout should be long enough to assume that if the expected resource
+version did not arrive within the specified time, it will never arrive.
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.persistence.consistency_timeout = 10
+
+The default value (5 seconds) aims to the safest scenario out of the box.
+
+The value of ``0`` will effectively disable the consistency tracking
+and declare all resource states as consistent -- even if they are not.
+Use this with care -- e.g., with self-made persistence storages instead of
+Kopf's annotations (see :ref:`progress-storing` and :ref:`diffbase-storing`).
+
+The consistency timeout does not affect low-level handlers with no persistence,
+such as ``@kopf.on.event``, ``@kopf.index``, ``@kopf.daemon``, ``@kopf.timer``
+-- these handlers run for each and every watch-event with no delay
+(if they match the :doc:`filters <filters>`, of course).
+
+
 Finalizers
 ==========
 

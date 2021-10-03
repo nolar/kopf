@@ -214,7 +214,8 @@ class BatchingSettings:
 
     idle_timeout: float = 5.0
     """
-    How soon an idle worker is exited and garbage-collected if no events arrive.
+    How soon an idle worker exits and lets the garbage collector to purge itself
+    if no new events arrive from the watch-stream for that resource object.
     """
 
     batch_window: float = 0.1
@@ -385,6 +386,13 @@ class PersistenceSettings:
         default_factory=diffbase.AnnotationsDiffBaseStorage)
     """
     How the resource's essence (non-technical, contentful fields) are stored.
+    """
+
+    consistency_timeout: float = 5.0
+    """
+    For how long a patched resource version is awaited (seconds).
+
+    See :ref:`consistency` for detailed explanation.
     """
 
 

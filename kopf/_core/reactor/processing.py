@@ -15,8 +15,9 @@ and therefore do not trigger the user-defined handlers.
 """
 import asyncio
 from collections.abc import Collection
+from typing import NamedTuple
 
-from kopf._cogs.aiokits import aiotoggles
+from kopf._cogs.aiokits import aiotime, aiotoggles
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, diffs, ephemera, finalizers, patches, references
 from kopf._core.actions import application, execution, lifecycles, loggers, progression, throttlers
@@ -38,7 +39,8 @@ async def process_resource_event(
         stream_pressure: asyncio.Event | None = None,  # None for tests
         resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
         operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
-) -> None:
+        consistency_time: float | None = None,  # None for tests
+) -> str | None:  # patched resource version, if patched
     """
     Handle a single custom object low-level watch-event.
 
@@ -105,7 +107,7 @@ async def process_resource_event(
             if operator_indexed is not None:
                 await operator_indexed.wait_for(True)  # other resource kinds & objects.
             if stream_pressure is not None and stream_pressure.is_set():
-                return
+                return None
 
             # Do the magic -- do the job.
             delays, matched = await process_resource_causes(
@@ -120,13 +122,15 @@ async def process_resource_event(
                 memory=memory,
                 local_logger=local_logger,
                 event_logger=event_logger,
+                stream_pressure=stream_pressure,
+                consistency_time=consistency_time,
             )
 
             # Whatever was done, apply the accumulated changes to the object, or sleep-n-touch for delays.
             # But only once, to reduce the number of API calls and the generated irrelevant events.
             # And only if the object is at least supposed to exist (not "GONE"), even if actually does not.
             if raw_event['type'] != 'DELETED':
-                applied = await application.apply(
+                applied, resource_version = await application.apply(
                     settings=settings,
                     resource=resource,
                     body=body,
@@ -137,10 +141,17 @@ async def process_resource_event(
                 )
                 if applied and matched:
                     local_logger.debug("Handling cycle is finished, waiting for new changes.")
+                return resource_version
+    return None
 
 
-async def process_resource_causes(
-        lifecycle: execution.LifeCycleFn,
+class _Causes(NamedTuple):
+    watching_cause: causes.WatchingCause | None
+    spawning_cause: causes.SpawningCause | None
+    changing_cause: causes.ChangingCause | None
+
+
+def _detect_causes(
         indexers: indexing.OperatorIndexers,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
@@ -151,7 +162,8 @@ async def process_resource_causes(
         memory: inventory.ResourceMemory,
         local_logger: loggers.ObjectLogger,
         event_logger: loggers.ObjectLogger,
-) -> tuple[Collection[float], bool]:
+) -> _Causes:
+    """Detect what are we going to do (or to skip) on this processing cycle."""
 
     finalizer = settings.persistence.finalizer
     extra_fields = (
@@ -165,7 +177,6 @@ async def process_resource_causes(
     new = settings.persistence.progress_storage.clear(essence=new) if new is not None else None
     diff = diffs.diff(old, new)
 
-    # Detect what are we going to do on this processing cycle.
     watching_cause = causes.detect_watching_cause(
         raw_event=raw_event,
         resource=resource,
@@ -201,6 +212,58 @@ async def process_resource_causes(
         initial=memory.noticed_by_listing and not memory.fully_handled_once,
     ) if registry._changing.has_handlers(resource=resource) else None
 
+    return _Causes(watching_cause, spawning_cause, changing_cause)
+
+
+async def process_resource_causes(
+        lifecycle: execution.LifeCycleFn,
+        indexers: indexing.OperatorIndexers,
+        registry: registries.OperatorRegistry,
+        settings: configuration.OperatorSettings,
+        resource: references.Resource,
+        raw_event: bodies.RawEvent,
+        body: bodies.Body,
+        patch: patches.Patch,
+        memory: inventory.ResourceMemory,
+        local_logger: loggers.ObjectLogger,
+        event_logger: loggers.ObjectLogger,
+        stream_pressure: asyncio.Event | None,  # None for tests
+        consistency_time: float | None,
+) -> tuple[Collection[float], bool]:
+    finalizer = settings.persistence.finalizer
+    watching_cause, spawning_cause, changing_cause = _detect_causes(
+        indexers=indexers,
+        registry=registry,
+        settings=settings,
+        resource=resource,
+        raw_event=raw_event,
+        body=body,
+        patch=patch,
+        memory=memory,
+        local_logger=local_logger,
+        event_logger=event_logger,
+    )
+
+    # Invoke all the handlers that should or could be invoked at this processing cycle.
+    # The low-level spies go ASAP always. However, the daemons are spawned before the high-level
+    # handlers and killed after them: the daemons should live throughout the full object lifecycle.
+    if watching_cause is not None:
+        await process_watching_cause(
+            lifecycle=lifecycles.all_at_once,
+            registry=registry,
+            settings=settings,
+            cause=watching_cause,
+        )
+
+    spawning_delays: Collection[float] = []
+    if spawning_cause is not None:
+        spawning_delays = await process_spawning_cause(
+            registry=registry,
+            settings=settings,
+            memory=memory,
+            cause=spawning_cause,
+        )
+
     # If there are any handlers for this resource kind in general, but not for this specific object
     # due to filters, then be blind to it, store no state, and log nothing about the handling cycle.
     if changing_cause is not None and not registry._changing.prematch(cause=changing_cause):
@@ -234,26 +297,23 @@ async def process_resource_causes(
         finalizers.allow_deletion(body=body, patch=patch, finalizer=finalizer)
         changing_cause = None  # prevent further high-level processing this time
 
-    # Invoke all the handlers that should or could be invoked at this processing cycle.
-    # The low-level spies go ASAP always. However, the daemons are spawned before the high-level
-    # handlers and killed after them: the daemons should live throughout the full object lifecycle.
-    if watching_cause is not None:
-        await process_watching_cause(
-            lifecycle=lifecycles.all_at_once,
-            registry=registry,
-            settings=settings,
-            cause=watching_cause,
-        )
+    # If the state is inconsistent (yet), wait for new events in a hope that they bring consistency.
+    # If the wait exceeds its time and no new consistent events arrive, then fake the consistency.
+    # However, if a patch is accumulated by now, skip waiting and apply it instantly (by exiting).
+    # In that case, we are guaranteed to be inconsistent, so also skip the state-dependent handlers.
+    # Never release the object (i.e., remove the finalizer) in the inconsistent state, always wait.
+    consistency_is_required = changing_cause is not None
+    consistency_is_achieved = consistency_time is None  # i.e. preexisting consistency
+    if consistency_is_required and not consistency_is_achieved and not patch and consistency_time:
+        loop = asyncio.get_running_loop()
+        unslept = await aiotime.sleep(consistency_time - loop.time(), wakeup=stream_pressure)
+        consistency_is_achieved = unslept is None  # "woke up" vs. "timed out"
+    if consistency_is_required and not consistency_is_achieved:
+        return list(spawning_delays), False  # exit to PATCHing and/or re-iterating over new events.
 
-    spawning_delays: Collection[float] = []
-    if spawning_cause is not None:
-        spawning_delays = await process_spawning_cause(
-            registry=registry,
-            settings=settings,
-            memory=memory,
-            cause=spawning_cause,
-        )
-
+    # Now, the consistency is either pre-proven (by receiving or not expecting any resource version)
+    # or implied (by exceeding the allowed consistency-waiting timeout while getting no new events).
+    # So we can go for state-dependent handlers (change detection requires a consistent state).
     changing_delays: Collection[float] = []
     if changing_cause is not None:
         changing_delays = await process_changing_cause(

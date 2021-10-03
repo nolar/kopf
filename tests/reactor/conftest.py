@@ -16,7 +16,7 @@ def _autouse_resp_mocker(resp_mocker):
 @pytest.fixture()
 def processor():
     """ A mock for processor -- to be checked if the handler has been called. """
-    return AsyncMock()
+    return AsyncMock(return_value=None)
 
 
 @pytest.fixture()
@@ -41,27 +41,23 @@ def watcher_limited(mocker, settings):
 
 
 @pytest.fixture()
-async def watcher_in_background(settings, resource, worker_spy, stream):
-
-    # Prevent remembering the streaming objects in the mocks.
-    async def do_nothing(*args, **kwargs):
-        pass
+async def watcher_in_background(settings, resource, worker_spy, stream, namespace, processor):
 
     # Prevent any real streaming for the very beginning, before it even starts.
     stream.feed([], namespace=None)
 
     # Spawn a watcher in the background.
     coro = watcher(
-        namespace=None,
+        namespace=namespace,
         resource=resource,
         settings=settings,
-        processor=do_nothing,
+        processor=processor,
     )
     task = asyncio.create_task(coro)
 
     try:
         # Go for a test.
-        yield task
+        yield
     finally:
         # Terminate the watcher to cleanup the loop.
         task.cancel()

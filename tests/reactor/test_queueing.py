@@ -98,69 +98,6 @@ async def test_watchevent_demultiplexing(worker_mock, looptime, resource, proces
                    for queue_event in queue_events[:-1])
 
 
-@pytest.mark.parametrize('uids, vals, events', [
-
-    pytest.param(['uid1'], ['b'], [
-        {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid1'}, 'spec': 'a'}},
-        {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid1'}, 'spec': 'b'}},
-    ], id='the same'),
-
-    pytest.param(['uid1', 'uid2'], ['a', 'b'], [
-        {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid1'}, 'spec': 'a'}},
-        {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid2'}, 'spec': 'b'}},
-    ], id='distinct'),
-
-    pytest.param(['uid1', 'uid2', 'uid3'], ['e', 'd', 'f'], [
-        {'type': 'ADDED', 'object': {'metadata': {'uid': 'uid1'}, 'spec': 'a'}},
-        {'type': 'ADDED', 'object': {'metadata': {'uid': 'uid2'}, 'spec': 'b'}},
-        {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid1'}, 'spec': 'c'}},
-        {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid2'}, 'spec': 'd'}},
-        {'type': 'DELETED', 'object': {'metadata': {'uid': 'uid1'}, 'spec': 'e'}},
-        {'type': 'DELETED', 'object': {'metadata': {'uid': 'uid3'}, 'spec': 'f'}},
-    ], id='mixed'),
-
-])
-@pytest.mark.usefixtures('watcher_limited')
-async def test_watchevent_batching(settings, resource, processor,
-                                   stream, events, uids, vals, looptime):
-    """ Verify that only the last event per uid is actually handled. """
-
-    # Override the default timeouts to make the tests faster.
-    settings.batching.idle_timeout = 999  # should not be involved, fail if it is
-    settings.batching.exit_timeout = 999  # should exit instantly, fail if it didn't
-    settings.batching.batch_window = 123  # the time period being tested
-
-    # Inject the events of unique objects - to produce a few streams/workers.
-    stream.feed(events, namespace=None)
-    stream.close(namespace=None)
-
-    # Run the watcher (near-instantly and test-blocking).
-    await watcher(
-        namespace=None,
-        resource=resource,
-        settings=settings,
-        processor=processor,
-    )
-
-    # Should be batched strictly once (never twice). Note: multiple uids run concurrently,
-    # so they all are batched in parallel, and the timing remains the same.
-    assert looptime == 123
-
-    # Was the processor called at all? Awaited as needed for async fns?
-    assert processor.await_count > 0
-
-    # Was it called only once per uid? Only with the latest event?
-    # Note: the calls can be in arbitrary order, not as we expect then.
-    assert processor.call_count == len(uids)
-    assert processor.call_count == len(vals)
-    expected_uid_val_pairs = set(zip(uids, vals))
-    actual_uid_val_pairs = {(
-            kwargs['raw_event']['object']['metadata']['uid'],
-            kwargs['raw_event']['object']['spec'])
-            for args, kwargs in processor.call_args_list}
-    assert actual_uid_val_pairs == expected_uid_val_pairs
-
-
 @pytest.mark.parametrize('unique, events', [
 
     pytest.param(1, [
@@ -177,7 +114,7 @@ async def test_watchevent_batching(settings, resource, processor,
 ])
 @pytest.mark.usefixtures('watcher_in_background')
 async def test_garbage_collection_of_streams(
-        settings, stream, events, unique, worker_spy, namespace
+        settings, stream, events, unique, worker_spy, namespace, processor
 ):
 
     # Override the default timeouts to make the tests faster.
@@ -187,8 +124,8 @@ async def test_garbage_collection_of_streams(
     settings.watching.reconnect_backoff = 100  # to prevent src depletion
 
     # Inject the events of unique objects - to produce a few streams/workers.
-    stream.feed(events, namespace=None)
-    stream.close(namespace=None)
+    stream.feed(events, namespace=namespace)
+    stream.close(namespace=namespace)
 
     # Give it a moment to populate the streams and spawn all the workers.
     # Intercept and remember _any_ seen dict of streams for further checks.
@@ -221,6 +158,9 @@ async def test_garbage_collection_of_streams(
     # Let the workers to actually exit and gc their local scopes with variables.
     # The jobs can take a tiny moment more, but this is noticeable in the tests.
     await asyncio.sleep(0)
+
+    # Release all remembered "pressure" events & other arguments passed to a processor.
+    processor.reset_mock()
 
     # For PyPy: force the gc! (GC can be delayed in PyPy, unlike in CPython.)
     # https://doc.pypy.org/en/latest/cpython_differences.html#differences-related-to-garbage-collection-strategies
