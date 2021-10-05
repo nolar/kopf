@@ -35,6 +35,7 @@ def pytest_configure(config):
     config.addinivalue_line('filterwarnings', 'ignore:"@coroutine":DeprecationWarning:asynctest.mock')
     config.addinivalue_line('filterwarnings', 'ignore:The loop argument:DeprecationWarning:aiohttp')
     config.addinivalue_line('filterwarnings', 'ignore:The loop argument:DeprecationWarning:asyncio')
+    config.addinivalue_line('filterwarnings', 'ignore:is deprecated, use current_thread:DeprecationWarning:threading')
 
 
 def pytest_addoption(parser):
