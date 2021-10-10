@@ -14,7 +14,8 @@ freezegun
 import-linter
 isort>=5.5.0
 lxml
-mypy==0.910
+# Mypy requires typed-ast, which is broken on PyPy 3.7 (could work in PyPy 3.8).
+mypy==0.910; implementation_name == "cpython"
 pre-commit
 pyngrok
 pytest>=6.0.0

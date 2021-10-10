@@ -16,6 +16,7 @@ by checking that they are not multiplexed into workers.
 """
 import asyncio
 import contextlib
+import gc
 import weakref
 
 import async_timeout
@@ -223,6 +224,10 @@ async def test_garbage_collection_of_streams(settings, stream, events, unique, w
     # Let the workers to actually exit and gc their local scopes with variables.
     # The jobs can take a tiny moment more, but this is noticeable in the tests.
     await asyncio.sleep(0.1)
+
+    # For PyPy: force the gc! (GC can be delayed in PyPy, unlike in CPython.)
+    # https://doc.pypy.org/en/latest/cpython_differences.html#differences-related-to-garbage-collection-strategies
+    gc.collect()
 
     # Truly garbage-collected? Memory freed?
     assert all([ref() is None for ref in refs])

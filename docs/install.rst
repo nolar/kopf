@@ -4,6 +4,10 @@ Installation
 
 .. highlight:: bash
 
+Prerequisites:
+
+* Python >= 3.7 (CPython and PyPy are officially tested and supported).
+
 To install Kopf::
 
     pip install kopf

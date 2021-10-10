@@ -160,9 +160,11 @@ class WebhookServer:
         runner = aiohttp.web.AppRunner(app, handle_signals=False)
         await runner.setup()
         try:
+            # Note: reuse_port is mostly (but not only) for fast-running tests with SSL sockets;
+            # multi-threaded sockets are not really used -- high load is not expected for webhooks.
             addr = self.addr or None  # None is aiohttp's "any interface"
             port = self.port or self._allocate_free_port()
-            site = aiohttp.web.TCPSite(runner, addr, port, ssl_context=context)
+            site = aiohttp.web.TCPSite(runner, addr, port, ssl_context=context, reuse_port=True)
             await site.start()
 
             # Log with the actual URL: normalised, with hostname/port set.

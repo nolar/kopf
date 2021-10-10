@@ -71,6 +71,33 @@ jobs:
           flags: unit
           env_vars: PYTHON
 
+  # Only the core functionality is tested: no e2e or functional tests (for simplicity).
+  # No coverage: PyPy performs extremely poorly with tracing/coverage (13 mins vs. 3 mins).
+  # Extra time: 2-3 mins for building the dependencies (since no binary wheels are available).
+  # Extra time: PyPy is good with JIT for repetitive code; tests are too unique for JIT.
+  pypy-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        install-extras: [ "", "full-auth" ]
+        python-version: [ "pypy-3.7" ]
+    name: Python ${{ matrix.python-version }} ${{ matrix.install-extras }}
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - run: sudo apt-get update && sudo apt-get install libxml2-dev libxslt-dev
+      - run: pip install wheel
+
+      - run: pip install -r requirements.txt
+      - run: pip install -e .[${{ matrix.install-extras }}]
+        if: ${{ matrix.install-extras }}
+      - run: pytest --color=yes --no-cov
+
   functional:
     strategy:
       fail-fast: false
