@@ -82,7 +82,7 @@ class FlagWaiter(Generic[FlagReasonT]):
         self._setter = setter
 
     def __repr__(self) -> str:
-        return repr(self._setter)
+        return f'<{self.__class__.__name__}: {self.is_set()}, reason={self.reason}>'
 
     def __bool__(self) -> bool:
         return self._setter.is_set()
