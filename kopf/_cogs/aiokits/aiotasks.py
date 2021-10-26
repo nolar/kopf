@@ -321,8 +321,7 @@ class Scheduler:
         Stop accepting new tasks and cancel all running/pending ones.
         """
 
-        # Ensure that all pending coros are awaited -- to prevent RuntimeWarnings/ResourceWarnings.
-        # But do it via the normal flow, i.e. without exceeding the limit of the scheduler (if any).
+        # Running tasks are cancelled here. Pending tasks are cancelled at actual spawning.
         self._closed = True
         for task in self._running_tasks:
             task.cancel()
