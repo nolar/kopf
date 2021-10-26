@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import time
 import unittest.mock
 
@@ -90,12 +91,11 @@ async def background_daemon_killer(settings, memories, operator_paused):
     """
     task = asyncio.create_task(daemon_killer(
         settings=settings, memories=memories, operator_paused=operator_paused))
-    yield
-    task.cancel()
-    try:
+    yield task
+
+    with contextlib.suppress(asyncio.CancelledError):
+        task.cancel()
         await task
-    except asyncio.CancelledError:
-        pass
 
 
 @pytest.fixture()

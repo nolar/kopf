@@ -305,6 +305,7 @@ async def daemon_killer(
                         settings=settings,
                         daemon=daemon,
                         reason=stoppers.DaemonStoppingReason.OPERATOR_EXITING))
+        await scheduler.wait()  # prevent insta-cancelling our own coros (daemon stoppers).
         await scheduler.close()
 
 
