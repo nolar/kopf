@@ -13,7 +13,7 @@ from typing_extensions import Literal, TypedDict
 from kopf._cogs.aiokits import aiovalues
 from kopf._cogs.clients import creating, errors, patching
 from kopf._cogs.configs import configuration
-from kopf._cogs.structs import bodies, ephemera, ids, patches, references, reviews
+from kopf._cogs.structs import bodies, diffs, ephemera, ids, patches, references, reviews
 from kopf._core.actions import execution, lifecycles, loggers, progression
 from kopf._core.intents import causes, filters, handlers, registries
 
@@ -126,6 +126,9 @@ async def serve_admission_request(
 
     memo = await memories.recall_memo(raw_body, memobase=memobase, ephemeral=operation=='CREATE')
     body = bodies.Body(raw_body)
+    old = bodies.Body(old_body) if old_body is not None else None
+    new = bodies.Body(new_body) if new_body is not None else None
+    diff = diffs.diff(old, new)
     patch = patches.Patch(body=raw_body)
     warnings: List[str] = []
     cause = causes.WebhookCause(
@@ -144,6 +147,9 @@ async def serve_admission_request(
         headers=headers if headers is not None else {},  # ensure a mapping even if not provided.
         webhook=webhook,
         reason=reason,
+        old=old,
+        new=new,
+        diff=diff,
     )
 
     # Retrieve the handlers to be executed; maybe only one if the webhook server provides a hint.
