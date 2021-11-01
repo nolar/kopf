@@ -22,6 +22,8 @@ class _UNSET(enum.Enum):
 def append_owner_reference(
         objs: K8sObjects,
         owner: Optional[bodies.Body] = None,
+        controller: Optional[bool] = True,
+        block_owner_deletion: Optional[bool] = True,
 ) -> None:
     """
     Append an owner reference to the resource(s), if it is not yet there.
@@ -30,7 +32,7 @@ def append_owner_reference(
     so the whole body can be modified, no patches are needed.
     """
     real_owner = _guess_owner(owner)
-    owner_ref = bodies.build_owner_reference(real_owner)
+    owner_ref = bodies.build_owner_reference(real_owner, controller, block_owner_deletion)
     for obj in cast(Iterator[K8sObject], dicts.walk(objs)):
         # Pykube is yielded as a usual dict, no need to specially treat it.
         if isinstance(obj, collections.abc.MutableMapping):
