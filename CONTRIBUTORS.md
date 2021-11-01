@@ -8,6 +8,7 @@ and [Historic GitHub Contributors](https://github.com/zalando-incubator/kopf/gra
 
 ## Contributors sorted alphabetically
 
+- [Anthony Nash](https://github.com/nashant)
 - [Daniel Middlecote](https://github.com/dlmiddlecote)
 - [Henning Jacobs](https://github.com/hjacobs)
 - [Clement Liaw](https://github.com/iexalt)
