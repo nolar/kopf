@@ -27,7 +27,9 @@ OWNER = RawBody(
 def test_appending_to_dict():
     obj = {}
 
-    kopf.append_owner_reference(obj, owner=Body(OWNER))
+    kopf.append_owner_reference(
+        obj, owner=Body(OWNER), controller=False, block_owner_deletion=False
+    )
 
     assert 'metadata' in obj
     assert 'ownerReferences' in obj['metadata']
@@ -38,6 +40,8 @@ def test_appending_to_dict():
     assert obj['metadata']['ownerReferences'][0]['kind'] == OWNER_KIND
     assert obj['metadata']['ownerReferences'][0]['name'] == OWNER_NAME
     assert obj['metadata']['ownerReferences'][0]['uid'] == OWNER_UID
+    assert obj['metadata']['ownerReferences'][0]['controller'] == False
+    assert obj['metadata']['ownerReferences'][0]['blockOwnerDeletion'] == False
 
 
 def test_appending_to_dicts(multicls):
