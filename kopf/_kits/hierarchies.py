@@ -22,6 +22,7 @@ class _UNSET(enum.Enum):
 def append_owner_reference(
         objs: K8sObjects,
         owner: Optional[bodies.Body] = None,
+        *,
         controller: Optional[bool] = True,
         block_owner_deletion: Optional[bool] = True,
 ) -> None:
