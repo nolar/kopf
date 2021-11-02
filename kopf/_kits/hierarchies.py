@@ -33,7 +33,9 @@ def append_owner_reference(
     so the whole body can be modified, no patches are needed.
     """
     real_owner = _guess_owner(owner)
-    owner_ref = bodies.build_owner_reference(real_owner, controller, block_owner_deletion)
+    owner_ref = bodies.build_owner_reference(
+        real_owner, controller=controller, block_owner_deletion=block_owner_deletion
+    )
     for obj in cast(Iterator[K8sObject], dicts.walk(objs)):
         # Pykube is yielded as a usual dict, no need to specially treat it.
         if isinstance(obj, collections.abc.MutableMapping):
