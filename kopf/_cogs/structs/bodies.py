@@ -266,4 +266,4 @@ def build_owner_reference(
         name=body.get('metadata', {}).get('name'),
         uid=body.get('metadata', {}).get('uid'),
     )
-    return cast(OwnerReference, {key: val for key, val in ref.items() if val})
+    return cast(OwnerReference, {key: val for key, val in ref.items() if val is not None})
