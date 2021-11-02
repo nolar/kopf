@@ -246,6 +246,7 @@ def build_object_reference(
 
 def build_owner_reference(
         body: Body,
+        *,
         controller: Optional[bool] = True,
         block_owner_deletion: Optional[bool] = True,
 ) -> OwnerReference:
