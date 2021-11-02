@@ -13,7 +13,7 @@ async def test_no_triggering():
     try:
 
         with pytest.raises(asyncio.TimeoutError):
-            with async_timeout.timeout(0.1) as timeout:
+            async with async_timeout.timeout(0.1) as timeout:
                 async with target:
                     await target.wait()
 
@@ -36,7 +36,7 @@ async def test_triggering(event_loop, timer):
 
         event_loop.call_later(0.1, asyncio.create_task, delayed_trigger())
 
-        with timer, async_timeout.timeout(10) as timeout:
+        async with timer, async_timeout.timeout(10) as timeout:
             async with target:
                 await target.wait()
 
