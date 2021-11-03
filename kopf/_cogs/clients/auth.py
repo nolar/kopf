@@ -7,6 +7,7 @@ from contextvars import ContextVar
 from typing import Any, Callable, Dict, Iterator, Mapping, Optional, TypeVar, cast
 
 import aiohttp
+import aiohttp.tcp_helpers
 
 from kopf._cogs.clients import errors
 from kopf._cogs.helpers import versions
@@ -52,6 +53,29 @@ def authenticated(fn: _F) -> _F:
         raise RuntimeError("Reached an impossible state: the end of the authentication cycle.")
 
     return cast(_F, wrapper)
+
+
+class KeepaliveTCPConnector(aiohttp.TCPConnector):
+    """
+    Ensure that all outgoing connections have keep-alive enabled.
+
+    This should prevent watch-streams from hanging without reconnection.
+    The _unproven_ suspicion is that RST packets issued by API servers
+    are not delivered back to the operator (as a client of the API)
+    if the API servers are behind a load balancer/proxy or maybe NAT.
+    Without being properly disconnected, Kopf/aiohttp honestly believes
+    that the stream is alive but simply empty -- for minutes or even hours.
+
+    It is not necessary for short-lived connections (regular GETs),
+    but goes as a side-effect (can be removed if keepalives bring issues).
+    """
+    __slots__ = ()
+
+    async def _create_connection(self, req: Any, traces: Any, timeout: Any) -> Any:
+        proto = await super()._create_connection(req, traces, timeout)
+        if proto.transport is not None:  # for type-checkers (it is always set actually)
+            aiohttp.tcp_helpers.tcp_keepalive(proto.transport)
+        return proto
 
 
 class APIContext:
@@ -154,7 +178,7 @@ class APIContext:
 
         # Generic aiohttp session based on the constructed credentials.
         self.session = aiohttp.ClientSession(
-            connector=aiohttp.TCPConnector(
+            connector=KeepaliveTCPConnector(
                 limit=0,
                 ssl=context,
             ),
