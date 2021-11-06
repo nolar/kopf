@@ -457,7 +457,7 @@ for diff-base storage, apply this configuration:
 
     @kopf.on.startup()
     def configure(settings: kopf.OperatorSettings, **_):
-        settings.persistence.diffbase_storage = kopf.MiltiDiffBaseStorage([
+        settings.persistence.diffbase_storage = kopf.MultiDiffBaseStorage([
             kopf.StatusDiffBaseStorage(field='status.diff-base'),
             kopf.AnnotationsDiffBaseStorage(prefix='kopf.zalando.org', key='last-handled-configuration'),
         ])
