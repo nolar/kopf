@@ -153,13 +153,15 @@ class WebhookCause(ResourceCause):
     warnings: List[str]  # mutable!
     operation: Optional[reviews.Operation]  # None if not provided for some reason
     subresource: Optional[str]  # e.g. "status", "scale"; None for the main resource body
+    old: Optional[bodies.Body] = None
+    new: Optional[bodies.Body] = None
+    diff: Optional[diffs.Diff] = None
 
     @property
     def _kwargs(self) -> Mapping[str, Any]:
         kwargs = dict(super()._kwargs)
         del kwargs['reason']
         del kwargs['webhook']
-        del kwargs['operation']
         return kwargs
 
 

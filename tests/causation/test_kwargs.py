@@ -6,6 +6,7 @@ from unittest.mock import Mock
 import pytest
 
 from kopf._cogs.configs.configuration import OperatorSettings
+from kopf._cogs.structs import diffs
 from kopf._cogs.structs.bodies import Body, BodyEssence
 from kopf._cogs.structs.diffs import Diff
 from kopf._cogs.structs.ephemera import Memo
@@ -85,13 +86,16 @@ def test_admission_kwargs(resource, attr):
         reason=None,
         operation=None,
         subresource=None,
+        new=BodyEssence(body),
+        old=None,
+        diff=diffs.diff(BodyEssence(body), None),
     )
     kwargs = getattr(cause, attr)  # cause.kwargs / cause.sync_kwargs / cause.async_kwargs
     assert set(kwargs) == {'logger', 'resource',
                            'dryrun', 'headers', 'sslpeer', 'userinfo', 'warnings', 'subresource',
                            'patch', 'memo',
                            'body', 'spec', 'status', 'meta', 'uid', 'name', 'namespace',
-                           'labels', 'annotations'}
+                           'labels', 'annotations', 'old', 'new', 'diff', 'operation'}
     assert kwargs['resource'] is cause.resource
     assert kwargs['logger'] is cause.logger
     assert kwargs['dryrun'] is cause.dryrun
@@ -110,6 +114,10 @@ def test_admission_kwargs(resource, attr):
     assert kwargs['uid'] == cause.body.metadata.uid
     assert kwargs['name'] == cause.body.metadata.name
     assert kwargs['namespace'] == cause.body.metadata.namespace
+    assert kwargs['operation'] == cause.operation
+    assert kwargs['new'] == cause.new
+    assert kwargs['old'] == cause.old
+    assert kwargs['diff'] == cause.diff
 
 
 @pytest.mark.parametrize('attr', ['kwargs', 'sync_kwargs', 'async_kwargs'])
