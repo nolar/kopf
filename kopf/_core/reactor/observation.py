@@ -316,7 +316,7 @@ def _disable_unsuitable_resources(
 
     # For both watching & patching, only look at watched resources, ignore webhook-only resources.
     nonwatchable_resources = {resource for resource in resources
-                              if 'watch' not in resource.verbs and 'list' not in resource.verbs}
+                              if 'watch' not in resource.verbs or 'list' not in resource.verbs}
     nonpatchable_resources = {resource for resource in resources
                               if 'patch' not in resource.verbs} - nonwatchable_resources
 
