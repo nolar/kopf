@@ -62,6 +62,7 @@ jobs:
         run: coveralls --service=github
         env:
           GITHUB_TOKEN: ${{ secrets.github_token }}
+        continue-on-error: true
       - name: Publish coverage to CodeCov.io
         uses: codecov/codecov-action@v1
         if: success()
@@ -70,6 +71,7 @@ jobs:
         with:
           flags: unit
           env_vars: PYTHON
+        continue-on-error: true
 
   # Only the core functionality is tested: no e2e or functional tests (for simplicity).
   # No coverage: PyPy performs extremely poorly with tracing/coverage (13 mins vs. 3 mins).
@@ -80,7 +82,7 @@ jobs:
       fail-fast: false
       matrix:
         install-extras: [ "", "full-auth" ]
-        python-version: [ "pypy-3.7" ]
+        python-version: [ "pypy-3.7", "pypy-3.8" ]
     name: Python ${{ matrix.python-version }} ${{ matrix.install-extras }}
     runs-on: ubuntu-20.04
     timeout-minutes: 10
@@ -139,7 +141,7 @@ jobs:
 
   coveralls-finish:
     name: Finalize coveralls.io
-    needs: [unit-tests, functional]
+    needs: [unit-tests, pypy-tests, functional]
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/setup-python@v2
@@ -147,3 +149,4 @@ jobs:
       - run: coveralls --service=github --finish
         env:
           GITHUB_TOKEN: ${{ secrets.github_token }}
+        continue-on-error: true
