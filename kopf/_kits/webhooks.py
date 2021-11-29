@@ -22,6 +22,7 @@ from kopf._cogs.clients import api, scanning
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import reviews
 from kopf._core.engines import admission
+from kopf._kits import webhacks
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class MissingDependencyError(ImportError):
     """ A server/tunnel is used which requires an optional dependency. """
 
 
-class WebhookServer:
+class WebhookServer(webhacks.WebhookContextManager):
     """
     A local HTTP/HTTPS endpoint.
 
@@ -438,7 +439,7 @@ class WebhookMinikubeServer(WebhookServer):
     DEFAULT_HOST = 'host.minikube.internal'
 
 
-class WebhookNgrokTunnel:
+class WebhookNgrokTunnel(webhacks.WebhookContextManager):
     """
     Tunnel admission webhook request via an external tunnel: ngrok_.
 
@@ -518,27 +519,29 @@ class WebhookNgrokTunnel:
             ngrok.set_auth_token(self.token)
 
         # Ngrok only supports HTTP with a free plan; HTTPS requires a paid subscription.
-        local_server = WebhookServer(addr=self.addr, port=self.port, path=self.path, insecure=True)
         tunnel: Optional[ngrok.NgrokTunnel] = None
         loop = asyncio.get_running_loop()
-        try:
-            async for client_config in local_server(fn):
+        async with WebhookServer(addr=self.addr, port=self.port,
+                                 path=self.path, insecure=True) as server:
+            # TODO: inverse try & async for?
+            try:
+                async for client_config in server(fn):
 
-                # Re-create the tunnel for each new local endpoint (if it did change at all).
+                    # Re-create the tunnel for each new local endpoint (if it did change at all).
+                    if tunnel is not None:
+                        await loop.run_in_executor(None, ngrok.disconnect, tunnel.public_url)
+                    parsed = urllib.parse.urlparse(client_config['url'])
+                    tunnel = await loop.run_in_executor(
+                        None, functools.partial(ngrok.connect, f'{parsed.port}', bind_tls=True))
+
+                    # Adjust for local webhook server specifics (no port, but with the same path).
+                    # Report no CA bundle -- ngrok's certs (Let's Encrypt) are in a default trust chain.
+                    url = f"{tunnel.public_url}{self.path or ''}"
+                    logger.debug(f"Accessing the webhooks at {url}")
+                    yield reviews.WebhookClientConfig(url=url)  # e.g. 'https://e5fc05f6494b.ngrok.io/xyz'
+            finally:
                 if tunnel is not None:
                     await loop.run_in_executor(None, ngrok.disconnect, tunnel.public_url)
-                parsed = urllib.parse.urlparse(client_config['url'])
-                tunnel = await loop.run_in_executor(
-                    None, functools.partial(ngrok.connect, f'{parsed.port}', bind_tls=True))
-
-                # Adjust for local webhook server specifics (no port, but with the same path).
-                # Report no CA bundle -- ngrok's certs (Let's Encrypt) are in a default trust chain.
-                url = f"{tunnel.public_url}{self.path or ''}"
-                logger.debug(f"Accessing the webhooks at {url}")
-                yield reviews.WebhookClientConfig(url=url)  # e.g. 'https://e5fc05f6494b.ngrok.io/xyz'
-        finally:
-            if tunnel is not None:
-                await loop.run_in_executor(None, ngrok.disconnect, tunnel.public_url)
 
 
 class ClusterDetector:
@@ -612,7 +615,7 @@ class WebhookAutoServer(ClusterDetector, WebhookServer):
             yield client_config
 
 
-class WebhookAutoTunnel(ClusterDetector):
+class WebhookAutoTunnel(ClusterDetector, webhacks.WebhookContextManager):
     """
     The same as `WebhookAutoServer`, but with possible tunneling.
 
@@ -648,7 +651,7 @@ class WebhookAutoTunnel(ClusterDetector):
         self.path = path
 
     async def __call__(self, fn: reviews.WebhookFn) -> AsyncIterator[reviews.WebhookClientConfig]:
-        server: reviews.WebhookServerProtocol
+        server: Union[WebhookNgrokTunnel, WebhookServer]
         host = await self.guess_host()
         if host is None:
             logger.debug(f"Cluster detection failed, using an ngrok tunnel.")
@@ -656,5 +659,6 @@ class WebhookAutoTunnel(ClusterDetector):
         else:
             logger.debug(f"Cluster detection found the hostname: {host}")
             server = WebhookServer(addr=self.addr, port=self.port, path=self.path, host=host)
-        async for client_config in server(fn):
-            yield client_config
+        async with server:
+            async for client_config in server(fn):
+                yield client_config

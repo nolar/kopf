@@ -6,7 +6,7 @@ import json
 import logging
 import re
 import urllib.parse
-from typing import Any, Collection, Dict, Iterable, List, Mapping, Optional
+from typing import Any, AsyncContextManager, Collection, Dict, Iterable, List, Mapping, Optional
 
 from typing_extensions import Literal, TypedDict
 
@@ -261,11 +261,15 @@ async def admission_webhook_server(
 
     # Communicate all the client configs the server yields: both the initial one and the updates.
     # On each such change, the configuration manager will wake up and reconfigure the webhooks.
-    if settings.admission.server is not None:
+    if settings.admission.server is None:
+        await asyncio.Event().wait()
+    elif isinstance(settings.admission.server, AsyncContextManager):
+        async with settings.admission.server as server:
+            async for client_config in server(webhookfn):
+                await container.set(client_config)
+    else:
         async for client_config in settings.admission.server(webhookfn):
             await container.set(client_config)
-    else:
-        await asyncio.Event().wait()
 
 
 async def validating_configuration_manager(

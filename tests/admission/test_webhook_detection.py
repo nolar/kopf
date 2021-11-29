@@ -70,8 +70,9 @@ async def test_server_detects(responder, aresponses, hostname, caplog, assert_lo
     caplog.set_level(0)
     aresponses.add(hostname, '/version', 'get', {'gitVersion': 'v1.20.4+k3s1'})
     server = WebhookAutoServer(insecure=True)
-    async for _ in server(responder.fn):
-        break  # do not sleep
+    async with server:
+        async for _ in server(responder.fn):
+            break  # do not sleep
     assert_logs(["Cluster detection found the hostname: host.k3d.internal"])
 
 
@@ -80,8 +81,9 @@ async def test_server_works(
     caplog.set_level(0)
     aresponses.add(hostname, '/version', 'get', {'gitVersion': 'v1.20.4'})
     server = WebhookAutoServer(insecure=True)
-    async for _ in server(responder.fn):
-        break  # do not sleep
+    async with server:
+        async for _ in server(responder.fn):
+            break  # do not sleep
     assert_logs(["Cluster detection failed, running a simple local server"])
 
 
@@ -89,8 +91,9 @@ async def test_tunnel_detects(responder, pyngrok_mock, aresponses, hostname, cap
     caplog.set_level(0)
     aresponses.add(hostname, '/version', 'get', {'gitVersion': 'v1.20.4+k3s1'})
     server = WebhookAutoTunnel()
-    async for _ in server(responder.fn):
-        break  # do not sleep
+    async with server:
+        async for _ in server(responder.fn):
+            break  # do not sleep
     assert_logs(["Cluster detection found the hostname: host.k3d.internal"])
 
 
@@ -98,6 +101,7 @@ async def test_tunnel_works(responder, pyngrok_mock, aresponses, hostname, caplo
     caplog.set_level(0)
     aresponses.add(hostname, '/version', 'get', {'gitVersion': 'v1.20.4'})
     server = WebhookAutoTunnel()
-    async for _ in server(responder.fn):
-        break  # do not sleep
+    async with server:
+        async for _ in server(responder.fn):
+            break  # do not sleep
     assert_logs(["Cluster detection failed, using an ngrok tunnel."])
