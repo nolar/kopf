@@ -1,5 +1,6 @@
 import asyncio
 import dataclasses
+import gc
 import warnings
 
 import pyngrok.conf
@@ -30,6 +31,10 @@ def no_serverside_resource_warnings():
                                 module='asyncio.sslproto',
                                 message='unclosed transport')
         yield
+
+        # Provoke the garbage collection of SSL sockets to trigger the warnings.
+        # Otherwise, in PyPy, these warnings leak to other tests due to delayed gc.
+        gc.collect()
 
 
 # TODO: LATER: Fix this issue after aiohttp 4.0.0 is used.

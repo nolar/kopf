@@ -54,14 +54,14 @@ jobs:
       - run: pytest --color=yes --cov=kopf --cov-branch
 
       - name: Publish coverage to Coveralls.io
-        if: ${{ success() }}
+        if: success()
         run: coveralls --service=github
         env:
           GITHUB_TOKEN: ${{ secrets.github_token }}
         continue-on-error: true
       - name: Publish coverage to CodeCov.io
         uses: codecov/codecov-action@v1
-        if: ${{ success() }}
+        if: success()
         env:
           PYTHON: ${{ matrix.python-version }}
         with:
@@ -78,7 +78,7 @@ jobs:
       fail-fast: false
       matrix:
         install-extras: [ "", "full-auth" ]
-        python-version: [ "pypy-3.7" ]
+        python-version: [ "pypy-3.7", "pypy-3.8" ]
     name: Python ${{ matrix.python-version }} ${{ matrix.install-extras }}
     runs-on: ubuntu-20.04
     timeout-minutes: 10
@@ -100,7 +100,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        k3s: [v1.21, v1.20, v1.19]
+        k3s: [v1.22, v1.21, v1.20, v1.19]
     name: K3s ${{matrix.k3s}}
     runs-on: ubuntu-20.04
     timeout-minutes: 10  # usually 4-5 mins
@@ -118,7 +118,7 @@ jobs:
 
   coveralls-finish:
     name: Finalize coveralls.io
-    needs: [unit-tests, functional]
+    needs: [unit-tests, pypy-tests, functional]
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/setup-python@v2
