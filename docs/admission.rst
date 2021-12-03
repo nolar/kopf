@@ -695,6 +695,55 @@ and request handling logic well-aligned with the rest of the framework:
                 ...  # renew a tunnel, adjust the config
                 yield client_config
 
+
+System resource cleanup
+=======================
+
+It is advised that custom servers/tunnels cleanup the system resources
+they allocate at runtime. The easiest way is the ``try-finally`` block --
+the cleanup will happen on the garbage collection of the generator object
+(beware: it can be postponed in some environments, e.g. in PyPy).
+
+For explicit cleanup of system resources, the servers/tunnels can implement
+the asynchronous context manager protocol:
+
+.. code-block:: python
+
+    class MyServer:
+        def __init__(self):
+            super().__init__()
+            self._resource = None
+
+        async def __aenter__(self) -> "MyServer":
+            self._resource = PotentiallyLeakableResource()
+            return self
+
+        async def __aexit__(self, exc_type, exc_val, exc_tb) -> bool:
+            self._resource.cleanup()
+            self._resource = None
+
+        async def __call__(self, fn: kopf.WebhookFn) -> AsyncIterator[kopf.WebhookClientConfig]:
+            for client_config in super().__call__(fn):
+                yield client_config
+
+The context manager should usually return ``self``, but it can return
+a substitute webhook server/tunnel object, which will actually be used.
+That way, the context manager turns into a factory of webhook server(s).
+
+Keep in mind that the webhook server/tunnel is used only once per
+the operator's lifetime; once it exits, the whole operator stops.
+It makes no practical sense in making the webhook servers/tunnels reentrant.
+
+.. note::
+
+    **An implementation note:** webhook servers and tunnels provided by Kopf
+    use a little hack to keep them usable with the simple protocol
+    (a callable that yields the client configs) while also supporting
+    the optional context manager protocol for system resource safety:
+    when the context manager is exited, it force-closes the generators
+    that yield the client configs as if they were garbage-collected.
+    Users' final webhook servers/tunnels do not need this level of complication.
+
 .. seealso::
     For reference implementations of servers and tunnels,
     see the `provided webhooks`__.
