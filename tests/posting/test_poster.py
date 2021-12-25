@@ -1,9 +1,7 @@
 import asyncio
 import logging
 
-import async_timeout
 import pytest
-from asynctest import call
 
 from kopf import event, exception, info, warn
 from kopf._cogs.structs.references import Backbone, Resource
@@ -45,8 +43,7 @@ async def test_poster_polls_and_posts(mocker, settings):
 
     # A way to cancel a `while True` cycle by timing, even if the routines are not called.
     with pytest.raises(asyncio.CancelledError):
-        async with async_timeout.timeout(0.5):
-            await poster(event_queue=event_queue, backbone=backbone, settings=settings)
+        await poster(event_queue=event_queue, backbone=backbone, settings=settings)
 
     assert post.call_count == 2
     assert post.call_args_list[0][1]['url'] == '/api/v1/namespaces/ns1/events'

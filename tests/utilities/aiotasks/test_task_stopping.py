@@ -1,7 +1,6 @@
 import asyncio
 import logging
 
-import async_timeout
 import pytest
 
 from kopf._cogs.aiokits.aiotasks import create_task, stop
@@ -41,8 +40,7 @@ async def test_stop_immediately_with_finishing(assert_logs, caplog):
     caplog.set_level(0)
     task1 = create_task(simple())
     task2 = create_task(simple())
-    async with async_timeout.timeout(1):  # extra test safety
-        done, pending = await stop([task1, task2], title='sample', logger=logger, cancelled=False)
+    done, pending = await stop([task1, task2], title='sample', logger=logger, cancelled=False)
     assert done
     assert not pending
     assert_logs(["Sample tasks are stopped: finishing normally"])
@@ -55,8 +53,7 @@ async def test_stop_immediately_with_cancelling(assert_logs, caplog):
     caplog.set_level(0)
     task1 = create_task(simple())
     task2 = create_task(simple())
-    async with async_timeout.timeout(1):  # extra test safety
-        done, pending = await stop([task1, task2], title='sample', logger=logger, cancelled=True)
+    done, pending = await stop([task1, task2], title='sample', logger=logger, cancelled=True)
     assert done
     assert not pending
     assert_logs(["Sample tasks are stopped: cancelling normally"])
@@ -72,16 +69,14 @@ async def test_stop_iteratively(assert_logs, caplog, cancelled):
     task2 = create_task(stuck())
     stask = create_task(stop([task1, task2], title='sample', logger=logger, interval=0.01, cancelled=cancelled))
 
-    async with async_timeout.timeout(1):  # extra test safety
-        done, pending = await asyncio.wait({stask}, timeout=0.011)
+    done, pending = await asyncio.wait({stask}, timeout=0.011)
     assert not done
     assert task1.done()
     assert not task2.done()
 
     task2.cancel()
 
-    async with async_timeout.timeout(1):  # extra test safety
-        done, pending = await asyncio.wait({stask}, timeout=0.011)
+    done, pending = await asyncio.wait({stask}, timeout=0.011)
     assert done
     assert task1.done()
     assert task2.done()
@@ -100,16 +95,14 @@ async def test_stop_itself_is_cancelled(assert_logs, caplog, cancelled):
     task2 = create_task(stuck())
     stask = create_task(stop([task1, task2], title='sample', logger=logger, interval=0.01, cancelled=cancelled))
 
-    async with async_timeout.timeout(1):  # extra test safety
-        done, pending = await asyncio.wait({stask}, timeout=0.011)
+    done, pending = await asyncio.wait({stask}, timeout=0.011)
     assert not done
     assert task1.done()
     assert not task2.done()
 
     stask.cancel()
 
-    async with async_timeout.timeout(1):  # extra test safety
-        done, pending = await asyncio.wait({stask}, timeout=0.011)
+    done, pending = await asyncio.wait({stask}, timeout=0.011)
     assert done
     assert task1.done()
     assert not task2.done()
@@ -122,8 +115,7 @@ async def test_stop_itself_is_cancelled(assert_logs, caplog, cancelled):
     ])
 
     task2.cancel()
-    async with async_timeout.timeout(1):  # extra test safety
-        done, pending = await asyncio.wait({task1, task2})
+    done, pending = await asyncio.wait({task1, task2})
     assert done
     assert task1.done()
     assert task2.done()

@@ -1,7 +1,6 @@
 import asyncio
 import logging
 
-import async_timeout
 import pytest
 
 from kopf._cogs.aiokits.aiotoggles import ToggleSet
@@ -22,7 +21,7 @@ async def test_reporting_on_resource_readiness(
 
     operator_indexed = ToggleSet(all)
     resource_indexed = await operator_indexed.make_toggle()
-    async with timer, async_timeout.timeout(0.5) as timeout:
+    with timer:
         await process_resource_event(
             lifecycle=all_at_once,
             registry=registry,
@@ -36,7 +35,6 @@ async def test_reporting_on_resource_readiness(
             operator_indexed=operator_indexed,
             resource_indexed=resource_indexed,
         )
-    assert not timeout.expired
     assert timer.seconds < 0.2  # asap, nowait
     assert operator_indexed.is_on()
     assert set(operator_indexed) == set()  # save RAM
@@ -51,22 +49,20 @@ async def test_blocking_when_operator_is_not_ready(
     operator_indexed = ToggleSet(all)
     resource_listed = await operator_indexed.make_toggle()
     resource_indexed = await operator_indexed.make_toggle()
-    with pytest.raises(asyncio.TimeoutError):
-        async with timer, async_timeout.timeout(0.2) as timeout:
-            await process_resource_event(
-                lifecycle=all_at_once,
-                registry=registry,
-                settings=settings,
-                resource=resource,
-                indexers=indexers,
-                memories=ResourceMemories(),
-                memobase=Memo(),
-                raw_event={'type': event_type, 'object': {}},
-                event_queue=asyncio.Queue(),
-                operator_indexed=operator_indexed,
-                resource_indexed=resource_indexed,
-            )
-    assert timeout.expired
+    with pytest.raises(asyncio.TimeoutError), timer:
+        await asyncio.wait_for(process_resource_event(
+            lifecycle=all_at_once,
+            registry=registry,
+            settings=settings,
+            resource=resource,
+            indexers=indexers,
+            memories=ResourceMemories(),
+            memobase=Memo(),
+            raw_event={'type': event_type, 'object': {}},
+            event_queue=asyncio.Queue(),
+            operator_indexed=operator_indexed,
+            resource_indexed=resource_indexed,
+        ), timeout=0.2)
     assert 0.2 < timer.seconds < 0.4
     assert operator_indexed.is_off()
     assert set(operator_indexed) == {resource_listed}
@@ -85,7 +81,7 @@ async def test_unblocking_once_operator_is_ready(
     operator_indexed = ToggleSet(all)
     resource_listed = await operator_indexed.make_toggle()
     resource_indexed = await operator_indexed.make_toggle()
-    async with timer, async_timeout.timeout(1.0) as timeout:
+    with timer:
         asyncio.create_task(delayed_readiness(0.2))
         await process_resource_event(
             lifecycle=all_at_once,
@@ -100,7 +96,6 @@ async def test_unblocking_once_operator_is_ready(
             operator_indexed=operator_indexed,
             resource_indexed=resource_indexed,
         )
-    assert not timeout.expired
     assert 0.2 < timer.seconds < 0.4
     assert operator_indexed.is_on()
     assert set(operator_indexed) == {resource_listed}

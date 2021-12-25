@@ -1,6 +1,5 @@
 import asyncio
 
-import async_timeout
 import pytest
 
 from kopf._cogs.structs.bodies import RawBody, RawEvent
@@ -19,11 +18,9 @@ async def test_initial_listing_is_ignored():
 
     task = asyncio.create_task(delayed_injection(0))
     with pytest.raises(asyncio.TimeoutError):
-        async with async_timeout.timeout(0.1) as timeout:
-            async with insights.revised:
-                await insights.revised.wait()
+        async with insights.revised:
+            await asyncio.wait_for(insights.revised.wait(), timeout=0.1)
     await task
-    assert timeout.expired
     assert not insights.namespaces
 
 
@@ -38,7 +35,7 @@ async def test_followups_for_addition(timer, etype):
             insights=insights, raw_event=e1, namespaces=['ns*'])
 
     task = asyncio.create_task(delayed_injection(0.1))
-    async with timer, async_timeout.timeout(1):
+    with timer:
         async with insights.revised:
             await insights.revised.wait()
     await task
@@ -58,7 +55,7 @@ async def test_followups_for_deletion(timer, etype):
             insights=insights, raw_event=e1, namespaces=['ns*'])
 
     task = asyncio.create_task(delayed_injection(0.1))
-    async with timer, async_timeout.timeout(1):
+    with timer:
         async with insights.revised:
             await insights.revised.wait()
     await task

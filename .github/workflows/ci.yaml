@@ -51,7 +51,7 @@ jobs:
       - run: pip install -r requirements.txt
       - run: pip install -e .[${{ matrix.install-extras }}]
         if: ${{ matrix.install-extras }}
-      - run: pytest --color=yes --cov=kopf --cov-branch
+      - run: pytest --color=yes --timeout=2 --cov=kopf --cov-branch
 
       - name: Publish coverage to Coveralls.io
         if: success()
@@ -94,7 +94,7 @@ jobs:
       - run: pip install -r requirements.txt
       - run: pip install -e .[${{ matrix.install-extras }}]
         if: ${{ matrix.install-extras }}
-      - run: pytest --color=yes --no-cov
+      - run: pytest --color=yes --timeout=2 --no-cov
 
   functional:
     strategy:
@@ -114,7 +114,7 @@ jobs:
           version: ${{ matrix.k3s }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - run: pip install -r requirements.txt -r examples/requirements.txt
-      - run: pytest --color=yes --only-e2e
+      - run: pytest --color=yes --timeout=30 --only-e2e
 
   coveralls-finish:
     name: Finalize coveralls.io

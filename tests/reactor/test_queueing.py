@@ -19,7 +19,6 @@ import contextlib
 import gc
 import weakref
 
-import async_timeout
 import pytest
 
 from kopf._core.reactor.queueing import EOS, watcher
@@ -214,9 +213,8 @@ async def test_garbage_collection_of_streams(settings, stream, events, unique, w
         settings.batching.idle_timeout +  # idling on empty queues.
         1.0)  # the code itself takes time: add a max tolerable delay.
     with contextlib.suppress(asyncio.TimeoutError):
-        async with async_timeout.timeout(allowed_timeout):
-            async with signaller:
-                await signaller.wait_for(lambda: not streams)
+        async with signaller:
+            await asyncio.wait_for(signaller.wait_for(lambda: not streams), timeout=allowed_timeout)
 
     # The mutable(!) streams dict is now empty, i.e. garbage-collected.
     assert len(streams) == 0

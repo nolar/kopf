@@ -1,6 +1,5 @@
 import asyncio
 
-import async_timeout
 import pytest
 
 from kopf._cogs.aiokits.aiobindings import condition_chain
@@ -11,14 +10,9 @@ async def test_no_triggering():
     target = asyncio.Condition()
     task = asyncio.create_task(condition_chain(source, target))
     try:
-
         with pytest.raises(asyncio.TimeoutError):
-            async with async_timeout.timeout(0.1) as timeout:
-                async with target:
-                    await target.wait()
-
-        assert timeout.expired
-
+            async with target:
+                await asyncio.wait_for(target.wait(), timeout=0.1)
     finally:
         task.cancel()
         await asyncio.wait([task])
@@ -36,11 +30,10 @@ async def test_triggering(event_loop, timer):
 
         event_loop.call_later(0.1, asyncio.create_task, delayed_trigger())
 
-        async with timer, async_timeout.timeout(10) as timeout:
+        with timer:
             async with target:
                 await target.wait()
 
-        assert not timeout.expired
         assert 0.1 <= timer.seconds <= 0.2
 
     finally:

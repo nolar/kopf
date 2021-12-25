@@ -1,6 +1,5 @@
 import asyncio
 
-import async_timeout
 import pytest
 
 from kopf._cogs.aiokits.aiotoggles import Toggle
@@ -41,21 +40,17 @@ async def test_turning_off():
 async def test_waiting_until_on_fails_when_not_turned_on():
     toggle = Toggle(False)
     with pytest.raises(asyncio.TimeoutError):
-        async with async_timeout.timeout(0.1) as timeout:
-            await toggle.wait_for(True)
+        await asyncio.wait_for(toggle.wait_for(True), timeout=0.1)
 
     assert toggle.is_off()
-    assert timeout.expired
 
 
 async def test_waiting_until_off_fails_when_not_turned_off():
     toggle = Toggle(True)
     with pytest.raises(asyncio.TimeoutError):
-        async with async_timeout.timeout(0.1) as timeout:
-            await toggle.wait_for(False)
+        await asyncio.wait_for(toggle.wait_for(False), timeout=0.1)
 
     assert toggle.is_on()
-    assert timeout.expired
 
 
 async def test_waiting_until_on_wakes_when_turned_on(timer):
@@ -65,12 +60,11 @@ async def test_waiting_until_on_wakes_when_turned_on(timer):
         await asyncio.sleep(delay)
         await toggle.turn_to(True)
 
-    async with timer, async_timeout.timeout(1.0) as timeout:
+    with timer:
         asyncio.create_task(delayed_turning_on(0.05))
         await toggle.wait_for(True)
 
     assert toggle.is_on()
-    assert not timeout.expired
     assert timer.seconds < 0.5  # approx. 0.05 plus some code overhead
 
 
@@ -81,12 +75,11 @@ async def test_waiting_until_off_wakes_when_turned_off(timer):
         await asyncio.sleep(delay)
         await toggle.turn_to(False)
 
-    async with timer, async_timeout.timeout(1.0) as timeout:
+    with timer:
         asyncio.create_task(delayed_turning_off(0.05))
         await toggle.wait_for(False)
 
     assert toggle.is_off()
-    assert not timeout.expired
     assert timer.seconds < 0.5  # approx. 0.05 plus some code overhead
 
 
