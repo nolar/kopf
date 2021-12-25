@@ -23,14 +23,14 @@ of the daemons, and they are not actually "hung".
 import abc
 import asyncio
 import dataclasses
-import logging
 import time
 import warnings
 from typing import Collection, Dict, Iterable, List, Mapping, \
-                   MutableMapping, Optional, Sequence, Set, Union
+                   MutableMapping, Optional, Sequence, Set
 
 from kopf._cogs.aiokits import aiotasks, aiotime, aiotoggles
 from kopf._cogs.configs import configuration
+from kopf._cogs.helpers import typedefs
 from kopf._cogs.structs import bodies, ids, patches
 from kopf._core.actions import application, execution, lifecycles, loggers, progression
 from kopf._core.intents import causes, handlers as handlers_, stoppers
@@ -39,7 +39,7 @@ from kopf._core.intents import causes, handlers as handlers_, stoppers
 @dataclasses.dataclass(frozen=True)
 class Daemon:
     task: aiotasks.Task  # a guarding task of the daemon.
-    logger: Union[logging.Logger, logging.LoggerAdapter]
+    logger: typedefs.Logger
     handler: handlers_.SpawningHandler
     stopper: stoppers.DaemonStopper  # a signaller for the termination and its reason.
 

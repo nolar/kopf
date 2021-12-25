@@ -1,11 +1,11 @@
 import asyncio
 import contextlib
 import dataclasses
-import logging
 import time
 from typing import AsyncGenerator, Iterable, Iterator, Optional, Tuple, Type, Union
 
 from kopf._cogs.aiokits import aiotime
+from kopf._cogs.helpers import typedefs
 
 
 @dataclasses.dataclass(frozen=False)
@@ -22,7 +22,7 @@ async def throttled(
         throttler: Throttler,
         delays: Iterable[float],
         wakeup: Optional[asyncio.Event] = None,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
+        logger: typedefs.Logger,
         errors: Union[Type[BaseException], Tuple[Type[BaseException], ...]] = Exception,
 ) -> AsyncGenerator[bool, None]:
     """

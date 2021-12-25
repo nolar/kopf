@@ -12,14 +12,14 @@ import contextlib
 import dataclasses
 import datetime
 import enum
-import logging
 from contextvars import ContextVar
 from typing import Any, AsyncContextManager, AsyncIterator, Callable, Collection, Iterable, \
-                   Mapping, MutableMapping, NewType, Optional, Sequence, Set, TypeVar, Union
+                   Mapping, MutableMapping, NewType, Optional, Sequence, Set, TypeVar
 
 from typing_extensions import Protocol
 
 from kopf._cogs.configs import configuration
+from kopf._cogs.helpers import typedefs
 from kopf._cogs.structs import ids
 from kopf._core.actions import invocation
 
@@ -60,10 +60,6 @@ class ErrorsMode(enum.Enum):
     TEMPORARY = enum.auto()
     PERMANENT = enum.auto()
 
-
-# As publicly exposed: we only promise that it is based on one of the built-in loggable classes.
-# Mind that these classes have multi-versioned stubs, so we avoid redefining the protocol ourselves.
-Logger = Union[logging.Logger, logging.LoggerAdapter]
 
 # A specialised type to highlight the purpose or origin of the data of type Any,
 # to not be mixed with other arbitrary Any values, where it is indeed "any".
@@ -137,7 +133,7 @@ class State(Mapping[ids.HandlerId, HandlerState]):
 @dataclasses.dataclass
 class Cause(invocation.Kwargable):
     """ Base non-specific cause as used in the framework's reactor. """
-    logger: Logger
+    logger: typedefs.Logger
 
     @property
     def _kwargs(self) -> Mapping[str, Any]:

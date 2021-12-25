@@ -1,16 +1,16 @@
 import asyncio
-import logging
-from typing import Collection, Mapping, Optional, Set, Union
+from typing import Collection, Mapping, Optional, Set
 
 from kopf._cogs.clients import api, errors
 from kopf._cogs.configs import configuration
+from kopf._cogs.helpers import typedefs
 from kopf._cogs.structs import references
 
 
 async def read_version(
         *,
         settings: configuration.OperatorSettings,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
+        logger: typedefs.Logger,
 ) -> Mapping[str, str]:
     rsp: Mapping[str, str] = await api.get('/version', settings=settings, logger=logger)
     return rsp
@@ -19,7 +19,7 @@ async def read_version(
 async def scan_resources(
         *,
         settings: configuration.OperatorSettings,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
+        logger: typedefs.Logger,
         groups: Optional[Collection[str]] = None,
 ) -> Collection[references.Resource]:
     coros = {
@@ -35,7 +35,7 @@ async def scan_resources(
 async def _read_old_api(
         *,
         settings: configuration.OperatorSettings,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
+        logger: typedefs.Logger,
         groups: Optional[Collection[str]],
 ) -> Collection[references.Resource]:
     resources: Set[references.Resource] = set()
@@ -60,7 +60,7 @@ async def _read_old_api(
 async def _read_new_apis(
         *,
         settings: configuration.OperatorSettings,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
+        logger: typedefs.Logger,
         groups: Optional[Collection[str]],
 ) -> Collection[references.Resource]:
     resources: Set[references.Resource] = set()
@@ -91,7 +91,7 @@ async def _read_version(
         version: str,
         preferred: bool,
         settings: configuration.OperatorSettings,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
+        logger: typedefs.Logger,
 ) -> Collection[references.Resource]:
     try:
         rsp = await api.get(url, settings=settings, logger=logger)

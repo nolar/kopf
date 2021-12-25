@@ -2,16 +2,16 @@ import asyncio
 import collections.abc
 import itertools
 import json
-import logging
 import ssl
 import urllib.parse
-from typing import Any, AsyncIterator, Mapping, Optional, Tuple, Union
+from typing import Any, AsyncIterator, Mapping, Optional, Tuple
 
 import aiohttp
 
 from kopf._cogs.aiokits import aiotasks
 from kopf._cogs.clients import auth, errors
 from kopf._cogs.configs import configuration
+from kopf._cogs.helpers import typedefs
 
 
 @auth.authenticated
@@ -50,7 +50,7 @@ async def request(
         headers: Optional[Mapping[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
         context: Optional[auth.APIContext] = None,  # injected by the decorator
-        logger: Union[logging.Logger, logging.LoggerAdapter],
+        logger: typedefs.Logger,
 ) -> aiohttp.ClientResponse:
     if context is None:  # for type-checking!
         raise RuntimeError("API instance is not injected by the decorator.")
@@ -106,7 +106,7 @@ async def get(
         payload: Optional[object] = None,
         headers: Optional[Mapping[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
+        logger: typedefs.Logger,
 ) -> Any:
     response = await request(
         method='get',
@@ -128,7 +128,7 @@ async def post(
         payload: Optional[object] = None,
         headers: Optional[Mapping[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
+        logger: typedefs.Logger,
 ) -> Any:
     response = await request(
         method='post',
@@ -150,7 +150,7 @@ async def patch(
         payload: Optional[object] = None,
         headers: Optional[Mapping[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
+        logger: typedefs.Logger,
 ) -> Any:
     response = await request(
         method='patch',
@@ -172,7 +172,7 @@ async def delete(
         payload: Optional[object] = None,
         headers: Optional[Mapping[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
+        logger: typedefs.Logger,
 ) -> Any:
     response = await request(
         method='delete',
@@ -195,7 +195,7 @@ async def stream(
         headers: Optional[Mapping[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
         stopper: Optional[aiotasks.Future] = None,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
+        logger: typedefs.Logger,
 ) -> AsyncIterator[Any]:
     response = await request(
         method='get',

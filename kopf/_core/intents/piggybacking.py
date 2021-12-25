@@ -15,8 +15,8 @@ from typing import Any, Dict, Optional, Sequence
 
 import yaml
 
+from kopf._cogs.helpers import typedefs
 from kopf._cogs.structs import credentials
-from kopf._core.actions import execution
 
 # Keep as constants to make them patchable. Higher priority is more preferred.
 PRIORITY_OF_CLIENT: int = 10
@@ -49,7 +49,7 @@ def has_pykube() -> bool:
 # an implied behavior before switching to pykube -- to keep it so (implied).
 def login_via_client(
         *,
-        logger: execution.Logger,
+        logger: typedefs.Logger,
         **_: Any,
 ) -> Optional[credentials.ConnectionInfo]:
 
@@ -104,7 +104,7 @@ def login_via_client(
 
 def login_via_pykube(
         *,
-        logger: execution.Logger,
+        logger: typedefs.Logger,
         **_: Any,
 ) -> Optional[credentials.ConnectionInfo]:
 

@@ -1,8 +1,8 @@
-import logging
-from typing import Optional, Union
+from typing import Optional
 
 from kopf._cogs.clients import api, errors
 from kopf._cogs.configs import configuration
+from kopf._cogs.helpers import typedefs
 from kopf._cogs.structs import bodies, patches, references
 
 
@@ -13,7 +13,7 @@ async def patch_obj(
         namespace: references.Namespace,
         name: Optional[str],
         patch: patches.Patch,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
+        logger: typedefs.Logger,
 ) -> Optional[bodies.RawBody]:
     """
     Patch a resource of specific kind.

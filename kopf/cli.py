@@ -92,7 +92,7 @@ def run(
 ) -> None:
     """ Start an operator process and handle all the requests. """
     if os.environ.get('KOPF_RUN_NAMESPACE'):  # legacy for single-namespace mode
-        namespaces = tuple(namespaces) + (os.environ.get('KOPF_RUN_NAMESPACE'),)
+        namespaces = tuple(namespaces) + (os.environ.get('KOPF_RUN_NAMESPACE', ''),)
     if namespaces and clusterwide:
         raise click.UsageError("Either --namespace or --all-namespaces can be used, not both.")
     if __controls.registry is not None:

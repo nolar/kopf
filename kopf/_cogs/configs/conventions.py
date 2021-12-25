@@ -130,9 +130,7 @@ class StorageKeyFormingConvention(CollisionEvadingConvention):
             v1: bool,
             **kwargs: Any,
     ) -> None:
-        # TODO: Remove type-ignore when this is fixed: https://github.com/python/mypy/issues/5887
-        #       Too many arguments for "__init__" of "object" -- but this is typical for mixins!
-        super().__init__(*args, **kwargs)  # type: ignore
+        super().__init__(*args, **kwargs)
         self.prefix = prefix
         self.v1 = v1
 
