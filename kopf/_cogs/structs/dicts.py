@@ -272,10 +272,10 @@ class MappingView(Mapping[_K, _V], Generic[_K, _V]):
     >>> body = {}
     >>> spec = MappingView(body, 'spec')
     >>> spec.get('field', 'default')
-    ... 'default'
+    'default'
     >>> body['spec'] = {'field': 'value'}
     >>> spec.get('field', 'default')
-    ... 'value'
+    'value'
     """
     _src: Mapping[_K, _V]
 
@@ -304,14 +304,14 @@ class MutableMappingView(MappingView[_K, _V], MutableMapping[_K, _V], Generic[_K
     >>> patch = {}
     >>> status = MutableMappingView(patch, 'status')
     >>> status.get('field', 'default')
-    ... 'default'
+    'default'
     >>> patch
-    ... {}
+    {}
     >>> status['field'] = 'value'
     >>> patch
-    ... {'status': {'field': 'value'}}
+    {'status': {'field': 'value'}}
     >>> status.get('field', 'default')
-    ... 'value'
+    'value'
     """
     _src: MutableMapping[_K, _V]  # typing clarification
 
@@ -333,13 +333,13 @@ class ReplaceableMappingView(MappingView[_K, _V], Generic[_K, _V]):
     The method names are intentionally long and multi-word -- to not have
     potential collisions with regular expected attributes/properties.
 
-    >>> body = ReplaceableMappingView()
+    >>> body = ReplaceableMappingView({})
     >>> spec = MappingView(body, 'spec')
     >>> spec.get('field', 'default')
-    ... 'default'
+    'default'
     >>> body._replace_with({'spec': {'field': 'value'}})
     >>> spec.get('field', 'default')
-    ... 'value'
+    'value'
     """
 
     def _replace_from(self, __src: MappingView[_K, _V]) -> None:

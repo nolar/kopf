@@ -22,14 +22,14 @@ class Memo(Dict[Any, Any]):
 
     >>> memo.f1 = 100
     >>> memo['f1']
-    ... 100
+    100
 
     >>> memo['f2'] = 200
     >>> memo.f2
-    ... 200
+    200
 
-    >>> set(memo.keys())
-    ... {'f1', 'f2'}
+    >>> list(memo.keys())
+    ['f1', 'f2']
     """
 
     def __setattr__(self, key: str, value: Any) -> None:
