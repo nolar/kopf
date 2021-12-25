@@ -59,7 +59,7 @@ class WebhookContextManager(metaclass=WebhookContextManagerMeta):
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)  # type: ignore
+        super().__init__(*args, **kwargs)
         self.__generators: List[AsyncGenerator[reviews.WebhookClientConfig, None]] = []
 
     async def __aenter__(self: _SelfT) -> _SelfT:

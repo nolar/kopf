@@ -1,8 +1,8 @@
-import logging
-from typing import Collection, List, Tuple, Union
+from typing import Collection, List, Tuple
 
 from kopf._cogs.clients import api
 from kopf._cogs.configs import configuration
+from kopf._cogs.helpers import typedefs
 from kopf._cogs.structs import bodies, references
 
 
@@ -11,7 +11,7 @@ async def list_objs(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         namespace: references.Namespace,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
+        logger: typedefs.Logger,
 ) -> Tuple[Collection[bodies.RawBody], str]:
     """
     List the objects of specific resource type.

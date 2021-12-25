@@ -34,6 +34,9 @@ from kopf._cogs.configs.progress import (
     MultiProgressStorage,
     SmartProgressStorage,
 )
+from kopf._cogs.helpers.typedefs import (
+    Logger,
+)
 from kopf._cogs.helpers.versions import (
     version as __version__,
 )
@@ -95,7 +98,6 @@ from kopf._core.actions import (
     lifecycles,  # as a separate name on the public namespace
 )
 from kopf._core.actions.execution import (
-    Logger,
     ErrorsMode,
     TemporaryError,
     PermanentError,

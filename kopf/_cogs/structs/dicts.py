@@ -12,7 +12,7 @@ FieldPath = Tuple[str, ...]
 FieldSpec = Union[None, str, FieldPath, List[str]]
 
 _T = TypeVar('_T')
-_K = TypeVar('_K')
+_K = TypeVar('_K', bound=str)  # int & bool keys are possible but discouraged
 _V = TypeVar('_V')
 
 

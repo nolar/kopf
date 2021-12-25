@@ -1,8 +1,8 @@
-import logging
-from typing import Optional, Union, cast
+from typing import Optional, cast
 
 from kopf._cogs.clients import api
 from kopf._cogs.configs import configuration
+from kopf._cogs.helpers import typedefs
 from kopf._cogs.structs import bodies, references
 
 
@@ -13,7 +13,7 @@ async def create_obj(
         namespace: references.Namespace = None,
         name: Optional[str] = None,
         body: Optional[bodies.RawBody] = None,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
+        logger: typedefs.Logger,
 ) -> Optional[bodies.RawBody]:
     """
     Create a resource.

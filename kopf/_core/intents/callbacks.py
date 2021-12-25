@@ -12,8 +12,9 @@ import datetime
 from typing import TYPE_CHECKING, Any, Callable, Collection, List, Optional, TypeVar, Union
 
 from kopf._cogs.configs import configuration
+from kopf._cogs.helpers import typedefs
 from kopf._cogs.structs import bodies, diffs, ephemera, patches, references, reviews
-from kopf._core.actions import execution, invocation
+from kopf._core.actions import invocation
 from kopf._core.intents import stoppers
 
 if not TYPE_CHECKING:  # pragma: nocover
@@ -40,7 +41,7 @@ else:
             NamedArg(int, "retry"),
             NamedArg(datetime.datetime, "started"),
             NamedArg(datetime.timedelta, "runtime"),
-            NamedArg(execution.Logger, "logger"),
+            NamedArg(typedefs.Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
@@ -61,7 +62,7 @@ else:
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            NamedArg(execution.Logger, "logger"),
+            NamedArg(typedefs.Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
@@ -84,7 +85,7 @@ else:
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            NamedArg(execution.Logger, "logger"),
+            NamedArg(typedefs.Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
@@ -112,7 +113,7 @@ else:
             NamedArg(diffs.Diff, "diff"),
             NamedArg(Optional[Union[bodies.BodyEssence, Any]], "old"),
             NamedArg(Optional[Union[bodies.BodyEssence, Any]], "new"),
-            NamedArg(execution.Logger, "logger"),
+            NamedArg(typedefs.Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
@@ -139,7 +140,7 @@ else:
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            NamedArg(execution.Logger, "logger"),
+            NamedArg(typedefs.Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
@@ -164,7 +165,7 @@ else:
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            NamedArg(execution.Logger, "logger"),
+            NamedArg(typedefs.Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
@@ -186,7 +187,7 @@ else:
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            NamedArg(execution.Logger, "logger"),
+            NamedArg(typedefs.Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
@@ -212,7 +213,7 @@ else:
             NamedArg(diffs.Diff, "diff"),
             NamedArg(Optional[Union[bodies.BodyEssence, Any]], "old"),
             NamedArg(Optional[Union[bodies.BodyEssence, Any]], "new"),
-            NamedArg(execution.Logger, "logger"),
+            NamedArg(typedefs.Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
@@ -235,7 +236,7 @@ else:
             NamedArg(Optional[str], "name"),
             NamedArg(Optional[str], "namespace"),
             NamedArg(patches.Patch, "patch"),
-            NamedArg(execution.Logger, "logger"),
+            NamedArg(typedefs.Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),

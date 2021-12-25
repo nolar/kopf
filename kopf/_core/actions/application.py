@@ -20,12 +20,12 @@ all the modules, of which the reactor's core consists.
 """
 import asyncio
 import datetime
-import logging
-from typing import Collection, Optional, Union
+from typing import Collection, Optional
 
 from kopf._cogs.aiokits import aiotime
 from kopf._cogs.clients import patching
 from kopf._cogs.configs import configuration
+from kopf._cogs.helpers import typedefs
 from kopf._cogs.structs import bodies, dicts, diffs, patches, references
 from kopf._core.actions import loggers
 
@@ -110,7 +110,7 @@ async def patch_and_check(
         resource: references.Resource,
         body: bodies.Body,
         patch: patches.Patch,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
+        logger: typedefs.Logger,
 ) -> None:
     """
     Apply a patch and verify that it is applied correctly.

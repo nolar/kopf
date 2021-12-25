@@ -10,10 +10,11 @@ all function calls with multiple awaiables (e.g. :func:`asyncio.wait`),
 so there is no added overhead; instead, the implicit overhead is made explicit.
 """
 import asyncio
-import logging
 import sys
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Collection, Coroutine, \
                    Generator, NamedTuple, Optional, Set, Tuple, TypeVar, Union
+
+from kopf._cogs.helpers import typedefs
 
 _T = TypeVar('_T')
 
@@ -79,7 +80,7 @@ async def guard(
         flag: Optional[asyncio.Event] = None,
         finishable: bool = False,
         cancellable: bool = False,
-        logger: Optional[Union[logging.Logger, logging.LoggerAdapter]] = None,
+        logger: Optional[typedefs.Logger] = None,
 ) -> None:
     """
     A guard for a presumably eternal (never-finishing) task.
@@ -125,7 +126,7 @@ def create_guarded_task(
         flag: Optional[asyncio.Event] = None,
         finishable: bool = False,
         cancellable: bool = False,
-        logger: Optional[Union[logging.Logger, logging.LoggerAdapter]] = None,
+        logger: Optional[typedefs.Logger] = None,
 ) -> Task:
     """
     Create a guarded eternal task. See :func:`guard` for explanation.
@@ -165,7 +166,7 @@ async def stop(
         quiet: bool = False,
         cancelled: bool = False,
         interval: Optional[float] = None,
-        logger: Optional[Union[logging.Logger, logging.LoggerAdapter]] = None,
+        logger: Optional[typedefs.Logger] = None,
 ) -> Tuple[Set[Task], Set[Task]]:
     """
     Cancel the tasks and wait for them to finish; log if some are stuck.

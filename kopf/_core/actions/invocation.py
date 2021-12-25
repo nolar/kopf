@@ -9,12 +9,11 @@ import asyncio
 import contextlib
 import contextvars
 import functools
-from typing import Any, Callable, Coroutine, Iterable, Iterator, List, \
-                   Mapping, Optional, Tuple, TypeVar, Union, cast
+from typing import Any, Callable, Coroutine, Iterable, Iterator, \
+                   List, Mapping, Optional, Tuple, TypeVar, Union
 
 from typing_extensions import final
 
-from kopf._cogs.aiokits import aiotasks
 from kopf._cogs.configs import configuration
 
 # An internal typing hack shows that the handler can be sync fn with the result,
@@ -133,7 +132,7 @@ async def invoke(
         # Note: the docs say the result is a future, but typesheds say it is a coroutine => cast()!
         loop = asyncio.get_running_loop()
         executor = settings.execution.executor if settings is not None else None
-        future = cast(aiotasks.Future, loop.run_in_executor(executor, real_fn))
+        future = loop.run_in_executor(executor, real_fn)
         cancellation: Optional[asyncio.CancelledError] = None
         while not future.done():
             try:

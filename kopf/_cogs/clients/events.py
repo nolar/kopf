@@ -1,12 +1,11 @@
 import copy
 import datetime
-import logging
-from typing import Union
 
 import aiohttp
 
 from kopf._cogs.clients import api, errors
 from kopf._cogs.configs import configuration
+from kopf._cogs.helpers import typedefs
 from kopf._cogs.structs import bodies, references
 
 MAX_MESSAGE_LENGTH = 1024
@@ -21,7 +20,7 @@ async def post_event(
         message: str = '',
         resource: references.Resource,
         settings: configuration.OperatorSettings,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
+        logger: typedefs.Logger,
 ) -> None:
     """
     Issue an event for the object.

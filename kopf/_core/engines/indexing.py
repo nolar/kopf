@@ -1,10 +1,9 @@
 import collections.abc
 import dataclasses
-import logging
-from typing import Any, Dict, Generic, Iterable, Iterator, \
-                   Mapping, Optional, Set, Tuple, TypeVar, Union
+from typing import Any, Dict, Generic, Iterable, Iterator, Mapping, Optional, Set, Tuple, TypeVar
 
 from kopf._cogs.configs import configuration
+from kopf._cogs.helpers import typedefs
 from kopf._cogs.structs import bodies, ephemera, ids, patches, references
 from kopf._core.actions import execution, lifecycles, progression
 from kopf._core.intents import causes, handlers, registries
@@ -285,7 +284,7 @@ async def index_resource(
         resource: references.Resource,
         raw_event: bodies.RawEvent,
         memory: IndexingMemory,
-        logger: Union[logging.Logger, logging.LoggerAdapter],
+        logger: typedefs.Logger,
         memo: ephemera.AnyMemo,
         body: bodies.Body,
 ) -> None:

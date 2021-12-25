@@ -17,6 +17,7 @@ from typing import Any, MutableMapping, Optional, Tuple
 import pythonjsonlogger.jsonlogger
 
 from kopf._cogs.configs import configuration
+from kopf._cogs.helpers import typedefs
 from kopf._cogs.structs import bodies
 
 logger = logging.getLogger('kopf.objects')
@@ -97,7 +98,7 @@ class ObjectPrefixingJsonFormatter(ObjectPrefixingMixin, ObjectJsonFormatter):
     pass
 
 
-class ObjectLogger(logging.LoggerAdapter):
+class ObjectLogger(typedefs.LoggerAdapter):
     """
     A logger/adapter to carry the object identifiers for formatting.
 
