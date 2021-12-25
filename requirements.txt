@@ -23,5 +23,6 @@ pytest-aiohttp
 pytest-asyncio
 pytest-cov
 pytest-mock
+pytest-timeout
 types-pkg_resources
 types-PyYAML
