@@ -47,23 +47,23 @@ async def test_refill_is_cumulative_ie_does_not_reset():
     assert set(backbone) == {NAMESPACES, EVENTS}
 
 
-async def test_waiting_for_absent_resources_never_ends(timer):
+async def test_waiting_for_absent_resources_never_ends(looptime):
     backbone = Backbone()
     with pytest.raises(asyncio.TimeoutError):
-        await asyncio.wait_for(backbone.wait_for(NAMESPACES), timeout=0.1)
+        await asyncio.wait_for(backbone.wait_for(NAMESPACES), timeout=1.23)
+    assert looptime == 1.23
 
 
-async def test_waiting_for_preexisting_resources_ends_instantly(timer):
+async def test_waiting_for_preexisting_resources_ends_instantly(looptime):
     resource = Resource('', 'v1', 'namespaces')
     backbone = Backbone()
     await backbone.fill(resources=[resource])
-    with timer:
-        found_resource = await backbone.wait_for(NAMESPACES)
-    assert timer.seconds < 0.1
+    found_resource = await backbone.wait_for(NAMESPACES)
+    assert looptime == 0
     assert found_resource == resource
 
 
-async def test_waiting_for_delayed_resources_ends_once_delivered(timer):
+async def test_waiting_for_delayed_resources_ends_once_delivered(looptime):
     resource = Resource('', 'v1', 'namespaces')
     backbone = Backbone()
 
@@ -71,9 +71,8 @@ async def test_waiting_for_delayed_resources_ends_once_delivered(timer):
         await asyncio.sleep(delay)
         await backbone.fill(resources=[resource])
 
-    task = asyncio.create_task(delayed_injection(0.1))
-    with timer:
-        found_resource = await backbone.wait_for(NAMESPACES)
+    task = asyncio.create_task(delayed_injection(123))
+    found_resource = await backbone.wait_for(NAMESPACES)
     await task
-    assert 0.1 < timer.seconds < 0.11
+    assert looptime == 123
     assert found_resource == resource

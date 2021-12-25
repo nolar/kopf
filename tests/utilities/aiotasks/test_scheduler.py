@@ -5,8 +5,6 @@ import pytest
 
 from kopf._cogs.aiokits.aiotasks import Scheduler
 
-CODE_OVERHEAD = 0.01
-
 
 async def f(mock, *args):
     try:
@@ -14,7 +12,7 @@ async def f(mock, *args):
         for arg in args:
             if isinstance(arg, asyncio.Event):
                 arg.set()
-            elif isinstance(arg, float):
+            elif isinstance(arg, (int, float)):
                 await asyncio.sleep(arg)
             elif callable(arg):
                 arg()
@@ -24,70 +22,62 @@ async def f(mock, *args):
         mock('finished')
 
 
-async def test_empty_scheduler_lifecycle(timer):
-    with timer:
-        scheduler = Scheduler()
-        assert scheduler.empty()
-        await scheduler.wait()
-        assert scheduler.empty()
-        await scheduler.close()
-        assert scheduler.empty()
-    assert timer.seconds < CODE_OVERHEAD
+async def test_empty_scheduler_lifecycle(looptime):
+    scheduler = Scheduler()
+    assert scheduler.empty()
+    await scheduler.wait()
+    assert scheduler.empty()
+    await scheduler.close()
+    assert scheduler.empty()
+    assert looptime == 0
 
 
-async def test_task_spawning_and_graceful_finishing(timer):
+async def test_task_spawning_and_graceful_finishing(looptime):
     mock = Mock()
     flag1 = asyncio.Event()
     flag2 = asyncio.Event()
     scheduler = Scheduler()
 
-    result = await scheduler.spawn(f(mock, flag1, 0.1, flag2))
+    result = await scheduler.spawn(f(mock, flag1, 123, flag2))
     assert result is None
 
-    with timer:
-        await flag1.wait()
-    assert timer.seconds < CODE_OVERHEAD
-    assert mock.call_args[0][0] == 'started'
+    await flag1.wait()
+    assert looptime == 0
+    assert mock.call_args_list[0][0][0] == 'started'
 
-    with timer:
-        await flag2.wait()
-    assert timer.seconds > 0.1
-    assert timer.seconds < 0.1 + CODE_OVERHEAD
-    assert mock.call_args[0][0] == 'finished'
+    await flag2.wait()
+    assert looptime == 123
+    assert mock.call_args_list[1][0][0] == 'finished'
 
     await scheduler.close()
 
 
-async def test_task_spawning_and_cancellation(timer):
+async def test_task_spawning_and_cancellation(looptime):
     mock = Mock()
     flag1 = asyncio.Event()
     flag2 = asyncio.Event()
     scheduler = Scheduler()
 
-    result = await scheduler.spawn(f(mock, flag1, 1.0, flag2))
+    result = await scheduler.spawn(f(mock, flag1, 123, flag2))
     assert result is None
 
-    with timer:
-        await flag1.wait()
-    assert timer.seconds < CODE_OVERHEAD
-    assert mock.call_args[0][0] == 'started'
+    await flag1.wait()
+    assert looptime == 0
+    assert mock.call_args_list[0][0][0] == 'started'
 
-    with timer:
-        await scheduler.close()
-    assert timer.seconds < CODE_OVERHEAD  # near-instant
-    assert mock.call_args[0][0] == 'cancelled'
+    await scheduler.close()
+    assert looptime == 0
+    assert mock.call_args_list[1][0][0] == 'cancelled'
 
 
 async def test_no_tasks_are_accepted_after_closing():
     scheduler = Scheduler()
     await scheduler.close()
-
     assert scheduler._closed
     assert scheduler._spawning_task.done()
     assert scheduler._cleaning_task.done()
-
     with pytest.raises(RuntimeError, match=r"Cannot add new coroutines"):
-        await scheduler.spawn(f(Mock(), 1.0))
+        await scheduler.spawn(f(Mock(), 123))
 
 
 async def test_successes_are_not_reported():
@@ -121,7 +111,7 @@ async def test_exceptions_are_reported():
     assert exception_handler.call_args[0][0] is exception
 
 
-async def test_tasks_are_parallel_if_limit_is_not_reached(timer):
+async def test_tasks_are_parallel_if_limit_is_not_reached(looptime):
     """
     time:  ////////----------------------0.1s------------------0.2s--///
     task1: ->spawn->start->sleep->finish->|
@@ -133,24 +123,19 @@ async def test_tasks_are_parallel_if_limit_is_not_reached(timer):
     task2_finished = asyncio.Event()
     scheduler = Scheduler(limit=2)
 
-    with timer:
-        await scheduler.spawn(f(Mock(), task1_started, 0.1, task1_finished))
-        await scheduler.spawn(f(Mock(), task2_started, 0.1, task2_finished))
-    assert timer.seconds < CODE_OVERHEAD  # i.e. spawning is not not blocking
+    await scheduler.spawn(f(Mock(), task1_started, 9, task1_finished))
+    await scheduler.spawn(f(Mock(), task2_started, 9, task2_finished))
+    assert looptime == 0  # i.e. spawning is not not blocking
 
-    with timer:
-        await task1_finished.wait()
-        assert task2_started.is_set()
-        await task2_finished.wait()
-
-    # TODO: LATER: code coverage takes even more code overhead. Redesign when switch to looptime.
-    assert timer.seconds > 0.1
-    assert timer.seconds < 0.1 + CODE_OVERHEAD * 8
+    await task1_finished.wait()
+    assert task2_started.is_set()
+    await task2_finished.wait()
+    assert looptime == 9
 
     await scheduler.close()
 
 
-async def test_tasks_are_pending_if_limit_is_reached(timer):
+async def test_tasks_are_pending_if_limit_is_reached(looptime):
     """
     time:  ////////----------------------0.1s------------------0.2s--///
     task1: ->spawn->start->sleep->finish->|
@@ -162,17 +147,13 @@ async def test_tasks_are_pending_if_limit_is_reached(timer):
     task2_finished = asyncio.Event()
     scheduler = Scheduler(limit=1)
 
-    with timer:
-        await scheduler.spawn(f(Mock(), task1_started, 0.1, task1_finished))
-        await scheduler.spawn(f(Mock(), task2_started, 0.1, task2_finished))
-    assert timer.seconds < CODE_OVERHEAD  # i.e. spawning is not not blocking
+    await scheduler.spawn(f(Mock(), task1_started, 9, task1_finished))
+    await scheduler.spawn(f(Mock(), task2_started, 9, task2_finished))
+    assert looptime == 0  # i.e. spawning is not not blocking
 
-    with timer:
-        await task1_finished.wait()
-        assert not task2_started.is_set()
-        await task2_finished.wait()
-
-    assert timer.seconds > 0.2
-    assert timer.seconds < 0.2 + CODE_OVERHEAD * 2
+    await task1_finished.wait()
+    assert not task2_started.is_set()
+    await task2_finished.wait()
+    assert looptime == 18
 
     await scheduler.close()

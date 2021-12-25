@@ -52,7 +52,6 @@ async def test_delayed_handlers_progress(
     assert handlers.delete_mock.call_count == (1 if cause_reason == Reason.DELETE else 0)
     assert handlers.resume_mock.call_count == (1 if cause_reason == Reason.RESUME else 0)
 
-    assert not k8s_mocked.sleep.called
     assert k8s_mocked.patch.called
 
     fname = f'{cause_reason}_fn'
@@ -72,7 +71,7 @@ async def test_delayed_handlers_progress(
 ], ids=['fast', 'slow'])
 async def test_delayed_handlers_sleep(
         registry, settings, handlers, resource, cause_mock, cause_reason,
-        caplog, assert_logs, k8s_mocked, now, delayed_iso, delay):
+        caplog, assert_logs, k8s_mocked, now, delayed_iso, delay, looptime):
     caplog.set_level(logging.DEBUG)
 
     # Any "future" time works and affects nothing as long as it is the same
@@ -117,8 +116,7 @@ async def test_delayed_handlers_sleep(
     assert 'dummy' in k8s_mocked.patch.call_args_list[-1][1]['payload']['status']['kopf']
 
     # The duration of sleep should be as expected.
-    assert k8s_mocked.sleep.called
-    assert k8s_mocked.sleep.call_args_list[0][0][0] == delay
+    assert looptime == delay
 
     assert_logs([
         r"Sleeping for ([\d\.]+|[\d\.]+ \(capped [\d\.]+\)) seconds",

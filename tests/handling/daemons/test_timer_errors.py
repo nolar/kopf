@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 import kopf
@@ -5,26 +6,20 @@ from kopf._core.actions.execution import ErrorsMode, PermanentError, TemporaryEr
 
 
 async def test_timer_stopped_on_permanent_error(
-        settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle):
+        settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
     caplog.set_level(logging.DEBUG)
 
-    @kopf.timer(*resource, id='fn', backoff=0.01, interval=1.0)
+    @kopf.timer(*resource, id='fn', backoff=1.23, interval=999)
     async def fn(**kwargs):
-        dummy.mock()
-        dummy.kwargs = kwargs
-        dummy.steps['called'].set()
-        kwargs['stopped']._setter.set()  # to exit the cycle
+        dummy.mock(**kwargs)
         raise PermanentError("boo!")
 
     event_object = {'metadata': {'finalizers': [settings.persistence.finalizer]}}
     await simulate_cycle(event_object)
+    await asyncio.sleep(123)  # give it enough opportunities to misbehave (e.g. retry)
 
-    await dummy.steps['called'].wait()
-    await dummy.wait_for_daemon_done()
-
+    assert looptime == 123  # no intervals used, as there were no retries
     assert dummy.mock.call_count == 1
-    assert k8s_mocked.sleep.call_count == 1  # one for each retry
-    assert k8s_mocked.sleep.call_args_list[0][0][0] == 1.0
 
     assert_logs([
         "Timer 'fn' failed permanently: boo!",
@@ -34,26 +29,20 @@ async def test_timer_stopped_on_permanent_error(
 
 
 async def test_timer_stopped_on_arbitrary_errors_with_mode_permanent(
-        settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle):
+        settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
     caplog.set_level(logging.DEBUG)
 
-    @kopf.timer(*resource, id='fn', errors=ErrorsMode.PERMANENT, backoff=0.01, interval=1.0)
+    @kopf.timer(*resource, id='fn', errors=ErrorsMode.PERMANENT, backoff=1.23, interval=999)
     async def fn(**kwargs):
-        dummy.mock()
-        dummy.kwargs = kwargs
-        dummy.steps['called'].set()
-        kwargs['stopped']._setter.set()  # to exit the cycle
+        dummy.mock(**kwargs)
         raise Exception("boo!")
 
     event_object = {'metadata': {'finalizers': [settings.persistence.finalizer]}}
     await simulate_cycle(event_object)
+    await asyncio.sleep(123)  # give it enough opportunities to misbehave (e.g. retry)
 
-    await dummy.steps['called'].wait()
-    await dummy.wait_for_daemon_done()
-
+    assert looptime == 123  # no intervals used, as there were no retries
     assert dummy.mock.call_count == 1
-    assert k8s_mocked.sleep.call_count == 1  # one for each retry
-    assert k8s_mocked.sleep.call_args_list[0][0][0] == 1.0
 
     assert_logs([
         "Timer 'fn' failed with an exception and will stop now: boo!",
@@ -63,32 +52,23 @@ async def test_timer_stopped_on_arbitrary_errors_with_mode_permanent(
 
 
 async def test_timer_retried_on_temporary_error(
-        settings, resource, dummy, manual_time,
-        caplog, assert_logs, k8s_mocked, simulate_cycle):
+        settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
     caplog.set_level(logging.DEBUG)
+    finished = asyncio.Event()
 
-    @kopf.timer(*resource, id='fn', backoff=1.0, interval=1.0)
+    @kopf.timer(*resource, id='fn', backoff=1.23, interval=2.34)
     async def fn(retry, **kwargs):
-        dummy.mock()
-        dummy.kwargs = kwargs
-        dummy.steps['called'].set()
+        dummy.mock(**kwargs)
         if not retry:
-            raise TemporaryError("boo!", delay=1.0)
+            raise TemporaryError("boo!", delay=3.45)
         else:
-            kwargs['stopped']._setter.set()  # to exit the cycle
-            dummy.steps['finish'].set()
+            finished.set()
 
     event_object = {'metadata': {'finalizers': [settings.persistence.finalizer]}}
     await simulate_cycle(event_object)
+    await finished.wait()
 
-    await dummy.steps['called'].wait()
-    await dummy.steps['finish'].wait()
-    await dummy.wait_for_daemon_done()
-
-    assert k8s_mocked.sleep.call_count == 2  # one for each retry
-    assert k8s_mocked.sleep.call_args_list[0][0][0] == [1.0]  # delays
-    assert k8s_mocked.sleep.call_args_list[1][0][0] == 1.0  # interval
-
+    assert looptime == 3.45
     assert_logs([
         "Timer 'fn' failed temporarily: boo!",
         "Timer 'fn' succeeded.",
@@ -96,78 +76,77 @@ async def test_timer_retried_on_temporary_error(
 
 
 async def test_timer_retried_on_arbitrary_error_with_mode_temporary(
-        settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, manual_time):
+        settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
     caplog.set_level(logging.DEBUG)
+    finished = asyncio.Event()
 
-    @kopf.timer(*resource, id='fn', errors=ErrorsMode.TEMPORARY, backoff=1.0, interval=1.0)
+    @kopf.timer(*resource, id='fn', errors=ErrorsMode.TEMPORARY, backoff=1.23, interval=2.34)
     async def fn(retry, **kwargs):
-        dummy.mock()
-        dummy.kwargs = kwargs
-        dummy.steps['called'].set()
+        dummy.mock(**kwargs)
         if not retry:
             raise Exception("boo!")
         else:
-            kwargs['stopped']._setter.set()  # to exit the cycle
-            dummy.steps['finish'].set()
+            finished.set()
 
     event_object = {'metadata': {'finalizers': [settings.persistence.finalizer]}}
     await simulate_cycle(event_object)
+    await finished.wait()
 
-    await dummy.steps['called'].wait()
-    await dummy.steps['finish'].wait()
-    await dummy.wait_for_daemon_done()
-
-    assert k8s_mocked.sleep.call_count == 2  # one for each retry
-    assert k8s_mocked.sleep.call_args_list[0][0][0] == [1.0]  # delays
-    assert k8s_mocked.sleep.call_args_list[1][0][0] == 1.0  # interval
-
+    assert looptime == 1.23
     assert_logs([
-        "Timer 'fn' failed with an exception and will try again in 1.0 seconds: boo!",
+        "Timer 'fn' failed with an exception and will try again in 1.23 seconds: boo!",
         "Timer 'fn' succeeded.",
     ])
 
 
 async def test_timer_retried_until_retries_limit(
-        resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, manual_time):
+        settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
     caplog.set_level(logging.DEBUG)
+    trigger = asyncio.Condition()
 
-    @kopf.timer(*resource, id='fn', retries=3, interval=1.0)
+    @kopf.timer(*resource, id='fn', retries=3, interval=2.34)
     async def fn(**kwargs):
-        dummy.mock()
-        dummy.kwargs = kwargs
-        dummy.steps['called'].set()
-        if dummy.mock.call_count >= 5:
-            kwargs['stopped']._setter.set()  # to exit the cycle
-        raise TemporaryError("boo!", delay=1.0)
+        dummy.mock(**kwargs)
+        async with trigger:
+            trigger.notify_all()
+        raise TemporaryError("boo!", delay=3.45)
 
-    await simulate_cycle({})
-    await dummy.steps['called'].wait()
-    await dummy.wait_for_daemon_done()
+    event_object = {'metadata': {'finalizers': [settings.persistence.finalizer]}}
+    await simulate_cycle(event_object)
+    async with trigger:
+        await trigger.wait_for(lambda: any("but will" in m for m in caplog.messages))
 
-    assert k8s_mocked.sleep.call_count >= 3  # one between each retry (3 attempts - 2 sleeps)
-    assert k8s_mocked.sleep.call_args_list[0][0][0] == [1.0]  # delays
-    assert k8s_mocked.sleep.call_args_list[1][0][0] == [1.0]  # delays
-    assert k8s_mocked.sleep.call_args_list[2][0][0] == 1.0  # interval
+    assert looptime == 6.9  # 2*3.45 -- 2 sleeps between 3 attempts
+    assert dummy.mock.call_count == 3
 
 
 async def test_timer_retried_until_timeout(
-        resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, manual_time):
+        settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
     caplog.set_level(logging.DEBUG)
+    trigger = asyncio.Condition()
 
-    @kopf.timer(*resource, id='fn', timeout=3.0, interval=1.0)
+    @kopf.timer(*resource, id='fn', timeout=10.0, interval=1.23)
     async def fn(**kwargs):
-        dummy.mock()
-        dummy.kwargs = kwargs
-        dummy.steps['called'].set()
-        if dummy.mock.call_count >= 5:
-            kwargs['stopped']._setter.set()  # to exit the cycle
-        raise TemporaryError("boo!", delay=1.0)
+        dummy.mock(**kwargs)
+        async with trigger:
+            trigger.notify_all()
+        raise TemporaryError("boo!", delay=3.45)
 
     await simulate_cycle({})
-    await dummy.steps['called'].wait()
-    await dummy.wait_for_daemon_done()
+    event_object = {'metadata': {'finalizers': [settings.persistence.finalizer]}}
+    await simulate_cycle(event_object)
+    async with trigger:
+        await trigger.wait_for(lambda: any("but will" in m for m in caplog.messages))
 
-    assert k8s_mocked.sleep.call_count >= 3  # one between each retry (3 attempts - 2 sleeps)
-    assert k8s_mocked.sleep.call_args_list[0][0][0] == [1.0]  # delays
-    assert k8s_mocked.sleep.call_args_list[1][0][0] == [1.0]  # delays
-    assert k8s_mocked.sleep.call_args_list[2][0][0] == 1.0  # interval
+    assert looptime == 6.9  # 2*3.45 -- 2 sleeps between 3 attempts
+    assert dummy.mock.call_count == 3
+
+
+# TODO: next steps:
+#   extract the PR with test refactoring, where it is all simplified:
+#       - "dummy" is converted to Condition, not just Events.
+#       - in all daemons & timers, not only here!
+#   specifically:
+#       - dummy.mock is now called WITH kwargs in one operation, not separately
+#       - dummy.steps must be gone entirely; instead, local Conditions should be used
+#       - daemon/timer handlers should look as natural as possible, no hacks

@@ -6,10 +6,7 @@ import pytest
 
 from kopf._core.actions.throttlers import Throttler, throttled
 
-
-@pytest.fixture(autouse=True)
-async def clock(mocker):
-    return mocker.patch.object(asyncio.get_running_loop(), 'time', return_value=0)
+pytestmark = pytest.mark.looptime(start=1000)
 
 
 @pytest.fixture(autouse=True)
@@ -164,12 +161,11 @@ async def test_renews_on_repeated_failure(sleep):
     assert sleep.mock_calls == [call(234, wakeup=None)]
 
 
-async def test_interruption(clock, sleep):
+async def test_interruption(sleep):
     wakeup = asyncio.Event()
     logger = logging.getLogger()
     throttler = Throttler()
 
-    clock.return_value = 1000  # simulated "now"
     sleep.return_value = 55  # simulated sleep time left
     async with throttled(throttler=throttler, logger=logger, delays=[123, 234], wakeup=wakeup):
         raise Exception()
@@ -180,18 +176,17 @@ async def test_interruption(clock, sleep):
     assert sleep.mock_calls == [call(123, wakeup=wakeup)]
 
 
-async def test_continuation_with_success(clock, sleep):
+async def test_continuation_with_success(sleep):
     wakeup = asyncio.Event()
     logger = logging.getLogger()
     throttler = Throttler()
 
-    clock.return_value = 1000  # simulated "now"
     sleep.return_value = 55  # simulated sleep time left
     async with throttled(throttler=throttler, logger=logger, delays=[123, 234], wakeup=wakeup):
         raise Exception()
 
+    await asyncio.sleep(77)
     sleep.reset_mock()
-    clock.return_value = 1077  # simulated "now"
     sleep.return_value = None  # simulated sleep time left
     async with throttled(throttler=throttler, logger=logger, delays=[...], wakeup=wakeup):
         pass
@@ -202,18 +197,17 @@ async def test_continuation_with_success(clock, sleep):
     assert sleep.mock_calls == [call(123 - 77, wakeup=wakeup)]
 
 
-async def test_continuation_with_error(clock, sleep):
+async def test_continuation_with_error(sleep):
     wakeup = asyncio.Event()
     logger = logging.getLogger()
     throttler = Throttler()
 
-    clock.return_value = 1000  # simulated "now"
     sleep.return_value = 55  # simulated sleep time left
     async with throttled(throttler=throttler, logger=logger, delays=[123, 234], wakeup=wakeup):
         raise Exception()
 
+    await asyncio.sleep(77)
     sleep.reset_mock()
-    clock.return_value = 1077  # simulated "now"
     sleep.return_value = None  # simulated sleep time left
     async with throttled(throttler=throttler, logger=logger, delays=[...], wakeup=wakeup):
         raise Exception()
@@ -224,18 +218,17 @@ async def test_continuation_with_error(clock, sleep):
     assert sleep.mock_calls == [call(123 - 77, wakeup=wakeup), call(234, wakeup=wakeup)]
 
 
-async def test_continuation_when_overdue(clock, sleep):
+async def test_continuation_when_overdue(sleep):
     wakeup = asyncio.Event()
     logger = logging.getLogger()
     throttler = Throttler()
 
-    clock.return_value = 1000  # simulated "now"
     sleep.return_value = 55  # simulated sleep time left
     async with throttled(throttler=throttler, logger=logger, delays=[123, 234], wakeup=wakeup):
         raise Exception()
 
+    await asyncio.sleep(1000)
     sleep.reset_mock()
-    clock.return_value = 2000  # simulated "now"
     sleep.return_value = None  # simulated sleep time left
     async with throttled(throttler=throttler, logger=logger, delays=[...], wakeup=wakeup):
         raise Exception()

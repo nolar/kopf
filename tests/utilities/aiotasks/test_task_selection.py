@@ -7,7 +7,7 @@ async def test_alltasks_exclusion():
     flag = asyncio.Event()
     task1 = asyncio.create_task(flag.wait())
     task2 = asyncio.create_task(flag.wait())
-    done, pending = await asyncio.wait([task1, task2], timeout=0.01)
+    done, pending = await asyncio.wait([task1, task2], timeout=0.01)  # let them start
     assert not done
 
     tasks = await all_tasks(ignored=[task2])

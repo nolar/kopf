@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, Mock
 
 import aiohttp.web
 import pytest
+import pytest_asyncio
 
 import kopf
 from kopf._cogs.clients.auth import APIContext
@@ -207,7 +208,6 @@ class K8sMocks:
     patch: Mock
     delete: Mock
     stream: Mock
-    sleep: Mock
 
 
 @pytest.fixture()
@@ -226,7 +226,6 @@ def k8s_mocked(mocker, resp_mocker):
         patch=mocker.patch('kopf._cogs.clients.api.patch', return_value={}),
         delete=mocker.patch('kopf._cogs.clients.api.delete', return_value={}),
         stream=mocker.patch('kopf._cogs.clients.api.stream', side_effect=itr),
-        sleep=mocker.patch('kopf._cogs.aiokits.aiotime.sleep', return_value=None),
     )
 
 
@@ -567,69 +566,6 @@ def no_certvalidator():
 
 
 #
-# Helpers for the timing checks.
-#
-
-@pytest.fixture()
-def timer():
-    return Timer()
-
-
-class Timer:
-    """
-    A helper context manager to measure the time of the code-blocks.
-    Also, supports direct comparison with time-deltas and the numbers of seconds.
-
-    Usage:
-
-        with Timer() as timer:
-            do_something()
-            print(f"Executing for {timer.seconds}s already.")
-            do_something_else()
-
-        print(f"Executed in {timer.seconds}s.")
-        assert timer < 5.0
-    """
-
-    def __init__(self):
-        super().__init__()
-        self._ts = None
-        self._te = None
-
-    @property
-    def seconds(self):
-        if self._ts is None:
-            return None
-        elif self._te is None:
-            return time.perf_counter() - self._ts
-        else:
-            return self._te - self._ts
-
-    def __repr__(self):
-        status = 'new' if self._ts is None else 'running' if self._te is None else 'finished'
-        return f'<Timer: {self.seconds}s ({status})>'
-
-    def __enter__(self):
-        self._ts = time.perf_counter()
-        self._te = None
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self._te = time.perf_counter()
-
-    async def __aenter__(self):
-        return self.__enter__()
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        return self.__exit__(exc_type, exc_val, exc_tb)
-
-    def __int__(self):
-        return int(self.seconds)
-
-    def __float__(self):
-        return float(self.seconds)
-
-#
 # Helpers for the logging checks.
 #
 
@@ -708,13 +644,8 @@ def assert_logs(caplog):
 #
 # Helpers for asyncio checks.
 #
-@pytest.fixture()
-async def loop():
-    yield asyncio.get_running_loop()
-
-
-@pytest.fixture(autouse=True)
-def _no_asyncio_pending_tasks(loop: asyncio.AbstractEventLoop):
+@pytest_asyncio.fixture(autouse=True)
+def _no_asyncio_pending_tasks(request: pytest.FixtureRequest):
     """
     Ensure there are no unattended asyncio tasks after the test.
 
@@ -735,7 +666,28 @@ def _no_asyncio_pending_tasks(loop: asyncio.AbstractEventLoop):
 
     # Let the pytest-asyncio's async2sync wrapper to finish all callbacks. Otherwise, it raises:
     #   <Task pending name='Task-2' coro=<<async_generator_athrow without __name__>()>>
-    loop.run_until_complete(asyncio.sleep(0))
+    # We don't know which loops were used in the test & fixtures, so we wait on all of them.
+    for fixture_name, fixture_value in request.node.funcargs.items():
+        if isinstance(fixture_value, asyncio.BaseEventLoop):
+            fixture_value.run_until_complete(asyncio.sleep(0))
+
+        # Safe-guards for Python 3.10 until deprecated in ≈Oct'2026 (not needed for 3.11+).
+        try:
+            from asyncio import Runner as stdlib_Runner  # python >= 3.11 (absent in 3.10)
+        except ImportError:
+            pass
+        else:
+            if isinstance(fixture_value, stdlib_Runner):
+                fixture_value.get_loop().run_until_complete(asyncio.sleep(0))
+
+        # In case pytest's asyncio libraries use the backported runners in Python 3.10.
+        try:
+            from backports.asyncio.runner import Runner as backported_Runner
+        except ImportError:
+            pass
+        else:
+            if isinstance(fixture_value, backported_Runner):
+                fixture_value.get_loop().run_until_complete(asyncio.sleep(0))
 
     # Detect all leftover tasks.
     after = _get_all_tasks()
@@ -760,3 +712,9 @@ def _get_all_tasks() -> set[asyncio.Task]:
         else:
             break
     return {t for t in tasks if not t.done()}
+
+
+@pytest.fixture()
+def loop():
+    """Sync aiohttp's server-side timeline with kopf's client-side timeline."""
+    return asyncio.get_running_loop()

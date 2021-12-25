@@ -46,7 +46,6 @@ async def test_skipped_with_no_handlers(
         event_queue=asyncio.Queue(),
     )
 
-    assert not k8s_mocked.sleep.called
     assert k8s_mocked.patch.called
 
     # The patch must contain ONLY the last-seen update, and nothing else.
@@ -102,6 +101,5 @@ async def test_stealth_mode_with_mismatching_handlers(
         event_queue=asyncio.Queue(),
     )
 
-    assert not k8s_mocked.sleep.called
     assert not k8s_mocked.patch.called
     assert not caplog.messages  # total stealth mode!

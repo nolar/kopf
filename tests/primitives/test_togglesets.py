@@ -195,25 +195,27 @@ async def test_all_toggles_must_be_off_for_anytoggleset_to_be_off(fn):
 
 
 @pytest.mark.parametrize('fn', [all, any])
-async def test_waiting_until_on_fails_when_not_turned_on(fn):
+async def test_waiting_until_on_fails_when_not_turned_on(fn, looptime):
     toggleset = ToggleSet(fn)
     await toggleset.make_toggle(False)
     with pytest.raises(asyncio.TimeoutError):
-        await asyncio.wait_for(toggleset.wait_for(True), timeout=0.1)
+        await asyncio.wait_for(toggleset.wait_for(True), timeout=1.23)
     assert toggleset.is_off()
+    assert looptime == 1.23
 
 
 @pytest.mark.parametrize('fn', [all, any])
-async def test_waiting_until_off_fails_when_not_turned_off(fn):
+async def test_waiting_until_off_fails_when_not_turned_off(fn, looptime):
     toggleset = ToggleSet(fn)
     await toggleset.make_toggle(True)
     with pytest.raises(asyncio.TimeoutError):
-        await asyncio.wait_for(toggleset.wait_for(False), timeout=0.1)
+        await asyncio.wait_for(toggleset.wait_for(False), timeout=1.23)
     assert toggleset.is_on()
+    assert looptime == 1.23
 
 
 @pytest.mark.parametrize('fn', [all, any])
-async def test_waiting_until_on_wakes_when_turned_on(fn, timer):
+async def test_waiting_until_on_wakes_when_turned_on(fn, looptime):
     toggleset = ToggleSet(fn)
     toggle = await toggleset.make_toggle(False)
 
@@ -221,16 +223,15 @@ async def test_waiting_until_on_wakes_when_turned_on(fn, timer):
         await asyncio.sleep(delay)
         await toggle.turn_to(True)
 
-    with timer:
-        asyncio.create_task(delayed_turning_on(0.05))
-        await asyncio.wait_for(toggleset.wait_for(True), timeout=1.0)
+    asyncio.create_task(delayed_turning_on(9))
+    await toggleset.wait_for(True)
 
     assert toggleset.is_on()
-    assert timer.seconds < 0.5  # approx. 0.05 plus some code overhead
+    assert looptime == 9
 
 
 @pytest.mark.parametrize('fn', [all, any])
-async def test_waiting_until_off_wakes_when_turned_off(fn, timer):
+async def test_waiting_until_off_wakes_when_turned_off(fn, looptime):
     toggleset = ToggleSet(fn)
     toggle = await toggleset.make_toggle(True)
 
@@ -238,12 +239,11 @@ async def test_waiting_until_off_wakes_when_turned_off(fn, timer):
         await asyncio.sleep(delay)
         await toggle.turn_to(False)
 
-    with timer:
-        asyncio.create_task(delayed_turning_off(0.05))
-        await asyncio.wait_for(toggleset.wait_for(False), timeout=1.0)
+    asyncio.create_task(delayed_turning_off(9))
+    await toggleset.wait_for(False)
 
     assert toggleset.is_off()
-    assert timer.seconds < 0.5  # approx. 0.05 plus some code overhead
+    assert looptime == 9
 
 
 @pytest.mark.parametrize('fn', [all, any])

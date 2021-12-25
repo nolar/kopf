@@ -46,7 +46,7 @@ from kopf._core.reactor.queueing import EOS, watcher
 
 ])
 @pytest.mark.usefixtures('watcher_limited')
-async def test_watchevent_demultiplexing(worker_mock, timer, resource, processor,
+async def test_watchevent_demultiplexing(worker_mock, looptime, resource, processor,
                                          settings, stream, events, uids, cnts):
     """ Verify that every unique uid goes into its own queue+worker, which are never shared. """
 
@@ -60,17 +60,16 @@ async def test_watchevent_demultiplexing(worker_mock, timer, resource, processor
     stream.close(namespace=None)
 
     # Run the watcher (near-instantly and test-blocking).
-    with timer:
-        await watcher(
-            namespace=None,
-            resource=resource,
-            settings=settings,
-            processor=processor,
-        )
+    await watcher(
+        namespace=None,
+        resource=resource,
+        settings=settings,
+        processor=processor,
+    )
 
     # Extra-check: verify that the real workers were not involved:
     # they would do batching, which is absent in the mocked workers.
-    assert timer.seconds < settings.batching.batch_window
+    assert looptime == 0
 
     # The processor must not be called by the watcher, only by the worker.
     # But the worker (even if mocked) must be called & awaited by the watcher.
@@ -122,32 +121,30 @@ async def test_watchevent_demultiplexing(worker_mock, timer, resource, processor
 
 ])
 @pytest.mark.usefixtures('watcher_limited')
-async def test_watchevent_batching(settings, resource, processor, timer,
-                                   stream, events, uids, vals):
+async def test_watchevent_batching(settings, resource, processor,
+                                   stream, events, uids, vals, looptime):
     """ Verify that only the last event per uid is actually handled. """
 
     # Override the default timeouts to make the tests faster.
-    settings.batching.idle_timeout = 100  # should not be involved, fail if it is
-    settings.batching.exit_timeout = 100  # should exit instantly, fail if it didn't
-    settings.batching.batch_window = 0.3  # the time period being tested (make bigger than overhead)
+    settings.batching.idle_timeout = 999  # should not be involved, fail if it is
+    settings.batching.exit_timeout = 999  # should exit instantly, fail if it didn't
+    settings.batching.batch_window = 123  # the time period being tested
 
     # Inject the events of unique objects - to produce a few streams/workers.
     stream.feed(events, namespace=None)
     stream.close(namespace=None)
 
     # Run the watcher (near-instantly and test-blocking).
-    with timer:
-        await watcher(
-            namespace=None,
-            resource=resource,
-            settings=settings,
-            processor=processor,
-        )
+    await watcher(
+        namespace=None,
+        resource=resource,
+        settings=settings,
+        processor=processor,
+    )
 
     # Should be batched strictly once (never twice). Note: multiple uids run concurrently,
     # so they all are batched in parallel, and the timing remains the same.
-    assert timer.seconds > settings.batching.batch_window * 1
-    assert timer.seconds < settings.batching.batch_window * 2
+    assert looptime == 123
 
     # Was the processor called at all? Awaited as needed for async fns?
     assert processor.await_count > 0
@@ -184,10 +181,10 @@ async def test_garbage_collection_of_streams(
 ):
 
     # Override the default timeouts to make the tests faster.
-    settings.batching.exit_timeout = 100  # should exit instantly, fail if it didn't
-    settings.batching.idle_timeout = .05  # finish workers faster, but not as fast as batching
-    settings.batching.batch_window = .01  # minimize the effects of batching (not our interest)
-    settings.watching.reconnect_backoff = 1.0  # to prevent src depletion
+    settings.batching.exit_timeout = 999  # should exit instantly, fail if it didn't
+    settings.batching.idle_timeout = 5  # finish workers faster, but not as fast as batching
+    settings.batching.batch_window = 1  # minimize the effects of batching (not our interest)
+    settings.watching.reconnect_backoff = 100  # to prevent src depletion
 
     # Inject the events of unique objects - to produce a few streams/workers.
     stream.feed(events, namespace=None)
@@ -196,7 +193,7 @@ async def test_garbage_collection_of_streams(
     # Give it a moment to populate the streams and spawn all the workers.
     # Intercept and remember _any_ seen dict of streams for further checks.
     while worker_spy.call_count < unique:
-        await asyncio.sleep(0.001)  # give control to the loop
+        await asyncio.sleep(0)  # give control to the loop
     streams = worker_spy.call_args_list[-1][1]['streams']
     signaller: asyncio.Condition = worker_spy.call_args_list[0][1]['signaller']
 
@@ -223,7 +220,7 @@ async def test_garbage_collection_of_streams(
 
     # Let the workers to actually exit and gc their local scopes with variables.
     # The jobs can take a tiny moment more, but this is noticeable in the tests.
-    await asyncio.sleep(0.1)
+    await asyncio.sleep(0)
 
     # For PyPy: force the gc! (GC can be delayed in PyPy, unlike in CPython.)
     # https://doc.pypy.org/en/latest/cpython_differences.html#differences-related-to-garbage-collection-strategies

@@ -7,7 +7,7 @@ from kopf._cogs.structs.references import Insights
 from kopf._core.reactor.observation import process_discovered_namespace_event
 
 
-async def test_initial_listing_is_ignored():
+async def test_initial_listing_is_ignored(looptime):
     insights = Insights()
     e1 = RawEvent(type=None, object=RawBody(metadata={'name': 'ns1'}))
 
@@ -19,13 +19,15 @@ async def test_initial_listing_is_ignored():
     task = asyncio.create_task(delayed_injection(0))
     with pytest.raises(asyncio.TimeoutError):
         async with insights.revised:
-            await asyncio.wait_for(insights.revised.wait(), timeout=0.1)
+            await asyncio.wait_for(insights.revised.wait(), timeout=1.23)
     await task
+
+    assert looptime == 1.23
     assert not insights.namespaces
 
 
 @pytest.mark.parametrize('etype', ['ADDED', 'MODIFIED'])
-async def test_followups_for_addition(timer, etype):
+async def test_followups_for_addition(looptime, etype):
     insights = Insights()
     e1 = RawEvent(type=etype, object=RawBody(metadata={'name': 'ns1'}))
 
@@ -34,17 +36,16 @@ async def test_followups_for_addition(timer, etype):
         await process_discovered_namespace_event(
             insights=insights, raw_event=e1, namespaces=['ns*'])
 
-    task = asyncio.create_task(delayed_injection(0.1))
-    with timer:
-        async with insights.revised:
-            await insights.revised.wait()
+    task = asyncio.create_task(delayed_injection(9))
+    async with insights.revised:
+        await insights.revised.wait()
     await task
-    assert 0.1 < timer.seconds < 0.13
+    assert looptime == 9
     assert insights.namespaces == {'ns1'}
 
 
 @pytest.mark.parametrize('etype', ['DELETED'])
-async def test_followups_for_deletion(timer, etype):
+async def test_followups_for_deletion(looptime, etype):
     insights = Insights()
     insights.namespaces.add('ns1')
     e1 = RawEvent(type=etype, object=RawBody(metadata={'name': 'ns1'}))
@@ -54,10 +55,9 @@ async def test_followups_for_deletion(timer, etype):
         await process_discovered_namespace_event(
             insights=insights, raw_event=e1, namespaces=['ns*'])
 
-    task = asyncio.create_task(delayed_injection(0.1))
-    with timer:
-        async with insights.revised:
-            await insights.revised.wait()
+    task = asyncio.create_task(delayed_injection(9))
+    async with insights.revised:
+        await insights.revised.wait()
     await task
-    assert 0.1 < timer.seconds < 0.11
+    assert looptime == 9
     assert not insights.namespaces
