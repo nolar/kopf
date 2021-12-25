@@ -3,7 +3,6 @@
 -e .
 aresponses
 astpath[xpath]
-async-timeout
 asynctest
 certbuilder
 certvalidator

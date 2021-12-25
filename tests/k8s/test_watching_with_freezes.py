@@ -1,7 +1,6 @@
 import asyncio
 import logging
 
-import async_timeout
 import pytest
 
 from kopf._cogs.aiokits.aiotoggles import ToggleSet
@@ -15,7 +14,7 @@ async def test_pausing_is_ignored_if_turned_off(
     operator_paused = ToggleSet(any)
     await operator_paused.make_toggle(False)
 
-    async with timer, async_timeout.timeout(0.5) as timeout:
+    with timer:
         async with streaming_block(
             resource=resource,
             namespace=namespace,
@@ -23,7 +22,6 @@ async def test_pausing_is_ignored_if_turned_off(
         ):
             pass
 
-    assert not timeout.expired
     assert timer.seconds < 0.2  # no waits, exits as soon as possible
     assert_logs([], prohibited=[
         r"Pausing the watch-stream for",
@@ -38,16 +36,17 @@ async def test_pausing_waits_forever_if_not_resumed(
     operator_paused = ToggleSet(any)
     await operator_paused.make_toggle(True)
 
-    with pytest.raises(asyncio.TimeoutError):
-        async with timer, async_timeout.timeout(0.5) as timeout:
-            async with streaming_block(
+    async def do_it():
+        async with streaming_block(
                 resource=resource,
                 namespace=namespace,
                 operator_paused=operator_paused,
-            ):
-                pass
+        ):
+            pass
 
-    assert timeout.expired
+    with pytest.raises(asyncio.TimeoutError), timer:
+        await asyncio.wait_for(do_it(), timeout=0.5)
+
     assert timer.seconds >= 0.5
     assert_logs([
         r"Pausing the watch-stream for",
@@ -67,7 +66,7 @@ async def test_pausing_waits_until_resumed(
         await asyncio.sleep(delay)
         await conflicts_found.turn_to(False)
 
-    async with timer, async_timeout.timeout(1.0) as timeout:
+    with timer:
         asyncio.create_task(delayed_resuming(0.2))
         async with streaming_block(
             resource=resource,
@@ -76,7 +75,6 @@ async def test_pausing_waits_until_resumed(
         ):
             pass
 
-    assert not timeout.expired
     assert timer.seconds >= 0.2
     assert timer.seconds <= 0.5
     assert_logs([

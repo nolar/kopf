@@ -1,7 +1,6 @@
 import asyncio
 
 import aiohttp.web
-import async_timeout
 import pytest
 
 import kopf
@@ -126,7 +125,7 @@ async def test_nonwatchable_resources_are_ignored(
             insights=insights, raw_event=e1, registry=registry, settings=settings)
 
     task = asyncio.create_task(delayed_injection(0.1))
-    async with timer, async_timeout.timeout(1.0):
+    with timer:
         async with insights.revised:
             await insights.revised.wait()
     await task
@@ -148,11 +147,9 @@ async def test_initial_listing_is_ignored(
 
     task = asyncio.create_task(delayed_injection(0))
     with pytest.raises(asyncio.TimeoutError):
-        async with async_timeout.timeout(0.1) as timeout:
-            async with insights.revised:
-                await insights.revised.wait()
+        async with insights.revised:
+            await asyncio.wait_for(insights.revised.wait(), timeout=0.1)
     await task
-    assert timeout.expired
     assert not insights.indexed_resources
     assert not insights.watched_resources
     assert not insights.webhook_resources
@@ -173,7 +170,7 @@ async def test_followups_for_addition(
             insights=insights, raw_event=e1, registry=registry, settings=settings)
 
     task = asyncio.create_task(delayed_injection(0.1))
-    async with timer, async_timeout.timeout(1.0):
+    with timer:
         async with insights.revised:
             await insights.revised.wait()
     await task
@@ -198,7 +195,7 @@ async def test_followups_for_deletion_of_resource(
             insights=insights, raw_event=e1, registry=registry, settings=settings)
 
     task = asyncio.create_task(delayed_injection(0.1))
-    async with timer, async_timeout.timeout(1.0):
+    with timer:
         async with insights.revised:
             await insights.revised.wait()
     await task
@@ -222,7 +219,7 @@ async def test_followups_for_deletion_of_group(
             insights=insights, raw_event=e1, registry=registry, settings=settings)
 
     task = asyncio.create_task(delayed_injection(0.1))
-    async with timer, async_timeout.timeout(1.0):
+    with timer:
         async with insights.revised:
             await insights.revised.wait()
     await task
@@ -244,7 +241,7 @@ async def test_backbone_is_filled(
             insights=insights, raw_event=e1, registry=registry, settings=settings)
 
     task = asyncio.create_task(delayed_injection(0.1))
-    async with timer, async_timeout.timeout(1.0):
+    with timer:
         await insights.backbone.wait_for(NAMESPACES)
     await task
     assert 0.1 < timer.seconds < 1.0

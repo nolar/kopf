@@ -1,7 +1,6 @@
 import asyncio
 from unittest.mock import Mock
 
-import async_timeout
 import pytest
 
 from kopf._cogs.aiokits.aiotasks import Scheduler
@@ -26,7 +25,7 @@ async def f(mock, *args):
 
 
 async def test_empty_scheduler_lifecycle(timer):
-    async with timer, async_timeout.timeout(1):
+    with timer:
         scheduler = Scheduler()
         assert scheduler.empty()
         await scheduler.wait()
@@ -45,12 +44,12 @@ async def test_task_spawning_and_graceful_finishing(timer):
     result = await scheduler.spawn(f(mock, flag1, 0.1, flag2))
     assert result is None
 
-    async with timer, async_timeout.timeout(1):
+    with timer:
         await flag1.wait()
     assert timer.seconds < CODE_OVERHEAD
     assert mock.call_args[0][0] == 'started'
 
-    async with timer, async_timeout.timeout(1):
+    with timer:
         await flag2.wait()
     assert timer.seconds > 0.1
     assert timer.seconds < 0.1 + CODE_OVERHEAD
@@ -68,12 +67,12 @@ async def test_task_spawning_and_cancellation(timer):
     result = await scheduler.spawn(f(mock, flag1, 1.0, flag2))
     assert result is None
 
-    async with timer, async_timeout.timeout(1):
+    with timer:
         await flag1.wait()
     assert timer.seconds < CODE_OVERHEAD
     assert mock.call_args[0][0] == 'started'
 
-    async with timer, async_timeout.timeout(1):
+    with timer:
         await scheduler.close()
     assert timer.seconds < CODE_OVERHEAD  # near-instant
     assert mock.call_args[0][0] == 'cancelled'
@@ -87,18 +86,16 @@ async def test_no_tasks_are_accepted_after_closing():
     assert scheduler._spawning_task.done()
     assert scheduler._cleaning_task.done()
 
-    async with async_timeout.timeout(1):
-        with pytest.raises(RuntimeError, match=r"Cannot add new coroutines"):
-            await scheduler.spawn(f(Mock(), 1.0))
+    with pytest.raises(RuntimeError, match=r"Cannot add new coroutines"):
+        await scheduler.spawn(f(Mock(), 1.0))
 
 
 async def test_successes_are_not_reported():
     exception_handler = Mock()
     scheduler = Scheduler(exception_handler=exception_handler)
-    async with async_timeout.timeout(1):
-        await scheduler.spawn(f(Mock()))
-        await scheduler.wait()
-        await scheduler.close()
+    await scheduler.spawn(f(Mock()))
+    await scheduler.wait()
+    await scheduler.close()
     assert exception_handler.call_count == 0
 
 
@@ -106,10 +103,9 @@ async def test_cancellations_are_not_reported():
     exception_handler = Mock()
     mock = Mock(side_effect=asyncio.CancelledError())
     scheduler = Scheduler(exception_handler=exception_handler)
-    async with async_timeout.timeout(1):
-        await scheduler.spawn(f(mock, 1))
-        await scheduler.wait()
-        await scheduler.close()
+    await scheduler.spawn(f(mock, 1))
+    await scheduler.wait()
+    await scheduler.close()
     assert exception_handler.call_count == 0
 
 
@@ -118,10 +114,9 @@ async def test_exceptions_are_reported():
     exception_handler = Mock()
     mock = Mock(side_effect=exception)
     scheduler = Scheduler(exception_handler=exception_handler)
-    async with async_timeout.timeout(1):
-        await scheduler.spawn(f(mock))
-        await scheduler.wait()
-        await scheduler.close()
+    await scheduler.spawn(f(mock))
+    await scheduler.wait()
+    await scheduler.close()
     assert exception_handler.call_count == 1
     assert exception_handler.call_args[0][0] is exception
 
@@ -138,12 +133,12 @@ async def test_tasks_are_parallel_if_limit_is_not_reached(timer):
     task2_finished = asyncio.Event()
     scheduler = Scheduler(limit=2)
 
-    async with timer, async_timeout.timeout(1):
+    with timer:
         await scheduler.spawn(f(Mock(), task1_started, 0.1, task1_finished))
         await scheduler.spawn(f(Mock(), task2_started, 0.1, task2_finished))
     assert timer.seconds < CODE_OVERHEAD  # i.e. spawning is not not blocking
 
-    async with timer, async_timeout.timeout(1):
+    with timer:
         await task1_finished.wait()
         assert task2_started.is_set()
         await task2_finished.wait()
@@ -166,12 +161,12 @@ async def test_tasks_are_pending_if_limit_is_reached(timer):
     task2_finished = asyncio.Event()
     scheduler = Scheduler(limit=1)
 
-    async with timer, async_timeout.timeout(1):
+    with timer:
         await scheduler.spawn(f(Mock(), task1_started, 0.1, task1_finished))
         await scheduler.spawn(f(Mock(), task2_started, 0.1, task2_finished))
     assert timer.seconds < CODE_OVERHEAD  # i.e. spawning is not not blocking
 
-    async with timer, async_timeout.timeout(1):
+    with timer:
         await task1_finished.wait()
         assert not task2_started.is_set()
         await task2_finished.wait()

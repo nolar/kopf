@@ -1,6 +1,5 @@
 import asyncio
 
-import async_timeout
 import pytest
 
 from kopf._cogs.structs.references import CLUSTER_PEERINGS_K, CLUSTER_PEERINGS_Z, CRDS, EVENTS, \
@@ -51,16 +50,14 @@ async def test_refill_is_cumulative_ie_does_not_reset():
 async def test_waiting_for_absent_resources_never_ends(timer):
     backbone = Backbone()
     with pytest.raises(asyncio.TimeoutError):
-        async with async_timeout.timeout(0.1) as timeout:
-            await backbone.wait_for(NAMESPACES)
-    assert timeout.expired
+        await asyncio.wait_for(backbone.wait_for(NAMESPACES), timeout=0.1)
 
 
 async def test_waiting_for_preexisting_resources_ends_instantly(timer):
     resource = Resource('', 'v1', 'namespaces')
     backbone = Backbone()
     await backbone.fill(resources=[resource])
-    async with timer, async_timeout.timeout(1):
+    with timer:
         found_resource = await backbone.wait_for(NAMESPACES)
     assert timer.seconds < 0.1
     assert found_resource == resource
@@ -75,7 +72,7 @@ async def test_waiting_for_delayed_resources_ends_once_delivered(timer):
         await backbone.fill(resources=[resource])
 
     task = asyncio.create_task(delayed_injection(0.1))
-    async with timer, async_timeout.timeout(1):
+    with timer:
         found_resource = await backbone.wait_for(NAMESPACES)
     await task
     assert 0.1 < timer.seconds < 0.11
