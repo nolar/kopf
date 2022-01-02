@@ -99,15 +99,16 @@ async def background_daemon_killer(settings, memories, operator_paused):
 
 
 @pytest.fixture()
-def frozen_time():
+async def frozen_time():
     """
     A helper to simulate time movements to step over long sleeps/timeouts.
     """
-    # TODO LATER: Either freezegun should support the system clock, or find something else.
-    with freezegun.freeze_time("2020-01-01T00:00:00") as frozen:
+    with freezegun.freeze_time("2020-01-01 00:00:00") as frozen:
         # Use freezegun-supported time instead of system clocks -- for testing purposes only.
         # NB: Patch strictly after the time is frozen -- to use fake_time(), not real time().
-        with patch('time.monotonic', time.time), patch('time.perf_counter', time.time):
+        # NB: StdLib's event loops use time.monotonic(), but uvloop uses its own C-level time,
+        #     so patch the loop object directly instead of its implied underlying implementation.
+        with patch.object(asyncio.get_running_loop(), 'time', time.time):
             yield frozen
 
 
