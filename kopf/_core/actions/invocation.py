@@ -6,9 +6,11 @@ Also, decorated wrappers and lambdas are recognized.
 All of this goes via the same invocation logic and protocol.
 """
 import asyncio
+import concurrent.futures
 import contextlib
 import contextvars
 import functools
+import logging
 from typing import Any, Callable, Coroutine, Iterable, Iterator, \
                    List, Mapping, Optional, Tuple, TypeVar, Union
 
@@ -26,6 +28,7 @@ SyncOrAsync = Union[_R, Coroutine[None, None, _R]]
 # Used for the Handler and generic invocation methods (which do not care about protocols).
 Invokable = Callable[..., SyncOrAsync[Optional[object]]]
 
+logger = logging.getLogger(__name__)
 
 class Kwargable:
     """
@@ -132,6 +135,11 @@ async def invoke(
         # Note: the docs say the result is a future, but typesheds say it is a coroutine => cast()!
         loop = asyncio.get_running_loop()
         executor = settings.execution.executor if settings is not None else None
+        if executor and isinstance(executor, concurrent.futures.ThreadPoolExecutor):
+            if len(executor._threads) >= executor._max_workers:
+                logger.warning("Executor is full. You may want to consider raising the number "
+                               f"of max_workers (actually {executor._max_workers}) in order "
+                               "to run all the daemons concurrently.")
         future = loop.run_in_executor(executor, real_fn)
         cancellation: Optional[asyncio.CancelledError] = None
         while not future.done():
