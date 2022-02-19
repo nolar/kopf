@@ -735,6 +735,7 @@ def timer(  # lgtm[py/similar-function]
         value: Optional[filters.ValueFilter] = None,
         # Operator specification:
         registry: Optional[registries.OperatorRegistry] = None,
+        requires_finalizer: bool = True,
 ) -> TimerDecorator:
     """ ``@kopf.timer()`` handler for the regular events. """
     def decorator(  # lgtm[py/similar-function]
@@ -755,7 +756,7 @@ def timer(  # lgtm[py/similar-function]
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value,
-            initial_delay=initial_delay, requires_finalizer=True,
+            initial_delay=initial_delay, requires_finalizer=requires_finalizer,
             sharp=sharp, idle=idle, interval=interval,
         )
         real_registry._spawning.append(handler)
