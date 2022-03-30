@@ -118,7 +118,7 @@ If the owner is deleted, its children will be deleted too, automatically,
 and no additional handlers are needed.
 
 To set the ownership, use :func:`kopf.append_owner_reference`.
-To remive the ownershio, use :func:`kopf.remove_owner_reference`:
+To remove the ownership, use :func:`kopf.remove_owner_reference`:
 
 .. code-block:: python
 
