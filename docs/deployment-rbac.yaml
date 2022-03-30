@@ -5,7 +5,7 @@ metadata:
   namespace: "{{NAMESPACE}}"
   name: kopfexample-account
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: kopfexample-role-cluster
@@ -34,7 +34,7 @@ rules:
     resources: [kopfexamples]
     verbs: [list, watch]
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   namespace: "{{NAMESPACE}}"
@@ -65,7 +65,7 @@ rules:
     resources: [pods, persistentvolumeclaims]
     verbs: [create]
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: kopfexample-rolebinding-cluster
@@ -78,7 +78,7 @@ subjects:
     name: kopfexample-account
     namespace: "{{NAMESPACE}}"
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   namespace: "{{NAMESPACE}}"
