@@ -14,7 +14,7 @@ Therefore, it knows nothing about the *desired state* or *actual state*
 Kopf-based operators must implement the checks and reactions to the changes,
 so that both states are synchronised according to the operator's concepts.
 
-Kopf only provides a few ways and tools fir achieving this easily.
+Kopf only provides a few ways and tools for achieving this easily.
 
 
 Event-driven reactions
