@@ -113,13 +113,13 @@ async def _read_version(
                 categories=frozenset(resource.get('categories', [])),
                 subresources=frozenset(
                     subresource['name'].split('/', 1)[-1]
-                    for subresource in rsp['resources']
+                    for subresource in rsp.get('resources', [])
                     if subresource['name'].startswith(f'{resource["name"]}/')
                 ),
                 namespaced=resource['namespaced'],
                 preferred=preferred,
                 verbs=frozenset(resource.get('verbs', [])),
             )
-            for resource in rsp['resources']
+            for resource in rsp.get('resources', [])
             if '/' not in resource['name']
         }
