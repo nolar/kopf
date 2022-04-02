@@ -104,7 +104,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        k3s: [latest, v1.21, v1.20, v1.19]
+        k3s: [latest, v1.22, v1.21, v1.20, v1.19]
     name: K3s ${{matrix.k3s}}
     runs-on: ubuntu-20.04
     timeout-minutes: 10  # usually 4-5 mins
@@ -124,7 +124,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        k8s: [latest, v1.21.2, v1.20.8, v1.19.12]
+        k8s: [latest, v1.22.8, v1.21.11, v1.20.15, v1.19.16]
     name: K8s ${{matrix.k8s}}
     runs-on: ubuntu-20.04
     timeout-minutes: 10  # usually 4-5 mins
