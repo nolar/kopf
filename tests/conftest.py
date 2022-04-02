@@ -673,7 +673,7 @@ def assert_logs(caplog):
                         break  # out of `remaining_patterns` cycle
                     else:
                         skipped_patterns = remaining_patterns[:idx]
-                        raise AssertionError(f"Few patterns were skipped: {skipped_patterns!r}")
+                        raise AssertionError(f"Several patterns were skipped: {skipped_patterns!r}")
                 elif strict:
                     raise AssertionError(f"Unexpected log message: {message!r}")
 
@@ -686,7 +686,7 @@ def assert_logs(caplog):
         # If all patterns have been matched in order, we are done.
         # if some are left, but the messages are over, then we fail.
         if remaining_patterns:
-            raise AssertionError(f"Few patterns were missed: {remaining_patterns!r}")
+            raise AssertionError(f"Several patterns were missed: {remaining_patterns!r}")
 
     return assert_logs_fn
 
