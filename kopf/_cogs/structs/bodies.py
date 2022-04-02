@@ -246,6 +246,9 @@ def build_object_reference(
 
 def build_owner_reference(
         body: Body,
+        *,
+        controller: Optional[bool] = True,
+        block_owner_deletion: Optional[bool] = True,
 ) -> OwnerReference:
     """
     Construct an owner reference object for the parent-children relationships.
@@ -257,11 +260,11 @@ def build_owner_reference(
     for cluster resources, or e.g. ``apiVersion`` for ``kind: Node``, etc.
     """
     ref = dict(
-        controller=True,
-        blockOwnerDeletion=True,
+        controller=controller,
+        blockOwnerDeletion=block_owner_deletion,
         apiVersion=body.get('apiVersion'),
         kind=body.get('kind'),
         name=body.get('metadata', {}).get('name'),
         uid=body.get('metadata', {}).get('uid'),
     )
-    return cast(OwnerReference, {key: val for key, val in ref.items() if val})
+    return cast(OwnerReference, {key: val for key, val in ref.items() if val is not None})

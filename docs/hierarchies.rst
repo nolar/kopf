@@ -150,6 +150,14 @@ processed at the moment, omit the explicit owner argument or set it to ``None``:
         #      'name': 'kopf-example-1',
         #      'uid': '6b931859-5d50-4b5c-956b-ea2fed0d1058'}]}}]
 
+To set an owner to not be a controller or not block owner deletion:
+
+.. code-block:: python
+
+    kopf.append_owner_reference(objs, controller=False, block_owner_deletion=False)
+
+Both of the above are True by default
+
 .. seealso::
     :doc:`walkthrough/deletion`.
 
