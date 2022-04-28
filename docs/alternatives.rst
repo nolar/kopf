@@ -5,52 +5,53 @@ Alternatives
 Metacontroller
 ==============
 
-The closest equivalent of Kopf is Metacontroller_.
-It targets the same goal as Kopf does:
-to make the development of Kubernetes operators easy,
-with no need for in-depth knowledge of Kubernetes or Go.
+The closest equivalent of Kopf is Metacontroller_.  
+It targets the same goal as Kopf does:  
+to make the development of Kubernetes operators easy,  
+with no need for in-depth knowledge of Kubernetes or Go.  
+  
+However, it does that differently than Kopf does:  
+with a few YAML files describing the structure of your operator  
+(besides the custom resource definition),  
+and by wrapping your core domain logic into the Function-as-a-Service  
+or into the in-cluster HTTP API deployments,  
+which reacts to the changes in the custom resources.  
+  
+An operator developer still has to implement the infrastructure  
+of the API calls in these HTTP APIs and/or Lambdas.  
+The APIs must be reachable from inside the cluster,  
+so they must be deployed there.  
+  
+Kopf attempts to keep things explicit  
+(as per the `Zen of Python`_: *explicit is better than implicit*),  
+keeping the whole operator's logic in one place, in one syntax (Python).  
+  
+.. admonition:: And, by the way...  
+  
+    Not only it is about "*explicit is better than implicit*",  
+    but also "*simple is better than complex*",  
+    "*flat is better than nested*", and "*readability counts*",  
+    which makes Kopf a *pythonic* framework in the first place,  
+    not just *written with Python*.  
+  
+Kopf also attempts to keep the operator development human-friendly,  
+which means at least the ease of debugging (e.g. with the breakpoints,  
+running in a local IDE, not in the cloud), the readability of the logs,  
+and other little pleasant things.  
+  
+And also Kopf allows writing *any* arbitrary domain logic of the resources,  
+especially if it spans over long periods (hours, days if needed),  
+and is not limited to the timeout restrictions of the HTTP APIs with their  
+expectation of nearly immediate outcome (i.e. in seconds or milliseconds).  
+  
+Metacontroller is 1.5 years older than Kopf and was backed by Google with 
+some years of inactivity. The project is now maintained by the 
+open source community.  
+  
+Unlike Kopf, Metacontroller supports the domain logic in any languages 
+because of its language-agnostic nature of HTTP APIs.
 
-However, it does that in a different way than Kopf does:
-with a few YAML files describing the structure of your operator
-(besides the custom resource definition),
-and by wrapping your core domain logic into the Function-as-a-Service
-or into the in-cluster HTTP API deployments,
-which in turn react to the changes in the custom resources.
-
-An operator developer still has to implement the infrastructure
-of the API calls in these HTTP APIs and/or Lambdas.
-The APIs must be reachable from inside the cluster,
-which means that they must be deployed there.
-
-Kopf, on the other hand, attempts to keep things explicit
-(as per the `Zen of Python`_: *explicit is better than implicit*),
-keeping the whole operator's logic in one place, in one syntax (Python).
-
-.. admonition:: And, by the way...
-
-    Not only it is about "*explicit is better than implicit*",
-    but also "*simple is better than complex*",
-    "*flat is better than nested*", and "*readability counts*",
-    which makes Kopf a *pythonic* framework in the first place,
-    not just *written with Python*.
-
-Kopf also makes the effort to keep the operator development human-friendly,
-which means at least the ease of debugging (e.g. with the breakpoints,
-running in a local IDE, not in the cloud), the readability of the logs,
-and other little pleasant things.
-
-And also Kopf allows to write *any* arbitrary domain logic of the resources,
-especially if it spans over long periods (hours, days if needed),
-and is not limited to the timeout restrictions of the HTTP APIs with their
-expectation of nearly-immediate outcome (i.e. in seconds or milliseconds).
-
-Metacontroller, however, is more mature, 1.5 years older than Kopf,
-and is backed by Google, who originally developed Kubernetes itself.
-
-Unlike Kopf, Metacontroller supports the domain logic in any languages
-due to its language-agnostic nature of HTTP APIs.
-
-.. _Metacontroller: https://metacontroller.app/
+.. _Metacontroller: https://github.com/metacontroller/metacontroller
 .. _Zen of Python: https://www.python.org/dev/peps/pep-0020/
 
 
