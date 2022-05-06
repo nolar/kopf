@@ -67,21 +67,25 @@ Kopf tracks the state of the objects and calculates the diffs.
 The diffs are provided as the :kwarg:`diff` kwarg; the old & new states
 of the object or field -- as the :kwarg:`old` & :kwarg:`new` kwargs.
 
-A diff-object has this structure (as an example)::
+A diff-object has this structure::
 
-    [('add', ('metadata', 'labels', 'label1'), None, 'new-value'),
+    ((action, n-tuple of object or field path, old, new),)
+
+with example::
+
+    (('add', ('metadata', 'labels', 'label1'), None, 'new-value'),
      ('change', ('metadata', 'labels', 'label2'), 'old-value', 'new-value'),
      ('remove', ('metadata', 'labels', 'label3'), 'old-value', None),
-     ('change', ('spec', 'size'), '1G', '2G')]
+     ('change', ('spec', 'size'), '1G', '2G'))
 
 For the field-handlers, it will be the same,
-just the field path will be relative to the handled field,
+but the field path will be relative to the handled field,
 and unrelated fields will be filtered out.
 For example, if the field is ``metadata.labels``::
 
-    [('add', ('label1',), None, 'new-value'),
+    (('add', ('label1',), None, 'new-value'),
      ('change', ('label2',), 'old-value', 'new-value'),
-     ('remove', ('label3',), 'old-value', None)]
+     ('remove', ('label3',), 'old-value', None))
 
 Now, let's use this feature to explicitly react to the re-labelling of the EVCs.
 Note that the ``new`` value for the removed dict key is ``None``,
