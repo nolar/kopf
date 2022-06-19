@@ -1,5 +1,5 @@
 """
-Few simple lifecycles for the handlers.
+A few simple lifecycles for the handlers.
 
 New lifecycles can be implemented the same way: accept ``handlers``
 in the order they are registered (except those already succeeded),

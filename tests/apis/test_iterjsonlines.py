@@ -64,7 +64,7 @@ async def test_one_chunk_empty_lines():
     assert lines == [b'hello', b'world']
 
 
-async def test_few_chunks_split():
+async def test_a_few_chunks_split():
     async def iter_chunked(n: int):
         yield b'\n\nhell'
         yield b'o\n\nwor'

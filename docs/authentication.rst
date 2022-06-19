@@ -106,7 +106,7 @@ In the future, more libraries can be added for authentication piggybacking.
 *Piggybacking* means that the config parsing and authentication methods of these
 libraries are used, and only the information needed for API calls is extracted.
 
-If few of the piggybacked libraries are installed,
+If a few of the piggybacked libraries are installed,
 all of them will be attempted (as if multiple handlers are installed),
 and all the credentials will be utilised in random order.
 

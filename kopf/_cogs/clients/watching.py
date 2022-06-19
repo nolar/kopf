@@ -188,8 +188,8 @@ async def continuous_watch(
             raw_object = raw_input['object']
 
             # "410 Gone" is for the "resource version too old" error, we must restart watching.
-            # The resource versions are lost by k8s after few minutes (5, as per the official doc).
-            # The error occurs when there is nothing happening for few minutes. This is normal.
+            # The resource versions are lost by k8s after a few minutes (5 as per the official doc).
+            # The error occurs when there is nothing happening for a few minutes. This is normal.
             if raw_type == 'ERROR' and cast(bodies.RawError, raw_object)['code'] == 410:
                 where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
                 logger.debug(f"Restarting the watch-stream for {resource} {where}.")

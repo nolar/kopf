@@ -215,7 +215,7 @@ async def spawn_tasks(
     # Toolkits have to keep the original operator context somehow, and the only way is contextvars.
     posting.settings_var.set(settings)
 
-    # Few common background forever-running infrastructural tasks (irregular root tasks).
+    # A few common background forever-running infrastructural tasks (irregular root tasks).
     tasks.append(aiotasks.create_task(
         name="stop-flag checker",
         coro=_stop_flag_checker(
@@ -493,7 +493,7 @@ async def _startup_cleanup_activities(
     The root tasks do not actually start until the ready-flag is set,
     which happens after the startup handlers finished successfully.
 
-    Beside calling the startup/cleanup handlers, it performs few operator-scoped
+    Beside calling the startup/cleanup handlers, it performs a few operator-wide
     cleanups too (those that cannot be handled by garbage collection).
     """
     logger.debug(f"Starting Kopf {versions.version or '(unknown version)'}.")

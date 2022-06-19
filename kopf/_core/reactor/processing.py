@@ -315,7 +315,7 @@ async def process_spawning_cause(
     Spawn/kill all the background tasks of a resource.
 
     The spawning and killing happens in parallel with the resource-changing
-    handlers invocation (even if it takes few cycles). For this, the signal
+    handlers invocation (even if it takes a few cycles). For this, the signal
     to terminate is sent to the daemons immediately, but the actual check
     of their shutdown is performed only when all the on-deletion handlers
     have succeeded (or after they were invoked if they are optional;

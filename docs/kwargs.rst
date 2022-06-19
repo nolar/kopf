@@ -244,7 +244,7 @@ Resource-changing kwargs
 
 Kopf provides functionality for change detection and triggers the handlers
 for those changes (not for every event coming from the Kubernetes API).
-Few extra kwargs are provided for these handlers, exposing the detected changes:
+A few extra kwargs are provided for these handlers, exposing the changes:
 
 
 .. kwarg:: reason

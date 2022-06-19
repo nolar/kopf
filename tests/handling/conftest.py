@@ -174,7 +174,7 @@ def cause_mock(mocker, settings):
     Instead, we patch a method which detects the resource changing causes, and
     return a cause with the mocked reason (also, diff, and some other fields).
 
-    The a value of this fixture, a mock is provided with few fields to mock.
+    The a value of this fixture, a mock is provided with a few fields to mock.
     The default is to no mock anything, unless defined in the test, and to use
     the original arguments to the detection method.
     """

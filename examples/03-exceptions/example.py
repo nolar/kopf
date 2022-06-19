@@ -11,7 +11,7 @@ def instant_failure_with_only_a_message(**kwargs):
 
 
 @kopf.on.create('kopfexamples')
-def eventual_success_with_few_messages(retry, **kwargs):
+def eventual_success_with_a_few_messages(retry, **kwargs):
     if retry < 3:  # 0, 1, 2, 3
         raise kopf.TemporaryError("Expected recoverable error.", delay=1.0)
 
@@ -29,7 +29,7 @@ def instant_failure_with_traceback(**kwargs):
 # Marks for the e2e tests (see tests/e2e/test_examples.py):
 E2E_ALLOW_TRACEBACKS = True
 E2E_CREATION_STOP_WORDS = ['Something has changed,']
-E2E_SUCCESS_COUNTS = {'eventual_success_with_few_messages': 1}
+E2E_SUCCESS_COUNTS = {'eventual_success_with_a_few_messages': 1}
 E2E_FAILURE_COUNTS = {'eventual_failure_with_tracebacks': 1,
                       'instant_failure_with_traceback': 1,
                       'instant_failure_with_only_a_message': 1}

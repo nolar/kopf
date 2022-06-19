@@ -1,7 +1,7 @@
 # Kopf example with exceptions in the handler
 
 This example raises the exceptions in the handler,
-so that it is retried few time until succeeded.
+so that it is retried a few times until it succeeds.
 
 Start the operator:
 

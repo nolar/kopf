@@ -76,7 +76,7 @@ class Outcome:
     but the handler should be retried later, unlike with the permanent errors.
 
     Note the difference: `HandlerState` is a persistent state of the handler,
-    possibly after few executions, and consisting of simple data types
+    possibly after a few executions, and consisting of simple data types
     (for YAML/JSON serialisation) rather than the actual in-memory objects.
     """
     final: bool
@@ -218,7 +218,7 @@ async def execute_handlers_once(
     handlers_todo = [h for h in handlers if state[h.id].awakened]
     handlers_plan = lifecycle(handlers_todo, state=state, **cause.kwargs)
 
-    # Execute all planned (selected) handlers in one event reaction cycle, even if there are few.
+    # Execute all planned (selected) handlers in one event reaction cycle, even if there are a few.
     outcomes: MutableMapping[ids.HandlerId, Outcome] = {}
     for handler in handlers_plan:
         outcome = await execute_handler_once(

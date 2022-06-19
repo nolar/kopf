@@ -10,7 +10,7 @@ kopf run example.py --verbose
 ```
 
 The events are shown on the object's description
-(and are usually garbage-collected after few minutes).
+(and are usually garbage-collected after a few minutes).
 
 ```bash
 $ kubectl apply -f ../obj.yaml

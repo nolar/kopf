@@ -115,7 +115,7 @@ class WebhookClientConfig(TypedDict, total=False):
 
 class WebhookFn(Protocol):
     """
-    A framework-provided function to call when a admission request is received.
+    A framework-provided function to call when an admission request is received.
 
     The framework provides the actual function. Custom webhook servers must
     accept the function, invoke it accordingly on admission requests, wait

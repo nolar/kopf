@@ -118,7 +118,7 @@ async def execute(
         raise RuntimeError("Sub-handlers of event-handlers are not supported and have "
                            "no practical use (there are no retries or state tracking).")
 
-    # Execute the real handlers (all or few or one of them, as per the lifecycle).
+    # Execute the real handlers (all or a few or one of them, as per the lifecycle).
     settings: configuration.OperatorSettings = execution.subsettings_var.get()
     owned_handlers = subregistry.get_resource_handlers(resource=cause.resource)
     cause_handlers = subregistry.get_handlers(cause=cause)
