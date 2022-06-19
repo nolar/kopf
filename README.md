@@ -1,5 +1,6 @@
 # Kubernetes Operator Pythonic Framework (Kopf)
 
+[![Supported Python versions](https://img.shields.io/pypi/pyversions/kopf.svg)](https://pypi.org/project/kopf/)
 [![CI](https://github.com/nolar/kopf/workflows/Thorough%20tests/badge.svg)](https://github.com/nolar/kopf/actions/workflows/thorough.yaml)
 [![codecov](https://codecov.io/gh/nolar/kopf/branch/main/graph/badge.svg)](https://codecov.io/gh/nolar/kopf)
 [![Coverage Status](https://coveralls.io/repos/github/nolar/kopf/badge.svg?branch=main)](https://coveralls.io/github/nolar/kopf?branch=main)
