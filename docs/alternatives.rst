@@ -50,7 +50,7 @@ and is backed by Google, who originally developed Kubernetes itself.
 Unlike Kopf, Metacontroller supports the domain logic in any languages
 due to its language-agnostic nature of HTTP APIs.
 
-.. _Metacontroller: https://metacontroller.app/
+.. _Metacontroller: https://metacontroller.github.io/metacontroller/
 .. _Zen of Python: https://www.python.org/dev/peps/pep-0020/
 
 
@@ -116,17 +116,3 @@ the direct actions without any supplementary applications at all.
     * https://coreos.com/operators
     * https://coreos.com/blog/introducing-operator-framework
     * https://enterprisersproject.com/article/2019/2/kubernetes-operators-plain-english
-
-
-Helm Operator Kit
-=================
-
-`Helm App Operator Kit`_ is by its name not an operator framework, but an operator
-for the specific domain: operating Helm charts (packages).
-
-An arbitrary domain logic cannot be added (or it is not obvious how).
-It is intended only for deploying Helm-packaged applications.
-
-It is deprecated and is merged to the CoreOS Operator SDK.
-
-.. _Helm App Operator Kit: https://github.com/operator-framework/helm-app-operator-kit

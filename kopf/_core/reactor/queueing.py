@@ -15,7 +15,7 @@ Other objects are handled in parallel in their own sequential tasks.
 
 To prevent the memory leaks over the long run, the queues and the workers
 of each object are destroyed if no new events arrive for some time.
-The destruction delay (usually few seconds, maybe minutes) is needed
+The destruction delay (usually a few seconds, maybe minutes) is needed
 to prevent the often queue/worker destruction and re-creation
 in case the events are for any reason delayed by Kubernetes.
 
@@ -266,7 +266,7 @@ async def worker(
     have been handled. The watcher will spawn a new job when and if the new events arrive.
 
     To prevent the queue/job deletion and re-creation to happen too often, the jobs wait some
-    reasonable, but small enough time (few seconds) before actually finishing --
+    reasonable, but small enough time (a few seconds) before actually finishing --
     in case the new events are there, but the API or the watcher task lags a bit.
     """
     backlog = streams[key].backlog

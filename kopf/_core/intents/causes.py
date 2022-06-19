@@ -60,7 +60,7 @@ class Reason(str, enum.Enum):
         return str(self.value)
 
 
-# These sets are checked in few places, so we keep them centralised:
+# These sets are checked in a few places, so we keep them centralised:
 # the user-facing causes (for handlers) and internally facing (for the reactor).
 HANDLER_REASONS = (
     Reason.CREATE,

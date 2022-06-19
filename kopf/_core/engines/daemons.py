@@ -120,7 +120,7 @@ async def match_daemons(
     """
     Re-match the running daemons with the filters, and stop those mismatching.
 
-    Stopping can take few iterations, same as `stop_daemons` would do.
+    Stopping can take a few iterations, same as `stop_daemons` would do.
     """
     matching_daemon_ids = {handler.id for handler in handlers}
     mismatching_daemons = {
@@ -441,7 +441,7 @@ async def _daemon(
     The handler is executed either once or repeatedly, based on the handler
     declaration.
 
-    Few kinds of errors are suppressed, those expected from the daemons when
+    A few kinds of errors are suppressed, those expected from the daemons when
     they are cancelled due to the resource deletion.
     """
     resource = cause.resource

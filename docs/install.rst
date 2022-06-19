@@ -19,7 +19,7 @@ authentication beyond username+password, fixed tokens, or client SSL certs
     pip install kopf[full-auth]
 
 Unless you use the standalone mode,
-create few Kopf-specific custom resources in the cluster::
+create a few Kopf-specific custom resources in the cluster::
 
     kubectl apply -f https://github.com/nolar/kopf/raw/main/peering.yaml
 

@@ -55,7 +55,7 @@ async def test_watchevent_demultiplexing(worker_mock, timer, resource, processor
     settings.batching.exit_timeout = 100  # should exit instantly, fail if it didn't
     settings.batching.batch_window = 100  # should not be involved, fail if it is
 
-    # Inject the events of unique objects - to produce few streams/workers.
+    # Inject the events of unique objects - to produce a few streams/workers.
     stream.feed(events)
     stream.close()
 
@@ -131,7 +131,7 @@ async def test_watchevent_batching(settings, resource, processor, timer,
     settings.batching.exit_timeout = 100  # should exit instantly, fail if it didn't
     settings.batching.batch_window = 0.3  # the time period being tested (make bigger than overhead)
 
-    # Inject the events of unique objects - to produce few streams/workers.
+    # Inject the events of unique objects - to produce a few streams/workers.
     stream.feed(events)
     stream.close()
 
@@ -187,7 +187,7 @@ async def test_garbage_collection_of_streams(settings, stream, events, unique, w
     settings.batching.batch_window = .01  # minimize the effects of batching (not our interest)
     settings.watching.reconnect_backoff = 1.0  # to prevent src depletion
 
-    # Inject the events of unique objects - to produce few streams/workers.
+    # Inject the events of unique objects - to produce a few streams/workers.
     stream.feed(events)
     stream.close()
 
