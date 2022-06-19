@@ -50,7 +50,7 @@ and is backed by Google, who originally developed Kubernetes itself.
 Unlike Kopf, Metacontroller supports the domain logic in any languages
 due to its language-agnostic nature of HTTP APIs.
 
-.. _Metacontroller: https://metacontroller.app/
+.. _Metacontroller: https://metacontroller.github.io/metacontroller/
 .. _Zen of Python: https://www.python.org/dev/peps/pep-0020/
 
 
