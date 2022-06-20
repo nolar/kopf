@@ -15,7 +15,7 @@ def get_descriptive_hostname() -> str:
     """
     try:
         hostname, aliases, ipaddrs = socket.gethostbyaddr(socket.gethostname())
-    except socket.error:
+    except OSError:
         pass
     else:
         ipv4: Optional[ipaddress.IPv4Address]

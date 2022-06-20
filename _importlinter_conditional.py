@@ -80,7 +80,7 @@ class ConditionalImportContract(Contract):
         # Some hard-coded heuristics because importlib fails on circular imports.
         # TODO: switch to: importlib.util.find_spec(mod)?.origin
         path = os.path.join(os.path.dirname(__file__), mod.replace('.', '/')) + '.py'
-        with open(path, 'rt', encoding='utf-8') as f:
+        with open(path, encoding='utf-8') as f:
             text = f.read()
             xtree = astpath.file_contents_to_xml_ast(text)
 

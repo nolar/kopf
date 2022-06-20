@@ -64,8 +64,7 @@ class ResourceMemories(admission.MemoGetter, daemons.DaemonsMemoriesIterator):
         self._items = {}
 
     def iter_all_memories(self) -> Iterator[ResourceMemory]:
-        for memory in self._items.values():
-            yield memory
+        yield from self._items.values()
 
     def iter_all_daemon_memories(self) -> Iterator[daemons.DaemonsMemory]:
         for memory in self._items.values():

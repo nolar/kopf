@@ -1,5 +1,3 @@
-
-
 def test_help_in_root(invoke, mocker):
     result = invoke(['--help'])
 
