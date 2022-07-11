@@ -33,6 +33,7 @@ To implement a custom authentication method, one or a few login-handlers
 can be added. The login handlers should either return nothing (``None``)
 or an instance of :class:`kopf.ConnectionInfo`::
 
+    import datetime
     import kopf
 
     @kopf.on.login()
@@ -50,6 +51,7 @@ or an instance of :class:`kopf.ConnectionInfo`::
             private_key_path='~/.minikube/client.key',
             certificate_data=b'...',
             private_key_data=b'...',
+            expiration=datetime.datetime(2099, 12, 31, 23, 59, 59),
         )
 
 As with any other handlers, the login handler can be async if the network
@@ -160,6 +162,7 @@ Internally, all the credentials are gathered from all the active handlers
 in no particular order, and are fed into a *vault*.
 
 The Kubernetes API calls then use random credentials from that *vault*.
+The credentials that have reached their expiration are ignored and removed.
 If the API call fails with an HTTP 401 error, these credentials are marked
 invalid, excluded from further use, and the next random credentials are tried.
 
@@ -178,3 +181,12 @@ by the login handlers, the API calls fail, and so does the operator.
 
 This internal logic is hidden from the operator developers, but it is worth
 knowing how it works internally. See :class:`Vault`.
+
+If the expiration is intended to be often (e.g. every few minutes),
+you might want to disable the logging of re-authenication (whether this is
+a good idea or not, you decide using the information about your system)::
+
+    import logging
+
+    logging.getLogger('kopf.activities.authentication').disabled = True
+    logging.getLogger('kopf._core.engines.activities').disabled = True

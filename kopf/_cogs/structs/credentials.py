@@ -26,6 +26,7 @@ and nothing more than that:
 import asyncio
 import collections
 import dataclasses
+import datetime
 import random
 from typing import AsyncIterable, AsyncIterator, Callable, Dict, List, \
                    Mapping, NewType, Optional, Tuple, TypeVar, cast
@@ -60,6 +61,7 @@ class ConnectionInfo:
     private_key_data: Optional[bytes] = None
     default_namespace: Optional[str] = None  # used for cluster objects' k8s-events.
     priority: int = 0
+    expiration: Optional[datetime.datetime] = None  # TZ-naive, the same as utcnow()
 
 
 _T = TypeVar('_T', bound=object)
@@ -116,19 +118,20 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
         self._current = {}
         self._invalid = collections.defaultdict(list)
         self._lock = asyncio.Lock()
+        self._next_expiration = datetime.datetime.max
 
         if __src is not None:
             self._update_converted(__src)
 
         # Mark a pre-populated vault to be usable instantly,
         # or trigger the initial authentication for an empty vault.
-        self._ready = aiotoggles.Toggle(bool(self))
+        self._ready = aiotoggles.Toggle(not self.is_empty())
 
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__}: {self._current!r}>'
 
     def __bool__(self) -> bool:
-        return bool(self._current)
+        raise NotImplementedError("The vault should not be evaluated as bool.")
 
     async def __aiter__(
             self,
@@ -183,6 +186,10 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
             # ensure that the items are ready before yielding them.
             await self._ready.wait_for(True)
 
+            # Check for expiration strictly after a possible re-authentication.
+            # This might cause another re-authentication if the credentials are expired at creation.
+            await self.expire()
+
             # Select the items to yield and let it (i.e. a consumer) work.
             async with self._lock:
                 yielded_key, yielded_item = self.select()
@@ -215,6 +222,28 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
         key, item = random.choice(prioritised[top_priority])
         return key, item
 
+    async def expire(self) -> None:
+        """
+        Discard the expired credentials, and re-authenticate as needed.
+
+        Unlike invalidation, the expired credentials are not remembered
+        and not blocked from reappearing.
+        """
+        now = datetime.datetime.utcnow()
+        if now >= self._next_expiration:  # quick & lockless for speed: it is done on every API call
+            async with self._lock:
+                for key, item in list(self._current.items()):
+                    if item.info.expiration is not None and now >= item.info.expiration:
+                        await self._flush_caches(item)
+                        del self._current[key]
+                self._update_expiration()
+                need_reauth = not self._current  # i.e. nothing is left at all
+
+            # Initiate a re-authentication activity, and block until it is finished.
+            if need_reauth:
+                await self._ready.turn_to(False)
+                await self._ready.wait_for(True)
+
     async def invalidate(
             self,
             key: VaultKey,
@@ -222,7 +251,7 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
             exc: Optional[Exception] = None,
     ) -> None:
         """
-        Exclude the specified credentials, and re-authenticate as needed.
+        Discard the specified credentials, and re-authenticate as needed.
 
         Multiple calls can be made for a single authenticator and credentials,
         if used for multiple requests at the same time (a common case).
@@ -244,6 +273,7 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
                 await self._flush_caches(self._current[key])
                 self._invalid[key] = self._invalid[key][-2:] + [self._current[key]]
                 del self._current[key]
+                self._update_expiration()
             need_reauth = not self._current  # i.e. nothing is left at all
 
         # Initiate a re-authentication activity, and block until it is finished.
@@ -283,6 +313,13 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
         # Notify the consuming tasks (client wrappers) that new credentials are ready to be used.
         # Those tasks can be blocked in `vault.invalidate()` if there are no credentials left.
         await self._ready.turn_to(True)
+
+    def is_empty(self) -> bool:
+        now = datetime.datetime.utcnow()
+        return all(
+            item.info.expiration is not None and now >= item.info.expiration  # i.e. expired
+            for key, item in self._current.items()
+        )
 
     async def wait_for_readiness(self) -> None:
         await self._ready.wait_for(True)
@@ -340,3 +377,12 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
                 raise ValueError("Only ConnectionInfo instances are currently accepted.")
             if info not in [data.info for data in self._invalid[key]]:
                 self._current[key] = VaultItem(info=info)
+        self._update_expiration()
+
+    def _update_expiration(self) -> None:
+        expirations = [
+            item.info.expiration
+            for item in self._current.values()
+            if item.info.expiration is not None
+        ]
+        self._next_expiration = min(expirations + [datetime.datetime.max])
