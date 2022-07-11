@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import random
 from typing import Dict
 
@@ -54,6 +55,7 @@ async def login_fn(**kwargs):
         certificate_path=cert.filename() if cert else None,  # can be a temporary file
         private_key_path=pkey.filename() if pkey else None,  # can be a temporary file
         default_namespace=config.namespace,
+        expiration=datetime.datetime.utcnow() + datetime.timedelta(seconds=30),
     )
 
 

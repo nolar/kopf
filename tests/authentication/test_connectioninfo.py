@@ -1,3 +1,5 @@
+import datetime
+
 from kopf._cogs.structs.credentials import ConnectionInfo, VaultKey
 
 
@@ -24,6 +26,7 @@ def test_creation_with_minimal_fields():
     assert info.private_key_path is None
     assert info.private_key_data is None
     assert info.default_namespace is None
+    assert info.expiration is None
 
 
 def test_creation_with_maximal_fields():
@@ -41,6 +44,7 @@ def test_creation_with_maximal_fields():
         private_key_path='/pkey/path',
         private_key_data=b'pkey_data',
         default_namespace='default',
+        expiration=datetime.datetime.max,
     )
     assert info.server == 'https://localhost'
     assert info.ca_path == '/ca/path'
@@ -55,3 +59,4 @@ def test_creation_with_maximal_fields():
     assert info.private_key_path == '/pkey/path'
     assert info.private_key_data == b'pkey_data'
     assert info.default_namespace == 'default'
+    assert info.expiration == datetime.datetime.max
