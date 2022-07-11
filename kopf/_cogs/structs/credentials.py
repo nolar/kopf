@@ -122,13 +122,13 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
 
         # Mark a pre-populated vault to be usable instantly,
         # or trigger the initial authentication for an empty vault.
-        self._ready = aiotoggles.Toggle(bool(self))
+        self._ready = aiotoggles.Toggle(not self.is_empty())
 
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__}: {self._current!r}>'
 
     def __bool__(self) -> bool:
-        return bool(self._current)
+        raise NotImplementedError("The vault should not be evaluated as bool.")
 
     async def __aiter__(
             self,
@@ -283,6 +283,9 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
         # Notify the consuming tasks (client wrappers) that new credentials are ready to be used.
         # Those tasks can be blocked in `vault.invalidate()` if there are no credentials left.
         await self._ready.turn_to(True)
+
+    def is_empty(self) -> bool:
+        return not self._current
 
     async def wait_for_readiness(self) -> None:
         await self._ready.wait_for(True)

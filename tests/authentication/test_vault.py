@@ -3,17 +3,23 @@ import pytest
 from kopf._cogs.structs.credentials import ConnectionInfo, LoginError, Vault, VaultKey
 
 
-async def test_evals_as_false_when_empty():
+async def test_probits_evaluating_as_boolean():
     vault = Vault()
-    assert not vault
+    with pytest.raises(NotImplementedError):
+        bool(vault)
 
 
-async def test_evals_as_true_when_filled():
+async def test_empty_at_creation():
+    vault = Vault()
+    assert vault.is_empty()
+
+
+async def test_not_empty_when_populated():
     key1 = VaultKey('some-key')
     info1 = ConnectionInfo(server='https://expected/')
     vault = Vault()
     await vault.populate({key1: info1})
-    assert vault
+    assert not vault.is_empty()
 
 
 async def test_yielding_after_creation(mocker):

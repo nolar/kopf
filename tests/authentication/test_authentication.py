@@ -21,7 +21,7 @@ async def test_empty_registry_produces_no_credentials(settings):
         indices=OperatorIndexers().indices,
     )
 
-    assert not vault
+    assert vault.is_empty()
     with pytest.raises(LoginError):
         async for _, _ in vault:
             pass
@@ -48,7 +48,7 @@ async def test_noreturn_handler_produces_no_credentials(settings):
         indices=OperatorIndexers().indices,
     )
 
-    assert not vault
+    assert vault.is_empty()
     with pytest.raises(LoginError):
         async for _, _ in vault:
             pass
@@ -76,7 +76,7 @@ async def test_single_credentials_provided_to_vault(settings):
         indices=OperatorIndexers().indices,
     )
 
-    assert vault
+    assert not vault.is_empty()
 
     items = []
     async for key, info in vault:

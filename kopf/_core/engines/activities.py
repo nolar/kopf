@@ -50,7 +50,7 @@ async def authenticator(
         memo: ephemera.AnyMemo,
 ) -> NoReturn:
     """ Keep the credentials forever up to date. """
-    counter: int = 1 if vault else 0
+    counter: int = 0 if vault.is_empty() else 1
     while True:
         await authenticate(
             registry=registry,
