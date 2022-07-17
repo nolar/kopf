@@ -441,6 +441,64 @@ def test_on_field_with_most_kwargs(mocker, cause_factory, resource):
     assert handlers[0].new is None
 
 
+def test_explicit_instance_methods(resource, cause_factory):
+    registry = OperatorRegistry()
+    cause = cause_factory(resource=resource, reason=Reason.CREATE)
+
+    class TestCls:
+        def fn(self, **_):
+            pass
+
+    obj1 = TestCls()
+    kopf.on.create(*resource, registry=registry)(obj1.fn)
+
+    handlers = registry._changing.get_handlers(cause)
+    assert len(handlers) == 1
+    assert handlers[0].fn == obj1.fn  # a bound method
+
+
+def test_explicit_subclass_methods(resource, cause_factory):
+    registry = OperatorRegistry()
+    cause = cause_factory(resource=resource, reason=Reason.CREATE)
+
+    class BaseCls:
+        @classmethod
+        def fn(cls, **_):
+            pass
+
+    class TestCls(BaseCls):
+        pass
+
+    kopf.on.create(*resource, registry=registry)(TestCls.fn)
+
+    handlers = registry._changing.get_handlers(cause)
+    assert len(handlers) == 1
+    assert handlers[0].fn != BaseCls.fn  # an improperly bound method
+    assert handlers[0].fn == TestCls.fn  # a properly bound method
+
+
+def test_explicit_static_methods(resource, cause_factory):
+    registry = OperatorRegistry()
+    cause = cause_factory(resource=resource, reason=Reason.CREATE)
+
+    class BaseCls:
+        @staticmethod
+        def fn(cls, **_):
+            pass
+
+    class TestCls(BaseCls):
+        pass
+
+    obj = TestCls()
+    kopf.on.create(*resource, registry=registry)(obj.fn)
+
+    handlers = registry._changing.get_handlers(cause)
+    assert len(handlers) == 1
+    assert handlers[0].fn == BaseCls.fn  # an improperly bound method
+    assert handlers[0].fn == TestCls.fn  # a properly bound method
+    assert handlers[0].fn == obj.fn  # a properly bound method
+
+
 def test_subhandler_fails_with_no_parent_handler():
 
     registry = ChangingRegistry()
