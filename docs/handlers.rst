@@ -49,6 +49,27 @@ To register a handler for an event, use the ``@kopf.on`` decorator::
 
 All available decorators are described below.
 
+Kopf only supports simple functions and static methods as handlers.
+Class and instance methods are not supported.
+For explanation and rationale, see the discussion in `#849`__ (briefly:
+the semantics of handlers is vague when multiple instances exist or
+multiple sub-classes inherit from the class, thus inheriting the handlers).
+
+__ https://github.com/nolar/kopf/issues/849
+
+Would you still want to use classes for namespacing, register the handlers
+by using Kopf's decorators explicitly for specific instances/sub-classes thus
+resolving the mentioned vagueness and giving the meaning to ``self``/``cls``::
+
+    import kopf
+
+    class MyCls:
+        def my_handler(self, spec, **kwargs):
+            print(repr(self))
+
+    instance = MyCls()
+    kopf.on.create('kopfexamples')(instance.my_handler)
+
 
 Event-watching handlers
 =======================
