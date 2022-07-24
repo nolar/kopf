@@ -7,6 +7,7 @@ import logging
 import re
 import sys
 import time
+from typing import Set
 from unittest.mock import Mock
 
 import aiohttp.web
@@ -41,15 +42,6 @@ def pytest_configure(config):
 def pytest_addoption(parser):
     parser.addoption("--only-e2e", action="store_true", help="Execute end-to-end tests only.")
     parser.addoption("--with-e2e", action="store_true", help="Include end-to-end tests.")
-
-
-# Make all tests in this directory and below asyncio-compatible by default.
-# Due to how pytest-async checks for these markers, they should be added as early as possible.
-@pytest.hookimpl(hookwrapper=True)
-def pytest_pycollect_makeitem(collector, name, obj):
-    if collector.funcnamefilter(name) and asyncio.iscoroutinefunction(obj):
-        pytest.mark.asyncio(obj)
-    yield
 
 
 # This logic is not applied if pytest is started explicitly on ./examples/.
@@ -709,9 +701,7 @@ def _no_asyncio_pending_tasks(event_loop):
     collection after every test, and check messages from `asyncio.Task.__del__`.
     This, however, requires intercepting all event-loop creation in the code.
     """
-
-    # See `asyncio.all_tasks()` implementation for reference.
-    before = {t for t in list(asyncio.tasks._all_tasks) if not t.done()}
+    before = _get_all_tasks()
 
     # Run the test.
     yield
@@ -721,7 +711,22 @@ def _no_asyncio_pending_tasks(event_loop):
     event_loop.run_until_complete(asyncio.sleep(0))
 
     # Detect all leftover tasks.
-    after = {t for t in list(asyncio.tasks._all_tasks) if not t.done()}
+    after = _get_all_tasks()
     remains = after - before
     if remains:
         pytest.fail(f"Unattended asyncio tasks detected: {remains!r}")
+
+
+def _get_all_tasks() -> Set[asyncio.Task]:
+    """Similar to `asyncio.all_tasks`, but for all event loops at once."""
+    i = 0
+    while True:
+        try:
+            tasks = list(asyncio.tasks._all_tasks)
+        except RuntimeError:
+            i += 1
+            if i >= 1000:
+                raise  # we are truly unlucky today; try again tomorrow
+        else:
+            break
+    return {t for t in tasks if not t.done()}
