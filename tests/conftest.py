@@ -43,15 +43,6 @@ def pytest_addoption(parser):
     parser.addoption("--with-e2e", action="store_true", help="Include end-to-end tests.")
 
 
-# Make all tests in this directory and below asyncio-compatible by default.
-# Due to how pytest-async checks for these markers, they should be added as early as possible.
-@pytest.hookimpl(hookwrapper=True)
-def pytest_pycollect_makeitem(collector, name, obj):
-    if collector.funcnamefilter(name) and asyncio.iscoroutinefunction(obj):
-        pytest.mark.asyncio(obj)
-    yield
-
-
 # This logic is not applied if pytest is started explicitly on ./examples/.
 # In that case, regular pytest behaviour applies -- this is intended.
 def pytest_collection_modifyitems(config, items):
