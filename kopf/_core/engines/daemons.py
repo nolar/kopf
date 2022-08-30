@@ -419,6 +419,8 @@ async def _runner(
         # Only the filter-mismatching or peering-pausing daemons can be re-spawned.
         if stopper.reason is None:
             memory.forever_stopped.add(handler.id)
+            # Save memory by forgetting the live body, since it will no longer be used.
+            memory.live_fresh_body = None
 
         # Save the memory by not remembering the exited daemons (they may be never re-spawned).
         del daemons[handler.id]
