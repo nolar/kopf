@@ -32,3 +32,6 @@ env
 
 # VSCode
 .vscode
+
+# Idea / PyCharm
+.idea
