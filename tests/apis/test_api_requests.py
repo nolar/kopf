@@ -236,14 +236,17 @@ async def test_settings_timeout_in_streams(
 async def test_stopper_in_streams(
         resp_mocker, aresponses, hostname, method, delay, expected, settings, logger):
 
-    async def stream_slowly(request: aiohttp.ClientRequest):
+    async def stream_slowly(request: aiohttp.web.Request) -> aiohttp.web.StreamResponse:
         response = aiohttp.web.StreamResponse()
         await response.prepare(request)
-        await asyncio.sleep(0.05)
-        await response.write(b'{"fake": "result1"}\n')
-        await asyncio.sleep(0.15)
-        await response.write(b'{"fake": "result2"}\n')
-        await response.write_eof()
+        try:
+            await asyncio.sleep(0.05)
+            await response.write(b'{"fake": "result1"}\n')
+            await asyncio.sleep(0.15)
+            await response.write(b'{"fake": "result2"}\n')
+            await response.write_eof()
+        except ConnectionError:
+            pass
         return response
 
     aresponses.add(hostname, '/url', method, stream_slowly)
@@ -256,3 +259,5 @@ async def test_stopper_in_streams(
         items.append(item)
 
     assert items == expected
+
+    await asyncio.sleep(0.2)  # give the response some time to be cancelled and its tasks closed
