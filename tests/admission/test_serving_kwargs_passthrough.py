@@ -1,6 +1,5 @@
-from unittest.mock import Mock
-
 import pytest
+from mock import Mock
 
 import kopf
 from kopf._core.engines.admission import serve_admission_request

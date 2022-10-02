@@ -1,6 +1,7 @@
 import concurrent.futures
 import threading
-from unittest.mock import MagicMock
+
+from mock import MagicMock
 
 import kopf
 from kopf._core.actions.invocation import invoke

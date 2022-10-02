@@ -8,12 +8,10 @@ import re
 import sys
 import time
 from typing import Set
-from unittest.mock import Mock
 
 import aiohttp.web
-import asynctest
 import pytest
-import pytest_mock
+from mock import AsyncMock, Mock
 
 import kopf
 from kopf._cogs.clients.auth import APIContext
@@ -33,7 +31,6 @@ def pytest_configure(config):
     config.addinivalue_line('filterwarnings', 'error')
 
     # Warnings from the testing tools out of our control should not fail the tests.
-    config.addinivalue_line('filterwarnings', 'ignore:"@coroutine":DeprecationWarning:asynctest.mock')
     config.addinivalue_line('filterwarnings', 'ignore:The loop argument:DeprecationWarning:aiohttp')
     config.addinivalue_line('filterwarnings', 'ignore:The loop argument:DeprecationWarning:asyncio')
     config.addinivalue_line('filterwarnings', 'ignore:is deprecated, use current_thread:DeprecationWarning:threading')
@@ -73,15 +70,6 @@ def pytest_collection_modifyitems(config, items):
         items[:] = e2e
     else:
         items[:] = etc + e2e
-
-
-# Substitute the regular mock with the async-aware mock in the `mocker` fixture.
-@pytest.fixture(scope='session', autouse=True)
-def enforce_asyncio_mocker(pytestconfig):
-    pytest_mock.plugin.get_mock_module = lambda config: asynctest
-    pytest_mock.get_mock_module = pytest_mock.plugin.get_mock_module
-    fixture = pytest_mock.MockerFixture(pytestconfig)
-    assert fixture.mock_module is asynctest, "Mock replacement failed!"
 
 
 @pytest.fixture(params=[
@@ -283,7 +271,7 @@ def resp_mocker(fake_vault, enforced_session, aresponses):
             assert callback.call_count == 1
     """
     def resp_maker(*args, **kwargs):
-        actual_response = asynctest.MagicMock(*args, **kwargs)
+        actual_response = AsyncMock(*args, **kwargs)
         async def resp_mock_effect(request):
             nonlocal actual_response
 
@@ -300,7 +288,7 @@ def resp_mocker(fake_vault, enforced_session, aresponses):
                 response = await response
             return response
 
-        return asynctest.CoroutineMock(side_effect=resp_mock_effect)
+        return AsyncMock(side_effect=resp_mock_effect)
     return resp_maker
 
 

@@ -1,10 +1,9 @@
 import asyncio
 import gc
 import warnings
-from unittest.mock import Mock
 
 import pytest
-from asynctest import CoroutineMock
+from mock import AsyncMock, Mock
 
 from kopf._cogs.aiokits.aiotasks import cancel_coro
 
@@ -14,7 +13,7 @@ async def f(mock):
 
 
 def factory(loop, coro_or_mock):
-    coro = coro_or_mock._mock_wraps if isinstance(coro_or_mock, CoroutineMock) else coro_or_mock
+    coro = coro_or_mock._mock_wraps if isinstance(coro_or_mock, AsyncMock) else coro_or_mock
     return asyncio.Task(coro, loop=loop)
 
 
@@ -65,7 +64,7 @@ async def test_coro_is_awaited_via_a_task_with_no_warning(coromock_task_factory)
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter('default')
         mock = Mock()
-        coro = CoroutineMock(wraps=f(mock))
+        coro = AsyncMock(wraps=f(mock))
         del coro.close
         await cancel_coro(coro)
 

@@ -3,7 +3,7 @@ import logging
 import traceback
 
 import pytest
-from asynctest import MagicMock
+from mock import Mock
 
 from kopf._cogs.structs.bodies import Body
 from kopf._cogs.structs.patches import Patch
@@ -30,6 +30,14 @@ def sync_fn(*args, **kwargs):
 
 async def async_fn(*args, **kwargs):
     return _find_marker()
+
+
+def sync_mock_fn(mock, *args, **kwargs):
+    return mock(*args, **kwargs)
+
+
+async def async_mock_fn(mock, *args, **kwargs):
+    return mock(*args, **kwargs)
 
 
 def partials(fn, n):
@@ -79,8 +87,8 @@ def partials_awaiters(fn, n):
 
 fns = pytest.mark.parametrize(
     'fn', [
-        (sync_fn),
-        (async_fn),
+        (sync_mock_fn),
+        (async_mock_fn),
     ])
 
 # Every combination of partials, sync & async wrappers possible.
@@ -140,23 +148,23 @@ async def test_stacktrace_visibility(fn, expected):
 
 @fns
 async def test_result_returned(fn):
-    fn = MagicMock(fn, return_value=999)
-    result = await invoke(fn)
+    mock = Mock(return_value=999)
+    result = await invoke(fn, kwargs=dict(mock=mock))
     assert result == 999
 
 
 @fns
 async def test_explicit_args_passed_properly(fn):
-    fn = MagicMock(fn)
-    await invoke(fn, kwargs=dict(kw1=300, kw2=400))
+    mock = Mock()
+    await invoke(fn, kwargs=dict(mock=mock, kw1=300, kw2=400))
 
-    assert fn.called
-    assert fn.call_count == 1
+    assert mock.called
+    assert mock.call_count == 1
 
-    assert len(fn.call_args[0]) == 0
-    assert len(fn.call_args[1]) >= 2  # also the magic kwargs
-    assert fn.call_args[1]['kw1'] == 300
-    assert fn.call_args[1]['kw2'] == 400
+    assert len(mock.call_args[0]) == 0
+    assert len(mock.call_args[1]) >= 2  # also the magic kwargs
+    assert mock.call_args[1]['kw1'] == 300
+    assert mock.call_args[1]['kw2'] == 400
 
 
 @fns
@@ -180,12 +188,12 @@ async def test_special_kwargs_added(fn, resource):
         new=object(),
     )
 
-    fn = MagicMock(fn)
-    await invoke(fn, kwargsrc=cause)
+    mock = Mock()
+    await invoke(fn, kwargs=dict(mock=mock), kwargsrc=cause)
 
-    assert fn.called
-    assert fn.call_count == 1
+    assert mock.called
+    assert mock.call_count == 1
 
     # Only check that kwargs are passed at all. The exact kwargs per cause are tested separately.
-    assert 'logger' in fn.call_args[1]
-    assert 'resource' in fn.call_args[1]
+    assert 'logger' in mock.call_args[1]
+    assert 'resource' in mock.call_args[1]

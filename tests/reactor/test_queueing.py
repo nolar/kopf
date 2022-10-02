@@ -74,9 +74,9 @@ async def test_watchevent_demultiplexing(worker_mock, timer, resource, processor
 
     # The processor must not be called by the watcher, only by the worker.
     # But the worker (even if mocked) must be called & awaited by the watcher.
-    assert not processor.awaited
-    assert not processor.called
-    assert worker_mock.awaited
+    assert processor.call_count == 0
+    assert processor.await_count == 0
+    assert worker_mock.await_count > 0
 
     # Are the worker-streams created by the watcher? Populated as expected?
     # One stream per unique uid? All events are sequential? EOS marker appended?
@@ -150,7 +150,7 @@ async def test_watchevent_batching(settings, resource, processor, timer,
     assert timer.seconds < settings.batching.batch_window * 2
 
     # Was the processor called at all? Awaited as needed for async fns?
-    assert processor.awaited
+    assert processor.await_count > 0
 
     # Was it called only once per uid? Only with the latest event?
     # Note: the calls can be in arbitrary order, not as we expect then.
