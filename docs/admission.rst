@@ -119,7 +119,7 @@ Handler options
 Handlers have a limited capability to inform Kubernetes about its behaviour.
 The following options are supported:
 
-``persisted`` (``bool``) webhooks will not be removed from the managed
+``persistent`` (``bool``) webhooks will not be removed from the managed
 configurations on exit; non-persisted webhooks will be removed if possible.
 Such webhooks will prevent all admissions even when the operator is down.
 This option has no effect if there is no managed configuration.
