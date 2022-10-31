@@ -53,3 +53,5 @@ def test_diff_comparison_to_the_same():
         DiffItem(DiffOperation.REMOVE, ('key3',), 'old3', None),
     ])
     assert d1 == d2
+    assert hash(d1) == hash(d2)
+    assert d1 is not d2
