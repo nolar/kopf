@@ -60,7 +60,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.github_token }}
         continue-on-error: true
       - name: Publish coverage to CodeCov.io
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v3
         if: success()
         env:
           PYTHON: ${{ matrix.python-version }}
