@@ -76,6 +76,54 @@ See more on the asyncio event loops and _contexts_ in `Asyncio Policies`__.
 
 __ https://docs.python.org/3/library/asyncio-policy.html
 
+.. _custom-event-loops:
+
+
+Custom event loops
+==================
+
+Kopf can run in any AsyncIO-compatible event loop. For example, uvloop `claims to be 2x–2.5x times faster`__ than asyncio. To run Kopf in uvloop, call it this way:
+
+__ http://magic.io/blog/uvloop-blazing-fast-python-networking/
+
+.. code-block:: python
+
+    import kopf
+    import uvloop
+
+    def main():
+        loop = uvloop.EventLoopPolicy().get_event_loop()
+        loop.run(kopf.operator())
+
+Or this way:
+
+.. code-block:: python
+
+    import kopf
+    import uvloop
+
+    def main():
+        kopf.run(loop=uvloop.EventLoopPolicy().new_event_loop())
+
+Or this way:
+
+.. code-block:: python
+
+    import kopf
+    import uvloop
+
+    def main():
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+        kopf.run()
+
+Or any other way the event loop prescribes in its documentation.
+
+Kopf's CLI (i.e. :command:`kopf run`) will use uvloop by default if it is installed. To disable this implicit behaviour, either uninstall uvloop from Kopf's environment, or run Kopf explicitly from the code using the standard event loop.
+
+For convenience, Kopf can be installed as ``pip install kopf[uvloop]`` to enable this mode automatically.
+
+Kopf will never implicitly activate the custom event loops if it is called from the code, not from the CLI.
+
 
 Multiple operators
 ==================

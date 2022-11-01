@@ -130,7 +130,8 @@ class KopfRunner(_AbstractKopfRunner):
             ctxobj = cli.CLIControls(
                 registry=self.registry,
                 settings=self.settings,
-                stop_flag=self._stop)
+                stop_flag=self._stop,
+                loop=loop)
             runner = click.testing.CliRunner()
             result = runner.invoke(cli.main, *self.args, **self.kwargs, obj=ctxobj)
         except BaseException as e:

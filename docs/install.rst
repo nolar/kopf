@@ -18,6 +18,10 @@ authentication beyond username+password, fixed tokens, or client SSL certs
 
     pip install kopf[full-auth]
 
+If you want extra i/o performance under the hood, install it as (also see :ref:`custom-event-loops`)::
+
+    pip install kopf[uvloop]
+
 Unless you use the standalone mode,
 create a few Kopf-specific custom resources in the cluster::
 

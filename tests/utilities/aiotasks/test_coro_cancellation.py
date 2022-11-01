@@ -12,7 +12,7 @@ async def f(mock):
     return mock()
 
 
-def factory(loop, coro_or_mock):
+def factory(loop, coro_or_mock, context=None):
     coro = coro_or_mock._mock_wraps if isinstance(coro_or_mock, AsyncMock) else coro_or_mock
     return asyncio.Task(coro, loop=loop)
 

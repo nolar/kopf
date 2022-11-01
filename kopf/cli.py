@@ -1,3 +1,4 @@
+import asyncio
 import dataclasses
 import functools
 import os
@@ -23,6 +24,7 @@ class CLIControls:
     vault: Optional[credentials.Vault] = None
     registry: Optional[registries.OperatorRegistry] = None
     settings: Optional[configuration.OperatorSettings] = None
+    loop: Optional[asyncio.AbstractEventLoop] = None
 
 
 class LogFormatParamType(click.Choice):
@@ -63,8 +65,15 @@ def logging_options(fn: Callable[..., Any]) -> Callable[..., Any]:
     auto_envvar_prefix='KOPF',
 ))
 @click.version_option(prog_name='kopf')
-def main() -> None:
-    pass
+@click.make_pass_decorator(CLIControls, ensure=True)
+def main(__controls: CLIControls) -> None:
+    if __controls.loop is None:  # the pure CLI use, not a KopfRunner or other code
+        try:
+            import uvloop
+        except ImportError:
+            pass
+        else:
+            asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
 @main.command()
@@ -113,6 +122,7 @@ def run(
         stop_flag=__controls.stop_flag,
         ready_flag=__controls.ready_flag,
         vault=__controls.vault,
+        loop=__controls.loop,
     )
 
 
