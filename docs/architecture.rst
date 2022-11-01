@@ -40,7 +40,7 @@ that can change without warnings.
 
 ``cogs`` are utilities used throughout the framework in nearly all modules.
 They do not represent the main functionality of operators but are needed
-to make them works. Generally, the cogs are fully independent of each other
+to make them work. Generally, the cogs are fully independent of each other
 and of anything in the framework --- to the point that they can be extracted
 as separate libraries (in theory; if anyone needs it).
 
@@ -96,7 +96,7 @@ is needed.
 
 ``engines`` are specialised aspects of the framework, i.e. its functionality.
 Engines are usually independent of each other (though, this is not a rule).
-For example, daemons and times, validating/mutating admission requests,
+For example, daemons and timers, validating/mutating admission requests,
 in-memory indexing, operator activities (authentication, probing, etc),
 peering, Kubernetes ``kind: Event`` delayed posting, etc.
 
