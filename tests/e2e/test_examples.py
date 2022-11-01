@@ -134,7 +134,7 @@ class E2EParser:
     def __init__(self, path: str) -> None:
         super().__init__()
 
-        with open(path, 'rt', encoding='utf-8') as f:
+        with open(path, encoding='utf-8') as f:
             self.path = path
             self.text = f.read()
 

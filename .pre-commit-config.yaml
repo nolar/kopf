@@ -80,3 +80,9 @@ repos:
         name: isort-examples
         args: [--settings=examples]
         files: '^examples/'
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v2.34.0
+    hooks:
+    -   id: pyupgrade
+        args: [--py37-plus]

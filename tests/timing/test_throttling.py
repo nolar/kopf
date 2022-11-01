@@ -158,7 +158,7 @@ async def test_renews_on_repeated_failure(sleep):
     async with throttled(throttler=throttler, logger=logger, delays=[234]):
         raise Exception()
 
-    assert throttler.last_used_delay is 234
+    assert throttler.last_used_delay == 234
     assert throttler.source_of_delays is not None
     assert throttler.active_until is None
     assert sleep.mock_calls == [call(234, wakeup=None)]

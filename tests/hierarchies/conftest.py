@@ -7,8 +7,7 @@ class CustomIterable:
         self._objs = objs
 
     def __iter__(self):
-        for obj in self._objs:
-            yield obj
+        yield from self._objs
 
 
 @pytest.fixture(params=[list, tuple, CustomIterable],

@@ -173,12 +173,12 @@ def login_with_service_account(**_: Any) -> Optional[credentials.ConnectionInfo]
     ca_path = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
 
     if os.path.exists(token_path):
-        with open(token_path, 'rt', encoding='utf-8') as f:
+        with open(token_path, encoding='utf-8') as f:
             token = f.read().strip()
 
         namespace: Optional[str] = None
         if os.path.exists(ns_path):
-            with open(ns_path, 'rt', encoding='utf-8') as f:
+            with open(ns_path, encoding='utf-8') as f:
                 namespace = f.read().strip()
 
         return credentials.ConnectionInfo(
@@ -226,7 +226,7 @@ def login_with_kubeconfig(**_: Any) -> Optional[credentials.ConnectionInfo]:
     users: Dict[Any, Any] = {}
     for path in paths:
 
-        with open(path, 'rt', encoding='utf-8') as f:
+        with open(path, encoding='utf-8') as f:
             config = yaml.safe_load(f.read()) or {}
 
         if current_context is None:

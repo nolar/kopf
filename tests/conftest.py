@@ -541,7 +541,7 @@ def timer():
     return Timer()
 
 
-class Timer(object):
+class Timer:
     """
     A helper context manager to measure the time of the code-blocks.
     Also, supports direct comparison with time-deltas and the numbers of seconds.
