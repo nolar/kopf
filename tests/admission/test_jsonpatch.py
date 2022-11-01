@@ -66,3 +66,21 @@ def test_removal_of_the_subkey():
     assert jsonpatch == [
         {'op': 'remove', 'path': '/xyz/abc'},
     ]
+
+
+def test_escaping_of_key():
+    patch = Patch()
+    patch['~xyz/test'] = {'abc': None}
+    jsonpatch = patch.as_json_patch()
+    assert jsonpatch == [
+        {'op': 'remove', 'path': '/~0xyz~1test/abc'}
+    ]
+
+
+def test_recursive_escape_of_key():
+    patch = Patch()
+    patch['x/y/~z'] = {'a/b/~0c': None}
+    jsonpatch = patch.as_json_patch()
+    assert jsonpatch == [
+        {'op': 'remove', 'path': '/x~1y~1~0z/a~1b~1~00c'},
+    ]

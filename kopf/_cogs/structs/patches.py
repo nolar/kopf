@@ -18,6 +18,14 @@ from kopf._cogs.structs import bodies, dicts
 JSONPatchOp = Literal["add", "replace", "remove"]
 
 
+def _escaped_path(keys: List[str]) -> str:
+    """Provides an appropriately escaped path for JSON Patches.
+
+    See https://datatracker.ietf.org/doc/html/rfc6901#section-3 for more details.
+    """
+    return '/'.join(map(lambda key: key.replace('~', '~0').replace('/', '~1'), keys))
+
+
 class JSONPatchItem(TypedDict, total=False):
     op: JSONPatchOp
     path: str
@@ -91,14 +99,14 @@ class Patch(Dict[str, Any]):
     def _as_json_patch(self, value: object, keys: List[str]) -> JSONPatch:
         result: JSONPatch = []
         if value is None:
-            result.append(JSONPatchItem(op='remove', path='/'.join(keys)))
+            result.append(JSONPatchItem(op='remove', path=_escaped_path(keys)))
         elif len(keys) > 1 and self._original and not self._is_in_original_path(keys):
-            result.append(JSONPatchItem(op='add', path='/'.join(keys), value=value))
+            result.append(JSONPatchItem(op='add', path=_escaped_path(keys), value=value))
         elif isinstance(value, collections.abc.Mapping) and value:
             for key, val in value.items():
                 result.extend(self._as_json_patch(val, keys + [key]))
         else:
-            result.append(JSONPatchItem(op='replace', path='/'.join(keys), value=value))
+            result.append(JSONPatchItem(op='replace', path=_escaped_path(keys), value=value))
         return result
 
     def _is_in_original_path(self, keys: List[str]) -> bool:
