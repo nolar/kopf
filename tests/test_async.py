@@ -21,8 +21,8 @@ async def test_async_mocks_are_enabled(timer, mocker):
     with timer as t:
         await asyncio.sleep(1.0)
 
-    assert p.called
-    assert p.awaited
+    assert p.call_count > 0
+    assert p.await_count > 0
     assert t.seconds < 0.01  # mocked sleep
 
 

@@ -1,8 +1,8 @@
 import datetime
-from unittest.mock import Mock
 
 import freezegun
 import pytest
+from mock import Mock
 
 from kopf._cogs.configs.progress import SmartProgressStorage, StatusProgressStorage
 from kopf._cogs.structs.bodies import Body

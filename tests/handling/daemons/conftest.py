@@ -1,10 +1,10 @@
 import asyncio
 import contextlib
 import time
-import unittest.mock
 
 import freezegun
 import pytest
+from mock import MagicMock, patch
 
 import kopf
 from kopf._cogs.aiokits.aiotoggles import ToggleSet
@@ -19,7 +19,7 @@ class DaemonDummy:
 
     def __init__(self):
         super().__init__()
-        self.mock = unittest.mock.MagicMock()
+        self.mock = MagicMock()
         self.kwargs = {}
         self.steps = {
             'called': asyncio.Event(),
@@ -107,8 +107,7 @@ def frozen_time():
     with freezegun.freeze_time("2020-01-01 00:00:00") as frozen:
         # Use freezegun-supported time instead of system clocks -- for testing purposes only.
         # NB: Patch strictly after the time is frozen -- to use fake_time(), not real time().
-        with unittest.mock.patch('time.monotonic', time.time), \
-             unittest.mock.patch('time.perf_counter', time.time):
+        with patch('time.monotonic', time.time), patch('time.perf_counter', time.time):
             yield frozen
 
 

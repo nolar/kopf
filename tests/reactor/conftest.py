@@ -2,7 +2,7 @@ import asyncio
 import functools
 
 import pytest
-from asynctest import CoroutineMock
+from mock import AsyncMock
 
 from kopf._cogs.clients.watching import infinite_watch
 from kopf._core.reactor.queueing import watcher, worker as original_worker
@@ -16,13 +16,13 @@ def _autouse_resp_mocker(resp_mocker):
 @pytest.fixture()
 def processor():
     """ A mock for processor -- to be checked if the handler has been called. """
-    return CoroutineMock()
+    return AsyncMock()
 
 
 @pytest.fixture()
 def worker_spy(mocker):
     """ Spy on the watcher: actually call it, but provide the mock-fields. """
-    spy = CoroutineMock(spec=original_worker, wraps=original_worker)
+    spy = AsyncMock(spec=original_worker, wraps=original_worker)
     return mocker.patch('kopf._core.reactor.queueing.worker', spy)
 
 

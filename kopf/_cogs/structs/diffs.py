@@ -72,6 +72,10 @@ class Diff(Sequence[DiffItem]):
         super().__init__()
         self._items = tuple(DiffItem(*item) for item in __items)
 
+    def __hash__(self) -> int:
+        # Hashes mark diffs as immutable to be usable as dataclasses' defaults in Python 3.11.
+        return hash(self._items)
+
     def __repr__(self) -> str:
         return repr(self._items)
 

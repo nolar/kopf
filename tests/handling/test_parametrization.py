@@ -1,5 +1,6 @@
 import asyncio
-from unittest.mock import Mock
+
+from mock import Mock
 
 import kopf
 from kopf._cogs.structs.ephemera import Memo
