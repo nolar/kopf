@@ -70,6 +70,9 @@ setup(
             'pykube-ng',        # 4.90 MB
             'kubernetes',       # 40.0 MB (!)
         ],
+        'uvloop': [
+            'uvloop',           # 9.00 MB
+        ],
         'dev': [
             'pyngrok',          # 1.00 MB + downloaded binary
             'oscrypto',         # 2.80 MB (smaller than cryptography: 8.7 MB)
