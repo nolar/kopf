@@ -164,6 +164,61 @@ async def test_watchevent_batching(settings, resource, processor, timer,
     assert actual_uid_val_pairs == expected_uid_val_pairs
 
 
+@pytest.mark.parametrize('uids, vals, events', [
+
+    pytest.param(['uid1', 'uid1'], ['a', 'b'], [
+        {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid1'}, 'spec': 'a'}},
+        {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid1'}, 'spec': 'b'}},
+    ], id='the same'),
+
+    pytest.param(['uid1', 'uid2'], ['a', 'b'], [
+        {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid1'}, 'spec': 'a'}},
+        {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid2'}, 'spec': 'b'}},
+    ], id='distinct'),
+
+    pytest.param(['uid1', 'uid2', 'uid1', 'uid2', 'uid1', 'uid3'], ['a', 'b', 'c', 'd', 'e', 'f'], [
+        {'type': 'ADDED', 'object': {'metadata': {'uid': 'uid1'}, 'spec': 'a'}},
+        {'type': 'ADDED', 'object': {'metadata': {'uid': 'uid2'}, 'spec': 'b'}},
+        {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid1'}, 'spec': 'c'}},
+        {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid2'}, 'spec': 'd'}},
+        {'type': 'DELETED', 'object': {'metadata': {'uid': 'uid1'}, 'spec': 'e'}},
+        {'type': 'DELETED', 'object': {'metadata': {'uid': 'uid3'}, 'spec': 'f'}},
+    ], id='mixed'),
+
+])
+@pytest.mark.usefixtures('watcher_limited')
+async def test_watchevent_none_batching(settings, resource, processor, timer,
+                                   stream, events, uids, vals, event_loop):
+    """ Verify that all stream events are handled if batching is disabled. """
+
+    # Override the default timeouts to make the tests faster.
+    settings.batching.idle_timeout = 100  # should not be involved, fail if it is
+    settings.batching.exit_timeout = 100  # should exit instantly, fail if it didn't
+    settings.batching.batch_window = None  # disable batching entirely
+
+    # Inject the events of unique objects - to produce few streams/workers.
+    stream.feed(events)
+    stream.close()
+
+    # Run the watcher (near-instantly and test-blocking).
+    with timer:
+        await watcher(
+            namespace=None,
+            resource=resource,
+            settings=settings,
+            processor=processor,
+        )
+
+    # Was the processor called exactly once for each stream event?
+    assert processor.await_count == len(events)
+
+    expected_uid_val_pairs = set(zip(uids, vals))
+    actual_uid_val_pairs = set((
+            kwargs['raw_event']['object']['metadata']['uid'],
+            kwargs['raw_event']['object']['spec'])
+            for args, kwargs in processor.call_args_list)
+    assert actual_uid_val_pairs == expected_uid_val_pairs
+
 @pytest.mark.parametrize('unique, events', [
 
     pytest.param(1, [

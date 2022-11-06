@@ -204,10 +204,22 @@ class BatchingSettings:
     How soon an idle worker is exited and garbage-collected if no events arrive.
     """
 
-    batch_window: float = 0.1
+    batch_window: float = None
     """
-    How fast/slow does a worker deplete the queue when an event is received.
-    All events arriving within this window will be ignored except the last one.
+    A lossy but in some cases viable optimization mechanism to take some 
+    load off of event processing.
+    Defines the debouncing interval a worker depletes the incoming event queue with.
+    All events arriving within this window will be ignored except the last one. This can have 
+    consequences depending on the type and use-case of the operator implemented using kopf. 
+    Example: Given an event sequence of resource A of ``CREATED > MODIFIED > DELETED``, if this 
+    sequence is received by the incoming event queue within ``batch_window`` any handlers dealing
+    with ``CREATED`` or ``MODIFIED`` events of resource A will never be called. Instead the first handler 
+    being called for A will be the ``DELETED`` handler, if one exists. Depending on what your operator 
+    does, this might be problematic. 
+    
+    If your use-case allows debouncing of event sequences for a resource, set this to ``> 0``. 
+    A notable side effect of doing this is an implicit handler delay for all handlers as all events 
+    will only be dispatched to the handler after this interval. 
     """
 
     exit_timeout: float = 2.0
