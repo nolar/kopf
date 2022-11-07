@@ -150,6 +150,7 @@ async def process_discovered_namespace_event(
         stream_pressure: Optional[asyncio.Event] = None,  # None for tests
         resource_indexed: Optional[aiotoggles.Toggle] = None,  # None for tests & observation
         operator_indexed: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
+        consistency_time: Optional[float] = None,  # None for tests & observation
 ) -> None:
     if raw_event['type'] is None:
         return
@@ -169,6 +170,7 @@ async def process_discovered_resource_event(
         stream_pressure: Optional[asyncio.Event] = None,  # None for tests
         resource_indexed: Optional[aiotoggles.Toggle] = None,  # None for tests & observation
         operator_indexed: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
+        consistency_time: Optional[float] = None,  # None for tests & observation
 ) -> None:
     # Ignore the initial listing, as all custom resources were already noticed by API listing.
     # This prevents numerous unneccessary API requests at the the start of the operator.

@@ -24,6 +24,34 @@ import pytest
 from kopf._core.reactor.queueing import EOS, watcher
 
 
+# TODO: All tests with a simulated stream must use a Kopf-provided tooling.
+#       This is reusable in operators!
+#       It must inject itself into the prepared kopf runner,
+#       but do not touch the new ones (unless explicitly commanded to monkeypatch/activate itself).
+#       How can such a syntax/tool look like?
+#       Supported features of the stream:
+#       - Exact events.
+#       - Timed pauses!
+#       - Synchronization primitives (sync/async: events, toggles, flags, etc)
+#       - Callables/awaitables/generators for dynamic event generation (None means no emitted event).
+#       - Connection errors.
+#       - ? Conditional events when the object reaches some state?
+#           BUT: how do we get a patch? It can be done by other libraries.
+def test_me(stream):
+    stream.feed(events1)
+    stream.feed([callableA])
+    stream.feed([coroutineB])
+    stream.feed([generatorC])
+    stream.feed([asyncio_event])
+    stream.feed([threading_event])
+    stream.feed([kopf.testing.StreamPause(1)])
+    stream.pause(1)
+    stream.close()
+    with kopf.testing.KopfRunner(...):
+        ...
+    ...
+
+
 @pytest.mark.parametrize('uids, cnts, events', [
 
     pytest.param(['uid1'], [1], [

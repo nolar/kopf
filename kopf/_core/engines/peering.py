@@ -100,6 +100,7 @@ async def process_peering_event(
         # Must be accepted whether used or not -- as passed by watcher()/worker().
         resource_indexed: Optional[aiotoggles.Toggle] = None,  # None for tests & observation
         operator_indexed: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
+        consistency_time: Optional[float] = None,  # None for tests & observation
 ) -> None:
     """
     Handle a single update of the peers by us or by other operators.

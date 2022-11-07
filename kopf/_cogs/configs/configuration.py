@@ -28,6 +28,7 @@ the root object, while keeping the legacy names for backward compatibility.
 import concurrent.futures
 import dataclasses
 import logging
+import warnings
 from typing import Iterable, Optional, Union
 
 from kopf._cogs.configs import diffbase, progress
@@ -187,6 +188,7 @@ class WatchingSettings:
     """
 
 
+# TODO: is it now WorkerSettings/MultiplexerSettings?
 @dataclasses.dataclass
 class BatchingSettings:
     """
@@ -204,12 +206,6 @@ class BatchingSettings:
     How soon an idle worker is exited and garbage-collected if no events arrive.
     """
 
-    batch_window: float = 0.1
-    """
-    How fast/slow does a worker deplete the queue when an event is received.
-    All events arriving within this window will be ignored except the last one.
-    """
-
     exit_timeout: float = 2.0
     """
     How soon a worker is cancelled when the parent watcher is going to exit.
@@ -222,6 +218,21 @@ class BatchingSettings:
 
     For more information on error throttling, see :ref:`error-throttling`.
     """
+
+    _batch_window: float = 0.1  # deprecated
+
+    @property
+    def batch_window(self) -> float:
+        """ Deprecated and affects nothing. """
+        warnings.warn("Time-based event batching was removed. Please stop configuring it.",
+                      DeprecationWarning)
+        return self._batch_window
+
+    @batch_window.setter
+    def batch_window(self, value: float) -> None:
+        warnings.warn("Time-based event batching was removed. Please stop configuring it.",
+                      DeprecationWarning)
+        self._batch_window = value
 
 
 @dataclasses.dataclass
@@ -372,6 +383,13 @@ class PersistenceSettings:
         default_factory=diffbase.AnnotationsDiffBaseStorage)
     """
     How the resource's essence (non-technical, contentful fields) are stored.
+    """
+
+    consistency_timeout: float = 5.0
+    """
+    For how long a patched resource version is awaited (seconds).
+
+    See :ref:`consistency` for detailed explanation.
     """
 
 
