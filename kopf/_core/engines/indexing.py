@@ -1,6 +1,7 @@
 import collections.abc
-import dataclasses
 from typing import Any, Dict, Generic, Iterable, Iterator, Mapping, Optional, Set, Tuple, TypeVar
+
+import attrs
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import typedefs
@@ -222,7 +223,7 @@ class OperatorIndexers(Dict[ids.HandlerId, OperatorIndexer]):
         so its structure and type can be safely changed any time.
 
         However, the key must be as lightweight as possible:
-        no dataclasses or namedtuples, only builtins.
+        no dataclasses or namedtuples or slotted classes, only the builtins.
 
         The name and namespace do not add value on top of the uid's uniqueness.
         They are here for debugging and for those rare objects
@@ -270,7 +271,7 @@ class OperatorIndices(ephemera.Indices):
         return id in self.__indexers
 
 
-@dataclasses.dataclass(frozen=False)
+@attrs.define
 class IndexingMemory:
     # For indexing errors backoffs/retries/timeouts. It is None when successfully indexed.
     indexing_state: Optional[progression.State] = None

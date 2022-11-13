@@ -9,13 +9,13 @@ activities, when there is no underlying Kubernetes object to patch'n'watch.
 """
 import asyncio
 import contextlib
-import dataclasses
 import datetime
 import enum
 from contextvars import ContextVar
 from typing import Any, AsyncContextManager, AsyncIterator, Callable, Collection, Iterable, \
                    Mapping, MutableMapping, NewType, Optional, Sequence, Set, TypeVar
 
+import attrs
 from typing_extensions import Protocol
 
 from kopf._cogs.configs import configuration
@@ -66,7 +66,7 @@ class ErrorsMode(enum.Enum):
 Result = NewType('Result', object)
 
 
-@dataclasses.dataclass(frozen=True)
+@attrs.define(frozen=True)
 class Outcome:
     """
     An in-memory outcome of one single invocation of one single handler.
@@ -86,7 +86,7 @@ class Outcome:
     subrefs: Collection[ids.HandlerId] = ()
 
 
-@dataclasses.dataclass(frozen=True)
+@attrs.define(frozen=True, kw_only=True)
 class HandlerState:
     """
     A persisted state of a single handler, as stored on the resource's status.
@@ -130,21 +130,20 @@ class State(Mapping[ids.HandlerId, HandlerState]):
     pass
 
 
-@dataclasses.dataclass
+@attrs.define
 class Cause(invocation.Kwargable):
     """ Base non-specific cause as used in the framework's reactor. """
     logger: typedefs.Logger
 
     @property
     def _kwargs(self) -> Mapping[str, Any]:
-        # Similar to `dataclasses.asdict()`, but not recursive for other dataclasses.
-        return {field.name: getattr(self, field.name) for field in dataclasses.fields(self)}
+        return attrs.asdict(self, recurse=False)
 
 
 CauseT = TypeVar('CauseT', bound=Cause)
 
 
-@dataclasses.dataclass(frozen=True)
+@attrs.define(frozen=True)
 class Handler:
     """ A handler is a function bound with its behavioral constraints. """
     id: ids.HandlerId

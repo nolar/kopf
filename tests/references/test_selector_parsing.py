@@ -119,9 +119,8 @@ def test_three_args(group, version, name):
 
 
 def test_too_many_args():
-    with pytest.raises(TypeError) as err:
+    with pytest.raises(TypeError):
         Selector('group1', 'version1', 'name1', 'etc')
-    assert "Too many positional arguments" in str(err.value)
 
 
 def test_kwarg_group():

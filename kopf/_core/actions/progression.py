@@ -13,17 +13,18 @@ The states are persisted in a state storage: see `kopf._cogs.configs.progress`.
 
 import collections.abc
 import copy
-import dataclasses
 import datetime
 from typing import Any, Collection, Dict, Iterable, Iterator, \
                    Mapping, NamedTuple, Optional, overload
+
+import attrs
 
 from kopf._cogs.configs import progress
 from kopf._cogs.structs import bodies, ids, patches
 from kopf._core.actions import execution
 
 
-@dataclasses.dataclass(frozen=True)
+@attrs.define(frozen=True, kw_only=True)
 class HandlerState(execution.HandlerState):
     """
     A persisted state of a single handler, as stored on the resource's status.
@@ -71,7 +72,7 @@ class HandlerState(execution.HandlerState):
             failure=__d.get('failure') or False,
             message=__d.get('message'),
             subrefs=__d.get('subrefs') or (),
-            _origin=__d,
+            origin=__d,
         )
 
     def for_storage(self) -> progress.ProgressRecord:
@@ -92,13 +93,13 @@ class HandlerState(execution.HandlerState):
         return {key: val for key, val in self.for_storage().items() if val is not None}
 
     def as_active(self) -> "HandlerState":
-        return dataclasses.replace(self, active=True)
+        return attrs.evolve(self, active=True)
 
     def with_purpose(
             self,
             purpose: Optional[str],
     ) -> "HandlerState":
-        return dataclasses.replace(self, purpose=purpose)
+        return attrs.evolve(self, purpose=purpose)
 
     def with_outcome(
             self,
@@ -117,7 +118,7 @@ class HandlerState(execution.HandlerState):
             retries=(self.retries if self.retries is not None else 0) + 1,
             message=None if outcome.exception is None else str(outcome.exception),
             subrefs=list(sorted(set(self.subrefs) | set(outcome.subrefs))),  # deduplicate
-            _origin=self._origin,
+            origin=self._origin,
         )
 
 

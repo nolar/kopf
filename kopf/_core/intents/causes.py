@@ -19,9 +19,10 @@ For deletion, the cause is detected when the object is just marked for deletion,
 not when it is actually deleted (as the events notify): so that the handlers
 could execute on the yet-existing object (and its children, if created).
 """
-import dataclasses
 import enum
 from typing import Any, List, Mapping, Optional
+
+import attrs
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, diffs, ephemera, finalizers, \
@@ -84,7 +85,7 @@ TITLES = {
 }
 
 
-@dataclasses.dataclass
+@attrs.define  # unfrozen for tests: they change the fields sometimes. TODO: make it frozen.
 class BaseCause(execution.Cause):
     """
     Base non-specific cause as used in the framework's reactor in most cases.
@@ -115,13 +116,13 @@ class BaseCause(execution.Cause):
         return self.indices
 
 
-@dataclasses.dataclass
+@attrs.define
 class ActivityCause(BaseCause):
     activity: Activity
     settings: configuration.OperatorSettings
 
 
-@dataclasses.dataclass
+@attrs.define
 class ResourceCause(BaseCause):
     resource: references.Resource
     patch: patches.Patch
@@ -142,7 +143,7 @@ class ResourceCause(BaseCause):
         )
 
 
-@dataclasses.dataclass
+@attrs.define
 class WebhookCause(ResourceCause):
     dryrun: bool
     reason: Optional[WebhookType]  # None means "all" or expects the webhook id
@@ -165,7 +166,7 @@ class WebhookCause(ResourceCause):
         return kwargs
 
 
-@dataclasses.dataclass
+@attrs.define
 class IndexingCause(ResourceCause):
     """
     The raw event received from the API.
@@ -173,7 +174,7 @@ class IndexingCause(ResourceCause):
     pass
 
 
-@dataclasses.dataclass
+@attrs.define
 class WatchingCause(ResourceCause):
     """
     The raw event received from the API.
@@ -184,7 +185,7 @@ class WatchingCause(ResourceCause):
     event: bodies.RawEvent
 
 
-@dataclasses.dataclass
+@attrs.define
 class SpawningCause(ResourceCause):
     """
     An internal daemon is spawning: tasks, threads, timers.
@@ -201,7 +202,7 @@ class SpawningCause(ResourceCause):
         return kwargs
 
 
-@dataclasses.dataclass
+@attrs.define
 class ChangingCause(ResourceCause):
     """
     The cause is what has caused the whole reaction as a chain of handlers.
@@ -227,7 +228,7 @@ class ChangingCause(ResourceCause):
         return finalizers.is_deletion_ongoing(self.body)
 
 
-@dataclasses.dataclass
+@attrs.define
 class DaemonCause(ResourceCause):
     """
     An exceptional case of a container for daemon invocation kwargs.

@@ -1,11 +1,12 @@
 import asyncio
-import dataclasses
 import enum
 import fnmatch
 import re
 import urllib.parse
 from typing import Collection, FrozenSet, Iterable, Iterator, List, Mapping, \
                    MutableMapping, NewType, Optional, Pattern, Set, Union
+
+import attrs
 
 # A namespace specification with globs, negations, and some minimal syntax; see `match_namespace()`.
 # Regexps are also supported if pre-compiled from the code, not from the CLI options as raw strings.
@@ -100,7 +101,7 @@ def match_namespace(name: NamespaceName, pattern: NamespacePattern) -> bool:
 K8S_VERSION_PATTERN = re.compile(r'^v\d+(?:(?:alpha|beta)\d+)?$')
 
 
-@dataclasses.dataclass(frozen=True, eq=False, repr=False)
+@attrs.define(frozen=True)
 class Resource:
     """
     A reference to a very specific custom or built-in resource kind.
@@ -250,7 +251,7 @@ class Marker(enum.Enum):
 EVERYTHING = Marker.EVERYTHING
 
 
-@dataclasses.dataclass(frozen=True)
+@attrs.define(frozen=True, init=False)
 class Selector:
     """
     A resource specification that can match several resource kinds.
@@ -265,15 +266,8 @@ class Selector:
     resource kinds. Even if those specifications look very concrete and allow
     no variations, they still remain specifications.
     """
-
-    arg1: dataclasses.InitVar[Union[None, str, Marker]] = None
-    arg2: dataclasses.InitVar[Union[None, str, Marker]] = None
-    arg3: dataclasses.InitVar[Union[None, str, Marker]] = None
-    argN: dataclasses.InitVar[None] = None  # a runtime guard against too many positional arguments
-
     group: Optional[str] = None
     version: Optional[str] = None
-
     kind: Optional[str] = None
     plural: Optional[str] = None
     singular: Optional[str] = None
@@ -281,45 +275,50 @@ class Selector:
     category: Optional[str] = None
     any_name: Optional[Union[str, Marker]] = None
 
-    def __post_init__(
+    def __init__(
             self,
-            arg1: Union[None, str, Marker],
-            arg2: Union[None, str, Marker],
-            arg3: Union[None, str, Marker],
-            argN: None,  # a runtime guard against too many positional arguments
+            arg1: Union[None, str, Marker] = None,
+            arg2: Union[None, str, Marker] = None,
+            arg3: Union[None, str, Marker] = None,
+            *,
+            group: Optional[str] = None,
+            version: Optional[str] = None,
+            kind: Optional[str] = None,
+            plural: Optional[str] = None,
+            singular: Optional[str] = None,
+            shortcut: Optional[str] = None,
+            category: Optional[str] = None,
+            any_name: Optional[Union[str, Marker]] = None,
     ) -> None:
+        super().__init__()
 
-        # Since the class is frozen & read-only, post-creation field adjustment is done via a hack.
-        # This is the same hack as used in the frozen dataclasses to initialise their fields.
-        if argN is not None:
-            raise TypeError("Too many positional arguments. Max 3 positional args are accepted.")
+        if arg3 is not None and not isinstance(arg1, Marker) and not isinstance(arg2, Marker):
+            group, version, any_name = arg1, arg2, arg3
         elif arg3 is not None:
-            object.__setattr__(self, 'group', arg1)
-            object.__setattr__(self, 'version', arg2)
-            object.__setattr__(self, 'any_name', arg3)
+            raise TypeError("Only the last positional argument can be an everything-marker.")
         elif arg2 is not None and isinstance(arg1, str) and '/' in arg1:
-            object.__setattr__(self, 'group', arg1.rsplit('/', 1)[0])
-            object.__setattr__(self, 'version', arg1.rsplit('/')[-1])
-            object.__setattr__(self, 'any_name', arg2)
-        elif arg2 is not None and arg1 == 'v1':
-            object.__setattr__(self, 'group', '')
-            object.__setattr__(self, 'version', arg1)
-            object.__setattr__(self, 'any_name', arg2)
-        elif arg2 is not None:
-            object.__setattr__(self, 'group', arg1)
-            object.__setattr__(self, 'any_name', arg2)
+            group, version = arg1.rsplit('/', 1)
+            any_name = arg2
+        elif arg2 is not None and isinstance(arg1, str) and arg1 == 'v1':
+            group, version, any_name = '', arg1, arg2
+        elif arg2 is not None and not isinstance(arg1, Marker):
+            group, any_name = arg1, arg2
         elif arg1 is not None and isinstance(arg1, Marker):
-            object.__setattr__(self, 'any_name', arg1)
+            any_name = arg1
         elif arg1 is not None and '.' in arg1 and K8S_VERSION_PATTERN.match(arg1.split('.')[1]):
             if len(arg1.split('.')) >= 3:
-                object.__setattr__(self, 'group', arg1.split('.', 2)[2])
-            object.__setattr__(self, 'version', arg1.split('.')[1])
-            object.__setattr__(self, 'any_name', arg1.split('.')[0])
+                any_name, version, group = arg1.split('.', 2)
+            else:
+                any_name, version = arg1.split('.')
         elif arg1 is not None and '.' in arg1:
-            object.__setattr__(self, 'group', arg1.split('.', 1)[1])
-            object.__setattr__(self, 'any_name', arg1.split('.')[0])
+            any_name, group = arg1.split('.', 1)
         elif arg1 is not None:
-            object.__setattr__(self, 'any_name', arg1)
+            any_name = arg1
+
+        self.__attrs_init__(
+            group=group, version=version, kind=kind, plural=plural, singular=singular,
+            shortcut=shortcut, category=category, any_name=any_name
+        )
 
         # Verify that explicit & interpreted arguments have produced an unambiguous specification.
         names = [self.kind, self.plural, self.singular, self.shortcut, self.category, self.any_name]
@@ -336,8 +335,7 @@ class Selector:
             raise TypeError("Names must not be empty strings; either None or specific strings.")
 
     def __repr__(self) -> str:
-        kwargs = {f.name: getattr(self, f.name) for f in dataclasses.fields(self)}
-        kwtext = ', '.join([f'{key!s}={val!r}' for key, val in kwargs.items() if val is not None])
+        kwtext = ', '.join([f'{k!s}={v!r}' for k, v in attrs.asdict(self).items() if v is not None])
         clsname = self.__class__.__name__
         return f'{clsname}({kwtext})'
 
@@ -473,7 +471,7 @@ class Backbone(Mapping[Selector, Resource]):
         return self[selector]
 
 
-@dataclasses.dataclass(frozen=True)
+@attrs.define(frozen=True)
 class Insights:
     """
     Actual resources & namespaces served by the operator.
@@ -483,15 +481,15 @@ class Insights:
     # - **Indexed** resources block the operator startup until all objects are initially indexed.
     # - **Watched** resources spawn the watch-streams; the set excludes all webhook-only resources.
     # - **Webhook** resources are served via webhooks; the set excludes all watch-only resources.
-    webhook_resources: Set[Resource] = dataclasses.field(default_factory=set)
-    indexed_resources: Set[Resource] = dataclasses.field(default_factory=set)
-    watched_resources: Set[Resource] = dataclasses.field(default_factory=set)
-    namespaces: Set[Namespace] = dataclasses.field(default_factory=set)
-    backbone: Backbone = dataclasses.field(default_factory=Backbone)
+    webhook_resources: Set[Resource] = attrs.field(factory=set)
+    indexed_resources: Set[Resource] = attrs.field(factory=set)
+    watched_resources: Set[Resource] = attrs.field(factory=set)
+    namespaces: Set[Namespace] = attrs.field(factory=set)
+    backbone: Backbone = attrs.field(factory=Backbone)
 
     # Signalled when anything changes in the insights.
-    revised: asyncio.Condition = dataclasses.field(default_factory=asyncio.Condition)
+    revised: asyncio.Condition = attrs.field(factory=asyncio.Condition)
 
     # The flags that are set after the initial listing is finished. Not cleared afterwards.
-    ready_namespaces: asyncio.Event = dataclasses.field(default_factory=asyncio.Event)
-    ready_resources: asyncio.Event = dataclasses.field(default_factory=asyncio.Event)
+    ready_namespaces: asyncio.Event = attrs.field(factory=asyncio.Event)
+    ready_resources: asyncio.Event = attrs.field(factory=asyncio.Event)

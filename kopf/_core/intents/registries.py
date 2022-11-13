@@ -276,7 +276,7 @@ class SmartOperatorRegistry(OperatorRegistry):
                 activity=causes.Activity.AUTHENTICATION,
                 errors=execution.ErrorsMode.IGNORED,
                 param=None, timeout=None, retries=None, backoff=None,
-                _fallback=True,
+                fallback=True,
             ))
         if piggybacking.has_client():
             self._activities.append(handlers.ActivityHandler(
@@ -285,7 +285,7 @@ class SmartOperatorRegistry(OperatorRegistry):
                 activity=causes.Activity.AUTHENTICATION,
                 errors=execution.ErrorsMode.IGNORED,
                 param=None, timeout=None, retries=None, backoff=None,
-                _fallback=True,
+                fallback=True,
             ))
 
         # As a last resort, fall back to rudimentary logins if no advanced ones are available.
@@ -297,7 +297,7 @@ class SmartOperatorRegistry(OperatorRegistry):
                 activity=causes.Activity.AUTHENTICATION,
                 errors=execution.ErrorsMode.IGNORED,
                 param=None, timeout=None, retries=None, backoff=None,
-                _fallback=True,
+                fallback=True,
             ))
         if not thirdparties_present and piggybacking.has_service_account():
             self._activities.append(handlers.ActivityHandler(
@@ -306,7 +306,7 @@ class SmartOperatorRegistry(OperatorRegistry):
                 activity=causes.Activity.AUTHENTICATION,
                 errors=execution.ErrorsMode.IGNORED,
                 param=None, timeout=None, retries=None, backoff=None,
-                _fallback=True,
+                fallback=True,
             ))
 
 

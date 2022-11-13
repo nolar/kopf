@@ -18,21 +18,22 @@ because they store specialised data structures of specialised reactor modules
 must be kept together with their owning modules rather than mirrored in structs.
 """
 import copy
-import dataclasses
 from typing import Iterator, MutableMapping, Optional
+
+import attrs
 
 from kopf._cogs.structs import bodies, ephemera
 from kopf._core.actions import throttlers
 from kopf._core.engines import admission, daemons, indexing
 
 
-@dataclasses.dataclass(frozen=False)
+@attrs.define
 class ResourceMemory:
     """ A system memo about a single resource/object. Usually stored in `Memories`. """
-    memo: ephemera.AnyMemo = dataclasses.field(default_factory=lambda: ephemera.AnyMemo(ephemera.Memo()))
-    error_throttler: throttlers.Throttler = dataclasses.field(default_factory=throttlers.Throttler)
-    indexing_memory: indexing.IndexingMemory = dataclasses.field(default_factory=indexing.IndexingMemory)
-    daemons_memory: daemons.DaemonsMemory = dataclasses.field(default_factory=daemons.DaemonsMemory)
+    memo: ephemera.AnyMemo = attrs.field(factory=lambda: ephemera.AnyMemo(ephemera.Memo()))
+    error_throttler: throttlers.Throttler = attrs.field(factory=throttlers.Throttler)
+    indexing_memory: indexing.IndexingMemory = attrs.field(factory=indexing.IndexingMemory)
+    daemons_memory: daemons.DaemonsMemory = attrs.field(factory=daemons.DaemonsMemory)
 
     # For resuming handlers tracking and deciding on should they be called or not.
     noticed_by_listing: bool = False

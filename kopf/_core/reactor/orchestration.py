@@ -23,11 +23,12 @@ Some special watchers for the meta-level resources -- i.e. for dimensions --
 are started and stopped separately, not as part of the the orchestration.
 """
 import asyncio
-import dataclasses
 import functools
 import itertools
 import logging
 from typing import Any, Collection, Container, Dict, Iterable, MutableMapping, NamedTuple, Optional
+
+import attrs
 
 from kopf._cogs.aiokits import aiotasks, aiotoggles
 from kopf._cogs.configs import configuration
@@ -43,7 +44,7 @@ class EnsembleKey(NamedTuple):
     namespace: references.Namespace
 
 
-@dataclasses.dataclass
+@attrs.define(frozen=True)
 class Ensemble:
 
     # Global synchronisation point on the cache pre-populating stage and overall cache readiness.
@@ -54,12 +55,12 @@ class Ensemble:
     # Multidimentional pausing: for every namespace, and a few for the whole cluster (for CRDs).
     operator_paused: aiotoggles.ToggleSet
     peering_missing: aiotoggles.Toggle
-    conflicts_found: Dict[EnsembleKey, aiotoggles.Toggle] = dataclasses.field(default_factory=dict)
+    conflicts_found: Dict[EnsembleKey, aiotoggles.Toggle] = attrs.field(factory=dict)
 
     # Multidimensional tasks -- one for every combination of relevant dimensions.
-    watcher_tasks: Dict[EnsembleKey, aiotasks.Task] = dataclasses.field(default_factory=dict)
-    peering_tasks: Dict[EnsembleKey, aiotasks.Task] = dataclasses.field(default_factory=dict)
-    pinging_tasks: Dict[EnsembleKey, aiotasks.Task] = dataclasses.field(default_factory=dict)
+    watcher_tasks: Dict[EnsembleKey, aiotasks.Task] = attrs.field(factory=dict)
+    peering_tasks: Dict[EnsembleKey, aiotasks.Task] = attrs.field(factory=dict)
+    pinging_tasks: Dict[EnsembleKey, aiotasks.Task] = attrs.field(factory=dict)
 
     def get_keys(self) -> Collection[EnsembleKey]:
         return (frozenset(self.watcher_tasks) |

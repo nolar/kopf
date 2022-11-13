@@ -64,6 +64,7 @@ setup(
         'click',                # 0.60 MB
         'aiohttp<4.0.0',        # 7.80 MB
         'pyyaml',               # 0.90 MB
+        'attrs>=20.1.0',        # 1.00 MB, comes from the dependencies anyway
     ],
     extras_require={
         'full-auth': [

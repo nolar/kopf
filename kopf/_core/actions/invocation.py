@@ -37,6 +37,7 @@ class Kwargable:
     function invocation module on the specialised causation logic & structures.
     For this reason, the `Cause` & `Kwargable` classes are split.
     """
+    __slots__ = ()
 
     @property
     def _kwargs(self) -> Mapping[str, Any]:

@@ -1,8 +1,8 @@
 import asyncio
-import dataclasses
 import gc
 import warnings
 
+import attrs
 import pyngrok.conf
 import pyngrok.ngrok
 import pytest
@@ -99,7 +99,7 @@ def adm_request(resource, namespace):
         ))
 
 
-@dataclasses.dataclass(frozen=True)
+@attrs.define(frozen=True)
 class Responder:
     fn: WebhookFn
     fut: asyncio.Future  # asyncio.Future[Response]

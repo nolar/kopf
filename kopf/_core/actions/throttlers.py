@@ -1,14 +1,15 @@
 import asyncio
 import contextlib
-import dataclasses
 import time
 from typing import AsyncGenerator, Iterable, Iterator, Optional, Tuple, Type, Union
+
+import attrs
 
 from kopf._cogs.aiokits import aiotime
 from kopf._cogs.helpers import typedefs
 
 
-@dataclasses.dataclass(frozen=False)
+@attrs.define
 class Throttler:
     """ A state of throttling for one specific purpose (there can be a few). """
     source_of_delays: Optional[Iterator[float]] = None

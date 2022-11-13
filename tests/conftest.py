@@ -1,5 +1,4 @@
 import asyncio
-import dataclasses
 import importlib
 import io
 import json
@@ -10,6 +9,7 @@ import time
 from typing import Set
 
 import aiohttp.web
+import attrs
 import pytest
 from mock import AsyncMock, Mock
 
@@ -189,7 +189,7 @@ def registry(registry_factory):
 #
 
 
-@dataclasses.dataclass(frozen=True, eq=False)
+@attrs.define(frozen=True)
 class K8sMocks:
     get: Mock
     post: Mock
@@ -353,7 +353,7 @@ def hostname():
     return 'fake-host'
 
 
-@dataclasses.dataclass(frozen=True, eq=False, order=False)
+@attrs.define(frozen=True)
 class LoginMocks:
     pykube_in_cluster: Mock = None
     pykube_from_file: Mock = None

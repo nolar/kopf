@@ -22,11 +22,12 @@ of the daemons, and they are not actually "hung".
 """
 import abc
 import asyncio
-import dataclasses
 import time
 import warnings
 from typing import Collection, Dict, Iterable, List, Mapping, \
                    MutableMapping, Optional, Sequence, Set
+
+import attrs
 
 from kopf._cogs.aiokits import aiotasks, aiotime, aiotoggles
 from kopf._cogs.configs import configuration
@@ -36,7 +37,7 @@ from kopf._core.actions import application, execution, lifecycles, loggers, prog
 from kopf._core.intents import causes, handlers as handlers_, stoppers
 
 
-@dataclasses.dataclass(frozen=True)
+@attrs.define(frozen=True)
 class Daemon:
     task: aiotasks.Task  # a guarding task of the daemon.
     logger: typedefs.Logger
@@ -44,13 +45,13 @@ class Daemon:
     stopper: stoppers.DaemonStopper  # a signaller for the termination and its reason.
 
 
-@dataclasses.dataclass(frozen=False)
+@attrs.define
 class DaemonsMemory:
     # For background and timed threads/tasks (invoked with the kwargs of the last-seen body).
     live_fresh_body: Optional[bodies.Body] = None
-    idle_reset_time: float = dataclasses.field(default_factory=time.monotonic)
-    forever_stopped: Set[ids.HandlerId] = dataclasses.field(default_factory=set)
-    running_daemons: Dict[ids.HandlerId, Daemon] = dataclasses.field(default_factory=dict)
+    idle_reset_time: float = attrs.field(factory=time.monotonic)
+    forever_stopped: Set[ids.HandlerId] = attrs.field(factory=set)
+    running_daemons: Dict[ids.HandlerId, Daemon] = attrs.field(factory=dict)
 
 
 class DaemonsMemoriesIterator(metaclass=abc.ABCMeta):
