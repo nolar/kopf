@@ -18,6 +18,7 @@ import os.path
 
 import astpath
 from importlinter import Contract, ContractCheck, fields, output
+from importlinter.domain.ports.graph import ImportGraph
 
 
 class ConditionalImportContract(Contract):
@@ -28,7 +29,7 @@ class ConditionalImportContract(Contract):
     source_modules = fields.ListField(subfield=fields.ModuleField())
     conditional_modules = fields.ListField(subfield=fields.ModuleField())
 
-    def check(self, graph):
+    def check(self, graph: ImportGraph) -> ContractCheck:
         failed_details = []
 
         # Combine all source x all target (secured) modules.

@@ -140,7 +140,7 @@ def test_all_handlers(operator_registry_cls):
     @kopf.on.resume('resource', registry=registry)
     @kopf.on.timer('resource', registry=registry)
     @kopf.on.daemon('resource', registry=registry)
-    def fn(**_): ...
+    def fn(**_): pass
 
     assert len(registry._indexing.get_all_handlers()) == 1
     assert len(registry._watching.get_all_handlers()) == 2
@@ -160,7 +160,7 @@ def test_all_selectors(operator_registry_cls):
     @kopf.on.resume('resource4', registry=registry)
     @kopf.on.timer('resource5', registry=registry)
     @kopf.on.daemon('resource6', registry=registry)
-    def fn(**_): ...
+    def fn(**_): pass
 
     assert registry._indexing.get_all_selectors() == {Selector('resource0')}
     assert registry._watching.get_all_selectors() == {Selector('resource1'), Selector('resource2')}

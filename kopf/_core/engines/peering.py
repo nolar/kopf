@@ -196,7 +196,7 @@ async def keepalive(
                 lifetime=0,
             ))
         except asyncio.CancelledError:
-            pass
+            pass  # cancellations are treated as normal exiting
         except Exception:
             logger.exception(f"Couldn't remove self from the peering. Ignoring.")
 

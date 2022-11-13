@@ -430,7 +430,7 @@ def test_relevant_handlers_without_field_found(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(*resource, field=None)
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_any_diff
     cause.reason = reason
@@ -443,7 +443,7 @@ def test_relevant_handlers_with_field_found(
         cause_with_diff, registry, resource, reason, decorator):
 
     @decorator(*resource, field='known-field')
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_with_diff
     cause.reason = reason
@@ -456,7 +456,7 @@ def test_relevant_handlers_with_field_ignored(
         cause_no_diff, registry, resource, reason, decorator):
 
     @decorator(*resource, field='known-field')
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_no_diff
     cause.reason = reason
@@ -469,7 +469,7 @@ def test_relevant_handlers_with_labels_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(*resource, labels={'known': PRESENT})
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_any_diff
     cause.reason = reason
@@ -482,7 +482,7 @@ def test_relevant_handlers_with_labels_not_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(*resource, labels={'extra': PRESENT})
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_any_diff
     cause.reason = reason
@@ -495,7 +495,7 @@ def test_relevant_handlers_with_annotations_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(*resource, annotations={'known': PRESENT})
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_any_diff
     cause.reason = reason
@@ -508,7 +508,7 @@ def test_relevant_handlers_with_annotations_not_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(*resource, annotations={'extra': PRESENT})
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_any_diff
     cause.reason = reason
@@ -521,7 +521,7 @@ def test_relevant_handlers_with_filter_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(*resource, when=_always)
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_any_diff
     cause.reason = reason
@@ -534,7 +534,7 @@ def test_relevant_handlers_with_filter_not_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(*resource, when=_never)
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_any_diff
     cause.reason = reason
@@ -547,7 +547,7 @@ def test_irrelevant_handlers_without_field_ignored(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(*resource)
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_any_diff
     cause.reason = reason
@@ -560,7 +560,7 @@ def test_irrelevant_handlers_with_field_ignored(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(*resource, field='extra-field')
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_any_diff
     cause.reason = reason
@@ -573,7 +573,7 @@ def test_irrelevant_handlers_with_labels_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(*resource, labels={'known': PRESENT})
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_any_diff
     cause.reason = reason
@@ -586,7 +586,7 @@ def test_irrelevant_handlers_with_labels_not_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(*resource, labels={'extra': PRESENT})
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_any_diff
     cause.reason = reason
@@ -599,7 +599,7 @@ def test_irrelevant_handlers_with_annotations_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(*resource, annotations={'known': PRESENT})
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_any_diff
     cause.reason = reason
@@ -612,7 +612,7 @@ def test_irrelevant_handlers_with_annotations_not_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(*resource, annotations={'extra': PRESENT})
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_any_diff
     cause.reason = reason
@@ -625,7 +625,7 @@ def test_irrelevant_handlers_with_when_callback_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(*resource, when=_always)
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_any_diff
     cause.reason = reason
@@ -638,7 +638,7 @@ def test_irrelevant_handlers_with_when_callback_not_satisfied(
         cause_any_diff, registry, resource, reason, decorator):
 
     @decorator(*resource, when=_never)
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_any_diff
     cause.reason = reason
@@ -654,7 +654,7 @@ def test_irrelevant_handlers_with_when_callback_not_satisfied(
 def test_field_same_as_diff(cause_with_diff, registry, resource, reason, decorator):
 
     @decorator(*resource, field='level1.level2')
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_with_diff
     cause.reason = reason
@@ -669,7 +669,7 @@ def test_field_same_as_diff(cause_with_diff, registry, resource, reason, decorat
 def test_field_shorter_than_diff(cause_with_diff, registry, resource, reason, decorator):
 
     @decorator(*resource, field='level1')
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_with_diff
     cause.reason = reason
@@ -684,7 +684,7 @@ def test_field_shorter_than_diff(cause_with_diff, registry, resource, reason, de
 def test_field_longer_than_diff_for_wrong_field(cause_with_diff, registry, resource, reason, decorator):
 
     @decorator(*resource, field='level1.level2.level3')
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_with_diff
     cause.reason = reason
@@ -708,7 +708,7 @@ def test_field_longer_than_diff_for_wrong_field(cause_with_diff, registry, resou
 def test_field_longer_than_diff_for_right_field(cause_with_diff, registry, resource, old, new, reason, decorator):
 
     @decorator(*resource, field='level1.level2.level3')
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_with_diff
     cause.reason = reason
@@ -727,19 +727,19 @@ def test_field_longer_than_diff_for_right_field(cause_with_diff, registry, resou
 def test_order_persisted_a(cause_with_diff, registry, resource):
 
     @kopf.on.create(*resource)
-    def some_fn_1(**_): ...  # used
+    def some_fn_1(**_): pass  # used
 
     @kopf.on.update(*resource)
-    def some_fn_2(**_): ...  # filtered out
+    def some_fn_2(**_): pass  # filtered out
 
     @kopf.on.create(*resource)
-    def some_fn_3(**_): ...  # used
+    def some_fn_3(**_): pass  # used
 
     @kopf.on.field(*resource, field='filtered-out-field')
-    def some_fn_4(**_): ...  # filtered out
+    def some_fn_4(**_): pass  # filtered out
 
     @kopf.on.field(*resource, field='known-field')
-    def some_fn_5(**_): ...  # used
+    def some_fn_5(**_): pass  # used
 
     cause = cause_with_diff
     cause.reason = Reason.CREATE
@@ -755,19 +755,19 @@ def test_order_persisted_a(cause_with_diff, registry, resource):
 def test_order_persisted_b(cause_with_diff, registry, resource):
 
     @kopf.on.field(*resource, field='known-field')
-    def some_fn_1(**_): ...  # used
+    def some_fn_1(**_): pass  # used
 
     @kopf.on.field(*resource, field='filtered-out-field')
-    def some_fn_2(**_): ...  # filtered out
+    def some_fn_2(**_): pass  # filtered out
 
     @kopf.on.create(*resource)
-    def some_fn_3(**_): ...  # used
+    def some_fn_3(**_): pass  # used
 
     @kopf.on.update(*resource)
-    def some_fn_4(**_): ...  # filtered out
+    def some_fn_4(**_): pass  # filtered out
 
     @kopf.on.create(*resource)
-    def some_fn_5(**_): ...  # used
+    def some_fn_5(**_): pass  # used
 
     cause = cause_with_diff
     cause.reason = Reason.CREATE
@@ -791,7 +791,7 @@ def test_deduplication_by_fn_and_id(
     # Note: the decorators are applied bottom-up -- hence, the order of ids:
     @decorator(*resource, id='a')
     @decorator(*resource, id='a')
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_with_diff
     cause.reason = reason
@@ -807,10 +807,10 @@ def test_deduplication_distinguishes_different_fns(
 
     # Note: the decorators are applied bottom-up -- hence, the order of ids:
     @decorator(*resource, id='a')
-    def some_fn1(**_): ...
+    def some_fn1(**_): pass
 
     @decorator(*resource, id='a')
-    def some_fn2(**_): ...
+    def some_fn2(**_): pass
 
     cause = cause_with_diff
     cause.reason = reason
@@ -826,7 +826,7 @@ def test_deduplication_distinguishes_different_ids(
     # Note: the decorators are applied bottom-up -- hence, the order of ids:
     @decorator(*resource, id='b')
     @decorator(*resource, id='a')
-    def some_fn(**_): ...
+    def some_fn(**_): pass
 
     cause = cause_with_diff
     cause.reason = reason

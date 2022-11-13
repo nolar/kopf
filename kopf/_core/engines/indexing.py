@@ -50,7 +50,7 @@ class Store(ephemera.Store[_V], Generic[_V]):
         try:
             del self.__items[acckey]
         except KeyError:
-            pass
+            pass  # already absent
 
     # Indexers' internal protocol. Must not be used by handlers & operators.
     def _replace(self, acckey: Key, obj: _V) -> None:

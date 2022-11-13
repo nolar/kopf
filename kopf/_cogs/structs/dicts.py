@@ -177,14 +177,14 @@ def remove(
         try:
             del d[path[0]]
         except KeyError:
-            pass
+            pass  # already absent
 
     else:
         try:
             # Recursion is the easiest way to implement it, assuming the bodies/patches are shallow.
             remove(d[path[0]], path[1:])
         except KeyError:
-            pass
+            pass  # already absent
         else:
             # Clean the parent dict if it has become empty due to deletion of the only sub-key.
             # Upper parents will be handled by upper recursion functions.
@@ -245,14 +245,14 @@ def walk(
             try:
                 yield resolve_obj(objs, parse_field(subfield))
             except (AttributeError, KeyError):
-                pass
+                pass  # do not dive deep into non-existent fields or non-dicts
     elif isinstance(objs, collections.abc.Mapping):
         yield objs  # type: ignore
         for subfield in (nested if nested is not None else []):
             try:
                 yield resolve(objs, parse_field(subfield))
             except KeyError:
-                pass
+                pass  # avoid diving into non-dicts, ignore them
     elif isinstance(objs, collections.abc.Iterable):
         for obj in objs:
             yield from walk(obj, nested=nested)

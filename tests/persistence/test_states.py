@@ -12,7 +12,7 @@ from kopf._core.actions.progression import State, StateCounters, deliver_results
 from kopf._core.intents.causes import HANDLER_REASONS, Reason
 
 # Timestamps: time zero (0), before (B), after (A), and time zero+1s (1).
-TSB = datetime.datetime(2020, 12, 31, 23, 59, 59, 000000)
+TSB = datetime.datetime(2020, 12, 31, 23, 59, 59)
 TS0 = datetime.datetime(2020, 12, 31, 23, 59, 59, 123456)
 TS1 = datetime.datetime(2021,  1,  1, 00, 00, 00, 123456)
 TSA = datetime.datetime(2020, 12, 31, 23, 59, 59, 999999)

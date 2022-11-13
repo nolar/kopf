@@ -384,11 +384,11 @@ class WebhookServer(webhacks.WebhookContextManager):
             try:
                 parsed_ips[hostname] = ipaddress.IPv4Address(hostname)
             except ipaddress.AddressValueError:
-                pass
+                pass  # non-parsable IPs are considered to be regular hostnames
             try:
                 parsed_ips[hostname] = ipaddress.IPv6Address(hostname)
             except ipaddress.AddressValueError:
-                pass
+                pass  # non-parsable IPs are considered to be regular hostnames
 
         # Later, only the normalised IPs are used as SANs, not the raw IPs.
         # Remove bindable but non-accessible addresses (like 0.0.0.0) form the SANs.

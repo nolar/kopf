@@ -213,5 +213,5 @@ class _TempFiles(Mapping[bytes, str]):
             try:
                 os.remove(path)
             except OSError:
-                pass
+                pass  # already removed
         self._paths.clear()

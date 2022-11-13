@@ -42,7 +42,7 @@ async def liveness_url(settings, liveness_registry, unused_tcp_port_factory):
         try:
             await server
         except asyncio.CancelledError:
-            pass
+            pass  # cancellations are expected at this point
 
 
 async def test_liveness_for_just_status(liveness_url):

@@ -151,7 +151,7 @@ async def watcher(
     watcher_task = asyncio.current_task()
     worker_error: Optional[BaseException] = None
     def exception_handler(exc: BaseException) -> None:
-        nonlocal worker_error
+        nonlocal worker_error, watcher_task
         if worker_error is None:
             worker_error = exc
             if watcher_task is not None:  # never happens, but is needed for type-checking.
@@ -306,7 +306,7 @@ async def worker(
                         shouldstop = shouldstop or isinstance(next_event, EOS)
                         raw_event = prev_event if isinstance(next_event, EOS) else next_event
                 except asyncio.TimeoutError:
-                    pass
+                    pass  # the batch accumulation is over, we can proceed to the processing
 
             # Exit gracefully and immediately on the end-of-stream marker sent by the watcher.
             if isinstance(raw_event, EOS):
@@ -333,7 +333,7 @@ async def worker(
         try:
             del streams[key]
         except KeyError:
-            pass
+            pass  # already absent
 
         # Notify the depletion routine about the changes in the workers'/streams' overall state.
         # * This should happen STRICTLY AFTER the removal from the streams[], and
@@ -363,7 +363,7 @@ async def _wait_for_depletion(
                 signaller.wait_for(lambda: not streams or scheduler.empty()),
                 timeout=settings.batching.exit_timeout)
         except asyncio.TimeoutError:
-            pass
+            pass  # if not depleted as configured, proceed with what's left and let it fail
 
     # The last check if the termination is going to be graceful or not.
     if streams:

@@ -70,7 +70,7 @@ async def cancel_coro(
         try:
             await corotask
         except asyncio.CancelledError:
-            pass
+            pass  # cancellations are expected at this point
 
 
 async def guard(
@@ -237,7 +237,7 @@ async def reraise(
         try:
             task.result()  # can raise the regular (non-cancellation) exceptions.
         except asyncio.CancelledError:
-            pass
+            pass  # re-raise anything except regular cancellations/exits
 
 
 async def all_tasks(
@@ -386,6 +386,7 @@ class Scheduler:
             try:
                 await task
             except BaseException:
+                # The errors are handled in the done-callback. Suppress what has leaked for safety.
                 pass
 
             # Ping other tasks to refill the pool of running tasks (or to close the scheduler).
