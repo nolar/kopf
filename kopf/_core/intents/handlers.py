@@ -6,7 +6,7 @@ from kopf._core.actions import execution
 from kopf._core.intents import callbacks, causes, filters
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class ActivityHandler(execution.Handler):
     fn: callbacks.ActivityFn  # typing clarification
     activity: Optional[causes.Activity]
@@ -16,7 +16,7 @@ class ActivityHandler(execution.Handler):
         return f"Activity {self.id!r}"
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class ResourceHandler(execution.Handler):
     selector: Optional[references.Selector]  # None is used only in sub-handlers
     labels: Optional[filters.MetaFilter]
@@ -36,7 +36,7 @@ class ResourceHandler(execution.Handler):
             return cause
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class WebhookHandler(ResourceHandler):
     fn: callbacks.WebhookFn  # typing clarification
     reason: causes.WebhookType
@@ -50,7 +50,7 @@ class WebhookHandler(ResourceHandler):
         return f"Webhook {self.id!r}"
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class IndexingHandler(ResourceHandler):
     fn: callbacks.IndexingFn  # typing clarification
 
@@ -58,12 +58,12 @@ class IndexingHandler(ResourceHandler):
         return f"Indexer {self.id!r}"
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class WatchingHandler(ResourceHandler):
     fn: callbacks.WatchingFn  # typing clarification
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class ChangingHandler(ResourceHandler):
     fn: callbacks.ChangingFn  # typing clarification
     reason: Optional[causes.Reason]
@@ -75,13 +75,13 @@ class ChangingHandler(ResourceHandler):
     new: Optional[filters.ValueFilter]
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class SpawningHandler(ResourceHandler):
     requires_finalizer: Optional[bool]
     initial_delay: Optional[float]
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class DaemonHandler(SpawningHandler):
     fn: callbacks.DaemonFn  # typing clarification
     cancellation_backoff: Optional[float]  # how long to wait before actual cancellation.
@@ -92,7 +92,7 @@ class DaemonHandler(SpawningHandler):
         return f"Daemon {self.id!r}"
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class TimerHandler(SpawningHandler):
     fn: callbacks.TimerFn  # typing clarification
     sharp: Optional[bool]

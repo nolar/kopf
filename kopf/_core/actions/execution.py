@@ -144,10 +144,7 @@ class Cause(invocation.Kwargable):
 CauseT = TypeVar('CauseT', bound=Cause)
 
 
-# FIXME: Must be frozen, but mypy fails in _call_handler() with a cryptic error:
-# FIXME:    Argument 1 to "invoke" has incompatible type "Optional[HandlerResult]";
-# FIXME:    expected "Union[LifeCycleFn, ActivityHandlerFn, ResourceHandlerFn]"
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Handler:
     """ A handler is a function bound with its behavioral constraints. """
     id: ids.HandlerId

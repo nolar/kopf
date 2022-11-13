@@ -154,6 +154,6 @@ def is_async_fn(
     elif isinstance(fn, functools.partial):
         return is_async_fn(fn.func)
     elif hasattr(fn, '__wrapped__'):  # @functools.wraps()
-        return is_async_fn(fn.__wrapped__)  # type: ignore
+        return is_async_fn(fn.__wrapped__)
     else:
         return asyncio.iscoroutinefunction(fn)
