@@ -116,10 +116,10 @@ async def test_patching_on_changes(
         mocker, settings, registry, insights, selector, resource, reason, k8s_mocked):
 
     @kopf.on.validate(*resource, registry=registry)
-    def fn_v(**_): ...
+    def fn_v(**_): pass
 
     @kopf.on.mutate(*resource, registry=registry)
-    def fn_m(**_): ...
+    def fn_m(**_): pass
 
     container = Container()
     mocker.patch.object(container, 'as_changed', return_value=aiter([
@@ -164,10 +164,10 @@ async def test_patching_purges_non_permanent_webhooks(
         mocker, settings, registry, insights, selector, resource, reason, k8s_mocked):
 
     @kopf.on.validate(*resource, registry=registry, persistent=False)
-    def fn_v(**_): ...
+    def fn_v(**_): pass
 
     @kopf.on.mutate(*resource, registry=registry, persistent=False)
-    def fn_m(**_): ...
+    def fn_m(**_): pass
 
     container = Container()
     mocker.patch.object(container, 'as_changed', return_value=aiter([
@@ -195,10 +195,10 @@ async def test_patching_leaves_permanent_webhooks(
         mocker, settings, registry, insights, selector, resource, reason, k8s_mocked):
 
     @kopf.on.validate(*resource, registry=registry, persistent=True)
-    def fn_v(**_): ...
+    def fn_v(**_): pass
 
     @kopf.on.mutate(*resource, registry=registry, persistent=True)
-    def fn_m(**_): ...
+    def fn_m(**_): pass
 
     container = Container()
     mocker.patch.object(container, 'as_changed', return_value=aiter([

@@ -77,7 +77,8 @@ each time with the proper values of old/new/diff/param kwargs for those fields:
 
     @kopf.on.update('KopfExample', param=10, field='spec.field')
     @kopf.on.update('KopfExample', param=1, field='spec')
-    def fn(param, **_): ...
+    def fn(param, **_):
+        pass
 
 
 .. kwarg:: settings

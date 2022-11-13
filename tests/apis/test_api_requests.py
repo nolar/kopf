@@ -246,7 +246,7 @@ async def test_stopper_in_streams(
             await response.write(b'{"fake": "result2"}\n')
             await response.write_eof()
         except ConnectionError:
-            pass
+            pass  # the client side sometimes disconnects earlier, ignore it
         return response
 
     aresponses.add(hostname, '/url', method, stream_slowly)

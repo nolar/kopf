@@ -18,7 +18,7 @@ async def wait_flag(
     but we support them for convenience.
     """
     if flag is None:
-        pass
+        return None
     elif isinstance(flag, asyncio.Future):
         return await flag
     elif isinstance(flag, asyncio.Event):
@@ -43,7 +43,7 @@ async def raise_flag(
     but we support them for convenience.
     """
     if flag is None:
-        pass
+        return None
     elif isinstance(flag, asyncio.Future):
         flag.set_result(None)
     elif isinstance(flag, asyncio.Event):

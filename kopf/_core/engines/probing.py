@@ -44,7 +44,7 @@ async def health_reporter(
     async def get_health(
             request: aiohttp.web.Request,
     ) -> aiohttp.web.Response:
-        nonlocal probing_timestamp
+        nonlocal probing_container, probing_timestamp, probing_max_age, probing_lock
 
         # Recollect the data on-demand, and only if is is older that a reasonable caching period.
         # Protect against multiple parallel requests performing the same heavy activity.

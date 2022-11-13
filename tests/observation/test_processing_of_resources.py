@@ -104,7 +104,7 @@ def insights_resources(request, registry, insights):
     decorator, insights_field = request.param
 
     @decorator('group1', 'version1', 'plural1')
-    def fn(**_): ...
+    def fn(**_): pass
 
     return getattr(insights, insights_field)
 
@@ -115,7 +115,7 @@ async def test_nonwatchable_resources_are_ignored(
         settings, registry, apis_mock, group1_mock, timer, etype, decorator, insights):
 
     @decorator('group1', 'version1', 'plural1')
-    def fn(**_): ...
+    def fn(**_): pass
 
     e1 = RawEvent(type=etype, object=RawBody(spec={'group': 'group1'}))
 

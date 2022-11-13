@@ -68,4 +68,4 @@ def watcher_in_background(settings, resource, event_loop, worker_spy, stream):
         try:
             event_loop.run_until_complete(task)
         except asyncio.CancelledError:
-            pass
+            pass  # cancellations are expected at this point

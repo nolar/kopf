@@ -30,7 +30,7 @@ def insights_resources(request, registry, insights):
 
     @decorator('group1', 'version1', 'plural1')
     @decorator('group2', 'version2', 'plural2')
-    def fn(**_): ...
+    def fn(**_): pass
 
     return getattr(insights, insights_field)
 
@@ -74,7 +74,7 @@ def test_ambiguity_in_specific_selectors(registry, decorator, caplog, assert_log
     r2 = Resource(group='g2', version='v2', plural='plural', verbs=VERBS)
 
     @decorator(plural='plural')
-    def fn(**_): ...
+    def fn(**_): pass
 
     revise_resources(registry=registry, insights=insights, group=None, resources=[r1, r2])
     assert not insights.watched_resources
@@ -91,7 +91,7 @@ def test_corev1_overrides_ambuigity(registry, decorator, caplog, assert_logs, in
     r2 = Resource(group='metrics.k8s.io', version='v1', plural='pods', verbs=VERBS)
 
     @decorator(plural='pods')
-    def fn(**_): ...
+    def fn(**_): pass
 
     revise_resources(registry=registry, insights=insights, group=None, resources=[r1, r2])
     assert insights.watched_resources == {r1}
@@ -107,7 +107,7 @@ def test_no_ambiguity_in_generic_selector(registry, decorator, caplog, assert_lo
     r2 = Resource(group='g2', version='v2', plural='plural', verbs=VERBS)
 
     @decorator(EVERYTHING)
-    def fn(**_): ...
+    def fn(**_): pass
 
     revise_resources(registry=registry, insights=insights, group=None, resources=[r1, r2])
     assert insights.watched_resources == {r1, r2}
@@ -123,7 +123,7 @@ def test_selectors_with_no_resources(registry, decorator, caplog, assert_logs, i
     r2 = Resource(group='group2', version='version2', plural='plural2', verbs=VERBS)
 
     @decorator(plural='plural3')
-    def fn(**_): ...
+    def fn(**_): pass
 
     revise_resources(registry=registry, insights=insights, group=None, resources=[r1, r2])
     assert not insights.watched_resources
@@ -138,7 +138,7 @@ def test_nonwatchable_excluded(registry, decorator, caplog, assert_logs, insight
     r1 = Resource(group='group1', version='version1', plural='plural1', verbs=[])
 
     @decorator('group1', 'version1', 'plural1')
-    def fn(**_): ...
+    def fn(**_): pass
 
     revise_resources(registry=registry, insights=insights, group=None, resources=[r1])
     assert not insights.watched_resources
@@ -153,7 +153,7 @@ def test_nonpatchable_excluded(registry, decorator, caplog, assert_logs, insight
     r1 = Resource(group='group1', version='version1', plural='plural1', verbs=['watch', 'list'])
 
     @decorator('group1', 'version1', 'plural1')  # because it patches!
-    def fn(**_): ...
+    def fn(**_): pass
 
     revise_resources(registry=registry, insights=insights, group=None, resources=[r1])
     assert not insights.watched_resources
@@ -169,7 +169,7 @@ def test_watchedonly_resources_are_excluded_from_other_sets(registry, decorator,
     r1 = Resource(group='group1', version='version1', plural='plural1', verbs=VERBS)
 
     @decorator('group1', 'version1', 'plural1')
-    def fn(**_): ...
+    def fn(**_): pass
 
     revise_resources(registry=registry, insights=insights, group=None, resources=[r1])
     assert insights.watched_resources
@@ -185,7 +185,7 @@ def test_webhookonly_resources_are_excluded_from_other_sets(registry, decorator,
     r1 = Resource(group='group1', version='version1', plural='plural1', verbs=VERBS)
 
     @decorator('group1', 'version1', 'plural1')
-    def fn(**_): ...
+    def fn(**_): pass
 
     revise_resources(registry=registry, insights=insights, group=None, resources=[r1])
     assert not insights.watched_resources
@@ -201,7 +201,7 @@ def test_indexed_resources_are_duplicated_in_watched_resources(registry, decorat
     r1 = Resource(group='group1', version='version1', plural='plural1', verbs=VERBS)
 
     @decorator('group1', 'version1', 'plural1')
-    def fn(**_): ...
+    def fn(**_): pass
 
     revise_resources(registry=registry, insights=insights, group=None, resources=[r1])
     assert insights.watched_resources

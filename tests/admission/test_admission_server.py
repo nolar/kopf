@@ -16,10 +16,10 @@ async def test_requires_webserver_if_webhooks_are_defined(
         settings, registry, insights, resource):
 
     @kopf.on.validate(*resource, registry=registry)
-    def fn_v(**_): ...
+    def fn_v(**_): pass
 
     @kopf.on.mutate(*resource, registry=registry)
-    def fn_m(**_): ...
+    def fn_m(**_): pass
 
     container = Container()
     with pytest.raises(Exception) as err:
