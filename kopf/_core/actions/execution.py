@@ -266,9 +266,10 @@ async def execute_handler_once(
     try:
         logger.debug(f"{handler} is invoked.")
 
+        # Strict checks — contrary to the look-ahead checks below, which are approximate.
+        # The unforeseen extra time could be added by e.g. operator or cluster downtime.
         if handler.timeout is not None and state.runtime.total_seconds() >= handler.timeout:
             raise HandlerTimeoutError(f"{handler} has timed out after {state.runtime}.")
-
         if handler.retries is not None and state.retries >= handler.retries:
             raise HandlerRetriesError(f"{handler} has exceeded {state.retries} retries.")
 
@@ -296,8 +297,27 @@ async def execute_handler_once(
 
     # Definitely a temporary error, regardless of the error strictness.
     except TemporaryError as e:
-        logger.error(f"{handler} failed temporarily: {str(e) or repr(e)}")
-        return Outcome(final=False, exception=e, delay=e.delay, subrefs=subrefs)
+        # Maybe false-negative but never false-positive checks to save extra cycles & time wasted.
+        lookahead_runtime = state.runtime.total_seconds() + (e.delay or 0)
+        lookahead_timeout = handler.timeout is not None and lookahead_runtime >= handler.timeout
+        lookahead_retries = handler.retries is not None and state.retries + 1 >= handler.retries
+        if lookahead_timeout:
+            msg = (
+                f"{handler} failed temporarily but will time out after {handler.timeout} seconds: "
+                f"{str(e) or repr(e)}"
+            )
+            logger.error(msg)
+            return Outcome(final=True, exception=HandlerTimeoutError(msg), subrefs=subrefs)
+        elif lookahead_retries:
+            msg = (
+                f"{handler} failed temporarily but will exceed {handler.retries} retries: "
+                f"{str(e) or repr(e)}"
+            )
+            logger.error(msg)
+            return Outcome(final=True, exception=HandlerRetriesError(msg), subrefs=subrefs)
+        else:
+            logger.error(f"{handler} failed temporarily: {str(e) or repr(e)}")
+            return Outcome(final=False, exception=e, delay=e.delay, subrefs=subrefs)
 
     # Same as permanent errors below, but with better logging for our internal cases.
     except (HandlerTimeoutError, HandlerRetriesError) as e:
@@ -313,14 +333,46 @@ async def execute_handler_once(
 
     # Regular errors behave as either temporary or permanent depending on the error strictness.
     except Exception as e:
+        # Maybe false-negative but never false-positive checks to save extra cycles & time wasted.
+        lookahead_runtime = state.runtime.total_seconds() + backoff
+        lookahead_timeout = handler.timeout is not None and lookahead_runtime >= handler.timeout
+        lookahead_retries = handler.retries is not None and state.retries + 1 >= handler.retries
         if errors_mode == ErrorsMode.IGNORED:
-            logger.exception(f"{handler} failed with an exception. Will ignore.")
+            msg = (
+                f"{handler} failed with an exception and will ignore it: "
+                f"{str(e) or repr(e)}"
+            )
+            logger.exception(msg)
             return Outcome(final=True, subrefs=subrefs)
+        elif errors_mode == ErrorsMode.TEMPORARY and lookahead_timeout:
+            msg = (
+                f"{handler} failed with an exception and will stop now "
+                f"(it would time out in {handler.timeout} seconds on the next attempt): "
+                f"{str(e) or repr(e)}"
+            )
+            logger.exception(msg)
+            return Outcome(final=True, exception=HandlerTimeoutError(msg), subrefs=subrefs)
+        elif errors_mode == ErrorsMode.TEMPORARY and lookahead_retries:
+            msg = (
+                f"{handler} failed with an exception and will stop now "
+                f"(it would exceed {handler.retries} retries on the next attempt): "
+                f"{str(e) or repr(e)}"
+            )
+            logger.exception(msg)
+            return Outcome(final=True, exception=HandlerRetriesError(msg), subrefs=subrefs)
         elif errors_mode == ErrorsMode.TEMPORARY:
-            logger.exception(f"{handler} failed with an exception. Will retry.")
+            msg = (
+                f"{handler} failed with an exception and will try again in {backoff} seconds: "
+                f"{str(e) or repr(e)}"
+            )
+            logger.exception(msg)
             return Outcome(final=False, exception=e, delay=backoff, subrefs=subrefs)
         elif errors_mode == ErrorsMode.PERMANENT:
-            logger.exception(f"{handler} failed with an exception. Will stop.")
+            msg = (
+                f"{handler} failed with an exception and will stop now: "
+                f"{str(e) or repr(e)}"
+            )
+            logger.exception(msg)
             return Outcome(final=True, exception=e, subrefs=subrefs)
             # TODO: report the handling failure somehow (beside logs/events). persistent status?
         else:

@@ -88,7 +88,7 @@ def test_all_examples_are_runnable(mocker, settings, with_crd, exampledir, caplo
         assert set(name_counts.values()) == {1}
 
     # Verify that once a handler fails, it is never re-executed again.
-    handler_names = re.findall(r"'(.+?)' failed (?:permanently|with an exception. Will stop.)", runner.output)
+    handler_names = re.findall(r"'(.+?)' failed (?:permanently|with an exception and will stop)", runner.output)
     if e2e.failure_counts is not None:
         checked_names = [name for name in handler_names if name in e2e.failure_counts]
         name_counts = collections.Counter(checked_names)

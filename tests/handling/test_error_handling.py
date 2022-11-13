@@ -145,5 +145,5 @@ async def test_arbitrary_error_delays_handler(
     assert patch['status']['kopf']['progress'][name1]['delayed']
 
     assert_logs([
-        "Handler .+ failed with an exception. Will retry.",
+        "Handler .+ failed with an exception and will try again in 60 seconds: oops",
     ])
