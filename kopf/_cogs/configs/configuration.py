@@ -323,7 +323,7 @@ class ExecutionSettings:
         self._max_workers = value
 
         if hasattr(self.executor, '_max_workers'):
-            self.executor._max_workers = value  # type: ignore
+            self.executor._max_workers = value
         else:
             raise TypeError("Current executor does not support `max_workers`.")
 
