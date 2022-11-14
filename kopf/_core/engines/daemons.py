@@ -429,9 +429,8 @@ async def _runner(
             this_daemon = daemons[handler.id]
             for running_daemon in memory.running_daemons.values():
                 if running_daemon is not this_daemon:
-                    if running_daemon.handler.selector.check(cause.resource):
-                        can_free = False
-                        break
+                    can_free = False
+                    break
             if can_free:
                 memory.live_fresh_body = None
 
