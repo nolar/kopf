@@ -111,8 +111,8 @@ class HandlerState(execution.HandlerState):
         return cls(
             active=self.active,
             purpose=self.purpose,
-            started=self.started if self.started else now,
-            stopped=self.stopped if self.stopped else now if outcome.final else None,
+            started=self.started if self.started is not None else now,
+            stopped=self.stopped if self.stopped is not None else now if outcome.final else None,
             delayed=now + datetime.timedelta(seconds=outcome.delay) if outcome.delay is not None else None,
             success=bool(outcome.final and outcome.exception is None),
             failure=bool(outcome.final and outcome.exception is not None),
