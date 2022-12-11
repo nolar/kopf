@@ -41,7 +41,7 @@ def handler():
 #
 
 
-def test_created_empty_from_scratch():
+async def test_created_empty_from_scratch():
     state = State.from_scratch()
     assert len(state) == 0
     assert state.purpose is None
@@ -58,7 +58,7 @@ def test_created_empty_from_scratch():
     ({'status': {'kopf': {}}}),
     ({'status': {'kopf': {'progress': {}}}}),
 ])
-def test_created_empty_from_empty_storage_with_handlers(storage, handler, body):
+async def test_created_empty_from_empty_storage_with_handlers(storage, handler, body):
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     assert len(state) == 0
     assert state.purpose is None
@@ -74,7 +74,7 @@ def test_created_empty_from_empty_storage_with_handlers(storage, handler, body):
     ({'status': {'kopf': {'progress': {'some-id': {'success': True}}}}}),
     ({'status': {'kopf': {'progress': {'some-id': {'failure': True}}}}}),
 ])
-def test_created_empty_from_filled_storage_without_handlers(storage, handler, body):
+async def test_created_empty_from_filled_storage_without_handlers(storage, handler, body):
     state = State.from_storage(body=Body(body), handlers=[], storage=storage)
     assert len(state) == 0
     assert state.purpose is None
@@ -90,21 +90,21 @@ def test_created_empty_from_filled_storage_without_handlers(storage, handler, bo
 #
 
 
-def test_created_from_storage_as_passive(storage, handler):
+async def test_created_from_storage_as_passive(storage, handler):
     body = {'status': {'kopf': {'progress': {'some-id': {}}}}}
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     assert len(state) == 1
     assert state['some-id'].active is False
 
 
-def test_created_from_handlers_as_active(storage, handler):
+async def test_created_from_handlers_as_active(storage, handler):
     state = State.from_scratch()
     state = state.with_handlers([handler])
     assert len(state) == 1
     assert state['some-id'].active is True
 
 
-def test_switched_from_passive_to_active(storage, handler):
+async def test_switched_from_passive_to_active(storage, handler):
     body = {'status': {'kopf': {'progress': {'some-id': {'purpose': None}}}}}
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler])
@@ -112,7 +112,7 @@ def test_switched_from_passive_to_active(storage, handler):
     assert state['some-id'].active is True
 
 
-def test_passed_through_with_outcomes_when_passive(storage, handler):
+async def test_passed_through_with_outcomes_when_passive(storage, handler):
     body = {'status': {'kopf': {'progress': {'some-id': {'purpose': None}}}}}
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_outcomes({'some-id': Outcome(final=True)})
@@ -120,7 +120,7 @@ def test_passed_through_with_outcomes_when_passive(storage, handler):
     assert state['some-id'].active is False
 
 
-def test_passed_through_with_outcomes_when_active(storage, handler):
+async def test_passed_through_with_outcomes_when_active(storage, handler):
     state = State.from_scratch()
     state = state.with_handlers([handler])
     state = state.with_outcomes({'some-id': Outcome(final=True)})
@@ -128,14 +128,14 @@ def test_passed_through_with_outcomes_when_active(storage, handler):
     assert state['some-id'].active is True
 
 
-def test_passive_states_are_not_used_in_done_calculation(storage, handler):
+async def test_passive_states_are_not_used_in_done_calculation(storage, handler):
     body = {'status': {'kopf': {'progress': {'some-id': {}}}}}
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     assert len(state) == 1
     assert state.done is True  # because the unfinished handler state is ignored
 
 
-def test_active_states_are_used_in_done_calculation(storage, handler):
+async def test_active_states_are_used_in_done_calculation(storage, handler):
     body = {'status': {'kopf': {'progress': {'some-id': {}}}}}
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler])
@@ -144,7 +144,7 @@ def test_active_states_are_used_in_done_calculation(storage, handler):
 
 
 @freezegun.freeze_time(TS0)
-def test_passive_states_are_not_used_in_delays_calculation(storage, handler):
+async def test_passive_states_are_not_used_in_delays_calculation(storage, handler):
     body = {'status': {'kopf': {'progress': {'some-id': {'delayed': TS1_ISO}}}}}
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     assert len(state) == 1
@@ -152,7 +152,7 @@ def test_passive_states_are_not_used_in_delays_calculation(storage, handler):
 
 
 @freezegun.freeze_time(TS0)
-def test_active_states_are_used_in_delays_calculation(storage, handler):
+async def test_active_states_are_used_in_delays_calculation(storage, handler):
     body = {'status': {'kopf': {'progress': {'some-id': {'delayed': TS1_ISO}}}}}
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler])
@@ -165,7 +165,7 @@ def test_active_states_are_used_in_delays_calculation(storage, handler):
 #
 
 
-def test_created_from_purposeless_storage(storage, handler):
+async def test_created_from_purposeless_storage(storage, handler):
     body = {'status': {'kopf': {'progress': {'some-id': {'purpose': None}}}}}
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     assert len(state) == 1
@@ -174,7 +174,7 @@ def test_created_from_purposeless_storage(storage, handler):
 
 
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
-def test_created_from_purposeful_storage(storage, handler, reason):
+async def test_created_from_purposeful_storage(storage, handler, reason):
     body = {'status': {'kopf': {'progress': {'some-id': {'purpose': reason.value}}}}}
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     assert len(state) == 1
@@ -183,7 +183,7 @@ def test_created_from_purposeful_storage(storage, handler, reason):
 
 
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
-def test_enriched_with_handlers_keeps_the_original_purpose(handler, reason):
+async def test_enriched_with_handlers_keeps_the_original_purpose(handler, reason):
     state = State.from_scratch()
     state = state.with_purpose(reason)
     state = state.with_handlers([handler])
@@ -191,7 +191,7 @@ def test_enriched_with_handlers_keeps_the_original_purpose(handler, reason):
 
 
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
-def test_enriched_with_outcomes_keeps_the_original_purpose(reason):
+async def test_enriched_with_outcomes_keeps_the_original_purpose(reason):
     state = State.from_scratch()
     state = state.with_purpose(reason)
     state = state.with_outcomes({})
@@ -199,7 +199,7 @@ def test_enriched_with_outcomes_keeps_the_original_purpose(reason):
 
 
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
-def test_repurposed_before_handlers(handler, reason):
+async def test_repurposed_before_handlers(handler, reason):
     state = State.from_scratch()
     state = state.with_purpose(reason).with_handlers([handler])
     assert len(state) == 1
@@ -208,7 +208,7 @@ def test_repurposed_before_handlers(handler, reason):
 
 
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
-def test_repurposed_after_handlers(handler, reason):
+async def test_repurposed_after_handlers(handler, reason):
     state = State.from_scratch()
     state = state.with_handlers([handler]).with_purpose(reason)
     assert len(state) == 1
@@ -217,7 +217,7 @@ def test_repurposed_after_handlers(handler, reason):
 
 
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
-def test_repurposed_with_handlers(handler, reason):
+async def test_repurposed_with_handlers(handler, reason):
     state = State.from_scratch()
     state = state.with_handlers([handler]).with_purpose(reason, handlers=[handler])
     assert len(state) == 1
@@ -226,7 +226,7 @@ def test_repurposed_with_handlers(handler, reason):
 
 
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
-def test_repurposed_not_affecting_the_existing_handlers_from_scratch(handler, reason):
+async def test_repurposed_not_affecting_the_existing_handlers_from_scratch(handler, reason):
     state = State.from_scratch()
     state = state.with_handlers([handler]).with_purpose(reason).with_handlers([handler])
     assert len(state) == 1
@@ -235,7 +235,7 @@ def test_repurposed_not_affecting_the_existing_handlers_from_scratch(handler, re
 
 
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
-def test_repurposed_not_affecting_the_existing_handlers_from_storage(storage, handler, reason):
+async def test_repurposed_not_affecting_the_existing_handlers_from_storage(storage, handler, reason):
     body = {'status': {'kopf': {'progress': {'some-id': {'purpose': None}}}}}
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler]).with_purpose(reason).with_handlers([handler])
@@ -259,7 +259,7 @@ def test_repurposed_not_affecting_the_existing_handlers_from_storage(storage, ha
     # All combinations except for same-to-same (it is not an "extra" then).
     (a, b) for a in HANDLER_REASONS for b in HANDLER_REASONS if a != b
 ])
-def test_with_handlers_irrelevant_to_the_purpose(
+async def test_with_handlers_irrelevant_to_the_purpose(
         storage, handler, body, expected_extras, stored_reason, processed_reason):
     body['status']['kopf']['progress']['some-id']['purpose'] = stored_reason.value
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
@@ -278,7 +278,7 @@ def test_with_handlers_irrelevant_to_the_purpose(
     (StateCounters(1, 0, 0), True, [], {'status': {'kopf': {'progress': {'some-id': {'success': True}}}}}),
 ])
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
-def test_with_handlers_relevant_to_the_purpose(
+async def test_with_handlers_relevant_to_the_purpose(
         storage, handler, body, expected_counts, expected_done, expected_delays, reason):
     body['status']['kopf']['progress']['some-id']['purpose'] = reason.value
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
@@ -297,7 +297,7 @@ def test_with_handlers_relevant_to_the_purpose(
 ])
 @pytest.mark.parametrize('reason', HANDLER_REASONS)
 @freezegun.freeze_time(TS0)
-def test_with_handlers_relevant_to_the_purpose_and_delayed(
+async def test_with_handlers_relevant_to_the_purpose_and_delayed(
         storage, handler, body, expected_counts, expected_done, expected_delays, reason):
     body['status']['kopf']['progress']['some-id']['delayed'] = TS1_ISO
     body['status']['kopf']['progress']['some-id']['purpose'] = reason.value
@@ -312,7 +312,7 @@ def test_with_handlers_relevant_to_the_purpose_and_delayed(
 
 @pytest.mark.parametrize('reason', [Reason.CREATE, Reason.UPDATE, Reason.RESUME])
 @freezegun.freeze_time(TS0)
-def test_issue_601_deletion_supersedes_other_processing(storage, reason):
+async def test_issue_601_deletion_supersedes_other_processing(storage, reason):
 
     body = {'status': {'kopf': {'progress': {
         'fn1': {'purpose': reason.value, 'failure': True},
@@ -350,7 +350,7 @@ def test_issue_601_deletion_supersedes_other_processing(storage, reason):
 
 
 @freezegun.freeze_time(TS0)
-def test_started_from_scratch(storage, handler):
+async def test_started_from_scratch(storage, handler):
     patch = Patch()
     state = State.from_scratch()
     state = state.with_handlers([handler])
@@ -366,7 +366,7 @@ def test_started_from_scratch(storage, handler):
     (TSA_ISO, {'status': {'kopf': {'progress': {'some-id': {'started': TSA_ISO}}}}}),
 ])
 @freezegun.freeze_time(TS0)
-def test_started_from_storage(storage, handler, body, expected):
+async def test_started_from_storage(storage, handler, body, expected):
     patch = Patch()
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state.store(body=Body({}), patch=patch, storage=storage)
@@ -380,7 +380,7 @@ def test_started_from_storage(storage, handler, body, expected):
     (TSB_ISO, {'status': {'kopf': {'progress': {'some-id': {'started': TSB_ISO}}}}}),
     (TSA_ISO, {'status': {'kopf': {'progress': {'some-id': {'started': TSA_ISO}}}}}),
 ])
-def test_started_from_storage_is_preferred_over_from_scratch(storage, handler, body, expected):
+async def test_started_from_storage_is_preferred_over_from_scratch(storage, handler, body, expected):
     with freezegun.freeze_time(TS0):
         state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     with freezegun.freeze_time(TS1):
@@ -402,7 +402,7 @@ def test_started_from_storage_is_preferred_over_from_scratch(storage, handler, b
     (TS0 - TSA, {'status': {'kopf': {'progress': {'some-id': {'started': TSA_ISO}}}}}),
 ])
 @freezegun.freeze_time(TS0)
-def test_runtime(storage, handler, expected, body):
+async def test_runtime(storage, handler, expected, body):
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler])
     result = state[handler.id].runtime
@@ -422,7 +422,7 @@ def test_runtime(storage, handler, expected, body):
     (True , {'status': {'kopf': {'progress': {'some-id': {'success': True}}}}}),
     (True , {'status': {'kopf': {'progress': {'some-id': {'failure': True}}}}}),
 ])
-def test_finished_flag(storage, handler, expected, body):
+async def test_finished_flag(storage, handler, expected, body):
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler])
     result = state[handler.id].finished
@@ -457,7 +457,7 @@ def test_finished_flag(storage, handler, expected, body):
     (True , {'status': {'kopf': {'progress': {'some-id': {'delayed': TSA_ISO, 'failure': None}}}}}),
 ])
 @freezegun.freeze_time(TS0)
-def test_sleeping_flag(storage, handler, expected, body):
+async def test_sleeping_flag(storage, handler, expected, body):
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler])
     result = state[handler.id].sleeping
@@ -492,7 +492,7 @@ def test_sleeping_flag(storage, handler, expected, body):
     (False, {'status': {'kopf': {'progress': {'some-id': {'delayed': TSA_ISO, 'failure': None}}}}}),
 ])
 @freezegun.freeze_time(TS0)
-def test_awakened_flag(storage, handler, expected, body):
+async def test_awakened_flag(storage, handler, expected, body):
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler])
     result = state[handler.id].awakened
@@ -508,7 +508,7 @@ def test_awakened_flag(storage, handler, expected, body):
     (None, {'status': {'kopf': {'progress': {'some-id': {'delayed': None}}}}}),
     (TS0, {'status': {'kopf': {'progress': {'some-id': {'delayed': TS0_ISO}}}}}),
 ])
-def test_awakening_time(storage, handler, expected, body):
+async def test_awakening_time(storage, handler, expected, body):
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler])
     result = state[handler.id].delayed
@@ -523,7 +523,7 @@ def test_awakening_time(storage, handler, expected, body):
     (0, {'status': {'kopf': {'progress': {'some-id': {'retries': None}}}}}),
     (6, {'status': {'kopf': {'progress': {'some-id': {'retries': 6}}}}}),
 ])
-def test_get_retry_count(storage, handler, expected, body):
+async def test_get_retry_count(storage, handler, expected, body):
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler])
     result = state[handler.id].retries
@@ -536,7 +536,7 @@ def test_get_retry_count(storage, handler, expected, body):
     ({}, 1, TS1_ISO),
 ])
 @freezegun.freeze_time(TS0)
-def test_set_awake_time(storage, handler, expected, body, delay):
+async def test_set_awake_time(storage, handler, expected, body, delay):
     patch = Patch()
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler])
@@ -559,7 +559,7 @@ def test_set_awake_time(storage, handler, expected, body, delay):
     (6, TS1_ISO, 1, {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}),
 ])
 @freezegun.freeze_time(TS0)
-def test_set_retry_time(storage, handler, expected_retries, expected_delayed, body, delay):
+async def test_set_retry_time(storage, handler, expected_retries, expected_delayed, body, delay):
     patch = Patch()
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler])
@@ -574,7 +574,7 @@ def test_set_retry_time(storage, handler, expected_retries, expected_delayed, bo
 #
 
 
-def test_subrefs_added_to_empty_state(storage, handler):
+async def test_subrefs_added_to_empty_state(storage, handler):
     body = {}
     patch = Patch()
     outcome_subrefs = ['sub2/b', 'sub2/a', 'sub2', 'sub1', 'sub3']
@@ -587,7 +587,7 @@ def test_subrefs_added_to_empty_state(storage, handler):
     assert patch['status']['kopf']['progress']['some-id']['subrefs'] == expected_subrefs
 
 
-def test_subrefs_added_to_preexisting_subrefs(storage, handler):
+async def test_subrefs_added_to_preexisting_subrefs(storage, handler):
     body = {'status': {'kopf': {'progress': {'some-id': {'subrefs': ['sub9/2', 'sub9/1']}}}}}
     patch = Patch()
     outcome_subrefs = ['sub2/b', 'sub2/a', 'sub2', 'sub1', 'sub3']
@@ -600,7 +600,7 @@ def test_subrefs_added_to_preexisting_subrefs(storage, handler):
     assert patch['status']['kopf']['progress']['some-id']['subrefs'] == expected_subrefs
 
 
-def test_subrefs_ignored_when_not_specified(storage, handler):
+async def test_subrefs_ignored_when_not_specified(storage, handler):
     body = {}
     patch = Patch()
     outcome = Outcome(final=True, subrefs=[])
@@ -621,7 +621,7 @@ def test_subrefs_ignored_when_not_specified(storage, handler):
     (6, TS0_ISO, {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}),
 ])
 @freezegun.freeze_time(TS0)
-def test_store_failure(storage, handler, expected_retries, expected_stopped, body):
+async def test_store_failure(storage, handler, expected_retries, expected_stopped, body):
     error = Exception('some-error')
     patch = Patch()
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
@@ -640,7 +640,7 @@ def test_store_failure(storage, handler, expected_retries, expected_stopped, bod
     (6, TS0_ISO, {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}),
 ])
 @freezegun.freeze_time(TS0)
-def test_store_success(storage, handler, expected_retries, expected_stopped, body):
+async def test_store_success(storage, handler, expected_retries, expected_stopped, body):
     patch = Patch()
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler])
@@ -658,7 +658,7 @@ def test_store_success(storage, handler, expected_retries, expected_stopped, bod
     ('string', {'status': {'some-id': 'string'}}),
     ({'field': 'value'}, {'status': {'some-id': {'field': 'value'}}}),
 ])
-def test_store_result(handler, expected_patch, result):
+async def test_store_result(handler, expected_patch, result):
     patch = Patch()
     outcomes = {handler.id: Outcome(final=True, result=result)}
     deliver_results(outcomes=outcomes, patch=patch)
@@ -670,7 +670,7 @@ def test_store_result(handler, expected_patch, result):
 #
 
 
-def test_purge_progress_when_exists_in_body(storage, handler):
+async def test_purge_progress_when_exists_in_body(storage, handler):
     body = {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}
     patch = Patch()
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
@@ -678,7 +678,7 @@ def test_purge_progress_when_exists_in_body(storage, handler):
     assert patch == {'status': {'kopf': {'progress': {'some-id': None}}}}
 
 
-def test_purge_progress_when_already_empty_in_body_and_patch(storage, handler):
+async def test_purge_progress_when_already_empty_in_body_and_patch(storage, handler):
     body = {}
     patch = Patch()
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
@@ -686,7 +686,7 @@ def test_purge_progress_when_already_empty_in_body_and_patch(storage, handler):
     assert not patch
 
 
-def test_purge_progress_when_already_empty_in_body_but_not_in_patch(storage, handler):
+async def test_purge_progress_when_already_empty_in_body_but_not_in_patch(storage, handler):
     body = {}
     patch = Patch({'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}})
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
@@ -694,7 +694,7 @@ def test_purge_progress_when_already_empty_in_body_but_not_in_patch(storage, han
     assert not patch
 
 
-def test_purge_progress_when_known_at_restoration_only(storage, handler):
+async def test_purge_progress_when_known_at_restoration_only(storage, handler):
     body = {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}
     patch = Patch()
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
@@ -702,7 +702,7 @@ def test_purge_progress_when_known_at_restoration_only(storage, handler):
     assert patch == {'status': {'kopf': {'progress': {'some-id': None}}}}
 
 
-def test_purge_progress_when_known_at_purge_only(storage, handler):
+async def test_purge_progress_when_known_at_purge_only(storage, handler):
     body = {'status': {'kopf': {'progress': {'some-id': {'retries': 5}}}}}
     patch = Patch()
     state = State.from_storage(body=Body(body), handlers=[], storage=storage)
@@ -710,7 +710,7 @@ def test_purge_progress_when_known_at_purge_only(storage, handler):
     assert patch == {'status': {'kopf': {'progress': {'some-id': None}}}}
 
 
-def test_purge_progress_cascades_to_subrefs(storage, handler):
+async def test_purge_progress_cascades_to_subrefs(storage, handler):
     body = {'status': {'kopf': {'progress': {
         'some-id': {'subrefs': ['sub1', 'sub2', 'sub3']},
         'sub1': {},
@@ -728,7 +728,7 @@ def test_purge_progress_cascades_to_subrefs(storage, handler):
     }}}}
 
 
-def test_original_body_is_not_modified_by_storing(storage, handler):
+async def test_original_body_is_not_modified_by_storing(storage, handler):
     body = Body({})
     patch = Patch()
     state = State.from_storage(body=body, handlers=[handler], storage=storage)

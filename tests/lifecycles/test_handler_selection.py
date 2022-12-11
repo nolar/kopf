@@ -12,7 +12,7 @@ from kopf._core.actions.progression import State
     kopf.lifecycles.shuffled,
     kopf.lifecycles.asap,
 ])
-def test_with_empty_input(lifecycle):
+async def test_with_empty_input(lifecycle):
     state = State.from_scratch()
     handlers = []
     selected = lifecycle(handlers, state=state)
@@ -79,7 +79,7 @@ def test_shuffled_takes_them_all():
     assert set(selected) == {handler1, handler2, handler3}
 
 
-def test_asap_takes_the_first_one_when_no_retries(mocker):
+async def test_asap_takes_the_first_one_when_no_retries(mocker):
     handler1 = mocker.Mock(id='id1', spec_set=['id'])
     handler2 = mocker.Mock(id='id2', spec_set=['id'])
     handler3 = mocker.Mock(id='id3', spec_set=['id'])
@@ -92,7 +92,7 @@ def test_asap_takes_the_first_one_when_no_retries(mocker):
     assert selected[0] is handler1
 
 
-def test_asap_takes_the_least_retried(mocker):
+async def test_asap_takes_the_least_retried(mocker):
     handler1 = mocker.Mock(id='id1', spec_set=['id'])
     handler2 = mocker.Mock(id='id2', spec_set=['id'])
     handler3 = mocker.Mock(id='id3', spec_set=['id'])

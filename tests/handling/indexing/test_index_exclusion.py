@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import logging
 
 import freezegun
@@ -30,9 +31,12 @@ EVENT_TYPES = EVENT_TYPES_WHEN_EXISTS + EVENT_TYPES_WHEN_GONE
 async def test_successes_are_removed_from_the_indexing_state(
         resource, namespace, settings, registry, memories, indexers, caplog, event_type, handlers):
     caplog.set_level(logging.DEBUG)
+
+    # Any "future" time works and affects nothing as long as it is the same
+    basetime = datetime.datetime.now(tz=datetime.timezone.utc)
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     record = ProgressRecord(success=True)
-    state = State({HandlerId('unrelated'): HandlerState.from_storage(record)})
+    state = State({HandlerId('unrelated'): HandlerState.from_storage(record, basetime=basetime)}, basetime=basetime)
     memory = await memories.recall(raw_body=body)
     memory.indexing_memory.indexing_state = state
     handlers.index_mock.side_effect = 123
@@ -56,9 +60,12 @@ async def test_successes_are_removed_from_the_indexing_state(
 async def test_temporary_failures_with_no_delays_are_reindexed(
         resource, namespace, settings, registry, memories, indexers, index, caplog, event_type, handlers):
     caplog.set_level(logging.DEBUG)
+
+    # Any "future" time works and affects nothing as long as it is the same
+    basetime = datetime.datetime.now(tz=datetime.timezone.utc)
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     record = ProgressRecord(delayed=None)
-    state = State({HandlerId('index_fn'): HandlerState.from_storage(record)})
+    state = State({HandlerId('index_fn'): HandlerState.from_storage(record, basetime=basetime)}, basetime=basetime)
     memory = await memories.recall(raw_body=body)
     memory.indexing_memory.indexing_state = state
     await process_resource_event(
@@ -81,9 +88,12 @@ async def test_temporary_failures_with_no_delays_are_reindexed(
 async def test_temporary_failures_with_expired_delays_are_reindexed(
         resource, namespace, settings, registry, memories, indexers, index, caplog, event_type, handlers):
     caplog.set_level(logging.DEBUG)
+
+    # Any "future" time works and affects nothing as long as it is the same
+    basetime = datetime.datetime.now(tz=datetime.timezone.utc)
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     record = ProgressRecord(delayed='2020-12-31T23:59:59.000000Z')
-    state = State({HandlerId('index_fn'): HandlerState.from_storage(record)})
+    state = State({HandlerId('index_fn'): HandlerState.from_storage(record, basetime=basetime)}, basetime=basetime)
     memory = await memories.recall(raw_body=body)
     memory.indexing_memory.indexing_state = state
     await process_resource_event(
@@ -105,9 +115,12 @@ async def test_temporary_failures_with_expired_delays_are_reindexed(
 async def test_permanent_failures_are_not_reindexed(
         resource, namespace, settings, registry, memories, indexers, index, caplog, event_type, handlers):
     caplog.set_level(logging.DEBUG)
+
+    # Any "future" time works and affects nothing as long as it is the same
+    basetime = datetime.datetime.now(tz=datetime.timezone.utc)
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     record = ProgressRecord(failure=True)
-    state = State({HandlerId('index_fn'): HandlerState.from_storage(record)})
+    state = State({HandlerId('index_fn'): HandlerState.from_storage(record, basetime=basetime)}, basetime=basetime)
     memory = await memories.recall(raw_body=body)
     memory.indexing_memory.indexing_state = state
     await process_resource_event(

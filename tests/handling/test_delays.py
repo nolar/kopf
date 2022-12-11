@@ -1,8 +1,8 @@
 import asyncio
+import datetime
 import logging
 
 import freezegun
-import iso8601
 import pytest
 
 import kopf
@@ -75,10 +75,13 @@ async def test_delayed_handlers_sleep(
         caplog, assert_logs, k8s_mocked, now, delayed_iso, delay):
     caplog.set_level(logging.DEBUG)
 
+    # Any "future" time works and affects nothing as long as it is the same
+    basetime = datetime.datetime.now(tz=datetime.timezone.utc)
+
     # Simulate the original persisted state of the resource.
     # Make sure the finalizer is added since there are mandatory deletion handlers.
     record = ProgressRecord(started='2000-01-01T00:00:00', delayed=delayed_iso)  # a long time ago
-    state_dict = HandlerState.from_storage(record).as_in_storage()
+    state_dict = HandlerState.from_storage(record, basetime=basetime).as_in_storage()
     event_type = None if cause_reason == Reason.RESUME else 'irrelevant'
     event_body = {
         'metadata': {'finalizers': [settings.persistence.finalizer]},
