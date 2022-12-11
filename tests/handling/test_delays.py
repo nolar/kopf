@@ -6,6 +6,7 @@ import iso8601
 import pytest
 
 import kopf
+from kopf._cogs.configs.progress import ProgressRecord
 from kopf._cogs.structs.ephemera import Memo
 from kopf._core.actions.application import WAITING_KEEPALIVE_INTERVAL
 from kopf._core.actions.execution import TemporaryError
@@ -76,16 +77,16 @@ async def test_delayed_handlers_sleep(
 
     # Simulate the original persisted state of the resource.
     # Make sure the finalizer is added since there are mandatory deletion handlers.
-    started_dt = iso8601.parse_date('2000-01-01T00:00:00')  # long time ago is fine.
-    delayed_dt = iso8601.parse_date(delayed_iso)
+    record = ProgressRecord(started='2000-01-01T00:00:00', delayed=delayed_iso)  # a long time ago
+    state_dict = HandlerState.from_storage(record).as_in_storage()
     event_type = None if cause_reason == Reason.RESUME else 'irrelevant'
     event_body = {
         'metadata': {'finalizers': [settings.persistence.finalizer]},
         'status': {'kopf': {'progress': {
-            'create_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_in_storage(),
-            'update_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_in_storage(),
-            'delete_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_in_storage(),
-            'resume_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_in_storage(),
+            'create_fn': state_dict,
+            'update_fn': state_dict,
+            'delete_fn': state_dict,
+            'resume_fn': state_dict,
         }}}
     }
     cause_mock.reason = cause_reason

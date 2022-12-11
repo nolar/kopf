@@ -91,7 +91,7 @@ class HandlerState(Protocol):
 
     The implementation and detailed fields are in `progression.HandlerState`.
     """
-    started: datetime.datetime | None
+    started: datetime.datetime
     retries: int
 
     @property
@@ -255,7 +255,7 @@ async def execute_handler_once(
             handler=handler,
             cause=cause,
             retry=state.retries,
-            started=state.started or datetime.datetime.now(datetime.timezone.utc),  # "or" is for type-checking.
+            started=state.started,
             runtime=state.runtime,
             settings=settings,
             lifecycle=lifecycle,  # just a default for the sub-handlers, not used directly.
