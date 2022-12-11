@@ -52,6 +52,24 @@ class HandlerState(execution.HandlerState):
     subrefs: Collection[ids.HandlerId] = ()  # ids of actual sub-handlers of all levels deep.
     _origin: progress.ProgressRecord | None = None  # to check later if it has actually changed.
 
+    @property
+    def finished(self) -> bool:
+        return bool(self.success or self.failure)
+
+    @property
+    def sleeping(self) -> bool:
+        ts = self.delayed
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        return not self.finished and ts is not None and ts > now
+
+    @property
+    def awakened(self) -> bool:
+        return bool(not self.finished and not self.sleeping)
+
+    @property
+    def runtime(self) -> datetime.timedelta:
+        return datetime.datetime.now(tz=datetime.timezone.utc) - self.started
+
     @classmethod
     def from_scratch(cls, *, purpose: str | None = None) -> "HandlerState":
         return cls(

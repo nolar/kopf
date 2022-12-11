@@ -85,44 +85,22 @@ class Outcome:
     subrefs: Collection[ids.HandlerId] = ()
 
 
-@dataclasses.dataclass(frozen=True)
-class HandlerState:
+class HandlerState(Protocol):
     """
-    A persisted state of a single handler, as stored on the resource's status.
+    A minimal necessary protocol (interface) of a handler's runtime state.
 
-    Note the difference: `Outcome` is for in-memory results of handlers,
-    which is then additionally converted before being storing as a state.
-
-    Active handler states are those used in .done/.delays for the current
-    handling cycle & the current cause. Passive handler states are those
-    carried over for logging of counts/extras, and for final state purging,
-    but not participating in the current handling cycle.
+    The implementation and detailed fields are in `progression.HandlerState`.
     """
-    started: datetime.datetime | None = None  # None means this information was lost.
-    stopped: datetime.datetime | None = None  # None means it is still running (e.g. delayed).
-    delayed: datetime.datetime | None = None  # None means it is finished (succeeded/failed).
-    retries: int = 0
-    success: bool = False
-    failure: bool = False
-
-    @property
-    def finished(self) -> bool:
-        return bool(self.success or self.failure)
-
-    @property
-    def sleeping(self) -> bool:
-        ts = self.delayed
-        now = datetime.datetime.now(datetime.timezone.utc)
-        return not self.finished and ts is not None and ts > now
+    started: datetime.datetime | None
+    retries: int
 
     @property
     def awakened(self) -> bool:
-        return bool(not self.finished and not self.sleeping)
+        raise NotImplementedError
 
     @property
     def runtime(self) -> datetime.timedelta:
-        now = datetime.datetime.now(datetime.timezone.utc)
-        return now - (self.started if self.started else now)
+        raise NotImplementedError
 
 
 class State(Mapping[ids.HandlerId, HandlerState]):

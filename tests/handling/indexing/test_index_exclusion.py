@@ -6,7 +6,9 @@ import iso8601
 import pytest
 
 from kopf._cogs.aiokits.aiotoggles import Toggle
+from kopf._cogs.configs.progress import ProgressRecord
 from kopf._cogs.structs.ephemera import Memo
+from kopf._cogs.structs.ids import HandlerId
 from kopf._core.actions.execution import PermanentError, TemporaryError
 from kopf._core.actions.lifecycles import all_at_once
 from kopf._core.actions.progression import HandlerState, State
@@ -29,8 +31,10 @@ async def test_successes_are_removed_from_the_indexing_state(
         resource, namespace, settings, registry, memories, indexers, caplog, event_type, handlers):
     caplog.set_level(logging.DEBUG)
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
+    record = ProgressRecord(success=True)
+    state = State({HandlerId('unrelated'): HandlerState.from_storage(record)})
     memory = await memories.recall(raw_body=body)
-    memory.indexing_memory.indexing_state = State({'unrelated': HandlerState(success=True)})
+    memory.indexing_memory.indexing_state = state
     handlers.index_mock.side_effect = 123
     await process_resource_event(
         lifecycle=all_at_once,
@@ -53,8 +57,10 @@ async def test_temporary_failures_with_no_delays_are_reindexed(
         resource, namespace, settings, registry, memories, indexers, index, caplog, event_type, handlers):
     caplog.set_level(logging.DEBUG)
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
+    record = ProgressRecord(delayed=None)
+    state = State({HandlerId('index_fn'): HandlerState.from_storage(record)})
     memory = await memories.recall(raw_body=body)
-    memory.indexing_memory.indexing_state = State({'index_fn': HandlerState(delayed=None)})
+    memory.indexing_memory.indexing_state = state
     await process_resource_event(
         lifecycle=all_at_once,
         registry=registry,
@@ -76,9 +82,10 @@ async def test_temporary_failures_with_expired_delays_are_reindexed(
         resource, namespace, settings, registry, memories, indexers, index, caplog, event_type, handlers):
     caplog.set_level(logging.DEBUG)
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
-    delayed = iso8601.parse_date('2020-12-31T23:59:59')
+    record = ProgressRecord(delayed='2020-12-31T23:59:59.000000')
+    state = State({HandlerId('index_fn'): HandlerState.from_storage(record)})
     memory = await memories.recall(raw_body=body)
-    memory.indexing_memory.indexing_state = State({'index_fn': HandlerState(delayed=delayed)})
+    memory.indexing_memory.indexing_state = state
     await process_resource_event(
         lifecycle=all_at_once,
         registry=registry,
@@ -99,8 +106,10 @@ async def test_permanent_failures_are_not_reindexed(
         resource, namespace, settings, registry, memories, indexers, index, caplog, event_type, handlers):
     caplog.set_level(logging.DEBUG)
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
+    record = ProgressRecord(failure=True)
+    state = State({HandlerId('index_fn'): HandlerState.from_storage(record)})
     memory = await memories.recall(raw_body=body)
-    memory.indexing_memory.indexing_state = State({'index_fn': HandlerState(failure=True)})
+    memory.indexing_memory.indexing_state = state
     await process_resource_event(
         lifecycle=all_at_once,
         registry=registry,
