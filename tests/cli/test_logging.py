@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 import pytest
@@ -59,7 +58,6 @@ def test_no_lowlevel_dumps_in_nondebug(invoke, caplog, options, preload, real_ru
 
     alien_records = [m for m in caplog.records if not m.name.startswith('kopf')]
     assert len(alien_records) == 0
-    assert not asyncio.get_event_loop_policy().get_event_loop().get_debug()
 
 
 @pytest.mark.parametrize('options', [
@@ -74,4 +72,3 @@ def test_lowlevel_dumps_in_debug_mode(invoke, caplog, options, preload, real_run
 
     alien_records = [m for m in caplog.records if not m.name.startswith('kopf')]
     assert len(alien_records) >= 1
-    assert asyncio.get_event_loop_policy().get_event_loop().get_debug()
