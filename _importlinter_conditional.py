@@ -29,7 +29,7 @@ class ConditionalImportContract(Contract):
     source_modules = fields.ListField(subfield=fields.ModuleField())
     conditional_modules = fields.ListField(subfield=fields.ModuleField())
 
-    def check(self, graph: ImportGraph) -> ContractCheck:
+    def check(self, graph: ImportGraph, verbose: bool) -> ContractCheck:
         failed_details = []
 
         # Combine all source x all target (secured) modules.

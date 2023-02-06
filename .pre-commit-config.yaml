@@ -7,7 +7,7 @@ exclude: |
   )
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.4.0
+    rev: v4.4.0
     hooks:
       - id: check-ast
       - id: trailing-whitespace
@@ -46,7 +46,7 @@ repos:
       # - id: double-quote-string-fixer
 
   - repo: https://github.com/pre-commit/pygrep-hooks
-    rev: v1.8.0
+    rev: v1.10.0
     hooks:
       - id: python-check-blanket-noqa
       - id: python-check-mock-methods
@@ -61,20 +61,20 @@ repos:
       # - id: python-no-log-warn  # overreacts to `kopf.warn()`.
 
   - repo: https://github.com/seddonym/import-linter
-    rev: v1.2.1
+    rev: v1.7.0
     hooks:
       - id: import-linter
         additional_dependencies:
           - astpath[xpath]
 
   - repo: https://github.com/PyCQA/isort
-    rev: 5.8.0
+    rev: 5.12.0
     hooks:
       - id: isort
         name: isort-source-code
 
   - repo: https://github.com/PyCQA/isort
-    rev: 5.8.0
+    rev: 5.12.0
     hooks:
       - id: isort
         name: isort-examples
@@ -82,7 +82,7 @@ repos:
         files: '^examples/'
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: v2.34.0
+    rev: v3.3.1
     hooks:
     -   id: pyupgrade
         args: [--py37-plus, --keep-mock]
