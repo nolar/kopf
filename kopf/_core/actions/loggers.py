@@ -8,7 +8,6 @@ This eliminates the need to log & post the same messages, which complicates
 the operators' code, and can lead to information loss or mismatch
 (e.g. when logging call is added, but posting is forgotten).
 """
-import asyncio
 import copy
 import enum
 import logging
@@ -192,10 +191,6 @@ def configure(
         logger.propagate = bool(debug)
         if not debug:
             logger.handlers[:] = [logging.NullHandler()]
-
-    # Since Python 3.10, get_event_loop() is deprecated, issues a warning. Here is a way around:
-    loop = asyncio.get_event_loop_policy().get_event_loop()
-    loop.set_debug(bool(debug))
 
 
 def make_formatter(

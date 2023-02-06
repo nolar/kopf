@@ -53,29 +53,32 @@ def run(
     It will take care of a new event loop's creation and finalization for this
     call. See: :func:`asyncio.run`.
     """
-    loop = loop if loop is not None else asyncio.get_event_loop_policy().get_event_loop()
+    coro = operator(
+        lifecycle=lifecycle,
+        indexers=indexers,
+        registry=registry,
+        settings=settings,
+        memories=memories,
+        insights=insights,
+        identity=identity,
+        standalone=standalone,
+        clusterwide=clusterwide,
+        namespaces=namespaces,
+        namespace=namespace,
+        priority=priority,
+        peering_name=peering_name,
+        liveness_endpoint=liveness_endpoint,
+        stop_flag=stop_flag,
+        ready_flag=ready_flag,
+        vault=vault,
+        memo=memo,
+        _command=_command,
+    )
     try:
-        loop.run_until_complete(operator(
-            lifecycle=lifecycle,
-            indexers=indexers,
-            registry=registry,
-            settings=settings,
-            memories=memories,
-            insights=insights,
-            identity=identity,
-            standalone=standalone,
-            clusterwide=clusterwide,
-            namespaces=namespaces,
-            namespace=namespace,
-            priority=priority,
-            peering_name=peering_name,
-            liveness_endpoint=liveness_endpoint,
-            stop_flag=stop_flag,
-            ready_flag=ready_flag,
-            vault=vault,
-            memo=memo,
-            _command=_command,
-        ))
+        if loop is not None:
+            loop.run_until_complete(coro)
+        else:
+            asyncio.run(coro)
     except asyncio.CancelledError:
         pass
 

@@ -136,7 +136,7 @@ async def test_waiting_of_none_does_nothing():
 async def test_waiting_for_unraised_times_out(flag, timer):
     with pytest.raises(asyncio.TimeoutError), timer:
         await asyncio.wait_for(wait_flag(flag), timeout=0.1)
-    assert timer.seconds >= 0.1
+    assert timer.seconds >= 0.099  # uvloop finishes it earlier than 0.1
 
 
 async def test_waiting_for_preraised_is_instant(flag, timer):
