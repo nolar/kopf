@@ -35,6 +35,9 @@ def pytest_configure(config):
     config.addinivalue_line('filterwarnings', 'ignore:The loop argument:DeprecationWarning:asyncio')
     config.addinivalue_line('filterwarnings', 'ignore:is deprecated, use current_thread:DeprecationWarning:threading')
 
+    # TODO: Remove when fixed in https://github.com/pytest-dev/pytest-asyncio/issues/460:
+    config.addinivalue_line('filterwarnings', 'ignore:There is no current event loop:DeprecationWarning:pytest_asyncio')
+
 
 def pytest_addoption(parser):
     parser.addoption("--only-e2e", action="store_true", help="Execute end-to-end tests only.")
