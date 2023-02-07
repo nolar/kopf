@@ -26,11 +26,14 @@ from typing import AsyncIterator, Dict, Optional, Union, cast
 import aiohttp
 
 from kopf._cogs.aiokits import aiotasks, aiotoggles
-from kopf._cogs.clients import api, fetching
+from kopf._cogs.clients import api, errors, fetching
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, references
 
 logger = logging.getLogger(__name__)
+
+HTTP_TOO_MANY_REQUESTS_CODE = 429
+DEFAULT_RETRY_DELAY_SECONDS = 1
 
 
 class WatchingError(Exception):
@@ -79,8 +82,19 @@ async def infinite_watch(
                     namespace=namespace,
                     operator_pause_waiter=operator_pause_waiter,
                 )
-                async for raw_event in stream:
-                    yield raw_event
+                try:
+                    async for raw_event in stream:
+                        yield raw_event
+                except errors.APIClientError as ex:
+                    if ex.code != HTTP_TOO_MANY_REQUESTS_CODE:
+                        raise
+
+                    retry_wait = ex.details.get("retryAfterSeconds") or DEFAULT_RETRY_DELAY_SECONDS
+                    logger.warning(
+                        f"Receiving `too many requests` error from server, will retry after "
+                        f"{retry_wait} seconds. Error details: {ex}"
+                    )
+                    await asyncio.sleep(retry_wait)
             await asyncio.sleep(settings.watching.reconnect_backoff)
     finally:
         logger.debug(f"Stopping the watch-stream for {resource} {where}.")
