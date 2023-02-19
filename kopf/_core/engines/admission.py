@@ -132,6 +132,7 @@ async def serve_admission_request(
     patch = patches.Patch(body=raw_body)
     warnings: List[str] = []
     cause = causes.WebhookCause(
+        request=request.get('request'),
         resource=resource,
         indices=indices,
         logger=loggers.LocalObjectLogger(body=body, settings=settings),

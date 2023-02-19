@@ -145,6 +145,7 @@ class ResourceCause(BaseCause):
 @dataclasses.dataclass
 class WebhookCause(ResourceCause):
     dryrun: bool
+    request: Mapping[str, Any]
     reason: Optional[WebhookType]  # None means "all" or expects the webhook id
     webhook: Optional[ids.HandlerId]  # None means "all"
     headers: Mapping[str, str]

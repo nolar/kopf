@@ -323,6 +323,17 @@ unless they declare themselves as ``side_effects=True``.
 See more: :doc:`admission`.
 
 
+.. kwarg:: request
+
+Request
+-------
+
+`request` (``Map[str,Any]``) is the AdmissionRequest that triggered the admission
+handler.
+
+See more: :doc:`admission`.
+
+
 .. kwarg:: subresource
 
 Subresources
