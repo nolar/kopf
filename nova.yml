@@ -1,0 +1,515 @@
+We acknowledge that every line of code that we write may potentially contain security issues.
+We are trying to deal with it responsibly and provide patches as quickly as possible.
+In case you detect any security issues, contact nolar@nolar.info.
+Jump to Content
+Veem Global Payments API
+Guides
+API Reference
+SDKs
+Discussions
+Sandbox
+OAuth v1.1
+
+Search
+CTRL-K
+GETTING STARTED
+Introduction To Veem API
+Payment Models
+USE CASES
+Send Money
+Get Payment Status
+Request Money (Invoice)
+USING THE SDK
+
+Get Started
+SECURITY
+OAuth
+WEBHOOKS
+Webhooks Notification
+COMMON API CONCEPTS
+Versioning
+Errors
+ZAPIER
+Zap Templates
+DOWNLOADS
+Button Images
+WEB SDK
+Veem Web SDK
+Getting Started
+Components
+Preset Deep Linking
+Error Handling
+OAuth
+Suggest Edits
+OAuth
+Veem uses OAuth2 three-legged and two-legged to provide authorized access to its API.
+
+Steps for two-legged
+Using this flow clients will obtain authorization to interact with the Veem API on its own behalf. This is a server-to-server flow with interaction between an application and the Veem API.
+
+1 - Get Access Token
+URL:
+
+https://sandbox-api.veem.com/oauth/token
+
+Body: x-www-form-urlencoded
+
+grant_type : client_credentials
+scope: all
+
+Headers:
+
+Authorization Basic <client_id:client_secret>
+
+You need to base64 encode the <client_id:client_secret> tuple.
+
+Example
+Response
+
+curl -X POST https://sandbox-api.veem.com/oauth/token -H "Authorization: Basic <base64-encoded-credentials>" -H "Accept: application/json" -d grant_type=client_credentials -d scope=all
+Steps for three-legged
+Using this flow clients will obtain authorization to interact with the Veem API on behalf of a different user.
+
+1 - Initiate the OAuth access call (Web Browser)
+This initiates the Connect with Veem from your customer's browser. You need to use our official buttons similar to what shown below and initiate the flow using the correct parameters mentioned below. To download the button images click here.
+
+200
+URL:
+
+https://sandbox-api.veem.com/oauth/authorize?client_id=my-client-id&redirect_uri=http://my-domain/oauth/code_callback&response_type=code
+
+Query Params:
+
+client_id : your client_id provided by Veem
+redirect_uri : the redirect uri to use in the code callback. This must match one of the urls provided when requesting the development keys
+response_type : always use the value code
+
+🚧
+Encode redirect_uri
+
+Make sure you URL encode redirect_uri to preserve the query parameters
+
+📘
+After this call the user will most likely be prompted to login. If you're a developer and using the sandbox please note that sandbox accounts and developer accounts are different, and cannot use the same email. You can create a sandbox account here
+
+2 - Swap Request Token Code for Access Token
+After the user confirms authorization your app will be redirected to the redirect_uri provide in the call along with an oauth_code ie: http://my-domain/oauth/code_callback?code=S6j71D. You need to exchange request token to access token by invoking the following API from your server.
+
+URL:
+
+https://sandbox-api.veem.com/oauth/token
+
+Body: x-www-form-urlencoded
+
+grant_type : authorization_code
+scope: all
+code: code returned in the callback
+redirect_uri: redirect_uri used in the authorize call
+
+Headers:
+
+Authorization Basic <client_id:client_secret>
+
+You need to base64 encode the <client_id:client_secret> tuple.
+
+Example
+Response
+
+curl -X POST https://sandbox-api.veem.com/oauth/token -H "Authorization: Basic <base64-encoded-credentials>" -H "Accept: application/json" -d grant_type=authorization_code -d code=<code> -d redirect_uri=http://my-domain/oauth/code_callback -d scope=all
+Make your first calls to the API (Server)
+The access_token needs to be passed as an Authorization Header
+
+Headers:
+
+Authorization Bearer <access_token>
+
+Example
+
+curl -X GET   https://sandbox-api.veem.com/veem/v1.0/hello   -H "Authorization: Bearer <access_token>"
+Refresh Token
+An API request using an expired token will return a 401 Unauthorized response indicating as such. You can call the token endpoint while passing the refresh token as a parameter to fetch a new access token.
+
+1 - Get Access Token using Refresh Token
+URL:
+
+https://sandbox-api.veem.com/oauth/token?refresh_token=
+
+Body: x-www-form-urlencoded
+
+grant_type : refresh_token
+
+Headers:
+
+Authorization Basic <client_id:client_secret>
+
+You need to base64 encode the <client_id:client_secret> tuple.
+
+Example
+Response
+
+curl -X POST https://sandbox-api.veem.com/oauth/token?refresh_token=<refresh token> -H "Authorization: Basic <base64-encoded-credentials>" -H "Accept: application/json" -d grant_type=refresh_token
+Updated 4 days ago
+
+Create a Veem Client
+Webhooks Notification
+TABLE OF CONTENTS
+OAuth
+Steps for two-legged
+1 - Get Access Token
+Steps for three-legged
+1 - Initiate the OAuth access call (Web Browser)
+2 - Swap Request Token Code for Access Token
+Make your first calls to the API (Server)
+Refresh Token
+1 - Get Access Token using Refresh Token
+MEMORANDUM
+TO: File No. S7-10-20
+FROM: Erika Berg
+Division of Trading and Markets
+DATE: December 9, 2020
+SUBJECT: Meeting with Representatives of Amazon Web Services, Inc. (“AWS”)
+On November 16, 2020, Commission staff met with the following representatives
+of and consultants for AWS:
+Blair Anderson
+John Carlson
+Andy Hendrickson
+Robert Kissell
+Chuck Leppert
+Ligia Lopes
+Steven Shaffer
+Bill Shinn
+Olivia Peterson
+Eric Wazorko
+During that meeting, AWS discussed its views on the proposed amendments to the
+national market system plan governing the consolidated audit trail to enhance data
+security, which were subsequently reflected in a comment letter to the Commission. The
+Commission staff representatives from the Division of Trading and Markets were Brett
+Redfearn, Christian Sabella, Dave Shillman, David Hsu, Rebekah Liu, Andrew Sherman,
+Erika Berg, Gita Subramaniam, and Sakisha Jackson. Andrew Krug from the Office of
+Information Technology and Manisha Kimmel, Senior Policy Advisor, Regulatory
+Reporting, were also present.
+Skip to content
+Search or jump to…
+Pull requests
+Issues
+Codespaces
+Marketplace
+Explore
+ 
+@mowjoejoejoejoe 
+Your account has been flagged.
+Because of that, your profile is hidden from the public. If you believe this is a mistake, contact support to have your account status reviewed.
+mowjoejoejoejoe
+/
+freicoin
+Public
+forked from freicoin/freicoin
+Fork your own copy of mowjoejoejoejoe/freicoin
+Code
+Pull requests
+2
+Actions
+Projects
+Wiki
+Security
+Insights
+Settings
+bitore.sig #1
+ Merged
+mowjoejoejoejoe merged 1 commit into master from patch-1 2 weeks ago
++724 −0 
+ Conversation 4
+ Commits 1
+ Checks 0
+ Files changed 1
+Conversation
+mowjoejoejoejoe
+Owner
+mowjoejoejoejoe commented 2 weeks ago
+No description provided.
+
+@mowjoejoejoejoe
+bitore.sig
+b25701f
+mowjoejoejoejoe
+mowjoejoejoejoe commented 2 weeks ago
+Spammy 
+Owner
+Author
+mowjoejoejoejoe left a comment
+''''#'Approves'.'''':'' :
+
+@mowjoejoejoejoe mowjoejoejoejoe merged commit 5bf2f97 into master 2 weeks ago
+@mowjoejoejoejoe mowjoejoejoejoe deleted the patch-1 branch 2 weeks ago
+@mowjoejoejoejoe mowjoejoejoejoe restored the patch-1 branch 2 weeks ago
+mowjoejoejoejoe
+mowjoejoejoejoe commented 2 weeks ago
+Spammy 
+Owner
+Author
+mowjoejoejoejoe left a comment
+py -m pip install --upgrade pip
+
+mowjoejoejoejoe
+mowjoejoejoejoe commented 2 weeks ago
+Spammy 
+Owner
+Author
+mowjoejoejoejoe left a comment
+''''#'Approves'.''''':' :
+
+mowjoejoejoejoe
+mowjoejoejoejoe commented 4 days ago
+Spammy 
+Owner
+Author
+mowjoejoejoejoe left a comment • 
+posted//** Returns a function which can be used as the callback of a Jest test() block,
+
+and which performs an assertion on the snapshot for the given code and config.
+@param code The source code to parse
+@param config the parser configuration
+@returns callback for janicalineJest/jasmine/ivy.yml'@require.txt' :''
+'requiure' ':' 'test(a11y'@'A'Sync/pa11y.yml) /commits//NPORT-Filer-Information*\commits \n new line at '?''
+the beginning....,
+b***rootCONTENT/ecex*:
+[ENCODING](*"content:encoding=styles_chain== ENCODIBG[CONTENT-*into BLOCK[CODE:contents(encoding)] :(schain
+block
+/
+expert.console({% "console = build = scripts = ActionEventsListner = console.create(item)is=: ==yarg(AGS)).) :; :'' ''
+'#'A'Sync = = > void {
+config = Object.assign({$ Obj=: new'=''=' 'BITORE'@bitore.sig/BITCOREmilestone:((C)(R))":<" }, defaultConfig, config);
+/**
+
+@returns {Object} the F.A.S.T.([$OBJ](
+Year Opened :	1824	Institution Type :	Commercial bank
+Entity Type :	Federal	Federal Regulator :	OCC
+Member Federal Reserve :	Yes	S-Corp :	No
+Fiduciary Powers :	Yes	Powers Exercised :	Yes
+Filing Type :	031		
+ 			
+Specialization :	International Specialization		
+Statistical Area (MSA) :	Columbus, OH		
+Interstate Branches :	No	Foreign Offices :	Yes
+Number of Offices :	4,845	Number of Employees :	216,524
+ 			
+ 			
+ 			
+Related Company FilingsRegulator JPMORGAN CHASE & COSEC JPMORGAN CHASE&COFED	Related Company Filings	Regulator	JPMORGAN CHASE & CO
+Related Company Filings	Regulator		
+JPMORGAN CHASE & CO	SEC		
+JPMORGAN CHASE&CO	FED		
+ 			
+
+Year Opened : 1824 Institution Type : Commercial bank Entity Type : Federal Federal Regulator : OCC Member Federal Reserve : Yes S-Corp : No Fiduciary Powers : Yes Powers Exercised : Yes Filing Type : 031 Specialization : International Specialization Statistical Area (MSA) : Columbus, OH Interstate Branches : No Foreign Offices : Yes Number of Offices : 4,845 Number of Employees : 216,524 Related Company Filings Regulator [JPMORGAN CHASE & CO](https://www.ibanknet.com/scripts/submissions/getsec.aspx?ibnid=usa_19617) SEC [JPMORGAN CHASE&CO](https://www.ibanknet.com/scripts/callreports/getbank.aspx?ibnid=usa_1039502) FED
+Financial Reports
+RC - Balance Sheet Report
+RI - Income Statement Report
+:· All Financial Reports ...
+
+Financial Fast Facts
+Balance Sheet
+(USD, in thousands)
+Income Statement
+(USD, in thousands, ytd)
+Total Assets 3,308,575,000
+Total Interest Income 54,703,000
+Total Liabilities 3,011,246,000
+Total NonInterest Income 39,655,000
+Total Bank Equity Capital 297,265,000
+Total Interest Expense 7,193,000
+Domestic Deposits 2,079,331,000
+Total NonInterest Expense 51,140,000
+Total Deposits 2,502,364,000
+Net Income 23,604,000
+Net Loans & Leases 1,098,891,000
+Net Charge Offs 1,939,000
+Loan Loss Allowance 18,177,000
+
+Regulatory Capital
+Quarterly Averages
+(USD, in thousands)
+Total capital 282,192,000
+Total loans 994,450,000
+Total assets for the leverage ratio 3,327,201,000
+Loans secured by real estate: 382,535,000
+Leverage ratio 7.95
+Commercial and industrial loans 157,562,000
+Tier 1 Capital Ratio 16.38
+Loans to individuals - Credit Cards 148,802,000
+Total Capital Ratio 17.48
+Loans to individuals - Other 79,773,000)*
+*object=:
+
+Financial Fast Facts
+Balance Sheet
+(USD, in thousands)	
+Income Statement
+(USD, in thousands, ytd)
+Total Assets	3,308,575,000	
+Total Interest Income	54,703,000
+Total Liabilities	3,011,246,000	
+Total NonInterest Income	39,655,000
+Total Bank Equity Capital	297,265,000	
+Total Interest Expense	7,193,000
+Domestic Deposits	2,079,331,000	
+Total NonInterest Expense	51,140,000
+Total Deposits	2,502,364,000	
+Net Income	23,604,000
+Net Loans & Leases	1,098,891,000	
+Net Charge Offs	1,939,000
+Loan Loss Allowance	18,177,000	
+
+
+
+
+Regulatory Capital	
+Quarterly Averages
+(USD, in thousands)
+Total capital	282,192,000	
+Total loans	994,450,000
+Total assets for the leverage ratio	3,327,201,000	
+Loans secured by real estate:	382,535,000
+Leverage ratio	7.95	
+Commercial and industrial loans	157,562,000
+Tier 1 Capital Ratio	16.38	
+Loans to individuals - Credit Cards	148,802,000
+Total Capital Ratio	17.48	
+Loans to individuals - Other	79,773,000
+Year Opened :	1824	Institution Type :	Commercial bank
+Entity Type :	Federal	Federal Regulator :	OCC
+Member Federal Reserve :	Yes	S-Corp :	No
+Fiduciary Powers :	Yes	Powers Exercised :	Yes
+Filing Type :	031		
+ 			
+Specialization :	International Specialization		
+Statistical Area (MSA) :	Columbus, OH		
+Interstate Branches :	No	Foreign Offices :	Yes
+Number of Offices :	4,845	Number of Employees :	216,524
+ 			
+ 			
+ 			
+Related Company FilingsRegulator JPMORGAN CHASE & COSEC JPMORGAN CHASE&COFED	Related Company Filings	Regulator	JPMORGAN CHASE & CO
+Related Company Filings	Regulator		
+JPMORGAN CHASE & CO	SEC		
+JPMORGAN CHASE&CO	FED		
+ 			
+
+Year Opened : 1824 Institution Type : Commercial bank Entity Type : Federal Federal Regulator : OCC Member Federal Reserve : Yes S-Corp : No Fiduciary Powers : Yes Powers Exercised : Yes Filing Type : 031 Specialization : International Specialization Statistical Area (MSA) : Columbus, OH Interstate Branches : No Foreign Offices : Yes Number of Offices : 4,845 Number of Employees : 216,524 Related Company Filings Regulator [JPMORGAN CHASE & CO](https://www.ibanknet.com/scripts/submissions/getsec.aspx?ibnid=usa_19617) SEC [JPMORGAN CHASE&CO](https://www.ibanknet.com/scripts/callreports/getbank.aspx?ibnid=usa_1039502) FED
+Financial Reports
+RC - Balance Sheet Report
+RI - Income Statement Report
+:· All Financial Reports ...
+
+Financial Fast Facts
+Balance Sheet
+(USD, in thousands)
+Income Statement
+(USD, in thousands, ytd)
+Total Assets 3,308,575,000
+Total Interest Income 54,703,000
+Total Liabilities 3,011,246,000
+Total NonInterest Income 39,655,000
+Total Bank Equity Capital 297,265,000
+Total Interest Expense 7,193,000
+Domestic Deposits 2,079,331,000
+Total NonInterest Expense 51,140,000
+Total Deposits 2,502,364,000
+Net Income 23,604,000
+Net Loans & Leases 1,098,891,000
+Net Charge Offs 1,939,000
+Loan Loss Allowance 18,177,000
+
+Regulatory Capital
+Quarterly Averages
+(USD, in thousands)
+Total capital 282,192,000
+Total loans 994,450,000
+Total assets for the leverage ratio 3,327,201,000
+Loans secured by real estate: 382,535,000
+Leverage ratio 7.95
+Commercial and industrial loans 157,562,000
+Tier 1 Capital Ratio 16.38
+Loans to individuals - Credit Cards 148,802,000
+Total Capital Ratio 17.48
+Loans to individuals - Other 79,773,000
+
+Financial Fast Facts
+Balance Sheet
+(USD, in thousands)	
+Income Statement
+(USD, in thousands, ytd)
+Total Assets	3,308,575,000	
+Total Interest Income	54,703,000
+Total Liabilities	3,011,246,000	
+Total NonInterest Income	39,655,000
+Total Bank Equity Capital	297,265,000	
+Total Interest Expense	7,193,000
+Domestic Deposits	2,079,331,000	
+Total NonInterest Expense	51,140,000
+Total Deposits	2,502,364,000	
+Net Income	23,604,000
+Net Loans & Leases	1,098,891,000	
+Net Charge Offs	1,939,000
+Loan Loss Allowance	18,177,000	
+
+
+
+
+Regulatory Capital	
+Quarterly Averages
+(USD, in thousands)
+Total capital	282,192,000	
+Total loans	994,450,000
+Total assets for the leverage ratio	3,327,201,000	
+Loans secured by real estate:	382,535,000
+Leverage ratio	7.95	
+Commercial and industrial loans	157,562,000
+Tier 1 Capital Ratio	16.38	
+Loans to individuals - Credit Cards	148,802,000
+Total Capital Ratio	17.48	
+Loans to individuals - Other	79,773,000
+@mowjoejoejoejoe
+
+ 
+Add heading textAdd bold text, <Ctrl+b>Add italic text, <Ctrl+i>
+Add a quote, <Ctrl+Shift+.>Add code, <Ctrl+e>Add a link, <Ctrl+k>
+Add a bulleted list, <Ctrl+Shift+8>Add a numbered list, <Ctrl+Shift+7>Add a task list, <Ctrl+Shift+l>
+Directly mention a user or team
+Reference an issue, pull request, or discussion
+Add saved reply
+Leave a comment
+No file chosen
+Attach files by dragging & dropping, selecting or pasting them.
+Styling with Markdown is supported
+Remember, contributions to this repository should follow our GitHub Community Guidelines.
+ ProTip! Add comments to specific lines under Files changed.
+Reviewers
+No reviews
+Assignees
+No one—
+Labels
+None yet
+Projects
+None yet
+Milestone
+No milestone
+Notifications
+Customize
+You’re receiving notifications because you modified the open/close state.
+1 participant
+@mowjoejoejoejoe
+Footer
+© 2023 GitHub, Inc.
+Footer navigation
+Terms
+Privacy
+Security
+Status
+Docs
+Contact GitHub
+Pricing
+API
+Training
+Blog
+About
