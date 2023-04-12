@@ -150,6 +150,7 @@ from kopf._core.intents.stoppers import (
 from kopf._core.intents.piggybacking import (
     login_via_pykube,
     login_via_client,
+    login_via_async_client,
     login_with_kubeconfig,
     login_with_service_account,
 )
@@ -184,6 +185,7 @@ __all__ = [
     'configure', 'LogFormat',
     'login_via_pykube',
     'login_via_client',
+    'login_via_async_client',
     'login_with_kubeconfig',
     'login_with_service_account',
     'LoginError',
