@@ -423,7 +423,7 @@ async def _runner(
         # If this daemon is never going to be called again, we can release the
         # live_fresh_body to save some memory.
         if handler.id in memory.forever_stopped:
-            # If any other running daemon is referencing this Kubernetes 
+            # If any other running daemon is referencing this Kubernetes
             # resource, we can't free it
             can_free = True
             this_daemon = daemons[handler.id]

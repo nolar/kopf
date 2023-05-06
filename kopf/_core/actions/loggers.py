@@ -11,7 +11,7 @@ the operators' code, and can lead to information loss or mismatch
 import copy
 import enum
 import logging
-from typing import Any, MutableMapping, Optional, Tuple
+from typing import Any, Dict, MutableMapping, Optional, Tuple
 
 import pythonjsonlogger.jsonlogger
 
@@ -40,7 +40,7 @@ class ObjectTextFormatter(ObjectFormatter, logging.Formatter):
     pass
 
 
-class ObjectJsonFormatter(ObjectFormatter, pythonjsonlogger.jsonlogger.JsonFormatter):  # type: ignore
+class ObjectJsonFormatter(ObjectFormatter, pythonjsonlogger.jsonlogger.JsonFormatter):
     def __init__(
             self,
             *args: Any,
@@ -53,14 +53,14 @@ class ObjectJsonFormatter(ObjectFormatter, pythonjsonlogger.jsonlogger.JsonForma
         reserved_attrs |= {'k8s_skip', 'k8s_ref', 'settings'}
         kwargs.update(reserved_attrs=reserved_attrs)
         kwargs.setdefault('timestamp', True)
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)  # type: ignore  # for untyped JsonFormatter.__init__()
         self._refkey: str = refkey or DEFAULT_JSON_REFKEY
 
     def add_fields(
             self,
-            log_record: MutableMapping[str, object],
+            log_record: Dict[str, object],
             record: logging.LogRecord,
-            message_dict: MutableMapping[str, object],
+            message_dict: Dict[str, object],
     ) -> None:
         super().add_fields(log_record, record, message_dict)
 
