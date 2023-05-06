@@ -14,6 +14,7 @@ from kopf._core.actions import loggers
 from kopf._core.engines import peering
 from kopf._core.intents import registries
 from kopf._core.reactor import running
+from kopf._kits import loops
 
 
 @dataclasses.dataclass()
@@ -67,13 +68,7 @@ def logging_options(fn: Callable[..., Any]) -> Callable[..., Any]:
 @click.version_option(prog_name='kopf')
 @click.make_pass_decorator(CLIControls, ensure=True)
 def main(__controls: CLIControls) -> None:
-    if __controls.loop is None:  # the pure CLI use, not a KopfRunner or other code
-        try:
-            import uvloop
-        except ImportError:
-            pass
-        else:
-            asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    pass
 
 
 @main.command()
@@ -110,20 +105,21 @@ def run(
         paths=paths,
         modules=modules,
     )
-    return running.run(
-        standalone=standalone,
-        namespaces=namespaces,
-        clusterwide=clusterwide,
-        priority=priority,
-        peering_name=peering_name,
-        liveness_endpoint=liveness_endpoint,
-        registry=__controls.registry,
-        settings=__controls.settings,
-        stop_flag=__controls.stop_flag,
-        ready_flag=__controls.ready_flag,
-        vault=__controls.vault,
-        loop=__controls.loop,
-    )
+    with loops.proper_loop(__controls.loop):
+        return running.run(
+            standalone=standalone,
+            namespaces=namespaces,
+            clusterwide=clusterwide,
+            priority=priority,
+            peering_name=peering_name,
+            liveness_endpoint=liveness_endpoint,
+            registry=__controls.registry,
+            settings=__controls.settings,
+            stop_flag=__controls.stop_flag,
+            ready_flag=__controls.ready_flag,
+            vault=__controls.vault,
+            loop=__controls.loop,
+        )
 
 
 @main.command()
@@ -136,7 +132,9 @@ def run(
 @click.option('-p', '--priority', type=int, default=100, required=True)
 @click.option('-t', '--lifetime', type=int, required=True)
 @click.option('-m', '--message', type=str)
+@click.make_pass_decorator(CLIControls, ensure=True)
 def freeze(
+        __controls: CLIControls,
         id: Optional[str],
         message: Optional[str],
         lifetime: int,
@@ -151,17 +149,18 @@ def freeze(
     settings = configuration.OperatorSettings()
     settings.peering.name = peering_name
     settings.peering.priority = priority
-    return running.run(
-        clusterwide=clusterwide,
-        namespaces=namespaces,
-        insights=insights,
-        identity=identity,
-        settings=settings,
-        _command=peering.touch_command(
+    with loops.proper_loop(__controls.loop):
+        return running.run(
+            clusterwide=clusterwide,
+            namespaces=namespaces,
             insights=insights,
             identity=identity,
             settings=settings,
-            lifetime=lifetime))
+            _command=peering.touch_command(
+                insights=insights,
+                identity=identity,
+                settings=settings,
+                lifetime=lifetime))
 
 
 @main.command()
@@ -170,7 +169,9 @@ def freeze(
 @click.option('-A', '--all-namespaces', 'clusterwide', is_flag=True)
 @click.option('-i', '--id', type=str, default=None)
 @click.option('-P', '--peering', 'peering_name', required=True, envvar='KOPF_RESUME_PEERING')
+@click.make_pass_decorator(CLIControls, ensure=True)
 def resume(
+        __controls: CLIControls,
         id: Optional[str],
         namespaces: Collection[references.NamespacePattern],
         clusterwide: bool,
@@ -181,14 +182,15 @@ def resume(
     insights = references.Insights()
     settings = configuration.OperatorSettings()
     settings.peering.name = peering_name
-    return running.run(
-        clusterwide=clusterwide,
-        namespaces=namespaces,
-        insights=insights,
-        identity=identity,
-        settings=settings,
-        _command=peering.touch_command(
+    with loops.proper_loop(__controls.loop):
+        return running.run(
+            clusterwide=clusterwide,
+            namespaces=namespaces,
             insights=insights,
             identity=identity,
             settings=settings,
-            lifetime=0))
+            _command=peering.touch_command(
+                insights=insights,
+                identity=identity,
+                settings=settings,
+                lifetime=0))
