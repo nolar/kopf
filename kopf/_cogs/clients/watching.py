@@ -89,7 +89,8 @@ async def infinite_watch(
                     if ex.code != HTTP_TOO_MANY_REQUESTS_CODE:
                         raise
 
-                    retry_wait = ex.details.get("retryAfterSeconds") or DEFAULT_RETRY_DELAY_SECONDS
+                    retry_after = ex.details.get("retryAfterSeconds") if ex.details else None
+                    retry_wait = retry_after or DEFAULT_RETRY_DELAY_SECONDS
                     logger.warning(
                         f"Receiving `too many requests` error from server, will retry after "
                         f"{retry_wait} seconds. Error details: {ex}"
