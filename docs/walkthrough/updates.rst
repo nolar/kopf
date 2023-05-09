@@ -11,7 +11,7 @@ Updating the objects
 
 Previously (:doc:`creation`),
 we have implemented a handler for the creation of an ``EphemeralVolumeClaim`` (EVC),
-and created the corresponding ``PersistantVolumeClaim`` (PVC).
+and created the corresponding ``PersistentVolumeClaim`` (PVC).
 
 What will happen if we change the size of the EVC when it already exists?
 The PVC must be updated accordingly to match its parent EVC.

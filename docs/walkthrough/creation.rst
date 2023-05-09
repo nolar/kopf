@@ -25,7 +25,7 @@ immediately when an ``EphemeralVolumeClaim`` is created this way:
     kubectl apply -f evc.yaml
 
 First, let's define a template of the persistent volume claim
-(with the Python template string, so that no extra template engines are needed):
+(with the Python template string, so that no extra template engines are needed (such as Kustomize/Helm)):
 
 .. code-block:: yaml
     :name: pvc
@@ -57,6 +57,7 @@ We will use the official Kubernetes client library (``pip install kubernetes``):
     import kubernetes
     import yaml
 
+    # Watch for creation of EVC resources
     @kopf.on.create('ephemeralvolumeclaims')
     def create_fn(spec, name, namespace, logger, **kwargs):
 
@@ -66,7 +67,7 @@ We will use the official Kubernetes client library (``pip install kubernetes``):
 
         path = os.path.join(os.path.dirname(__file__), 'pvc.yaml')
         tmpl = open(path, 'rt').read()
-        text = tmpl.format(name=name, size=size)
+        text = tmpl.format(name=name, size=size) # Sync the name and size of the EVC with the PVC
         data = yaml.safe_load(text)
 
         api = kubernetes.client.CoreV1Api()
@@ -89,6 +90,7 @@ Wait 1-2 seconds, and take a look:
 
     kubectl get pvc
 
+(As no PV match the requirements of the PVC, a PV is created and so the PVC is bounded)
 Now, the PVC can be attached to the pods by the same name, as EVC is named.
 
 .. note::
