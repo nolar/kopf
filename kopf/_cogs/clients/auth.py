@@ -38,8 +38,9 @@ def authenticated(fn: _F) -> _F:
         if 'context' in kwargs:
             context = kwargs['context']
             response = await fn(*args, **kwargs)
-            # Keep track of responses which are using this context.
-            context.add_response(response)
+            if isinstance(response, aiohttp.ClientResponse):
+                # Keep track of responses which are using this context.
+                context.add_response(response)
             return response
 
         # Otherwise, attempt the execution with the vault credentials and re-authenticate on 401s.
@@ -47,8 +48,9 @@ def authenticated(fn: _F) -> _F:
         async for key, info, context in vault.extended(APIContext, 'contexts'):
             try:
                 response = await fn(*args, **kwargs, context=context)
-                # Keep track of responses which are using this context.
-                context.add_response(response)
+                if isinstance(response, aiohttp.ClientResponse):
+                    # Keep track of responses which are using this context.
+                    context.add_response(response)
                 return response
             except errors.APIUnauthorizedError as e:
                 await vault.invalidate(key, exc=e)
