@@ -118,7 +118,7 @@ async def _read_version(
                 ),
                 namespaced=resource['namespaced'],
                 preferred=preferred,
-                verbs=frozenset(resource.get('verbs', [])),
+                verbs=frozenset(resource.get('verbs') or []),
             )
             for resource in rsp.get('resources', [])
             if '/' not in resource['name']
