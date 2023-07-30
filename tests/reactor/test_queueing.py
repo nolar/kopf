@@ -53,7 +53,6 @@ async def test_watchevent_demultiplexing(worker_mock, looptime, resource, proces
     # Override the default timeouts to make the tests faster.
     settings.batching.idle_timeout = 100  # should not be involved, fail if it is
     settings.batching.exit_timeout = 100  # should exit instantly, fail if it didn't
-    settings.batching.batch_window = 100  # should not be involved, fail if it is
 
     # Inject the events of unique objects - to produce a few streams/workers.
     stream.feed(events, namespace=None)
@@ -120,7 +119,6 @@ async def test_garbage_collection_of_streams(
     # Override the default timeouts to make the tests faster.
     settings.batching.exit_timeout = 999  # should exit instantly, fail if it didn't
     settings.batching.idle_timeout = 5  # finish workers faster, but not as fast as batching
-    settings.batching.batch_window = 1  # minimize the effects of batching (not our interest)
     settings.watching.reconnect_backoff = 100  # to prevent src depletion
 
     # Inject the events of unique objects - to produce a few streams/workers.
@@ -145,7 +143,6 @@ async def test_garbage_collection_of_streams(
     # Give the workers some time to finish waiting for the events.
     # After the idle timeout is reached, they will exit and gc their streams.
     allowed_timeout = (
-        settings.batching.batch_window +  # depleting the queues.
         settings.batching.idle_timeout +  # idling on empty queues.
         1.0)  # the code itself takes time: add a max tolerable delay.
     with contextlib.suppress(asyncio.TimeoutError):

@@ -28,6 +28,7 @@ the root object, while keeping the legacy names for backward compatibility.
 import concurrent.futures
 import dataclasses
 import logging
+import warnings
 from collections.abc import Iterable
 
 from kopf._cogs.configs import diffbase, progress
@@ -218,12 +219,6 @@ class BatchingSettings:
     if no new events arrive from the watch-stream for that resource object.
     """
 
-    batch_window: float = 0.1
-    """
-    How fast/slow does a worker deplete the queue when an event is received.
-    All events arriving within this window will be ignored except the last one.
-    """
-
     exit_timeout: float = 2.0
     """
     How soon a worker is cancelled when the parent watcher is going to exit.
@@ -236,6 +231,21 @@ class BatchingSettings:
 
     For more information on error throttling, see :ref:`error-throttling`.
     """
+
+    _batch_window: float = 0.1  # deprecated
+
+    @property
+    def batch_window(self) -> float:
+        """ Deprecated and affects nothing. """
+        warnings.warn("Time-based event batching was removed. Please stop configuring it.",
+                      DeprecationWarning)
+        return self._batch_window
+
+    @batch_window.setter
+    def batch_window(self, value: float) -> None:
+        warnings.warn("Time-based event batching was removed. Please stop configuring it.",
+                      DeprecationWarning)
+        self._batch_window = value
 
 
 @dataclasses.dataclass
