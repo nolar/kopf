@@ -56,8 +56,8 @@ async def test_watchevent_demultiplexing(worker_mock, timer, resource, processor
     settings.batching.batch_window = 100  # should not be involved, fail if it is
 
     # Inject the events of unique objects - to produce a few streams/workers.
-    stream.feed(events)
-    stream.close()
+    stream.feed(events, namespace=None)
+    stream.close(namespace=None)
 
     # Run the watcher (near-instantly and test-blocking).
     with timer:
@@ -132,8 +132,8 @@ async def test_watchevent_batching(settings, resource, processor, timer,
     settings.batching.batch_window = 0.3  # the time period being tested (make bigger than overhead)
 
     # Inject the events of unique objects - to produce a few streams/workers.
-    stream.feed(events)
-    stream.close()
+    stream.feed(events, namespace=None)
+    stream.close(namespace=None)
 
     # Run the watcher (near-instantly and test-blocking).
     with timer:
@@ -179,7 +179,9 @@ async def test_watchevent_batching(settings, resource, processor, timer,
 
 ])
 @pytest.mark.usefixtures('watcher_in_background')
-async def test_garbage_collection_of_streams(settings, stream, events, unique, worker_spy):
+async def test_garbage_collection_of_streams(
+        settings, stream, events, unique, worker_spy, namespace
+):
 
     # Override the default timeouts to make the tests faster.
     settings.batching.exit_timeout = 100  # should exit instantly, fail if it didn't
@@ -188,8 +190,8 @@ async def test_garbage_collection_of_streams(settings, stream, events, unique, w
     settings.watching.reconnect_backoff = 1.0  # to prevent src depletion
 
     # Inject the events of unique objects - to produce a few streams/workers.
-    stream.feed(events)
-    stream.close()
+    stream.feed(events, namespace=None)
+    stream.close(namespace=None)
 
     # Give it a moment to populate the streams and spawn all the workers.
     # Intercept and remember _any_ seen dict of streams for further checks.

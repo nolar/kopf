@@ -48,7 +48,7 @@ async def watcher_in_background(settings, resource, worker_spy, stream):
         pass
 
     # Prevent any real streaming for the very beginning, before it even starts.
-    stream.feed([])
+    stream.feed([], namespace=None)
 
     # Spawn a watcher in the background.
     coro = watcher(
