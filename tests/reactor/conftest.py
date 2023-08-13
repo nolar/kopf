@@ -7,9 +7,13 @@ import pytest
 from kopf._cogs.clients.watching import infinite_watch
 from kopf._core.reactor.queueing import watcher, worker as original_worker
 
+STREAM_WITH_ERROR_410GONE_ONLY = (
+    {'type': 'ERROR', 'object': {'code': 410}},
+)
+
 
 @pytest.fixture(autouse=True)
-def _autouse_resp_mocker(resp_mocker):
+def _enforced_api_server(fake_vault, enforced_session, resource):
     pass
 
 
@@ -33,18 +37,22 @@ def worker_mock(mocker):
 
 
 @pytest.fixture()
-def watcher_limited(mocker, settings):
+def watcher_limited(kmock, mocker, settings):
     """ Make event streaming finite, watcher exits after depletion. """
     settings.watching.reconnect_backoff = 0
     mocker.patch('kopf._cogs.clients.watching.infinite_watch',
                  new=functools.partial(infinite_watch, _iterations=1))
 
+    # Also ensure that any watches DO terminate the infinite/continuous watch-stream
+    # when there are no explicitly added reactions left.
+    (kmock['watch'] ** -50) << STREAM_WITH_ERROR_410GONE_ONLY
+
 
 @pytest.fixture()
-async def watcher_in_background(settings, resource, worker_spy, stream, namespace, processor):
+async def watcher_in_background(settings, resource, worker_spy, kmock, namespace, processor):
 
     # Prevent any real streaming for the very beginning, before it even starts.
-    stream.feed([], namespace=None)
+    kmock['watch', resource] << ()
 
     # Spawn a watcher in the background.
     coro = watcher(

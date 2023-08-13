@@ -1,41 +1,27 @@
 import asyncio
-import math
 from unittest.mock import DEFAULT
 
 import pytest
 
 
 @pytest.fixture()
-def incremental_stream(hostname, aresponses, resource, namespace):
+def incremental_stream(kmock, resource, namespace):
     list_data = {'items': [], 'metadata': {'resourceVersion': '0'}}
-    list_url = resource.get_url(namespace=namespace)
-    aresponses.add(hostname, list_url, 'get', list_data, match_querystring=True, repeat=math.inf)
+    kmock['list', resource, kmock.namespace(namespace)] << list_data
 
-    url0 = resource.get_url(namespace=namespace, params={'watch': 'true', 'resourceVersion': '0'})
-    aresponses.add(
-        hostname, url0, 'get',
+    kmock['watch', resource, kmock.namespace(namespace), kmock.params(resourceVersion=0)] << (
         {'type': 'ADDED', 'object': {'metadata': {'resourceVersion': '1'}, 'spec': {'field': 'a'}}},
-        match_querystring=True,
     )
-
-    url1 = resource.get_url(namespace=namespace, params={'watch': 'true', 'resourceVersion': '1'})
-    aresponses.add(
-        hostname, url1, 'get',
+    kmock['watch', resource, kmock.namespace(namespace), kmock.params(resourceVersion=1)] << (
         {'type': 'ADDED', 'object': {'metadata': {'resourceVersion': '2'}, 'spec': {'field': 'b'}}},
-        match_querystring=True,
     )
-
-    url2 = resource.get_url(namespace=namespace, params={'watch': 'true', 'resourceVersion': '2'})
-    aresponses.add(
-        hostname, url2, 'get',
+    kmock['watch', resource, kmock.namespace(namespace), kmock.params(resourceVersion=2)] << (
         {'type': 'ADDED', 'object': {'metadata': {'resourceVersion': '3'}, 'spec': {'field': 'b'}}},
-        match_querystring=True,
     )
 
 
 @pytest.mark.usefixtures('incremental_stream', 'watcher_in_background')
-async def test_consistency_tracking_in_the_watcher(
-        settings, caplog, processor):
+async def test_consistency_tracking_in_the_watcher(settings, processor):
 
     # Override the default timeouts to make the tests faster.
     settings.queueing.idle_timeout = 100  # should not be involved, fail if it is

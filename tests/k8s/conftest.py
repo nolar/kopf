@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def _autouse_resp_mocker(resp_mocker, version_api):
+def _enforced_api_server(fake_vault, enforced_session, resource):
     pass
 
 

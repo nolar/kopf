@@ -3,13 +3,11 @@ import dataclasses
 import importlib
 import inspect
 import io
-import json
 import logging
 import re
 import sys
 from unittest.mock import AsyncMock, Mock
 
-import aiohttp.web
 import pytest
 import pytest_asyncio
 
@@ -210,7 +208,7 @@ class K8sMocks:
 
 
 @pytest.fixture()
-def k8s_mocked(mocker, resp_mocker):
+def k8s_mocked(mocker):
     # We mock on the level of our own K8s API wrappers, not the HTTP client.
     mocker.patch('kopf._cogs.clients.api.request', side_effect=Exception('Must not be called!'))
 
@@ -229,7 +227,7 @@ def k8s_mocked(mocker, resp_mocker):
 
 
 @pytest.fixture()
-async def enforced_context(fake_vault, mocker):
+async def enforced_context(fake_vault, mocker, _no_asyncio_pending_tasks):
     """
     Patchable context/session for some tests, e.g. with local exceptions.
 
@@ -252,122 +250,10 @@ async def enforced_session(enforced_context: APIContext):
     yield enforced_context.session
 
 
-# Note: Unused `fake_vault` is to ensure that the client wrappers have the credentials.
-# Note: Unused `enforced_session` is to ensure that the session is closed for every test.
-@pytest.fixture()
-def resp_mocker(fake_vault, enforced_session, aresponses):
-    """
-    A factory of server-side callbacks for ``aresponses`` with mocking/spying.
-
-    The value of the fixture is a function, which returns a coroutine mock.
-    That coroutine mock should be passed to ``aresponses.add()`` as a response
-    callback function. When called, it calls the mock defined by the function's
-    arguments (specifically, return_value or side_effects).
-
-    The difference from passing the responses directly to ``aresponses.add()``
-    is that it is possible to assert on whether the response was handled
-    by that callback at all (i.e. HTTP URL & method matched), especially
-    if there are multiple responses registered.
-
-    Sample usage:
-
-    .. code-block:: python
-
-        import aiohttp.web
-
-        def test_me(aresponses, resp_mocker):
-            response = aiohttp.web.json_response({'a': 'b'})
-            callback = resp_mocker(return_value=response)
-            aresponses.add(hostname, '/path/', 'get', callback)
-            do_something()
-            assert callback.called
-            assert callback.call_count == 1
-    """
-    def resp_maker(*args, **kwargs):
-        actual_response = AsyncMock(*args, **kwargs)
-        async def resp_mock_effect(request):
-            nonlocal actual_response
-
-            # The request's content can be read inside of the handler only. We preserve
-            # the data into a conventional field, so that they could be asserted later.
-            try:
-                request.data = await request.json()
-            except json.JSONDecodeError:
-                request.data = await request.text()
-
-            # Get a response/error as it was intended (via return_value/side_effect).
-            response = actual_response()
-            if inspect.isawaitable(response):
-                response = await response
-            elif inspect.iscoroutinefunction(response):
-                response = await response
-            return response
-
-        return AsyncMock(side_effect=resp_mock_effect)
-    return resp_maker
-
-
-@pytest.fixture()
-def version_api(resp_mocker, aresponses, hostname, resource):
-    result = {'resources': [{
-        'name': resource.plural,
-        'namespaced': True,
-    }]}
-    version_url = resource.get_url().rsplit('/', 1)[0]  # except the plural name
-    list_mock = resp_mocker(return_value=aiohttp.web.json_response(result))
-    aresponses.add(hostname, version_url, 'get', list_mock)
-
-
-@pytest.fixture()
-def stream(fake_vault, resp_mocker, aresponses, hostname, resource, version_api):
-    """ A mock for the stream of events as if returned by K8s client. """
-
-    def feed(*args, namespace: str | None):
-        for arg in args:
-
-            # Prepare the stream response pre-rendered (for simplicity, no actual streaming).
-            if isinstance(arg, (list, tuple)):
-                stream_text = '\n'.join(json.dumps(event) for event in arg)
-                stream_resp = aresponses.Response(text=stream_text)
-            else:
-                stream_resp = arg
-
-            # List is requested for every watch, so we simulate it empty.
-            list_data = {'items': [], 'metadata': {'resourceVersion': '0'}}
-            list_resp = aiohttp.web.json_response(list_data)
-            list_url = resource.get_url(namespace=namespace)
-
-            # The stream is not empty, but is as fed.
-            stream_query = {'watch': 'true', 'resourceVersion': '0'}
-            stream_url = resource.get_url(namespace=namespace, params=stream_query)
-
-            # Note: `aresponses` excludes a response once it is matched (side-effect-like).
-            # So we just accumulate them there, as many as needed.
-            aresponses.add(hostname, stream_url, 'get', stream_resp, match_querystring=True)
-            aresponses.add(hostname, list_url, 'get', list_resp, match_querystring=True)
-
-    # TODO: One day, find a better way to terminate a ``while-true`` reconnection cycle.
-    def close(*, namespace: str | None):
-        """
-        A way to stop the stream from reconnecting: say it that the resource version is gone
-        (we know a priori that it stops on this condition, and escalates to ``infinite_stream``).
-        """
-        feed([{'type': 'ERROR', 'object': {'code': 410}}], namespace=namespace)
-
-    return Mock(spec_set=['feed', 'close'], feed=feed, close=close)
-
-
 #
 # Mocks for login & checks. Used in specifialised login tests,
 # and in all CLI tests (since login is implicit with CLI commands).
 #
-
-@pytest.fixture()
-def hostname():
-    """ A fake hostname to be used in all aiohttp/aresponses tests. """
-    return 'fake-host'
-
-
 @dataclasses.dataclass(frozen=True, eq=False, order=False)
 class LoginMocks:
     pykube_in_cluster: Mock = None
@@ -425,7 +311,7 @@ def clean_kubernetes_client():
 
 # Aresponses/aiohttp must be closed strictly after the vault. See the docstring.
 @pytest.fixture()
-async def _fake_vault(mocker, hostname, aresponses):
+async def _fake_vault(mocker, kmock):
     """
     A hack around pytest's internal flaw in order to close the vault in the end.
 
@@ -440,7 +326,7 @@ async def _fake_vault(mocker, hostname, aresponses):
     (15 seconds of keep-alive timeout by default).
     """
     key = VaultKey('fixture')
-    info = ConnectionInfo(server=f'https://{hostname}')
+    info = ConnectionInfo(server=str(kmock.url))
     vault = Vault({key: info})
     mocker.patch.object(vault._guard, 'wait_for')
     try:
@@ -467,6 +353,7 @@ def fake_vault(_fake_vault):
         yield _fake_vault
     finally:
         auth.vault_var.reset(token)
+
 
 #
 # Simulating that Kubernetes client libraries are not installed.
