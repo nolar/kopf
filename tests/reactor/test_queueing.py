@@ -26,38 +26,36 @@ from kopf._core.reactor.queueing import EOS, watcher
 
 @pytest.mark.parametrize('uids, cnts, events', [
 
-    pytest.param(['uid1'], [1], [
+    pytest.param(['uid1'], [1], (
         {'type': 'ADDED', 'object': {'metadata': {'uid': 'uid1'}}},
-    ], id='single'),
+    ), id='single'),
 
-    pytest.param(['uid1'], [3], [
+    pytest.param(['uid1'], [3], (
         {'type': 'ADDED', 'object': {'metadata': {'uid': 'uid1'}}},
         {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid1'}}},
         {'type': 'DELETED', 'object': {'metadata': {'uid': 'uid1'}}},
-    ], id='multiple'),
+    ), id='multiple'),
 
-    pytest.param(['uid1', 'uid2'], [3, 2], [
+    pytest.param(['uid1', 'uid2'], [3, 2], (
         {'type': 'ADDED', 'object': {'metadata': {'uid': 'uid1'}}},
         {'type': 'ADDED', 'object': {'metadata': {'uid': 'uid2'}}},
         {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid1'}}},
         {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid2'}}},
         {'type': 'DELETED', 'object': {'metadata': {'uid': 'uid1'}}},
-    ], id='mixed'),
+    ), id='mixed'),
 
 ])
 @pytest.mark.usefixtures('watcher_limited')
 async def test_watchevent_demultiplexing(worker_mock, looptime, resource, processor,
-                                         settings, stream, events, uids, cnts):
+                                         settings, kmock, events, uids, cnts):
     """ Verify that every unique uid goes into its own queue+worker, which are never shared. """
+    kmock.resources[resource] = kmock.ResourceInfo()
+    kmock['watch', resource] << events << {'type': 'ERROR', 'object': {'code': 410}}
 
     # Override the default timeouts to make the tests faster.
     settings.batching.idle_timeout = 100  # should not be involved, fail if it is
-    settings.batching.exit_timeout = 100  # should exit instantly, fail if it didn't
-    settings.batching.batch_window = 100  # should not be involved, fail if it is
-
-    # Inject the events of unique objects - to produce a few streams/workers.
-    stream.feed(events, namespace=None)
-    stream.close(namespace=None)
+    settings.batching.exit_timeout = 110  # should exit instantly, fail if it didn't
+    settings.batching.batch_window = 120  # should not be involved, fail if it is
 
     # Run the watcher (near-instantly and test-blocking).
     await watcher(
@@ -100,29 +98,29 @@ async def test_watchevent_demultiplexing(worker_mock, looptime, resource, proces
 
 @pytest.mark.parametrize('uids, vals, events', [
 
-    pytest.param(['uid1'], ['b'], [
+    pytest.param(['uid1'], ['b'], (
         {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid1'}, 'spec': 'a'}},
         {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid1'}, 'spec': 'b'}},
-    ], id='the same'),
+    ), id='the same'),
 
-    pytest.param(['uid1', 'uid2'], ['a', 'b'], [
+    pytest.param(['uid1', 'uid2'], ['a', 'b'], (
         {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid1'}, 'spec': 'a'}},
         {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid2'}, 'spec': 'b'}},
-    ], id='distinct'),
+    ), id='distinct'),
 
-    pytest.param(['uid1', 'uid2', 'uid3'], ['e', 'd', 'f'], [
+    pytest.param(['uid1', 'uid2', 'uid3'], ['e', 'd', 'f'], (
         {'type': 'ADDED', 'object': {'metadata': {'uid': 'uid1'}, 'spec': 'a'}},
         {'type': 'ADDED', 'object': {'metadata': {'uid': 'uid2'}, 'spec': 'b'}},
         {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid1'}, 'spec': 'c'}},
         {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid2'}, 'spec': 'd'}},
         {'type': 'DELETED', 'object': {'metadata': {'uid': 'uid1'}, 'spec': 'e'}},
         {'type': 'DELETED', 'object': {'metadata': {'uid': 'uid3'}, 'spec': 'f'}},
-    ], id='mixed'),
+    ), id='mixed'),
 
 ])
 @pytest.mark.usefixtures('watcher_limited')
 async def test_watchevent_batching(settings, resource, processor,
-                                   stream, events, uids, vals, looptime):
+                                   kmock, events, uids, vals, looptime):
     """ Verify that only the last event per uid is actually handled. """
 
     # Override the default timeouts to make the tests faster.
@@ -131,8 +129,8 @@ async def test_watchevent_batching(settings, resource, processor,
     settings.batching.batch_window = 123  # the time period being tested
 
     # Inject the events of unique objects - to produce a few streams/workers.
-    stream.feed(events, namespace=None)
-    stream.close(namespace=None)
+    kmock.resources[resource] = kmock.ResourceInfo()
+    kmock['watch'] << events << {'type': 'ERROR', 'object': {'code': 410}}
 
     # Run the watcher (near-instantly and test-blocking).
     await watcher(
@@ -163,22 +161,20 @@ async def test_watchevent_batching(settings, resource, processor,
 
 @pytest.mark.parametrize('unique, events', [
 
-    pytest.param(1, [
+    pytest.param(1, (
         {'type': 'ADDED', 'object': {'metadata': {'uid': 'uid1'}}},
         {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid1'}}},
         {'type': 'DELETED', 'object': {'metadata': {'uid': 'uid1'}}},
-    ], id='the same'),
+    ), id='the same'),
 
-    pytest.param(2, [
+    pytest.param(2, (
         {'type': 'ADDED', 'object': {'metadata': {'uid': 'uid1'}}},
         {'type': 'ADDED', 'object': {'metadata': {'uid': 'uid2'}}},
-    ], id='distinct'),
+    ), id='distinct'),
 
 ])
 @pytest.mark.usefixtures('watcher_in_background')
-async def test_garbage_collection_of_streams(
-        settings, stream, events, unique, worker_spy, namespace
-):
+async def test_garbage_collection_of_streams(settings, kmock, events, unique, worker_spy, namespace):
 
     # Override the default timeouts to make the tests faster.
     settings.batching.exit_timeout = 999  # should exit instantly, fail if it didn't
@@ -187,8 +183,7 @@ async def test_garbage_collection_of_streams(
     settings.watching.reconnect_backoff = 100  # to prevent src depletion
 
     # Inject the events of unique objects - to produce a few streams/workers.
-    stream.feed(events, namespace=None)
-    stream.close(namespace=None)
+    kmock['watch'] << events << {'type': 'ERROR', 'object': {'code': 410}}
 
     # Give it a moment to populate the streams and spawn all the workers.
     # Intercept and remember _any_ seen dict of streams for further checks.

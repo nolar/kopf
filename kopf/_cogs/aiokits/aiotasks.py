@@ -344,6 +344,13 @@ class Scheduler:
             await self._pending_coros.put(SchedulerJob(coro=coro, name=name))
             self._condition.notify_all()  # -> task_spawner()
 
+        # Give the spawner some asyncio cycles to actually spawn and maybe end the task instantly.
+        # This barely ever happens with real worker(); it is mainly for tests in `test_queueing.py`:
+        # Depending on luck, they were arriving to `_wait_for_depletion()` with their mocked workers
+        # either "done", or "pending", thus giving looptime==0 or looptime==exit_timeout (randomly).
+        # With this extra sleep, such mocked workers are now "done" and the looptime==0.
+        await asyncio.sleep(0)
+
     def _can_spawn(self) -> bool:
         return (not self._pending_coros.empty() and
                 (self._limit is None or len(self._running_tasks) < self._limit))

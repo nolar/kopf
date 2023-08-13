@@ -1,35 +1,22 @@
 import asyncio
-import json
-
-import aiohttp.web
 
 from kopf._cogs.clients.watching import Bookmark, continuous_watch
 
 
-async def test_listed_is_inbetween(
-        settings, resource, namespace, hostname, aresponses):
+async def test_listed_is_inbetween(settings, resource, namespace, kmock):
 
-    # Resource version is used as a continutation for the watch-queries.
-    list_data = {'metadata': {'resourceVersion': '123'}, 'items': [
-        {'spec': 'a'},
-        {'spec': 'b'},
-    ]}
-    list_resp = aiohttp.web.json_response(list_data)
-    list_url = resource.get_url(namespace=namespace)
+    # Resource version is used as a continuation for the watch-queries.
+    kmock['list', resource, kmock.namespace(namespace)] << {
+        'metadata': {'resourceVersion': '123'},
+        'items': [{'spec': 'a'}, {'spec': 'b'}],
+    }
 
     # The same as in the `stream` fixture. But here, we also mock lists.
-    stream_data = [
-        {'type': 'ADDED', 'object': {'spec': 'c'}},  # stream.feed()
-        {'type': 'ADDED', 'object': {'spec': 'd'}},  # stream.feed()
-        {'type': 'ERROR', 'object': {'code': 410}},  # stream.close()
-    ]
-    stream_text = '\n'.join(json.dumps(event) for event in stream_data)
-    stream_resp = aresponses.Response(text=stream_text)
-    stream_query = {'watch': 'true', 'resourceVersion': '123'}
-    stream_url = resource.get_url(namespace=namespace, params=stream_query)
-
-    aresponses.add(hostname, list_url, 'get', list_resp, match_querystring=True)
-    aresponses.add(hostname, stream_url, 'get', stream_resp, match_querystring=True)
+    kmock['watch', resource, kmock.namespace(namespace), kmock.params(resourceVersion='123')] << (
+        {'type': 'ADDED', 'object': {'spec': 'c'}},
+        {'type': 'ADDED', 'object': {'spec': 'd'}},
+        {'type': 'ERROR', 'object': {'code': 410}},
+    )
 
     events = []
     async for event in continuous_watch(settings=settings,
