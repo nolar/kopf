@@ -317,7 +317,7 @@ Admission handlers, both validating and mutating, must skip any side effects
 if ``dryrun`` is ``True``. It is ``True`` when a dry-run API request is made,
 e.g. with ``kubectl --dry-run=server ...``.
 
-Regardless of ``dryrun`, the handlers must not make any side effects
+Regardless of ``dryrun``, the handlers must not make any side effects
 unless they declare themselves as ``side_effects=True``.
 
 See more: :doc:`admission`.
