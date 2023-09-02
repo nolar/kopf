@@ -1,5 +1,4 @@
-import dataclasses
-
+import attrs
 import pytest
 from mock import Mock
 
@@ -35,9 +34,9 @@ def handler(request, callback, selector):
         fn=some_fn, id='a', param=None, errors=None, timeout=None, retries=None, backoff=None,
     )
     if request.param in ['annotations', 'labels']:
-        handler = dataclasses.replace(handler, **{request.param: {'known': callback}})
+        handler = attrs.evolve(handler, **{request.param: {'known': callback}})
     else:
-        handler = dataclasses.replace(handler, **{request.param: callback})
+        handler = attrs.evolve(handler, **{request.param: callback})
     return handler
 
 
@@ -69,7 +68,7 @@ def test_callback_is_called_with_matching_resource(
 def test_callback_is_not_called_with_mismatching_resource(
         match_fn, callback, handler, cause,
 ):
-    cause = dataclasses.replace(cause, resource=Resource(group='x', version='y', plural='z'))
+    cause = attrs.evolve(cause, resource=Resource(group='x', version='y', plural='z'))
     result = match_fn(handler=handler, cause=cause)
     assert not result
     assert not callback.called

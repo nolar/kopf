@@ -33,9 +33,9 @@ Some of these aspects are tested separately to be sure they indeed execute
 all possible cases properly. In the top-level event handling, we assume they do,
 and only check for the upper-level behaviour, not all of the input combinations.
 """
-import dataclasses
 from typing import Callable
 
+import attrs
 import pytest
 from mock import Mock
 
@@ -48,7 +48,7 @@ def _auto_mocked(k8s_mocked):
     pass
 
 
-@dataclasses.dataclass(frozen=True, eq=False, order=False)
+@attrs.define(frozen=True, eq=False, order=False)
 class HandlersContainer:
     index_mock: Mock
     event_mock: Mock

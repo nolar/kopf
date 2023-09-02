@@ -25,11 +25,12 @@ and nothing more than that:
 """
 import asyncio
 import collections
-import dataclasses
 import datetime
 import random
 from typing import AsyncIterable, AsyncIterator, Callable, Dict, List, \
                    Mapping, NewType, Optional, Tuple, TypeVar, cast
+
+import attrs
 
 from kopf._cogs.aiokits import aiotoggles
 
@@ -42,7 +43,7 @@ class AccessError(Exception):
     """ Raised when the operator cannot access the cluster API. """
 
 
-@dataclasses.dataclass(frozen=True)
+@attrs.define(frozen=True)
 class ConnectionInfo:
     """
     A single endpoint with specific credentials and connection flags to use.
@@ -70,7 +71,7 @@ _T = TypeVar('_T', bound=object)
 VaultKey = NewType('VaultKey', str)
 
 
-@dataclasses.dataclass
+@attrs.define
 class VaultItem:
     """
     The actual item stored in the vault. It is never exposed externally.

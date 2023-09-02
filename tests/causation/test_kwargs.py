@@ -1,7 +1,7 @@
-import dataclasses
 import logging
 from typing import Type
 
+import attrs
 import pytest
 from mock import Mock
 
@@ -26,7 +26,7 @@ ALL_CAUSES = [
 ALL_FIELDS = {
     field.name
     for cause_cls in ALL_CAUSES
-    for field in dataclasses.fields(cause_cls)
+    for field in attrs.fields(cause_cls)
 } | {'stopped', 'body', 'spec', 'meta', 'status', 'name', 'namespace', 'labels', 'annotations'}
 
 
@@ -38,7 +38,7 @@ def test_indices_overwrite_kwargs(cls: Type[BaseCause], name, attr):
     indexers['index1'] = OperatorIndexer()
     indexers['index2'] = OperatorIndexer()
     indexers[name] = OperatorIndexer()
-    mocks = {field.name: Mock() for field in dataclasses.fields(cls)}
+    mocks = {field.name: Mock() for field in attrs.fields(cls)}
     mocks['indices'] = indexers.indices
     cause = cls(**mocks)
     kwargs = getattr(cause, attr)  # cause.kwargs / cause.sync_kwargs / cause.async_kwargs

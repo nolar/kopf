@@ -1,9 +1,9 @@
 import asyncio
-import dataclasses
 import functools
 import os
 from typing import Any, Callable, Collection, List, Optional
 
+import attrs
 import click
 
 from kopf._cogs.aiokits import aioadapters
@@ -17,7 +17,7 @@ from kopf._core.reactor import running
 from kopf._kits import loops
 
 
-@dataclasses.dataclass()
+@attrs.define
 class CLIControls:
     """ `KopfRunner` controls, which are impossible to pass via CLI. """
     ready_flag: Optional[aioadapters.Flag] = None

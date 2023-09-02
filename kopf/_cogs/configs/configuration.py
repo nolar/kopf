@@ -26,15 +26,16 @@ the root object, while keeping the legacy names for backward compatibility.
     used interchangeably -- but so that it is understandable what is meant.
 """
 import concurrent.futures
-import dataclasses
 import logging
 from typing import Iterable, Optional, Union
+
+import attrs
 
 from kopf._cogs.configs import diffbase, progress
 from kopf._cogs.structs import reviews
 
 
-@dataclasses.dataclass
+@attrs.define
 class ProcessSettings:
     """
     Settings for Kopf's OS processes: e.g. when started via CLI as `kopf run`.
@@ -59,7 +60,7 @@ class ProcessSettings:
     """
 
 
-@dataclasses.dataclass
+@attrs.define
 class PostingSettings:
 
     enabled: bool = True
@@ -81,7 +82,7 @@ class PostingSettings:
     """
 
 
-@dataclasses.dataclass
+@attrs.define
 class PeeringSettings:
 
     name: str = 'default'
@@ -162,7 +163,7 @@ class PeeringSettings:
         self.clusterwide = not value
 
 
-@dataclasses.dataclass
+@attrs.define
 class WatchingSettings:
 
     server_timeout: Optional[float] = None
@@ -187,7 +188,7 @@ class WatchingSettings:
     """
 
 
-@dataclasses.dataclass
+@attrs.define
 class BatchingSettings:
     """
     Settings for how raw events are batched and processed.
@@ -224,7 +225,7 @@ class BatchingSettings:
     """
 
 
-@dataclasses.dataclass
+@attrs.define
 class ScanningSettings:
     """
     Settings for dynamic runtime observation of the cluster's setup.
@@ -249,7 +250,7 @@ class ScanningSettings:
     """
 
 
-@dataclasses.dataclass
+@attrs.define
 class AdmissionSettings:
 
     server: Optional[reviews.WebhookServerProtocol] = None
@@ -290,14 +291,13 @@ class AdmissionSettings:
     """
 
 
-@dataclasses.dataclass
+@attrs.define
 class ExecutionSettings:
     """
     Settings for synchronous handlers execution (e.g. thread-/process-pools).
     """
 
-    executor: concurrent.futures.Executor = dataclasses.field(
-        default_factory=concurrent.futures.ThreadPoolExecutor)
+    executor: concurrent.futures.Executor = attrs.Factory(concurrent.futures.ThreadPoolExecutor)
     """
     The executor to be used for synchronous handler invocation.
 
@@ -328,7 +328,7 @@ class ExecutionSettings:
             raise TypeError("Current executor does not support `max_workers`.")
 
 
-@dataclasses.dataclass
+@attrs.define
 class NetworkingSettings:
 
     request_timeout: Optional[float] = 5 * 60  # == aiohttp.client.DEFAULT_TIMEOUT
@@ -353,7 +353,7 @@ class NetworkingSettings:
     """
 
 
-@dataclasses.dataclass
+@attrs.define
 class PersistenceSettings:
 
     finalizer: str = 'kopf.zalando.org/KopfFinalizerMarker'
@@ -362,20 +362,18 @@ class PersistenceSettings:
     from being deleted without framework's/operator's permission.
     """
 
-    progress_storage: progress.ProgressStorage = dataclasses.field(
-        default_factory=progress.SmartProgressStorage)
+    progress_storage: progress.ProgressStorage = attrs.Factory(progress.SmartProgressStorage)
     """
     How to persist the handlers' state between multiple handling cycles.
     """
 
-    diffbase_storage: diffbase.DiffBaseStorage = dataclasses.field(
-        default_factory=diffbase.AnnotationsDiffBaseStorage)
+    diffbase_storage: diffbase.DiffBaseStorage = attrs.Factory(diffbase.AnnotationsDiffBaseStorage)
     """
     How the resource's essence (non-technical, contentful fields) are stored.
     """
 
 
-@dataclasses.dataclass
+@attrs.define
 class BackgroundSettings:
     """
     Settings for background routines in general, daemons & timers specifically.
@@ -434,16 +432,16 @@ class BackgroundSettings:
     """
 
 
-@dataclasses.dataclass
+@attrs.define
 class OperatorSettings:
-    process: ProcessSettings = dataclasses.field(default_factory=ProcessSettings)
-    posting: PostingSettings = dataclasses.field(default_factory=PostingSettings)
-    peering: PeeringSettings = dataclasses.field(default_factory=PeeringSettings)
-    watching: WatchingSettings = dataclasses.field(default_factory=WatchingSettings)
-    batching: BatchingSettings = dataclasses.field(default_factory=BatchingSettings)
-    scanning: ScanningSettings = dataclasses.field(default_factory=ScanningSettings)
-    admission: AdmissionSettings =dataclasses.field(default_factory=AdmissionSettings)
-    execution: ExecutionSettings = dataclasses.field(default_factory=ExecutionSettings)
-    background: BackgroundSettings = dataclasses.field(default_factory=BackgroundSettings)
-    networking: NetworkingSettings = dataclasses.field(default_factory=NetworkingSettings)
-    persistence: PersistenceSettings = dataclasses.field(default_factory=PersistenceSettings)
+    process: ProcessSettings = attrs.Factory(ProcessSettings)
+    posting: PostingSettings = attrs.Factory(PostingSettings)
+    peering: PeeringSettings = attrs.Factory(PeeringSettings)
+    watching: WatchingSettings = attrs.Factory(WatchingSettings)
+    batching: BatchingSettings = attrs.Factory(BatchingSettings)
+    scanning: ScanningSettings = attrs.Factory(ScanningSettings)
+    admission: AdmissionSettings =attrs.Factory(AdmissionSettings)
+    execution: ExecutionSettings = attrs.Factory(ExecutionSettings)
+    background: BackgroundSettings = attrs.Factory(BackgroundSettings)
+    networking: NetworkingSettings = attrs.Factory(NetworkingSettings)
+    persistence: PersistenceSettings = attrs.Factory(PersistenceSettings)

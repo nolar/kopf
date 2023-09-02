@@ -1,6 +1,5 @@
-import dataclasses
-
 import aiohttp.web
+import attrs
 import pytest
 
 from kopf._cogs.clients.errors import APIError
@@ -33,7 +32,7 @@ async def test_without_subresources(
 
 async def test_status_as_subresource_with_combined_payload(
         resp_mocker, aresponses, hostname, settings, resource, namespace, logger):
-    resource = dataclasses.replace(resource, subresources=['status'])
+    resource = attrs.evolve(resource, subresources=['status'])
 
     # Simulate Kopf's initial state and intention.
     patch = Patch({'spec': {'x': 'y'}, 'status': {'s': 't'}})
@@ -77,7 +76,7 @@ async def test_status_as_subresource_with_combined_payload(
 
 async def test_status_as_subresource_with_object_fields_only(
         resp_mocker, aresponses, hostname, settings, resource, namespace, logger):
-    resource = dataclasses.replace(resource, subresources=['status'])
+    resource = attrs.evolve(resource, subresources=['status'])
 
     # Simulate Kopf's initial state and intention.
     patch = Patch({'spec': {'x': 'y'}})
@@ -118,7 +117,7 @@ async def test_status_as_subresource_with_object_fields_only(
 
 async def test_status_as_subresource_with_status_fields_only(
         resp_mocker, aresponses, hostname, settings, resource, namespace, logger):
-    resource = dataclasses.replace(resource, subresources=['status'])
+    resource = attrs.evolve(resource, subresources=['status'])
 
     # Simulate Kopf's initial state and intention.
     patch = Patch({'status': {'s': 't'}})
