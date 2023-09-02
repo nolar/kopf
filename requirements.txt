@@ -11,6 +11,7 @@ coveralls
 freezegun
 import-linter
 isort
+looptime
 lxml
 # Generally, `unittest.mock` is enough, but it lacks `AsyncMock` for Py 3.7.
 # TODO: Once 3.7 is removed (Jun 2023), roll back to unittest.mock.

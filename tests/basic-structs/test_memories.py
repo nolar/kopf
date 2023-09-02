@@ -11,7 +11,7 @@ BODY: Body = {
 }
 
 
-def test_creation_with_defaults():
+async def test_creation_with_defaults():
     ResourceMemory()
 
 

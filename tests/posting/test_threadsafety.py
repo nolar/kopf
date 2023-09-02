@@ -33,37 +33,19 @@ posting is not thread-safe. Otherwise, it wakes up on ``queue.get()`` instantly.
 If thread safety is not ensured, the operators get sporadic errors regarding
 thread-unsafe calls, which are difficult to catch and reproduce.
 """
-
 import asyncio
 import contextvars
 import functools
 import threading
 import time
 
+import looptime
 import pytest
 
 from kopf import event
 
 OBJ1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
         'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1'}}
-
-
-@pytest.fixture()
-def awakener(event_loop):
-    handles = []
-
-    def noop():
-        pass
-
-    def awaken_fn(delay, fn=noop):
-        handle = event_loop.call_later(delay, fn)
-        handles.append(handle)
-
-    try:
-        yield awaken_fn
-    finally:
-        for handle in handles:
-            handle.cancel()
 
 
 @pytest.fixture()
@@ -87,44 +69,59 @@ def threader():
             thread.join()
 
 
-async def test_nonthreadsafe_indeed_fails(timer, awakener, threader, event_queue, event_queue_loop):
+@pytest.mark.looptime(False)
+async def test_nonthreadsafe_indeed_fails(chronometer, threader, event_queue, event_loop):
+    thread_was_called = threading.Event()
 
     def thread_fn():
+        thread_was_called.set()
         event_queue.put_nowait(object())
 
-    awakener(0.7)
-    threader(0.3, thread_fn)
+    threader(0.5, lambda: event_loop.call_soon_threadsafe(lambda: None))
+    threader(0.2, thread_fn)
 
-    with timer:
+    with chronometer, looptime.Chronometer(event_loop.time) as loopometer:
         await event_queue.get()
 
-    assert 0.6 <= timer.seconds <= 0.8
+    assert 0.5 <= chronometer.seconds < 0.6
+    assert 0.5 <= loopometer.seconds < 0.6
+    assert thread_was_called.is_set()
 
 
-async def test_threadsafe_indeed_works(timer, awakener, threader, event_queue, event_queue_loop):
+@pytest.mark.looptime(False)
+async def test_threadsafe_indeed_works(chronometer, threader, event_queue, event_loop):
+    thread_was_called = threading.Event()
 
     def thread_fn():
-        asyncio.run_coroutine_threadsafe(event_queue.put(object()), loop=event_queue_loop)
+        thread_was_called.set()
+        asyncio.run_coroutine_threadsafe(event_queue.put(object()), loop=event_loop)
 
-    awakener(0.7)
-    threader(0.3, thread_fn)
+    threader(0.5, lambda: event_loop.call_soon_threadsafe(lambda: None))
+    threader(0.2, thread_fn)
 
-    with timer:
+    with chronometer, looptime.Chronometer(event_loop.time) as loopometer:
         await event_queue.get()
 
-    assert 0.2 <= timer.seconds <= 0.4
+    assert 0.2 <= chronometer.seconds < 0.3
+    assert 0.2 <= loopometer.seconds < 0.3
+    assert thread_was_called.is_set()
 
 
-async def test_queueing_is_threadsafe(timer, awakener, threader, event_queue, event_queue_loop,
-                                      settings_via_contextvar):
+@pytest.mark.looptime(False)
+@pytest.mark.usefixtures('event_queue_loop', 'settings_via_contextvar')
+async def test_queueing_is_threadsafe(chronometer, threader, event_queue, event_loop):
+    thread_was_called = threading.Event()
 
     def thread_fn():
+        thread_was_called.set()
         event(OBJ1, type='type1', reason='reason1', message='message1')
 
-    awakener(0.7)
-    threader(0.3, thread_fn)
+    threader(0.5, lambda: event_loop.call_soon_threadsafe(lambda: None))
+    threader(0.2, thread_fn)
 
-    with timer:
+    with chronometer, looptime.Chronometer(event_loop.time) as loopometer:
         await event_queue.get()
 
-    assert 0.2 <= timer.seconds <= 0.4
+    assert 0.2 <= chronometer.seconds < 0.3
+    assert 0.2 <= loopometer.seconds < 0.3
+    assert thread_was_called.is_set()

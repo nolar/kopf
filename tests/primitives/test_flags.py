@@ -133,26 +133,26 @@ async def test_waiting_of_none_does_nothing():
     await wait_flag(None)
 
 
-async def test_waiting_for_unraised_times_out(flag, timer):
-    with pytest.raises(asyncio.TimeoutError), timer:
-        await asyncio.wait_for(wait_flag(flag), timeout=0.1)
-    assert timer.seconds >= 0.099  # uvloop finishes it earlier than 0.1
+async def test_waiting_for_unraised_times_out(flag, looptime):
+    # Beware: sync primitives consume the real time.
+    with pytest.raises(asyncio.TimeoutError):
+        await asyncio.wait_for(wait_flag(flag), timeout=0.123)
+    assert looptime == 0.123
 
 
-async def test_waiting_for_preraised_is_instant(flag, timer):
+async def test_waiting_for_preraised_is_instant(flag, looptime):
     await raise_flag(flag)  # tested separately above
-    with timer:
-        await wait_flag(flag)
-    assert timer.seconds < 0.5  # near-instant, plus code overhead
+    await wait_flag(flag)
+    assert looptime == 0
 
 
-async def test_waiting_for_raised_during_the_wait(flag, timer):
+async def test_waiting_for_raised_during_the_wait(flag, looptime):
 
     async def raise_delayed(delay: float) -> None:
         await asyncio.sleep(delay)
         await raise_flag(flag)  # tested separately above
 
-    asyncio.create_task(raise_delayed(0.2))
-    with timer:
-        await wait_flag(flag)
-    assert 0.2 <= timer.seconds < 0.5  # near-instant once raised
+    # Beware: sync primitives consume the real time.
+    asyncio.create_task(raise_delayed(0.123))
+    await wait_flag(flag)
+    assert looptime == 0.123

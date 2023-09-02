@@ -112,7 +112,7 @@ def insights_resources(request, registry, insights):
 @pytest.mark.parametrize('decorator', [kopf.on.validate, kopf.on.mutate])
 @pytest.mark.parametrize('etype', ['ADDED', 'MODIFIED'])
 async def test_nonwatchable_resources_are_ignored(
-        settings, registry, apis_mock, group1_mock, timer, etype, decorator, insights):
+        settings, registry, apis_mock, group1_mock, looptime, etype, decorator, insights):
 
     @decorator('group1', 'version1', 'plural1')
     def fn(**_): pass
@@ -124,19 +124,18 @@ async def test_nonwatchable_resources_are_ignored(
         await process_discovered_resource_event(
             insights=insights, raw_event=e1, registry=registry, settings=settings)
 
-    task = asyncio.create_task(delayed_injection(0.1))
-    with timer:
-        async with insights.revised:
-            await insights.revised.wait()
+    task = asyncio.create_task(delayed_injection(1.23))
+    async with insights.revised:
+        await insights.revised.wait()
     await task
-    assert 0.1 < timer.seconds < 1.0
+    assert looptime == 1.23
     assert not insights.watched_resources
     assert apis_mock.called
     assert group1_mock.called
 
 
 async def test_initial_listing_is_ignored(
-        settings, registry, apis_mock, group1_mock, insights):
+        settings, registry, apis_mock, group1_mock, looptime, insights):
 
     e1 = RawEvent(type=None, object=RawBody(spec={'group': 'group1'}))
 
@@ -148,8 +147,10 @@ async def test_initial_listing_is_ignored(
     task = asyncio.create_task(delayed_injection(0))
     with pytest.raises(asyncio.TimeoutError):
         async with insights.revised:
-            await asyncio.wait_for(insights.revised.wait(), timeout=0.1)
+            await asyncio.wait_for(insights.revised.wait(), timeout=1.23)
     await task
+
+    assert looptime == 1.23
     assert not insights.indexed_resources
     assert not insights.watched_resources
     assert not insights.webhook_resources
@@ -159,7 +160,7 @@ async def test_initial_listing_is_ignored(
 
 @pytest.mark.parametrize('etype', ['ADDED', 'MODIFIED'])
 async def test_followups_for_addition(
-        settings, registry, apis_mock, group1_mock, timer, etype, insights, insights_resources):
+        settings, registry, apis_mock, group1_mock, looptime, etype, insights, insights_resources):
 
     e1 = RawEvent(type=etype, object=RawBody(spec={'group': 'group1'}))
     r1 = Resource(group='group1', version='version1', plural='plural1')
@@ -169,12 +170,12 @@ async def test_followups_for_addition(
         await process_discovered_resource_event(
             insights=insights, raw_event=e1, registry=registry, settings=settings)
 
-    task = asyncio.create_task(delayed_injection(0.1))
-    with timer:
-        async with insights.revised:
-            await insights.revised.wait()
+    task = asyncio.create_task(delayed_injection(1.23))
+    async with insights.revised:
+        await insights.revised.wait()
     await task
-    assert 0.1 < timer.seconds < 1.0
+
+    assert looptime == 1.23
     assert insights_resources == {r1}
     assert apis_mock.called
     assert group1_mock.called
@@ -182,7 +183,7 @@ async def test_followups_for_addition(
 
 @pytest.mark.parametrize('etype', ['ADDED', 'MODIFIED', 'DELETED'])
 async def test_followups_for_deletion_of_resource(
-        settings, registry, apis_mock, group1_empty_mock, timer, etype,
+        settings, registry, apis_mock, group1_empty_mock, looptime, etype,
         insights, insights_resources):
 
     e1 = RawEvent(type=etype, object=RawBody(spec={'group': 'group1'}))
@@ -194,12 +195,12 @@ async def test_followups_for_deletion_of_resource(
         await process_discovered_resource_event(
             insights=insights, raw_event=e1, registry=registry, settings=settings)
 
-    task = asyncio.create_task(delayed_injection(0.1))
-    with timer:
-        async with insights.revised:
-            await insights.revised.wait()
+    task = asyncio.create_task(delayed_injection(1.23))
+    async with insights.revised:
+        await insights.revised.wait()
     await task
-    assert 0.1 < timer.seconds < 1.0
+
+    assert looptime == 1.23
     assert not insights_resources
     assert apis_mock.called
     assert group1_empty_mock.called
@@ -207,7 +208,7 @@ async def test_followups_for_deletion_of_resource(
 
 @pytest.mark.parametrize('etype', ['ADDED', 'MODIFIED', 'DELETED'])
 async def test_followups_for_deletion_of_group(
-        settings, registry, apis_mock, group1_404mock, timer, etype, insights, insights_resources):
+        settings, registry, apis_mock, group1_404mock, looptime, etype, insights, insights_resources):
 
     e1 = RawEvent(type=etype, object=RawBody(spec={'group': 'group1'}))
     r1 = Resource(group='group1', version='version1', plural='plural1')
@@ -218,12 +219,12 @@ async def test_followups_for_deletion_of_group(
         await process_discovered_resource_event(
             insights=insights, raw_event=e1, registry=registry, settings=settings)
 
-    task = asyncio.create_task(delayed_injection(0.1))
-    with timer:
-        async with insights.revised:
-            await insights.revised.wait()
+    task = asyncio.create_task(delayed_injection(1.23))
+    async with insights.revised:
+        await insights.revised.wait()
     await task
-    assert 0.1 < timer.seconds < 1.0
+
+    assert looptime == 1.23
     assert not insights_resources
     assert apis_mock.called
     assert group1_404mock.called
@@ -231,7 +232,7 @@ async def test_followups_for_deletion_of_group(
 
 @pytest.mark.parametrize('etype', ['DELETED'])
 async def test_backbone_is_filled(
-        settings, registry, core_mock, corev1_mock, timer, etype, insights):
+        settings, registry, core_mock, corev1_mock, looptime, etype, insights):
 
     e1 = RawEvent(type=etype, object=RawBody(spec={'group': ''}))
 
@@ -240,11 +241,11 @@ async def test_backbone_is_filled(
         await process_discovered_resource_event(
             insights=insights, raw_event=e1, registry=registry, settings=settings)
 
-    task = asyncio.create_task(delayed_injection(0.1))
-    with timer:
-        await insights.backbone.wait_for(NAMESPACES)
+    task = asyncio.create_task(delayed_injection(1.23))
+    await insights.backbone.wait_for(NAMESPACES)
     await task
-    assert 0.1 < timer.seconds < 1.0
+
+    assert looptime == 1.23
     assert NAMESPACES in insights.backbone
     assert core_mock.called
     assert corev1_mock.called

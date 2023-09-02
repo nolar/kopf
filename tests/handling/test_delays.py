@@ -6,6 +6,7 @@ import freezegun
 import pytest
 
 import kopf
+from kopf._cogs.configs.progress import ProgressRecord
 from kopf._cogs.structs.ephemera import Memo
 from kopf._core.actions.application import WAITING_KEEPALIVE_INTERVAL
 from kopf._core.actions.execution import TemporaryError
@@ -51,7 +52,6 @@ async def test_delayed_handlers_progress(
     assert handlers.delete_mock.call_count == (1 if cause_reason == Reason.DELETE else 0)
     assert handlers.resume_mock.call_count == (1 if cause_reason == Reason.RESUME else 0)
 
-    assert not k8s_mocked.sleep.called
     assert k8s_mocked.patch.called
 
     fname = f'{cause_reason}_fn'
@@ -71,21 +71,22 @@ async def test_delayed_handlers_progress(
 ], ids=['fast', 'slow'])
 async def test_delayed_handlers_sleep(
         registry, settings, handlers, resource, cause_mock, cause_reason,
-        caplog, assert_logs, k8s_mocked, now, delayed_iso, delay):
+        caplog, assert_logs, k8s_mocked, now, delayed_iso, delay, looptime):
     caplog.set_level(logging.DEBUG)
+    basetime = datetime.datetime.utcnow()  # any "future" time works and affects nothing as long as it is the same
 
     # Simulate the original persisted state of the resource.
     # Make sure the finalizer is added since there are mandatory deletion handlers.
-    started_dt = datetime.datetime.fromisoformat('2000-01-01T00:00:00')  # long time ago is fine.
-    delayed_dt = datetime.datetime.fromisoformat(delayed_iso)
+    record = ProgressRecord(started='2000-01-01T00:00:00', delayed=delayed_iso)  # a long time ago
+    state_dict = HandlerState.from_storage(record, basetime=basetime).as_in_storage()
     event_type = None if cause_reason == Reason.RESUME else 'irrelevant'
     event_body = {
         'metadata': {'finalizers': [settings.persistence.finalizer]},
         'status': {'kopf': {'progress': {
-            'create_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_in_storage(),
-            'update_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_in_storage(),
-            'delete_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_in_storage(),
-            'resume_fn': HandlerState(started=started_dt, delayed=delayed_dt).as_in_storage(),
+            'create_fn': state_dict,
+            'update_fn': state_dict,
+            'delete_fn': state_dict,
+            'resume_fn': state_dict,
         }}}
     }
     cause_mock.reason = cause_reason
@@ -113,8 +114,7 @@ async def test_delayed_handlers_sleep(
     assert 'dummy' in k8s_mocked.patch.call_args_list[-1][1]['payload']['status']['kopf']
 
     # The duration of sleep should be as expected.
-    assert k8s_mocked.sleep.called
-    assert k8s_mocked.sleep.call_args_list[0][0][0] == delay
+    assert looptime == delay
 
     assert_logs([
         r"Sleeping for ([\d\.]+|[\d\.]+ \(capped [\d\.]+\)) seconds",

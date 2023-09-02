@@ -138,23 +138,23 @@ async def test_parsing_in_streams(
     (delete, 'delete'),
 ])
 async def test_direct_timeout_in_requests(
-        resp_mocker, aresponses, hostname, fn, method, settings, logger, timer):
+        resp_mocker, aresponses, hostname, fn, method, settings, logger, looptime):
 
     async def serve_slowly():
-        await asyncio.sleep(1.0)
+        await asyncio.sleep(10)
         return aiohttp.web.json_response({})
 
     mock = resp_mocker(side_effect=serve_slowly)
     aresponses.add(hostname, '/url', method, mock)
 
-    with timer, pytest.raises(asyncio.TimeoutError):
-        timeout = aiohttp.ClientTimeout(total=0.1)
+    with pytest.raises(asyncio.TimeoutError):
+        timeout = aiohttp.ClientTimeout(total=1.23)
         # aiohttp raises an asyncio.TimeoutError which is automatically retried.
         # To reduce the test duration we disable retries for this test.
         settings.networking.error_backoffs = None
         await fn('/url', timeout=timeout, settings=settings, logger=logger)
 
-    assert 0.1 < timer.seconds < 0.2
+    assert looptime == 1.23
 
 
 @pytest.mark.parametrize('fn, method', [
@@ -164,85 +164,86 @@ async def test_direct_timeout_in_requests(
     (delete, 'delete'),
 ])
 async def test_settings_timeout_in_requests(
-        resp_mocker, aresponses, hostname, fn, method, settings, logger, timer):
+        resp_mocker, aresponses, hostname, fn, method, settings, logger, looptime):
 
     async def serve_slowly():
-        await asyncio.sleep(1.0)
+        await asyncio.sleep(10)
         return aiohttp.web.json_response({})
 
     mock = resp_mocker(side_effect=serve_slowly)
     aresponses.add(hostname, '/url', method, mock)
 
-    with timer, pytest.raises(asyncio.TimeoutError):
-        settings.networking.request_timeout = 0.1
+    with pytest.raises(asyncio.TimeoutError):
+        settings.networking.request_timeout = 1.23
         # aiohttp raises an asyncio.TimeoutError which is automatically retried.
         # To reduce the test duration we disable retries for this test.
         settings.networking.error_backoffs = None
         await fn('/url', settings=settings, logger=logger)
 
-    assert 0.1 < timer.seconds < 0.2
+    assert looptime == 1.23
 
 
 @pytest.mark.parametrize('method', ['get'])  # the only supported method at the moment
 async def test_direct_timeout_in_streams(
-        resp_mocker, aresponses, hostname, method, settings, logger, timer):
+        resp_mocker, aresponses, hostname, method, settings, logger, looptime):
 
     async def serve_slowly():
-        await asyncio.sleep(1.0)
+        await asyncio.sleep(10)
         return "{}"
 
     mock = resp_mocker(side_effect=serve_slowly)
     aresponses.add(hostname, '/url', method, mock)
 
-    with timer, pytest.raises(asyncio.TimeoutError):
-        timeout = aiohttp.ClientTimeout(total=0.1)
+    with pytest.raises(asyncio.TimeoutError):
+        timeout = aiohttp.ClientTimeout(total=1.23)
         # aiohttp raises an asyncio.TimeoutError which is automatically retried.
         # To reduce the test duration we disable retries for this test.
         settings.networking.error_backoffs = None
         async for _ in stream('/url', timeout=timeout, settings=settings, logger=logger):
             pass
 
-    assert 0.1 < timer.seconds < 0.2
+    assert looptime == 1.23
 
 
 @pytest.mark.parametrize('method', ['get'])  # the only supported method at the moment
 async def test_settings_timeout_in_streams(
-        resp_mocker, aresponses, hostname, method, settings, logger, timer):
+        resp_mocker, aresponses, hostname, method, settings, logger, looptime):
 
     async def serve_slowly():
-        await asyncio.sleep(1.0)
+        await asyncio.sleep(10)
         return "{}"
 
     mock = resp_mocker(side_effect=serve_slowly)
     aresponses.add(hostname, '/url', method, mock)
 
-    with timer, pytest.raises(asyncio.TimeoutError):
-        settings.networking.request_timeout = 0.1
+    with pytest.raises(asyncio.TimeoutError):
+        settings.networking.request_timeout = 1.23
         # aiohttp raises an asyncio.TimeoutError which is automatically retried.
         # To reduce the test duration we disable retries for this test.
         settings.networking.error_backoffs = None
         async for _ in stream('/url', settings=settings, logger=logger):
             pass
 
-    assert 0.1 < timer.seconds < 0.2
+    assert looptime == 1.23
 
 
-@pytest.mark.parametrize('delay, expected', [
-    pytest.param(0.0, [], id='instant-none'),
-    pytest.param(0.1, [{'fake': 'result1'}], id='fast-single'),
-    pytest.param(9.9, [{'fake': 'result1'}, {'fake': 'result2'}], id='inf-double'),
+@pytest.mark.parametrize('delay, expected_times, expected_items', [
+    pytest.param(0, [], [], id='instant-none'),
+    pytest.param(2, [1], [{'fake': 'result1'}], id='fast-single'),
+    pytest.param(9, [1, 4], [{'fake': 'result1'}, {'fake': 'result2'}], id='inf-double'),
 ])
 @pytest.mark.parametrize('method', ['get'])  # the only supported method at the moment
 async def test_stopper_in_streams(
-        resp_mocker, aresponses, hostname, method, delay, expected, settings, logger):
+        resp_mocker, aresponses, hostname, method, delay, settings, logger, looptime,
+        expected_items, expected_times):
 
     async def stream_slowly(request: aiohttp.web.Request) -> aiohttp.web.StreamResponse:
         response = aiohttp.web.StreamResponse()
         await response.prepare(request)
         try:
-            await asyncio.sleep(0.05)
+            await asyncio.sleep(1)
             await response.write(b'{"fake": "result1"}\n')
-            await asyncio.sleep(0.15)
+            await asyncio.sleep(3)
             await response.write(b'{"fake": "result2"}\n')
             await response.write_eof()
         except ConnectionError:
@@ -255,9 +256,13 @@ async def test_stopper_in_streams(
     asyncio.get_running_loop().call_later(delay, stopper.set_result, None)
 
     items = []
+    times = []
     async for item in stream('/url', stopper=stopper, settings=settings, logger=logger):
         items.append(item)
+        times.append(float(looptime))
 
-    assert items == expected
+    assert items == expected_items
+    assert times == expected_times
 
-    await asyncio.sleep(0.2)  # give the response some time to be cancelled and its tasks closed
+    # Give the response some time to be cancelled and its tasks closed. That is aiohttp's issue.
+    await asyncio.sleep(30)

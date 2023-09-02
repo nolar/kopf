@@ -5,20 +5,21 @@ import pytest
 from kopf._cogs.aiokits.aiobindings import condition_chain
 
 
-async def test_no_triggering():
+async def test_no_triggering(looptime):
     source = asyncio.Condition()
     target = asyncio.Condition()
     task = asyncio.create_task(condition_chain(source, target))
     try:
         with pytest.raises(asyncio.TimeoutError):
             async with target:
-                await asyncio.wait_for(target.wait(), timeout=0.1)
+                await asyncio.wait_for(target.wait(), timeout=1.23)
+        assert looptime == 1.23
     finally:
         task.cancel()
         await asyncio.wait([task])
 
 
-async def test_triggering(event_loop, timer):
+async def test_triggering(event_loop, looptime):
     source = asyncio.Condition()
     target = asyncio.Condition()
     task = asyncio.create_task(condition_chain(source, target))
@@ -28,13 +29,12 @@ async def test_triggering(event_loop, timer):
             async with source:
                 source.notify_all()
 
-        event_loop.call_later(0.1, asyncio.create_task, delayed_trigger())
+        event_loop.call_later(1.23, asyncio.create_task, delayed_trigger())
 
-        with timer:
-            async with target:
-                await target.wait()
+        async with target:
+            await target.wait()
 
-        assert 0.1 <= timer.seconds <= 0.2
+        assert looptime == 1.23
 
     finally:
         task.cancel()

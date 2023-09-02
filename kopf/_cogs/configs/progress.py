@@ -49,7 +49,7 @@ from kopf._cogs.configs import conventions
 from kopf._cogs.structs import bodies, dicts, ids, patches
 
 
-class ProgressRecord(TypedDict, total=True):
+class ProgressRecord(TypedDict, total=False):
     """ A single record stored for persistence of a single handler. """
     started: Optional[str]
     stopped: Optional[str]
