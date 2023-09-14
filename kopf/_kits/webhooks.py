@@ -439,6 +439,22 @@ class WebhookMinikubeServer(WebhookServer):
     DEFAULT_HOST = 'host.minikube.internal'
 
 
+class WebhookDockerDesktopServer(WebhookServer):
+    """A tunnel from inside of Docker Desktop to its host where the operator is
+    running.
+
+    With this tunnel, a developer can develop the webhooks when fully
+    offline, since all the traffic is local and never leaves the host
+    machine.
+
+    The forwarding is maintained by Docker Desktop itself. This tunnel
+    only replaces the endpoints for the Kubernetes webhook and injects
+    an SSL certificate with proper CN/SANs --- to match Kubernetes's SSL
+    validity expectations.
+    """
+    DEFAULT_HOST = "host.docker.internal"
+
+
 class WebhookNgrokTunnel(webhacks.WebhookContextManager):
     """
     Tunnel admission webhook request via an external tunnel: ngrok_.
@@ -582,6 +598,9 @@ class ClusterDetector:
             return WebhookK3dServer.DEFAULT_HOST
         elif subject_cn == 'minikube' or issuer_cn == 'minikubeCA':
             return WebhookMinikubeServer.DEFAULT_HOST
+        elif any(alt_name for alt_name in certpath.first.subject_alt_name_value.native if "docker" in alt_name):
+            return WebhookDockerDesktopServer.DEFAULT_HOST
+
         else:
             # The default timeouts & backoffs are used to retrieve the cluster
             # version, not those from the operator. It is too difficult to get

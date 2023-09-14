@@ -7,7 +7,8 @@ import pytest
 
 from kopf._core.engines.admission import AmbiguousResourceError, MissingDataError, \
                                          UnknownResourceError, WebhookError
-from kopf._kits.webhooks import WebhookK3dServer, WebhookMinikubeServer, WebhookServer
+from kopf._kits.webhooks import WebhookDockerDesktopServer, WebhookK3dServer, \
+                                WebhookMinikubeServer, WebhookServer
 
 
 async def test_starts_as_http_ipv4(responder):
@@ -72,6 +73,7 @@ async def test_webhookserver_starts_as_https_with_provided_cert(
 @pytest.mark.parametrize('cls, url', [
     (WebhookK3dServer, 'https://host.k3d.internal:22533/p1/p2'),
     (WebhookMinikubeServer, 'https://host.minikube.internal:22533/p1/p2'),
+    (WebhookDockerDesktopServer, 'https://host.docker.internal:22533/p1/p2'),
 ])
 async def test_webhookserver_flavours_inject_hostnames(
         certfile, pkeyfile, certpkey, responder, cls, url):

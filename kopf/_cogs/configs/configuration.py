@@ -266,7 +266,7 @@ class AdmissionSettings:
     Kopf provides several webhook configs, servers, and tunnels out of the box
     (they also serve as examples for implementing custom tunnels).
     `kopf.WebhookServer`,
-    `kopf.WebhookK3dServer`, `kopf.WebhookMinikubeServer`,
+    `kopf.WebhookK3dServer`, `kopf.WebhookMinikubeServer`, `kopf.WebhookDockerDesktopServer`,
     `kopf.WebhookNgrokTunnel`, `kopf.WebhookInletsTunnel`.
 
     .. seealso::
