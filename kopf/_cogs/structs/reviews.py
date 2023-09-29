@@ -58,7 +58,7 @@ class RequestPayload(TypedDict):
     userInfo: UserInfo
     name: str
     namespace: Optional[str]
-    operation: Operations
+    operation: Operation
     options: Union[None, CreateOptions, UpdateOptions, DeleteOptions]
     dryRun: bool
     object: bodies.RawBody

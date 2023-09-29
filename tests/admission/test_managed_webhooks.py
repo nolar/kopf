@@ -128,10 +128,12 @@ def test_flat_options_are_mapped(registry, resource, decorator, opts, key, val):
 
 @pytest.mark.parametrize('opts, key, val', [
     (dict(), 'operations', ['*']),
-    (dict(operations=['CREATE']), 'operations', ['CREATE']),
-    (dict(operations=['UPDATE']), 'operations', ['UPDATE']),
-    (dict(operations=['DELETE']), 'operations', ['DELETE']),
-    (dict(operations=['CREATE','UPDATE']), 'operations', ['CREATE','UPDATE']),
+    (dict(operation='CREATE'), 'operations', ['CREATE']),
+    (dict(operation='UPDATE'), 'operations', ['UPDATE']),
+    (dict(operation='DELETE'), 'operations', ['DELETE']),
+    (dict(operation=['CREATE','UPDATE']), 'operations', ['CREATE','UPDATE']),
+    (dict(operation=['CREATE','DELETE']), 'operations', ['CREATE','DELETE']),
+    (dict(operation=['UPDATE','DELETE']), 'operations', ['UPDATE','DELETE']),
 ])
 @pytest.mark.parametrize('decorator', [kopf.on.validate, kopf.on.mutate])
 def test_rule_options_are_mapped(registry, resource, decorator, opts, key, val):
