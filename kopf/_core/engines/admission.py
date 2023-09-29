@@ -426,7 +426,7 @@ def build_webhooks(
                     else (
                         handler.operation if isinstance(handler.operation,list) 
                         else [handler.operation]
-					),
+                    ),
                     'scope': '*',  # doesn't matter since a specific resource is used.
                 }
                 for resource in resources

@@ -87,7 +87,7 @@ from kopf._cogs.structs.references import (
 from kopf._cogs.structs.reviews import (
     WebhookClientConfigService,
     WebhookClientConfig,
-	Operation,
+    Operation,
     Operations,
     UserInfo,
     Headers,
@@ -204,7 +204,7 @@ __all__ = [
     'WebhookClientConfigService',
     'WebhookClientConfig',
     'Operations',
-	'Operation',
+    'Operation',
     'UserInfo',
     'Headers',
     'SSLPeer',
