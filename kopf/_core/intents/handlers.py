@@ -40,7 +40,7 @@ class ResourceHandler(execution.Handler):
 class WebhookHandler(ResourceHandler):
     fn: callbacks.WebhookFn  # typing clarification
     reason: causes.WebhookType
-    operation: Optional[str]
+    operations: Optional[list[str]]
     subresource: Optional[str]
     persistent: Optional[bool]
     side_effects: Optional[bool]
@@ -68,9 +68,13 @@ class ChangingHandler(ResourceHandler):
     fn: callbacks.ChangingFn  # typing clarification
     reason: Optional[causes.Reason]
     initial: Optional[bool]
-    deleted: Optional[bool]  # used for mixed-in (initial==True) @on.resume handlers only.
+    deleted: Optional[
+        bool
+    ]  # used for mixed-in (initial==True) @on.resume handlers only.
     requires_finalizer: Optional[bool]
-    field_needs_change: Optional[bool]  # to identify on-field/on-update with support for old=/new=.
+    field_needs_change: Optional[
+        bool
+    ]  # to identify on-field/on-update with support for old=/new=.
     old: Optional[filters.ValueFilter]
     new: Optional[filters.ValueFilter]
 
@@ -84,8 +88,12 @@ class SpawningHandler(ResourceHandler):
 @dataclasses.dataclass(frozen=True)
 class DaemonHandler(SpawningHandler):
     fn: callbacks.DaemonFn  # typing clarification
-    cancellation_backoff: Optional[float]  # how long to wait before actual cancellation.
-    cancellation_timeout: Optional[float]  # how long to wait before giving up on cancellation.
+    cancellation_backoff: Optional[
+        float
+    ]  # how long to wait before actual cancellation.
+    cancellation_timeout: Optional[
+        float
+    ]  # how long to wait before giving up on cancellation.
     cancellation_polling: Optional[float]  # how often to check for cancellation status.
 
     def __str__(self) -> str:

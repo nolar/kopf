@@ -87,7 +87,7 @@ from kopf._cogs.structs.references import (
 from kopf._cogs.structs.reviews import (
     WebhookClientConfigService,
     WebhookClientConfig,
-    Operation,
+    Operations,
     UserInfo,
     Headers,
     SSLPeer,
@@ -202,7 +202,7 @@ __all__ = [
     'AdmissionError',
     'WebhookClientConfigService',
     'WebhookClientConfig',
-    'Operation',
+    'Operations',
     'UserInfo',
     'Headers',
     'SSLPeer',

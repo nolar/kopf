@@ -11,6 +11,7 @@ Headers = Mapping[str, str]
 SSLPeer = Mapping[str, Any]
 
 Operation = Literal['CREATE', 'UPDATE', 'DELETE', 'CONNECT']
+Operations = list[Operation]
 
 
 class RequestKind(TypedDict):
@@ -57,7 +58,7 @@ class RequestPayload(TypedDict):
     userInfo: UserInfo
     name: str
     namespace: Optional[str]
-    operation: Operation
+    operation: Operations
     options: Union[None, CreateOptions, UpdateOptions, DeleteOptions]
     dryRun: bool
     object: bodies.RawBody
