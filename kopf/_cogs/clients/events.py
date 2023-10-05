@@ -53,7 +53,7 @@ async def post_event(
     body = {
         'metadata': {
             'namespace': namespace,
-            'generateName': 'kopf-event-',
+            'generateName': settings.posting.event_name_prefix,
         },
 
         'action': 'Action?',
@@ -61,9 +61,9 @@ async def post_event(
         'reason': reason,
         'message': message,
 
-        'reportingComponent': 'kopf',
-        'reportingInstance': 'dev',
-        'source' : {'component': 'kopf'},  # used in the "From" column in `kubectl describe`.
+        'reportingComponent': settings.posting.reporting_component,
+        'reportingInstance': settings.posting.reporting_instance,
+        'source': {'component': settings.posting.reporting_component},  # used in the "From" column in `kubectl describe`.
 
         'involvedObject': full_ref,
 
