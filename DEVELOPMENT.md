@@ -82,7 +82,7 @@ If you use PyCharm, create a Run/Debug Configuration as follows:
 * Mode: `module name`
 * Module name: `kopf`
 * Arguments: `run examples/01-minimal/example.py --verbose`
-* Python Interpreter: anything with Python>=3.7
+* Python Interpreter: anything with Python>=3.8
 
 Stop the console operator, and start the IDE debug session.
 Put a breakpoint in the used operator script on the first line of the function.
