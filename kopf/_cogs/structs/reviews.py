@@ -11,7 +11,6 @@ Headers = Mapping[str, str]
 SSLPeer = Mapping[str, Any]
 
 Operation = Literal['CREATE', 'UPDATE', 'DELETE', 'CONNECT']
-Operations = list[Operation]
 
 
 class RequestKind(TypedDict):

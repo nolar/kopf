@@ -214,7 +214,7 @@ async def test_mutating_handlers_are_selected_for_deletion_if_explicitly_marked(
     def v_fn(**kwargs):
         v_mock(**kwargs)
 
-    @kopf.on.mutate(*resource, operation='DELETE')
+    @kopf.on.mutate(*resource, operations=['DELETE'])
     def m_fn(**kwargs):
         m_mock(**kwargs)
 
