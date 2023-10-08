@@ -40,6 +40,7 @@ async def test_no_error_on_success(
 
     resp = aresponses.Response(
         status=status,
+        reason='oops',
         headers={'Content-Type': 'application/json'},
         text='{"kind": "Status", "code": "xxx", "message": "msg"}',
     )
@@ -67,6 +68,7 @@ async def test_error_with_payload(
 
     resp = aresponses.Response(
         status=status,
+        reason='oops',
         headers={'Content-Type': 'application/json'},
         text='{"kind": "Status", "code": 123, "message": "msg", "details": {"a": "b"}}',
     )
@@ -89,6 +91,7 @@ async def test_error_with_nonjson_payload(
 
     resp = aresponses.Response(
         status=status,
+        reason='oops',
         headers={'Content-Type': 'application/json'},
         text='unparsable json',
     )
@@ -109,6 +112,7 @@ async def test_error_with_parseable_nonk8s_payload(
 
     resp = aresponses.Response(
         status=status,
+        reason='oops',
         headers={'Content-Type': 'application/json'},
         text='{"kind": "NonStatus", "code": "xxx", "message": "msg"}',
     )

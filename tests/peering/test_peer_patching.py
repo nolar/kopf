@@ -116,7 +116,7 @@ async def test_logs_are_logged_when_absent(
     caplog.set_level(0)
     settings.peering.stealth = stealth
     settings.peering.name = 'name0'
-    patch_mock = resp_mocker(return_value=aresponses.Response(status=404))
+    patch_mock = resp_mocker(return_value=aresponses.Response(status=404, reason='oops'))
     url = peering_resource.get_url(name='name0', namespace=peering_namespace)
     aresponses.add(hostname, url, 'patch', patch_mock)
 
