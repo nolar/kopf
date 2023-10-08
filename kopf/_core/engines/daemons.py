@@ -99,7 +99,7 @@ async def spawn_daemons(
                 stopper=stopper,  # for stopping (outside of causes)
                 handler=handler,
                 logger=loggers.LocalObjectLogger(body=cause.body, settings=settings),
-                task=aiotasks.create_task(_runner(
+                task=asyncio.create_task(_runner(
                     settings=settings,
                     daemons=daemons,  # for self-garbage-collection
                     handler=handler,

@@ -145,7 +145,7 @@ async def streaming_block(
     # Create the signalling future for when paused again.
     operator_pause_waiter: aiotasks.Future
     if operator_paused is not None:
-        operator_pause_waiter = aiotasks.create_task(
+        operator_pause_waiter = asyncio.create_task(
             operator_paused.wait_for(True),
             name=f"pause-waiter for {resource}")
     else:
