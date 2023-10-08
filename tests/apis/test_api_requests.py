@@ -45,7 +45,7 @@ async def test_raw_requests_are_not_parsed(
 async def test_server_errors_escalate(
         resp_mocker, aresponses, hostname, method, settings, logger):
 
-    mock = resp_mocker(return_value=aiohttp.web.json_response({}, status=666))
+    mock = resp_mocker(return_value=aiohttp.web.json_response({}, status=666, reason='oops'))
     aresponses.add(hostname, '/url', method, mock)
     with pytest.raises(APIError) as err:
         await request(method, '/url', settings=settings, logger=logger)
