@@ -1,7 +1,7 @@
 import copy
+from unittest.mock import call
 
 import pytest
-from mock import call
 
 import kopf
 from kopf._cogs.structs.bodies import Body, RawBody, RawMeta

@@ -2,7 +2,7 @@
 Rudimentary type [re-]definitions for cross-versioned Python & mypy.
 
 The problem is that new mypy versions often bring type-sheds with StdLib types
-defined as generics, while the old Python runtime (down to 3.7)
+defined as generics, while the old Python runtime (down to 3.8 & 3.9 & 3.10)
 does not support the usual syntax.
 Examples: asyncio.Task, asyncio.Future, logging.LoggerAdapter, and others.
 

@@ -4,8 +4,6 @@ import threading
 import time
 from typing import Awaitable, Generator, Generic, Optional, TypeVar
 
-from kopf._cogs.aiokits import aiotasks
-
 FlagReasonT = TypeVar('FlagReasonT', bound=enum.Flag)
 
 
@@ -168,7 +166,7 @@ class AsyncFlagPromise(FlagWaiter[FlagReasonT],
     def __await__(self) -> Generator[None, None, AsyncFlagWaiter[FlagReasonT]]:
         name = f"time-limited waiting for the daemon stopper {self._setter!r}"
         coro = asyncio.wait_for(self._setter.async_event.wait(), timeout=self._timeout)
-        task = aiotasks.create_task(coro, name=name)
+        task = asyncio.create_task(coro, name=name)
         try:
             yield from task
         except asyncio.TimeoutError:

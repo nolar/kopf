@@ -10,9 +10,8 @@ all function calls with multiple awaiables (e.g. :func:`asyncio.wait`),
 so there is no added overhead; instead, the implicit overhead is made explicit.
 """
 import asyncio
-import sys
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Collection, Coroutine, \
-                   Generator, NamedTuple, Optional, Set, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, Collection, Coroutine, \
+                   NamedTuple, Optional, Set, Tuple, TypeVar
 
 from kopf._cogs.helpers import typedefs
 
@@ -26,17 +25,6 @@ if TYPE_CHECKING:
 else:
     Future = asyncio.Future
     Task = asyncio.Task
-
-# Accept `name=` always, but simulate it for Python 3.7 to do nothing.
-if sys.version_info >= (3, 8):
-    create_task = asyncio.create_task
-else:
-    def create_task(
-            coro: Union[Generator[Any, None, _T], Awaitable[_T]],
-            *,
-            name: Optional[str] = None,  # noqa: W613  # pylint: disable=unused-argument
-    ) -> Task:
-        return asyncio.create_task(coro)
 
 
 async def cancel_coro(
@@ -65,7 +53,7 @@ async def cancel_coro(
         coro.close()  # OR: coro.throw(asyncio.CancelledError())
     except AttributeError:
         # The official way is to create an extra task object, thus to waste some memory.
-        corotask = create_task(coro=coro, name=name)
+        corotask = asyncio.create_task(coro=coro, name=name)
         corotask.cancel()
         try:
             await corotask
@@ -133,7 +121,7 @@ def create_guarded_task(
 
     This is only a shortcut for named task creation (name is used in 2 places).
     """
-    return create_task(
+    return asyncio.create_task(
         name=name,
         coro=guard(
             name=name,
@@ -303,8 +291,8 @@ class Scheduler:
         self._pending_coros: asyncio.Queue[SchedulerJob] = asyncio.Queue()
         self._running_tasks: Set[Task] = set()
         self._cleaning_queue: asyncio.Queue[Task] = asyncio.Queue()
-        self._cleaning_task = create_task(self._task_cleaner(), name=f"task cleaner of {self!r}")
-        self._spawning_task = create_task(self._task_spawner(), name=f"task spawner of {self!r}")
+        self._cleaning_task = asyncio.create_task(self._task_cleaner(), name=f"cleaner of {self!r}")
+        self._spawning_task = asyncio.create_task(self._task_spawner(), name=f"spawner of {self!r}")
 
     def empty(self) -> bool:
         """ Check if the scheduler has nothing to do. """
@@ -371,7 +359,7 @@ class Scheduler:
                 # when they are finished --- to be awaited and released "passively".
                 while self._can_spawn():
                     coro, name = self._pending_coros.get_nowait()  # guaranteed by the predicate
-                    task = create_task(coro=coro, name=name)
+                    task = asyncio.create_task(coro=coro, name=name)
                     task.add_done_callback(self._task_done_callback)
                     self._running_tasks.add(task)
                     if self._closed:

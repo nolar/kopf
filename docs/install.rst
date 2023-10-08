@@ -6,7 +6,7 @@ Installation
 
 Prerequisites:
 
-* Python >= 3.7 (CPython and PyPy are officially tested and supported).
+* Python >= 3.8 (CPython and PyPy are officially tested and supported).
 
 To install Kopf::
 

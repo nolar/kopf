@@ -1,10 +1,10 @@
 import asyncio
 import contextlib
 import time
+from unittest.mock import MagicMock, patch
 
 import freezegun
 import pytest
-from mock import MagicMock, patch
 
 import kopf
 from kopf._cogs.aiokits.aiotoggles import ToggleSet

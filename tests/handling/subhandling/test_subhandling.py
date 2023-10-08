@@ -1,8 +1,8 @@
 import asyncio
 import logging
+from unittest.mock import Mock
 
 import pytest
-from mock import Mock
 
 import kopf
 from kopf._cogs.structs.ephemera import Memo

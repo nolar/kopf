@@ -1,7 +1,7 @@
 import asyncio
+from unittest.mock import Mock
 
 import pytest
-from mock import Mock
 
 from kopf._cogs.aiokits.aiotasks import Scheduler
 

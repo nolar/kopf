@@ -219,17 +219,17 @@ async def spawn_tasks(
     posting.settings_var.set(settings)
 
     # A few common background forever-running infrastructural tasks (irregular root tasks).
-    tasks.append(aiotasks.create_task(
+    tasks.append(asyncio.create_task(
         name="stop-flag checker",
         coro=_stop_flag_checker(
             signal_flag=signal_flag,
             stop_flag=stop_flag)))
-    tasks.append(aiotasks.create_task(
+    tasks.append(asyncio.create_task(
         name="ultimate termination",
         coro=_ultimate_termination(
             settings=settings,
             stop_flag=stop_flag)))
-    tasks.append(aiotasks.create_task(
+    tasks.append(asyncio.create_task(
         name="startup/cleanup activities",
         coro=_startup_cleanup_activities(
             root_tasks=tasks,  # used as a "live" view, populated later.
@@ -433,8 +433,7 @@ async def _stop_flag_checker(
     if signal_flag is not None:
         flags.append(signal_flag)
     if stop_flag is not None:
-        flags.append(aiotasks.create_task(aioadapters.wait_flag(stop_flag),
-                                          name="stop-flag waiter"))
+        flags.append(asyncio.create_task(aioadapters.wait_flag(stop_flag), name="stop-flag waiter"))
 
     # Wait until one of the stoppers is set/raised.
     try:

@@ -42,7 +42,7 @@ jobs:
       fail-fast: false
       matrix:
         install-extras: [ "", "full-auth" ]
-        python-version: [ "3.7", "3.8", "3.9", "3.10", "3.11" ]
+        python-version: [ "3.8", "3.9", "3.10", "3.11" ]
         include:
           - install-extras: "uvloop"
             python-version: "3.11"
@@ -85,7 +85,7 @@ jobs:
       fail-fast: false
       matrix:
         install-extras: [ "", "full-auth" ]
-        python-version: [ "pypy-3.7", "pypy-3.8", "pypy-3.9" ]
+        python-version: [ "pypy-3.8", "pypy-3.9" ]
     name: Python ${{ matrix.python-version }} ${{ matrix.install-extras }}
     runs-on: ubuntu-22.04
     timeout-minutes: 10

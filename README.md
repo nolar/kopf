@@ -125,7 +125,7 @@ That easy! For more features, see the [documentation](https://kopf.readthedocs.i
 
 ## Usage
 
-Python 3.7+ is required:
+Python 3.8+ is required:
 [CPython](https://www.python.org/) and [PyPy](https://www.pypy.org/)
 are officially supported and tested; other Python implementations can work too.
 
