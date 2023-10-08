@@ -422,7 +422,7 @@ def build_webhooks(
                         [resource.plural] if handler.subresource is None else
                         [f'{resource.plural}/{handler.subresource}']
                     ),
-                    'operations': ['*'] if handler.operation is None else [handler.operation],
+                    'operations': list(handler.operations or ['*']),
                     'scope': '*',  # doesn't matter since a specific resource is used.
                 }
                 for resource in resources

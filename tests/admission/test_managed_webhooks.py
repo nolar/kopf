@@ -126,11 +126,15 @@ def test_flat_options_are_mapped(registry, resource, decorator, opts, key, val):
     assert webhooks[0]['admissionReviewVersions'] == ['v1', 'v1beta1']
 
 
+# Mind the different supported collection types for operations, all converted to JSON lists.
 @pytest.mark.parametrize('opts, key, val', [
     (dict(), 'operations', ['*']),
-    (dict(operation='CREATE'), 'operations', ['CREATE']),
-    (dict(operation='UPDATE'), 'operations', ['UPDATE']),
-    (dict(operation='DELETE'), 'operations', ['DELETE']),
+    (dict(operations={'CREATE'}), 'operations', ['CREATE']),
+    (dict(operations={'UPDATE'}), 'operations', ['UPDATE']),
+    (dict(operations={'DELETE'}), 'operations', ['DELETE']),
+    (dict(operations=['CREATE','UPDATE']), 'operations', ['CREATE','UPDATE']),
+    (dict(operations=['CREATE','DELETE']), 'operations', ['CREATE','DELETE']),
+    (dict(operations=['UPDATE','DELETE']), 'operations', ['UPDATE','DELETE']),
 ])
 @pytest.mark.parametrize('decorator', [kopf.on.validate, kopf.on.mutate])
 def test_rule_options_are_mapped(registry, resource, decorator, opts, key, val):
