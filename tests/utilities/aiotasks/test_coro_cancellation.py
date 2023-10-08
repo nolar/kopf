@@ -1,9 +1,9 @@
 import asyncio
 import gc
 import warnings
+from unittest.mock import AsyncMock, Mock
 
 import pytest
-from mock import AsyncMock, Mock
 
 from kopf._cogs.aiokits.aiotasks import cancel_coro
 

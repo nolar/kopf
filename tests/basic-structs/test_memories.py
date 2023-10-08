@@ -1,4 +1,4 @@
-from mock import Mock
+from unittest.mock import Mock
 
 from kopf._cogs.structs.bodies import Body
 from kopf._cogs.structs.ephemera import Memo

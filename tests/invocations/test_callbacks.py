@@ -1,9 +1,9 @@
 import functools
 import logging
 import traceback
+from unittest.mock import Mock
 
 import pytest
-from mock import Mock
 
 from kopf._cogs.structs.bodies import Body
 from kopf._cogs.structs.patches import Patch

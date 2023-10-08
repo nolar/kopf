@@ -1,7 +1,7 @@
 import dataclasses
+from unittest.mock import Mock
 
 import pytest
-from mock import Mock
 
 from kopf._cogs.structs.bodies import Body
 from kopf._cogs.structs.dicts import parse_field

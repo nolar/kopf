@@ -1,5 +1,6 @@
+from unittest.mock import Mock
+
 import pytest
-from mock import Mock
 
 import kopf
 from kopf._cogs.structs.ids import HandlerId

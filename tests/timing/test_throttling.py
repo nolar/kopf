@@ -1,8 +1,8 @@
 import asyncio
 import logging
+from unittest.mock import call
 
 import pytest
-from mock import call
 
 from kopf._core.actions.throttlers import Throttler, throttled
 
