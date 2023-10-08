@@ -43,11 +43,6 @@ async def throttled(
     try:
         yield should_run
 
-    except asyncio.CancelledError:
-        # CancelledError is a BaseException in 3.8 & 3.9, but a regular Exception in 3.7.
-        # Behave as if it is a BaseException -- to enabled tests with async-timeout.
-        raise
-
     except Exception as e:
 
         # If it is not an error-of-interest, escalate normally. BaseExceptions are escalated always.

@@ -3,7 +3,7 @@ import logging
 
 import pytest
 
-from kopf._cogs.aiokits.aiotasks import create_guarded_task, create_task, reraise
+from kopf._cogs.aiokits.aiotasks import create_guarded_task, reraise
 
 
 class Error(Exception):
@@ -97,14 +97,14 @@ async def test_guard_waits_for_the_flag():
 
 
 async def test_reraise_escalates_errors():
-    task = create_task(fail("boo!"))
+    task = asyncio.create_task(fail("boo!"))
     await asyncio.wait([task], timeout=0.01)  # let it start & react
     with pytest.raises(Error):
         await reraise([task])
 
 
 async def test_reraise_skips_cancellations():
-    task = create_task(asyncio.Event().wait())
+    task = asyncio.create_task(asyncio.Event().wait())
     done, pending = await asyncio.wait([task], timeout=0.01)  # let it start
     assert not done
     task.cancel()

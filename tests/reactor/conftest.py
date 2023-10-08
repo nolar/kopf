@@ -1,8 +1,8 @@
 import asyncio
 import functools
+from unittest.mock import AsyncMock
 
 import pytest
-from mock import AsyncMock
 
 from kopf._cogs.clients.watching import infinite_watch
 from kopf._core.reactor.queueing import watcher, worker as original_worker

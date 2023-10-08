@@ -58,7 +58,7 @@ async def test_raises_api_errors(
         resp_mocker, aresponses, hostname, settings, status, resource, namespace, logger,
         cluster_resource, namespaced_resource):
 
-    post_mock = resp_mocker(return_value=aresponses.Response(status=status))
+    post_mock = resp_mocker(return_value=aresponses.Response(status=status, reason='oops'))
     cluster_url = cluster_resource.get_url(namespace=None)
     namespaced_url = namespaced_resource.get_url(namespace='ns')
     aresponses.add(hostname, cluster_url, 'post', post_mock)

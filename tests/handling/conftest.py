@@ -35,9 +35,9 @@ and only check for the upper-level behaviour, not all of the input combinations.
 """
 import dataclasses
 from typing import Callable
+from unittest.mock import Mock
 
 import pytest
-from mock import Mock
 
 import kopf
 from kopf._core.intents.causes import ChangingCause

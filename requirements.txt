@@ -12,11 +12,7 @@ freezegun
 import-linter
 isort
 lxml
-# Generally, `unittest.mock` is enough, but it lacks `AsyncMock` for Py 3.7.
-# TODO: Once 3.7 is removed (Jun 2023), roll back to unittest.mock.
-mock
-# Mypy requires typed-ast, which is broken on PyPy 3.7 (could work in PyPy 3.8).
-mypy==1.2.0; implementation_name == "cpython"
+mypy==1.5.1
 pre-commit
 pyngrok
 pytest>=6.0.0

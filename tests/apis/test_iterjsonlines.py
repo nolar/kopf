@@ -1,4 +1,4 @@
-from mock import Mock
+from unittest.mock import Mock
 
 from kopf._cogs.clients.api import iter_jsonlines
 

@@ -200,7 +200,7 @@ async def test_ignores_absent_objects(
         resp_mocker, aresponses, hostname, settings, status, resource, namespace, logger,
         cluster_resource, namespaced_resource):
 
-    patch_mock = resp_mocker(return_value=aresponses.Response(status=status))
+    patch_mock = resp_mocker(return_value=aresponses.Response(status=status, reason='oops'))
     cluster_url = cluster_resource.get_url(namespace=None, name='name1')
     namespaced_url = namespaced_resource.get_url(namespace='ns', name='name1')
     aresponses.add(hostname, cluster_url, 'patch', patch_mock)
@@ -225,7 +225,7 @@ async def test_raises_api_errors(
         resp_mocker, aresponses, hostname, settings, status, resource, namespace, logger,
         cluster_resource, namespaced_resource):
 
-    patch_mock = resp_mocker(return_value=aresponses.Response(status=status))
+    patch_mock = resp_mocker(return_value=aresponses.Response(status=status, reason='oops'))
     cluster_url = cluster_resource.get_url(namespace=None, name='name1')
     namespaced_url = namespaced_resource.get_url(namespace='ns', name='name1')
     aresponses.add(hostname, cluster_url, 'patch', patch_mock)

@@ -137,7 +137,7 @@ async def test_patching_with_disappearance(
 
     patch = {'spec': {'x': 'y'}, 'status': {'s': 't'}}  # irrelevant
     url = resource.get_url(namespace=namespace, name='name1')
-    patch_mock = resp_mocker(return_value=aresponses.Response(status=404))
+    patch_mock = resp_mocker(return_value=aresponses.Response(status=404, reason='oops'))
     aresponses.add(hostname, url, 'patch', patch_mock)
 
     body = Body({'metadata': {'namespace': namespace, 'name': 'name1'}})

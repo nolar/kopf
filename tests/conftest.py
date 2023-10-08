@@ -8,10 +8,10 @@ import re
 import sys
 import time
 from typing import Set
+from unittest.mock import AsyncMock, Mock
 
 import aiohttp.web
 import pytest
-from mock import AsyncMock, Mock
 
 import kopf
 from kopf._cogs.clients.auth import APIContext

@@ -9,9 +9,9 @@ The decorators for the event handlers. Usually used as::
 
 This module is a part of the framework's public interface.
 """
-
+import warnings
 # TODO: add cluster=True support (different API methods)
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Collection, Optional, Union
 
 from kopf._cogs.structs import dicts, references, reviews
 from kopf._core.actions import execution
@@ -153,7 +153,8 @@ def validate(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        operation: Optional[reviews.Operation] = None,  # -> .webhooks.*.rules.*.operations[0]
+        operation: Optional[reviews.Operation] = None,  # deprecated -> .webhooks.*.rules.*.operations[0]
+        operations: Optional[Collection[reviews.Operation]] = None,  # -> .webhooks.*.rules.*.operations
         subresource: Optional[str] = None,  # -> .webhooks.*.rules.*.resources[]
         persistent: Optional[bool] = None,
         side_effects: Optional[bool] = None,  # -> .webhooks.*.sideEffects
@@ -171,6 +172,8 @@ def validate(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.WebhookFn,
     ) -> callbacks.WebhookFn:
+        nonlocal operations
+        operations = _verify_operations(operation, operations)
         _warn_conflicting_values(field, value)
         _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -186,7 +189,7 @@ def validate(  # lgtm[py/similar-function]
             errors=None, timeout=None, retries=None, backoff=None,  # TODO: add some meaning later
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value,
-            reason=causes.WebhookType.VALIDATING, operation=operation, subresource=subresource,
+            reason=causes.WebhookType.VALIDATING, operations=operations, subresource=subresource,
             persistent=persistent, side_effects=side_effects, ignore_failures=ignore_failures,
         )
         real_registry._webhooks.append(handler)
@@ -210,7 +213,8 @@ def mutate(  # lgtm[py/similar-function]
         # Handler's behaviour specification:
         id: Optional[str] = None,
         param: Optional[Any] = None,
-        operation: Optional[reviews.Operation] = None,  # -> .webhooks.*.rules.*.operations[0]
+        operation: Optional[reviews.Operation] = None,  # deprecated -> .webhooks.*.rules.*.operations[0]
+        operations: Optional[Collection[reviews.Operation]] = None,  # -> .webhooks.*.rules.*.operations
         subresource: Optional[str] = None,  # -> .webhooks.*.rules.*.resources[]
         persistent: Optional[bool] = None,
         side_effects: Optional[bool] = None,  # -> .webhooks.*.sideEffects
@@ -228,6 +232,8 @@ def mutate(  # lgtm[py/similar-function]
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.WebhookFn,
     ) -> callbacks.WebhookFn:
+        nonlocal operations
+        operations = _verify_operations(operation, operations)
         _warn_conflicting_values(field, value)
         _verify_filters(labels, annotations)
         real_registry = registry if registry is not None else registries.get_default_registry()
@@ -243,7 +249,7 @@ def mutate(  # lgtm[py/similar-function]
             errors=None, timeout=None, retries=None, backoff=None,  # TODO: add some meaning later
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value,
-            reason=causes.WebhookType.MUTATING, operation=operation, subresource=subresource,
+            reason=causes.WebhookType.MUTATING, operations=operations, subresource=subresource,
             persistent=persistent, side_effects=side_effects, ignore_failures=ignore_failures,
         )
         real_registry._webhooks.append(handler)
@@ -881,6 +887,18 @@ def register(  # lgtm[py/similar-function]
         labels=labels, annotations=annotations, when=when,
     )
     return decorator(fn)
+
+
+def _verify_operations(
+        operation: Optional[reviews.Operation] = None,  # deprecated
+        operations: Optional[Collection[reviews.Operation]] = None,
+) -> Optional[Collection[reviews.Operation]]:
+    if operation is not None:
+        warnings.warn("operation= is deprecated, use operations={...}.", DeprecationWarning)
+        operations = frozenset([] if operations is None else operations) | {operation}
+    if operations is not None and not operations:
+        raise ValueError(f"Operations should be either None or non-empty. Got empty {operations}.")
+    return operations
 
 
 def _verify_filters(

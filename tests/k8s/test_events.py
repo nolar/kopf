@@ -76,7 +76,7 @@ async def test_no_events_for_events(
 async def test_api_errors_logged_but_suppressed(
         resp_mocker, aresponses, hostname, settings, logger, assert_logs):
 
-    post_mock = resp_mocker(return_value=aresponses.Response(status=555))
+    post_mock = resp_mocker(return_value=aresponses.Response(status=555, reason='oops'))
     aresponses.add(hostname, '/api/v1/namespaces/ns/events', 'post', post_mock)
 
     obj = {'apiVersion': 'group/version',
@@ -161,7 +161,7 @@ async def test_message_is_cut_to_max_length(
 async def test_headers_are_not_leaked(
         resp_mocker, aresponses, hostname, settings, logger, assert_logs, status):
 
-    post_mock = resp_mocker(return_value=aresponses.Response(status=status))
+    post_mock = resp_mocker(return_value=aresponses.Response(status=status, reason='oops'))
     aresponses.add(hostname, '/api/v1/namespaces/ns/events', 'post', post_mock)
 
     obj = {'apiVersion': 'group/version',
