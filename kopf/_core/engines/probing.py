@@ -48,10 +48,10 @@ async def health_reporter(
 
         # Recollect the data on-demand, and only if is is older that a reasonable caching period.
         # Protect against multiple parallel requests performing the same heavy activity.
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
         if probing_timestamp is None or now - probing_timestamp >= probing_max_age:
             async with probing_lock:
-                now = datetime.datetime.utcnow()
+                now = datetime.datetime.now(datetime.timezone.utc)
                 if probing_timestamp is None or now - probing_timestamp >= probing_max_age:
 
                     activity_results = await activities.run_activity(
@@ -64,7 +64,7 @@ async def health_reporter(
                     )
                     probing_container.clear()
                     probing_container.update(activity_results)
-                    probing_timestamp = datetime.datetime.utcnow()
+                    probing_timestamp = datetime.datetime.now(datetime.timezone.utc)
 
         return aiohttp.web.json_response(probing_container)
 

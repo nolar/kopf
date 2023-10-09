@@ -1,8 +1,8 @@
 import asyncio
-import datetime
 import logging
 
 import freezegun
+import iso8601
 import pytest
 
 import kopf
@@ -106,7 +106,7 @@ async def test_diffs_not_logged_if_absent(registry, settings, resource, handlers
 
 
 # Timestamps: time zero (0), before (B), after (A), and time zero+1s (1).
-TS0 = datetime.datetime(2020, 12, 31, 23, 59, 59, 123456)
+TS0 = iso8601.parse_date('2020-12-31T23:59:59.123456')
 TS1_ISO = '2021-01-01T00:00:00.123456'
 
 

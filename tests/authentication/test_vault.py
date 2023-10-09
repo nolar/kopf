@@ -1,6 +1,7 @@
 import datetime
 
 import freezegun
+import iso8601
 import pytest
 
 from kopf._cogs.structs.credentials import ConnectionInfo, LoginError, Vault, VaultKey
@@ -55,7 +56,7 @@ async def test_yielding_after_population(mocker):
 
 @freezegun.freeze_time('2020-01-01T00:00:00')
 async def test_yielding_items_before_expiration(mocker):
-    future = datetime.datetime(2020, 1, 1, 0, 0, 0, 1)
+    future = iso8601.parse_date('2020-01-01T00:00:00.000001')
     key1 = VaultKey('some-key')
     info1 = ConnectionInfo(server='https://expected/', expiration=future)
     vault = Vault()
@@ -74,8 +75,8 @@ async def test_yielding_items_before_expiration(mocker):
 @pytest.mark.parametrize('delta', [0, 1])
 @freezegun.freeze_time('2020-01-01T00:00:00')
 async def test_yielding_ignores_expired_items(mocker, delta):
-    future = datetime.datetime(2020, 1, 1, 0, 0, 0, 1)
-    past = datetime.datetime(2020, 1, 1) - datetime.timedelta(microseconds=delta)
+    future = iso8601.parse_date('2020-01-01T00:00:00.000001')
+    past = iso8601.parse_date('2020-01-01') - datetime.timedelta(microseconds=delta)
     key1 = VaultKey('some-key')
     key2 = VaultKey('other-key')
     info1 = ConnectionInfo(server='https://expected/', expiration=past)
@@ -96,7 +97,7 @@ async def test_yielding_ignores_expired_items(mocker, delta):
 @pytest.mark.parametrize('delta', [0, 1])
 @freezegun.freeze_time('2020-01-01T00:00:00')
 async def test_yielding_when_everything_is_expired(mocker, delta):
-    past = datetime.datetime(2020, 1, 1) - datetime.timedelta(microseconds=delta)
+    past = iso8601.parse_date('2020-01-01') - datetime.timedelta(microseconds=delta)
     key1 = VaultKey('some-key')
     info1 = ConnectionInfo(server='https://expected/', expiration=past)
     vault = Vault()

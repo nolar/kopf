@@ -18,6 +18,8 @@ import datetime
 from typing import Any, Collection, Dict, Iterable, Iterator, \
                    Mapping, NamedTuple, Optional, overload
 
+import iso8601
+
 from kopf._cogs.configs import progress
 from kopf._cogs.structs import bodies, ids, patches
 from kopf._core.actions import execution
@@ -54,7 +56,7 @@ class HandlerState(execution.HandlerState):
     def from_scratch(cls, *, purpose: Optional[str] = None) -> "HandlerState":
         return cls(
             active=True,
-            started=datetime.datetime.utcnow(),
+            started=datetime.datetime.now(datetime.timezone.utc),
             purpose=purpose,
         )
 
@@ -62,7 +64,7 @@ class HandlerState(execution.HandlerState):
     def from_storage(cls, __d: progress.ProgressRecord) -> "HandlerState":
         return cls(
             active=False,
-            started=_parse_iso8601(__d.get('started')) or datetime.datetime.utcnow(),
+            started=_parse_iso8601(__d.get('started')) or datetime.datetime.now(datetime.timezone.utc),
             stopped=_parse_iso8601(__d.get('stopped')),
             delayed=_parse_iso8601(__d.get('delayed')),
             purpose=__d.get('purpose') if __d.get('purpose') else None,
@@ -104,7 +106,7 @@ class HandlerState(execution.HandlerState):
             self,
             outcome: execution.Outcome,
     ) -> "HandlerState":
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
         cls = type(self)
         return cls(
             active=self.active,
@@ -313,7 +315,7 @@ class State(execution.State):
         processing routine, based on all delays of different origin:
         e.g. postponed daemons, stopping daemons, temporarily failed handlers.
         """
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
         return [
             max(0, (handler_state.delayed - now).total_seconds()) if handler_state.delayed else 0
             for handler_state in self._states.values()
@@ -375,4 +377,4 @@ def _parse_iso8601(val: str) -> datetime.datetime: ...
 
 
 def _parse_iso8601(val: Optional[str]) -> Optional[datetime.datetime]:
-    return None if val is None else datetime.datetime.fromisoformat(val)
+    return None if val is None else iso8601.parse_date(val)  # always TZ-aware
