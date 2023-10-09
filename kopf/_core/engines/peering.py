@@ -68,10 +68,9 @@ class Peer:
         self.priority = priority
         self.lifetime = datetime.timedelta(seconds=int(lifetime))
         self.lastseen = (iso8601.parse_date(lastseen) if lastseen is not None else
-                         datetime.datetime.utcnow())
-        self.lastseen = self.lastseen.replace(tzinfo=None)  # only the naive utc -- for comparison
+                         datetime.datetime.now(datetime.timezone.utc))
         self.deadline = self.lastseen + self.lifetime
-        self.is_dead = self.deadline <= datetime.datetime.utcnow()
+        self.is_dead = self.deadline <= datetime.datetime.now(datetime.timezone.utc)
 
     def __repr__(self) -> str:
         clsname = self.__class__.__name__
@@ -149,7 +148,7 @@ async def process_peering_event(
     # are expected to expire, and force the immediate re-evaluation by a certain change of self.
     # This incurs an extra PATCH request besides usual keepalives, but in the complete silence
     # from other peers that existed a moment earlier, this should not be a problem.
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     delays = [(peer.deadline - now).total_seconds() for peer in same_peers + prio_peers]
     unslept = await aiotime.sleep(delays, wakeup=stream_pressure)
     if unslept is None and delays:
@@ -279,7 +278,7 @@ def detect_own_id(*, manual: bool) -> Identity:
 
     user = getpass.getuser()
     host = hostnames.get_descriptive_hostname()
-    now = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d%H%M%S")
     rnd = ''.join(random.choices('abcdefhijklmnopqrstuvwxyz0123456789', k=3))
     return Identity(f'{user}@{host}' if manual else f'{user}@{host}/{now}/{rnd}')
 

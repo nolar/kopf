@@ -56,7 +56,7 @@ is no need to retry over time, as it will not become better::
     @kopf.on.create('kopfexamples')
     def create_fn(spec, **_):
         valid_until = datetime.datetime.fromisoformat(spec['validUntil'])
-        if valid_until <= datetime.datetime.utcnow():
+        if valid_until <= datetime.datetime.now(datetime.timezone.utc):
             raise kopf.PermanentError("The object is not valid anymore.")
 
 See also: :ref:`never-again-filters` to prevent handlers from being invoked

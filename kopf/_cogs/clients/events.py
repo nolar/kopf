@@ -49,7 +49,7 @@ async def post_event(
         suffix = message[-MAX_MESSAGE_LENGTH // 2 + (len(infix) - len(infix) // 2):]
         message = f'{prefix}{infix}{suffix}'
 
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     body = {
         'metadata': {
             'namespace': namespace,
@@ -67,9 +67,9 @@ async def post_event(
 
         'involvedObject': full_ref,
 
-        'firstTimestamp': now.isoformat() + 'Z',  # '2019-01-28T18:25:03.000000Z' -- seen in `kubectl describe ...`
-        'lastTimestamp': now.isoformat() + 'Z',  # '2019-01-28T18:25:03.000000Z' - seen in `kubectl get events`
-        'eventTime': now.isoformat() + 'Z',  # '2019-01-28T18:25:03.000000Z'
+        'firstTimestamp': now.isoformat(),  # seen in `kubectl describe ...`
+        'lastTimestamp': now.isoformat(),  # seen in `kubectl get events`
+        'eventTime': now.isoformat(),
     }
 
     try:

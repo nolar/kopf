@@ -113,7 +113,7 @@ class HandlerState:
     @property
     def sleeping(self) -> bool:
         ts = self.delayed
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
         return not self.finished and ts is not None and ts > now
 
     @property
@@ -122,7 +122,7 @@ class HandlerState:
 
     @property
     def runtime(self) -> datetime.timedelta:
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
         return now - (self.started if self.started else now)
 
 
@@ -277,7 +277,7 @@ async def execute_handler_once(
             handler=handler,
             cause=cause,
             retry=state.retries,
-            started=state.started or datetime.datetime.utcnow(),  # "or" is for type-checking.
+            started=state.started or datetime.datetime.now(datetime.timezone.utc),  # "or" is for type-checking.
             runtime=state.runtime,
             settings=settings,
             lifecycle=lifecycle,  # just a default for the sub-handlers, not used directly.

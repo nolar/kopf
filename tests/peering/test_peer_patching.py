@@ -46,7 +46,7 @@ async def test_touching_a_peer_stores_it(
     patch = await patch_mock.call_args_list[0][0][0].json()
     assert set(patch['status']) == {'id1'}
     assert patch['status']['id1']['priority'] == 0
-    assert patch['status']['id1']['lastseen'] == '2020-12-31T23:59:59.123456'
+    assert patch['status']['id1']['lastseen'] == '2020-12-31T23:59:59.123456+00:00'
     assert patch['status']['id1']['lifetime'] == 60
 
 

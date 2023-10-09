@@ -61,7 +61,7 @@ class ConnectionInfo:
     private_key_data: Optional[bytes] = None
     default_namespace: Optional[str] = None  # used for cluster objects' k8s-events.
     priority: int = 0
-    expiration: Optional[datetime.datetime] = None  # TZ-naive, the same as utcnow()
+    expiration: Optional[datetime.datetime] = None  # TZ-aware or TZ-naive (implies UTC)
 
 
 _T = TypeVar('_T', bound=object)
@@ -118,7 +118,7 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
         self._current = {}
         self._invalid = collections.defaultdict(list)
         self._lock = asyncio.Lock()
-        self._next_expiration = datetime.datetime.max
+        self._next_expiration: Optional[datetime.datetime] = None
 
         if __src is not None:
             self._update_converted(__src)
@@ -229,13 +229,19 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
         Unlike invalidation, the expired credentials are not remembered
         and not blocked from reappearing.
         """
-        now = datetime.datetime.utcnow()
-        if now >= self._next_expiration:  # quick & lockless for speed: it is done on every API call
+        now = datetime.datetime.now(datetime.timezone.utc)
+
+        # Quick & lockless for speed: it is done on every API call, we have no time for locks.
+        if self._next_expiration is not None and now >= self._next_expiration:
             async with self._lock:
                 for key, item in list(self._current.items()):
-                    if item.info.expiration is not None and now >= item.info.expiration:
-                        await self._flush_caches(item)
-                        del self._current[key]
+                    expiration = item.info.expiration
+                    if expiration is not None:
+                        if expiration.tzinfo is None:
+                            expiration = expiration.replace(tzinfo=datetime.timezone.utc)
+                        if now >= expiration:
+                            await self._flush_caches(item)
+                            del self._current[key]
                 self._update_expiration()
                 need_reauth = not self._current  # i.e. nothing is left at all
 
@@ -315,11 +321,12 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
         await self._ready.turn_to(True)
 
     def is_empty(self) -> bool:
-        now = datetime.datetime.utcnow()
-        return all(
-            item.info.expiration is not None and now >= item.info.expiration  # i.e. expired
-            for key, item in self._current.items()
-        )
+        now = datetime.datetime.now(datetime.timezone.utc)
+        expirations = [
+            dt if dt is None or dt.tzinfo is not None else dt.replace(tzinfo=datetime.timezone.utc)
+            for dt in (item.info.expiration for item in self._current.values())
+        ]
+        return all(dt is not None and now >= dt for dt in expirations)  # i.e. expired
 
     async def wait_for_readiness(self) -> None:
         await self._ready.wait_for(True)
@@ -381,8 +388,8 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
 
     def _update_expiration(self) -> None:
         expirations = [
-            item.info.expiration
-            for item in self._current.values()
-            if item.info.expiration is not None
+            dt if dt.tzinfo is not None else dt.replace(tzinfo=datetime.timezone.utc)
+            for dt in (item.info.expiration for item in self._current.values())
+            if dt is not None
         ]
-        self._next_expiration = min(expirations + [datetime.datetime.max])
+        self._next_expiration = min(expirations) if expirations else None
