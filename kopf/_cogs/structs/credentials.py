@@ -118,7 +118,7 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
         self._current = {}
         self._invalid = collections.defaultdict(list)
         self._lock = asyncio.Lock()
-        self._next_expiration = datetime.datetime.max
+        self._next_expiration: Optional[datetime.datetime] = None
 
         if __src is not None:
             self._update_converted(__src)
@@ -230,7 +230,9 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
         and not blocked from reappearing.
         """
         now = datetime.datetime.utcnow()
-        if now >= self._next_expiration:  # quick & lockless for speed: it is done on every API call
+
+        # Quick & lockless for speed: it is done on every API call, we have no time for locks.
+        if self._next_expiration is not None and now >= self._next_expiration:
             async with self._lock:
                 for key, item in list(self._current.items()):
                     if item.info.expiration is not None and now >= item.info.expiration:
@@ -385,4 +387,4 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
             for item in self._current.values()
             if item.info.expiration is not None
         ]
-        self._next_expiration = min(expirations + [datetime.datetime.max])
+        self._next_expiration = min(expirations) if expirations else None
