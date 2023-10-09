@@ -156,6 +156,10 @@ async def test_direct_timeout_in_requests(
 
     assert 0.1 < timer.seconds < 0.2
 
+    # Let the server request finish and release all resources (tasks).
+    # TODO: Remove when fixed: https://github.com/aio-libs/aiohttp/issues/7551
+    await asyncio.sleep(1.0)
+
 
 @pytest.mark.parametrize('fn, method', [
     (get, 'get'),
@@ -182,6 +186,10 @@ async def test_settings_timeout_in_requests(
 
     assert 0.1 < timer.seconds < 0.2
 
+    # Let the server request finish and release all resources (tasks).
+    # TODO: Remove when fixed: https://github.com/aio-libs/aiohttp/issues/7551
+    await asyncio.sleep(1.0)
+
 
 @pytest.mark.parametrize('method', ['get'])  # the only supported method at the moment
 async def test_direct_timeout_in_streams(
@@ -204,6 +212,10 @@ async def test_direct_timeout_in_streams(
 
     assert 0.1 < timer.seconds < 0.2
 
+    # Let the server request finish and release all resources (tasks).
+    # TODO: Remove when fixed: https://github.com/aio-libs/aiohttp/issues/7551
+    await asyncio.sleep(1.0)
+
 
 @pytest.mark.parametrize('method', ['get'])  # the only supported method at the moment
 async def test_settings_timeout_in_streams(
@@ -225,6 +237,10 @@ async def test_settings_timeout_in_streams(
             pass
 
     assert 0.1 < timer.seconds < 0.2
+
+    # Let the server request finish and release all resources (tasks).
+    # TODO: Remove when fixed: https://github.com/aio-libs/aiohttp/issues/7551
+    await asyncio.sleep(1.0)
 
 
 @pytest.mark.parametrize('delay, expected', [
