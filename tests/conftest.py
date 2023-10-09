@@ -739,7 +739,10 @@ def _get_all_tasks() -> Set[asyncio.Task]:
     i = 0
     while True:
         try:
-            tasks = list(asyncio.tasks._all_tasks)
+            if sys.version_info >= (3, 12):
+                tasks = asyncio.tasks._eager_tasks | set(asyncio.tasks._scheduled_tasks)
+            else:
+                tasks = list(asyncio.tasks._all_tasks)
         except RuntimeError:
             i += 1
             if i >= 1000:
