@@ -411,8 +411,34 @@ def clean_kubernetes_client():
         kubernetes.client.configuration.Configuration.set_default(None)
 
 
+# Aresponses/aiohttp must be closed strictly after the vault. See the docstring.
 @pytest.fixture()
-def fake_vault(mocker, hostname):
+async def _fake_vault(mocker, hostname, aresponses):
+    """
+    A hack around pytest's internal flaw in order to close the vault in the end.
+
+    We cannot keep both the ContextVar and vault closing in the same fixture.
+    Pytest runs every async setup and every async teardown in a separate task
+    (a separate ``run_until_complete()``). The `vault_var` remains invisible
+    to tests (with API calls) and even to the fixture's finalizing part.
+    Sync (global) context vars do work and propagate fine — hence 2 fixtures.
+
+    Without the proper vault finalization, the cached TCP sessions/connections
+    remain open, so the aresponses/aiohttp test server takes time before exiting
+    (15 seconds of keep-alive timeout by default).
+    """
+    key = VaultKey('fixture')
+    info = ConnectionInfo(server=f'https://{hostname}')
+    vault = Vault({key: info})
+    mocker.patch.object(vault._ready, 'wait_for')
+    try:
+        yield vault
+    finally:
+        await vault.close()
+
+
+@pytest.fixture()
+def fake_vault(_fake_vault):
     """
     Provide a freshly created and populated authentication vault for every test.
 
@@ -424,15 +450,10 @@ def fake_vault(mocker, hostname):
     """
     from kopf._cogs.clients import auth
 
-    key = VaultKey('fixture')
-    info = ConnectionInfo(server=f'https://{hostname}')
-    vault = Vault({key: info})
-    token = auth.vault_var.set(vault)
-    mocker.patch.object(vault._ready, 'wait_for')
+    token = auth.vault_var.set(_fake_vault)
     try:
-        yield vault
+        yield _fake_vault
     finally:
-        # await vault.close()  # TODO: but it runs in a different loop, w/ wrong contextvar.
         auth.vault_var.reset(token)
 
 #
