@@ -38,6 +38,11 @@ def pytest_configure(config):
     # TODO: Remove when fixed in https://github.com/pytest-dev/pytest-asyncio/issues/460:
     config.addinivalue_line('filterwarnings', 'ignore:There is no current event loop:DeprecationWarning:pytest_asyncio')
 
+    # Python 3.12 transitional period:
+    config.addinivalue_line('filterwarnings', 'ignore:datetime*:DeprecationWarning:dateutil')
+    config.addinivalue_line('filterwarnings', 'ignore:datetime*:DeprecationWarning:freezegun')
+    config.addinivalue_line('filterwarnings', 'ignore:.*:DeprecationWarning:_pydevd_.*')
+
 
 def pytest_addoption(parser):
     parser.addoption("--only-e2e", action="store_true", help="Execute end-to-end tests only.")
