@@ -13,13 +13,12 @@ from typing import Optional
 version: Optional[str] = None
 
 try:
-    import pkg_resources
+    import importlib.metadata
 except ImportError:
     pass
 else:
     try:
         name, *_ = __name__.split('.')  # usually "kopf", unless renamed/forked.
-        dist: pkg_resources.Distribution = pkg_resources.get_distribution(name)
-        version = dist.version
+        version = importlib.metadata.version(name)
     except Exception:
         pass  # installed as an egg, from git, etc.
