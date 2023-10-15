@@ -72,6 +72,7 @@ setup(
         ],
         'uvloop': [
             'uvloop',           # 9.00 MB
+            'uvloop>=0.18.0; python_version>="3.12"',
         ],
         'dev': [
             'pyngrok',          # 1.00 MB + downloaded binary
