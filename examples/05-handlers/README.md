@@ -3,7 +3,7 @@
 Multiple handlers can be registered for the same event.
 They are executed in the order of registration.
 
-Beside the stardard create-update-delete events, a per-field diff can be registered.
+Besides the standard create-update-delete events, a per-field diff can be registered.
 It is called only in case of the specified field changes,
 with `old` & `new` set to that field's values.
 
