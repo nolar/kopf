@@ -303,8 +303,8 @@ async def touch_command(
 ) -> None:
 
     await asyncio.wait({
-        insights.ready_namespaces.wait(),
-        insights.ready_resources.wait(),
+        asyncio.create_task(insights.ready_namespaces.wait()),
+        asyncio.create_task(insights.ready_resources.wait()),
     })
 
     selectors = guess_selectors(settings=settings)
