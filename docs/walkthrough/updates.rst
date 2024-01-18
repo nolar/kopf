@@ -22,7 +22,7 @@ with one additional line:
 
 .. code-block:: python
     :caption: ephemeral.py
-    :emphasize-lines: 24
+    :emphasize-lines: 21
 
     @kopf.on.create('ephemeralvolumeclaims')
     def create_fn(spec, name, namespace, logger, **kwargs):
@@ -35,8 +35,6 @@ with one additional line:
         tmpl = open(path, 'rt').read()
         text = tmpl.format(size=size, name=name)
         data = yaml.safe_load(text)
-
-        kopf.adopt(data)
 
         api = kubernetes.client.CoreV1Api()
         obj = api.create_namespaced_persistent_volume_claim(
