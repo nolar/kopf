@@ -49,14 +49,14 @@ OBJ1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
 
 
 @pytest.fixture()
-def awakener(event_loop):
+def awakener():
     handles = []
 
     def noop():
         pass
 
     def awaken_fn(delay, fn=noop):
-        handle = event_loop.call_later(delay, fn)
+        handle = asyncio.get_running_loop().call_later(delay, fn)
         handles.append(handle)
 
     try:

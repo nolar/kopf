@@ -17,7 +17,7 @@ pre-commit
 pyngrok
 pytest>=6.0.0
 pytest-aiohttp
-pytest-asyncio<0.22  # until the "event_loop" deprecation is solved
+pytest-asyncio
 pytest-cov
 pytest-mock
 pytest-timeout

@@ -18,7 +18,7 @@ async def test_no_triggering():
         await asyncio.wait([task])
 
 
-async def test_triggering(event_loop, timer):
+async def test_triggering(timer):
     source = asyncio.Condition()
     target = asyncio.Condition()
     task = asyncio.create_task(condition_chain(source, target))
@@ -28,7 +28,8 @@ async def test_triggering(event_loop, timer):
             async with source:
                 source.notify_all()
 
-        event_loop.call_later(0.1, asyncio.create_task, delayed_trigger())
+        loop = asyncio.get_running_loop()
+        loop.call_later(0.1, asyncio.create_task, delayed_trigger())
 
         with timer:
             async with target:

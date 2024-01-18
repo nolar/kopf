@@ -703,8 +703,13 @@ def assert_logs(caplog):
 #
 # Helpers for asyncio checks.
 #
+@pytest.fixture()
+async def loop():
+    yield asyncio.get_running_loop()
+
+
 @pytest.fixture(autouse=True)
-def _no_asyncio_pending_tasks(event_loop):
+def _no_asyncio_pending_tasks(loop: asyncio.AbstractEventLoop):
     """
     Ensure there are no unattended asyncio tasks after the test.
 
@@ -725,7 +730,7 @@ def _no_asyncio_pending_tasks(event_loop):
 
     # Let the pytest-asyncio's async2sync wrapper to finish all callbacks. Otherwise, it raises:
     #   <Task pending name='Task-2' coro=<<async_generator_athrow without __name__>()>>
-    event_loop.run_until_complete(asyncio.sleep(0))
+    loop.run_until_complete(asyncio.sleep(0))
 
     # Detect all leftover tasks.
     after = _get_all_tasks()
