@@ -79,10 +79,10 @@ async def health_reporter(
     app = aiohttp.web.Application()
     app.add_routes([aiohttp.web.get(path, get_health)])
 
-    runner = aiohttp.web.AppRunner(app, handle_signals=False)
+    runner = aiohttp.web.AppRunner(app, handle_signals=False, shutdown_timeout=1.0)
     await runner.setup()
 
-    site = aiohttp.web.TCPSite(runner, host, port, shutdown_timeout=1.0)
+    site = aiohttp.web.TCPSite(runner, host, port)
     await site.start()
 
     # Log with the actual URL: normalised, with hostname/port set.
