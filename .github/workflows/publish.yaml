@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: "3.12"
       - run: pip install --upgrade setuptools wheel twine
       - run: python setup.py sdist bdist_wheel
       - uses: pypa/gh-action-pypi-publish@release/v1

@@ -192,13 +192,14 @@ class K8sPoster(logging.Handler):
     def filter(self, record: logging.LogRecord) -> bool:
         # Only those which have a k8s object referred (see: `ObjectLogger`).
         # Otherwise, we have nothing to post, and nothing to do.
+        # TODO: remove all bool() -- they were needed for Python 3.12 & MyPy 1.8.0 wrong inference.
         settings: Optional[configuration.OperatorSettings]
         settings = getattr(record, 'settings', None)
-        level_ok = settings is not None and record.levelno >= settings.posting.level
-        enabled = settings is not None and settings.posting.enabled
+        level_ok = settings is not None and bool(record.levelno >= settings.posting.level)
+        enabled = settings is not None and bool(settings.posting.enabled)
         has_ref = hasattr(record, 'k8s_ref')
-        skipped = hasattr(record, 'k8s_skip') and getattr(record, 'k8s_skip')
-        return enabled and level_ok and has_ref and not skipped and super().filter(record)
+        skipped = hasattr(record, 'k8s_skip') and bool(getattr(record, 'k8s_skip'))
+        return enabled and level_ok and has_ref and not skipped and bool(super().filter(record))
 
     def emit(self, record: logging.LogRecord) -> None:
         # Same try-except as in e.g. `logging.StreamHandler`.

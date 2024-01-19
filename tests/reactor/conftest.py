@@ -41,7 +41,7 @@ def watcher_limited(mocker, settings):
 
 
 @pytest.fixture()
-def watcher_in_background(settings, resource, event_loop, worker_spy, stream):
+async def watcher_in_background(settings, resource, worker_spy, stream):
 
     # Prevent remembering the streaming objects in the mocks.
     async def do_nothing(*args, **kwargs):
@@ -57,7 +57,7 @@ def watcher_in_background(settings, resource, event_loop, worker_spy, stream):
         settings=settings,
         processor=do_nothing,
     )
-    task = event_loop.create_task(coro)
+    task = asyncio.create_task(coro)
 
     try:
         # Go for a test.
@@ -66,6 +66,6 @@ def watcher_in_background(settings, resource, event_loop, worker_spy, stream):
         # Terminate the watcher to cleanup the loop.
         task.cancel()
         try:
-            event_loop.run_until_complete(task)
+            await task
         except asyncio.CancelledError:
             pass  # cancellations are expected at this point

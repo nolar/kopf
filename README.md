@@ -133,7 +133,7 @@ We assume that when the operator is executed in the cluster, it must be packaged
 into a docker image with a CI/CD tool of your preference.
 
 ```dockerfile
-FROM python:3.11
+FROM python:3.12
 ADD . /src
 RUN pip install kopf
 CMD kopf run /src/handlers.py --verbose

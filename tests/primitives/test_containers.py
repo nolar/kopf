@@ -11,19 +11,20 @@ async def test_empty_by_default():
         await asyncio.wait_for(container.wait(), timeout=0.1)
 
 
-async def test_does_not_wake_up_when_reset(event_loop, timer):
+async def test_does_not_wake_up_when_reset(timer):
     container = Container()
 
     async def reset_it():
         await container.reset()
 
-    event_loop.call_later(0.05, asyncio.create_task, reset_it())
+    loop = asyncio.get_running_loop()
+    loop.call_later(0.05, asyncio.create_task, reset_it())
 
     with pytest.raises(asyncio.TimeoutError):
         await asyncio.wait_for(container.wait(), timeout=0.1)
 
 
-async def test_wakes_up_when_preset(event_loop, timer):
+async def test_wakes_up_when_preset(timer):
     container = Container()
     await container.set(123)
 
@@ -34,13 +35,14 @@ async def test_wakes_up_when_preset(event_loop, timer):
     assert result == 123
 
 
-async def test_wakes_up_when_set(event_loop, timer):
+async def test_wakes_up_when_set(timer):
     container = Container()
 
     async def set_it():
         await container.set(123)
 
-    event_loop.call_later(0.1, asyncio.create_task, set_it())
+    loop = asyncio.get_running_loop()
+    loop.call_later(0.1, asyncio.create_task, set_it())
 
     with timer:
         result = await container.wait()
@@ -49,14 +51,15 @@ async def test_wakes_up_when_set(event_loop, timer):
     assert result == 123
 
 
-async def test_iterates_when_set(event_loop, timer):
+async def test_iterates_when_set(timer):
     container = Container()
 
     async def set_it(v):
         await container.set(v)
 
-    event_loop.call_later(0.1, asyncio.create_task, set_it(123))
-    event_loop.call_later(0.2, asyncio.create_task, set_it(234))
+    loop = asyncio.get_running_loop()
+    loop.call_later(0.1, asyncio.create_task, set_it(123))
+    loop.call_later(0.2, asyncio.create_task, set_it(234))
 
     values = []
     with timer:
@@ -69,7 +72,7 @@ async def test_iterates_when_set(event_loop, timer):
     assert values == [123, 234]
 
 
-async def test_iterates_when_preset(event_loop, timer):
+async def test_iterates_when_preset(timer):
     container = Container()
     await container.set(123)
 

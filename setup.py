@@ -37,6 +37,7 @@ setup(
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
         'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
@@ -61,7 +62,8 @@ setup(
         'python-json-logger',   # 0.05 MB
         'iso8601',              # 0.07 MB
         'click',                # 0.60 MB
-        'aiohttp<4.0.0',        # 7.80 MB
+        'aiohttp',              # 7.80 MB
+        'aiohttp>=3.9.0; python_version>="3.12"',
         'pyyaml',               # 0.90 MB
     ],
     extras_require={
@@ -71,6 +73,7 @@ setup(
         ],
         'uvloop': [
             'uvloop',           # 9.00 MB
+            'uvloop>=0.18.0; python_version>="3.12"',
         ],
         'dev': [
             'pyngrok',          # 1.00 MB + downloaded binary

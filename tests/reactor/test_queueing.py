@@ -123,7 +123,7 @@ async def test_watchevent_demultiplexing(worker_mock, timer, resource, processor
 ])
 @pytest.mark.usefixtures('watcher_limited')
 async def test_watchevent_batching(settings, resource, processor, timer,
-                                   stream, events, uids, vals, event_loop):
+                                   stream, events, uids, vals):
     """ Verify that only the last event per uid is actually handled. """
 
     # Override the default timeouts to make the tests faster.

@@ -38,6 +38,11 @@ def pytest_configure(config):
     # TODO: Remove when fixed in https://github.com/pytest-dev/pytest-asyncio/issues/460:
     config.addinivalue_line('filterwarnings', 'ignore:There is no current event loop:DeprecationWarning:pytest_asyncio')
 
+    # Python 3.12 transitional period:
+    config.addinivalue_line('filterwarnings', 'ignore:datetime*:DeprecationWarning:dateutil')
+    config.addinivalue_line('filterwarnings', 'ignore:datetime*:DeprecationWarning:freezegun')
+    config.addinivalue_line('filterwarnings', 'ignore:.*:DeprecationWarning:_pydevd_.*')
+
 
 def pytest_addoption(parser):
     parser.addoption("--only-e2e", action="store_true", help="Execute end-to-end tests only.")
@@ -698,8 +703,13 @@ def assert_logs(caplog):
 #
 # Helpers for asyncio checks.
 #
+@pytest.fixture()
+async def loop():
+    yield asyncio.get_running_loop()
+
+
 @pytest.fixture(autouse=True)
-def _no_asyncio_pending_tasks(event_loop):
+def _no_asyncio_pending_tasks(loop: asyncio.AbstractEventLoop):
     """
     Ensure there are no unattended asyncio tasks after the test.
 
@@ -720,7 +730,7 @@ def _no_asyncio_pending_tasks(event_loop):
 
     # Let the pytest-asyncio's async2sync wrapper to finish all callbacks. Otherwise, it raises:
     #   <Task pending name='Task-2' coro=<<async_generator_athrow without __name__>()>>
-    event_loop.run_until_complete(asyncio.sleep(0))
+    loop.run_until_complete(asyncio.sleep(0))
 
     # Detect all leftover tasks.
     after = _get_all_tasks()
@@ -734,7 +744,10 @@ def _get_all_tasks() -> Set[asyncio.Task]:
     i = 0
     while True:
         try:
-            tasks = list(asyncio.tasks._all_tasks)
+            if sys.version_info >= (3, 12):
+                tasks = asyncio.tasks._eager_tasks | set(asyncio.tasks._scheduled_tasks)
+            else:
+                tasks = list(asyncio.tasks._all_tasks)
         except RuntimeError:
             i += 1
             if i >= 1000:
