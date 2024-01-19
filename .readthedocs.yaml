@@ -1,0 +1,16 @@
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+version: 2
+formats: all
+build:
+  os: ubuntu-22.04
+  tools:
+    python: "3"
+python:
+  install:
+    - requirements: requirements.txt
+    - requirements: docs/requirements.txt
+sphinx:
+  configuration: docs/conf.py
+  builder: "dirhtml"
+#  fail_on_warning: true
