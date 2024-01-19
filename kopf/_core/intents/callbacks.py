@@ -37,7 +37,7 @@ else:
     ActivityFn = Callable[
         [
             NamedArg(configuration.OperatorSettings, "settings"),
-            NamedArg(ephemera.Index, "*"),
+            NamedArg(ephemera.Index[Any, Any], "*"),
             NamedArg(int, "retry"),
             NamedArg(datetime.datetime, "started"),
             NamedArg(datetime.timedelta, "runtime"),
@@ -175,7 +175,7 @@ else:
 
     TimerFn = Callable[
         [
-            NamedArg(ephemera.Index, "*"),
+            NamedArg(ephemera.Index[Any, Any], "*"),
             NamedArg(bodies.Annotations, "annotations"),
             NamedArg(bodies.Labels, "labels"),
             NamedArg(bodies.Body, "body"),

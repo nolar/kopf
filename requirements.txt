@@ -12,7 +12,7 @@ freezegun
 import-linter
 isort
 lxml
-mypy==1.5.1
+mypy==1.8.0
 pre-commit
 pyngrok
 pytest>=6.0.0

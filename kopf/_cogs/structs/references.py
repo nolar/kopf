@@ -9,7 +9,7 @@ from typing import Collection, FrozenSet, Iterable, Iterator, List, Mapping, \
 
 # A namespace specification with globs, negations, and some minimal syntax; see `match_namespace()`.
 # Regexps are also supported if pre-compiled from the code, not from the CLI options as raw strings.
-NamespacePattern = Union[str, Pattern]
+NamespacePattern = Union[str, Pattern[str]]
 
 # A specific really existing addressable namespace (at least, the one assumed to be so).
 # Made as a NewType for stricter type-checking to avoid collisions with patterns and other strings.
