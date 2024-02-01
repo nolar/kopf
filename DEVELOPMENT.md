@@ -11,7 +11,6 @@ MacOS:
 brew install minikube
 brew install hyperkit
 
-minikube start --driver=hyperkit
 minikube config set driver hyperkit
 ```
 
