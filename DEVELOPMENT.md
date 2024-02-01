@@ -8,12 +8,10 @@ use [minikube](https://github.com/kubernetes/minikube):
 MacOS:
 
 ```bash
-brew install docker-machine-driver-hyperkit
-sudo chown root:wheel /usr/local/opt/docker-machine-driver-hyperkit/bin/docker-machine-driver-hyperkit
-sudo chmod u+s /usr/local/opt/docker-machine-driver-hyperkit/bin/docker-machine-driver-hyperkit
+brew install minikube
+brew install hyperkit
 
-brew cask install minikube
-minikube config set vm-driver hyperkit
+minikube config set driver hyperkit
 ```
 
 Start the minikube cluster:
