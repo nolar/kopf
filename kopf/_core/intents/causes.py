@@ -193,6 +193,7 @@ class SpawningCause(ResourceCause):
     specific objects (loggers, etc).
     """
     reset: bool
+    raw_event_type: str
 
     @property
     def _kwargs(self) -> Mapping[str, Any]:
@@ -277,10 +278,12 @@ def detect_watching_cause(
 
 def detect_spawning_cause(
         body: bodies.Body,
+        raw_event_type: str,
         **kwargs: Any,
 ) -> SpawningCause:
     return SpawningCause(
         body=body,
+        raw_event_type=raw_event_type,
         **kwargs)
 
 
