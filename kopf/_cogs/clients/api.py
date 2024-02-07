@@ -84,6 +84,16 @@ async def request(
             )
             await errors.check_response(response)  # but do not parse it!
 
+        # aiohttp raises a generic error if the session/transport is closed, so we try to guess.
+        except RuntimeError as e:
+            if context.session.closed:
+                # NB: this will reset the retry counter and do the full cycle with the new creds.
+                # TODO: find a way to gracefully replace the active session in the existing context,
+                #       so that all ongoing requests would switch to new session & credentials.
+                logger.error(f"Request attempt {idx} failed; will try re-authenticating: {what}")
+                raise errors.APISessionClosed("Session is closed.") from e
+            raise
+
         except (aiohttp.ClientConnectionError, errors.APIServerError, asyncio.TimeoutError) as e:
             if backoff is None:  # i.e. the last or the only attempt.
                 logger.error(f"Request attempt {idx} failed; escalating: {what} -> {e!r}")

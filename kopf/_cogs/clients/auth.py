@@ -43,7 +43,7 @@ def authenticated(fn: _F) -> _F:
         async for key, info, context in vault.extended(APIContext, 'contexts'):
             try:
                 return await fn(*args, **kwargs, context=context)
-            except errors.APIUnauthorizedError as e:
+            except (errors.APIUnauthorizedError, errors.APISessionClosed) as e:
                 await vault.invalidate(key, exc=e)
 
         # Normally, either `vault.extended()` or `vault.invalidate()` raise the login errors.
