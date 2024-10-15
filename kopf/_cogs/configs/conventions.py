@@ -31,12 +31,52 @@ in most cases, they will be used as the annotation names with special symbols
 replaced; in some cases, they will be cut and hash-suffixed.
 """
 import base64
+import _hashlib
 import hashlib
 import warnings
 from typing import Any, Collection, Iterable, Optional, Set
 
 from kopf._cogs.structs import bodies, patches
 
+# Invoke hashlib algorithm based on the security mode.
+# In normal mode use the original blake2b based hashing.
+# If we in the restrictive FIPS mode, RHEL FIPS mode restricts
+# the hashlib functions like blake2 to use openssl blake2 implementations
+# which limit the parameters and hence doesn't allow to customise the digest size.
+# So we use shake_256 as alternative in FIPS mode which provides variable length
+# digest support and is an acceptable SHA-3 Algorithm.
+# This class writes a wrapper as the digest signature is different for both.
+# Credit to dushyantbehl who submitted this fix to aimhubio/aim in https://github.com/aimhubio/aim/pull/3217/commits/cf932f82a0042f1c2cd6bc6f1097a924b7e0606a which is the same problem
+class compliant_hash_algorithm:
+    digest_size: int = _HASH_SIZE
+    salt: int
+    is_fips_mode_enabled: bool
+    hashlib_state: None
+
+    # Based on the FIPS mode choose between blake2b or shake_256 hash function
+    def _invoke_hashlib(self):
+        if not self.is_fips_mode_enabled:
+            return hashlib.blake2b(digest_size=self.digest_size, salt=self.salt)
+        else:
+            return hashlib.shake_256()
+
+    def __init__(self, digest_size = None, salt = None):
+        if digest_size:
+            self.digest_size = digest_size
+        self.salt = salt
+        self.is_fips_mode_enabled = True if _hashlib.get_fips_mode() == 1 else False
+        self.hashlib_state = self._invoke_hashlib()
+
+    def update(self, obj: bytes):
+        self.hashlib_state.update(obj)
+
+    def digest(self):
+        if not self.is_fips_mode_enabled:
+            # blake2 digest signature
+            return self.hashlib_state.digest()
+        else:
+            # shake_256 digest signature with variable length
+            return self.hashlib_state.digest(length=self.digest_size)
 
 class CollisionEvadingConvention:
     """
@@ -181,7 +221,7 @@ class StorageKeyFormingConvention(CollisionEvadingConvention):
         return final_key
 
     def make_suffix(self, key: str) -> str:
-        digest = hashlib.blake2b(key.encode('utf-8'), digest_size=4).digest()
+        digest = compliant_hash_algorithm(key.encode('utf-8'), digest_size=4).digest()
         alnums = base64.b64encode(digest, altchars=b'-.').decode('ascii')
         return f'-{alnums}'.rstrip('=-.')
 
