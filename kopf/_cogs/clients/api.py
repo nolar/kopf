@@ -84,7 +84,8 @@ async def request(
             )
             await errors.check_response(response)  # but do not parse it!
 
-        except (aiohttp.ClientConnectionError, errors.APIServerError, asyncio.TimeoutError) as e:
+        # NOTE(vsaienko): during k8s upgrade API might throw 403 forbiden. Use retries for this exception as well.
+        except (aiohttp.ClientConnectionError, errors.APIServerError, asyncio.TimeoutError, errors.APIForbiddenError) as e:
             if backoff is None:  # i.e. the last or the only attempt.
                 logger.error(f"Request attempt {idx} failed; escalating: {what} -> {e!r}")
                 raise
