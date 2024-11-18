@@ -1,8 +1,9 @@
+from itertools import chain, repeat
+from unittest import mock
+
 import pytest
 
 from kopf._core.engines.peering import keepalive
-from itertools import chain, repeat
-from unittest import mock
 
 
 class StopInfiniteCycleException(Exception):
