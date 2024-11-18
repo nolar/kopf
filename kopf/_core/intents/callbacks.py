@@ -23,7 +23,7 @@ if not TYPE_CHECKING:  # pragma: nocover
     IndexingFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
     WatchingFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
     ChangingFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
-    WebhookFn = Callable[..., invocation.SyncOrAsync[None]]
+    WebhookFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
     DaemonFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
     TimerFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
     WhenFilterFn = Callable[..., bool]  # strictly sync, no async!
@@ -145,7 +145,7 @@ else:
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        invocation.SyncOrAsync[None]
+        invocation.SyncOrAsync[Optional[object]]
     ]
 
     DaemonFn = Callable[
