@@ -28,3 +28,6 @@ async def test_background_task_runs(mocker, settings, namespaced_peering_resourc
     assert sleep_mock.call_args_list[2][0][0] == 33 - 9
 
     assert touch_mock.call_count == 4  # 3 updates + 1 clean-up
+
+    # An hack for `aresponses` that calls `sleep(0)` on finalization and fails on StopIteration.
+    mocker.stopall()
