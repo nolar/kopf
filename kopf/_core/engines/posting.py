@@ -183,11 +183,13 @@ class K8sPoster(logging.Handler):
     """
     A handler to post all log messages as K8s events.
     """
-
-    def createLock(self) -> None:
-        # Save some time on unneeded locks. Events are posted in the background.
-        # We only put events to the queue, which is already lock-protected.
-        self.lock = None
+    if sys.version_info[:2] < (3, 13):
+        # Disable this optimisation for Python >= 3.13.
+        # The `handle` no longer support having `None` as lock.
+        def createLock(self) -> None:
+            # Save some time on unneeded locks. Events are posted in the background.
+            # We only put events to the queue, which is already lock-protected.
+            self.lock = None
 
     def filter(self, record: logging.LogRecord) -> bool:
         # Only those which have a k8s object referred (see: `ObjectLogger`).
