@@ -27,11 +27,12 @@ import dataclasses
 import functools
 import itertools
 import logging
-from typing import Any, Collection, Container, Dict, Iterable, MutableMapping, NamedTuple, Optional
+from typing import Any, Collection, Container, Dict, Iterable, \
+                   MutableMapping, NamedTuple, Optional, Protocol
 
 from kopf._cogs.aiokits import aiotasks, aiotoggles
 from kopf._cogs.configs import configuration
-from kopf._cogs.structs import references
+from kopf._cogs.structs import bodies, references
 from kopf._core.engines import peering
 from kopf._core.reactor import queueing
 
@@ -41,6 +42,19 @@ logger = logging.getLogger(__name__)
 class EnsembleKey(NamedTuple):
     resource: references.Resource
     namespace: references.Namespace
+
+
+# Differs from queueing.WatchStreamProcessor by the resource=… kwarg.
+class ResourceWatchStreamProcessor(Protocol):
+    async def __call__(
+            self,
+            *,
+            resource: references.Resource,
+            raw_event: bodies.RawEvent,
+            stream_pressure: Optional[asyncio.Event] = None,  # None for tests
+            resource_indexed: Optional[aiotoggles.Toggle] = None,  # None for tests & observation
+            operator_indexed: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
+    ) -> None: ...
 
 
 @dataclasses.dataclass
@@ -89,7 +103,7 @@ class Ensemble:
 
 async def ochestrator(
         *,
-        processor: queueing.WatchStreamProcessor,
+        processor: ResourceWatchStreamProcessor,
         settings: configuration.OperatorSettings,
         identity: peering.Identity,
         insights: references.Insights,
@@ -122,7 +136,7 @@ async def ochestrator(
 # for a simulation of the insights (inputs) and an assertion of the tasks & toggles (outputs).
 async def adjust_tasks(
         *,
-        processor: queueing.WatchStreamProcessor,
+        processor: ResourceWatchStreamProcessor,
         insights: references.Insights,
         settings: configuration.OperatorSettings,
         identity: peering.Identity,
@@ -213,7 +227,7 @@ async def spawn_missing_peerings(
 
 async def spawn_missing_watchers(
         *,
-        processor: queueing.WatchStreamProcessor,
+        processor: ResourceWatchStreamProcessor,
         settings: configuration.OperatorSettings,
         indexed_resources: Container[references.Resource],  # only "if in", never "for in"!
         watched_resources: Iterable[references.Resource],
