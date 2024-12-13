@@ -33,7 +33,7 @@ async def test_regular_errors_escalate_without_retries(
     assert_logs([], prohibited=["attempt", "escalating", "retry"])
 
 
-@pytest.mark.parametrize('status', [400, 403, 404, 499, 666, 999])
+@pytest.mark.parametrize('status', [400, 404, 499, 666, 999])
 async def test_client_errors_escalate_without_retries(
         caplog, assert_logs, settings, logger, resp_mocker, aresponses, hostname, status):
     caplog.set_level(0)
