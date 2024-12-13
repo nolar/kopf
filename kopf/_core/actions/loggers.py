@@ -13,7 +13,7 @@ import enum
 import logging
 from typing import Any, Dict, MutableMapping, Optional, Tuple
 
-import pythonjsonlogger.jsonlogger
+import pythonjsonlogger.json
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import typedefs
