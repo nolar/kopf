@@ -13,7 +13,15 @@ import enum
 import logging
 from typing import Any, Dict, MutableMapping, Optional, Tuple
 
-import pythonjsonlogger.jsonlogger
+# Luckily, we do not mock these ones in tests, so we can import them into our namespace.
+try:
+    # python-json-logger>=3.1.0
+    from pythonjsonlogger.core import RESERVED_ATTRS as _pjl_RESERVED_ATTRS
+    from pythonjsonlogger.json import JsonFormatter as _pjl_JsonFormatter
+except ImportError:
+    # python-json-logger<3.1.0
+    from pythonjsonlogger.jsonlogger import JsonFormatter as _pjl_JsonFormatter  # type: ignore
+    from pythonjsonlogger.jsonlogger import RESERVED_ATTRS as _pjl_RESERVED_ATTRS  # type: ignore
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import typedefs
@@ -40,7 +48,7 @@ class ObjectTextFormatter(ObjectFormatter, logging.Formatter):
     pass
 
 
-class ObjectJsonFormatter(ObjectFormatter, pythonjsonlogger.jsonlogger.JsonFormatter):
+class ObjectJsonFormatter(ObjectFormatter, _pjl_JsonFormatter):
     def __init__(
             self,
             *args: Any,
@@ -48,12 +56,12 @@ class ObjectJsonFormatter(ObjectFormatter, pythonjsonlogger.jsonlogger.JsonForma
             **kwargs: Any,
     ) -> None:
         # Avoid type checking, as the args are not in the parent consructor.
-        reserved_attrs = kwargs.pop('reserved_attrs', pythonjsonlogger.jsonlogger.RESERVED_ATTRS)
+        reserved_attrs = kwargs.pop('reserved_attrs', _pjl_RESERVED_ATTRS)
         reserved_attrs = set(reserved_attrs)
         reserved_attrs |= {'k8s_skip', 'k8s_ref', 'settings'}
         kwargs.update(reserved_attrs=reserved_attrs)
         kwargs.setdefault('timestamp', True)
-        super().__init__(*args, **kwargs)  # type: ignore  # for untyped JsonFormatter.__init__()
+        super().__init__(*args, **kwargs)
         self._refkey: str = refkey or DEFAULT_JSON_REFKEY
 
     def add_fields(
