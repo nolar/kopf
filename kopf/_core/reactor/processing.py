@@ -185,6 +185,7 @@ async def process_resource_causes(
         body=body,
         memo=memory.memo,
         reset=bool(diff),  # only essential changes reset idling, not every event
+        raw_event_type=raw_event['type'],
     ) if registry._spawning.has_handlers(resource=resource) else None
 
     changing_cause = causes.detect_changing_cause(
@@ -331,10 +332,15 @@ async def process_spawning_cause(
     if cause.reset:
         memory.daemons_memory.idle_reset_time = time.monotonic()
 
-    if finalizers.is_deletion_ongoing(cause.body):
+    daemons_to_stop = {}
+    for daemon_name, daemon in memory.daemons_memory.running_daemons.items():
+        if finalizers.is_deletion_ongoing(cause.body) or (not daemon.handler.requires_finalizer and cause.raw_event_type == 'DELETED'):
+            daemons_to_stop[daemon_name] = daemon
+
+    if daemons_to_stop:
         stopping_delays = await daemons.stop_daemons(
             settings=settings,
-            daemons=memory.daemons_memory.running_daemons,
+            daemons=daemons_to_stop,
         )
         return stopping_delays
 
