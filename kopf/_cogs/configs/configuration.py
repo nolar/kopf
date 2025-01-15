@@ -167,6 +167,31 @@ class PeeringSettings:
 
 
 @dataclasses.dataclass
+class SessionSettings:
+
+    total_timeout: Optional[float] = 1 * 600
+    """
+    An HTTP/HTTPS session Total timeout for the whole request.
+    """
+
+    sock_connect_timeout: Optional[float] = 1 * 60
+    """
+    An HTTP/HTTPS session timeout for connecting to a peer for a new connection,
+    not given from a pool. See also connect.
+    """
+
+    sock_read_timeout: Optional[float] = 1 * 60
+    """
+    An HTTP/HTTPS session timeout for reading a portion of data from a peer.
+    """
+
+    connect_timeout: Optional[float] = 1 * 60
+    """
+    An HTTP/HTTPS session timeout for acquiring a connection from pool.
+    """
+
+
+@dataclasses.dataclass
 class WatchingSettings:
 
     server_timeout: Optional[float] = None
@@ -443,6 +468,7 @@ class OperatorSettings:
     process: ProcessSettings = dataclasses.field(default_factory=ProcessSettings)
     posting: PostingSettings = dataclasses.field(default_factory=PostingSettings)
     peering: PeeringSettings = dataclasses.field(default_factory=PeeringSettings)
+    session: SessionSettings = dataclasses.field(default_factory=SessionSettings)
     watching: WatchingSettings = dataclasses.field(default_factory=WatchingSettings)
     batching: BatchingSettings = dataclasses.field(default_factory=BatchingSettings)
     scanning: ScanningSettings = dataclasses.field(default_factory=ScanningSettings)
