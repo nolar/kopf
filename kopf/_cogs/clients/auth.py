@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, TypeV
 import aiohttp
 
 from kopf._cogs.clients import errors
+from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import versions
 from kopf._cogs.structs import credentials
 
@@ -101,6 +102,8 @@ class APIContext:
         certificate_path: Optional[str]
         private_key_path: Optional[str]
 
+        settings = configuration.OperatorSettings()
+
         if info.ca_path and info.ca_data:
             raise credentials.LoginError("Both CA path & data are set. Need only one.")
         elif info.ca_path:
@@ -172,6 +175,11 @@ class APIContext:
             ),
             headers=headers,
             auth=auth,
+            timeout=aiohttp.ClientTimeout(
+                total=settings.networking.request_timeout,
+                sock_connect=settings.networking.connect_timeout,
+            ),
+
         )
 
         # Add the extra payload information. We avoid overriding the constructor.
