@@ -77,10 +77,11 @@ setup(
             'uvloop>=0.18.0; python_version>="3.12"',
         ],
         'dev': [
-            'pyngrok',          # 1.00 MB + downloaded binary
+            # NB: oscrypto is pinned for Ubuntu 24.04+ in requirements.txt - read the details there.
             'oscrypto',         # 2.80 MB (smaller than cryptography: 8.7 MB)
             'certbuilder',      # +0.1 MB (2.90 MB if alone)
             'certvalidator',    # +0.1 MB (2.90 MB if alone)
+            'pyngrok',          # 1.00 MB + downloaded binary
         ],
     },
     package_data={"kopf": ["py.typed"]},
