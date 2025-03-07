@@ -19,8 +19,8 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 5  # usually 1-2, rarely 3 mins (because of installations)
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
@@ -50,8 +50,8 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 5  # usually 2-3 mins
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -90,8 +90,8 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -112,8 +112,8 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 10  # usually 4-5 mins
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - uses: nolar/setup-k3d-k3s@v1
@@ -134,8 +134,8 @@ jobs:
     env:
       K8S: ${{ matrix.k8s }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: tools/install-minikube.sh
@@ -147,7 +147,7 @@ jobs:
     needs: [unit-tests, pypy-tests, functional]
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
       - run: pip install coveralls
       - run: coveralls --service=github --finish
         env:
