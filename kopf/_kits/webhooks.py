@@ -552,6 +552,7 @@ class WebhookNgrokTunnel(webhacks.WebhookContextManager):
 
                     # Adjust for local webhook server specifics (no port, but with the same path).
                     # Report no CA bundle -- ngrok's certs (Let's Encrypt) are in a default trust chain.
+                    assert tunnel is not None  # for mypy
                     url = f"{tunnel.public_url}{self.path or ''}"
                     logger.debug(f"Accessing the webhooks at {url}")
                     yield reviews.WebhookClientConfig(url=url)  # e.g. 'https://e5fc05f6494b.ngrok.io/xyz'
