@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: "3.12"
-      - run: pip install --upgrade setuptools wheel twine
+      - run: pip install --upgrade pip setuptools wheel twine
       - run: python setup.py sdist bdist_wheel
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:

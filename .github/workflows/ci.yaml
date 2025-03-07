@@ -92,7 +92,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - run: sudo apt-get update && sudo apt-get install libxml2-dev libxslt-dev
-      - run: pip install wheel
+      - run: pip install --upgrade pip wheel setuptools
 
       - run: pip install -r requirements.txt
       - run: pip install -e .[${{ matrix.install-extras }}]
