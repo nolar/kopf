@@ -46,7 +46,7 @@ jobs:
         include:
           - install-extras: "uvloop"
             python-version: "3.12"
-    name: Python ${{ matrix.python-version }} ${{ matrix.install-extras }}
+    name: Python ${{ matrix.python-version }}${{ matrix.install-extras && ' ' || '' }}${{ matrix.install-extras }}
     runs-on: ubuntu-22.04
     timeout-minutes: 5  # usually 2-3 mins
     steps:
@@ -86,7 +86,7 @@ jobs:
       matrix:
         install-extras: [ "", "full-auth" ]
         python-version: [ "pypy-3.8", "pypy-3.9", "pypy-3.10" ]
-    name: Python ${{ matrix.python-version }} ${{ matrix.install-extras }}
+    name: Python ${{ matrix.python-version }}${{ matrix.install-extras && ' ' || '' }}${{ matrix.install-extras }}
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
