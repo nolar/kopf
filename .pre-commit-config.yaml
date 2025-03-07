@@ -7,7 +7,7 @@ exclude: |
   )
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v5.0.0
     hooks:
       - id: check-ast
       - id: trailing-whitespace
@@ -61,20 +61,20 @@ repos:
       # - id: python-no-log-warn  # overreacts to `kopf.warn()`.
 
   - repo: https://github.com/seddonym/import-linter
-    rev: v1.7.0
+    rev: v2.2
     hooks:
       - id: import-linter
         additional_dependencies:
           - astpath[xpath]
 
   - repo: https://github.com/PyCQA/isort
-    rev: 5.12.0
+    rev: 6.0.1
     hooks:
       - id: isort
         name: isort-source-code
 
   - repo: https://github.com/PyCQA/isort
-    rev: 5.12.0
+    rev: 6.0.1
     hooks:
       - id: isort
         name: isort-examples
@@ -82,7 +82,7 @@ repos:
         files: '^examples/'
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.3.1
+    rev: v3.19.1
     hooks:
     -   id: pyupgrade
         args: [--py37-plus, --keep-mock]
