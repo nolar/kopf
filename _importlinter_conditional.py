@@ -17,8 +17,8 @@ https://import-linter.readthedocs.io/en/stable/custom_contract_types.html
 import os.path
 
 import astpath
+from grimp import ImportGraph
 from importlinter import Contract, ContractCheck, fields, output
-from importlinter.domain.ports.graph import ImportGraph
 
 
 class ConditionalImportContract(Contract):
