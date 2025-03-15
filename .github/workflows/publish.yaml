@@ -20,7 +20,7 @@ jobs:
       - run: pip install --upgrade pip setuptools wheel twine
       - run: python setup.py sdist bdist_wheel
       - uses: pypa/gh-action-pypi-publish@release/v1
+        permissions:
+          id-token: write  # for trusted publishing
         with:
-          user: __token__
-          password: ${{ secrets.pypi_token }}
           skip_existing: true
