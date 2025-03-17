@@ -40,7 +40,7 @@ def dummy():
 
 
 @pytest.fixture()
-def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
+def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker, raw_event=None):
     """
     Simulate K8s behaviour locally in memory (some meaningful approximation).
     """
@@ -52,7 +52,7 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
             else:
                 dst[key] = val
 
-    async def _simulate_cycle(event_object: RawBody):
+    async def _simulate_cycle(event_object: RawBody, raw_event_type: str = 'irrelevant'):
         mocker.resetall()
 
         await process_resource_event(
@@ -63,7 +63,7 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
             memories=memories,
             memobase=Memo(),
             indexers=OperatorIndexers(),
-            raw_event={'type': 'irrelevant', 'object': event_object},
+            raw_event={'type': raw_event_type, 'object': event_object},
             event_queue=asyncio.Queue(),
         )
 
