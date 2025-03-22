@@ -279,14 +279,24 @@ class SmartOperatorRegistry(OperatorRegistry):
                 _fallback=True,
             ))
         if piggybacking.has_client():
-            self._activities.append(handlers.ActivityHandler(
-                id=ids.HandlerId('login_via_client'),
-                fn=piggybacking.login_via_client,
-                activity=causes.Activity.AUTHENTICATION,
-                errors=execution.ErrorsMode.IGNORED,
-                param=None, timeout=None, retries=None, backoff=None,
-                _fallback=True,
-            ))
+            if piggybacking.has_sync_client():
+                self._activities.append(handlers.ActivityHandler(
+                    id=ids.HandlerId('login_via_client'),
+                    fn=piggybacking.login_via_client,
+                    activity=causes.Activity.AUTHENTICATION,
+                    errors=execution.ErrorsMode.IGNORED,
+                    param=None, timeout=None, retries=None, backoff=None,
+                    _fallback=True,
+                ))
+            elif piggybacking.has_async_client():
+                self._activities.append(handlers.ActivityHandler(
+                    id=ids.HandlerId('login_via_async_client'),
+                    fn=piggybacking.login_via_async_client,
+                    activity=causes.Activity.AUTHENTICATION,
+                    errors=execution.ErrorsMode.IGNORED,
+                    param=None, timeout=None, retries=None, backoff=None,
+                    _fallback=True,
+                ))
 
         # As a last resort, fall back to rudimentary logins if no advanced ones are available.
         thirdparties_present = piggybacking.has_pykube() or piggybacking.has_client()
