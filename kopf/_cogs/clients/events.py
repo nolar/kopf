@@ -32,7 +32,7 @@ async def post_event(
 
     # Prevent "event explosion", when core v1 events are handled and create other core v1 events.
     # This can happen with `EVERYTHING` without additional filters, or by explicitly serving them.
-    if ref['apiVersion'] == 'v1' and ref['kind'] == 'Event':
+    if ref.get('apiVersion') == 'v1' and ref.get('kind') == 'Event':
         return
 
     # See #164. For cluster-scoped objects, use the current namespace from the current context.
