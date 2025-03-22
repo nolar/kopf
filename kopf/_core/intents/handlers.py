@@ -1,5 +1,6 @@
 import dataclasses
-from typing import Optional, cast
+import warnings
+from typing import Collection, Optional, cast
 
 from kopf._cogs.structs import dicts, diffs, references
 from kopf._core.actions import execution
@@ -40,7 +41,7 @@ class ResourceHandler(execution.Handler):
 class WebhookHandler(ResourceHandler):
     fn: callbacks.WebhookFn  # typing clarification
     reason: causes.WebhookType
-    operation: Optional[str]
+    operations: Optional[Collection[str]]
     subresource: Optional[str]
     persistent: Optional[bool]
     side_effects: Optional[bool]
@@ -48,6 +49,18 @@ class WebhookHandler(ResourceHandler):
 
     def __str__(self) -> str:
         return f"Webhook {self.id!r}"
+
+    @property
+    def operation(self) -> Optional[str]:  # deprecated
+        warnings.warn("handler.operation is deprecated, use handler.operations", DeprecationWarning)
+        if not self.operations:
+           return None
+        elif len(self.operations) == 1:
+            return list(self.operations)[0]
+        else:
+            raise ValueError(
+                f"{len(self.operations)} operations in the handler. Use it as handler.operations."
+            )
 
 
 @dataclasses.dataclass(frozen=True)

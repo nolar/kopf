@@ -1,4 +1,4 @@
-from mock import Mock
+from unittest.mock import Mock
 
 from kopf._cogs.structs.references import Resource, Selector
 from kopf._core.intents.registries import _matches_resource

@@ -214,13 +214,13 @@ class WebhookServer(webhacks.WebhookContextManager):
             response = await fn(data, webhook=webhook, sslpeer=sslpeer, headers=headers)
             return aiohttp.web.json_response(response)
         except admission.AmbiguousResourceError as e:
-            raise aiohttp.web.HTTPConflict(reason=str(e))
+            raise aiohttp.web.HTTPConflict(reason=str(e) or None)
         except admission.UnknownResourceError as e:
-            raise aiohttp.web.HTTPNotFound(reason=str(e))
+            raise aiohttp.web.HTTPNotFound(reason=str(e) or None)
         except admission.WebhookError as e:
-            raise aiohttp.web.HTTPBadRequest(reason=str(e))
+            raise aiohttp.web.HTTPBadRequest(reason=str(e) or None)
         except json.JSONDecodeError as e:
-            raise aiohttp.web.HTTPBadRequest(reason=str(e))
+            raise aiohttp.web.HTTPBadRequest(reason=str(e) or None)
 
     @staticmethod
     def _allocate_free_port() -> int:

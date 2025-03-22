@@ -1,8 +1,9 @@
 import datetime
+from unittest.mock import Mock
 
 import freezegun
+import iso8601
 import pytest
-from mock import Mock
 
 from kopf._cogs.configs.progress import SmartProgressStorage, StatusProgressStorage
 from kopf._cogs.structs.bodies import Body
@@ -12,14 +13,14 @@ from kopf._core.actions.progression import State, StateCounters, deliver_results
 from kopf._core.intents.causes import HANDLER_REASONS, Reason
 
 # Timestamps: time zero (0), before (B), after (A), and time zero+1s (1).
-TSB = datetime.datetime(2020, 12, 31, 23, 59, 59)
-TS0 = datetime.datetime(2020, 12, 31, 23, 59, 59, 123456)
-TS1 = datetime.datetime(2021,  1,  1, 00, 00, 00, 123456)
-TSA = datetime.datetime(2020, 12, 31, 23, 59, 59, 999999)
-TSB_ISO = '2020-12-31T23:59:59.000000'
-TS0_ISO = '2020-12-31T23:59:59.123456'
-TS1_ISO = '2021-01-01T00:00:00.123456'
-TSA_ISO = '2020-12-31T23:59:59.999999'
+TSB_ISO = '2020-12-31T23:59:59.000000+00:00'
+TS0_ISO = '2020-12-31T23:59:59.123456+00:00'
+TS1_ISO = '2021-01-01T00:00:00.123456+00:00'
+TSA_ISO = '2020-12-31T23:59:59.999999+00:00'
+TSB = iso8601.parse_date(TSB_ISO)
+TS0 = iso8601.parse_date(TS0_ISO)
+TS1 = iso8601.parse_date(TS1_ISO)
+TSA = iso8601.parse_date(TSA_ISO)
 ZERO_DELTA = datetime.timedelta(seconds=0)
 
 

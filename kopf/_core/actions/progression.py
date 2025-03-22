@@ -18,6 +18,8 @@ import datetime
 from typing import Any, Collection, Dict, Iterable, Iterator, \
                    Mapping, NamedTuple, Optional, overload
 
+import iso8601
+
 from kopf._cogs.configs import progress
 from kopf._cogs.structs import bodies, ids, patches
 from kopf._core.actions import execution
@@ -54,7 +56,7 @@ class HandlerState(execution.HandlerState):
     def from_scratch(cls, *, purpose: Optional[str] = None) -> "HandlerState":
         return cls(
             active=True,
-            started=datetime.datetime.utcnow(),
+            started=datetime.datetime.now(datetime.timezone.utc),
             purpose=purpose,
         )
 
@@ -62,9 +64,9 @@ class HandlerState(execution.HandlerState):
     def from_storage(cls, __d: progress.ProgressRecord) -> "HandlerState":
         return cls(
             active=False,
-            started=_datetime_fromisoformat(__d.get('started')) or datetime.datetime.utcnow(),
-            stopped=_datetime_fromisoformat(__d.get('stopped')),
-            delayed=_datetime_fromisoformat(__d.get('delayed')),
+            started=_parse_iso8601(__d.get('started')) or datetime.datetime.now(datetime.timezone.utc),
+            stopped=_parse_iso8601(__d.get('stopped')),
+            delayed=_parse_iso8601(__d.get('delayed')),
             purpose=__d.get('purpose') if __d.get('purpose') else None,
             retries=__d.get('retries') or 0,
             success=__d.get('success') or False,
@@ -76,9 +78,9 @@ class HandlerState(execution.HandlerState):
 
     def for_storage(self) -> progress.ProgressRecord:
         return progress.ProgressRecord(
-            started=None if self.started is None else _datetime_toisoformat(self.started),
-            stopped=None if self.stopped is None else _datetime_toisoformat(self.stopped),
-            delayed=None if self.delayed is None else _datetime_toisoformat(self.delayed),
+            started=None if self.started is None else _format_iso8601(self.started),
+            stopped=None if self.stopped is None else _format_iso8601(self.stopped),
+            delayed=None if self.delayed is None else _format_iso8601(self.delayed),
             purpose=None if self.purpose is None else str(self.purpose),
             retries=None if self.retries is None else int(self.retries),
             success=None if self.success is None else bool(self.success),
@@ -104,7 +106,7 @@ class HandlerState(execution.HandlerState):
             self,
             outcome: execution.Outcome,
     ) -> "HandlerState":
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
         cls = type(self)
         return cls(
             active=self.active,
@@ -313,7 +315,7 @@ class State(execution.State):
         processing routine, based on all delays of different origin:
         e.g. postponed daemons, stopping daemons, temporarily failed handlers.
         """
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
         return [
             max(0, (handler_state.delayed - now).total_seconds()) if handler_state.delayed else 0
             for handler_state in self._states.values()
@@ -355,30 +357,24 @@ def deliver_results(
 
 
 @overload
-def _datetime_toisoformat(val: None) -> None: ...
+def _format_iso8601(val: None) -> None: ...
 
 
 @overload
-def _datetime_toisoformat(val: datetime.datetime) -> str: ...
+def _format_iso8601(val: datetime.datetime) -> str: ...
 
 
-def _datetime_toisoformat(val: Optional[datetime.datetime]) -> Optional[str]:
-    if val is None:
-        return None
-    else:
-        return val.isoformat(timespec='microseconds')
+def _format_iso8601(val: Optional[datetime.datetime]) -> Optional[str]:
+    return None if val is None else val.isoformat(timespec='microseconds')
 
 
 @overload
-def _datetime_fromisoformat(val: None) -> None: ...
+def _parse_iso8601(val: None) -> None: ...
 
 
 @overload
-def _datetime_fromisoformat(val: str) -> datetime.datetime: ...
+def _parse_iso8601(val: str) -> datetime.datetime: ...
 
 
-def _datetime_fromisoformat(val: Optional[str]) -> Optional[datetime.datetime]:
-    if val is None:
-        return None
-    else:
-        return datetime.datetime.fromisoformat(val)
+def _parse_iso8601(val: Optional[str]) -> Optional[datetime.datetime]:
+    return None if val is None else iso8601.parse_date(val)  # always TZ-aware

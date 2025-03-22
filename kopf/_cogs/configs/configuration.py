@@ -80,6 +80,10 @@ class PostingSettings:
     (``kopf.info()``, ``kopf.warn()``, ``kopf.exception()``).
     """
 
+    reporting_component: str = 'kopf'
+    reporting_instance: str = 'dev'
+    event_name_prefix: str = 'kopf-event-'
+
 
 @dataclasses.dataclass
 class PeeringSettings:

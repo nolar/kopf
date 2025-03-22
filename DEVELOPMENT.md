@@ -8,12 +8,10 @@ use [minikube](https://github.com/kubernetes/minikube):
 MacOS:
 
 ```bash
-brew install docker-machine-driver-hyperkit
-sudo chown root:wheel /usr/local/opt/docker-machine-driver-hyperkit/bin/docker-machine-driver-hyperkit
-sudo chmod u+s /usr/local/opt/docker-machine-driver-hyperkit/bin/docker-machine-driver-hyperkit
+brew install minikube
+brew install hyperkit
 
-brew cask install minikube
-minikube config set vm-driver hyperkit
+minikube config set driver hyperkit
 ```
 
 Start the minikube cluster:
@@ -82,7 +80,7 @@ If you use PyCharm, create a Run/Debug Configuration as follows:
 * Mode: `module name`
 * Module name: `kopf`
 * Arguments: `run examples/01-minimal/example.py --verbose`
-* Python Interpreter: anything with Python>=3.7
+* Python Interpreter: anything with Python>=3.8
 
 Stop the console operator, and start the IDE debug session.
 Put a breakpoint in the used operator script on the first line of the function.

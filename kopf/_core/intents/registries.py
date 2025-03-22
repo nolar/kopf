@@ -241,7 +241,7 @@ class WebhooksRegistry(ResourceRegistry[handlers.WebhookHandler, causes.WebhookC
                     # For deletion, exclude all mutation handlers unless explicitly enabled.
                     non_mutating = handler.reason != causes.WebhookType.MUTATING
                     non_deletion = cause.operation != 'DELETE'
-                    explicitly_for_deletion = handler.operation == 'DELETE'
+                    explicitly_for_deletion = set(handler.operations or []) == {'DELETE'}
                     if non_mutating or non_deletion or explicitly_for_deletion:
                         # Filter by usual criteria: labels, annotations, fields, callbacks.
                         if match(handler=handler, cause=cause):

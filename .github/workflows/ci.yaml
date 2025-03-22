@@ -12,13 +12,13 @@ on:
 jobs:
   linters:
     name: Linting and static analysis
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 5  # usually 1-2, rarely 3 mins (because of installations)
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.13"
       - run: pip install -r requirements.txt
       - run: pre-commit run --all-files
       - run: mypy kopf --strict
@@ -38,16 +38,16 @@ jobs:
       fail-fast: false
       matrix:
         install-extras: [ "", "full-auth" ]
-        python-version: [ "3.7", "3.8", "3.9", "3.10", "3.11" ]
+        python-version: [ "3.8", "3.9", "3.10", "3.11", "3.12", "3.13" ]
         include:
           - install-extras: "uvloop"
-            python-version: "3.11"
-    name: Python ${{ matrix.python-version }} ${{ matrix.install-extras }}
-    runs-on: ubuntu-22.04
+            python-version: "3.13"
+    name: Python ${{ matrix.python-version }}${{ matrix.install-extras && ' ' || '' }}${{ matrix.install-extras }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 5  # usually 2-3 mins
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -81,18 +81,18 @@ jobs:
       fail-fast: false
       matrix:
         install-extras: [ "", "full-auth" ]
-        python-version: [ "pypy-3.7", "pypy-3.8", "pypy-3.9" ]
-    name: Python ${{ matrix.python-version }} ${{ matrix.install-extras }}
-    runs-on: ubuntu-22.04
+        python-version: [ "pypy-3.8", "pypy-3.9", "pypy-3.10" ]
+    name: Python ${{ matrix.python-version }}${{ matrix.install-extras && ' ' || '' }}${{ matrix.install-extras }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - run: sudo apt-get update && sudo apt-get install libxml2-dev libxslt-dev
-      - run: pip install wheel
+      - run: pip install --upgrade pip wheel setuptools
 
       - run: pip install -r requirements.txt
       - run: pip install -e .[${{ matrix.install-extras }}]
@@ -103,15 +103,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        k3s: [latest, v1.26, v1.25, v1.24, v1.23]
+        k3s: [latest, v1.31, v1.30, v1.29]
     name: K3s ${{matrix.k3s}}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 10  # usually 4-5 mins
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
       - uses: nolar/setup-k3d-k3s@v1
         with:
           version: ${{ matrix.k3s }}
@@ -122,9 +122,9 @@ jobs:
   coveralls-finish:
     name: Finalize coveralls.io
     needs: [unit-tests, pypy-tests, functional]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
       - run: pip install coveralls
       - run: coveralls --service=github --finish
         env:

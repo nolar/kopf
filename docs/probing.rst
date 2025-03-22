@@ -76,7 +76,7 @@ probing handlers:
 
     @kopf.on.probe(id='now')
     def get_current_timestamp(**kwargs):
-        return datetime.datetime.utcnow().isoformat()
+        return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     @kopf.on.probe(id='random')
     def get_random_value(**kwargs):
@@ -91,7 +91,7 @@ The handler results will be reported as the content of the liveness response:
 .. code-block:: console
 
     $ curl http://localhost:8080/healthz
-    {"now": "2019-11-07T18:03:52.513803", "random": 765846}
+    {"now": "2019-11-07T18:03:52.513803+00:00", "random": 765846}
 
 .. note::
     The liveness status report is simplistic and minimalistic at the moment.

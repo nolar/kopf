@@ -1,9 +1,9 @@
 import dataclasses
 import logging
 from typing import Type
+from unittest.mock import Mock
 
 import pytest
-from mock import Mock
 
 from kopf._cogs.configs.configuration import OperatorSettings
 from kopf._cogs.structs import diffs

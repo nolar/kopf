@@ -34,8 +34,10 @@ async def liveness_url(settings, liveness_registry, unused_tcp_port_factory):
         )
     )
 
+    # Generally there is no or minimal timeout, except if the runner/server raise on start up.
+    # In that case, escalate their error from the task instead of hanging here forever.
     try:
-        await ready_flag.wait()
+        await asyncio.wait_for(ready_flag.wait(), timeout=1)
         yield f'http://localhost:{port}/xyz'
     finally:
         server.cancel()

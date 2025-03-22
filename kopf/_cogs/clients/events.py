@@ -32,7 +32,7 @@ async def post_event(
 
     # Prevent "event explosion", when core v1 events are handled and create other core v1 events.
     # This can happen with `EVERYTHING` without additional filters, or by explicitly serving them.
-    if ref['apiVersion'] == 'v1' and ref['kind'] == 'Event':
+    if ref.get('apiVersion') == 'v1' and ref.get('kind') == 'Event':
         return
 
     # See #164. For cluster-scoped objects, use the current namespace from the current context.
@@ -49,11 +49,11 @@ async def post_event(
         suffix = message[-MAX_MESSAGE_LENGTH // 2 + (len(infix) - len(infix) // 2):]
         message = f'{prefix}{infix}{suffix}'
 
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     body = {
         'metadata': {
             'namespace': namespace,
-            'generateName': 'kopf-event-',
+            'generateName': settings.posting.event_name_prefix,
         },
 
         'action': 'Action?',
@@ -61,15 +61,15 @@ async def post_event(
         'reason': reason,
         'message': message,
 
-        'reportingComponent': 'kopf',
-        'reportingInstance': 'dev',
-        'source' : {'component': 'kopf'},  # used in the "From" column in `kubectl describe`.
+        'reportingComponent': settings.posting.reporting_component,
+        'reportingInstance': settings.posting.reporting_instance,
+        'source': {'component': settings.posting.reporting_component},  # used in the "From" column in `kubectl describe`.
 
         'involvedObject': full_ref,
 
-        'firstTimestamp': now.isoformat() + 'Z',  # '2019-01-28T18:25:03.000000Z' -- seen in `kubectl describe ...`
-        'lastTimestamp': now.isoformat() + 'Z',  # '2019-01-28T18:25:03.000000Z' - seen in `kubectl get events`
-        'eventTime': now.isoformat() + 'Z',  # '2019-01-28T18:25:03.000000Z'
+        'firstTimestamp': now.isoformat(),  # seen in `kubectl describe ...`
+        'lastTimestamp': now.isoformat(),  # seen in `kubectl get events`
+        'eventTime': now.isoformat(),
     }
 
     try:

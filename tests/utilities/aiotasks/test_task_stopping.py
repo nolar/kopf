@@ -3,7 +3,7 @@ import logging
 
 import pytest
 
-from kopf._cogs.aiokits.aiotasks import create_task, stop
+from kopf._cogs.aiokits.aiotasks import stop
 
 
 async def simple() -> None:
@@ -38,8 +38,8 @@ async def test_stop_with_no_tasks_when_quiet(assert_logs, caplog):
 async def test_stop_immediately_with_finishing(assert_logs, caplog):
     logger = logging.getLogger()
     caplog.set_level(0)
-    task1 = create_task(simple())
-    task2 = create_task(simple())
+    task1 = asyncio.create_task(simple())
+    task2 = asyncio.create_task(simple())
     done, pending = await stop([task1, task2], title='sample', logger=logger, cancelled=False)
     assert done
     assert not pending
@@ -51,8 +51,8 @@ async def test_stop_immediately_with_finishing(assert_logs, caplog):
 async def test_stop_immediately_with_cancelling(assert_logs, caplog):
     logger = logging.getLogger()
     caplog.set_level(0)
-    task1 = create_task(simple())
-    task2 = create_task(simple())
+    task1 = asyncio.create_task(simple())
+    task2 = asyncio.create_task(simple())
     done, pending = await stop([task1, task2], title='sample', logger=logger, cancelled=True)
     assert done
     assert not pending
@@ -65,9 +65,9 @@ async def test_stop_immediately_with_cancelling(assert_logs, caplog):
 async def test_stop_iteratively(assert_logs, caplog, cancelled):
     logger = logging.getLogger()
     caplog.set_level(0)
-    task1 = create_task(simple())
-    task2 = create_task(stuck())
-    stask = create_task(stop([task1, task2], title='sample', logger=logger, interval=0.01, cancelled=cancelled))
+    task1 = asyncio.create_task(simple())
+    task2 = asyncio.create_task(stuck())
+    stask = asyncio.create_task(stop([task1, task2], title='sample', logger=logger, interval=0.01, cancelled=cancelled))
 
     done, pending = await asyncio.wait({stask}, timeout=0.011)
     assert not done
@@ -91,9 +91,9 @@ async def test_stop_iteratively(assert_logs, caplog, cancelled):
 async def test_stop_itself_is_cancelled(assert_logs, caplog, cancelled):
     logger = logging.getLogger()
     caplog.set_level(0)
-    task1 = create_task(simple())
-    task2 = create_task(stuck())
-    stask = create_task(stop([task1, task2], title='sample', logger=logger, interval=0.01, cancelled=cancelled))
+    task1 = asyncio.create_task(simple())
+    task2 = asyncio.create_task(stuck())
+    stask = asyncio.create_task(stop([task1, task2], title='sample', logger=logger, interval=0.01, cancelled=cancelled))
 
     done, pending = await asyncio.wait({stask}, timeout=0.011)
     assert not done

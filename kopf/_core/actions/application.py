@@ -89,7 +89,7 @@ async def apply(
             logger.debug(f"Sleeping was interrupted by new changes, {unslept_delay} seconds left.")
         else:
             # Any unique always-changing value will work; not necessary a timestamp.
-            value = datetime.datetime.utcnow().isoformat()
+            value = datetime.datetime.now(datetime.timezone.utc).isoformat()
             touch = patches.Patch()
             settings.persistence.progress_storage.touch(body=body, patch=touch, value=value)
             await patch_and_check(

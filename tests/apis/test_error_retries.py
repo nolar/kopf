@@ -33,13 +33,13 @@ async def test_regular_errors_escalate_without_retries(
     assert_logs([], prohibited=["attempt", "escalating", "retry"])
 
 
-@pytest.mark.parametrize('status', [400, 403, 404, 499, 666, 999])
+@pytest.mark.parametrize('status', [400, 404, 499, 666, 999])
 async def test_client_errors_escalate_without_retries(
         caplog, assert_logs, settings, logger, resp_mocker, aresponses, hostname, status):
     caplog.set_level(0)
 
     # side_effect instead of return_value -- to generate a new response on every call, not reuse it.
-    mock = resp_mocker(side_effect=lambda: aiohttp.web.json_response({}, status=status))
+    mock = resp_mocker(side_effect=lambda: aiohttp.web.json_response({}, status=status, reason='oops'))
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
@@ -60,7 +60,7 @@ async def test_server_errors_escalate_with_retries(
     caplog.set_level(0)
 
     # side_effect instead of return_value -- to generate a new response on every call, not reuse it.
-    mock = resp_mocker(side_effect=lambda: aiohttp.web.json_response({}, status=status))
+    mock = resp_mocker(side_effect=lambda: aiohttp.web.json_response({}, status=status, reason='oops'))
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
@@ -123,8 +123,8 @@ async def test_retried_until_succeeded(
     caplog.set_level(0)
 
     mock = resp_mocker(side_effect=[
-        aiohttp.web.json_response({}, status=505),
-        aiohttp.web.json_response({}, status=505),
+        aiohttp.web.json_response({}, status=505, reason='oops'),
+        aiohttp.web.json_response({}, status=505, reason='oops'),
         aiohttp.web.json_response({}),
     ])
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
@@ -158,7 +158,7 @@ async def test_backoffs_as_lists(
     caplog.set_level(0)
 
     # side_effect instead of return_value -- to generate a new response on every call, not reuse it.
-    mock = resp_mocker(side_effect=lambda: aiohttp.web.json_response({}, status=500))
+    mock = resp_mocker(side_effect=lambda: aiohttp.web.json_response({}, status=500, reason='oops'))
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
@@ -178,7 +178,7 @@ async def test_backoffs_as_floats(
     caplog.set_level(0)
 
     # side_effect instead of return_value -- to generate a new response on every call, not reuse it.
-    mock = resp_mocker(side_effect=lambda: aiohttp.web.json_response({}, status=500))
+    mock = resp_mocker(side_effect=lambda: aiohttp.web.json_response({}, status=500, reason='oops'))
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
 
@@ -200,7 +200,7 @@ async def test_backoffs_as_iterables(
             return iter([1, 2, 3])
 
     # side_effect instead of return_value -- to generate a new response on every call, not reuse it.
-    mock = resp_mocker(side_effect=lambda: aiohttp.web.json_response({}, status=500))
+    mock = resp_mocker(side_effect=lambda: aiohttp.web.json_response({}, status=500, reason='oops'))
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts

@@ -1,10 +1,10 @@
 import asyncio
 import contextlib
 import time
+from unittest.mock import MagicMock, patch
 
 import freezegun
 import pytest
-from mock import MagicMock, patch
 
 import kopf
 from kopf._cogs.aiokits.aiotoggles import ToggleSet
@@ -104,7 +104,7 @@ def frozen_time():
     A helper to simulate time movements to step over long sleeps/timeouts.
     """
     # TODO LATER: Either freezegun should support the system clock, or find something else.
-    with freezegun.freeze_time("2020-01-01 00:00:00") as frozen:
+    with freezegun.freeze_time("2020-01-01T00:00:00") as frozen:
         # Use freezegun-supported time instead of system clocks -- for testing purposes only.
         # NB: Patch strictly after the time is frozen -- to use fake_time(), not real time().
         with patch('time.monotonic', time.time), patch('time.perf_counter', time.time):

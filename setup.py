@@ -33,11 +33,12 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
         'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
@@ -53,7 +54,7 @@ setup(
         ],
     },
 
-    python_requires='>=3.7',
+    python_requires='>=3.8',
     setup_requires=[
         'setuptools_scm',
     ],
@@ -62,7 +63,8 @@ setup(
         'python-json-logger',   # 0.05 MB
         'iso8601',              # 0.07 MB
         'click',                # 0.60 MB
-        'aiohttp<4.0.0',        # 7.80 MB
+        'aiohttp',              # 7.80 MB
+        'aiohttp>=3.9.0; python_version>="3.12"',
         'pyyaml',               # 0.90 MB
     ],
     extras_require={
@@ -72,12 +74,14 @@ setup(
         ],
         'uvloop': [
             'uvloop',           # 9.00 MB
+            'uvloop>=0.18.0; python_version>="3.12"',
         ],
         'dev': [
-            'pyngrok',          # 1.00 MB + downloaded binary
+            # NB: oscrypto is pinned for Ubuntu 24.04+ in requirements.txt - read the details there.
             'oscrypto',         # 2.80 MB (smaller than cryptography: 8.7 MB)
             'certbuilder',      # +0.1 MB (2.90 MB if alone)
             'certvalidator',    # +0.1 MB (2.90 MB if alone)
+            'pyngrok',          # 1.00 MB + downloaded binary
         ],
     },
     package_data={"kopf": ["py.typed"]},

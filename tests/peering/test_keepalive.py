@@ -1,3 +1,6 @@
+from itertools import chain, repeat
+from unittest import mock
+
 import pytest
 
 from kopf._core.engines.peering import keepalive
@@ -11,7 +14,9 @@ async def test_background_task_runs(mocker, settings, namespaced_peering_resourc
     touch_mock = mocker.patch('kopf._core.engines.peering.touch')
 
     sleep_mock = mocker.patch('asyncio.sleep')
-    sleep_mock.side_effect = [None, None, StopInfiniteCycleException]
+    # restore the default behavior after exhausting test values.
+    # pytest-aiohttp calls asyncio.sleep during teardown, before the mock is removed.
+    sleep_mock.side_effect = chain([None, None, StopInfiniteCycleException], repeat(mock.DEFAULT))
 
     randint_mock = mocker.patch('random.randint')
     randint_mock.side_effect = [7, 5, 9]

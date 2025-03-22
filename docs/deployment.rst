@@ -10,15 +10,15 @@ But normally, the operators are usually deployed directly to the clusters.
 Docker image
 ============
 
-First of all, the operator must be packaged as a docker image with Python 3.7 or newer:
+First of all, the operator must be packaged as a docker image with Python 3.8 or newer:
 
 .. code-block:: dockerfile
     :caption: Dockerfile
     :name: dockerfile
 
-    FROM python:3.11
-    ADD . /src
+    FROM python:3.12
     RUN pip install kopf
+    ADD . /src
     CMD kopf run /src/handlers.py --verbose
 
 Build and push it to some repository of your choice.

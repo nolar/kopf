@@ -23,7 +23,7 @@ if not TYPE_CHECKING:  # pragma: nocover
     IndexingFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
     WatchingFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
     ChangingFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
-    WebhookFn = Callable[..., invocation.SyncOrAsync[None]]
+    WebhookFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
     DaemonFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
     TimerFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
     WhenFilterFn = Callable[..., bool]  # strictly sync, no async!
@@ -37,7 +37,7 @@ else:
     ActivityFn = Callable[
         [
             NamedArg(configuration.OperatorSettings, "settings"),
-            NamedArg(ephemera.Index, "*"),
+            NamedArg(ephemera.Index[Any, Any], "*"),
             NamedArg(int, "retry"),
             NamedArg(datetime.datetime, "started"),
             NamedArg(datetime.timedelta, "runtime"),
@@ -145,7 +145,7 @@ else:
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        invocation.SyncOrAsync[None]
+        invocation.SyncOrAsync[Optional[object]]
     ]
 
     DaemonFn = Callable[
@@ -175,7 +175,7 @@ else:
 
     TimerFn = Callable[
         [
-            NamedArg(ephemera.Index, "*"),
+            NamedArg(ephemera.Index[Any, Any], "*"),
             NamedArg(bodies.Annotations, "annotations"),
             NamedArg(bodies.Labels, "labels"),
             NamedArg(bodies.Body, "body"),

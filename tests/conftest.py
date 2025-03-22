@@ -8,10 +8,10 @@ import re
 import sys
 import time
 from typing import Set
+from unittest.mock import AsyncMock, Mock
 
 import aiohttp.web
 import pytest
-from mock import AsyncMock, Mock
 
 import kopf
 from kopf._cogs.clients.auth import APIContext
@@ -37,6 +37,11 @@ def pytest_configure(config):
 
     # TODO: Remove when fixed in https://github.com/pytest-dev/pytest-asyncio/issues/460:
     config.addinivalue_line('filterwarnings', 'ignore:There is no current event loop:DeprecationWarning:pytest_asyncio')
+
+    # Python 3.12 transitional period:
+    config.addinivalue_line('filterwarnings', 'ignore:datetime*:DeprecationWarning:dateutil')
+    config.addinivalue_line('filterwarnings', 'ignore:datetime*:DeprecationWarning:freezegun')
+    config.addinivalue_line('filterwarnings', 'ignore:.*:DeprecationWarning:_pydevd_.*')
 
 
 def pytest_addoption(parser):
@@ -411,8 +416,34 @@ def clean_kubernetes_client():
         kubernetes.client.configuration.Configuration.set_default(None)
 
 
+# Aresponses/aiohttp must be closed strictly after the vault. See the docstring.
 @pytest.fixture()
-def fake_vault(mocker, hostname):
+async def _fake_vault(mocker, hostname, aresponses):
+    """
+    A hack around pytest's internal flaw in order to close the vault in the end.
+
+    We cannot keep both the ContextVar and vault closing in the same fixture.
+    Pytest runs every async setup and every async teardown in a separate task
+    (a separate ``run_until_complete()``). The `vault_var` remains invisible
+    to tests (with API calls) and even to the fixture's finalizing part.
+    Sync (global) context vars do work and propagate fine — hence 2 fixtures.
+
+    Without the proper vault finalization, the cached TCP sessions/connections
+    remain open, so the aresponses/aiohttp test server takes time before exiting
+    (15 seconds of keep-alive timeout by default).
+    """
+    key = VaultKey('fixture')
+    info = ConnectionInfo(server=f'https://{hostname}')
+    vault = Vault({key: info})
+    mocker.patch.object(vault._ready, 'wait_for')
+    try:
+        yield vault
+    finally:
+        await vault.close()
+
+
+@pytest.fixture()
+def fake_vault(_fake_vault):
     """
     Provide a freshly created and populated authentication vault for every test.
 
@@ -424,15 +455,10 @@ def fake_vault(mocker, hostname):
     """
     from kopf._cogs.clients import auth
 
-    key = VaultKey('fixture')
-    info = ConnectionInfo(server=f'https://{hostname}')
-    vault = Vault({key: info})
-    token = auth.vault_var.set(vault)
-    mocker.patch.object(vault._ready, 'wait_for')
+    token = auth.vault_var.set(_fake_vault)
     try:
-        yield vault
+        yield _fake_vault
     finally:
-        # await vault.close()  # TODO: but it runs in a different loop, w/ wrong contextvar.
         auth.vault_var.reset(token)
 
 #
@@ -677,8 +703,13 @@ def assert_logs(caplog):
 #
 # Helpers for asyncio checks.
 #
+@pytest.fixture()
+async def loop():
+    yield asyncio.get_running_loop()
+
+
 @pytest.fixture(autouse=True)
-def _no_asyncio_pending_tasks(event_loop):
+def _no_asyncio_pending_tasks(loop: asyncio.AbstractEventLoop):
     """
     Ensure there are no unattended asyncio tasks after the test.
 
@@ -699,7 +730,7 @@ def _no_asyncio_pending_tasks(event_loop):
 
     # Let the pytest-asyncio's async2sync wrapper to finish all callbacks. Otherwise, it raises:
     #   <Task pending name='Task-2' coro=<<async_generator_athrow without __name__>()>>
-    event_loop.run_until_complete(asyncio.sleep(0))
+    loop.run_until_complete(asyncio.sleep(0))
 
     # Detect all leftover tasks.
     after = _get_all_tasks()
@@ -713,7 +744,10 @@ def _get_all_tasks() -> Set[asyncio.Task]:
     i = 0
     while True:
         try:
-            tasks = list(asyncio.tasks._all_tasks)
+            if sys.version_info >= (3, 12):
+                tasks = asyncio.tasks._eager_tasks | set(asyncio.tasks._scheduled_tasks)
+            else:
+                tasks = list(asyncio.tasks._all_tasks)
         except RuntimeError:
             i += 1
             if i >= 1000:

@@ -54,6 +54,9 @@ or an instance of :class:`kopf.ConnectionInfo`::
             expiration=datetime.datetime(2099, 12, 31, 23, 59, 59),
         )
 
+Both TZ-naive & TZ-aware expiration times are supported.
+The TZ-naive timestamps are always treated as UTC.
+
 As with any other handlers, the login handler can be async if the network
 communication is needed and async mode is supported::
 

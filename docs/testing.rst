@@ -18,7 +18,7 @@ exit code and output are available to the test (for additional assertions).
 .. code-block:: python
     :caption: test_example_operator.py
 
-    import shlex
+    import time
     import subprocess
     from kopf.testing import KopfRunner
 

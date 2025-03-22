@@ -39,7 +39,7 @@ async def test_exception_escalates(
 
 async def test_infinite_watch_never_exits_normally(
         settings, resource, stream, namespace, aresponses):
-    error = aresponses.Response(status=555)
+    error = aresponses.Response(status=555, reason='oops')
     stream.feed(
         STREAM_WITH_ERROR_410GONE,  # watching restarted
         STREAM_WITH_UNKNOWN_EVENT,  # event ignored

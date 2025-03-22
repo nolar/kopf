@@ -240,7 +240,7 @@ async def test_http404_returns_no_resources_from_old_apis(
 
     core_mock = resp_mocker(return_value=aiohttp.web.json_response({'versions': ['v1']}))
     apis_mock = resp_mocker(return_value=aiohttp.web.json_response({'groups': []}))
-    status_mock = resp_mocker(return_value=aresponses.Response(status=status))
+    status_mock = resp_mocker(return_value=aresponses.Response(status=status, reason='oops'))
     aresponses.add(hostname, '/api', 'get', core_mock)
     aresponses.add(hostname, '/apis', 'get', apis_mock)
     aresponses.add(hostname, '/api/v1', 'get', status_mock)
@@ -259,7 +259,7 @@ async def test_http404_returns_no_resources_from_new_apis(
     apis_mock = resp_mocker(return_value=aiohttp.web.json_response({'groups': [
         {'name': 'g1', 'preferredVersion': {'version': ''}, 'versions': [{'version': 'g1v1'}]},
     ]}))
-    status_mock = resp_mocker(return_value=aresponses.Response(status=status))
+    status_mock = resp_mocker(return_value=aresponses.Response(status=status, reason='oops'))
     aresponses.add(hostname, '/api', 'get', core_mock)
     aresponses.add(hostname, '/apis', 'get', apis_mock)
     aresponses.add(hostname, '/apis/g1/g1v1', 'get', status_mock)
@@ -276,7 +276,7 @@ async def test_unknown_api_statuses_escalate_from_old_apis(
 
     core_mock = resp_mocker(return_value=aiohttp.web.json_response({'versions': ['v1']}))
     apis_mock = resp_mocker(return_value=aiohttp.web.json_response({'groups': []}))
-    status_mock = resp_mocker(return_value=aresponses.Response(status=status))
+    status_mock = resp_mocker(return_value=aresponses.Response(status=status, reason='oops'))
     aresponses.add(hostname, '/api', 'get', core_mock)
     aresponses.add(hostname, '/apis', 'get', apis_mock)
     aresponses.add(hostname, '/api/v1', 'get', status_mock)
@@ -296,7 +296,7 @@ async def test_unknown_api_statuses_escalate_from_new_apis(
     apis_mock = resp_mocker(return_value=aiohttp.web.json_response({'groups': [
         {'name': 'g1', 'preferredVersion': {'version': ''}, 'versions': [{'version': 'g1v1'}]},
     ]}))
-    status_mock = resp_mocker(return_value=aresponses.Response(status=status))
+    status_mock = resp_mocker(return_value=aresponses.Response(status=status, reason='oops'))
     aresponses.add(hostname, '/api', 'get', core_mock)
     aresponses.add(hostname, '/apis', 'get', apis_mock)
     aresponses.add(hostname, '/apis/g1/g1v1', 'get', status_mock)

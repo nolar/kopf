@@ -486,7 +486,7 @@ The framework retries the TCP/SSL networking errors and the HTTP 5xx errors
 other errors -- those presumed to be permanent, including HTTP 4xx errors
 ("the client is wrong") -- escalate immediately without retrying.
 
-The setting ``settings.networking.error_backoffs`` contols for how many times
+The setting ``settings.networking.error_backoffs`` controls for how many times
 and with which backoff interval (in seconds) the retries are performed.
 
 It is a sequence of back-offs between attempts (in seconds):

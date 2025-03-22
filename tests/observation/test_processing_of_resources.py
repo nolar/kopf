@@ -77,7 +77,7 @@ def group1_empty_mock(resp_mocker, aresponses, hostname, apis_mock):
 
 @pytest.fixture()
 def group1_404mock(resp_mocker, aresponses, hostname, apis_mock):
-    mock = resp_mocker(return_value=aresponses.Response(status=404))
+    mock = resp_mocker(return_value=aresponses.Response(status=404, reason='oops'))
     aresponses.add(hostname, '/apis/group1/version1', 'get', mock)
     return mock
 

@@ -1,8 +1,8 @@
 import asyncio
-import datetime
 import logging
 
 import freezegun
+import iso8601
 import pytest
 
 import kopf
@@ -18,7 +18,7 @@ from kopf._core.reactor.processing import process_resource_event
 
 @pytest.mark.parametrize('cause_reason', HANDLER_REASONS)
 @pytest.mark.parametrize('now, delayed_iso, delay', [
-    ['2020-01-01T00:00:00', '2020-01-01T00:04:56.789000', 4 * 60 + 56.789],
+    ['2020-01-01T00:00:00', '2020-01-01T00:04:56.789000+00:00', 4 * 60 + 56.789],
 ], ids=['fast'])
 async def test_delayed_handlers_progress(
         registry, settings, handlers, resource, cause_mock, cause_reason,
@@ -66,8 +66,8 @@ async def test_delayed_handlers_progress(
 
 @pytest.mark.parametrize('cause_reason', HANDLER_REASONS)
 @pytest.mark.parametrize('now, delayed_iso, delay', [
-    ['2020-01-01T00:00:00', '2020-01-01T00:04:56.789000', 4 * 60 + 56.789],
-    ['2020-01-01T00:00:00', '2099-12-31T23:59:59.000000', WAITING_KEEPALIVE_INTERVAL],
+    ['2020-01-01T00:00:00', '2020-01-01T00:04:56.789000+00:00', 4 * 60 + 56.789],
+    ['2020-01-01T00:00:00', '2099-12-31T23:59:59.000000+00:00', WAITING_KEEPALIVE_INTERVAL],
 ], ids=['fast', 'slow'])
 async def test_delayed_handlers_sleep(
         registry, settings, handlers, resource, cause_mock, cause_reason,
@@ -76,8 +76,8 @@ async def test_delayed_handlers_sleep(
 
     # Simulate the original persisted state of the resource.
     # Make sure the finalizer is added since there are mandatory deletion handlers.
-    started_dt = datetime.datetime.fromisoformat('2000-01-01T00:00:00')  # long time ago is fine.
-    delayed_dt = datetime.datetime.fromisoformat(delayed_iso)
+    started_dt = iso8601.parse_date('2000-01-01T00:00:00')  # long time ago is fine.
+    delayed_dt = iso8601.parse_date(delayed_iso)
     event_type = None if cause_reason == Reason.RESUME else 'irrelevant'
     event_body = {
         'metadata': {'finalizers': [settings.persistence.finalizer]},

@@ -1,12 +1,10 @@
 # Kubernetes Operator Pythonic Framework (Kopf)
 
+[![GitHub](https://img.shields.io/github/stars/nolar/kopf?style=flat&label=GitHub%E2%AD%90%EF%B8%8F)](https://github.com/nolar/kopf)
+[![CI](https://github.com/nolar/kopf/actions/workflows/thorough.yaml/badge.svg)](https://github.com/nolar/kopf/actions/workflows/thorough.yaml)
 [![Supported Python versions](https://img.shields.io/pypi/pyversions/kopf.svg)](https://pypi.org/project/kopf/)
-[![CI](https://github.com/nolar/kopf/workflows/Thorough%20tests/badge.svg)](https://github.com/nolar/kopf/actions/workflows/thorough.yaml)
 [![codecov](https://codecov.io/gh/nolar/kopf/branch/main/graph/badge.svg)](https://codecov.io/gh/nolar/kopf)
 [![Coverage Status](https://coveralls.io/repos/github/nolar/kopf/badge.svg?branch=main)](https://coveralls.io/github/nolar/kopf?branch=main)
-[![Total alerts](https://img.shields.io/lgtm/alerts/g/nolar/kopf.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/nolar/kopf/alerts/)
-[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/nolar/kopf.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/nolar/kopf/context:python)
-[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 
 **Kopf** —Kubernetes Operator Pythonic Framework— is a framework and a library
 to make Kubernetes operators development easier, just in a few lines of Python code.
@@ -18,6 +16,12 @@ and the operators containing the domain logic (with no or minimal infrastructure
 The project was originally started as `zalando-incubator/kopf` in March 2019,
 and then forked as `nolar/kopf` in August 2020: but it is the same codebase,
 the same packages, the same developer(s).
+
+As of now, the project is in maintenance mode since approximately mid-2021:
+Python, Kubernetes, CI tooling, dependencies are upgraded, new bugs are fixed,
+new versions are released from time to time, but no new big features are added
+— there is nothing to add to this project without exploding its scope
+beyond the "operator framework" definition (ideas are welcome!).
 
 
 ## Documentation
@@ -125,7 +129,7 @@ That easy! For more features, see the [documentation](https://kopf.readthedocs.i
 
 ## Usage
 
-Python 3.7+ is required:
+Python 3.8+ is required:
 [CPython](https://www.python.org/) and [PyPy](https://www.pypy.org/)
 are officially supported and tested; other Python implementations can work too.
 
@@ -133,7 +137,7 @@ We assume that when the operator is executed in the cluster, it must be packaged
 into a docker image with a CI/CD tool of your preference.
 
 ```dockerfile
-FROM python:3.11
+FROM python:3.12
 ADD . /src
 RUN pip install kopf
 CMD kopf run /src/handlers.py --verbose

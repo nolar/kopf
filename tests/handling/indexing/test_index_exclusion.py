@@ -1,8 +1,8 @@
 import asyncio
-import datetime
 import logging
 
 import freezegun
+import iso8601
 import pytest
 
 from kopf._cogs.aiokits.aiotoggles import Toggle
@@ -76,7 +76,7 @@ async def test_temporary_failures_with_expired_delays_are_reindexed(
         resource, namespace, settings, registry, memories, indexers, index, caplog, event_type, handlers):
     caplog.set_level(logging.DEBUG)
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
-    delayed = datetime.datetime(2020, 12, 31, 23, 59, 59, 0)
+    delayed = iso8601.parse_date('2020-12-31T23:59:59')
     memory = await memories.recall(raw_body=body)
     memory.indexing_memory.indexing_state = State({'index_fn': HandlerState(delayed=delayed)})
     await process_resource_event(
@@ -153,9 +153,9 @@ async def test_removed_and_remembered_on_permanent_errors(
 
 @freezegun.freeze_time('2020-12-31T00:00:00')
 @pytest.mark.parametrize('delay_kwargs, expected_delayed', [
-    (dict(), datetime.datetime(2020, 12, 31, 0, 1, 0)),
-    (dict(delay=0), datetime.datetime(2020, 12, 31, 0, 0, 0)),
-    (dict(delay=9), datetime.datetime(2020, 12, 31, 0, 0, 9)),
+    (dict(), iso8601.parse_date('2020-12-31T00:01:00')),
+    (dict(delay=0), iso8601.parse_date('2020-12-31T00:00:00')),
+    (dict(delay=9), iso8601.parse_date('2020-12-31T00:00:09')),
     (dict(delay=None), None),
 ])
 @pytest.mark.usefixtures('indexed_123')
