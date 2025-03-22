@@ -366,6 +366,8 @@ each with its configuration parameters (see their descriptions):
   accessing the server via a magical hostname ``host.k3d.internal``.
 * :class:`kopf.WebhookMinikubeServer` for local Minikube clusters (even in VMs),
   accessing the server via a magical hostname ``host.minikube.internal``.
+* :class:`kopf.WebhookDockerDesktopServer` for the DockerDesktop cluster,
+  accessing the server via a magical hostname ``host.docker.internal``.
 
 *Webhook tunnels* forward the webhook requests through external endpoints
 usually to a locally running *webhook server*.

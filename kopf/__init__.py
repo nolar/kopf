@@ -174,6 +174,7 @@ from kopf._kits.webhooks import (
     WebhookServer,
     WebhookK3dServer,
     WebhookMinikubeServer,
+    WebhookDockerDesktopServer,
     WebhookNgrokTunnel,
     WebhookAutoServer,
     WebhookAutoTunnel,

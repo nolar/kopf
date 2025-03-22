@@ -24,6 +24,9 @@ def config(settings: kopf.OperatorSettings, **_):
     # Minikube-specific server that supports accessing from inside of a VM (a generated certificate):
     settings.admission.server = kopf.WebhookMinikubeServer(port=1234, cadump=ROOT/'ca.pem')
 
+    # DockerDesktop-specific server that supports accessing from the host:
+    settings.admission.server = kopf.WebhookDockerDesktopServer(port=1234)
+
     # Tunneling Kubernetes->ngrok->local server (anonymous, auto-loaded binary):
     settings.admission.server = kopf.WebhookNgrokTunnel(path='/xyz', port=1234)
 
