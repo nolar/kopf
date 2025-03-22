@@ -593,14 +593,14 @@ class ClusterDetector:
         issuer_cn = certpath.first.issuer.native.get('common_name', '')
         subject_cn = certpath.first.subject.native.get('common_name', '')
         subject_org = certpath.first.subject.native.get('organization_name', '')
+        subject_alt_names = [name for name in certpath.first.subject_alt_name_value.native]
 
         if subject_cn == 'k3s' or subject_org == 'k3s' or issuer_cn.startswith('k3s-'):
             return WebhookK3dServer.DEFAULT_HOST
         elif subject_cn == 'minikube' or issuer_cn == 'minikubeCA':
             return WebhookMinikubeServer.DEFAULT_HOST
-        elif any(alt_name for alt_name in certpath.first.subject_alt_name_value.native if "docker" in alt_name):
+        elif 'docker-for-desktop' in subject_alt_names:
             return WebhookDockerDesktopServer.DEFAULT_HOST
-
         else:
             # The default timeouts & backoffs are used to retrieve the cluster
             # version, not those from the operator. It is too difficult to get
