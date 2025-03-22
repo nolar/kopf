@@ -12,6 +12,8 @@ jobs:
   publish:
     name: Build and publish
     runs-on: ubuntu-20.04
+    permissions:
+      id-token: write  # for trusted publishing
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -20,7 +22,5 @@ jobs:
       - run: pip install --upgrade pip setuptools wheel twine
       - run: python setup.py sdist bdist_wheel
       - uses: pypa/gh-action-pypi-publish@release/v1
-        permissions:
-          id-token: write  # for trusted publishing
         with:
           skip_existing: true
