@@ -86,18 +86,21 @@ async def request(
             await errors.check_response(response)  # but do not parse it!
 
         # aiohttp raises a generic error if the session/transport is closed, so we try to guess.
+        # NB: "session closed" will reset the retry counter and do the full cycle with the new creds.
         except RuntimeError as e:
             if context.session.closed:
-                # NB: this will reset the retry counter and do the full cycle with the new creds.
                 # TODO: find a way to gracefully replace the active session in the existing context,
                 #       so that all ongoing requests would switch to the new session & credentials.
-                logger.error(f"Request attempt {idx} failed; will try re-authenticating: {what}")
+                logger.error(f"Request attempt {idx} failed; TCP closed; will re-authenticate: {what}")
                 raise errors.APISessionClosed("Session is closed.") from e
             raise
 
-        # NOTE(vsaienko): during k8s upgrade API might throw 403 forbiden. Use retries for this exception as well.
+        # NOTE(vsaienko): during k8s upgrade API might throw 403 forbidden. Use retries for this exception as well.
         except (aiohttp.ClientConnectionError, errors.APIServerError, asyncio.TimeoutError, errors.APIForbiddenError) as e:
-            if backoff is None:  # i.e. the last or the only attempt.
+            if '[SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY]' in str(e):  # for ClientOSError
+                logger.error(f"Request attempt {idx} failed; SSL closed; will re-authenticate: {what}")
+                raise errors.APISessionClosed("SSL data stream is closed.") from e
+            elif backoff is None:  # i.e. the last or the only attempt.
                 logger.error(f"Request attempt {idx} failed; escalating: {what} -> {e!r}")
                 raise
             else:
