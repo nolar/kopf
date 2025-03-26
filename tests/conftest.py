@@ -434,7 +434,7 @@ async def _fake_vault(mocker, hostname, aresponses):
     key = VaultKey('fixture')
     info = ConnectionInfo(server=f'https://{hostname}')
     vault = Vault({key: info})
-    mocker.patch.object(vault._ready, 'wait_for')
+    mocker.patch.object(vault._guard, 'wait_for')
     try:
         yield vault
     finally:

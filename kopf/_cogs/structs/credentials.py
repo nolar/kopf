@@ -117,7 +117,6 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
         super().__init__()
         self._current = {}
         self._invalid = collections.defaultdict(list)
-        self._lock = asyncio.Lock()
         self._next_expiration: Optional[datetime.datetime] = None
 
         if __src is not None:
@@ -125,7 +124,8 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
 
         # Mark a pre-populated vault to be usable instantly,
         # or trigger the initial authentication for an empty vault.
-        self._ready = aiotoggles.Toggle(not self.is_empty())
+        self._guard = asyncio.Condition()
+        self._ready: bool = not self.is_empty()
 
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__}: {self._current!r}>'
@@ -157,11 +157,11 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
         purpose = purpose if purpose is not None else repr(factory)
         async for key, item in self._items():
             if item.caches is None:  # quick-check with no locking overhead.
-                async with self._lock:
+                async with self._guard:
                     if item.caches is None:  # securely synchronised check.
                         item.caches = {}
             if purpose not in item.caches:  # quick-check with no locking overhead.
-                async with self._lock:
+                async with self._guard:
                     if purpose not in item.caches:  # securely synchronised check.
                         item.caches[purpose] = factory(item.info)
             yield key, item.info, cast(_T, item.caches[purpose])
@@ -182,23 +182,26 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
         # Restart on every re-authentication (if new items are added).
         while True:
 
-            # Whether on the 1st run, or during the active re-authentication,
-            # ensure that the items are ready before yielding them.
-            await self._ready.wait_for(True)
+            async with self._guard:
 
-            # Check for expiration strictly after a possible re-authentication.
-            # This might cause another re-authentication if the credentials are expired at creation.
-            await self.expire()
+                # Whether on the 1st run, or during the active re-authentication,
+                # ensure that the items are ready before yielding them.
+                await self._guard.wait_for(lambda: self._ready)
 
-            # Select the items to yield and let it (i.e. a consumer) work.
-            async with self._lock:
+                # Check for expiration strictly after a possible re-authentication.
+                # This might cause another re-authentication if the credentials are pre-expired.
+                await self._expire()
+
+                # Select the items to yield and let it (i.e. a consumer task) work.
                 yielded_key, yielded_item = self.select()
+
+            # Yield strictly outside of locks/conditions. The vault must be free for invalidations.
             yield yielded_key, yielded_item
 
             # If the yielded item has been invalidated, assume that this item has failed.
-            # Otherwise (the item is in the list), it has succeeded -- we are done.
+            # Otherwise (the item is in the list), it has succeeded -- we are done iterating.
             # Note: checked by identity, in case a similar item is re-added as a different object.
-            async with self._lock:
+            async with self._guard:
                 if yielded_key in self._current and self._current[yielded_key] is yielded_item:
                     break
 
@@ -222,7 +225,20 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
         key, item = random.choice(prioritised[top_priority])
         return key, item
 
-    async def expire(self) -> None:
+    async def expire(self) -> None:  # unused, but declared public (deprecate)
+        """
+        Discard the expired credentials, and re-authenticate as needed.
+
+        Unlike invalidation, the expired credentials are not remembered
+        and not blocked from reappearing.
+        """
+        # Quick & lockless for speed: it is done on every API call, we have no time for locks.
+        now = datetime.datetime.now(datetime.timezone.utc)
+        if self._next_expiration is not None and now >= self._next_expiration:
+            async with self._guard:
+                await self._expire()
+
+    async def _expire(self) -> None:
         """
         Discard the expired credentials, and re-authenticate as needed.
 
@@ -231,24 +247,25 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
         """
         now = datetime.datetime.now(datetime.timezone.utc)
 
-        # Quick & lockless for speed: it is done on every API call, we have no time for locks.
+        # Avoid waiting for re-auth afterwards if there is nothing to expire or change.
+        expired = False
         if self._next_expiration is not None and now >= self._next_expiration:
-            async with self._lock:
-                for key, item in list(self._current.items()):
-                    expiration = item.info.expiration
-                    if expiration is not None:
-                        if expiration.tzinfo is None:
-                            expiration = expiration.replace(tzinfo=datetime.timezone.utc)
-                        if now >= expiration:
-                            await self._flush_caches(item)
-                            del self._current[key]
-                self._update_expiration()
-                need_reauth = not self._current  # i.e. nothing is left at all
+            for key, item in list(self._current.items()):
+                expiration = item.info.expiration
+                if expiration is not None:
+                    if expiration.tzinfo is None:
+                        expiration = expiration.replace(tzinfo=datetime.timezone.utc)
+                    if now >= expiration:
+                        await self._flush_caches(item)
+                        del self._current[key]
+                        expired = True
+            self._update_expiration()
 
-            # Initiate a re-authentication activity, and block until it is finished.
-            if need_reauth:
-                await self._ready.turn_to(False)
-                await self._ready.wait_for(True)
+        # Initiate a re-authentication activity, and block until it is finished.
+        if expired and not self._current:  # i.e. nothing is left at all
+            self._ready = False
+            self._guard.notify_all()
+            await self._guard.wait_for(lambda: self._ready)
 
     async def invalidate(
             self,
@@ -272,10 +289,10 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
         The background task continues to run and tries to re-authenticate
         on the next API calls until cancelled due to the operator exit.
         """
-
         # Exclude the failed connection items from the list of available ones.
         # But keep a short history of invalid items, so that they are not re-added.
-        async with self._lock:
+        # The history size is estimated by the number of parallel streams trying to re-auth at once.
+        async with self._guard:
             # Note: not "==", but "is". If not the same, then it was invalidated by other consumers,
             # the new current credentials is something new to use (maybe equal to the old one).
             if key in self._current and self._current[key].info is info:
@@ -283,18 +300,17 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
                 self._invalid[key] = self._invalid[key][-2:] + [self._current[key]]
                 del self._current[key]
                 self._update_expiration()
-            need_reauth = not self._current  # i.e. nothing is left at all
 
-        # Initiate a re-authentication activity, and block until it is finished.
-        if need_reauth:
-            await self._ready.turn_to(False)
-            await self._ready.wait_for(True)
+            # Initiate a re-authentication activity, and block until it is finished.
+            if not self._current:  # i.e. nothing is left at all
+                self._ready = False
+                self._guard.notify_all()
+                await self._guard.wait_for(lambda: self._ready)
 
-        # If the re-auth has failed, re-raise the original exception in the current stack.
-        # If the original exception is unknown, raise normally on the next iteration's yield.
-        # The error here is optional -- for better stack traces of the original exception `exc`.
-        # Keep in mind, this routine is called in parallel from many tasks for the same keys.
-        async with self._lock:
+            # If the re-auth has failed, re-raise the original exception in the current stack.
+            # If the original exception is unknown, raise normally on the next iteration's yield.
+            # The error here is optional -- for better stack traces of the original exception `exc`.
+            # Keep in mind, this routine is called in parallel from many tasks for the same keys.
             if not self._current:
                 if exc is not None:
                     raise LoginError("Ran out of valid credentials. Consider installing "
@@ -312,16 +328,17 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
         from the authentication activity handlers. Some of the credentials
         can be duplicates of the existing ones -- only one of them is used then.
         """
+        async with self._guard:
 
-        # Remember the new info items (or replace the old ones). If we already see that the item
-        # is invalid (as seen in our short per-key history), we keep it as such -- this prevents
-        # consistently invalid credentials from causing infinite re-authentication again and again.
-        async with self._lock:
+            # Remember the new credentials or replace the old ones. If we already see that the item
+            # is invalid (as seen in our short per-key history), we keep it as such -- this prevents
+            # repeatedly invalid credentials from causing infinite re-authentication again & again.
             self._update_converted(__src)
 
-        # Notify the consuming tasks (client wrappers) that new credentials are ready to be used.
-        # Those tasks can be blocked in `vault.invalidate()` if there are no credentials left.
-        await self._ready.turn_to(True)
+            # Notify the consuming tasks (API clients) that new credentials are ready to be used.
+            # Those tasks can be blocked in `vault.invalidate()` if there are no credentials left.
+            self._ready = True
+            self._guard.notify_all()
 
     def is_empty(self) -> bool:
         now = datetime.datetime.now(datetime.timezone.utc)
@@ -332,16 +349,18 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
         return all(dt is not None and now >= dt for dt in expirations)  # i.e. expired
 
     async def wait_for_readiness(self) -> None:
-        await self._ready.wait_for(True)
+        async with self._guard:
+            await self._guard.wait_for(lambda: self._ready)
 
     async def wait_for_emptiness(self) -> None:
-        await self._ready.wait_for(False)
+        async with self._guard:
+            await self._guard.wait_for(lambda: not self._ready)
 
     async def close(self) -> None:
         """
         Finalize all the cached objects when the operator is ending.
         """
-        async with self._lock:
+        async with self._guard:
             for key in self._current:
                 await self._flush_caches(self._current[key])
 
