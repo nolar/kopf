@@ -253,6 +253,7 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
     async def invalidate(
             self,
             key: VaultKey,
+            info: ConnectionInfo,
             *,
             exc: Optional[Exception] = None,
     ) -> None:
@@ -275,7 +276,9 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
         # Exclude the failed connection items from the list of available ones.
         # But keep a short history of invalid items, so that they are not re-added.
         async with self._lock:
-            if key in self._current:
+            # Note: not "==", but "is". If not the same, then it was invalidated by other consumers,
+            # the new current credentials is something new to use (maybe equal to the old one).
+            if key in self._current and self._current[key].info is info:
                 await self._flush_caches(self._current[key])
                 self._invalid[key] = self._invalid[key][-2:] + [self._current[key]]
                 del self._current[key]
