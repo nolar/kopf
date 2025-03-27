@@ -4,7 +4,7 @@ import itertools
 import json
 import ssl
 import urllib.parse
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator
 from typing import Any, Optional
 
 import aiohttp
@@ -48,7 +48,7 @@ async def request(
         *,
         settings: configuration.OperatorSettings,
         payload: Optional[object] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        headers: Optional[dict[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
         context: Optional[auth.APIContext] = None,  # injected by the decorator
         logger: typedefs.Logger,
@@ -106,7 +106,7 @@ async def get(
         *,
         settings: configuration.OperatorSettings,
         payload: Optional[object] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        headers: Optional[dict[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
         logger: typedefs.Logger,
 ) -> Any:
@@ -128,7 +128,7 @@ async def post(
         *,
         settings: configuration.OperatorSettings,
         payload: Optional[object] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        headers: Optional[dict[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
         logger: typedefs.Logger,
 ) -> Any:
@@ -150,7 +150,7 @@ async def patch(
         *,
         settings: configuration.OperatorSettings,
         payload: Optional[object] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        headers: Optional[dict[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
         logger: typedefs.Logger,
 ) -> Any:
@@ -172,7 +172,7 @@ async def delete(
         *,
         settings: configuration.OperatorSettings,
         payload: Optional[object] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        headers: Optional[dict[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
         logger: typedefs.Logger,
 ) -> Any:
@@ -194,7 +194,7 @@ async def stream(
         *,
         settings: configuration.OperatorSettings,
         payload: Optional[object] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        headers: Optional[dict[str, str]] = None,
         timeout: Optional[aiohttp.ClientTimeout] = None,
         stopper: Optional[aiotasks.Future] = None,
         logger: typedefs.Logger,
