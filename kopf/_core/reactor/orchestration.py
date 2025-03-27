@@ -27,7 +27,7 @@ import dataclasses
 import functools
 import itertools
 import logging
-from collections.abc import Collection, Container, Iterable, MutableMapping
+from collections.abc import Collection, Container, Iterable
 from typing import Any, NamedTuple, Optional, Protocol
 
 from kopf._cogs.aiokits import aiotasks, aiotoggles
@@ -90,7 +90,7 @@ class Ensemble:
         return {toggle for key, toggle in self.conflicts_found.items() if key in keys}
 
     def del_keys(self, keys: Container[EnsembleKey]) -> None:
-        d: MutableMapping[EnsembleKey, Any]
+        d: dict[EnsembleKey, Any]
         for d in [self.watcher_tasks, self.peering_tasks, self.pinging_tasks]:
             for key in set(d):
                 if key in keys:

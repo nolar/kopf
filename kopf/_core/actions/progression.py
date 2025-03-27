@@ -15,7 +15,7 @@ import collections.abc
 import copy
 import dataclasses
 import datetime
-from collections.abc import Collection, Iterable, Iterator, Mapping
+from collections.abc import Collection, Iterable, Iterator
 from typing import Any, NamedTuple, Optional, overload
 
 import iso8601
@@ -140,11 +140,11 @@ class State(execution.State):
     reflect the changes in the object's status. A new state is created every
     time some changes/outcomes are merged into the current state.
     """
-    _states: Mapping[ids.HandlerId, HandlerState]
+    _states: dict[ids.HandlerId, HandlerState]
 
     def __init__(
             self,
-            __src: Mapping[ids.HandlerId, HandlerState],
+            __src: dict[ids.HandlerId, HandlerState],
             *,
             purpose: Optional[str] = None,
     ):
