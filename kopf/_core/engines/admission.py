@@ -444,7 +444,7 @@ class MatchExpression(TypedDict, total=False):
     values: Optional[Collection[str]]
 
 
-def _build_labels_selector(labels: Optional[filters.MetaFilter]) -> Optional[Mapping[str, Any]]:
+def _build_labels_selector(labels: Optional[filters.MetaFilter]) -> Optional[dict[str, Any]]:
     # https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#resources-that-support-set-based-requirements
     exprs: Collection[MatchExpression] = [
         {'key': key, 'operator': 'Exists'} if val is filters.MetaFilterToken.PRESENT else

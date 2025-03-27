@@ -89,7 +89,7 @@ class HandlerState(execution.HandlerState):
             subrefs=None if not self.subrefs else list(sorted(self.subrefs)),
         )
 
-    def as_in_storage(self) -> Mapping[str, Any]:
+    def as_in_storage(self) -> dict[str, Any]:
         # Nones are not stored by Kubernetes, so we filter them out for comparison.
         return {key: val for key, val in self.for_storage().items() if val is not None}
 
