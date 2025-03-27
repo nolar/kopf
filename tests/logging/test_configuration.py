@@ -1,5 +1,5 @@
 import logging.handlers
-from typing import Collection
+from collections.abc import Collection
 
 import pytest
 

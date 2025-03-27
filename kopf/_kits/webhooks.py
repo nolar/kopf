@@ -14,7 +14,8 @@ import socket
 import ssl
 import tempfile
 import urllib.parse
-from typing import TYPE_CHECKING, AsyncIterator, Collection, Iterable, Optional, Union
+from collections.abc import AsyncIterator, Collection, Iterable
+from typing import TYPE_CHECKING, Optional, Union
 
 import aiohttp.web
 

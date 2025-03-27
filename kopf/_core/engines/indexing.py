@@ -1,6 +1,7 @@
 import collections.abc
 import dataclasses
-from typing import Any, Generic, Iterable, Iterator, Mapping, Optional, TypeVar
+from collections.abc import Iterable, Iterator, Mapping
+from typing import Any, Generic, Optional, TypeVar
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import typedefs

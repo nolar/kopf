@@ -1,5 +1,6 @@
 import asyncio
-from typing import Collection, Mapping, Optional
+from collections.abc import Collection, Mapping
+from typing import Optional
 
 from kopf._cogs.clients import api, errors
 from kopf._cogs.configs import configuration

@@ -1,4 +1,4 @@
-from typing import Collection
+from collections.abc import Collection
 
 from kopf._cogs.clients import api
 from kopf._cogs.configs import configuration

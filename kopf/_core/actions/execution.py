@@ -12,9 +12,9 @@ import contextlib
 import dataclasses
 import datetime
 import enum
+from collections.abc import AsyncIterator, Collection, Iterable, Mapping, MutableMapping, Sequence
 from contextvars import ContextVar
-from typing import Any, AsyncContextManager, AsyncIterator, Callable, Collection, Iterable, \
-                   Mapping, MutableMapping, NewType, Optional, Sequence, TypeVar
+from typing import Any, AsyncContextManager, Callable, NewType, Optional, TypeVar
 
 from typing_extensions import Protocol
 

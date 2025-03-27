@@ -4,7 +4,8 @@ import enum
 import fnmatch
 import re
 import urllib.parse
-from typing import Collection, Iterable, Iterator, Mapping, MutableMapping, NewType, Optional, Union
+from collections.abc import Collection, Iterable, Iterator, Mapping, MutableMapping
+from typing import NewType, Optional, Union
 
 # A namespace specification with globs, negations, and some minimal syntax; see `match_namespace()`.
 # Regexps are also supported if pre-compiled from the code, not from the CLI options as raw strings.

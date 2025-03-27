@@ -17,8 +17,9 @@ This also includes all logging messages posted by the framework itself.
 import asyncio
 import logging
 import sys
+from collections.abc import Iterable, Iterator
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, Iterable, Iterator, NamedTuple, NoReturn, Optional, Union, cast
+from typing import TYPE_CHECKING, NamedTuple, NoReturn, Optional, Union, cast
 
 from kopf._cogs.clients import events
 from kopf._cogs.configs import configuration

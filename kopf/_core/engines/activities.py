@@ -17,7 +17,8 @@ The process is intentionally split into multiple packages:
   belong to neither the reactor, nor the engines, nor the client wrappers.
 """
 import logging
-from typing import Mapping, MutableMapping, NoReturn
+from collections.abc import Mapping, MutableMapping
+from typing import NoReturn
 
 from kopf._cogs.aiokits import aiotime
 from kopf._cogs.configs import configuration

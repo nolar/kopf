@@ -33,7 +33,8 @@ replaced; in some cases, they will be cut and hash-suffixed.
 import base64
 import hashlib
 import warnings
-from typing import Any, Collection, Iterable, Optional
+from collections.abc import Collection, Iterable
+from typing import Any, Optional
 
 from kopf._cogs.structs import bodies, patches
 

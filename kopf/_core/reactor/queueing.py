@@ -26,7 +26,8 @@ import asyncio
 import contextlib
 import enum
 import logging
-from typing import TYPE_CHECKING, MutableMapping, NamedTuple, NewType, Optional, Union
+from collections.abc import MutableMapping
+from typing import TYPE_CHECKING, NamedTuple, NewType, Optional, Union
 
 from typing_extensions import Protocol
 

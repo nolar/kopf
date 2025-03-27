@@ -23,7 +23,8 @@ to declare this restricted mode as the desired mode of operation.
 import asyncio
 import functools
 import logging
-from typing import Collection, Iterable, Optional
+from collections.abc import Collection, Iterable
+from typing import Optional
 
 from kopf._cogs.aiokits import aiotoggles
 from kopf._cogs.clients import errors, fetching, scanning

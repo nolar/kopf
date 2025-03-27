@@ -3,8 +3,9 @@ import functools
 import os
 import ssl
 import tempfile
+from collections.abc import Iterator, Mapping
 from contextvars import ContextVar
-from typing import Any, Callable, Iterator, Mapping, Optional, TypeVar, cast
+from typing import Any, Callable, Optional, TypeVar, cast
 
 import aiohttp
 

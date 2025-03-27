@@ -3,8 +3,8 @@ Some basic dicts and field-in-a-dict manipulation helpers.
 """
 import collections.abc
 import enum
-from typing import Any, Callable, Generic, Iterable, Iterator, \
-                   Mapping, MutableMapping, Optional, TypeVar, Union
+from collections.abc import Iterable, Iterator, Mapping, MutableMapping
+from typing import Any, Callable, Generic, Optional, TypeVar, Union
 
 from kopf._cogs.helpers import thirdparty
 

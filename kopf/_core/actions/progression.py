@@ -15,7 +15,8 @@ import collections.abc
 import copy
 import dataclasses
 import datetime
-from typing import Any, Collection, Iterable, Iterator, Mapping, NamedTuple, Optional, overload
+from collections.abc import Collection, Iterable, Iterator, Mapping
+from typing import Any, NamedTuple, Optional, overload
 
 import iso8601
 

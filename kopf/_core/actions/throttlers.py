@@ -2,7 +2,8 @@ import asyncio
 import contextlib
 import dataclasses
 import time
-from typing import AsyncGenerator, Iterable, Iterator, Optional, Union
+from collections.abc import AsyncGenerator, Iterable, Iterator
+from typing import Optional, Union
 
 from kopf._cogs.aiokits import aiotime
 from kopf._cogs.helpers import typedefs

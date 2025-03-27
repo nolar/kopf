@@ -1,7 +1,8 @@
 """
 Admission reviews: requests & responses, also the webhook server protocols.
 """
-from typing import Any, AsyncIterator, Awaitable, Callable, Mapping, Optional, Union
+from collections.abc import AsyncIterator, Awaitable, Mapping
+from typing import Any, Callable, Optional, Union
 
 from typing_extensions import Literal, Protocol, TypedDict
 

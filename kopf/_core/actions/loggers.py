@@ -11,7 +11,8 @@ the operators' code, and can lead to information loss or mismatch
 import copy
 import enum
 import logging
-from typing import Any, MutableMapping, Optional
+from collections.abc import MutableMapping
+from typing import Any, Optional
 
 # Luckily, we do not mock these ones in tests, so we can import them into our namespace.
 try:

@@ -9,7 +9,8 @@ import asyncio
 import contextlib
 import contextvars
 import functools
-from typing import Any, Callable, Coroutine, Iterable, Iterator, Mapping, Optional, TypeVar, Union
+from collections.abc import Coroutine, Iterable, Iterator, Mapping
+from typing import Any, Callable, Optional, TypeVar, Union
 
 from typing_extensions import final
 

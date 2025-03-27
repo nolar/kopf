@@ -4,7 +4,8 @@ All the functions to properly build the object hierarchies.
 import collections.abc
 import enum
 import warnings
-from typing import Any, Iterable, Iterator, Mapping, MutableMapping, Optional, Union, cast
+from collections.abc import Iterable, Iterator, Mapping, MutableMapping
+from typing import Any, Optional, Union, cast
 
 from kopf._cogs.helpers import thirdparty
 from kopf._cogs.structs import bodies, dicts

@@ -11,7 +11,8 @@ in them, and extracts the basic credentials for its own use.
     :mod:`credentials` and :func:`authentication`.
 """
 import os
-from typing import Any, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any, Optional
 
 import yaml
 

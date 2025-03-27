@@ -41,7 +41,8 @@ In case the operators are also type-checked, type casting can be used
     and object-processing functions. The internal dicts will remain the same.
 """
 
-from typing import Any, Mapping, Optional, Union, cast
+from collections.abc import Mapping
+from typing import Any, Optional, Union, cast
 
 from typing_extensions import Literal, TypedDict
 

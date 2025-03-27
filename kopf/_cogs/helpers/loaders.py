@@ -19,7 +19,8 @@ import importlib.abc
 import importlib.util
 import os.path
 import sys
-from typing import Iterable, cast
+from collections.abc import Iterable
+from typing import cast
 
 
 def preload(

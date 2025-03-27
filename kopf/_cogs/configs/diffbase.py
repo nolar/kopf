@@ -1,7 +1,8 @@
 import abc
 import copy
 import json
-from typing import Any, Collection, Iterable, Optional, cast
+from collections.abc import Collection, Iterable
+from typing import Any, Optional, cast
 
 from kopf._cogs.configs import conventions
 from kopf._cogs.structs import bodies, dicts, patches

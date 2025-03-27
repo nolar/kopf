@@ -28,7 +28,8 @@ the root object, while keeping the legacy names for backward compatibility.
 import concurrent.futures
 import dataclasses
 import logging
-from typing import Iterable, Optional, Union
+from collections.abc import Iterable
+from typing import Optional, Union
 
 from kopf._cogs.configs import diffbase, progress
 from kopf._cogs.structs import reviews

@@ -9,7 +9,8 @@ a corresponding type or class ``kopf.Whatever`` with all the typing tricks
 (``Union[...]``, ``Optional[...]``, partial ``Any`` values, etc) included.
 """
 import datetime
-from typing import TYPE_CHECKING, Any, Callable, Collection, Optional, TypeVar, Union
+from collections.abc import Collection
+from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, Union
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import typedefs

@@ -1,7 +1,8 @@
 import collections.abc
 import contextlib
+from collections.abc import AsyncIterator, Iterable
 from contextvars import ContextVar
-from typing import AsyncIterator, Iterable, Optional
+from typing import Optional
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import ids

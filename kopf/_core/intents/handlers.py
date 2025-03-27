@@ -1,6 +1,7 @@
 import dataclasses
 import warnings
-from typing import Collection, Optional, cast
+from collections.abc import Collection
+from typing import Optional, cast
 
 from kopf._cogs.structs import dicts, diffs, references
 from kopf._core.actions import execution

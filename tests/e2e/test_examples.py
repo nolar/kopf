@@ -3,7 +3,8 @@ import collections
 import re
 import subprocess
 import time
-from typing import Any, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any, Optional
 
 import astpath
 import pytest

@@ -1,5 +1,6 @@
 import asyncio
-from typing import Callable, Collection, Iterable, Iterator, Optional
+from collections.abc import Collection, Iterable, Iterator
+from typing import Callable, Optional
 
 
 class Toggle:

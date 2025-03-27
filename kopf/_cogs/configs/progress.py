@@ -41,7 +41,8 @@ All timestamps are strings in ISO8601 format in UTC (no explicit ``Z`` suffix).
 import abc
 import copy
 import json
-from typing import Any, Collection, Mapping, Optional, cast
+from collections.abc import Collection, Mapping
+from typing import Any, Optional, cast
 
 from typing_extensions import TypedDict
 

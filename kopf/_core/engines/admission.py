@@ -6,7 +6,8 @@ import json
 import logging
 import re
 import urllib.parse
-from typing import Any, AsyncContextManager, Collection, Iterable, Mapping, Optional
+from collections.abc import Collection, Iterable, Mapping
+from typing import Any, AsyncContextManager, Optional
 
 from typing_extensions import Literal, TypedDict
 

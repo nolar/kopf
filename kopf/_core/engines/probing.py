@@ -2,7 +2,8 @@ import asyncio
 import datetime
 import logging
 import urllib.parse
-from typing import MutableMapping, Optional
+from collections.abc import MutableMapping
+from typing import Optional
 
 import aiohttp.web
 

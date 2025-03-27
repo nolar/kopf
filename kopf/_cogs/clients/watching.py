@@ -21,7 +21,8 @@ import asyncio
 import contextlib
 import enum
 import logging
-from typing import AsyncIterator, Optional, Union, cast
+from collections.abc import AsyncIterator
+from typing import Optional, Union, cast
 
 import aiohttp
 

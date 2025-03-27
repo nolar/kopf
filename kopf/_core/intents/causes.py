@@ -21,7 +21,8 @@ could execute on the yet-existing object (and its children, if created).
 """
 import dataclasses
 import enum
-from typing import Any, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any, Optional
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, diffs, ephemera, finalizers, \

@@ -35,7 +35,8 @@ import getpass
 import logging
 import os
 import random
-from typing import Any, Iterable, Mapping, NewType, NoReturn, Optional, cast
+from collections.abc import Iterable, Mapping
+from typing import Any, NewType, NoReturn, Optional, cast
 
 import iso8601
 

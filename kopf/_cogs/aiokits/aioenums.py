@@ -2,7 +2,8 @@ import asyncio
 import enum
 import threading
 import time
-from typing import Awaitable, Generator, Generic, Optional, TypeVar
+from collections.abc import Awaitable, Generator
+from typing import Generic, Optional, TypeVar
 
 FlagReasonT = TypeVar('FlagReasonT', bound=enum.Flag)
 

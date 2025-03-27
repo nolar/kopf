@@ -27,8 +27,8 @@ import dataclasses
 import functools
 import itertools
 import logging
-from typing import Any, Collection, Container, Iterable, \
-                   MutableMapping, NamedTuple, Optional, Protocol
+from collections.abc import Collection, Container, Iterable, MutableMapping
+from typing import Any, NamedTuple, Optional, Protocol
 
 from kopf._cogs.aiokits import aiotasks, aiotoggles
 from kopf._cogs.configs import configuration

@@ -25,7 +25,8 @@ import asyncio
 import dataclasses
 import time
 import warnings
-from typing import Collection, Iterable, Mapping, MutableMapping, Optional, Sequence
+from collections.abc import Collection, Iterable, Mapping, MutableMapping, Sequence
+from typing import Optional
 
 from kopf._cogs.aiokits import aiotasks, aiotime, aiotoggles
 from kopf._cogs.configs import configuration

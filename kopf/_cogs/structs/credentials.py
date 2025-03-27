@@ -28,7 +28,8 @@ import collections
 import dataclasses
 import datetime
 import random
-from typing import AsyncIterable, AsyncIterator, Callable, Mapping, NewType, Optional, TypeVar, cast
+from collections.abc import AsyncIterable, AsyncIterator, Mapping
+from typing import Callable, NewType, Optional, TypeVar, cast
 
 from kopf._cogs.aiokits import aiotoggles
 

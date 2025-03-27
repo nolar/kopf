@@ -4,7 +4,8 @@ import itertools
 import json
 import ssl
 import urllib.parse
-from typing import Any, AsyncIterator, Mapping, Optional
+from collections.abc import AsyncIterator, Mapping
+from typing import Any, Optional
 
 import aiohttp
 

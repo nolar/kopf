@@ -1,4 +1,5 @@
-from typing import Any, Collection, Generic, Mapping, NewType, TypeVar
+from collections.abc import Collection, Mapping
+from typing import Any, Generic, NewType, TypeVar
 
 # For users, memos are exposed as `Any`, though usually used with `kopf.Memo`.
 # However, the framework cannot rely on any methods/properties of it, so it is
