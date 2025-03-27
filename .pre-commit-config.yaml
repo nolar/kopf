@@ -85,4 +85,4 @@ repos:
     rev: v3.19.1
     hooks:
     -   id: pyupgrade
-        args: [--py37-plus, --keep-mock]
+        args: [--py39-plus, --keep-mock]
