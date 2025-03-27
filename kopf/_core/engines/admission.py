@@ -6,7 +6,7 @@ import json
 import logging
 import re
 import urllib.parse
-from collections.abc import Collection, Iterable, Mapping
+from collections.abc import Collection, Iterable
 from typing import Any, AsyncContextManager, Literal, Optional, TypedDict
 
 from kopf._cogs.aiokits import aiovalues
@@ -87,8 +87,8 @@ async def serve_admission_request(
         request: reviews.Request,
         *,
         # Optional for webhook servers that can recognise this information:
-        headers: Optional[Mapping[str, str]] = None,
-        sslpeer: Optional[Mapping[str, Any]] = None,
+        headers: Optional[reviews.Headers] = None,
+        sslpeer: Optional[reviews.SSLPeer] = None,
         webhook: Optional[ids.HandlerId] = None,
         reason: Optional[causes.WebhookType] = None,  # TODO: undocumented: requires typing clarity!
         # Injected by partial() from spawn_tasks():
