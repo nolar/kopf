@@ -134,7 +134,7 @@ class Cause(invocation.Kwargable):
     logger: typedefs.Logger
 
     @property
-    def _kwargs(self) -> Mapping[str, Any]:
+    def _kwargs(self) -> dict[str, Any]:
         # Similar to `dataclasses.asdict()`, but not recursive for other dataclasses.
         return {field.name: getattr(self, field.name) for field in dataclasses.fields(self)}
 
