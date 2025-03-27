@@ -129,7 +129,7 @@ That easy! For more features, see the [documentation](https://kopf.readthedocs.i
 
 ## Usage
 
-Python 3.8+ is required:
+Python 3.9+ is required:
 [CPython](https://www.python.org/) and [PyPy](https://www.pypy.org/)
 are officially supported and tested; other Python implementations can work too.
 
@@ -137,7 +137,7 @@ We assume that when the operator is executed in the cluster, it must be packaged
 into a docker image with a CI/CD tool of your preference.
 
 ```dockerfile
-FROM python:3.12
+FROM python:3.13
 ADD . /src
 RUN pip install kopf
 CMD kopf run /src/handlers.py --verbose
