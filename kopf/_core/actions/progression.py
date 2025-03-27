@@ -198,7 +198,7 @@ class State(execution.State):
 
     def with_outcomes(
             self,
-            outcomes: Mapping[ids.HandlerId, execution.Outcome],
+            outcomes: dict[ids.HandlerId, execution.Outcome],
     ) -> "State":
         unknown_ids = [handler_id for handler_id in outcomes if handler_id not in self]
         if unknown_ids:
@@ -325,7 +325,7 @@ class State(execution.State):
 
 def deliver_results(
         *,
-        outcomes: Mapping[ids.HandlerId, execution.Outcome],
+        outcomes: dict[ids.HandlerId, execution.Outcome],
         patch: patches.Patch,
 ) -> None:
     """

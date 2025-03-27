@@ -200,7 +200,7 @@ def find_resource(
 def build_response(
         *,
         request: reviews.Request,
-        outcomes: Mapping[ids.HandlerId, execution.Outcome],
+        outcomes: dict[ids.HandlerId, execution.Outcome],
         warnings: Collection[str],
         jsonpatch: patches.JSONPatch,
 ) -> reviews.Response:

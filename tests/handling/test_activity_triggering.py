@@ -1,5 +1,3 @@
-from collections.abc import Mapping
-
 import freezegun
 import pytest
 
@@ -16,8 +14,7 @@ from kopf._core.intents.registries import OperatorRegistry
 
 def test_activity_error_exception():
     outcome = Outcome(final=True)
-    outcomes: Mapping[HandlerId, Outcome]
-    outcomes = {HandlerId('id'): outcome}
+    outcomes: dict[HandlerId, Outcome] = {HandlerId('id'): outcome}
     error = ActivityError("message", outcomes=outcomes)
     assert str(error) == "message"
     assert error.outcomes == outcomes

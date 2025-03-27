@@ -2,7 +2,6 @@ import asyncio
 import datetime
 import logging
 import urllib.parse
-from collections.abc import MutableMapping
 from typing import Optional
 
 import aiohttp.web
@@ -35,7 +34,7 @@ async def health_reporter(
     is cancelled or failed). Once it will stop responding for any reason,
     Kubernetes will assume the pod is not alive anymore, and will restart it.
     """
-    probing_container: MutableMapping[ids.HandlerId, execution.Result] = {}
+    probing_container: dict[ids.HandlerId, execution.Result] = {}
     probing_timestamp: Optional[datetime.datetime] = None
     probing_max_age = datetime.timedelta(seconds=10.0)
     probing_lock = asyncio.Lock()
@@ -62,7 +61,7 @@ async def health_reporter(
                         memo=memo,
                     )
                     probing_container.clear()
-                    probing_container.update(activity_results)
+                    probing_container |= activity_results
                     probing_timestamp = datetime.datetime.now(datetime.timezone.utc)
 
         return aiohttp.web.json_response(probing_container)
