@@ -199,7 +199,7 @@ class Resource:
             namespace: Namespace = None,
             name: Optional[str] = None,
             subresource: Optional[str] = None,
-            params: Optional[Mapping[str, str]] = None,
+            params: Optional[dict[str, str]] = None,
     ) -> str:
         """
         Build a URL to be used with K8s API.
