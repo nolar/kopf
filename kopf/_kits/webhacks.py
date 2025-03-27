@@ -1,5 +1,5 @@
 import functools
-from typing import Any, AsyncGenerator, AsyncIterator, Callable, Dict, List, Tuple, TypeVar, cast
+from typing import Any, AsyncGenerator, AsyncIterator, Callable, TypeVar, cast
 
 from kopf._cogs.structs import reviews
 
@@ -17,8 +17,8 @@ class WebhookContextManagerMeta(type):
     def __new__(
             cls,
             name: str,
-            bases: Tuple[type, ...],
-            namespace: Dict[str, Any],
+            bases: tuple[type, ...],
+            namespace: dict[str, Any],
             **kwargs: Any,
     ) -> "WebhookContextManagerMeta":
         if '__call__' in namespace:
@@ -60,7 +60,7 @@ class WebhookContextManager(metaclass=WebhookContextManagerMeta):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.__generators: List[AsyncGenerator[reviews.WebhookClientConfig, None]] = []
+        self.__generators: list[AsyncGenerator[reviews.WebhookClientConfig, None]] = []
 
     async def __aenter__(self: _SelfT) -> _SelfT:
         return self

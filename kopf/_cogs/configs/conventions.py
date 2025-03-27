@@ -33,7 +33,7 @@ replaced; in some cases, they will be cut and hash-suffixed.
 import base64
 import hashlib
 import warnings
-from typing import Any, Collection, Iterable, Optional, Set
+from typing import Any, Collection, Iterable, Optional
 
 from kopf._cogs.structs import bodies, patches
 
@@ -231,7 +231,7 @@ class StorageKeyMarkingConvention:
         """
         Detect annotation prefixes managed by any other Kopf-based operators.
         """
-        prefixes: Set[str] = set()
+        prefixes: set[str] = set()
         for prefix, name in (key.split('/', 1) for key in keys if '/' in key):
             if name in self.__KNOWN_MARKERS:
                 prefixes.add(prefix)

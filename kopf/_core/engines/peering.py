@@ -35,7 +35,7 @@ import getpass
 import logging
 import os
 import random
-from typing import Any, Dict, Iterable, Mapping, NewType, NoReturn, Optional, cast
+from typing import Any, Iterable, Mapping, NewType, NoReturn, Optional, cast
 
 import iso8601
 
@@ -77,7 +77,7 @@ class Peer:
         options = ", ".join(f"{key!s}={val!r}" for key, val in self.as_dict().items())
         return f"<{clsname} {self.identity}: {options}>"
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         # Only the non-calculated and non-identifying fields.
         return {
             'priority': int(self.priority),

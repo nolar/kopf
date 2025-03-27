@@ -1,7 +1,7 @@
 """
 Admission reviews: requests & responses, also the webhook server protocols.
 """
-from typing import Any, AsyncIterator, Awaitable, Callable, List, Mapping, Optional, Union
+from typing import Any, AsyncIterator, Awaitable, Callable, Mapping, Optional, Union
 
 from typing_extensions import Literal, Protocol, TypedDict
 
@@ -28,7 +28,7 @@ class RequestResource(TypedDict):
 class UserInfo(TypedDict):
     username: str
     uid: str
-    groups: List[str]
+    groups: list[str]
 
 
 class CreateOptions(TypedDict, total=False):
@@ -78,7 +78,7 @@ class ResponseStatus(TypedDict, total=False):
 class ResponsePayload(TypedDict, total=False):
     uid: str
     allowed: bool
-    warnings: Optional[List[str]]
+    warnings: Optional[list[str]]
     status: Optional[ResponseStatus]
     patch: Optional[str]
     patchType: Optional[Literal["JSONPatch"]]

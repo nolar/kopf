@@ -25,8 +25,7 @@ import asyncio
 import dataclasses
 import time
 import warnings
-from typing import Collection, Dict, Iterable, List, Mapping, \
-                   MutableMapping, Optional, Sequence, Set
+from typing import Collection, Iterable, Mapping, MutableMapping, Optional, Sequence
 
 from kopf._cogs.aiokits import aiotasks, aiotime, aiotoggles
 from kopf._cogs.configs import configuration
@@ -49,8 +48,8 @@ class DaemonsMemory:
     # For background and timed threads/tasks (invoked with the kwargs of the last-seen body).
     live_fresh_body: Optional[bodies.Body] = None
     idle_reset_time: float = dataclasses.field(default_factory=time.monotonic)
-    forever_stopped: Set[ids.HandlerId] = dataclasses.field(default_factory=set)
-    running_daemons: Dict[ids.HandlerId, Daemon] = dataclasses.field(default_factory=dict)
+    forever_stopped: set[ids.HandlerId] = dataclasses.field(default_factory=set)
+    running_daemons: dict[ids.HandlerId, Daemon] = dataclasses.field(default_factory=dict)
 
 
 class DaemonsMemoriesIterator(metaclass=abc.ABCMeta):
@@ -182,7 +181,7 @@ async def stop_daemons(
     Hence, these duplicating methods of termination for different cases
     (as by their surrounding circumstances: deletion handlers and finalizers).
     """
-    delays: List[float] = []
+    delays: list[float] = []
     now = time.monotonic()
     for daemon in list(daemons.values()):
         logger = daemon.logger

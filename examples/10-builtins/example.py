@@ -1,10 +1,9 @@
 import asyncio
-from typing import Dict
 
 import kopf
 import pykube
 
-tasks: Dict[str, Dict[str, asyncio.Task]] = {}  # dict{namespace: dict{name: asyncio.Task}}
+tasks: dict[str, dict[str, asyncio.Task]] = {}  # dict{namespace: dict{name: asyncio.Task}}
 
 
 @kopf.on.resume('pods')

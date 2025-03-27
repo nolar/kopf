@@ -21,7 +21,7 @@ import asyncio
 import contextlib
 import enum
 import logging
-from typing import AsyncIterator, Dict, Optional, Union, cast
+from typing import AsyncIterator, Optional, Union, cast
 
 import aiohttp
 
@@ -247,7 +247,7 @@ async def watch_objs(
 
     * The resource is namespace-scoped AND operator is namespaced-restricted.
     """
-    params: Dict[str, str] = {}
+    params: dict[str, str] = {}
     params['watch'] = 'true'
     if since is not None:
         params['resourceVersion'] = since

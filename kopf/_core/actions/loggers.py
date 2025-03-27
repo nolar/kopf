@@ -11,7 +11,7 @@ the operators' code, and can lead to information loss or mismatch
 import copy
 import enum
 import logging
-from typing import Any, Dict, MutableMapping, Optional, Tuple
+from typing import Any, MutableMapping, Optional
 
 # Luckily, we do not mock these ones in tests, so we can import them into our namespace.
 try:
@@ -66,9 +66,9 @@ class ObjectJsonFormatter(ObjectFormatter, _pjl_JsonFormatter):
 
     def add_fields(
             self,
-            log_record: Dict[str, object],
+            log_record: dict[str, object],
             record: logging.LogRecord,
-            message_dict: Dict[str, object],
+            message_dict: dict[str, object],
     ) -> None:
         super().add_fields(log_record, record, message_dict)
 
@@ -138,7 +138,7 @@ class ObjectLogger(typedefs.LoggerAdapter):
             self,
             msg: str,
             kwargs: MutableMapping[str, Any],
-    ) -> Tuple[str, MutableMapping[str, Any]]:
+    ) -> tuple[str, MutableMapping[str, Any]]:
         # Native logging overwrites the message's extra with the adapter's extra.
         # We merge them, so that both message's & adapter's extras are available.
         kwargs["extra"] = (self.extra or {}) | kwargs.get('extra', {})

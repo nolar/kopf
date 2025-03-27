@@ -21,7 +21,7 @@ could execute on the yet-existing object (and its children, if created).
 """
 import dataclasses
 import enum
-from typing import Any, List, Mapping, Optional
+from typing import Any, Mapping, Optional
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, diffs, ephemera, finalizers, \
@@ -150,7 +150,7 @@ class WebhookCause(ResourceCause):
     headers: Mapping[str, str]
     sslpeer: Mapping[str, Any]
     userinfo: reviews.UserInfo
-    warnings: List[str]  # mutable!
+    warnings: list[str]  # mutable!
     operation: Optional[reviews.Operation]  # None if not provided for some reason
     subresource: Optional[str]  # e.g. "status", "scale"; None for the main resource body
     old: Optional[bodies.Body] = None

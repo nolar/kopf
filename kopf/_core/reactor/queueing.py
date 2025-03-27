@@ -26,7 +26,7 @@ import asyncio
 import contextlib
 import enum
 import logging
-from typing import TYPE_CHECKING, MutableMapping, NamedTuple, NewType, Optional, Tuple, Union
+from typing import TYPE_CHECKING, MutableMapping, NamedTuple, NewType, Optional, Union
 
 from typing_extensions import Protocol
 
@@ -68,7 +68,7 @@ class Stream(NamedTuple):
 
 
 ObjectUid = NewType('ObjectUid', str)
-ObjectRef = Tuple[references.Resource, ObjectUid]
+ObjectRef = tuple[references.Resource, ObjectUid]
 Streams = MutableMapping[ObjectRef, Stream]
 
 

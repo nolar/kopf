@@ -4,7 +4,7 @@ import itertools
 import json
 import ssl
 import urllib.parse
-from typing import Any, AsyncIterator, Mapping, Optional, Tuple
+from typing import Any, AsyncIterator, Mapping, Optional
 
 import aiohttp
 
@@ -28,7 +28,7 @@ async def get_default_namespace(
 async def read_sslcert(
         *,
         context: Optional[auth.APIContext] = None,
-) -> Tuple[str, bytes]:
+) -> tuple[str, bytes]:
     if context is None:
         raise RuntimeError("API instance is not injected by the decorator.")
 

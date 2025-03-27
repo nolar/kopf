@@ -9,8 +9,7 @@ import asyncio
 import contextlib
 import contextvars
 import functools
-from typing import Any, Callable, Coroutine, Iterable, Iterator, \
-                   List, Mapping, Optional, Tuple, TypeVar, Union
+from typing import Any, Callable, Coroutine, Iterable, Iterator, Mapping, Optional, TypeVar, Union
 
 from typing_extensions import final
 
@@ -72,12 +71,12 @@ class Kwargable:
 
 @contextlib.contextmanager
 def context(
-        values: Iterable[Tuple[contextvars.ContextVar[Any], Any]],
+        values: Iterable[tuple[contextvars.ContextVar[Any], Any]],
 ) -> Iterator[None]:
     """
     A context manager to set the context variables temporarily.
     """
-    tokens: List[Tuple[contextvars.ContextVar[Any], contextvars.Token[Any]]] = []
+    tokens: list[tuple[contextvars.ContextVar[Any], contextvars.Token[Any]]] = []
     try:
         for var, val in values:
             token = var.set(val)

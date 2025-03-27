@@ -15,8 +15,7 @@ import collections.abc
 import copy
 import dataclasses
 import datetime
-from typing import Any, Collection, Dict, Iterable, Iterator, \
-                   Mapping, NamedTuple, Optional, overload
+from typing import Any, Collection, Iterable, Iterator, Mapping, NamedTuple, Optional, overload
 
 import iso8601
 
@@ -165,7 +164,7 @@ class State(execution.State):
             handlers: Iterable[execution.Handler],
     ) -> "State":
         handler_ids = {handler.id for handler in handlers}
-        handler_states: Dict[ids.HandlerId, HandlerState] = {}
+        handler_states: dict[ids.HandlerId, HandlerState] = {}
         for handler_id in handler_ids:
             content = storage.fetch(key=handler_id, body=body)
             if content is not None:
@@ -177,7 +176,7 @@ class State(execution.State):
             purpose: Optional[str],
             handlers: Iterable[execution.Handler] = (),  # to be re-purposed
     ) -> "State":
-        handler_states: Dict[ids.HandlerId, HandlerState] = dict(self)
+        handler_states: dict[ids.HandlerId, HandlerState] = dict(self)
         for handler in handlers:
             handler_states[handler.id] = handler_states[handler.id].with_purpose(purpose)
         cls = type(self)
@@ -187,7 +186,7 @@ class State(execution.State):
             self,
             handlers: Iterable[execution.Handler],
     ) -> "State":
-        handler_states: Dict[ids.HandlerId, HandlerState] = dict(self)
+        handler_states: dict[ids.HandlerId, HandlerState] = dict(self)
         for handler in handlers:
             if handler.id not in handler_states:
                 handler_states[handler.id] = HandlerState.from_scratch(purpose=self.purpose)

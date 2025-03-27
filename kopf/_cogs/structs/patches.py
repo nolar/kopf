@@ -9,7 +9,7 @@ a dict-like behaviour, and remembers the changes in order of their execution,
 and then generates the JSON patch (RFC 6902).
 """
 import collections.abc
-from typing import Any, Dict, List, MutableMapping, Optional
+from typing import Any, Optional
 
 from typing_extensions import Literal, TypedDict
 
@@ -18,7 +18,7 @@ from kopf._cogs.structs import bodies, dicts
 JSONPatchOp = Literal["add", "replace", "remove"]
 
 
-def _escaped_path(keys: List[str]) -> str:
+def _escaped_path(keys: list[str]) -> str:
     """Provides an appropriately escaped path for JSON Patches.
 
     See https://datatracker.ietf.org/doc/html/rfc6901#section-3 for more details.
@@ -32,7 +32,7 @@ class JSONPatchItem(TypedDict, total=False):
     value: Optional[Any]
 
 
-JSONPatch = List[JSONPatchItem]
+JSONPatch = list[JSONPatchItem]
 
 
 class MetaPatch(dicts.MutableMappingView[str, Any]):
@@ -64,11 +64,11 @@ class StatusPatch(dicts.MutableMappingView[str, Any]):
 
 
 # Event-handling structures, used internally in the framework and handlers only.
-class Patch(Dict[str, Any]):
+class Patch(dict[str, Any]):
 
     def __init__(
         self,
-        __src: Optional[MutableMapping[str, Any]] = None,
+        __src: Optional[collections.abc.MutableMapping[str, Any]] = None,
         body: Optional[bodies.RawBody] = None
     ) -> None:
         super().__init__(__src or {})
@@ -96,7 +96,7 @@ class Patch(Dict[str, Any]):
     def as_json_patch(self) -> JSONPatch:
         return [] if not self else self._as_json_patch(self, keys=[''])
 
-    def _as_json_patch(self, value: object, keys: List[str]) -> JSONPatch:
+    def _as_json_patch(self, value: object, keys: list[str]) -> JSONPatch:
         result: JSONPatch = []
         if value is None:
             result.append(JSONPatchItem(op='remove', path=_escaped_path(keys)))
@@ -109,7 +109,7 @@ class Patch(Dict[str, Any]):
             result.append(JSONPatchItem(op='replace', path=_escaped_path(keys), value=value))
         return result
 
-    def _is_in_original_path(self, keys: List[str]) -> bool:
+    def _is_in_original_path(self, keys: list[str]) -> bool:
         _search = self._original
         for key in keys:
             if key == '':

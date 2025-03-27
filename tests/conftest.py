@@ -7,7 +7,6 @@ import logging
 import re
 import sys
 import time
-from typing import Set
 from unittest.mock import AsyncMock, Mock
 
 import aiohttp.web
@@ -739,7 +738,7 @@ def _no_asyncio_pending_tasks(loop: asyncio.AbstractEventLoop):
         pytest.fail(f"Unattended asyncio tasks detected: {remains!r}")
 
 
-def _get_all_tasks() -> Set[asyncio.Task]:
+def _get_all_tasks() -> set[asyncio.Task]:
     """Similar to `asyncio.all_tasks`, but for all event loops at once."""
     i = 0
     while True:

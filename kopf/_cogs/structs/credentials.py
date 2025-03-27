@@ -28,8 +28,7 @@ import collections
 import dataclasses
 import datetime
 import random
-from typing import AsyncIterable, AsyncIterator, Callable, Dict, List, \
-                   Mapping, NewType, Optional, Tuple, TypeVar, cast
+from typing import AsyncIterable, AsyncIterator, Callable, Mapping, NewType, Optional, TypeVar, cast
 
 from kopf._cogs.aiokits import aiotoggles
 
@@ -81,10 +80,10 @@ class VaultItem:
     The caches are populated by `Vault.extended` on-demand.
     """
     info: ConnectionInfo
-    caches: Optional[Dict[str, object]] = None
+    caches: Optional[dict[str, object]] = None
 
 
-class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
+class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
     """
     A store for currently valid authentication methods.
 
@@ -107,8 +106,8 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
     .. seealso::
         :func:`auth.authenticated` and :func:`authentication`.
     """
-    _current: Dict[VaultKey, VaultItem]
-    _invalid: Dict[VaultKey, List[VaultItem]]
+    _current: dict[VaultKey, VaultItem]
+    _invalid: dict[VaultKey, list[VaultItem]]
 
     def __init__(
             self,
@@ -135,7 +134,7 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
 
     async def __aiter__(
             self,
-    ) -> AsyncIterator[Tuple[VaultKey, ConnectionInfo]]:
+    ) -> AsyncIterator[tuple[VaultKey, ConnectionInfo]]:
         async for key, item in self._items():
             yield key, item.info
 
@@ -143,7 +142,7 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
             self,
             factory: Callable[[ConnectionInfo], _T],
             purpose: Optional[str] = None,
-    ) -> AsyncIterator[Tuple[VaultKey, ConnectionInfo, _T]]:
+    ) -> AsyncIterator[tuple[VaultKey, ConnectionInfo, _T]]:
         """
         Iterate the connection info items with their cached object.
 
@@ -168,7 +167,7 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
 
     async def _items(
             self,
-    ) -> AsyncIterator[Tuple[VaultKey, VaultItem]]:
+    ) -> AsyncIterator[tuple[VaultKey, VaultItem]]:
         """
         Yield the raw items as stored in the vault in random order.
 
@@ -202,7 +201,7 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
                 if yielded_key in self._current and self._current[yielded_key] is yielded_item:
                     break
 
-    def select(self) -> Tuple[VaultKey, VaultItem]:
+    def select(self) -> tuple[VaultKey, VaultItem]:
         """
         Select the next item (not the info!) to try (and do so infinitely).
 
@@ -214,7 +213,7 @@ class Vault(AsyncIterable[Tuple[VaultKey, ConnectionInfo]]):
             raise LoginError("Ran out of valid credentials. Consider installing "
                              "an API client library or adding a login handler. See more: "
                              "https://kopf.readthedocs.io/en/stable/authentication/")
-        prioritised: Dict[int, List[Tuple[VaultKey, VaultItem]]]
+        prioritised: dict[int, list[tuple[VaultKey, VaultItem]]]
         prioritised = collections.defaultdict(list)
         for key, item in self._current.items():
             prioritised[item.info.priority].append((key, item))

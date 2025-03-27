@@ -14,7 +14,7 @@ import socket
 import ssl
 import tempfile
 import urllib.parse
-from typing import TYPE_CHECKING, AsyncIterator, Collection, Dict, Iterable, Optional, Tuple, Union
+from typing import TYPE_CHECKING, AsyncIterator, Collection, Iterable, Optional, Union
 
 import aiohttp.web
 
@@ -270,7 +270,7 @@ class WebhookServer(webhacks.WebhookContextManager):
         netloc = host if is_default_port else f'{host}:{port}'
         return urllib.parse.urlunsplit([schema, netloc, path, '', ''])
 
-    def _build_ssl(self) -> Tuple[Optional[bytes], Optional[ssl.SSLContext]]:
+    def _build_ssl(self) -> tuple[Optional[bytes], Optional[ssl.SSLContext]]:
         """
         A macros to construct an SSL context, possibly generating SSL certs.
 
@@ -345,7 +345,7 @@ class WebhookServer(webhacks.WebhookContextManager):
     def build_certificate(
             hostnames: Collection[str],
             password: Optional[str] = None,
-    ) -> Tuple[bytes, bytes]:
+    ) -> tuple[bytes, bytes]:
         """
         Build a self-signed certificate with SANs (subject alternative names).
 
@@ -379,7 +379,7 @@ class WebhookServer(webhacks.WebhookContextManager):
 
         # Detect which ones of the hostnames are probably IPv4/IPv6 addresses.
         # A side-effect: bring them all to their canonical forms.
-        parsed_ips: Dict[str, Union[ipaddress.IPv4Address, ipaddress.IPv6Address]] = {}
+        parsed_ips: dict[str, Union[ipaddress.IPv4Address, ipaddress.IPv6Address]] = {}
         for hostname in hostnames:
             try:
                 parsed_ips[hostname] = ipaddress.IPv4Address(hostname)

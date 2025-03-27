@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 
@@ -23,7 +23,7 @@ async def test_http_user_agent_version(
     mocker.patch('kopf._cogs.helpers.versions.version', version)
 
     @authenticated
-    async def get_it(url: str, *, context: APIContext) -> Dict[str, Any]:
+    async def get_it(url: str, *, context: APIContext) -> dict[str, Any]:
         response = await context.session.get(url)
         return await response.json()
 

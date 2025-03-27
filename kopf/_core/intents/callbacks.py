@@ -9,7 +9,7 @@ a corresponding type or class ``kopf.Whatever`` with all the typing tricks
 (``Union[...]``, ``Optional[...]``, partial ``Any`` values, etc) included.
 """
 import datetime
-from typing import TYPE_CHECKING, Any, Callable, Collection, List, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, Collection, Optional, TypeVar, Union
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import typedefs
@@ -124,7 +124,7 @@ else:
     WebhookFn = Callable[
         [
             NamedArg(bool, "dryrun"),
-            NamedArg(List[str], "warnings"),  # mutable!
+            NamedArg(list[str], "warnings"),  # mutable!
             NamedArg(Optional[str], "subresource"),
             NamedArg(reviews.UserInfo, "userinfo"),
             NamedArg(reviews.SSLPeer, "sslpeer"),

@@ -11,7 +11,7 @@ in them, and extracts the basic credentials for its own use.
     :mod:`credentials` and :func:`authentication`.
 """
 import os
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Optional, Sequence
 
 import yaml
 
@@ -221,9 +221,9 @@ def login_with_kubeconfig(**_: Any) -> Optional[credentials.ConnectionInfo]:
 
     # As prescribed: if the file is absent or non-deserialisable, then fail. The first value wins.
     current_context: Optional[str] = None
-    contexts: Dict[Any, Any] = {}
-    clusters: Dict[Any, Any] = {}
-    users: Dict[Any, Any] = {}
+    contexts: dict[Any, Any] = {}
+    clusters: dict[Any, Any] = {}
+    users: dict[Any, Any] = {}
     for path in paths:
 
         with open(path, encoding='utf-8') as f:

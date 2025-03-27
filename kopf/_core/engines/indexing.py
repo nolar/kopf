@@ -1,6 +1,6 @@
 import collections.abc
 import dataclasses
-from typing import Any, Dict, Generic, Iterable, Iterator, Mapping, Optional, Set, Tuple, TypeVar
+from typing import Any, Generic, Iterable, Iterator, Mapping, Optional, TypeVar
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import typedefs
@@ -8,7 +8,7 @@ from kopf._cogs.structs import bodies, ephemera, ids, patches, references
 from kopf._core.actions import execution, lifecycles, progression
 from kopf._core.intents import causes, handlers, registries
 
-Key = Tuple[references.Namespace, Optional[str], Optional[str]]
+Key = tuple[references.Namespace, Optional[str], Optional[str]]
 _K = TypeVar('_K')
 _V = TypeVar('_V')
 
@@ -24,7 +24,7 @@ class Store(ephemera.Store[_V], Generic[_V]):
 
     The store is O(1) for updates/deletions due to ``dict`` used internally.
     """
-    __items: Dict[Key, _V]
+    __items: dict[Key, _V]
 
     def __init__(self) -> None:
         super().__init__()
@@ -75,8 +75,8 @@ class Index(ephemera.Index[_K, _V], Generic[_K, _V]):
     "K" is the number of all keys, "k" is the number of keys per object.
     Assuming the amount of keys per object is usually fixed, it is O(1).
     """
-    __items: Dict[_K, Store[_V]]
-    __reverse: Dict[Key, Set[_K]]
+    __items: dict[_K, Store[_V]]
+    __reverse: dict[Key, set[_K]]
 
     def __init__(self) -> None:
         super().__init__()
@@ -169,7 +169,7 @@ class OperatorIndexer:
         self.index._replace(key, obj)
 
 
-class OperatorIndexers(Dict[ids.HandlerId, OperatorIndexer]):
+class OperatorIndexers(dict[ids.HandlerId, OperatorIndexer]):
 
     def __init__(self) -> None:
         super().__init__()

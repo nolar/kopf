@@ -1,6 +1,6 @@
 import ipaddress
 import socket
-from typing import List, Optional, Tuple
+from typing import Optional
 
 
 def get_descriptive_hostname() -> str:
@@ -20,7 +20,7 @@ def get_descriptive_hostname() -> str:
     else:
         ipv4: Optional[ipaddress.IPv4Address]
         ipv6: Optional[ipaddress.IPv6Address]
-        parsed: List[Tuple[str, Optional[ipaddress.IPv4Address], Optional[ipaddress.IPv6Address]]]
+        parsed: list[tuple[str, Optional[ipaddress.IPv4Address], Optional[ipaddress.IPv6Address]]]
         parsed = []
         for name in [hostname] + list(aliases) + list(ipaddrs):
             try:

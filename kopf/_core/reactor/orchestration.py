@@ -27,7 +27,7 @@ import dataclasses
 import functools
 import itertools
 import logging
-from typing import Any, Collection, Container, Dict, Iterable, \
+from typing import Any, Collection, Container, Iterable, \
                    MutableMapping, NamedTuple, Optional, Protocol
 
 from kopf._cogs.aiokits import aiotasks, aiotoggles
@@ -68,12 +68,12 @@ class Ensemble:
     # Multidimentional pausing: for every namespace, and a few for the whole cluster (for CRDs).
     operator_paused: aiotoggles.ToggleSet
     peering_missing: aiotoggles.Toggle
-    conflicts_found: Dict[EnsembleKey, aiotoggles.Toggle] = dataclasses.field(default_factory=dict)
+    conflicts_found: dict[EnsembleKey, aiotoggles.Toggle] = dataclasses.field(default_factory=dict)
 
     # Multidimensional tasks -- one for every combination of relevant dimensions.
-    watcher_tasks: Dict[EnsembleKey, aiotasks.Task] = dataclasses.field(default_factory=dict)
-    peering_tasks: Dict[EnsembleKey, aiotasks.Task] = dataclasses.field(default_factory=dict)
-    pinging_tasks: Dict[EnsembleKey, aiotasks.Task] = dataclasses.field(default_factory=dict)
+    watcher_tasks: dict[EnsembleKey, aiotasks.Task] = dataclasses.field(default_factory=dict)
+    peering_tasks: dict[EnsembleKey, aiotasks.Task] = dataclasses.field(default_factory=dict)
+    pinging_tasks: dict[EnsembleKey, aiotasks.Task] = dataclasses.field(default_factory=dict)
 
     def get_keys(self) -> Collection[EnsembleKey]:
         return (frozenset(self.watcher_tasks) |

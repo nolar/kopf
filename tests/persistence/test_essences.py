@@ -1,5 +1,3 @@
-from typing import Type
-
 import pytest
 
 from kopf._cogs.configs.diffbase import AnnotationsDiffBaseStorage, \
@@ -11,7 +9,7 @@ ALL_STORAGES = [AnnotationsDiffBaseStorage, StatusDiffBaseStorage]
 
 @pytest.mark.parametrize('cls', ALL_STORAGES)
 def test_get_essence_removes_resource_references(
-        cls: Type[DiffBaseStorage],
+        cls: type[DiffBaseStorage],
 ):
     body = Body({'apiVersion': 'group/version', 'kind': 'Kind'})
     storage = cls()
@@ -34,7 +32,7 @@ def test_get_essence_removes_resource_references(
 @pytest.mark.parametrize('cls', ALL_STORAGES)
 def test_get_essence_removes_system_fields_and_cleans_parents(
         field: str,
-        cls: Type[DiffBaseStorage],
+        cls: type[DiffBaseStorage],
 ):
     body = Body({'metadata': {field: 'x'}})
     storage = cls()
@@ -57,7 +55,7 @@ def test_get_essence_removes_system_fields_and_cleans_parents(
 @pytest.mark.parametrize('cls', ALL_STORAGES)
 def test_get_essence_removes_system_fields_but_keeps_extra_fields(
         field: str,
-        cls: Type[DiffBaseStorage],
+        cls: type[DiffBaseStorage],
 ):
     body = Body({'metadata': {field: 'x', 'other': 'y'}})
     storage = cls()
@@ -71,7 +69,7 @@ def test_get_essence_removes_system_fields_but_keeps_extra_fields(
 @pytest.mark.parametrize('cls', ALL_STORAGES)
 def test_get_essence_removes_garbage_annotations_and_cleans_parents(
         annotation: str,
-        cls: Type[DiffBaseStorage],
+        cls: type[DiffBaseStorage],
 ):
     body = Body({'metadata': {'annotations': {annotation: 'x'}}})
     storage = cls()
@@ -85,7 +83,7 @@ def test_get_essence_removes_garbage_annotations_and_cleans_parents(
 @pytest.mark.parametrize('cls', ALL_STORAGES)
 def test_get_essence_removes_garbage_annotations_but_keeps_others(
         annotation: str,
-        cls: Type[DiffBaseStorage],
+        cls: type[DiffBaseStorage],
 ):
     body = Body({'metadata': {'annotations': {annotation: 'x', 'other': 'y'}}})
     storage = cls()
@@ -106,7 +104,7 @@ def test_get_essence_removes_garbage_annotations_but_keeps_others(
 @pytest.mark.parametrize('cls', ALL_STORAGES)
 def test_get_essence_keeps_annotations_mentioning_kopf_but_not_from_other_operators(
         prefix: str,
-        cls: Type[DiffBaseStorage],
+        cls: type[DiffBaseStorage],
 ):
     annotation = f'{prefix}/to-be-removed'
     body = Body({'metadata': {'annotations': {annotation: 'x'}}})
@@ -123,7 +121,7 @@ def test_get_essence_keeps_annotations_mentioning_kopf_but_not_from_other_operat
 @pytest.mark.parametrize('cls', ALL_STORAGES)
 def test_get_essence_removes_other_operators_annotations_by_domain(
         prefix: str,
-        cls: Type[DiffBaseStorage],
+        cls: type[DiffBaseStorage],
 ):
     annotation = f'{prefix}/to-be-removed'
     body = Body({'metadata': {'annotations': {annotation: 'x', 'other': 'y'}}})
@@ -138,7 +136,7 @@ def test_get_essence_removes_other_operators_annotations_by_domain(
 @pytest.mark.parametrize('cls', ALL_STORAGES)
 def test_get_essence_removes_other_operators_annotations_by_marker(
         prefix: str,
-        cls: Type[DiffBaseStorage],
+        cls: type[DiffBaseStorage],
 ):
     marker = f'{prefix}/kopf-managed'
     annotation = f'{prefix}/to-be-removed'
@@ -150,7 +148,7 @@ def test_get_essence_removes_other_operators_annotations_by_marker(
 
 @pytest.mark.parametrize('cls', ALL_STORAGES)
 def test_get_essence_removes_status_and_cleans_parents(
-        cls: Type[DiffBaseStorage],
+        cls: type[DiffBaseStorage],
 ):
     body = Body({'status': {'kopf': {'progress': 'x', 'anything': 'y'}, 'other': 'z'}})
     storage = cls()
@@ -160,7 +158,7 @@ def test_get_essence_removes_status_and_cleans_parents(
 
 @pytest.mark.parametrize('cls', ALL_STORAGES)
 def test_get_essence_removes_status_but_keeps_extra_fields(
-        cls: Type[DiffBaseStorage],
+        cls: type[DiffBaseStorage],
 ):
     body = Body({'status': {'kopf': {'progress': 'x', 'anything': 'y'}, 'other': 'z'}})
     storage = cls()
@@ -170,7 +168,7 @@ def test_get_essence_removes_status_but_keeps_extra_fields(
 
 @pytest.mark.parametrize('cls', ALL_STORAGES)
 def test_get_essence_clones_body(
-        cls: Type[DiffBaseStorage],
+        cls: type[DiffBaseStorage],
 ):
     body = Body({'spec': {'depth': {'field': 'x'}}})
     storage = cls()

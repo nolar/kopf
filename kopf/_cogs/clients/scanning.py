@@ -1,5 +1,5 @@
 import asyncio
-from typing import Collection, Mapping, Optional, Set
+from typing import Collection, Mapping, Optional
 
 from kopf._cogs.clients import api, errors
 from kopf._cogs.configs import configuration
@@ -26,7 +26,7 @@ async def scan_resources(
         _read_old_api(groups=groups, settings=settings, logger=logger),
         _read_new_apis(groups=groups, settings=settings, logger=logger),
     }
-    resources: Set[references.Resource] = set()
+    resources: set[references.Resource] = set()
     for coro in asyncio.as_completed(coros):
         resources.update(await coro)
     return resources
@@ -38,7 +38,7 @@ async def _read_old_api(
         logger: typedefs.Logger,
         groups: Optional[Collection[str]],
 ) -> Collection[references.Resource]:
-    resources: Set[references.Resource] = set()
+    resources: set[references.Resource] = set()
     if groups is None or '' in groups:
         rsp = await api.get('/api', settings=settings, logger=logger)
         coros = {
@@ -63,7 +63,7 @@ async def _read_new_apis(
         logger: typedefs.Logger,
         groups: Optional[Collection[str]],
 ) -> Collection[references.Resource]:
-    resources: Set[references.Resource] = set()
+    resources: set[references.Resource] = set()
     if groups is None or set(groups or {}) - {''}:
         rsp = await api.get('/apis', settings=settings, logger=logger)
         items = [d for d in rsp['groups'] if groups is None or d['name'] in groups]
