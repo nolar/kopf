@@ -270,7 +270,7 @@ class State(execution.State):
         )
 
     @property
-    def extras(self) -> Mapping[str, StateCounters]:
+    def extras(self) -> dict[str, StateCounters]:
         purposes = {
             handler_state.purpose for handler_state in self._states.values()
             if handler_state.purpose is not None and handler_state.purpose != self.purpose
