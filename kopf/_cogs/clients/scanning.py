@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import Collection, Mapping
+from collections.abc import Collection
 from typing import Optional
 
 from kopf._cogs.clients import api, errors
@@ -12,8 +12,8 @@ async def read_version(
         *,
         settings: configuration.OperatorSettings,
         logger: typedefs.Logger,
-) -> Mapping[str, str]:
-    rsp: Mapping[str, str] = await api.get('/version', settings=settings, logger=logger)
+) -> dict[str, str]:
+    rsp: dict[str, str] = await api.get('/version', settings=settings, logger=logger)
     return rsp
 
 
