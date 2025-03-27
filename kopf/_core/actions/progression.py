@@ -15,7 +15,7 @@ import collections.abc
 import copy
 import dataclasses
 import datetime
-from collections.abc import Collection, Iterable, Iterator, Mapping
+from collections.abc import Collection, Iterable, Iterator
 from typing import Any, NamedTuple, Optional, overload
 
 import iso8601
@@ -89,7 +89,7 @@ class HandlerState(execution.HandlerState):
             subrefs=None if not self.subrefs else list(sorted(self.subrefs)),
         )
 
-    def as_in_storage(self) -> Mapping[str, Any]:
+    def as_in_storage(self) -> dict[str, Any]:
         # Nones are not stored by Kubernetes, so we filter them out for comparison.
         return {key: val for key, val in self.for_storage().items() if val is not None}
 
@@ -140,11 +140,11 @@ class State(execution.State):
     reflect the changes in the object's status. A new state is created every
     time some changes/outcomes are merged into the current state.
     """
-    _states: Mapping[ids.HandlerId, HandlerState]
+    _states: dict[ids.HandlerId, HandlerState]
 
     def __init__(
             self,
-            __src: Mapping[ids.HandlerId, HandlerState],
+            __src: dict[ids.HandlerId, HandlerState],
             *,
             purpose: Optional[str] = None,
     ):
@@ -198,7 +198,7 @@ class State(execution.State):
 
     def with_outcomes(
             self,
-            outcomes: Mapping[ids.HandlerId, execution.Outcome],
+            outcomes: dict[ids.HandlerId, execution.Outcome],
     ) -> "State":
         unknown_ids = [handler_id for handler_id in outcomes if handler_id not in self]
         if unknown_ids:
@@ -270,7 +270,7 @@ class State(execution.State):
         )
 
     @property
-    def extras(self) -> Mapping[str, StateCounters]:
+    def extras(self) -> dict[str, StateCounters]:
         purposes = {
             handler_state.purpose for handler_state in self._states.values()
             if handler_state.purpose is not None and handler_state.purpose != self.purpose
@@ -325,7 +325,7 @@ class State(execution.State):
 
 def deliver_results(
         *,
-        outcomes: Mapping[ids.HandlerId, execution.Outcome],
+        outcomes: dict[ids.HandlerId, execution.Outcome],
         patch: patches.Patch,
 ) -> None:
     """

@@ -198,7 +198,7 @@ class OperatorIndexers(dict[ids.HandlerId, OperatorIndexer]):
     def replace(
             self,
             body: bodies.Body,
-            outcomes: Mapping[ids.HandlerId, execution.Outcome],
+            outcomes: dict[ids.HandlerId, execution.Outcome],
     ) -> None:
         """ Interpret the indexing results and apply them to the indices. """
         key = self.make_key(body)

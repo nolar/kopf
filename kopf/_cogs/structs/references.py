@@ -4,7 +4,7 @@ import enum
 import fnmatch
 import re
 import urllib.parse
-from collections.abc import Collection, Iterable, Iterator, Mapping, MutableMapping
+from collections.abc import Collection, Iterable, Iterator, Mapping
 from typing import NewType, Optional, Union
 
 # A namespace specification with globs, negations, and some minimal syntax; see `match_namespace()`.
@@ -199,7 +199,7 @@ class Resource:
             namespace: Namespace = None,
             name: Optional[str] = None,
             subresource: Optional[str] = None,
-            params: Optional[Mapping[str, str]] = None,
+            params: Optional[dict[str, str]] = None,
     ) -> str:
         """
         Build a URL to be used with K8s API.
@@ -424,7 +424,7 @@ class Backbone(Mapping[Selector, Resource]):
 
     def __init__(self) -> None:
         super().__init__()
-        self._items: MutableMapping[Selector, Resource] = {}
+        self._items: dict[Selector, Resource] = {}
         self._revised = asyncio.Condition()
         self.selectors = [
             NAMESPACES, EVENTS, CRDS,

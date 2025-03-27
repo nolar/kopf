@@ -41,7 +41,7 @@ All timestamps are strings in ISO8601 format in UTC (no explicit ``Z`` suffix).
 import abc
 import copy
 import json
-from collections.abc import Collection, Mapping
+from collections.abc import Collection
 from typing import Any, Optional, TypedDict, cast
 
 from kopf._cogs.configs import conventions
@@ -316,7 +316,7 @@ class StatusProgressStorage(ProgressStorage):
             key: ids.HandlerId,
             body: bodies.Body,
     ) -> Optional[ProgressRecord]:
-        container: Mapping[ids.HandlerId, ProgressRecord]
+        container: dict[ids.HandlerId, ProgressRecord]
         container = dicts.resolve(body, self.field, {})
         return container.get(key, None)
 
