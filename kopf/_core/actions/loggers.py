@@ -142,7 +142,7 @@ class ObjectLogger(typedefs.LoggerAdapter):
     ) -> tuple[str, MutableMapping[str, Any]]:
         # Native logging overwrites the message's extra with the adapter's extra.
         # We merge them, so that both message's & adapter's extras are available.
-        kwargs["extra"] = (self.extra or {}) | kwargs.get('extra', {})
+        kwargs["extra"] = dict(self.extra or {}) | dict(kwargs.get('extra') or {})
         return msg, kwargs
 
 
