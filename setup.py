@@ -58,7 +58,6 @@ setup(
         'setuptools_scm',
     ],
     install_requires=[
-        'typing_extensions',    # 0.20 MB
         'python-json-logger',   # 0.05 MB
         'iso8601',              # 0.07 MB
         'click',                # 0.60 MB

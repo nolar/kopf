@@ -10,9 +10,7 @@ import contextlib
 import contextvars
 import functools
 from collections.abc import Coroutine, Iterable, Iterator, Mapping
-from typing import Any, Callable, Optional, TypeVar, Union
-
-from typing_extensions import final
+from typing import Any, Callable, Optional, TypeVar, Union, final
 
 from kopf._cogs.configs import configuration
 

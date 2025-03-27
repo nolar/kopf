@@ -42,9 +42,7 @@ In case the operators are also type-checked, type casting can be used
 """
 
 from collections.abc import Mapping
-from typing import Any, Optional, Union, cast
-
-from typing_extensions import Literal, TypedDict
+from typing import Any, Literal, Optional, TypedDict, Union, cast
 
 from kopf._cogs.structs import dicts, references
 

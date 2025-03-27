@@ -27,9 +27,7 @@ import contextlib
 import enum
 import logging
 from collections.abc import MutableMapping
-from typing import TYPE_CHECKING, NamedTuple, NewType, Optional, Union
-
-from typing_extensions import Protocol
+from typing import TYPE_CHECKING, NamedTuple, NewType, Optional, Protocol, Union
 
 from kopf._cogs.aiokits import aiotasks, aiotoggles
 from kopf._cogs.clients import watching

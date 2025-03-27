@@ -9,9 +9,7 @@ a dict-like behaviour, and remembers the changes in order of their execution,
 and then generates the JSON patch (RFC 6902).
 """
 import collections.abc
-from typing import Any, Optional
-
-from typing_extensions import Literal, TypedDict
+from typing import Any, Literal, Optional, TypedDict
 
 from kopf._cogs.structs import bodies, dicts
 

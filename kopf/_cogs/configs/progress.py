@@ -42,9 +42,7 @@ import abc
 import copy
 import json
 from collections.abc import Collection, Mapping
-from typing import Any, Optional, cast
-
-from typing_extensions import TypedDict
+from typing import Any, Optional, TypedDict, cast
 
 from kopf._cogs.configs import conventions
 from kopf._cogs.structs import bodies, dicts, ids, patches

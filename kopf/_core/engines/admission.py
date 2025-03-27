@@ -7,9 +7,7 @@ import logging
 import re
 import urllib.parse
 from collections.abc import Collection, Iterable, Mapping
-from typing import Any, AsyncContextManager, Optional
-
-from typing_extensions import Literal, TypedDict
+from typing import Any, AsyncContextManager, Literal, Optional, TypedDict
 
 from kopf._cogs.aiokits import aiovalues
 from kopf._cogs.clients import creating, errors, patching

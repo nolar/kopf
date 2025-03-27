@@ -3,10 +3,9 @@ import concurrent.futures
 import contextlib
 import threading
 import types
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
 import click.testing
-from typing_extensions import Literal
 
 from kopf import cli
 from kopf._cogs.configs import configuration

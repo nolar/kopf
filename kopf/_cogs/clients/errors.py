@@ -28,10 +28,9 @@ as the reasons of failures. However, the errors are exposed to other packages.
 import collections.abc
 import json
 from collections.abc import Collection
-from typing import Optional
+from typing import Literal, Optional, TypedDict
 
 import aiohttp
-from typing_extensions import Literal, TypedDict
 
 
 class RawStatusCause(TypedDict):
