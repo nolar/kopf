@@ -17,8 +17,6 @@ logger = logging.getLogger(__name__)
 LOCALHOST: str = 'localhost'
 HTTP_PORT: int = 80
 
-_Key = Tuple[str, int]  # hostname, port
-
 
 async def health_reporter(
         endpoint: str,
