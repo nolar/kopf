@@ -66,8 +66,8 @@ class RawMeta(TypedDict, total=False):
     uid: str
     name: str
     namespace: str
-    labels: Labels
-    annotations: Annotations
+    labels: dict[str, str]
+    annotations: dict[str, str]
     finalizers: list[str]
     resourceVersion: str
     deletionTimestamp: str
@@ -79,15 +79,15 @@ class RawBody(TypedDict, total=False):
     apiVersion: str
     kind: str
     metadata: RawMeta
-    spec: Mapping[str, Any]
-    status: Mapping[str, Any]
+    spec: dict[str, Any]
+    status: dict[str, Any]
 
 
 # A special payload for type==ERROR (this is not a connection or client error).
 class RawError(TypedDict, total=False):
     apiVersion: str     # usually: Literal['v1']
     kind: str           # usually: Literal['Status']
-    metadata: Mapping[Any, Any]
+    metadata: dict[Any, Any]
     code: int
     reason: str
     status: str
