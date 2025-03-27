@@ -114,14 +114,14 @@ class RawEvent(TypedDict, total=True):
 
 
 class MetaEssence(TypedDict, total=False):
-    labels: Labels
-    annotations: Annotations
+    labels: dict[str, str]
+    annotations: dict[str, str]
 
 
 class BodyEssence(TypedDict, total=False):
     metadata: MetaEssence
-    spec: Mapping[str, Any]
-    status: Mapping[str, Any]
+    spec: dict[str, Any]
+    status: dict[str, Any]
 
 
 #
