@@ -454,7 +454,7 @@ def _matches_annotations(
 def _matches_metadata(
         *,
         pattern: filters.MetaFilter,  # from the handler
-        content: Mapping[str, str],  # from the body
+        content: Mapping[str, str],  # from the body; can be live views on dicts (labels & co)
         kwargs: dict[str, Any],
         cause: causes.ResourceCause,
 ) -> bool:

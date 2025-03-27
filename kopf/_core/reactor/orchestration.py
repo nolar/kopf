@@ -65,7 +65,7 @@ class Ensemble:
     #       ToggleSet is used because it is the closest equivalent of such a primitive.
     operator_indexed: aiotoggles.ToggleSet
 
-    # Multidimentional pausing: for every namespace, and a few for the whole cluster (for CRDs).
+    # Multidimensional pausing: for every namespace, and a few for the whole cluster (for CRDs).
     operator_paused: aiotoggles.ToggleSet
     peering_missing: aiotoggles.Toggle
     conflicts_found: dict[EnsembleKey, aiotoggles.Toggle] = dataclasses.field(default_factory=dict)
