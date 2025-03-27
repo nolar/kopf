@@ -1,5 +1,4 @@
 import json
-from typing import Type
 
 import pytest
 
@@ -116,7 +115,7 @@ def test_smart_storage_with_prefix():
 
 @pytest.mark.parametrize('cls', ALL_STORAGES)
 def test_fetching_from_empty_body_returns_none(
-        cls: Type[ProgressStorage]):
+        cls: type[ProgressStorage]):
     storage = cls()
     body = Body({})
     data = storage.fetch(body=body, key=HandlerId('id1'))
@@ -125,7 +124,7 @@ def test_fetching_from_empty_body_returns_none(
 
 @pytest.mark.parametrize('cls', ALL_STORAGES)
 def test_purging_already_empty_body_does_nothing(
-        cls: Type[ProgressStorage]):
+        cls: type[ProgressStorage]):
     storage = cls()
     patch = Patch()
     body = Body({})

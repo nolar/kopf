@@ -14,9 +14,10 @@ of the handlers to be executed on each reaction cycle.
 import abc
 import enum
 import functools
+from collections.abc import Collection, Container, Iterable, Iterator, \
+                            Mapping, MutableMapping, Sequence
 from types import FunctionType, MethodType
-from typing import Any, Callable, Collection, Container, FrozenSet, Generic, Iterable, Iterator, \
-                   List, Mapping, MutableMapping, Optional, Sequence, Set, Tuple, TypeVar, cast
+from typing import Any, Callable, Generic, Optional, TypeVar, cast
 
 from kopf._cogs.structs import dicts, ids, references
 from kopf._core.actions import execution
@@ -30,7 +31,7 @@ ResourceHandlerT = TypeVar('ResourceHandlerT', bound=handlers.ResourceHandler)
 
 class GenericRegistry(Generic[HandlerT]):
     """ A generic base class of a simple registry (with no handler getters). """
-    _handlers: List[HandlerT]
+    _handlers: list[HandlerT]
 
     def __init__(self) -> None:
         super().__init__()
@@ -72,7 +73,7 @@ class ActivityRegistry(GenericRegistry[handlers.ActivityHandler]):
 
 class ResourceRegistry(GenericRegistry[ResourceHandlerT], Generic[ResourceHandlerT, CauseT]):
 
-    def get_all_selectors(self) -> FrozenSet[references.Selector]:
+    def get_all_selectors(self) -> frozenset[references.Selector]:
         return frozenset(
             handler.selector
             for handler in self.get_all_handlers()
@@ -106,7 +107,7 @@ class ResourceRegistry(GenericRegistry[ResourceHandlerT], Generic[ResourceHandle
     def get_extra_fields(
             self,
             resource: references.Resource,
-    ) -> Set[dicts.FieldPath]:
+    ) -> set[dicts.FieldPath]:
         return set(self.iter_extra_fields(resource=resource))
 
     def iter_extra_fields(
@@ -218,7 +219,7 @@ class ChangingRegistry(ResourceRegistry[handlers.ChangingHandler, causes.Changin
             self,
             resource: references.Resource,
     ) -> Sequence[handlers.ChangingHandler]:
-        found_handlers: List[handlers.ChangingHandler] = []
+        found_handlers: list[handlers.ChangingHandler] = []
         for handler in self._handlers:
             if _matches_resource(handler, resource):
                 found_handlers.append(handler)
@@ -366,7 +367,7 @@ def _deduplicated(
     handled) **AND** it is detected as per-existing before operator start.
     But `fn()` should be called only once for this cause.
     """
-    seen_ids: Set[Tuple[int, ids.HandlerId]] = set()
+    seen_ids: set[tuple[int, ids.HandlerId]] = set()
     for handler in src:
         key = (id(handler.fn), handler.id)
         if key in seen_ids:

@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
-from typing import Generator, Optional
+from collections.abc import Generator
+from typing import Optional
 
 
 @contextlib.contextmanager

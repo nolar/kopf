@@ -15,7 +15,8 @@ and therefore do not trigger the user-defined handlers.
 """
 import asyncio
 import time
-from typing import Collection, Optional, Tuple
+from collections.abc import Collection
+from typing import Optional
 
 from kopf._cogs.aiokits import aiotoggles
 from kopf._cogs.configs import configuration
@@ -152,7 +153,7 @@ async def process_resource_causes(
         memory: inventory.ResourceMemory,
         local_logger: loggers.ObjectLogger,
         event_logger: loggers.ObjectLogger,
-) -> Tuple[Collection[float], bool]:
+) -> tuple[Collection[float], bool]:
 
     finalizer = settings.persistence.finalizer
     extra_fields = (

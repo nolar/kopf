@@ -1,6 +1,5 @@
 import dataclasses
 import logging
-from typing import Type
 from unittest.mock import Mock
 
 import pytest
@@ -33,7 +32,7 @@ ALL_FIELDS = {
 @pytest.mark.parametrize('cls', ALL_CAUSES)
 @pytest.mark.parametrize('name', ALL_FIELDS)
 @pytest.mark.parametrize('attr', ['kwargs', 'sync_kwargs', 'async_kwargs'])
-def test_indices_overwrite_kwargs(cls: Type[BaseCause], name, attr):
+def test_indices_overwrite_kwargs(cls: type[BaseCause], name, attr):
     indexers = OperatorIndexers()
     indexers['index1'] = OperatorIndexer()
     indexers['index2'] = OperatorIndexer()

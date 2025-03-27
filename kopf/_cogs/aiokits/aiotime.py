@@ -1,6 +1,7 @@
 import asyncio
 import collections.abc
-from typing import Collection, Optional, Union
+from collections.abc import Collection
+from typing import Optional, Union
 
 
 async def sleep(

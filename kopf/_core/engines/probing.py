@@ -2,7 +2,8 @@ import asyncio
 import datetime
 import logging
 import urllib.parse
-from typing import MutableMapping, Optional, Tuple
+from collections.abc import MutableMapping
+from typing import Optional
 
 import aiohttp.web
 
@@ -16,8 +17,6 @@ logger = logging.getLogger(__name__)
 
 LOCALHOST: str = 'localhost'
 HTTP_PORT: int = 80
-
-_Key = Tuple[str, int]  # hostname, port
 
 
 async def health_reporter(

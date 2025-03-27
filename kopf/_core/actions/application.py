@@ -20,7 +20,8 @@ all the modules, of which the reactor's core consists.
 """
 import asyncio
 import datetime
-from typing import Collection, Optional
+from collections.abc import Collection
+from typing import Optional
 
 from kopf._cogs.aiokits import aiotime
 from kopf._cogs.clients import patching

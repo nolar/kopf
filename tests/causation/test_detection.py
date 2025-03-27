@@ -143,8 +143,8 @@ def check_kwargs(cause, kwargs):
 def test_for_gone(
         kwargs, event, finalizers, deletion_ts, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
-    event['object']['metadata'].update(finalizers)
-    event['object']['metadata'].update(deletion_ts)
+    event['object']['metadata'] |= finalizers
+    event['object']['metadata'] |= deletion_ts
     cause = detect_changing_cause(
         raw_event=event,
         body=Body(event['object']),
@@ -160,8 +160,8 @@ def test_for_gone(
 def test_for_free(
         kwargs, event, finalizers, deletion_ts, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
-    event['object']['metadata'].update(finalizers)
-    event['object']['metadata'].update(deletion_ts)
+    event['object']['metadata'] |= finalizers
+    event['object']['metadata'] |= deletion_ts
     cause = detect_changing_cause(
         raw_event=event,
         body=Body(event['object']),
@@ -177,8 +177,8 @@ def test_for_free(
 def test_for_delete(
         kwargs, event, finalizers, deletion_ts, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
-    event['object']['metadata'].update(finalizers)
-    event['object']['metadata'].update(deletion_ts)
+    event['object']['metadata'] |= finalizers
+    event['object']['metadata'] |= deletion_ts
     cause = detect_changing_cause(
         raw_event=event,
         body=Body(event['object']),
@@ -195,10 +195,10 @@ def test_for_delete(
 def test_for_create(
         kwargs, event, finalizers, deletion_ts, old, annotations, content, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
-    event['object'].update(content)
-    event['object']['metadata'].update(finalizers)
-    event['object']['metadata'].update(deletion_ts)
-    event['object']['metadata'].update(annotations)
+    event['object'] |= content
+    event['object']['metadata'] |= finalizers
+    event['object']['metadata'] |= deletion_ts
+    event['object']['metadata'] |= annotations
     cause = detect_changing_cause(
         raw_event=event,
         body=Body(event['object']),
@@ -215,8 +215,8 @@ def test_for_create(
 def test_for_create_skip_acquire(
         kwargs, event, finalizers, deletion_ts, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
-    event['object']['metadata'].update(finalizers)
-    event['object']['metadata'].update(deletion_ts)
+    event['object']['metadata'] |= finalizers
+    event['object']['metadata'] |= deletion_ts
     cause = detect_changing_cause(
         raw_event=event,
         body=Body(event['object']),
@@ -233,10 +233,10 @@ def test_for_create_skip_acquire(
 def test_for_no_op(
         kwargs, event, finalizers, deletion_ts, old, annotations, content, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
-    event['object'].update(content)
-    event['object']['metadata'].update(finalizers)
-    event['object']['metadata'].update(deletion_ts)
-    event['object']['metadata'].update(annotations)
+    event['object'] |= content
+    event['object']['metadata'] |= finalizers
+    event['object']['metadata'] |= deletion_ts
+    event['object']['metadata'] |= annotations
     cause = detect_changing_cause(
         raw_event=event,
         body=Body(event['object']),
@@ -254,10 +254,10 @@ def test_for_no_op(
 def test_for_update(
         kwargs, event, finalizers, deletion_ts, old, annotations, content, requires_finalizer):
     event = {'type': event, 'object': {'metadata': {}}}
-    event['object'].update(content)
-    event['object']['metadata'].update(finalizers)
-    event['object']['metadata'].update(deletion_ts)
-    event['object']['metadata'].update(annotations)
+    event['object'] |= content
+    event['object']['metadata'] |= finalizers
+    event['object']['metadata'] |= deletion_ts
+    event['object']['metadata'] |= annotations
     cause = detect_changing_cause(
         raw_event=event,
         body=Body(event['object']),

@@ -3,8 +3,9 @@ import functools
 import os
 import ssl
 import tempfile
+from collections.abc import Iterator, Mapping
 from contextvars import ContextVar
-from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, TypeVar, cast
+from typing import Any, Callable, Optional, TypeVar, cast
 
 import aiohttp
 
@@ -84,7 +85,7 @@ class APIContext:
     default_namespace: Optional[str]
 
     # List of open responses.
-    responses: List[aiohttp.ClientResponse]
+    responses: list[aiohttp.ClientResponse]
 
     # Temporary caches of the information retrieved for and from the environment.
     _tempfiles: "_TempFiles"
@@ -146,7 +147,7 @@ class APIContext:
             context.verify_mode = ssl.CERT_NONE
 
         # The token auth part.
-        headers: Dict[str, str] = {}
+        headers: dict[str, str] = {}
         if info.scheme and info.token:
             headers['Authorization'] = f'{info.scheme} {info.token}'
         elif info.scheme:
@@ -224,7 +225,7 @@ class _TempFiles(Mapping[bytes, str]):
 
     def __init__(self) -> None:
         super().__init__()
-        self._paths: Dict[bytes, str] = {}
+        self._paths: dict[bytes, str] = {}
 
     def __del__(self) -> None:
         self.purge()

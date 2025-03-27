@@ -2,7 +2,8 @@ import asyncio
 import contextlib
 import dataclasses
 import time
-from typing import AsyncGenerator, Iterable, Iterator, Optional, Tuple, Type, Union
+from collections.abc import AsyncGenerator, Iterable, Iterator
+from typing import Optional, Union
 
 from kopf._cogs.aiokits import aiotime
 from kopf._cogs.helpers import typedefs
@@ -23,7 +24,7 @@ async def throttled(
         delays: Iterable[float],
         wakeup: Optional[asyncio.Event] = None,
         logger: typedefs.Logger,
-        errors: Union[Type[BaseException], Tuple[Type[BaseException], ...]] = Exception,
+        errors: Union[type[BaseException], tuple[type[BaseException], ...]] = Exception,
 ) -> AsyncGenerator[bool, None]:
     """
     A helper to throttle any arbitrary operation.

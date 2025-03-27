@@ -1,7 +1,8 @@
 import abc
 import copy
 import json
-from typing import Any, Collection, Dict, Iterable, Optional, cast
+from collections.abc import Collection, Iterable
+from typing import Any, Optional, cast
 
 from kopf._cogs.configs import conventions
 from kopf._cogs.structs import bodies, dicts, patches
@@ -48,7 +49,7 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
         """
 
         # Always use a copy, so that future changes do not affect the extracted essence.
-        essence = cast(Dict[Any, Any], copy.deepcopy(dict(body)))
+        essence = cast(dict[Any, Any], copy.deepcopy(dict(body)))
 
         # The top-level identifying fields never change, so there is not need to track them.
         if 'apiVersion' in essence:
@@ -183,7 +184,7 @@ class StatusDiffBaseStorage(DiffBaseStorage):
         essence = super().build(body=body, extra_fields=extra_fields)
 
         # Work around an issue with mypy not treating TypedDicts as MutableMappings.
-        essence_dict = cast(Dict[Any, Any], essence)
+        essence_dict = cast(dict[Any, Any], essence)
         dicts.remove(essence_dict, self.field)
 
         return essence

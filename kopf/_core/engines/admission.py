@@ -6,9 +6,8 @@ import json
 import logging
 import re
 import urllib.parse
-from typing import Any, AsyncContextManager, Collection, Dict, Iterable, List, Mapping, Optional
-
-from typing_extensions import Literal, TypedDict
+from collections.abc import Collection, Iterable, Mapping
+from typing import Any, AsyncContextManager, Literal, Optional, TypedDict
 
 from kopf._cogs.aiokits import aiovalues
 from kopf._cogs.clients import creating, errors, patching
@@ -130,7 +129,7 @@ async def serve_admission_request(
     new = bodies.Body(new_body) if new_body is not None else None
     diff = diffs.diff(old, new)
     patch = patches.Patch(body=raw_body)
-    warnings: List[str] = []
+    warnings: list[str] = []
     cause = causes.WebhookCause(
         resource=resource,
         indices=indices,
@@ -402,7 +401,7 @@ def build_webhooks(
         name_suffix: str,
         client_config: reviews.WebhookClientConfig,
         persistent_only: bool = False,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Construct the content for ``[Validating|Mutating]WebhookConfiguration``.
 

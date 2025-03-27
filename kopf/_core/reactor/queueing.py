@@ -26,9 +26,8 @@ import asyncio
 import contextlib
 import enum
 import logging
-from typing import TYPE_CHECKING, MutableMapping, NamedTuple, NewType, Optional, Tuple, Union
-
-from typing_extensions import Protocol
+from collections.abc import MutableMapping
+from typing import TYPE_CHECKING, NamedTuple, NewType, Optional, Protocol, Union
 
 from kopf._cogs.aiokits import aiotasks, aiotoggles
 from kopf._cogs.clients import watching
@@ -68,7 +67,7 @@ class Stream(NamedTuple):
 
 
 ObjectUid = NewType('ObjectUid', str)
-ObjectRef = Tuple[references.Resource, ObjectUid]
+ObjectRef = tuple[references.Resource, ObjectUid]
 Streams = MutableMapping[ObjectRef, Stream]
 
 

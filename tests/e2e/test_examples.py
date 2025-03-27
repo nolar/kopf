@@ -3,7 +3,8 @@ import collections
 import re
 import subprocess
 import time
-from typing import Any, Dict, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any, Optional
 
 import astpath
 import pytest
@@ -127,8 +128,8 @@ class E2EParser:
     the whole example (which can have side-effects). Some snippets are still
     executed: e.g. values of E2E configs or values of some decorators' kwargs.
     """
-    configs: Dict[str, Any]
-    xml2ast: Dict[etree._Element, ast.AST]
+    configs: dict[str, Any]
+    xml2ast: dict[etree._Element, ast.AST]
     xtree: etree._Element
 
     def __init__(self, path: str) -> None:
@@ -187,11 +188,11 @@ class E2EParser:
         return self.configs.get('E2E_ALLOW_TRACEBACKS')
 
     @property
-    def success_counts(self) -> Optional[Dict[str, int]]:
+    def success_counts(self) -> Optional[dict[str, int]]:
         return self.configs.get('E2E_SUCCESS_COUNTS')
 
     @property
-    def failure_counts(self) -> Optional[Dict[str, int]]:
+    def failure_counts(self) -> Optional[dict[str, int]]:
         return self.configs.get('E2E_FAILURE_COUNTS')
 
     @property

@@ -3,13 +3,13 @@ Some basic dicts and field-in-a-dict manipulation helpers.
 """
 import collections.abc
 import enum
-from typing import Any, Callable, Generic, Iterable, Iterator, List, \
-                   Mapping, MutableMapping, Optional, Tuple, TypeVar, Union
+from collections.abc import Iterable, Iterator, Mapping, MutableMapping
+from typing import Any, Callable, Generic, Optional, TypeVar, Union
 
 from kopf._cogs.helpers import thirdparty
 
-FieldPath = Tuple[str, ...]
-FieldSpec = Union[None, str, FieldPath, List[str]]
+FieldPath = tuple[str, ...]
+FieldSpec = Union[None, str, FieldPath, list[str]]
 
 _T = TypeVar('_T')
 _K = TypeVar('_K', bound=str)  # int & bool keys are possible but discouraged

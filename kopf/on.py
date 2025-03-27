@@ -10,8 +10,9 @@ The decorators for the event handlers. Usually used as::
 This module is a part of the framework's public interface.
 """
 import warnings
+from collections.abc import Collection
 # TODO: add cluster=True support (different API methods)
-from typing import Any, Callable, Collection, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 from kopf._cogs.structs import dicts, references, reviews
 from kopf._core.actions import execution

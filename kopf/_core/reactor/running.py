@@ -4,7 +4,8 @@ import logging
 import signal
 import threading
 import warnings
-from typing import Collection, Coroutine, MutableSequence, Optional, Sequence
+from collections.abc import Collection, Coroutine, MutableSequence, Sequence
+from typing import Optional
 
 from kopf._cogs.aiokits import aioadapters, aiobindings, aiotasks, aiotoggles, aiovalues
 from kopf._cogs.clients import auth

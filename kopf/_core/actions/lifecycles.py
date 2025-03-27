@@ -10,7 +10,8 @@ execute in the order they are registered, one by one.
 """
 import logging
 import random
-from typing import Any, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any, Optional
 
 from kopf._core.actions import execution
 

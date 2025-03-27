@@ -41,9 +41,8 @@ In case the operators are also type-checked, type casting can be used
     and object-processing functions. The internal dicts will remain the same.
 """
 
-from typing import Any, List, Mapping, Optional, Union, cast
-
-from typing_extensions import Literal, TypedDict
+from collections.abc import Mapping
+from typing import Any, Literal, Optional, TypedDict, Union, cast
 
 from kopf._cogs.structs import dicts, references
 
@@ -69,7 +68,7 @@ class RawMeta(TypedDict, total=False):
     namespace: str
     labels: Labels
     annotations: Annotations
-    finalizers: List[str]
+    finalizers: list[str]
     resourceVersion: str
     deletionTimestamp: str
     creationTimestamp: str

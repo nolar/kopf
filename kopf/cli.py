@@ -2,7 +2,8 @@ import asyncio
 import dataclasses
 import functools
 import os
-from typing import Any, Callable, Collection, List, Optional
+from collections.abc import Collection
+from typing import Any, Callable, Optional
 
 import click
 
@@ -85,8 +86,8 @@ def main(__controls: CLIControls) -> None:
 @click.make_pass_decorator(CLIControls, ensure=True)
 def run(
         __controls: CLIControls,
-        paths: List[str],
-        modules: List[str],
+        paths: list[str],
+        modules: list[str],
         peering_name: Optional[str],
         priority: Optional[int],
         standalone: Optional[bool],

@@ -21,7 +21,8 @@ could execute on the yet-existing object (and its children, if created).
 """
 import dataclasses
 import enum
-from typing import Any, List, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any, Optional
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, diffs, ephemera, finalizers, \
@@ -150,7 +151,7 @@ class WebhookCause(ResourceCause):
     headers: Mapping[str, str]
     sslpeer: Mapping[str, Any]
     userinfo: reviews.UserInfo
-    warnings: List[str]  # mutable!
+    warnings: list[str]  # mutable!
     operation: Optional[reviews.Operation]  # None if not provided for some reason
     subresource: Optional[str]  # e.g. "status", "scale"; None for the main resource body
     old: Optional[bodies.Body] = None
@@ -305,9 +306,9 @@ def detect_changing_cause(
     """
 
     # Put them back to the pass-through kwargs (to avoid code duplication).
-    kwargs.update(body=body, old=old, new=new, initial=initial)
+    kwargs |= dict(body=body, old=old, new=new, initial=initial)
     if diff is not None:
-        kwargs.update(diff=diff)
+        kwargs |= dict(diff=diff)
 
     # The object was really deleted from the cluster. But we do not care anymore.
     if raw_event['type'] == 'DELETED':

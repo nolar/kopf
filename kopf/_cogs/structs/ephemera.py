@@ -1,4 +1,5 @@
-from typing import Any, Collection, Dict, Generic, Mapping, NewType, TypeVar
+from collections.abc import Collection, Mapping
+from typing import Any, Generic, NewType, TypeVar
 
 # For users, memos are exposed as `Any`, though usually used with `kopf.Memo`.
 # However, the framework cannot rely on any methods/properties of it, so it is
@@ -6,7 +7,7 @@ from typing import Any, Collection, Dict, Generic, Mapping, NewType, TypeVar
 AnyMemo = NewType('AnyMemo', object)
 
 
-class Memo(Dict[Any, Any]):
+class Memo(dict[Any, Any]):
     """
     A container to hold arbitrary keys-values assigned by operator developers.
 

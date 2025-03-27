@@ -19,7 +19,8 @@ must be kept together with their owning modules rather than mirrored in structs.
 """
 import copy
 import dataclasses
-from typing import Iterator, MutableMapping, Optional
+from collections.abc import Iterator, MutableMapping
+from typing import Optional
 
 from kopf._cogs.structs import bodies, ephemera
 from kopf._core.actions import throttlers

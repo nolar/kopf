@@ -43,6 +43,4 @@ def intervalled(is_running: kopf.Index, by_label: kopf.Index, patch: kopf.Patch,
 
 # Marks for the e2e tests (see tests/e2e/test_examples.py):
 # We do not care: pods can have 6-10 updates here.
-from typing import Dict
-
-E2E_SUCCESS_COUNTS: Dict[str, int] = {}
+E2E_SUCCESS_COUNTS: dict[str, int] = {}

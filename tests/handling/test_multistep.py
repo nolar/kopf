@@ -26,7 +26,7 @@ async def test_1st_step_stores_progress_by_patching(
     event_body = {
         'metadata': {'finalizers': [settings.persistence.finalizer]},
     }
-    event_body['metadata'].update(deletion_ts)
+    event_body['metadata'] |= deletion_ts
     cause_mock.reason = cause_type
 
     await process_resource_event(
@@ -86,7 +86,7 @@ async def test_2nd_step_finishes_the_handlers(caplog,
             name2: {'started': '1979-01-01T00:00:00'},
         }}}
     }
-    event_body['metadata'].update(deletion_ts)
+    event_body['metadata'] |= deletion_ts
     cause_mock.reason = cause_type
 
     await process_resource_event(

@@ -41,9 +41,8 @@ All timestamps are strings in ISO8601 format in UTC (no explicit ``Z`` suffix).
 import abc
 import copy
 import json
-from typing import Any, Collection, Dict, Mapping, Optional, cast
-
-from typing_extensions import TypedDict
+from collections.abc import Collection, Mapping
+from typing import Any, Optional, TypedDict, cast
 
 from kopf._cogs.configs import conventions
 from kopf._cogs.structs import bodies, dicts, ids, patches
@@ -364,7 +363,7 @@ class StatusProgressStorage(ProgressStorage):
         essence = super().clear(essence=essence)
 
         # Work around an issue with mypy not treating TypedDicts as MutableMappings.
-        essence_dict = cast(Dict[Any, Any], essence)
+        essence_dict = cast(dict[Any, Any], essence)
         dicts.remove(essence_dict, self.field)
 
         self.remove_empty_stanzas(essence)

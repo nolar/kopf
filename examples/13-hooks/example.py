@@ -1,13 +1,12 @@
 import asyncio
 import datetime
 import random
-from typing import Dict
 
 import kopf
 import pykube
 
 LOCK: asyncio.Lock  # requires a loop on creation
-STOPPERS: Dict[str, Dict[str, asyncio.Event]] = {}  # [namespace][name]
+STOPPERS: dict[str, dict[str, asyncio.Event]] = {}  # [namespace][name]
 
 
 @kopf.on.startup()

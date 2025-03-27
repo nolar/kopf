@@ -1,4 +1,4 @@
-from typing import Collection, List, Tuple
+from collections.abc import Collection
 
 from kopf._cogs.clients import api
 from kopf._cogs.configs import configuration
@@ -12,7 +12,7 @@ async def list_objs(
         resource: references.Resource,
         namespace: references.Namespace,
         logger: typedefs.Logger,
-) -> Tuple[Collection[bodies.RawBody], str]:
+) -> tuple[Collection[bodies.RawBody], str]:
     """
     List the objects of specific resource type.
 
@@ -31,11 +31,11 @@ async def list_objs(
         settings=settings,
     )
 
-    items: List[bodies.RawBody] = []
+    items: list[bodies.RawBody] = []
     resource_version = rsp.get('metadata', {}).get('resourceVersion', None)
     for item in rsp.get('items', []):
         if 'kind' in rsp:
-            item.setdefault('kind', rsp['kind'][:-4] if rsp['kind'][-4:] == 'List' else rsp['kind'])
+            item.setdefault('kind', rsp['kind'].removesuffix('List'))
         if 'apiVersion' in rsp:
             item.setdefault('apiVersion', rsp['apiVersion'])
         items.append(item)

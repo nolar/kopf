@@ -3,17 +3,16 @@ import concurrent.futures
 import contextlib
 import threading
 import types
-from typing import TYPE_CHECKING, Any, Optional, Tuple, Type, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
 import click.testing
-from typing_extensions import Literal
 
 from kopf import cli
 from kopf._cogs.configs import configuration
 from kopf._core.intents import registries
 
 _ExcType = BaseException
-_ExcInfo = Tuple[Type[_ExcType], _ExcType, types.TracebackType]
+_ExcInfo = tuple[type[_ExcType], _ExcType, types.TracebackType]
 
 if TYPE_CHECKING:
     ResultFuture = concurrent.futures.Future[click.testing.Result]
@@ -85,7 +84,7 @@ class KopfRunner(_AbstractKopfRunner):
 
     def __exit__(
             self,
-            exc_type: Optional[Type[BaseException]],
+            exc_type: Optional[type[BaseException]],
             exc_val: Optional[BaseException],
             exc_tb: Optional[types.TracebackType],
     ) -> Literal[False]:

@@ -23,7 +23,8 @@ to declare this restricted mode as the desired mode of operation.
 import asyncio
 import functools
 import logging
-from typing import Collection, FrozenSet, Iterable, List, Optional, Set
+from collections.abc import Collection, Iterable
+from typing import Optional
 
 from kopf._cogs.aiokits import aiotoggles
 from kopf._cogs.clients import errors, fetching, scanning
@@ -98,7 +99,7 @@ async def resource_observer(
 ) -> None:
 
     # Scan only the resource-related handlers, ignore activies & co.
-    all_handlers: List[handlers.ResourceHandler] = []
+    all_handlers: list[handlers.ResourceHandler] = []
     all_handlers.extend(registry._webhooks.get_all_handlers())
     all_handlers.extend(registry._indexing.get_all_handlers())
     all_handlers.extend(registry._watching.get_all_handlers())
@@ -241,7 +242,7 @@ def revise_resources(
 
 
 def _update_resources(
-        resources: Set[references.Resource],
+        resources: set[references.Resource],
         selectors: Iterable[references.Selector],
         *,
         group: Optional[str],
@@ -269,7 +270,7 @@ def _update_resources(
 
 def _disable_ambiguous_selectors(
         *,
-        resources: Set[references.Resource],
+        resources: set[references.Resource],
         selectors: Iterable[references.Selector],
 ) -> None:
     """
@@ -290,8 +291,8 @@ def _disable_ambiguous_selectors(
 
 def _disable_mismatched_selectors(
         *,
-        resources: Set[references.Resource],
-        selectors: FrozenSet[references.Selector],
+        resources: set[references.Resource],
+        selectors: frozenset[references.Selector],
 ) -> None:
     """
     Warn for handlers that specify nonexistent resources.
@@ -310,8 +311,8 @@ def _disable_mismatched_selectors(
 
 def _disable_unsuitable_resources(
         *,
-        resources: Set[references.Resource],
-        selectors: FrozenSet[references.Selector],
+        resources: set[references.Resource],
+        selectors: frozenset[references.Selector],
 ) -> None:
 
     # For both watching & patching, only look at watched resources, ignore webhook-only resources.

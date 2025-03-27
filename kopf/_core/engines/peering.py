@@ -35,7 +35,8 @@ import getpass
 import logging
 import os
 import random
-from typing import Any, Dict, Iterable, Mapping, NewType, NoReturn, Optional, cast
+from collections.abc import Iterable, Mapping
+from typing import Any, NewType, NoReturn, Optional, cast
 
 import iso8601
 
@@ -77,7 +78,7 @@ class Peer:
         options = ", ".join(f"{key!s}={val!r}" for key, val in self.as_dict().items())
         return f"<{clsname} {self.identity}: {options}>"
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         # Only the non-calculated and non-identifying fields.
         return {
             'priority': int(self.priority),
@@ -216,7 +217,7 @@ async def touch(
     )
 
     patch = patches.Patch()
-    patch.update({'status': {identity: None if peer.is_dead else peer.as_dict()}})
+    patch |= {'status': {identity: None if peer.is_dead else peer.as_dict()}}
     rsp = await patching.patch_obj(
         settings=settings,
         resource=resource,
@@ -241,7 +242,7 @@ async def clean(
 ) -> None:
     name = settings.peering.name
     patch = patches.Patch()
-    patch.update({'status': {peer.identity: None for peer in peers}})
+    patch |= {'status': {peer.identity: None for peer in peers}}
     await patching.patch_obj(
         settings=settings,
         resource=resource,

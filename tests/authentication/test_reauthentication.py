@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional
 
 import aiohttp.web
 
@@ -11,7 +11,7 @@ async def fn(
         x: int,
         *,
         context: Optional[APIContext],
-) -> Tuple[APIContext, int]:
+) -> tuple[APIContext, int]:
     return context, x + 100
 
 

@@ -1,5 +1,6 @@
 import asyncio
-from typing import Callable, Collection, Iterable, Iterator, Optional, Set
+from collections.abc import Collection, Iterable, Iterator
+from typing import Callable, Optional
 
 
 class Toggle:
@@ -96,7 +97,7 @@ class ToggleSet(Collection[Toggle]):
     def __init__(self, fn: Callable[[Iterable[bool]], bool]) -> None:
         super().__init__()
         self._condition = asyncio.Condition()
-        self._toggles: Set[Toggle] = set()
+        self._toggles: set[Toggle] = set()
         self._fn = fn
 
     def __repr__(self) -> str:

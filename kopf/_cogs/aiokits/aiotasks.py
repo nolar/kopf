@@ -10,8 +10,8 @@ all function calls with multiple awaiables (e.g. :func:`asyncio.wait`),
 so there is no added overhead; instead, the implicit overhead is made explicit.
 """
 import asyncio
-from typing import TYPE_CHECKING, Any, Callable, Collection, Coroutine, \
-                   NamedTuple, Optional, Set, Tuple, TypeVar
+from collections.abc import Collection, Coroutine
+from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional, TypeVar
 
 from kopf._cogs.helpers import typedefs
 
@@ -137,7 +137,7 @@ async def wait(
         *,
         timeout: Optional[float] = None,
         return_when: Any = asyncio.ALL_COMPLETED,
-) -> Tuple[Set[Task], Set[Task]]:
+) -> tuple[set[Task], set[Task]]:
     """
     A safer version of :func:`asyncio.wait` -- does not fail on an empty list.
     """
@@ -155,7 +155,7 @@ async def stop(
         cancelled: bool = False,
         interval: Optional[float] = None,
         logger: Optional[typedefs.Logger] = None,
-) -> Tuple[Set[Task], Set[Task]]:
+) -> tuple[set[Task], set[Task]]:
     """
     Cancel the tasks and wait for them to finish; log if some are stuck.
 
@@ -185,8 +185,8 @@ async def stop(
         task.cancel()
 
     iterations = 0
-    done_ever: Set[Task] = set()
-    pending: Set[Task] = set(tasks)
+    done_ever: set[Task] = set()
+    pending: set[Task] = set(tasks)
     while pending:
         iterations += 1
 
@@ -289,7 +289,7 @@ class Scheduler:
         self._exception_handler = exception_handler
         self._condition = asyncio.Condition()
         self._pending_coros: asyncio.Queue[SchedulerJob] = asyncio.Queue()
-        self._running_tasks: Set[Task] = set()
+        self._running_tasks: set[Task] = set()
         self._cleaning_queue: asyncio.Queue[Task] = asyncio.Queue()
         self._cleaning_task = asyncio.create_task(self._task_cleaner(), name=f"cleaner of {self!r}")
         self._spawning_task = asyncio.create_task(self._task_spawner(), name=f"spawner of {self!r}")

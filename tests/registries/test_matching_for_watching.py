@@ -41,8 +41,8 @@ def handler_factory(registry, selector):
 ])
 def cause_no_field(request, cause_factory):
     kwargs = copy.deepcopy(request.param)
-    kwargs['body'].update({'metadata': {'labels': {'known': 'value'},
-                                        'annotations': {'known': 'value'}}})
+    kwargs['body'] |= {'metadata': {'labels': {'known': 'value'},
+                                    'annotations': {'known': 'value'}}}
     cause = cause_factory(cls=WatchingCause, **kwargs)
     return cause
 
@@ -52,8 +52,8 @@ def cause_no_field(request, cause_factory):
 ])
 def cause_with_field(request, cause_factory):
     kwargs = copy.deepcopy(request.param)
-    kwargs['body'].update({'metadata': {'labels': {'known': 'value'},
-                                        'annotations': {'known': 'value'}}})
+    kwargs['body'] |= {'metadata': {'labels': {'known': 'value'},
+                                    'annotations': {'known': 'value'}}}
     cause = cause_factory(cls=WatchingCause, **kwargs)
     return cause
 
@@ -65,8 +65,8 @@ def cause_with_field(request, cause_factory):
 ])
 def cause_any_field(request, cause_factory):
     kwargs = copy.deepcopy(request.param)
-    kwargs['body'].update({'metadata': {'labels': {'known': 'value'},
-                                        'annotations': {'known': 'value'}}})
+    kwargs['body'] |= {'metadata': {'labels': {'known': 'value'},
+                                    'annotations': {'known': 'value'}}}
     cause = cause_factory(cls=WatchingCause, **kwargs)
     return cause
 

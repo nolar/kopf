@@ -1,5 +1,4 @@
 import pathlib
-from typing import List
 
 import kopf
 
@@ -48,7 +47,7 @@ def config(settings: kopf.OperatorSettings, **_):
 
 
 @kopf.on.validate('kex')
-def authhook(headers: kopf.Headers, sslpeer: kopf.SSLPeer, warnings: List[str], **_):
+def authhook(headers: kopf.Headers, sslpeer: kopf.SSLPeer, warnings: list[str], **_):
     user_agent = headers.get('User-Agent', '(unidentified)')
     warnings.append(f"Accessing as user-agent: {user_agent}")
     if not sslpeer.get('subject'):
@@ -73,7 +72,7 @@ def validate2(**_):
 
 
 @kopf.on.validate('kex', subresource='*')
-def validate_subresources(spec, subresource, status, warnings: List[str], **_):
+def validate_subresources(spec, subresource, status, warnings: list[str], **_):
     if subresource == 'status' and status.get('field') != spec.get('field'):
         raise kopf.AdmissionError("status.field MUST be equal to spec.field!")
     elif subresource is None and status.get('field') != spec.get('field'):
@@ -88,6 +87,4 @@ def mutate1(patch: kopf.Patch, **_):
 
 # Marks for the e2e tests (see tests/e2e/test_examples.py):
 # We do not care: pods can have 6-10 updates here.
-from typing import Dict
-
-E2E_SUCCESS_COUNTS: Dict[str, int] = {}
+E2E_SUCCESS_COUNTS: dict[str, int] = {}

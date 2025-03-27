@@ -7,7 +7,6 @@ import logging
 import re
 import sys
 import time
-from typing import Set
 from unittest.mock import AsyncMock, Mock
 
 import aiohttp.web
@@ -389,7 +388,7 @@ def login_mocks(mocker):
             'contexts': [{'name': 'self',
                           'context': {'cluster': 'self', 'namespace': 'default'}}],
         })
-        kwargs.update(
+        kwargs |= dict(
             pykube_in_cluster=mocker.patch.object(pykube.KubeConfig, 'from_service_account', return_value=cfg),
             pykube_from_file=mocker.patch.object(pykube.KubeConfig, 'from_file', return_value=cfg),
             pykube_from_env=mocker.patch.object(pykube.KubeConfig, 'from_env', return_value=cfg),
@@ -399,7 +398,7 @@ def login_mocks(mocker):
     except ImportError:
         pass
     else:
-        kwargs.update(
+        kwargs |= dict(
             client_in_cluster=mocker.patch.object(kubernetes.config, 'load_incluster_config'),
             client_from_file=mocker.patch.object(kubernetes.config, 'load_kube_config'),
         )
@@ -498,7 +497,7 @@ def _with_module_absent(name: str):
         yield
     finally:
         sys.meta_path.remove(finder)
-        sys.modules.update(preserved)
+        sys.modules |= preserved
 
         # Verify if it works and that we didn't break the importing machinery.
         mod_after = importlib.import_module(name)
@@ -739,7 +738,7 @@ def _no_asyncio_pending_tasks(loop: asyncio.AbstractEventLoop):
         pytest.fail(f"Unattended asyncio tasks detected: {remains!r}")
 
 
-def _get_all_tasks() -> Set[asyncio.Task]:
+def _get_all_tasks() -> set[asyncio.Task]:
     """Similar to `asyncio.all_tasks`, but for all event loops at once."""
     i = 0
     while True:

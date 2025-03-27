@@ -1,7 +1,8 @@
 import collections.abc
 import contextlib
+from collections.abc import AsyncIterator, Iterable
 from contextvars import ContextVar
-from typing import AsyncIterator, Iterable, Optional, Set
+from typing import Optional
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import ids
@@ -139,7 +140,7 @@ async def execute(
 
     # Enrich all parents with references to sub-handlers of any level deep (sub-sub-handlers, etc).
     # There is at least one container, as this function can be called only from a handler.
-    subrefs_containers: Iterable[Set[ids.HandlerId]] = execution.subrefs_var.get()
+    subrefs_containers: Iterable[set[ids.HandlerId]] = execution.subrefs_var.get()
     for key in state:
         for subrefs_container in subrefs_containers:
             subrefs_container.add(key)

@@ -12,11 +12,9 @@ import contextlib
 import dataclasses
 import datetime
 import enum
+from collections.abc import AsyncIterator, Collection, Iterable, Mapping, MutableMapping, Sequence
 from contextvars import ContextVar
-from typing import Any, AsyncContextManager, AsyncIterator, Callable, Collection, Iterable, \
-                   Mapping, MutableMapping, NewType, Optional, Sequence, Set, TypeVar
-
-from typing_extensions import Protocol
+from typing import Any, AsyncContextManager, Callable, NewType, Optional, Protocol, TypeVar
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import typedefs
@@ -179,7 +177,7 @@ class LifeCycleFn(Protocol):
 # Used in `@kopf.subhandler` and `kopf.execute()` to add/get the sub-handlers.
 sublifecycle_var: ContextVar[Optional[LifeCycleFn]] = ContextVar('sublifecycle_var')
 subsettings_var: ContextVar[configuration.OperatorSettings] = ContextVar('subsettings_var')
-subrefs_var: ContextVar[Iterable[Set[ids.HandlerId]]] = ContextVar('subrefs_var')
+subrefs_var: ContextVar[Iterable[set[ids.HandlerId]]] = ContextVar('subrefs_var')
 handler_var: ContextVar[Handler] = ContextVar('handler_var')
 cause_var: ContextVar[Cause] = ContextVar('cause_var')
 
@@ -261,7 +259,7 @@ async def execute_handler_once(
     logger = cause.logger
 
     # Mutable accumulator for all the sub-handlers of any level deep; populated in `kopf.execute`.
-    subrefs: Set[ids.HandlerId] = set()
+    subrefs: set[ids.HandlerId] = set()
 
     # The exceptions are handled locally and are not re-raised, to keep the operator running.
     try:
@@ -342,7 +340,7 @@ async def invoke_handler(
         runtime: datetime.timedelta,
         settings: configuration.OperatorSettings,
         lifecycle: Optional[LifeCycleFn],
-        subrefs: Set[ids.HandlerId],
+        subrefs: set[ids.HandlerId],
         extra_context: ExtraContext,
 ) -> Optional[Result]:
     """

@@ -1,5 +1,4 @@
 import json
-from typing import Type
 
 import pytest
 
@@ -79,7 +78,7 @@ def test_status_storage_with_field():
 
 @pytest.mark.parametrize('cls', ALL_STORAGES)
 def test_fetching_from_empty_body_returns_none(
-        cls: Type[DiffBaseStorage]):
+        cls: type[DiffBaseStorage]):
     storage = cls()
     body = Body({})
     data = storage.fetch(body=body)
@@ -174,7 +173,7 @@ def test_storing_to_status_storage_populates_keys(cls):
 
 @pytest.mark.parametrize('cls', STATUS_POPULATING_STORAGES)
 def test_storing_to_status_storage_overwrites_old_content(
-        cls: Type[DiffBaseStorage]):
+        cls: type[DiffBaseStorage]):
     storage = cls(field='status.my-operator.diff-base')
     patch = Patch()
     body = Body({})

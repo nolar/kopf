@@ -4,12 +4,12 @@ import enum
 import fnmatch
 import re
 import urllib.parse
-from typing import Collection, FrozenSet, Iterable, Iterator, List, Mapping, \
-                   MutableMapping, NewType, Optional, Pattern, Set, Union
+from collections.abc import Collection, Iterable, Iterator, Mapping, MutableMapping
+from typing import NewType, Optional, Union
 
 # A namespace specification with globs, negations, and some minimal syntax; see `match_namespace()`.
 # Regexps are also supported if pre-compiled from the code, not from the CLI options as raw strings.
-NamespacePattern = Union[str, Pattern[str]]
+NamespacePattern = Union[str, re.Pattern[str]]
 
 # A specific really existing addressable namespace (at least, the one assumed to be so).
 # Made as a NewType for stricter type-checking to avoid collisions with patterns and other strings.
@@ -138,17 +138,17 @@ class Resource:
     The resource's singular name; e.g. ``"pod"``, ``"kopfexample"``.
     """
 
-    shortcuts: FrozenSet[str] = frozenset()
+    shortcuts: frozenset[str] = frozenset()
     """
     The resource's short names; e.g. ``{"po"}``, ``{"kex", "kexes"}``.
     """
 
-    categories: FrozenSet[str] = frozenset()
+    categories: frozenset[str] = frozenset()
     """
     The resource's categories, to which the resource belongs; e.g. ``{"all"}``.
     """
 
-    subresources: FrozenSet[str] = frozenset()
+    subresources: frozenset[str] = frozenset()
     """
     The resource's subresources, if defined; e.g. ``{"status", "scale"}``.
     """
@@ -164,7 +164,7 @@ class Resource:
     Only "preferred" resources are served when the version is not specified.
     """
 
-    verbs: FrozenSet[str] = frozenset()
+    verbs: frozenset[str] = frozenset()
     """
     All available verbs for the resource, as supported by K8s API;
     e.g., ``{"list", "watch", "create", "update", "delete", "patch"}``.
@@ -222,7 +222,7 @@ class Resource:
         if self.namespaced and namespace is None and name is not None:
             raise ValueError("Specific namespaces are required for specific namespaced resources.")
 
-        parts: List[Optional[str]] = [
+        parts: list[Optional[str]] = [
             '/api' if self.group == '' and self.version == 'v1' else '/apis',
             self.group,
             self.version,
@@ -483,10 +483,10 @@ class Insights:
     # - **Indexed** resources block the operator startup until all objects are initially indexed.
     # - **Watched** resources spawn the watch-streams; the set excludes all webhook-only resources.
     # - **Webhook** resources are served via webhooks; the set excludes all watch-only resources.
-    webhook_resources: Set[Resource] = dataclasses.field(default_factory=set)
-    indexed_resources: Set[Resource] = dataclasses.field(default_factory=set)
-    watched_resources: Set[Resource] = dataclasses.field(default_factory=set)
-    namespaces: Set[Namespace] = dataclasses.field(default_factory=set)
+    webhook_resources: set[Resource] = dataclasses.field(default_factory=set)
+    indexed_resources: set[Resource] = dataclasses.field(default_factory=set)
+    watched_resources: set[Resource] = dataclasses.field(default_factory=set)
+    namespaces: set[Namespace] = dataclasses.field(default_factory=set)
     backbone: Backbone = dataclasses.field(default_factory=Backbone)
 
     # Signalled when anything changes in the insights.
