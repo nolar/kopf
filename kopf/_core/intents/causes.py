@@ -305,9 +305,9 @@ def detect_changing_cause(
     """
 
     # Put them back to the pass-through kwargs (to avoid code duplication).
-    kwargs.update(body=body, old=old, new=new, initial=initial)
+    kwargs |= dict(body=body, old=old, new=new, initial=initial)
     if diff is not None:
-        kwargs.update(diff=diff)
+        kwargs |= dict(diff=diff)
 
     # The object was really deleted from the cluster. But we do not care anymore.
     if raw_event['type'] == 'DELETED':

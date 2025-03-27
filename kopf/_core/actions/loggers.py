@@ -59,7 +59,7 @@ class ObjectJsonFormatter(ObjectFormatter, _pjl_JsonFormatter):
         reserved_attrs = kwargs.pop('reserved_attrs', _pjl_RESERVED_ATTRS)
         reserved_attrs = set(reserved_attrs)
         reserved_attrs |= {'k8s_skip', 'k8s_ref', 'settings'}
-        kwargs.update(reserved_attrs=reserved_attrs)
+        kwargs |= dict(reserved_attrs=reserved_attrs)
         kwargs.setdefault('timestamp', True)
         super().__init__(*args, **kwargs)
         self._refkey: str = refkey or DEFAULT_JSON_REFKEY
@@ -141,7 +141,7 @@ class ObjectLogger(typedefs.LoggerAdapter):
     ) -> Tuple[str, MutableMapping[str, Any]]:
         # Native logging overwrites the message's extra with the adapter's extra.
         # We merge them, so that both message's & adapter's extras are available.
-        kwargs["extra"] = dict(self.extra or {}, **kwargs.get('extra', {}))
+        kwargs["extra"] = (self.extra or {}) | kwargs.get('extra', {})
         return msg, kwargs
 
 

@@ -57,17 +57,17 @@ class Kwargable:
     @final
     @property
     def kwargs(self) -> Mapping[str, Any]:
-        return dict(self._kwargs, **self._super_kwargs)
+        return dict(self._kwargs) | dict(self._super_kwargs)
 
     @final
     @property
     def sync_kwargs(self) -> Mapping[str, Any]:
-        return dict(self._sync_kwargs, **self._super_kwargs)
+        return dict(self._sync_kwargs) | dict(self._super_kwargs)
 
     @final
     @property
     def async_kwargs(self) -> Mapping[str, Any]:
-        return dict(self._async_kwargs, **self._super_kwargs)
+        return dict(self._async_kwargs) | dict(self._super_kwargs)
 
 
 @contextlib.contextmanager
@@ -112,10 +112,10 @@ async def invoke(
     """
     kwargs = {} if kwargs is None else kwargs
     if is_async_fn(fn):
-        kwargs = kwargs if kwargsrc is None else dict(kwargs, **kwargsrc.async_kwargs)
+        kwargs = dict(kwargs) | ({} if kwargsrc is None else dict(kwargsrc.async_kwargs))
         result = await fn(**kwargs)  # type: ignore
     else:
-        kwargs = kwargs if kwargsrc is None else dict(kwargs, **kwargsrc.sync_kwargs)
+        kwargs = dict(kwargs) | ({} if kwargsrc is None else dict(kwargsrc.sync_kwargs))
 
         # Not that we want to use functools, but for executors kwargs, it is officially recommended:
         # https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.run_in_executor

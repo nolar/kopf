@@ -216,7 +216,7 @@ async def touch(
     )
 
     patch = patches.Patch()
-    patch.update({'status': {identity: None if peer.is_dead else peer.as_dict()}})
+    patch |= {'status': {identity: None if peer.is_dead else peer.as_dict()}}
     rsp = await patching.patch_obj(
         settings=settings,
         resource=resource,
@@ -241,7 +241,7 @@ async def clean(
 ) -> None:
     name = settings.peering.name
     patch = patches.Patch()
-    patch.update({'status': {peer.identity: None for peer in peers}})
+    patch |= {'status': {peer.identity: None for peer in peers}}
     await patching.patch_obj(
         settings=settings,
         resource=resource,

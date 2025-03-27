@@ -138,7 +138,7 @@ def test_custom_mappings_are_recursed():
     class SampleMapping(collections.abc.Mapping):
         def __init__(self, data=(), **kwargs) -> None:
             super().__init__()
-            self._items = dict(data, **kwargs)
+            self._items = dict(data) | kwargs
         def __len__(self) -> int: return len(self._items)
         def __iter__(self): return iter(self._items)
         def __getitem__(self, item: str) -> str: return self._items[item]

@@ -27,7 +27,8 @@ async def test_daemon_exits_gracefully_and_instantly_on_resource_deletion(
 
     # 1st stage: trigger termination due to resource deletion.
     mocker.resetall()
-    event_object.setdefault('metadata', {}).update({'deletionTimestamp': '...'})
+    event_object.setdefault('metadata', {})
+    event_object['metadata'] |= {'deletionTimestamp': '...'}
     await simulate_cycle(event_object)
 
     # Check that the daemon has exited near-instantly, with no delays.
@@ -134,7 +135,8 @@ async def test_daemon_exits_instantly_via_cancellation_with_backoff(
 
     # 1st stage: trigger termination due to resource deletion. Wait for backoff.
     mocker.resetall()
-    event_object.setdefault('metadata', {}).update({'deletionTimestamp': '...'})
+    event_object.setdefault('metadata', {})
+    event_object['metadata'] |= {'deletionTimestamp': '...'}
     await simulate_cycle(event_object)
 
     assert k8s_mocked.sleep.call_count == 1
@@ -178,7 +180,8 @@ async def test_daemon_exits_slowly_via_cancellation_with_backoff(
 
     # 1st stage: trigger termination due to resource deletion. Wait for backoff.
     mocker.resetall()
-    event_object.setdefault('metadata', {}).update({'deletionTimestamp': '...'})
+    event_object.setdefault('metadata', {})
+    event_object['metadata'] |= {'deletionTimestamp': '...'}
     await simulate_cycle(event_object)
 
     assert k8s_mocked.sleep.call_count == 1
@@ -232,7 +235,8 @@ async def test_daemon_is_abandoned_due_to_cancellation_timeout_reached(
 
     # 1st stage: trigger termination due to resource deletion. Wait for backoff.
     mocker.resetall()
-    event_object.setdefault('metadata', {}).update({'deletionTimestamp': '...'})
+    event_object.setdefault('metadata', {})
+    event_object['metadata'] |= {'deletionTimestamp': '...'}
     await simulate_cycle(event_object)
 
     assert k8s_mocked.sleep.call_count == 1
