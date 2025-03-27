@@ -50,6 +50,5 @@ def remove_useless_suffixes(hostname: str) -> str:
     suffixes = ['.local', '.localdomain']
     while any(hostname.endswith(suffix) for suffix in suffixes):
         for suffix in suffixes:
-            if hostname.endswith(suffix):
-                hostname = hostname[:-len(suffix)]
+            hostname = hostname.removesuffix(suffix)
     return hostname

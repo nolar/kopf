@@ -35,7 +35,7 @@ async def list_objs(
     resource_version = rsp.get('metadata', {}).get('resourceVersion', None)
     for item in rsp.get('items', []):
         if 'kind' in rsp:
-            item.setdefault('kind', rsp['kind'][:-4] if rsp['kind'][-4:] == 'List' else rsp['kind'])
+            item.setdefault('kind', rsp['kind'].removesuffix('List'))
         if 'apiVersion' in rsp:
             item.setdefault('apiVersion', rsp['apiVersion'])
         items.append(item)
