@@ -47,6 +47,7 @@ from typing import Any, Literal, Optional, TypedDict, Union, cast
 from kopf._cogs.structs import dicts, references
 
 # Make sure every kwarg has a corresponding same-named type in the root package.
+# Usually, they are "live views" into dicts, so they are not dicts themselves.
 Labels = Mapping[str, str]
 Annotations = Mapping[str, str]
 
@@ -180,7 +181,7 @@ class Status(dicts.MappingView[str, Any]):
 
 class Body(dicts.ReplaceableMappingView[str, Any]):
 
-    def __init__(self, __src: Mapping[str, Any]) -> None:
+    def __init__(self, __src: Union[RawBody, BodyEssence]) -> None:
         super().__init__(__src)
         self._meta = Meta(self)
         self._spec = Spec(self)
