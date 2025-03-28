@@ -74,6 +74,9 @@ async def authenticate(
         _activity_title: str = "Authentication",
 ) -> None:
     """ Retrieve the credentials once, successfully or not, and exit. """
+    # We do not need the locks protection here. There is only one activity for vault population.
+    # Even with 2+ activities, if the vault is empty, all consumers will be blocked by waiting.
+    # The API clients wake up only on the final population with the internal lock protection.
 
     # Sleep most of the time waiting for a signal to re-auth.
     await vault.wait_for_emptiness()

@@ -28,20 +28,20 @@ async def test_not_empty_when_populated():
 
 async def test_yielding_after_creation(mocker):
     vault = Vault()
-    mocker.patch.object(vault._ready, 'wait_for')
+    mocker.patch.object(vault._guard, 'wait_for')
 
     with pytest.raises(LoginError):
         async for _, _ in vault:
             pass
 
-    assert vault._ready.wait_for.await_args_list == [((True,),)]
+    assert vault._guard.wait_for.called
 
 
 async def test_yielding_after_population(mocker):
     key1 = VaultKey('some-key')
     info1 = ConnectionInfo(server='https://expected/')
     vault = Vault()
-    mocker.patch.object(vault._ready, 'wait_for')
+    mocker.patch.object(vault._guard, 'wait_for')
 
     await vault.populate({key1: info1})
 
@@ -60,7 +60,7 @@ async def test_yielding_items_before_expiration(mocker):
     key1 = VaultKey('some-key')
     info1 = ConnectionInfo(server='https://expected/', expiration=future)
     vault = Vault()
-    mocker.patch.object(vault._ready, 'wait_for')
+    mocker.patch.object(vault._guard, 'wait_for')
 
     results = []
     await vault.populate({key1: info1})
@@ -82,7 +82,7 @@ async def test_yielding_ignores_expired_items(mocker, delta):
     info1 = ConnectionInfo(server='https://expected/', expiration=past)
     info2 = ConnectionInfo(server='https://expected/', expiration=future)
     vault = Vault()
-    mocker.patch.object(vault._ready, 'wait_for')
+    mocker.patch.object(vault._guard, 'wait_for')
 
     results = []
     await vault.populate({key1: info1, key2: info2})
@@ -101,7 +101,7 @@ async def test_yielding_when_everything_is_expired(mocker, delta):
     key1 = VaultKey('some-key')
     info1 = ConnectionInfo(server='https://expected/', expiration=past)
     vault = Vault()
-    mocker.patch.object(vault._ready, 'wait_for')
+    mocker.patch.object(vault._guard, 'wait_for')
 
     await vault.populate({key1: info1})
     with pytest.raises(LoginError):
@@ -114,27 +114,27 @@ async def test_invalidation_reraises_if_nothing_is_left_with_exception(mocker):
     key1 = VaultKey('some-key')
     info1 = ConnectionInfo(server='https://expected/')
     vault = Vault()
-    mocker.patch.object(vault._ready, 'wait_for')
+    mocker.patch.object(vault._guard, 'wait_for')
 
     await vault.populate({key1: info1})
     with pytest.raises(Exception) as e:
-        await vault.invalidate(key1, exc=exc)
+        await vault.invalidate(key1, info1, exc=exc)
 
     assert isinstance(e.value, LoginError)
     assert e.value.__cause__ is exc
-    assert vault._ready.wait_for.await_args_list == [((True,),)]
+    assert vault._guard.wait_for.called
 
 
 async def test_invalidation_continues_if_nothing_is_left_without_exception(mocker):
     key1 = VaultKey('some-key')
     info1 = ConnectionInfo(server='https://expected/')
     vault = Vault()
-    mocker.patch.object(vault._ready, 'wait_for')
+    mocker.patch.object(vault._guard, 'wait_for')
 
     await vault.populate({key1: info1})
-    await vault.invalidate(key1)
+    await vault.invalidate(key1, info1)
 
-    assert vault._ready.wait_for.await_args_list == [((True,),)]
+    assert vault._guard.wait_for.called
 
 
 async def test_invalidation_continues_if_something_is_left():
@@ -147,7 +147,7 @@ async def test_invalidation_continues_if_something_is_left():
 
     await vault.populate({key1: info1})
     await vault.populate({key2: info2})
-    await vault.invalidate(key1, exc=exc)  # no exception!
+    await vault.invalidate(key1, info1, exc=exc)  # no exception!
 
     results = []
     async for key, info in vault:
@@ -158,14 +158,33 @@ async def test_invalidation_continues_if_something_is_left():
     assert results[0][1] is info2
 
 
+async def test_invalidation_continues_if_items_is_replaced(mocker):
+    key1 = VaultKey('some-key')
+    info1 = ConnectionInfo(server='https://newer-valid-credentials/')
+    info2 = ConnectionInfo(server='https://older-expired-credentials/')
+    vault = Vault()
+    mocker.patch.object(vault._guard, 'wait_for')
+
+    await vault.populate({key1: info1})
+    await vault.invalidate(key1, info2)
+
+    results = []
+    async for key, info in vault:
+        results.append((key, info))
+
+    assert len(results) == 1
+    assert results[0][0] == key1
+    assert results[0][1] is info1
+
+
 async def test_yielding_after_invalidation(mocker):
     key1 = VaultKey('some-key')
     info1 = ConnectionInfo(server='https://expected/')
     vault = Vault()
-    mocker.patch.object(vault._ready, 'wait_for')
+    mocker.patch.object(vault._guard, 'wait_for')
 
     await vault.populate({key1: info1})
-    await vault.invalidate(key1)
+    await vault.invalidate(key1, info1)
 
     with pytest.raises(LoginError):
         async for _, _ in vault:
@@ -177,10 +196,10 @@ async def test_duplicates_are_remembered(mocker):
     info1 = ConnectionInfo(server='https://expected/')
     info2 = ConnectionInfo(server='https://expected/')  # another instance, same fields
     vault = Vault()
-    mocker.patch.object(vault._ready, 'wait_for')
+    mocker.patch.object(vault._guard, 'wait_for')
 
     await vault.populate({key1: info1})
-    await vault.invalidate(key1)
+    await vault.invalidate(key1, info1)
     await vault.populate({key1: info2})
 
     # There should be nothing to yield, despite the second populate() call.
