@@ -35,7 +35,7 @@ import getpass
 import logging
 import os
 import random
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
 from typing import Any, NewType, NoReturn, Optional, cast
 
 import iso8601
@@ -116,7 +116,7 @@ async def process_peering_event(
         return
 
     # Find if we are still the highest priority operator.
-    pairs = cast(Mapping[str, Mapping[str, Any]], body.get('status', {}))
+    pairs = cast(dict[str, dict[str, Any]], body.get('status', {}))
     peers = [Peer(identity=Identity(opid), **opinfo) for opid, opinfo in pairs.items()]
     dead_peers = [peer for peer in peers if peer.is_dead]
     live_peers = [peer for peer in peers if not peer.is_dead and peer.identity != identity]

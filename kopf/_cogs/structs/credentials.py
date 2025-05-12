@@ -28,7 +28,7 @@ import collections
 import dataclasses
 import datetime
 import random
-from collections.abc import AsyncIterable, AsyncIterator, Mapping
+from collections.abc import AsyncIterable, AsyncIterator
 from typing import Callable, NewType, Optional, TypeVar, cast
 
 from kopf._cogs.aiokits import aiotoggles
@@ -112,7 +112,7 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
 
     def __init__(
             self,
-            __src: Optional[Mapping[str, object]] = None,
+            __src: Optional[dict[str, object]] = None,
     ) -> None:
         super().__init__()
         self._current = {}
@@ -319,7 +319,7 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
 
     async def populate(
             self,
-            __src: Mapping[str, object],
+            __src: dict[str, object],
     ) -> None:
         """
         Add newly retrieved credentials.
@@ -398,7 +398,7 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
 
     def _update_converted(
             self,
-            __src: Mapping[str, object],
+            __src: dict[str, object],
     ) -> None:
         for key, info in __src.items():
             key = VaultKey(str(key))
