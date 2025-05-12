@@ -34,8 +34,8 @@ exit code and output are available to the test (for additional assertions).
 
         assert runner.exit_code == 0
         assert runner.exception is None
-        assert 'And here we are!' in runner.stdout
-        assert 'Deleted, really deleted' in runner.stdout
+        assert 'And here we are!' in runner.output
+        assert 'Deleted, really deleted' in runner.output
 
 .. note::
     The operator runs against the cluster which is currently authenticated ---

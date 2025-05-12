@@ -38,7 +38,7 @@ class KopfRunner(_AbstractKopfRunner):
 
         assert runner.exit_code == 0
         assert runner.exception is None
-        assert 'And here we are!' in runner.stdout
+        assert 'And here we are!' in runner.output
 
     All the args & kwargs are passed directly to Click's invocation method.
     See: `click.testing.CliRunner`.
