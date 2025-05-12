@@ -54,19 +54,19 @@ def test_handler_filtering():
     assert runner.exit_code == 0
 
     # Check for correct log lines (to indicate correct handlers were executed).
-    assert '[default/kopf-example-1] Label is matching.' in runner.stdout
-    assert '[default/kopf-example-1] Label is present.' in runner.stdout
-    assert '[default/kopf-example-1] Label is absent.' in runner.stdout
-    assert '[default/kopf-example-1] Label callback matching.' in runner.stdout
-    assert '[default/kopf-example-1] Annotation is matching.' in runner.stdout
-    assert '[default/kopf-example-1] Annotation is present.' in runner.stdout
-    assert '[default/kopf-example-1] Annotation is absent.' in runner.stdout
-    assert '[default/kopf-example-1] Annotation callback mismatch.' not in runner.stdout
-    assert '[default/kopf-example-1] Filter satisfied.' in runner.stdout
-    assert '[default/kopf-example-1] Filter not satisfied.' not in runner.stdout
-    assert '[default/kopf-example-1] Field value is satisfied.' in runner.stdout
-    assert '[default/kopf-example-1] Field value is not satisfied.' not in runner.stdout
-    assert '[default/kopf-example-1] Field presence is satisfied.' in runner.stdout
-    assert '[default/kopf-example-1] Field presence is not satisfied.' not in runner.stdout
-    assert '[default/kopf-example-1] Field change is satisfied.' in runner.stdout
-    assert '[default/kopf-example-1] Field daemon is satisfied.' in runner.stdout
+    assert '[default/kopf-example-1] Label is matching.' in runner.output
+    assert '[default/kopf-example-1] Label is present.' in runner.output
+    assert '[default/kopf-example-1] Label is absent.' in runner.output
+    assert '[default/kopf-example-1] Label callback matching.' in runner.output
+    assert '[default/kopf-example-1] Annotation is matching.' in runner.output
+    assert '[default/kopf-example-1] Annotation is present.' in runner.output
+    assert '[default/kopf-example-1] Annotation is absent.' in runner.output
+    assert '[default/kopf-example-1] Annotation callback mismatch.' not in runner.output
+    assert '[default/kopf-example-1] Filter satisfied.' in runner.output
+    assert '[default/kopf-example-1] Filter not satisfied.' not in runner.output
+    assert '[default/kopf-example-1] Field value is satisfied.' in runner.output
+    assert '[default/kopf-example-1] Field value is not satisfied.' not in runner.output
+    assert '[default/kopf-example-1] Field presence is satisfied.' in runner.output
+    assert '[default/kopf-example-1] Field presence is not satisfied.' not in runner.output
+    assert '[default/kopf-example-1] Field change is satisfied.' in runner.output
+    assert '[default/kopf-example-1] Field daemon is satisfied.' in runner.output
