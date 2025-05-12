@@ -12,7 +12,9 @@ async def f(mock):
     return mock()
 
 
-def factory(loop, coro_or_mock, context=None):
+# Kwargs are accepted to match the signatures, but are unused/not passed through due to no need.
+# Usually those are `name` & `context`, as in `asyncio.create_task(…)`.
+def factory(loop, coro_or_mock, **_):
     coro = coro_or_mock._mock_wraps if isinstance(coro_or_mock, AsyncMock) else coro_or_mock
     return asyncio.Task(coro, loop=loop)
 
