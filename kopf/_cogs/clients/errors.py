@@ -113,6 +113,19 @@ class APIConflictError(APIClientError):
     pass
 
 
+class APISessionClosed(Exception):
+    """
+    A helper to escalate from inside the requests to cause re-authentication.
+
+    This happens when credentials expire while multiple concurrent requests
+    are ongoing (including their retries, mostly their back-off timeouts):
+    one random request will raise HTTP 401 and cause the re-authentication,
+    while others will retry their requests with the old session (now closed!)
+    and get a generic RuntimeError from aiohttp, thus failing their whole task.
+    """
+    pass
+
+
 async def check_response(
         response: aiohttp.ClientResponse,
 ) -> None:

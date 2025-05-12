@@ -53,8 +53,8 @@ def authenticated(fn: _F) -> _F:
                     # Keep track of responses which are using this context.
                     context.add_response(response)
                 return response
-            except errors.APIUnauthorizedError as e:
-                await vault.invalidate(key, exc=e)
+            except (errors.APIUnauthorizedError, errors.APISessionClosed) as e:
+                await vault.invalidate(key, info, exc=e)
 
         # Normally, either `vault.extended()` or `vault.invalidate()` raise the login errors.
         # The for-cycle can only end if the yielded credentials are not invalidated before trying
