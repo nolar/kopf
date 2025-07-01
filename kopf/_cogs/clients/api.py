@@ -104,7 +104,7 @@ async def request(
                 logger.error(f"Request attempt {idx} failed; escalating: {what} -> {e!r}")
                 raise
             else:
-                logger.error(f"Request attempt {idx} failed; will retry: {what} -> {e!r}")
+                logger.warning(f"Request attempt {idx} failed; will retry: {what} -> {e!r}")
                 await asyncio.sleep(backoff)  # non-awakable! but still cancellable.
         else:
             if retry > 1:
