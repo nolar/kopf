@@ -672,6 +672,7 @@ def daemon(  # lgtm[py/similar-function]
         cancellation_backoff: Optional[float] = None,
         cancellation_timeout: Optional[float] = None,
         cancellation_polling: Optional[float] = None,
+        optional: Optional[bool] = None,
         # Resource object specification:
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
@@ -700,7 +701,7 @@ def daemon(  # lgtm[py/similar-function]
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value,
-            initial_delay=initial_delay, requires_finalizer=True,
+            initial_delay=initial_delay, requires_finalizer=bool(not optional),
             cancellation_backoff=cancellation_backoff,
             cancellation_timeout=cancellation_timeout,
             cancellation_polling=cancellation_polling,
@@ -734,6 +735,7 @@ def timer(  # lgtm[py/similar-function]
         initial_delay: Optional[float] = None,
         sharp: Optional[bool] = None,
         idle: Optional[float] = None,
+        optional: Optional[bool] = None,
         # Resource object specification:
         labels: Optional[filters.MetaFilter] = None,
         annotations: Optional[filters.MetaFilter] = None,
@@ -762,7 +764,7 @@ def timer(  # lgtm[py/similar-function]
             errors=errors, timeout=timeout, retries=retries, backoff=backoff,
             selector=selector, labels=labels, annotations=annotations, when=when,
             field=real_field, value=value,
-            initial_delay=initial_delay, requires_finalizer=True,
+            initial_delay=initial_delay, requires_finalizer=bool(not optional),
             sharp=sharp, idle=idle, interval=interval,
         )
         real_registry._spawning.append(handler)
