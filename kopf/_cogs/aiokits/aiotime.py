@@ -1,13 +1,12 @@
 import asyncio
 import collections.abc
 from collections.abc import Collection
-from typing import Optional, Union
 
 
 async def sleep(
-        delays: Union[None, float, Collection[Union[None, float]]],
-        wakeup: Optional[asyncio.Event] = None,
-) -> Optional[float]:
+        delays: float | Collection[float | None] | None,
+        wakeup: asyncio.Event | None = None,
+) -> float | None:
     """
     Measure the sleep time: either until the timeout, or until the event is set.
 

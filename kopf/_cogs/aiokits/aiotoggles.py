@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import Collection, Iterable, Iterator
-from typing import Callable, Optional
+from typing import Callable
 
 
 class Toggle:
@@ -21,8 +21,8 @@ class Toggle:
             self,
             __state: bool = False,
             *,
-            name: Optional[str] = None,
-            condition: Optional[asyncio.Condition] = None,
+            name: str | None = None,
+            condition: asyncio.Condition | None = None,
     ) -> None:
         super().__init__()
         self._condition = condition if condition is not None else asyncio.Condition()
@@ -58,7 +58,7 @@ class Toggle:
             await self._condition.wait_for(lambda: self._state == bool(__state))
 
     @property
-    def name(self) -> Optional[str]:
+    def name(self) -> str | None:
         return self._name
 
 
@@ -129,7 +129,7 @@ class ToggleSet(Collection[Toggle]):
             self,
             __val: bool = False,
             *,
-            name: Optional[str] = None,
+            name: str | None = None,
     ) -> Toggle:
         toggle = Toggle(__val, name=name, condition=self._condition)
         async with self._condition:

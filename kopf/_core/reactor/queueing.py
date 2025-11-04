@@ -27,7 +27,7 @@ import contextlib
 import enum
 import logging
 from collections.abc import MutableMapping
-from typing import TYPE_CHECKING, NamedTuple, NewType, Optional, Protocol, Union
+from typing import TYPE_CHECKING, NamedTuple, NewType, Protocol
 
 from kopf._cogs.aiokits import aiotasks, aiotoggles
 from kopf._cogs.clients import watching
@@ -42,9 +42,9 @@ class WatchStreamProcessor(Protocol):
             self,
             *,
             raw_event: bodies.RawEvent,
-            stream_pressure: Optional[asyncio.Event] = None,  # None for tests
-            resource_indexed: Optional[aiotoggles.Toggle] = None,  # None for tests & observation
-            operator_indexed: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
+            stream_pressure: asyncio.Event | None = None,  # None for tests
+            resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
+            operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
     ) -> None: ...
 
 
@@ -55,7 +55,7 @@ class EOS(enum.Enum):
 
 
 if TYPE_CHECKING:
-    WatchEventQueue = asyncio.Queue[Union[bodies.RawEvent, EOS]]
+    WatchEventQueue = asyncio.Queue[bodies.RawEvent | EOS]
 else:
     WatchEventQueue = asyncio.Queue
 
@@ -124,9 +124,9 @@ async def watcher(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         processor: WatchStreamProcessor,
-        operator_paused: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
-        operator_indexed: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
-        resource_indexed: Optional[aiotoggles.Toggle] = None,  # None for tests & non-indexable
+        operator_paused: aiotoggles.ToggleSet | None = None,  # None for tests & observation
+        operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
+        resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & non-indexable
 ) -> None:
     """
     The watchers watches for the resource events via the API, and spawns the workers for every object.
@@ -148,7 +148,7 @@ async def watcher(
 
     # In case of a failed worker, stop the watcher, and escalate to the operator to stop it.
     watcher_task = asyncio.current_task()
-    worker_error: Optional[BaseException] = None
+    worker_error: BaseException | None = None
     def exception_handler(exc: BaseException) -> None:
         nonlocal worker_error, watcher_task
         if worker_error is None:
@@ -194,7 +194,7 @@ async def watcher(
                 # Block the operator's readiness for individual resource's index handlers.
                 # But NOT when the readiness is already achieved once! After that, ignore it.
                 # NB: Strictly before the worker starts -- the processor can be too slow, too late.
-                resource_object_indexed: Optional[aiotoggles.Toggle] = None
+                resource_object_indexed: aiotoggles.Toggle | None = None
                 if operator_indexed is not None and operator_indexed.is_on():
                     operator_indexed = None
                 if operator_indexed is not None and resource_indexed is not None:
@@ -249,8 +249,8 @@ async def worker(
         signaller: asyncio.Condition,
         processor: WatchStreamProcessor,
         settings: configuration.OperatorSettings,
-        resource_indexed: Optional[aiotoggles.Toggle],  # None for tests & observation
-        operator_indexed: Optional[aiotoggles.ToggleSet],  # None for tests & observation
+        resource_indexed: aiotoggles.Toggle | None,  # None for tests & observation
+        operator_indexed: aiotoggles.ToggleSet | None,  # None for tests & observation
         streams: Streams,
         key: ObjectRef,
 ) -> None:

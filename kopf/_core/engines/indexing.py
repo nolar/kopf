@@ -1,7 +1,7 @@
 import collections.abc
 import dataclasses
 from collections.abc import Iterable, Iterator, Mapping
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import typedefs
@@ -9,7 +9,7 @@ from kopf._cogs.structs import bodies, ephemera, ids, patches, references
 from kopf._core.actions import execution, lifecycles, progression
 from kopf._core.intents import causes, handlers, registries
 
-Key = tuple[references.Namespace, Optional[str], Optional[str]]
+Key = tuple[references.Namespace, str | None, str | None]
 _K = TypeVar('_K')
 _V = TypeVar('_V')
 
@@ -103,7 +103,7 @@ class Index(ephemera.Index[_K, _V], Generic[_K, _V]):
         return item in self.__items
 
     # Indexers' internal protocol. Must not be used by handlers & operators.
-    def _discard(self, acckey: Key, obj_keys: Optional[Iterable[_K]] = None) -> None:
+    def _discard(self, acckey: Key, obj_keys: Iterable[_K] | None = None) -> None:
         # We know all the keys where that object is indexed, so we delete only from there.
         # Assume that the reverse/forward indices are consistent. If not, fix it, not "fall back".
         if acckey in self.__reverse:
@@ -274,7 +274,7 @@ class OperatorIndices(ephemera.Indices):
 @dataclasses.dataclass(frozen=False)
 class IndexingMemory:
     # For indexing errors backoffs/retries/timeouts. It is None when successfully indexed.
-    indexing_state: Optional[progression.State] = None
+    indexing_state: progression.State | None = None
 
 
 async def index_resource(

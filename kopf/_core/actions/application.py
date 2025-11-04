@@ -21,7 +21,6 @@ all the modules, of which the reactor's core consists.
 import asyncio
 import datetime
 from collections.abc import Collection
-from typing import Optional
 
 from kopf._cogs.aiokits import aiotime
 from kopf._cogs.clients import patching
@@ -49,7 +48,7 @@ async def apply(
         patch: patches.Patch,
         delays: Collection[float],
         logger: loggers.ObjectLogger,
-        stream_pressure: Optional[asyncio.Event] = None,  # None for tests
+        stream_pressure: asyncio.Event | None = None,  # None for tests
 ) -> bool:
     delay = min(delays) if delays else None
 

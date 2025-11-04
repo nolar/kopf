@@ -6,11 +6,11 @@ not so important for the codebase, they are moved to this separate module.
 
 As a rule of thumb, for every kwarg named ``whatever``, there should be
 a corresponding type or class ``kopf.Whatever`` with all the typing tricks
-(``Union[...]``, ``Optional[...]``, partial ``Any`` values, etc) included.
+(unions, optionals, partial ``Any`` values, etc) included.
 """
 import datetime
 from collections.abc import Collection
-from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import typedefs
@@ -20,13 +20,13 @@ from kopf._core.intents import stoppers
 
 if not TYPE_CHECKING:  # pragma: nocover
     # Define unspecified protocols for the runtime annotations -- to avoid "quoting".
-    ActivityFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
-    IndexingFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
-    WatchingFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
-    ChangingFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
-    WebhookFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
-    DaemonFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
-    TimerFn = Callable[..., invocation.SyncOrAsync[Optional[object]]]
+    ActivityFn = Callable[..., invocation.SyncOrAsync[object | None]]
+    IndexingFn = Callable[..., invocation.SyncOrAsync[object | None]]
+    WatchingFn = Callable[..., invocation.SyncOrAsync[object | None]]
+    ChangingFn = Callable[..., invocation.SyncOrAsync[object | None]]
+    WebhookFn = Callable[..., invocation.SyncOrAsync[object | None]]
+    DaemonFn = Callable[..., invocation.SyncOrAsync[object | None]]
+    TimerFn = Callable[..., invocation.SyncOrAsync[object | None]]
     WhenFilterFn = Callable[..., bool]  # strictly sync, no async!
     MetaFilterFn = Callable[..., bool]  # strictly sync, no async!
 else:
@@ -47,7 +47,7 @@ else:
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        invocation.SyncOrAsync[Optional[object]]
+        invocation.SyncOrAsync[object | None]
     ]
 
     IndexingFn = Callable[
@@ -59,16 +59,16 @@ else:
             NamedArg(bodies.Spec, "spec"),
             NamedArg(bodies.Status, "status"),
             NamedArg(references.Resource, "resource"),
-            NamedArg(Optional[str], "uid"),
-            NamedArg(Optional[str], "name"),
-            NamedArg(Optional[str], "namespace"),
+            NamedArg(str | None, "uid"),
+            NamedArg(str | None, "name"),
+            NamedArg(str | None, "namespace"),
             NamedArg(patches.Patch, "patch"),
             NamedArg(typedefs.Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        invocation.SyncOrAsync[Optional[object]]
+        invocation.SyncOrAsync[object | None]
     ]
 
     WatchingFn = Callable[
@@ -82,16 +82,16 @@ else:
             NamedArg(bodies.Spec, "spec"),
             NamedArg(bodies.Status, "status"),
             NamedArg(references.Resource, "resource"),
-            NamedArg(Optional[str], "uid"),
-            NamedArg(Optional[str], "name"),
-            NamedArg(Optional[str], "namespace"),
+            NamedArg(str | None, "uid"),
+            NamedArg(str | None, "name"),
+            NamedArg(str | None, "namespace"),
             NamedArg(patches.Patch, "patch"),
             NamedArg(typedefs.Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        invocation.SyncOrAsync[Optional[object]]
+        invocation.SyncOrAsync[object | None]
     ]
 
     ChangingFn = Callable[
@@ -106,27 +106,27 @@ else:
             NamedArg(bodies.Spec, "spec"),
             NamedArg(bodies.Status, "status"),
             NamedArg(references.Resource, "resource"),
-            NamedArg(Optional[str], "uid"),
-            NamedArg(Optional[str], "name"),
-            NamedArg(Optional[str], "namespace"),
+            NamedArg(str | None, "uid"),
+            NamedArg(str | None, "name"),
+            NamedArg(str | None, "namespace"),
             NamedArg(patches.Patch, "patch"),
             NamedArg(str, "reason"),
             NamedArg(diffs.Diff, "diff"),
-            NamedArg(Optional[Union[bodies.BodyEssence, Any]], "old"),
-            NamedArg(Optional[Union[bodies.BodyEssence, Any]], "new"),
+            NamedArg(bodies.BodyEssence | Any | None, "old"),
+            NamedArg(bodies.BodyEssence | Any | None, "new"),
             NamedArg(typedefs.Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        invocation.SyncOrAsync[Optional[object]]
+        invocation.SyncOrAsync[object | None]
     ]
 
     WebhookFn = Callable[
         [
             NamedArg(bool, "dryrun"),
             NamedArg(list[str], "warnings"),  # mutable!
-            NamedArg(Optional[str], "subresource"),
+            NamedArg(str | None, "subresource"),
             NamedArg(reviews.UserInfo, "userinfo"),
             NamedArg(reviews.SSLPeer, "sslpeer"),
             NamedArg(reviews.Headers, "headers"),
@@ -137,16 +137,16 @@ else:
             NamedArg(bodies.Spec, "spec"),
             NamedArg(bodies.Status, "status"),
             NamedArg(references.Resource, "resource"),
-            NamedArg(Optional[str], "uid"),
-            NamedArg(Optional[str], "name"),
-            NamedArg(Optional[str], "namespace"),
+            NamedArg(str | None, "uid"),
+            NamedArg(str | None, "name"),
+            NamedArg(str | None, "namespace"),
             NamedArg(patches.Patch, "patch"),
             NamedArg(typedefs.Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        invocation.SyncOrAsync[Optional[object]]
+        invocation.SyncOrAsync[object | None]
     ]
 
     DaemonFn = Callable[
@@ -162,16 +162,16 @@ else:
             NamedArg(bodies.Spec, "spec"),
             NamedArg(bodies.Status, "status"),
             NamedArg(references.Resource, "resource"),
-            NamedArg(Optional[str], "uid"),
-            NamedArg(Optional[str], "name"),
-            NamedArg(Optional[str], "namespace"),
+            NamedArg(str | None, "uid"),
+            NamedArg(str | None, "name"),
+            NamedArg(str | None, "namespace"),
             NamedArg(patches.Patch, "patch"),
             NamedArg(typedefs.Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        invocation.SyncOrAsync[Optional[object]]
+        invocation.SyncOrAsync[object | None]
     ]
 
     TimerFn = Callable[
@@ -184,16 +184,16 @@ else:
             NamedArg(bodies.Spec, "spec"),
             NamedArg(bodies.Status, "status"),
             NamedArg(references.Resource, "resource"),
-            NamedArg(Optional[str], "uid"),
-            NamedArg(Optional[str], "name"),
-            NamedArg(Optional[str], "namespace"),
+            NamedArg(str | None, "uid"),
+            NamedArg(str | None, "name"),
+            NamedArg(str | None, "namespace"),
             NamedArg(patches.Patch, "patch"),
             NamedArg(typedefs.Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
             KwArg(Any),
         ],
-        invocation.SyncOrAsync[Optional[object]]
+        invocation.SyncOrAsync[object | None]
     ]
 
     WhenFilterFn = Callable[
@@ -207,13 +207,13 @@ else:
             NamedArg(bodies.Spec, "spec"),
             NamedArg(bodies.Status, "status"),
             NamedArg(references.Resource, "resource"),
-            NamedArg(Optional[str], "uid"),
-            NamedArg(Optional[str], "name"),
-            NamedArg(Optional[str], "namespace"),
+            NamedArg(str | None, "uid"),
+            NamedArg(str | None, "name"),
+            NamedArg(str | None, "namespace"),
             NamedArg(patches.Patch, "patch"),
             NamedArg(diffs.Diff, "diff"),
-            NamedArg(Optional[Union[bodies.BodyEssence, Any]], "old"),
-            NamedArg(Optional[Union[bodies.BodyEssence, Any]], "new"),
+            NamedArg(bodies.BodyEssence | Any | None, "old"),
+            NamedArg(bodies.BodyEssence | Any | None, "new"),
             NamedArg(typedefs.Logger, "logger"),
             NamedArg(Any, "memo"),
             DefaultNamedArg(Any, "param"),
@@ -233,9 +233,9 @@ else:
             NamedArg(bodies.Spec, "spec"),
             NamedArg(bodies.Status, "status"),
             NamedArg(references.Resource, "resource"),
-            NamedArg(Optional[str], "uid"),
-            NamedArg(Optional[str], "name"),
-            NamedArg(Optional[str], "namespace"),
+            NamedArg(str | None, "uid"),
+            NamedArg(str | None, "name"),
+            NamedArg(str | None, "namespace"),
             NamedArg(patches.Patch, "patch"),
             NamedArg(typedefs.Logger, "logger"),
             NamedArg(Any, "memo"),
@@ -245,7 +245,7 @@ else:
         bool  # strictly sync, no async!
     ]
 
-SpawningFn = Union[DaemonFn, TimerFn]
+SpawningFn = DaemonFn | TimerFn
 _FnT = TypeVar('_FnT', WhenFilterFn, MetaFilterFn)
 
 

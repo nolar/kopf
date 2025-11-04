@@ -2,7 +2,7 @@
 Admission reviews: requests & responses, also the webhook server protocols.
 """
 from collections.abc import AsyncIterator, Awaitable, Mapping
-from typing import Any, Callable, Literal, Optional, Protocol, TypedDict, Union
+from typing import Any, Callable, Literal, Protocol, TypedDict
 
 from kopf._cogs.structs import bodies
 
@@ -49,18 +49,18 @@ class RequestPayload(TypedDict):
     uid: str
     kind: RequestKind
     resource: RequestResource
-    subResource: Optional[str]
+    subResource: str | None
     requestKind: RequestKind
     requestResource: RequestResource
-    requestSubResource: Optional[str]
+    requestSubResource: str | None
     userInfo: UserInfo
     name: str
-    namespace: Optional[str]
+    namespace: str | None
     operation: Operation
-    options: Union[None, CreateOptions, UpdateOptions, DeleteOptions]
+    options: CreateOptions | UpdateOptions | DeleteOptions | None
     dryRun: bool
     object: bodies.RawBody
-    oldObject: Optional[bodies.RawBody]
+    oldObject: bodies.RawBody | None
 
 
 class Request(TypedDict):
@@ -77,10 +77,10 @@ class ResponseStatus(TypedDict, total=False):
 class ResponsePayload(TypedDict, total=False):
     uid: str
     allowed: bool
-    warnings: Optional[list[str]]
-    status: Optional[ResponseStatus]
-    patch: Optional[str]
-    patchType: Optional[Literal["JSONPatch"]]
+    warnings: list[str] | None
+    status: ResponseStatus | None
+    patch: str | None
+    patchType: Literal["JSONPatch"] | None
 
 
 class Response(TypedDict):
@@ -90,10 +90,10 @@ class Response(TypedDict):
 
 
 class WebhookClientConfigService(TypedDict, total=False):
-    namespace: Optional[str]
-    name: Optional[str]
-    path: Optional[str]
-    port: Optional[int]
+    namespace: str | None
+    name: str | None
+    path: str | None
+    port: int | None
 
 
 class WebhookClientConfig(TypedDict, total=False):
@@ -107,9 +107,9 @@ class WebhookClientConfig(TypedDict, total=False):
     handler ids as the last path component. This must be taken into account
     by custom webhook servers.
     """
-    caBundle: Optional[str]  # if absent, the default apiservers' trust chain is used.
-    url: Optional[str]
-    service: Optional[WebhookClientConfigService]
+    caBundle: str | None  # if absent, the default apiservers' trust chain is used.
+    url: str | None
+    service: WebhookClientConfigService | None
 
 
 class WebhookFn(Protocol):
@@ -125,9 +125,9 @@ class WebhookFn(Protocol):
             self,
             request: Request,
             *,
-            webhook: Optional[str] = None,
-            headers: Optional[Mapping[str, str]] = None,
-            sslpeer: Optional[Mapping[str, Any]] = None,
+            webhook: str | None = None,
+            headers: Mapping[str, str] | None = None,
+            sslpeer: Mapping[str, Any] | None = None,
     ) -> Awaitable[Response]: ...
 
 

@@ -14,7 +14,7 @@ import datetime
 import enum
 from collections.abc import AsyncIterator, Collection, Iterable, Mapping, MutableMapping, Sequence
 from contextvars import ContextVar
-from typing import Any, AsyncContextManager, Callable, NewType, Optional, Protocol, TypeVar
+from typing import Any, AsyncContextManager, Callable, NewType, Protocol, TypeVar
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import typedefs
@@ -33,8 +33,8 @@ class TemporaryError(Exception):
     """ A potentially recoverable error, should be retried. """
     def __init__(
             self,
-            __msg: Optional[str] = None,
-            delay: Optional[float] = DEFAULT_RETRY_DELAY,
+            __msg: str | None = None,
+            delay: float | None = DEFAULT_RETRY_DELAY,
     ) -> None:
         super().__init__(__msg)
         self.delay = delay
@@ -78,9 +78,9 @@ class Outcome:
     (for YAML/JSON serialisation) rather than the actual in-memory objects.
     """
     final: bool
-    delay: Optional[float] = None
-    result: Optional[Result] = None
-    exception: Optional[Exception] = None
+    delay: float | None = None
+    result: Result | None = None
+    exception: Exception | None = None
     subrefs: Collection[ids.HandlerId] = ()
 
 
@@ -97,9 +97,9 @@ class HandlerState:
     carried over for logging of counts/extras, and for final state purging,
     but not participating in the current handling cycle.
     """
-    started: Optional[datetime.datetime] = None  # None means this information was lost.
-    stopped: Optional[datetime.datetime] = None  # None means it is still running (e.g. delayed).
-    delayed: Optional[datetime.datetime] = None  # None means it is finished (succeeded/failed).
+    started: datetime.datetime | None = None  # None means this information was lost.
+    stopped: datetime.datetime | None = None  # None means it is still running (e.g. delayed).
+    delayed: datetime.datetime | None = None  # None means it is finished (succeeded/failed).
     retries: int = 0
     success: bool = False
     failure: bool = False
@@ -147,11 +147,11 @@ class Handler:
     """ A handler is a function bound with its behavioral constraints. """
     id: ids.HandlerId
     fn: invocation.Invokable
-    param: Optional[Any]
-    errors: Optional[ErrorsMode]
-    timeout: Optional[float]
-    retries: Optional[int]
-    backoff: Optional[float]
+    param: Any | None
+    errors: ErrorsMode | None
+    timeout: float | None
+    retries: int | None
+    backoff: float | None
 
     # Used in the logs. Overridden in some (but not all) handler types for better log messages.
     def __str__(self) -> str:
@@ -175,7 +175,7 @@ class LifeCycleFn(Protocol):
 
 # The task-local context; propagated down the stack instead of multiple kwargs.
 # Used in `@kopf.subhandler` and `kopf.execute()` to add/get the sub-handlers.
-sublifecycle_var: ContextVar[Optional[LifeCycleFn]] = ContextVar('sublifecycle_var')
+sublifecycle_var: ContextVar[LifeCycleFn | None] = ContextVar('sublifecycle_var')
 subsettings_var: ContextVar[configuration.OperatorSettings] = ContextVar('subsettings_var')
 subrefs_var: ContextVar[Iterable[set[ids.HandlerId]]] = ContextVar('subrefs_var')
 handler_var: ContextVar[Handler] = ContextVar('handler_var')
@@ -235,7 +235,7 @@ async def execute_handler_once(
         handler: Handler,
         cause: Cause,
         state: HandlerState,
-        lifecycle: Optional[LifeCycleFn] = None,
+        lifecycle: LifeCycleFn | None = None,
         extra_context: ExtraContext = no_extra_context,
         default_errors: ErrorsMode = ErrorsMode.TEMPORARY,
 ) -> Outcome:
@@ -339,10 +339,10 @@ async def invoke_handler(
         started: datetime.datetime,
         runtime: datetime.timedelta,
         settings: configuration.OperatorSettings,
-        lifecycle: Optional[LifeCycleFn],
+        lifecycle: LifeCycleFn | None,
         subrefs: set[ids.HandlerId],
         extra_context: ExtraContext,
-) -> Optional[Result]:
+) -> Result | None:
     """
     Invoke one handler only, according to the calling conventions.
 

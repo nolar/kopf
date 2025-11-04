@@ -34,7 +34,7 @@ import base64
 import hashlib
 import warnings
 from collections.abc import Collection, Iterable
-from typing import Any, Optional
+from typing import Any
 
 from kopf._cogs.structs import bodies, patches
 
@@ -142,7 +142,7 @@ class StorageKeyFormingConvention(CollisionEvadingConvention):
         if len(self.prefix or '') > 253 - 63 - 1:
             warnings.warn("The annotations prefix is too long. It can cause errors when PATCHing.")
 
-    def make_keys(self, key: str, *, body: Optional[bodies.Body] = None) -> Iterable[str]:
+    def make_keys(self, key: str, *, body: bodies.Body | None = None) -> Iterable[str]:
         key = key if body is None else self.mark_key(key, body=body)
         v2_keys = [self.make_v2_key(key)]
         v1_keys = [self.make_v1_key(key)] if self.v1 else []

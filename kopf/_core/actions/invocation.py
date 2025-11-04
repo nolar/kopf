@@ -10,7 +10,7 @@ import contextlib
 import contextvars
 import functools
 from collections.abc import Coroutine, Iterable, Iterator, Mapping
-from typing import Any, Callable, Optional, TypeVar, Union, final
+from typing import Any, Callable, TypeVar, final
 
 from kopf._cogs.configs import configuration
 
@@ -18,11 +18,11 @@ from kopf._cogs.configs import configuration
 # or an async fn which returns a coroutine which, in turn, returns the result.
 # Used in some protocols only and is never exposed to other modules.
 _R = TypeVar('_R')
-SyncOrAsync = Union[_R, Coroutine[None, None, _R]]
+SyncOrAsync = _R | Coroutine[None, None, _R]
 
 # A generic sync-or-async callable with no args/kwargs checks (unlike in protocols).
 # Used for the Handler and generic invocation methods (which do not care about protocols).
-Invokable = Callable[..., SyncOrAsync[Optional[object]]]
+Invokable = Callable[..., SyncOrAsync[object | None]]
 
 
 class Kwargable:
@@ -89,9 +89,9 @@ def context(
 async def invoke(
         fn: Invokable,
         *,
-        settings: Optional[configuration.OperatorSettings] = None,
-        kwargsrc: Optional[Kwargable] = None,
-        kwargs: Optional[Mapping[str, Any]] = None,  # includes param, retry, started, runtime, etc.
+        settings: configuration.OperatorSettings | None = None,
+        kwargsrc: Kwargable | None = None,
+        kwargs: Mapping[str, Any] | None = None,  # includes param, retry, started, runtime, etc.
 ) -> Any:
     """
     Invoke a single function, but safely for the main asyncio process.
@@ -131,7 +131,7 @@ async def invoke(
         loop = asyncio.get_running_loop()
         executor = settings.execution.executor if settings is not None else None
         future = loop.run_in_executor(executor, real_fn)
-        cancellation: Optional[asyncio.CancelledError] = None
+        cancellation: asyncio.CancelledError | None = None
         while not future.done():
             try:
                 await asyncio.shield(future)  # slightly expensive: creates tasks
@@ -145,7 +145,7 @@ async def invoke(
 
 
 def is_async_fn(
-        fn: Optional[Invokable],
+        fn: Invokable | None,
 ) -> bool:
     if fn is None:
         return False

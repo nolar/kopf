@@ -26,7 +26,6 @@ import dataclasses
 import time
 import warnings
 from collections.abc import Collection, Iterable, Mapping, MutableMapping, Sequence
-from typing import Optional
 
 from kopf._cogs.aiokits import aiotasks, aiotime, aiotoggles
 from kopf._cogs.configs import configuration
@@ -47,7 +46,7 @@ class Daemon:
 @dataclasses.dataclass(frozen=False)
 class DaemonsMemory:
     # For background and timed threads/tasks (invoked with the kwargs of the last-seen body).
-    live_fresh_body: Optional[bodies.Body] = None
+    live_fresh_body: bodies.Body | None = None
     idle_reset_time: float = dataclasses.field(default_factory=time.monotonic)
     forever_stopped: set[ids.HandlerId] = dataclasses.field(default_factory=set)
     running_daemons: dict[ids.HandlerId, Daemon] = dataclasses.field(default_factory=dict)

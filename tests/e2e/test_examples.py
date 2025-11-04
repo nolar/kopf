@@ -4,7 +4,7 @@ import re
 import subprocess
 import time
 from collections.abc import Sequence
-from typing import Any, Optional
+from typing import Any
 
 import astpath
 import pytest
@@ -100,10 +100,10 @@ def test_all_examples_are_runnable(mocker, settings, with_crd, exampledir, caplo
 
 def _sleep_till_stopword(
         caplog,
-        delay: Optional[float] = None,
-        patterns: Optional[Sequence[str]] = None,
+        delay: float | None = None,
+        patterns: Sequence[str] | None = None,
         *,
-        interval: Optional[float] = None,
+        interval: float | None = None,
 ) -> bool:
     patterns = list(patterns or [])
     delay = delay or (10.0 if patterns else 1.0)
@@ -152,47 +152,47 @@ class E2EParser:
         }
 
     @property
-    def startup_time_limit(self) -> Optional[float]:
+    def startup_time_limit(self) -> float | None:
         return self.configs.get('E2E_STARTUP_TIME_LIMIT')
 
     @property
-    def startup_stop_words(self) -> Optional[Sequence[str]]:
+    def startup_stop_words(self) -> Sequence[str] | None:
         return self.configs.get('E2E_STARTUP_STOP_WORDS')
 
     @property
-    def cleanup_time_limit(self) -> Optional[float]:
+    def cleanup_time_limit(self) -> float | None:
         return self.configs.get('E2E_CLEANUP_TIME_LIMIT')
 
     @property
-    def cleanup_stop_words(self) -> Optional[Sequence[str]]:
+    def cleanup_stop_words(self) -> Sequence[str] | None:
         return self.configs.get('E2E_CLEANUP_STOP_WORDS')
 
     @property
-    def creation_time_limit(self) -> Optional[float]:
+    def creation_time_limit(self) -> float | None:
         return self.configs.get('E2E_CREATION_TIME_LIMIT')
 
     @property
-    def creation_stop_words(self) -> Optional[Sequence[str]]:
+    def creation_stop_words(self) -> Sequence[str] | None:
         return self.configs.get('E2E_CREATION_STOP_WORDS')
 
     @property
-    def deletion_time_limit(self) -> Optional[float]:
+    def deletion_time_limit(self) -> float | None:
         return self.configs.get('E2E_DELETION_TIME_LIMIT')
 
     @property
-    def deletion_stop_words(self) -> Optional[Sequence[str]]:
+    def deletion_stop_words(self) -> Sequence[str] | None:
         return self.configs.get('E2E_DELETION_STOP_WORDS')
 
     @property
-    def allow_tracebacks(self) -> Optional[bool]:
+    def allow_tracebacks(self) -> bool | None:
         return self.configs.get('E2E_ALLOW_TRACEBACKS')
 
     @property
-    def success_counts(self) -> Optional[dict[str, int]]:
+    def success_counts(self) -> dict[str, int] | None:
         return self.configs.get('E2E_SUCCESS_COUNTS')
 
     @property
-    def failure_counts(self) -> Optional[dict[str, int]]:
+    def failure_counts(self) -> dict[str, int] | None:
         return self.configs.get('E2E_FAILURE_COUNTS')
 
     @property

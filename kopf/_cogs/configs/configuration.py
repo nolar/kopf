@@ -29,7 +29,6 @@ import concurrent.futures
 import dataclasses
 import logging
 from collections.abc import Iterable
-from typing import Optional, Union
 
 from kopf._cogs.configs import diffbase, progress
 from kopf._cogs.structs import reviews
@@ -41,7 +40,7 @@ class ProcessSettings:
     Settings for Kopf's OS processes: e.g. when started via CLI as `kopf run`.
     """
 
-    ultimate_exiting_timeout: Optional[float] = 10 * 60
+    ultimate_exiting_timeout: float | None = 10 * 60
     """
     How long to wait for the graceful exit before SIGKILL'ing the operator.
 
@@ -170,18 +169,18 @@ class PeeringSettings:
 @dataclasses.dataclass
 class WatchingSettings:
 
-    server_timeout: Optional[float] = None
+    server_timeout: float | None = None
     """
     The maximum duration of one streaming request. Patched in some tests.
     If ``None``, then obey the server-side timeouts (they seem to be random).
     """
 
-    client_timeout: Optional[float] = None
+    client_timeout: float | None = None
     """
     An HTTP/HTTPS session timeout to use in watch requests.
     """
 
-    connect_timeout: Optional[float] = None
+    connect_timeout: float | None = None
     """
     An HTTP/HTTPS connection timeout to use in watch requests.
     """
@@ -198,7 +197,7 @@ class BatchingSettings:
     Settings for how raw events are batched and processed.
     """
 
-    worker_limit: Optional[int] = None
+    worker_limit: int | None = None
     """
     How many workers can be running simultaneously on per-object event queue.
     If ``None``, there is no limit to the number of workers (as many as needed).
@@ -257,7 +256,7 @@ class ScanningSettings:
 @dataclasses.dataclass
 class AdmissionSettings:
 
-    server: Optional[reviews.WebhookServerProtocol] = None
+    server: reviews.WebhookServerProtocol | None = None
     """
     A way of accepting admission requests from Kubernetes.
 
@@ -278,7 +277,7 @@ class AdmissionSettings:
         :doc:`/admission`.
     """
 
-    managed: Optional[str] = None
+    managed: str | None = None
     """
     The names of managed ``[Validating/Mutating]WebhookConfiguration`` objects.
 
@@ -310,10 +309,10 @@ class ExecutionSettings:
     handlers (specific invocations) will continue with their original executors.
     """
 
-    _max_workers: Optional[int] = None
+    _max_workers: int | None = None
 
     @property
-    def max_workers(self) -> Optional[int]:
+    def max_workers(self) -> int | None:
         """
         How many threads/processes is dedicated to handler execution.
 
@@ -336,7 +335,7 @@ class ExecutionSettings:
 @dataclasses.dataclass
 class NetworkingSettings:
 
-    request_timeout: Optional[float] = 5 * 60  # == aiohttp.client.DEFAULT_TIMEOUT
+    request_timeout: float | None = 5 * 60  # == aiohttp.client.DEFAULT_TIMEOUT
     """
     A timeout for the entire duration of an API request (in seconds).
 
@@ -345,12 +344,12 @@ class NetworkingSettings:
     or ``settings.watching.server_timeout``.
     """
 
-    connect_timeout: Optional[float] = None
+    connect_timeout: float | None = None
     """
     A timeout for the connection & handshake of an API request (in seconds).
     """
 
-    error_backoffs: Union[float, Iterable[float]] = (1, 1, 2, 3, 5, 8, 13, 21)
+    error_backoffs: float | Iterable[float] = (1, 1, 2, 3, 5, 8, 13, 21)
     """
     How many times and with which delays (seconds) to retry the API errors.
 
@@ -393,7 +392,7 @@ class BackgroundSettings:
     exit gracefully by its own, but it does not).
     """
 
-    instant_exit_timeout: Optional[float] = None
+    instant_exit_timeout: float | None = None
     """
     For how long (in seconds) to wait for a daemon/timer to exit instantly.
 
@@ -412,7 +411,7 @@ class BackgroundSettings:
     asyncio event loop cycles is used instead.
     """
 
-    instant_exit_zero_time_cycles: Optional[int] = 10
+    instant_exit_zero_time_cycles: int | None = 10
     """
     How many asyncio cycles to give to a daemon/timer to exit instantly.
 

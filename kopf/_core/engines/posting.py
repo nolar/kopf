@@ -19,7 +19,7 @@ import logging
 import sys
 from collections.abc import Iterable, Iterator
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, NamedTuple, NoReturn, Optional, Union, cast
+from typing import TYPE_CHECKING, NamedTuple, NoReturn, cast
 
 from kopf._cogs.clients import events
 from kopf._cogs.configs import configuration
@@ -69,7 +69,7 @@ def enqueue(
     # Events can be posted from another thread than the event-loop's thread
     # (e.g. from sync-handlers, or from explicitly started per-object threads),
     # or from the same thread (async-handlers and the framework itself).
-    running_loop: Optional[asyncio.AbstractEventLoop]
+    running_loop: asyncio.AbstractEventLoop | None
     try:
         running_loop = asyncio.get_running_loop()
     except RuntimeError:
@@ -88,7 +88,7 @@ def enqueue(
 
 
 def event(
-        objs: Union[bodies.Body, Iterable[bodies.Body]],
+        objs: bodies.Body | Iterable[bodies.Body],
         *,
         type: str,
         reason: str,
@@ -102,7 +102,7 @@ def event(
 
 
 def info(
-        objs: Union[bodies.Body, Iterable[bodies.Body]],
+        objs: bodies.Body | Iterable[bodies.Body],
         *,
         reason: str,
         message: str = '',
@@ -115,7 +115,7 @@ def info(
 
 
 def warn(
-        objs: Union[bodies.Body, Iterable[bodies.Body]],
+        objs: bodies.Body | Iterable[bodies.Body],
         *,
         reason: str,
         message: str = '',
@@ -128,11 +128,11 @@ def warn(
 
 
 def exception(
-        objs: Union[bodies.Body, Iterable[bodies.Body]],
+        objs: bodies.Body | Iterable[bodies.Body],
         *,
         reason: str = '',
         message: str = '',
-        exc: Optional[BaseException] = None,
+        exc: BaseException | None = None,
 ) -> None:
     if exc is None:
         _, exc, _ = sys.exc_info()
@@ -196,7 +196,7 @@ class K8sPoster(logging.Handler):
         # Only those which have a k8s object referred (see: `ObjectLogger`).
         # Otherwise, we have nothing to post, and nothing to do.
         # TODO: remove all bool() -- they were needed for Python 3.12 & MyPy 1.8.0 wrong inference.
-        settings: Optional[configuration.OperatorSettings]
+        settings: configuration.OperatorSettings | None
         settings = getattr(record, 'settings', None)
         level_ok = settings is not None and bool(record.levelno >= settings.posting.level)
         enabled = settings is not None and bool(settings.posting.enabled)

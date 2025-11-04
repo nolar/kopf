@@ -42,7 +42,7 @@ import abc
 import copy
 import json
 from collections.abc import Collection, Mapping
-from typing import Any, Optional, TypedDict, cast
+from typing import Any, TypedDict, cast
 
 from kopf._cogs.configs import conventions
 from kopf._cogs.structs import bodies, dicts, ids, patches
@@ -50,15 +50,15 @@ from kopf._cogs.structs import bodies, dicts, ids, patches
 
 class ProgressRecord(TypedDict, total=True):
     """ A single record stored for persistence of a single handler. """
-    started: Optional[str]
-    stopped: Optional[str]
-    delayed: Optional[str]
-    purpose: Optional[str]
-    retries: Optional[int]
-    success: Optional[bool]
-    failure: Optional[bool]
-    message: Optional[str]
-    subrefs: Optional[Collection[ids.HandlerId]]
+    started: str | None
+    stopped: str | None
+    delayed: str | None
+    purpose: str | None
+    retries: int | None
+    success: bool | None
+    failure: bool | None
+    message: str | None
+    subrefs: Collection[ids.HandlerId] | None
 
 
 class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
@@ -85,7 +85,7 @@ class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
             *,
             key: ids.HandlerId,
             body: bodies.Body,
-    ) -> Optional[ProgressRecord]:
+    ) -> ProgressRecord | None:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -115,7 +115,7 @@ class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
             *,
             body: bodies.Body,
             patch: patches.Patch,
-            value: Optional[str],
+            value: str | None,
     ) -> None:
         raise NotImplementedError
 
@@ -178,7 +178,7 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
             *,
             key: ids.HandlerId,
             body: bodies.Body,
-    ) -> Optional[ProgressRecord]:
+    ) -> ProgressRecord | None:
         for full_key in self.make_keys(key, body=body):
             key_field = ['metadata', 'annotations', full_key]
             encoded = dicts.resolve(body, key_field, None)
@@ -224,7 +224,7 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
             *,
             body: bodies.Body,
             patch: patches.Patch,
-            value: Optional[str],
+            value: str | None,
     ) -> None:
         for full_key in self.make_keys(self.touch_key, body=body):
             key_field = ['metadata', 'annotations', full_key]
@@ -315,7 +315,7 @@ class StatusProgressStorage(ProgressStorage):
             *,
             key: ids.HandlerId,
             body: bodies.Body,
-    ) -> Optional[ProgressRecord]:
+    ) -> ProgressRecord | None:
         container: Mapping[ids.HandlerId, ProgressRecord]
         container = dicts.resolve(body, self.field, {})
         return container.get(key, None)
@@ -352,7 +352,7 @@ class StatusProgressStorage(ProgressStorage):
             *,
             body: bodies.Body,
             patch: patches.Patch,
-            value: Optional[str],
+            value: str | None,
     ) -> None:
         key_field = self.touch_field
         body_value = dicts.resolve(body, key_field, None)
@@ -384,7 +384,7 @@ class MultiProgressStorage(ProgressStorage):
             *,
             key: ids.HandlerId,
             body: bodies.Body,
-    ) -> Optional[ProgressRecord]:
+    ) -> ProgressRecord | None:
         for storage in self.storages:
             content = storage.fetch(key=key, body=body)
             if content is not None:
@@ -417,7 +417,7 @@ class MultiProgressStorage(ProgressStorage):
             *,
             body: bodies.Body,
             patch: patches.Patch,
-            value: Optional[str],
+            value: str | None,
     ) -> None:
         for storage in self.storages:
             storage.touch(body=body, patch=patch, value=value)

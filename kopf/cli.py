@@ -3,7 +3,7 @@ import dataclasses
 import functools
 import os
 from collections.abc import Collection
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 import click
 
@@ -21,12 +21,12 @@ from kopf._kits import loops
 @dataclasses.dataclass()
 class CLIControls:
     """ `KopfRunner` controls, which are impossible to pass via CLI. """
-    ready_flag: Optional[aioadapters.Flag] = None
-    stop_flag: Optional[aioadapters.Flag] = None
-    vault: Optional[credentials.Vault] = None
-    registry: Optional[registries.OperatorRegistry] = None
-    settings: Optional[configuration.OperatorSettings] = None
-    loop: Optional[asyncio.AbstractEventLoop] = None
+    ready_flag: aioadapters.Flag | None = None
+    stop_flag: aioadapters.Flag | None = None
+    vault: credentials.Vault | None = None
+    registry: registries.OperatorRegistry | None = None
+    settings: configuration.OperatorSettings | None = None
+    loop: asyncio.AbstractEventLoop | None = None
 
 
 def logging_options(fn: Callable[..., Any]) -> Callable[..., Any]:
@@ -40,8 +40,8 @@ def logging_options(fn: Callable[..., Any]) -> Callable[..., Any]:
     @functools.wraps(fn)  # to preserve other opts/args
     def wrapper(verbose: bool, quiet: bool, debug: bool,
                 log_format: loggers.LogFormat = loggers.LogFormat.FULL,
-                log_prefix: Optional[bool] = False,
-                log_refkey: Optional[str] = None,
+                log_prefix: bool | None = False,
+                log_refkey: str | None = None,
                 *args: Any, **kwargs: Any) -> Any:
         loggers.configure(debug=debug, verbose=verbose, quiet=quiet,
                           log_format=log_format, log_refkey=log_refkey, log_prefix=log_prefix)
@@ -75,13 +75,13 @@ def run(
         __controls: CLIControls,
         paths: list[str],
         modules: list[str],
-        peering_name: Optional[str],
-        priority: Optional[int],
-        dev: Optional[bool],
-        standalone: Optional[bool],
+        peering_name: str | None,
+        priority: int | None,
+        dev: bool | None,
+        standalone: bool | None,
         namespaces: Collection[references.NamespacePattern],
         clusterwide: bool,
-        liveness_endpoint: Optional[str],
+        liveness_endpoint: str | None,
 ) -> None:
     """ Start an operator process and handle all the requests. """
     priority = 666 if dev else priority
@@ -125,8 +125,8 @@ def run(
 @click.make_pass_decorator(CLIControls, ensure=True)
 def freeze(
         __controls: CLIControls,
-        id: Optional[str],
-        message: Optional[str],
+        id: str | None,
+        message: str | None,
         lifetime: int,
         namespaces: Collection[references.NamespacePattern],
         clusterwide: bool,
@@ -164,7 +164,7 @@ def freeze(
 @click.make_pass_decorator(CLIControls, ensure=True)
 def resume(
         __controls: CLIControls,
-        id: Optional[str],
+        id: str | None,
         namespaces: Collection[references.NamespacePattern],
         clusterwide: bool,
         peering_name: str,

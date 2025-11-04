@@ -28,7 +28,7 @@ import functools
 import itertools
 import logging
 from collections.abc import Collection, Container, Iterable, MutableMapping
-from typing import Any, NamedTuple, Optional, Protocol
+from typing import Any, NamedTuple, Protocol
 
 from kopf._cogs.aiokits import aiotasks, aiotoggles
 from kopf._cogs.configs import configuration
@@ -51,9 +51,9 @@ class ResourceWatchStreamProcessor(Protocol):
             *,
             resource: references.Resource,
             raw_event: bodies.RawEvent,
-            stream_pressure: Optional[asyncio.Event] = None,  # None for tests
-            resource_indexed: Optional[aiotoggles.Toggle] = None,  # None for tests & observation
-            operator_indexed: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
+            stream_pressure: asyncio.Event | None = None,  # None for tests
+            resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
+            operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
     ) -> None: ...
 
 
@@ -245,7 +245,7 @@ async def spawn_missing_watchers(
         dkey = EnsembleKey(resource=resource, namespace=namespace)
         if dkey not in ensemble.watcher_tasks:
             what = f"{resource}@{namespace}"
-            resource_indexed: Optional[aiotoggles.Toggle] = None
+            resource_indexed: aiotoggles.Toggle | None = None
             if resource in indexed_resources:
                 resource_indexed = await ensemble.operator_indexed.make_toggle(name=what)
             ensemble.watcher_tasks[dkey] = aiotasks.create_guarded_task(

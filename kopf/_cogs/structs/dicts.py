@@ -4,12 +4,12 @@ Some basic dicts and field-in-a-dict manipulation helpers.
 import collections.abc
 import enum
 from collections.abc import Iterable, Iterator, Mapping, MutableMapping
-from typing import Any, Callable, Generic, Optional, TypeVar, Union
+from typing import Any, Callable, Generic, TypeVar
 
 from kopf._cogs.helpers import thirdparty
 
 FieldPath = tuple[str, ...]
-FieldSpec = Union[None, str, FieldPath, list[str]]
+FieldSpec = str | FieldPath | list[str] | None
 
 _T = TypeVar('_T')
 _K = TypeVar('_K', bound=str)  # int & bool keys are possible but discouraged
@@ -44,10 +44,10 @@ def parse_field(
 
 
 def resolve_obj(
-        d: Union[None, thirdparty.KubernetesModel, Mapping[Any, Any]],
+        d: thirdparty.KubernetesModel | Mapping[Any, Any] | None,
         field: FieldSpec,
-        default: Union[_T, _UNSET] = _UNSET.token,
-) -> Union[Any, _T]:
+        default: _T | _UNSET = _UNSET.token,
+) -> Any | _T:
     """
     Mirrors `resolve`, but for a nested mix of dict keys & object attributes.
 
@@ -80,10 +80,10 @@ def resolve_obj(
 
 
 def resolve(
-        d: Optional[Mapping[Any, Any]],
+        d: Mapping[Any, Any] | None,
         field: FieldSpec,
-        default: Union[_T, _UNSET] = _UNSET.token,
-) -> Union[Any, _T]:
+        default: _T | _UNSET = _UNSET.token,
+) -> Any | _T:
     """
     Retrieve a nested sub-field from a dict.
 
@@ -195,8 +195,8 @@ def remove(
 def cherrypick(
         src: Mapping[Any, Any],
         dst: MutableMapping[Any, Any],
-        fields: Optional[Iterable[FieldSpec]],
-        picker: Optional[Callable[[_T], _T]] = None,
+        fields: Iterable[FieldSpec] | None,
+        picker: Callable[[_T], _T] | None = None,
 ) -> None:
     """
     Copy all specified fields between dicts (from src to dst).
@@ -211,12 +211,9 @@ def cherrypick(
 
 
 def walk(
-        objs: Union[_T,
-                    Iterable[_T],
-                    Iterable[Union[_T,
-                                   Iterable[_T]]]],
+        objs: _T | Iterable[_T] | Iterable[_T | Iterable[_T]],
         *,
-        nested: Optional[Iterable[FieldSpec]] = None,
+        nested: Iterable[FieldSpec] | None = None,
 ) -> Iterator[_T]:
     """
     Iterate over objects, flattening the lists/tuples/iterables recursively.

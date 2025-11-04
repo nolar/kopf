@@ -16,7 +16,7 @@ import copy
 import dataclasses
 import datetime
 from collections.abc import Collection, Iterable, Iterator, Mapping
-from typing import Any, NamedTuple, Optional, overload
+from typing import Any, NamedTuple, overload
 
 import iso8601
 
@@ -40,20 +40,20 @@ class HandlerState(execution.HandlerState):
     """
 
     # Some fields may overlap the base class's fields, but this is fine (the types are the same).
-    active: Optional[bool] = None  # is it used in done/delays [T]? or only in counters/purges [F]?
-    started: Optional[datetime.datetime] = None  # None means this information was lost.
-    stopped: Optional[datetime.datetime] = None  # None means it is still running (e.g. delayed).
-    delayed: Optional[datetime.datetime] = None  # None means it is finished (succeeded/failed).
-    purpose: Optional[str] = None  # None is a catch-all marker for upgrades/rollbacks.
+    active: bool | None = None  # is it used in done/delays [T]? or only in counters/purges [F]?
+    started: datetime.datetime | None = None  # None means this information was lost.
+    stopped: datetime.datetime | None = None  # None means it is still running (e.g. delayed).
+    delayed: datetime.datetime | None = None  # None means it is finished (succeeded/failed).
+    purpose: str | None = None  # None is a catch-all marker for upgrades/rollbacks.
     retries: int = 0
     success: bool = False
     failure: bool = False
-    message: Optional[str] = None
+    message: str | None = None
     subrefs: Collection[ids.HandlerId] = ()  # ids of actual sub-handlers of all levels deep.
-    _origin: Optional[progress.ProgressRecord] = None  # to check later if it has actually changed.
+    _origin: progress.ProgressRecord | None = None  # to check later if it has actually changed.
 
     @classmethod
-    def from_scratch(cls, *, purpose: Optional[str] = None) -> "HandlerState":
+    def from_scratch(cls, *, purpose: str | None = None) -> "HandlerState":
         return cls(
             active=True,
             started=datetime.datetime.now(datetime.timezone.utc),
@@ -98,7 +98,7 @@ class HandlerState(execution.HandlerState):
 
     def with_purpose(
             self,
-            purpose: Optional[str],
+            purpose: str | None,
     ) -> "HandlerState":
         return dataclasses.replace(self, purpose=purpose)
 
@@ -146,7 +146,7 @@ class State(execution.State):
             self,
             __src: Mapping[ids.HandlerId, HandlerState],
             *,
-            purpose: Optional[str] = None,
+            purpose: str | None = None,
     ):
         super().__init__()
         self._states = dict(__src)
@@ -174,7 +174,7 @@ class State(execution.State):
 
     def with_purpose(
             self,
-            purpose: Optional[str],
+            purpose: str | None,
             handlers: Iterable[execution.Handler] = (),  # to be re-purposed
     ) -> "State":
         handler_states: dict[ids.HandlerId, HandlerState] = dict(self)
@@ -302,7 +302,7 @@ class State(execution.State):
         )
 
     @property
-    def delay(self) -> Optional[float]:
+    def delay(self) -> float | None:
         delays = self.delays  # calculate only once, to save bit of CPU
         return min(delays) if delays else None
 
@@ -364,7 +364,7 @@ def _format_iso8601(val: None) -> None: ...
 def _format_iso8601(val: datetime.datetime) -> str: ...
 
 
-def _format_iso8601(val: Optional[datetime.datetime]) -> Optional[str]:
+def _format_iso8601(val: datetime.datetime | None) -> str | None:
     return None if val is None else val.isoformat(timespec='microseconds')
 
 
@@ -376,5 +376,5 @@ def _parse_iso8601(val: None) -> None: ...
 def _parse_iso8601(val: str) -> datetime.datetime: ...
 
 
-def _parse_iso8601(val: Optional[str]) -> Optional[datetime.datetime]:
+def _parse_iso8601(val: str | None) -> datetime.datetime | None:
     return None if val is None else iso8601.parse_date(val)  # always TZ-aware

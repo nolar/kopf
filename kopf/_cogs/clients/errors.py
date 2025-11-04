@@ -28,7 +28,7 @@ as the reasons of failures. However, the errors are exposed to other packages.
 import collections.abc
 import json
 from collections.abc import Collection
-from typing import Literal, Optional, TypedDict
+from typing import Literal, TypedDict
 
 import aiohttp
 
@@ -63,7 +63,7 @@ class APIError(Exception):
 
     def __init__(
             self,
-            payload: Optional[RawStatus],
+            payload: RawStatus | None,
             *,
             status: int,
     ) -> None:
@@ -77,15 +77,15 @@ class APIError(Exception):
         return self._status
 
     @property
-    def code(self) -> Optional[int]:
+    def code(self) -> int | None:
         return self._payload.get('code') if self._payload else None
 
     @property
-    def message(self) -> Optional[str]:
+    def message(self) -> str | None:
         return self._payload.get('message') if self._payload else None
 
     @property
-    def details(self) -> Optional[RawStatusDetails]:
+    def details(self) -> RawStatusDetails | None:
         return self._payload.get('details') if self._payload else None
 
 
@@ -135,7 +135,7 @@ async def check_response(
     if response.status >= 400:
 
         # Read the response's body before it is closed by raise_for_status().
-        payload: Optional[RawStatus]
+        payload: RawStatus | None
         try:
             payload = await response.json()
         except (json.JSONDecodeError, aiohttp.ContentTypeError, aiohttp.ClientConnectionError):

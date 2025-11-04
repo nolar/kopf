@@ -12,7 +12,7 @@ import copy
 import enum
 import logging
 from collections.abc import MutableMapping
-from typing import TYPE_CHECKING, Any, Optional, TextIO
+from typing import TYPE_CHECKING, Any, TextIO
 
 # Luckily, we do not mock these ones in tests, so we can import them into our namespace.
 try:
@@ -53,7 +53,7 @@ class ObjectJsonFormatter(ObjectFormatter, _pjl_JsonFormatter):
     def __init__(
             self,
             *args: Any,
-            refkey: Optional[str] = None,
+            refkey: str | None = None,
             **kwargs: Any,
     ) -> None:
         # Avoid type checking, as the args are not in the parent consructor.
@@ -190,12 +190,12 @@ else:
 
 
 def configure(
-        debug: Optional[bool] = None,
-        verbose: Optional[bool] = None,
-        quiet: Optional[bool] = None,
+        debug: bool | None = None,
+        verbose: bool | None = None,
+        quiet: bool | None = None,
         log_format: LogFormat = LogFormat.FULL,
-        log_prefix: Optional[bool] = False,
-        log_refkey: Optional[str] = None,
+        log_prefix: bool | None = False,
+        log_refkey: str | None = None,
 ) -> None:
     log_level = 'DEBUG' if debug or verbose else 'WARNING' if quiet else 'INFO'
     formatter = make_formatter(log_format=log_format, log_prefix=log_prefix, log_refkey=log_refkey)
@@ -217,8 +217,8 @@ def configure(
 
 def make_formatter(
         log_format: LogFormat = LogFormat.FULL,
-        log_prefix: Optional[bool] = False,
-        log_refkey: Optional[str] = None,
+        log_prefix: bool | None = False,
+        log_refkey: str | None = None,
 ) -> ObjectFormatter:
     log_prefix = log_prefix if log_prefix is not None else bool(log_format is not LogFormat.JSON)
     if log_format is LogFormat.JSON:

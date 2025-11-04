@@ -1,7 +1,6 @@
 import dataclasses
 import warnings
 from collections.abc import Collection
-from typing import Optional, cast
 
 from kopf._cogs.structs import dicts, diffs, references
 from kopf._core.actions import execution
@@ -11,7 +10,7 @@ from kopf._core.intents import callbacks, causes, filters
 @dataclasses.dataclass(frozen=True)
 class ActivityHandler(execution.Handler):
     fn: callbacks.ActivityFn  # typing clarification
-    activity: Optional[causes.Activity]
+    activity: causes.Activity | None
     _fallback: bool = False  # non-public!
 
     def __str__(self) -> str:
@@ -20,12 +19,12 @@ class ActivityHandler(execution.Handler):
 
 @dataclasses.dataclass(frozen=True)
 class ResourceHandler(execution.Handler):
-    selector: Optional[references.Selector]  # None is used only in sub-handlers
-    labels: Optional[filters.MetaFilter]
-    annotations: Optional[filters.MetaFilter]
-    when: Optional[callbacks.WhenFilterFn]
-    field: Optional[dicts.FieldPath]
-    value: Optional[filters.ValueFilter]
+    selector: references.Selector | None  # None is used only in sub-handlers
+    labels: filters.MetaFilter | None
+    annotations: filters.MetaFilter | None
+    when: callbacks.WhenFilterFn | None
+    field: dicts.FieldPath | None
+    value: filters.ValueFilter | None
 
     def adjust_cause(self, cause: execution.CauseT) -> execution.CauseT:
         if self.field is not None and isinstance(cause, causes.ChangingCause):
@@ -41,17 +40,17 @@ class ResourceHandler(execution.Handler):
 class WebhookHandler(ResourceHandler):
     fn: callbacks.WebhookFn  # typing clarification
     reason: causes.WebhookType
-    operations: Optional[Collection[str]]
-    subresource: Optional[str]
-    persistent: Optional[bool]
-    side_effects: Optional[bool]
-    ignore_failures: Optional[bool]
+    operations: Collection[str] | None
+    subresource: str | None
+    persistent: bool | None
+    side_effects: bool | None
+    ignore_failures: bool | None
 
     def __str__(self) -> str:
         return f"Webhook {self.id!r}"
 
     @property
-    def operation(self) -> Optional[str]:  # deprecated
+    def operation(self) -> str | None:  # deprecated
         warnings.warn("handler.operation is deprecated, use handler.operations", DeprecationWarning)
         if not self.operations:
            return None
@@ -79,27 +78,27 @@ class WatchingHandler(ResourceHandler):
 @dataclasses.dataclass(frozen=True)
 class ChangingHandler(ResourceHandler):
     fn: callbacks.ChangingFn  # typing clarification
-    reason: Optional[causes.Reason]
-    initial: Optional[bool]
-    deleted: Optional[bool]  # used for mixed-in (initial==True) @on.resume handlers only.
-    requires_finalizer: Optional[bool]
-    field_needs_change: Optional[bool]  # to identify on-field/on-update with support for old=/new=.
-    old: Optional[filters.ValueFilter]
-    new: Optional[filters.ValueFilter]
+    reason: causes.Reason | None
+    initial: bool | None
+    deleted: bool | None  # used for mixed-in (initial==True) @on.resume handlers only.
+    requires_finalizer: bool | None
+    field_needs_change: bool | None  # to identify on-field/on-update with support for old=/new=.
+    old: filters.ValueFilter | None
+    new: filters.ValueFilter | None
 
 
 @dataclasses.dataclass(frozen=True)
 class SpawningHandler(ResourceHandler):
-    requires_finalizer: Optional[bool]
-    initial_delay: Optional[float]
+    requires_finalizer: bool | None
+    initial_delay: float | None
 
 
 @dataclasses.dataclass(frozen=True)
 class DaemonHandler(SpawningHandler):
     fn: callbacks.DaemonFn  # typing clarification
-    cancellation_backoff: Optional[float]  # how long to wait before actual cancellation.
-    cancellation_timeout: Optional[float]  # how long to wait before giving up on cancellation.
-    cancellation_polling: Optional[float]  # how often to check for cancellation status.
+    cancellation_backoff: float | None  # how long to wait before actual cancellation.
+    cancellation_timeout: float | None  # how long to wait before giving up on cancellation.
+    cancellation_polling: float | None  # how often to check for cancellation status.
 
     def __str__(self) -> str:
         return f"Daemon {self.id!r}"
@@ -108,9 +107,9 @@ class DaemonHandler(SpawningHandler):
 @dataclasses.dataclass(frozen=True)
 class TimerHandler(SpawningHandler):
     fn: callbacks.TimerFn  # typing clarification
-    sharp: Optional[bool]
-    idle: Optional[float]
-    interval: Optional[float]
+    sharp: bool | None
+    idle: float | None
+    interval: float | None
 
     def __str__(self) -> str:
         return f"Timer {self.id!r}"

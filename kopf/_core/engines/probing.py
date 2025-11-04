@@ -3,7 +3,6 @@ import datetime
 import logging
 import urllib.parse
 from collections.abc import MutableMapping
-from typing import Optional
 
 import aiohttp.web
 
@@ -26,7 +25,7 @@ async def health_reporter(
         indices: ephemera.Indices,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
-        ready_flag: Optional[asyncio.Event] = None,  # used for testing
+        ready_flag: asyncio.Event | None = None,  # used for testing
 ) -> None:
     """
     Simple HTTP(S)/TCP server to report the operator's health to K8s probes.
@@ -36,7 +35,7 @@ async def health_reporter(
     Kubernetes will assume the pod is not alive anymore, and will restart it.
     """
     probing_container: MutableMapping[ids.HandlerId, execution.Result] = {}
-    probing_timestamp: Optional[datetime.datetime] = None
+    probing_timestamp: datetime.datetime | None = None
     probing_max_age = datetime.timedelta(seconds=10.0)
     probing_lock = asyncio.Lock()
 

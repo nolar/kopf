@@ -1,4 +1,4 @@
-from typing import Optional, cast
+from typing import cast
 
 from kopf._cogs.clients import api
 from kopf._cogs.configs import configuration
@@ -11,10 +11,10 @@ async def create_obj(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         namespace: references.Namespace = None,
-        name: Optional[str] = None,
-        body: Optional[bodies.RawBody] = None,
+        name: str | None = None,
+        body: bodies.RawBody | None = None,
         logger: typedefs.Logger,
-) -> Optional[bodies.RawBody]:
+) -> bodies.RawBody | None:
     """
     Create a resource.
     """

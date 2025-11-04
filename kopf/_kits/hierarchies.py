@@ -5,15 +5,15 @@ import collections.abc
 import enum
 import warnings
 from collections.abc import Iterable, Iterator, Mapping, MutableMapping
-from typing import Any, Optional, Union, cast
+from typing import Any, cast
 
 from kopf._cogs.helpers import thirdparty
 from kopf._cogs.structs import bodies, dicts
 from kopf._core.actions import execution
 from kopf._core.intents import causes
 
-K8sObject = Union[MutableMapping[Any, Any], thirdparty.PykubeObject, thirdparty.KubernetesModel]
-K8sObjects = Union[K8sObject, Iterable[K8sObject]]
+K8sObject = MutableMapping[Any, Any] | thirdparty.PykubeObject | thirdparty.KubernetesModel
+K8sObjects = K8sObject | Iterable[K8sObject]
 
 
 class _UNSET(enum.Enum):
@@ -22,10 +22,10 @@ class _UNSET(enum.Enum):
 
 def append_owner_reference(
         objs: K8sObjects,
-        owner: Optional[bodies.Body] = None,
+        owner: bodies.Body | None = None,
         *,
-        controller: Optional[bool] = True,
-        block_owner_deletion: Optional[bool] = True,
+        controller: bool | None = True,
+        block_owner_deletion: bool | None = True,
 ) -> None:
     """
     Append an owner reference to the resource(s), if it is not yet there.
@@ -64,7 +64,7 @@ def append_owner_reference(
 
 def remove_owner_reference(
         objs: K8sObjects,
-        owner: Optional[bodies.Body] = None,
+        owner: bodies.Body | None = None,
 ) -> None:
     """
     Remove an owner reference to the resource(s), if it is there.
@@ -94,11 +94,11 @@ def remove_owner_reference(
 
 def label(
         objs: K8sObjects,
-        labels: Union[Mapping[str, Union[None, str]], _UNSET] = _UNSET.token,
+        labels: Mapping[str, str | None] | _UNSET = _UNSET.token,
         *,
         forced: bool = False,
-        nested: Optional[Union[str, Iterable[dicts.FieldSpec]]] = None,
-        force: Optional[bool] = None,  # deprecated
+        nested: str | Iterable[dicts.FieldSpec] | None = None,
+        force: bool | None = None,  # deprecated
 ) -> None:
     """
     Apply the labels to the object(s).
@@ -138,7 +138,7 @@ def label(
 
 def harmonize_naming(
         objs: K8sObjects,
-        name: Union[None, str, _UNSET] = _UNSET.token,
+        name: str | None | _UNSET = _UNSET.token,
         *,
         forced: bool = False,
         strict: bool = False,
@@ -200,7 +200,7 @@ def harmonize_naming(
 
 def adjust_namespace(
         objs: K8sObjects,
-        namespace: Union[None, str, _UNSET] = _UNSET.token,
+        namespace: str | None | _UNSET = _UNSET.token,
         *,
         forced: bool = False,
 ) -> None:
@@ -237,11 +237,11 @@ def adjust_namespace(
 
 def adopt(
         objs: K8sObjects,
-        owner: Optional[bodies.Body] = None,
+        owner: bodies.Body | None = None,
         *,
         forced: bool = False,
         strict: bool = False,
-        nested: Optional[Union[str, Iterable[dicts.FieldSpec]]] = None,
+        nested: str | Iterable[dicts.FieldSpec] | None = None,
 ) -> None:
     """
     The children should be in the same namespace, named after their parent, and owned by it.
@@ -257,7 +257,7 @@ def adopt(
 
 
 def _guess_owner(
-        owner: Optional[bodies.Body],
+        owner: bodies.Body | None,
 ) -> bodies.Body:
     if owner is not None:
         return owner

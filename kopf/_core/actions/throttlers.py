@@ -3,7 +3,6 @@ import contextlib
 import dataclasses
 import time
 from collections.abc import AsyncGenerator, Iterable, Iterator
-from typing import Optional, Union
 
 from kopf._cogs.aiokits import aiotime
 from kopf._cogs.helpers import typedefs
@@ -12,9 +11,9 @@ from kopf._cogs.helpers import typedefs
 @dataclasses.dataclass(frozen=False)
 class Throttler:
     """ A state of throttling for one specific purpose (there can be a few). """
-    source_of_delays: Optional[Iterator[float]] = None
-    last_used_delay: Optional[float] = None
-    active_until: Optional[float] = None  # internal clock
+    source_of_delays: Iterator[float] | None = None
+    last_used_delay: float | None = None
+    active_until: float | None = None  # internal clock
 
 
 @contextlib.asynccontextmanager
@@ -22,9 +21,9 @@ async def throttled(
         *,
         throttler: Throttler,
         delays: Iterable[float],
-        wakeup: Optional[asyncio.Event] = None,
+        wakeup: asyncio.Event | None = None,
         logger: typedefs.Logger,
-        errors: Union[type[BaseException], tuple[type[BaseException], ...]] = Exception,
+        errors: type[BaseException] | tuple[type[BaseException], ...] = Exception,
 ) -> AsyncGenerator[bool, None]:
     """
     A helper to throttle any arbitrary operation.

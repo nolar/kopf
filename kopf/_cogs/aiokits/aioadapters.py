@@ -1,15 +1,15 @@
 import asyncio
 import concurrent.futures
 import threading
-from typing import Any, Optional, Union
+from typing import Any
 
 from kopf._cogs.aiokits import aiotasks
 
-Flag = Union[aiotasks.Future, asyncio.Event, concurrent.futures.Future[Any], threading.Event]
+Flag = aiotasks.Future | asyncio.Event | concurrent.futures.Future[Any] | threading.Event
 
 
 async def wait_flag(
-        flag: Optional[Flag],
+        flag: Flag | None,
 ) -> Any:
     """
     Wait for a flag to be raised.
@@ -34,7 +34,7 @@ async def wait_flag(
 
 
 async def raise_flag(
-        flag: Optional[Flag],
+        flag: Flag | None,
 ) -> None:
     """
     Raise a flag.
@@ -57,8 +57,8 @@ async def raise_flag(
 
 
 def check_flag(
-        flag: Optional[Flag],
-) -> Optional[bool]:
+        flag: Flag | None,
+) -> bool | None:
     """
     Check if a flag is raised.
     """

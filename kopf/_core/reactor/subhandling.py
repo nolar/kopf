@@ -2,7 +2,6 @@ import collections.abc
 import contextlib
 from collections.abc import AsyncIterator, Iterable
 from contextvars import ContextVar
-from typing import Optional
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import ids
@@ -32,11 +31,11 @@ async def subhandling_context() -> AsyncIterator[None]:
 
 async def execute(
         *,
-        fns: Optional[Iterable[callbacks.ChangingFn]] = None,
-        handlers: Optional[Iterable[handlers_.ChangingHandler]] = None,
-        registry: Optional[registries.ChangingRegistry] = None,
-        lifecycle: Optional[execution.LifeCycleFn] = None,
-        cause: Optional[execution.Cause] = None,
+        fns: Iterable[callbacks.ChangingFn] | None = None,
+        handlers: Iterable[handlers_.ChangingHandler] | None = None,
+        registry: registries.ChangingRegistry | None = None,
+        lifecycle: execution.LifeCycleFn | None = None,
+        cause: execution.Cause | None = None,
 ) -> None:
     """
     Execute the handlers in an isolated lifecycle.

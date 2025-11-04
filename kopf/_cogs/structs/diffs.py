@@ -4,7 +4,7 @@ All the functions to calculate the diffs of the dicts.
 import collections.abc
 import enum
 from collections.abc import Iterable, Iterator, Sequence
-from typing import Any, NamedTuple, Union, overload
+from typing import Any, NamedTuple, overload
 
 from kopf._cogs.structs import dicts
 
@@ -92,7 +92,7 @@ class Diff(Sequence[DiffItem]):
     @overload
     def __getitem__(self, s: slice) -> Sequence[DiffItem]: ...
 
-    def __getitem__(self, item: Union[int, slice]) -> Union[DiffItem, Sequence[DiffItem]]:
+    def __getitem__(self, item: int | slice) -> DiffItem | Sequence[DiffItem]:
         return self._items[item]
 
     def __eq__(self, other: object) -> bool:

@@ -1,5 +1,4 @@
 import asyncio
-from typing import Optional
 
 import pytest
 
@@ -10,7 +9,7 @@ from kopf._core.engines.peering import Identity
 from kopf._core.reactor.orchestration import Ensemble, EnsembleKey, adjust_tasks
 
 
-async def processor(*, raw_event: bodies.RawEvent, stream_pressure: Optional[asyncio.Event]) -> None:
+async def processor(*, raw_event: bodies.RawEvent, stream_pressure: asyncio.Event | None) -> None:
     pass
 
 

@@ -9,7 +9,7 @@ a dict-like behaviour, and remembers the changes in order of their execution,
 and then generates the JSON patch (RFC 6902).
 """
 import collections.abc
-from typing import Any, Literal, Optional, TypedDict
+from typing import Any, Literal, TypedDict
 
 from kopf._cogs.structs import bodies, dicts
 
@@ -27,15 +27,15 @@ def _escaped_path(keys: list[str]) -> str:
 class JSONPatchItem(TypedDict, total=False):
     op: JSONPatchOp
     path: str
-    value: Optional[Any]
+    value: Any | None
 
 
 JSONPatch = list[JSONPatchItem]
 
 
 class MetaPatch(dicts.MutableMappingView[str, Any]):
-    _labels: dicts.MutableMappingView[str, Optional[str]]
-    _annotations: dicts.MutableMappingView[str, Optional[str]]
+    _labels: dicts.MutableMappingView[str, str | None]
+    _annotations: dicts.MutableMappingView[str, str | None]
 
     def __init__(self, __src: "Patch") -> None:
         super().__init__(__src, 'metadata')
@@ -43,11 +43,11 @@ class MetaPatch(dicts.MutableMappingView[str, Any]):
         self._annotations = dicts.MutableMappingView(self, 'annotations')
 
     @property
-    def labels(self) -> dicts.MutableMappingView[str, Optional[str]]:
+    def labels(self) -> dicts.MutableMappingView[str, str | None]:
         return self._labels
 
     @property
-    def annotations(self) -> dicts.MutableMappingView[str, Optional[str]]:
+    def annotations(self) -> dicts.MutableMappingView[str, str | None]:
         return self._annotations
 
 
@@ -66,8 +66,8 @@ class Patch(dict[str, Any]):
 
     def __init__(
         self,
-        __src: Optional[collections.abc.MutableMapping[str, Any]] = None,
-        body: Optional[bodies.RawBody] = None
+        __src: collections.abc.MutableMapping[str, Any] | None = None,
+        body: bodies.RawBody | None = None
     ) -> None:
         super().__init__(__src or {})
         self._meta = MetaPatch(self)

@@ -3,7 +3,7 @@ import concurrent.futures
 import contextlib
 import threading
 import types
-from typing import TYPE_CHECKING, Any, Literal, Optional, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import click.testing
 
@@ -60,9 +60,9 @@ class KopfRunner(_AbstractKopfRunner):
             self,
             *args: Any,
             reraise: bool = True,
-            timeout: Optional[float] = None,
-            registry: Optional[registries.OperatorRegistry] = None,
-            settings: Optional[configuration.OperatorSettings] = None,
+            timeout: float | None = None,
+            registry: registries.OperatorRegistry | None = None,
+            settings: configuration.OperatorSettings | None = None,
             **kwargs: Any,
     ):
         super().__init__()
@@ -84,9 +84,9 @@ class KopfRunner(_AbstractKopfRunner):
 
     def __exit__(
             self,
-            exc_type: Optional[type[BaseException]],
-            exc_val: Optional[BaseException],
-            exc_tb: Optional[types.TracebackType],
+            exc_type: type[BaseException] | None,
+            exc_val: BaseException | None,
+            exc_tb: types.TracebackType | None,
     ) -> Literal[False]:
 
         # When the `with` block ends, shut down the parallel thread & loop

@@ -5,7 +5,6 @@ import signal
 import threading
 import warnings
 from collections.abc import Collection, Coroutine, MutableSequence, Sequence
-from typing import Optional
 
 from kopf._cogs.aiokits import aioadapters, aiobindings, aiotasks, aiotoggles, aiovalues
 from kopf._cogs.clients import auth
@@ -22,26 +21,26 @@ logger = logging.getLogger(__name__)
 
 def run(
         *,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
-        lifecycle: Optional[execution.LifeCycleFn] = None,
-        indexers: Optional[indexing.OperatorIndexers] = None,
-        registry: Optional[registries.OperatorRegistry] = None,
-        settings: Optional[configuration.OperatorSettings] = None,
-        memories: Optional[inventory.ResourceMemories] = None,
-        insights: Optional[references.Insights] = None,
-        identity: Optional[peering.Identity] = None,
-        standalone: Optional[bool] = None,
-        priority: Optional[int] = None,
-        peering_name: Optional[str] = None,
-        liveness_endpoint: Optional[str] = None,
+        loop: asyncio.AbstractEventLoop | None = None,
+        lifecycle: execution.LifeCycleFn | None = None,
+        indexers: indexing.OperatorIndexers | None = None,
+        registry: registries.OperatorRegistry | None = None,
+        settings: configuration.OperatorSettings | None = None,
+        memories: inventory.ResourceMemories | None = None,
+        insights: references.Insights | None = None,
+        identity: peering.Identity | None = None,
+        standalone: bool | None = None,
+        priority: int | None = None,
+        peering_name: str | None = None,
+        liveness_endpoint: str | None = None,
         clusterwide: bool = False,
         namespaces: Collection[references.NamespacePattern] = (),
-        namespace: Optional[references.NamespacePattern] = None,  # deprecated
-        stop_flag: Optional[aioadapters.Flag] = None,
-        ready_flag: Optional[aioadapters.Flag] = None,
-        vault: Optional[credentials.Vault] = None,
-        memo: Optional[object] = None,
-        _command: Optional[Coroutine[None, None, None]] = None,
+        namespace: references.NamespacePattern | None = None,  # deprecated
+        stop_flag: aioadapters.Flag | None = None,
+        ready_flag: aioadapters.Flag | None = None,
+        vault: credentials.Vault | None = None,
+        memo: object | None = None,
+        _command: Coroutine[None, None, None] | None = None,
 ) -> None:
     """
     Run the whole operator synchronously.
@@ -86,25 +85,25 @@ def run(
 
 async def operator(
         *,
-        lifecycle: Optional[execution.LifeCycleFn] = None,
-        indexers: Optional[indexing.OperatorIndexers] = None,
-        registry: Optional[registries.OperatorRegistry] = None,
-        settings: Optional[configuration.OperatorSettings] = None,
-        memories: Optional[inventory.ResourceMemories] = None,
-        insights: Optional[references.Insights] = None,
-        identity: Optional[peering.Identity] = None,
-        standalone: Optional[bool] = None,
-        priority: Optional[int] = None,
-        peering_name: Optional[str] = None,
-        liveness_endpoint: Optional[str] = None,
+        lifecycle: execution.LifeCycleFn | None = None,
+        indexers: indexing.OperatorIndexers | None = None,
+        registry: registries.OperatorRegistry | None = None,
+        settings: configuration.OperatorSettings | None = None,
+        memories: inventory.ResourceMemories | None = None,
+        insights: references.Insights | None = None,
+        identity: peering.Identity | None = None,
+        standalone: bool | None = None,
+        priority: int | None = None,
+        peering_name: str | None = None,
+        liveness_endpoint: str | None = None,
         clusterwide: bool = False,
         namespaces: Collection[references.NamespacePattern] = (),
-        namespace: Optional[references.NamespacePattern] = None,  # deprecated
-        stop_flag: Optional[aioadapters.Flag] = None,
-        ready_flag: Optional[aioadapters.Flag] = None,
-        vault: Optional[credentials.Vault] = None,
-        memo: Optional[object] = None,
-        _command: Optional[Coroutine[None, None, None]] = None,
+        namespace: references.NamespacePattern | None = None,  # deprecated
+        stop_flag: aioadapters.Flag | None = None,
+        ready_flag: aioadapters.Flag | None = None,
+        vault: credentials.Vault | None = None,
+        memo: object | None = None,
+        _command: Coroutine[None, None, None] | None = None,
 ) -> None:
     """
     Run the whole operator asynchronously.
@@ -141,25 +140,25 @@ async def operator(
 
 async def spawn_tasks(
         *,
-        lifecycle: Optional[execution.LifeCycleFn] = None,
-        indexers: Optional[indexing.OperatorIndexers] = None,
-        registry: Optional[registries.OperatorRegistry] = None,
-        settings: Optional[configuration.OperatorSettings] = None,
-        memories: Optional[inventory.ResourceMemories] = None,
-        insights: Optional[references.Insights] = None,
-        identity: Optional[peering.Identity] = None,
-        standalone: Optional[bool] = None,
-        priority: Optional[int] = None,
-        peering_name: Optional[str] = None,
-        liveness_endpoint: Optional[str] = None,
+        lifecycle: execution.LifeCycleFn | None = None,
+        indexers: indexing.OperatorIndexers | None = None,
+        registry: registries.OperatorRegistry | None = None,
+        settings: configuration.OperatorSettings | None = None,
+        memories: inventory.ResourceMemories | None = None,
+        insights: references.Insights | None = None,
+        identity: peering.Identity | None = None,
+        standalone: bool | None = None,
+        priority: int | None = None,
+        peering_name: str | None = None,
+        liveness_endpoint: str | None = None,
         clusterwide: bool = False,
         namespaces: Collection[references.NamespacePattern] = (),
-        namespace: Optional[references.NamespacePattern] = None,  # deprecated
-        stop_flag: Optional[aioadapters.Flag] = None,
-        ready_flag: Optional[aioadapters.Flag] = None,
-        vault: Optional[credentials.Vault] = None,
-        memo: Optional[object] = None,
-        _command: Optional[Coroutine[None, None, None]] = None,
+        namespace: references.NamespacePattern | None = None,  # deprecated
+        stop_flag: aioadapters.Flag | None = None,
+        ready_flag: aioadapters.Flag | None = None,
+        vault: credentials.Vault | None = None,
+        memo: object | None = None,
+        _command: Coroutine[None, None, None] | None = None,
 ) -> Collection[aiotasks.Task]:
     """
     Spawn all the tasks needed to run the operator.
@@ -422,7 +421,7 @@ async def run_tasks(
 
 async def _stop_flag_checker(
         signal_flag: aiotasks.Future,
-        stop_flag: Optional[aioadapters.Flag],
+        stop_flag: aioadapters.Flag | None,
 ) -> None:
     """
     A top-level task for external stopping by setting a stop-flag. Once set,
@@ -455,7 +454,7 @@ async def _stop_flag_checker(
 async def _ultimate_termination(
         *,
         settings: configuration.OperatorSettings,
-        stop_flag: Optional[aioadapters.Flag],
+        stop_flag: aioadapters.Flag | None,
 ) -> None:
     """
     Ensure that SIGKILL is sent regardless of the operator's stopping routines.
@@ -479,7 +478,7 @@ async def _ultimate_termination(
 
 async def _startup_cleanup_activities(
         root_tasks: Sequence[aiotasks.Task],  # mutated externally!
-        ready_flag: Optional[aioadapters.Flag],
+        ready_flag: aioadapters.Flag | None,
         started_flag: asyncio.Event,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,

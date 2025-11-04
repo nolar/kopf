@@ -22,7 +22,7 @@ could execute on the yet-existing object (and its children, if created).
 import dataclasses
 import enum
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, diffs, ephemera, finalizers, \
@@ -146,17 +146,17 @@ class ResourceCause(BaseCause):
 @dataclasses.dataclass
 class WebhookCause(ResourceCause):
     dryrun: bool
-    reason: Optional[WebhookType]  # None means "all" or expects the webhook id
-    webhook: Optional[ids.HandlerId]  # None means "all"
+    reason: WebhookType | None  # None means "all" or expects the webhook id
+    webhook: ids.HandlerId | None  # None means "all"
     headers: Mapping[str, str]
     sslpeer: Mapping[str, Any]
     userinfo: reviews.UserInfo
     warnings: list[str]  # mutable!
-    operation: Optional[reviews.Operation]  # None if not provided for some reason
-    subresource: Optional[str]  # e.g. "status", "scale"; None for the main resource body
-    old: Optional[bodies.Body] = None
-    new: Optional[bodies.Body] = None
-    diff: Optional[diffs.Diff] = None
+    operation: reviews.Operation | None  # None if not provided for some reason
+    subresource: str | None  # e.g. "status", "scale"; None for the main resource body
+    old: bodies.Body | None = None
+    new: bodies.Body | None = None
+    diff: diffs.Diff | None = None
 
     @property
     def _kwargs(self) -> Mapping[str, Any]:
@@ -213,8 +213,8 @@ class ChangingCause(ResourceCause):
     initial: bool
     reason: Reason
     diff: diffs.Diff = diffs.EMPTY
-    old: Optional[bodies.BodyEssence] = None
-    new: Optional[bodies.BodyEssence] = None
+    old: bodies.BodyEssence | None = None
+    new: bodies.BodyEssence | None = None
 
     @property
     def _kwargs(self) -> Mapping[str, Any]:
@@ -290,9 +290,9 @@ def detect_changing_cause(
         finalizer: str,
         raw_event: bodies.RawEvent,
         body: bodies.Body,
-        old: Optional[bodies.BodyEssence] = None,
-        new: Optional[bodies.BodyEssence] = None,
-        diff: Optional[diffs.Diff] = None,
+        old: bodies.BodyEssence | None = None,
+        new: bodies.BodyEssence | None = None,
+        diff: diffs.Diff | None = None,
         initial: bool = False,
         **kwargs: Any,
 ) -> ChangingCause:

@@ -10,7 +10,7 @@ This modules defines them in a most suitable and reusable way. Plus it adds
 some common plain type definitions used across the codebase (for convenience).
 """
 import logging
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     LoggerAdapter = logging.LoggerAdapter[Any]
@@ -19,4 +19,4 @@ else:
 
 # As publicly exposed: we only promise that it is based on one of the built-in loggable classes.
 # Mind that these classes have multi-versioned stubs, so we avoid redefining the protocol ourselves.
-Logger = Union[logging.Logger, LoggerAdapter]
+Logger = logging.Logger | LoggerAdapter

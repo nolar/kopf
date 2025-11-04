@@ -29,9 +29,7 @@ import dataclasses
 import datetime
 import random
 from collections.abc import AsyncIterable, AsyncIterator, Mapping
-from typing import Callable, NewType, Optional, TypeVar, cast
-
-from kopf._cogs.aiokits import aiotoggles
+from typing import Callable, NewType, TypeVar, cast
 
 
 class LoginError(Exception):
@@ -48,20 +46,20 @@ class ConnectionInfo:
     A single endpoint with specific credentials and connection flags to use.
     """
     server: str  # e.g. "https://localhost:443"
-    ca_path: Optional[str] = None
-    ca_data: Optional[bytes] = None
-    insecure: Optional[bool] = None
-    username: Optional[str] = None
-    password: Optional[str] = None
-    scheme: Optional[str] = None  # RFC-7235/5.1: e.g. Bearer, Basic, Digest, etc.
-    token: Optional[str] = None
-    certificate_path: Optional[str] = None
-    certificate_data: Optional[bytes] = None
-    private_key_path: Optional[str] = None
-    private_key_data: Optional[bytes] = None
-    default_namespace: Optional[str] = None  # used for cluster objects' k8s-events.
+    ca_path: str | None = None
+    ca_data: bytes | None = None
+    insecure: bool | None = None
+    username: str | None = None
+    password: str | None = None
+    scheme: str | None = None  # RFC-7235/5.1: e.g. Bearer, Basic, Digest, etc.
+    token: str | None = None
+    certificate_path: str | None = None
+    certificate_data: bytes | None = None
+    private_key_path: str | None = None
+    private_key_data: bytes | None = None
+    default_namespace: str | None = None  # used for cluster objects' k8s-events.
     priority: int = 0
-    expiration: Optional[datetime.datetime] = None  # TZ-aware or TZ-naive (implies UTC)
+    expiration: datetime.datetime | None = None  # TZ-aware or TZ-naive (implies UTC)
 
 
 _T = TypeVar('_T', bound=object)
@@ -81,7 +79,7 @@ class VaultItem:
     The caches are populated by `Vault.extended` on-demand.
     """
     info: ConnectionInfo
-    caches: Optional[dict[str, object]] = None
+    caches: dict[str, object] | None = None
 
 
 class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
@@ -112,12 +110,12 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
 
     def __init__(
             self,
-            __src: Optional[Mapping[str, object]] = None,
+            __src: Mapping[str, object] | None = None,
     ) -> None:
         super().__init__()
         self._current = {}
         self._invalid = collections.defaultdict(list)
-        self._next_expiration: Optional[datetime.datetime] = None
+        self._next_expiration: datetime.datetime | None = None
 
         if __src is not None:
             self._update_converted(__src)
@@ -142,7 +140,7 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
     async def extended(
             self,
             factory: Callable[[ConnectionInfo], _T],
-            purpose: Optional[str] = None,
+            purpose: str | None = None,
     ) -> AsyncIterator[tuple[VaultKey, ConnectionInfo, _T]]:
         """
         Iterate the connection info items with their cached object.
@@ -272,7 +270,7 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
             key: VaultKey,
             info: ConnectionInfo,
             *,
-            exc: Optional[Exception] = None,
+            exc: Exception | None = None,
     ) -> None:
         """
         Discard the specified credentials, and re-authenticate as needed.

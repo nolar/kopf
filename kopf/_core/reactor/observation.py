@@ -24,7 +24,6 @@ import asyncio
 import functools
 import logging
 from collections.abc import Collection, Iterable
-from typing import Optional
 
 from kopf._cogs.aiokits import aiotoggles
 from kopf._cogs.clients import errors, fetching, scanning
@@ -148,9 +147,9 @@ async def process_discovered_namespace_event(
         namespaces: Collection[references.NamespacePattern],
         insights: references.Insights,
         # Must be accepted whether used or not -- as passed by watcher()/worker().
-        stream_pressure: Optional[asyncio.Event] = None,  # None for tests
-        resource_indexed: Optional[aiotoggles.Toggle] = None,  # None for tests & observation
-        operator_indexed: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
+        stream_pressure: asyncio.Event | None = None,  # None for tests
+        resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
+        operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
 ) -> None:
     if raw_event['type'] is None:
         return
@@ -167,9 +166,9 @@ async def process_discovered_resource_event(
         registry: registries.OperatorRegistry,
         insights: references.Insights,
         # Must be accepted whether used or not -- as passed by watcher()/worker().
-        stream_pressure: Optional[asyncio.Event] = None,  # None for tests
-        resource_indexed: Optional[aiotoggles.Toggle] = None,  # None for tests & observation
-        operator_indexed: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
+        stream_pressure: asyncio.Event | None = None,  # None for tests
+        resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
+        operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
 ) -> None:
     # Ignore the initial listing, as all custom resources were already noticed by API listing.
     # This prevents numerous unneccessary API requests at the the start of the operator.
@@ -208,7 +207,7 @@ def revise_namespaces(
 
 def revise_resources(
         *,
-        group: Optional[str],
+        group: str | None,
         insights: references.Insights,
         registry: registries.OperatorRegistry,
         resources: Collection[references.Resource],
@@ -245,7 +244,7 @@ def _update_resources(
         resources: set[references.Resource],
         selectors: Iterable[references.Selector],
         *,
-        group: Optional[str],
+        group: str | None,
         source: Collection[references.Resource],
 ) -> None:
     """

@@ -17,7 +17,7 @@ import functools
 from collections.abc import Collection, Container, Iterable, Iterator, \
                             Mapping, MutableMapping, Sequence
 from types import FunctionType, MethodType
-from typing import Any, Callable, Generic, Optional, TypeVar, cast
+from typing import Any, Callable, Generic, TypeVar, cast
 
 from kopf._cogs.structs import dicts, ids, references
 from kopf._core.actions import execution
@@ -313,9 +313,9 @@ class SmartOperatorRegistry(OperatorRegistry):
 
 def generate_id(
         fn: Callable[..., Any],
-        id: Optional[str],
-        prefix: Optional[str] = None,
-        suffix: Optional[str] = None,
+        id: str | None,
+        prefix: str | None = None,
+        suffix: str | None = None,
 ) -> ids.HandlerId:
     real_id: str
     real_id = id if id is not None else get_callable_id(fn)
@@ -562,7 +562,7 @@ class _UNSET(enum.Enum):
     token = enum.auto()
 
 
-_default_registry: Optional[OperatorRegistry] = None
+_default_registry: OperatorRegistry | None = None
 
 
 def get_default_registry() -> OperatorRegistry:

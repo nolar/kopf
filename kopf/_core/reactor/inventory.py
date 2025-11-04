@@ -20,7 +20,6 @@ must be kept together with their owning modules rather than mirrored in structs.
 import copy
 import dataclasses
 from collections.abc import Iterator, MutableMapping
-from typing import Optional
 
 from kopf._cogs.structs import bodies, ephemera
 from kopf._core.actions import throttlers
@@ -75,7 +74,7 @@ class ResourceMemories(admission.MemoGetter, daemons.DaemonsMemoriesIterator):
             self,
             raw_body: bodies.RawBody,
             *,
-            memobase: Optional[ephemera.AnyMemo] = None,
+            memobase: ephemera.AnyMemo | None = None,
             ephemeral: bool = False,
     ) -> ephemera.AnyMemo:
         memory = await self.recall(raw_body=raw_body, memobase=memobase, ephemeral=ephemeral)
@@ -85,7 +84,7 @@ class ResourceMemories(admission.MemoGetter, daemons.DaemonsMemoriesIterator):
             self,
             raw_body: bodies.RawBody,
             *,
-            memobase: Optional[ephemera.AnyMemo] = None,
+            memobase: ephemera.AnyMemo | None = None,
             noticed_by_listing: bool = False,
             ephemeral: bool = False,
     ) -> ResourceMemory:

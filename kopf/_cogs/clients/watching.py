@@ -22,7 +22,7 @@ import contextlib
 import enum
 import logging
 from collections.abc import AsyncIterator
-from typing import Optional, Union, cast
+from typing import cast
 
 import aiohttp
 
@@ -53,9 +53,9 @@ async def infinite_watch(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         namespace: references.Namespace,
-        operator_paused: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
-        _iterations: Optional[int] = None,  # used in tests/mocks/fixtures
-) -> AsyncIterator[Union[Bookmark, bodies.RawEvent]]:
+        operator_paused: aiotoggles.ToggleSet | None = None,  # None for tests & observation
+        _iterations: int | None = None,  # used in tests/mocks/fixtures
+) -> AsyncIterator[Bookmark | bodies.RawEvent]:
     """
     Stream the watch-events infinitely.
 
@@ -107,7 +107,7 @@ async def streaming_block(
         *,
         resource: references.Resource,
         namespace: references.Namespace,
-        operator_paused: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
+        operator_paused: aiotoggles.ToggleSet | None = None,  # None for tests & observation
 ) -> AsyncIterator[aiotasks.Future]:
     """
     Block the execution until un-paused; signal when it is active again.
@@ -167,7 +167,7 @@ async def continuous_watch(
         resource: references.Resource,
         namespace: references.Namespace,
         operator_pause_waiter: aiotasks.Future,
-) -> AsyncIterator[Union[Bookmark, bodies.RawEvent]]:
+) -> AsyncIterator[Bookmark | bodies.RawEvent]:
 
     # First, list the resources regularly, and get the list's resource version.
     # Simulate the events with type "None" event - used in detection of causes.
@@ -233,7 +233,7 @@ async def watch_objs(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         namespace: references.Namespace,
-        since: Optional[str] = None,
+        since: str | None = None,
         operator_pause_waiter: aiotasks.Future,
 ) -> AsyncIterator[bodies.RawInput]:
     """

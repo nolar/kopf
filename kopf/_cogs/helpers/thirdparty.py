@@ -5,7 +5,7 @@ This utility does all the trickery needed to import the libraries if possible,
 or to skip them and make typing/runtime dummies for the rest of the codebase.
 """
 import abc
-from typing import Any, Optional
+from typing import Any
 
 
 # Since client libraries are optional, support their objects only if they are installed.
@@ -38,9 +38,9 @@ class KubernetesModel(abc.ABC):
         return NotImplemented
 
     @property
-    def metadata(self) -> Optional[V1ObjectMeta]:
+    def metadata(self) -> V1ObjectMeta | None:
         raise NotImplementedError
 
     @metadata.setter
-    def metadata(self, _: Optional[V1ObjectMeta]) -> None:
+    def metadata(self, _: V1ObjectMeta | None) -> None:
         raise NotImplementedError

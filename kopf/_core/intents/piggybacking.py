@@ -12,7 +12,7 @@ in them, and extracts the basic credentials for its own use.
 """
 import os
 from collections.abc import Sequence
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 
@@ -52,7 +52,7 @@ def login_via_client(
         *,
         logger: typedefs.Logger,
         **_: Any,
-) -> Optional[credentials.ConnectionInfo]:
+) -> credentials.ConnectionInfo | None:
 
     # Keep imports in the function, as module imports are mocked in some tests.
     try:
@@ -81,7 +81,7 @@ def login_via_client(
     # For auth-providers, this method is monkey-patched with the auth-provider's one.
     # We need the actual auth-provider's token, so we call it instead of accessing api_key.
     # Other keys (token, tokenFile) also end up being retrieved via this method.
-    header: Optional[str] = config.get_api_key_with_prefix('authorization')
+    header: str | None = config.get_api_key_with_prefix('authorization')
     parts: Sequence[str] = header.split(' ', 1) if header else []
     scheme, token = ((None, None) if len(parts) == 0 else
                      (None, parts[0]) if len(parts) == 1 else
@@ -107,7 +107,7 @@ def login_via_pykube(
         *,
         logger: typedefs.Logger,
         **_: Any,
-) -> Optional[credentials.ConnectionInfo]:
+) -> credentials.ConnectionInfo | None:
 
     # Keep imports in the function, as module imports are mocked in some tests.
     try:
@@ -136,9 +136,9 @@ def login_via_pykube(
         provider_token = config.user.get('auth-provider', {}).get('config', {}).get('access-token')
 
     # Interpret the config object for our own minimalistic credentials.
-    ca: Optional[pykube.config.BytesOrFile] = config.cluster.get('certificate-authority')
-    cert: Optional[pykube.config.BytesOrFile] = config.user.get('client-certificate')
-    pkey: Optional[pykube.config.BytesOrFile] = config.user.get('client-key')
+    ca: pykube.config.BytesOrFile | None = config.cluster.get('certificate-authority')
+    cert: pykube.config.BytesOrFile | None = config.user.get('client-certificate')
+    pkey: pykube.config.BytesOrFile | None = config.user.get('client-key')
     return credentials.ConnectionInfo(
         server=config.cluster.get('server'),
         ca_path=ca.filename() if ca else None,  # can be a temporary file
@@ -157,7 +157,7 @@ def has_service_account() -> bool:
     return os.path.exists('/var/run/secrets/kubernetes.io/serviceaccount/token')
 
 
-def login_with_service_account(**_: Any) -> Optional[credentials.ConnectionInfo]:
+def login_with_service_account(**_: Any) -> credentials.ConnectionInfo | None:
     """
     A minimalistic login handler that can get raw data from a service account.
 
@@ -177,7 +177,7 @@ def login_with_service_account(**_: Any) -> Optional[credentials.ConnectionInfo]
         with open(token_path, encoding='utf-8') as f:
             token = f.read().strip()
 
-        namespace: Optional[str] = None
+        namespace: str | None = None
         if os.path.exists(ns_path):
             with open(ns_path, encoding='utf-8') as f:
                 namespace = f.read().strip()
@@ -199,7 +199,7 @@ def has_kubeconfig() -> bool:
     return env_var_set or file_exists
 
 
-def login_with_kubeconfig(**_: Any) -> Optional[credentials.ConnectionInfo]:
+def login_with_kubeconfig(**_: Any) -> credentials.ConnectionInfo | None:
     """
     A minimalistic login handler that can get raw data from a kubeconfig file.
 
@@ -221,7 +221,7 @@ def login_with_kubeconfig(**_: Any) -> Optional[credentials.ConnectionInfo]:
     paths = [os.path.expanduser(path) for path in paths if path]
 
     # As prescribed: if the file is absent or non-deserialisable, then fail. The first value wins.
-    current_context: Optional[str] = None
+    current_context: str | None = None
     contexts: dict[Any, Any] = {}
     clusters: dict[Any, Any] = {}
     users: dict[Any, Any] = {}
