@@ -82,7 +82,7 @@ jobs:
       fail-fast: false
       matrix:
         install-extras: [ "", "full-auth" ]
-        python-version: [ "pypy-3.9", "pypy-3.10" ]
+        python-version: [ "pypy-3.9", "pypy-3.10", "pypy-3.11" ]
     name: Python ${{ matrix.python-version }}${{ matrix.install-extras && ' ' || '' }}${{ matrix.install-extras }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
