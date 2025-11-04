@@ -27,6 +27,7 @@ import asyncio
 import collections
 import dataclasses
 import datetime
+import inspect
 import random
 from collections.abc import AsyncIterable, AsyncIterator, Callable, Mapping
 from typing import NewType, TypeVar, cast
@@ -386,7 +387,7 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
         if item.caches:
             for obj in item.caches.values():
                 if hasattr(obj, 'close'):
-                    if asyncio.iscoroutinefunction(getattr(obj, 'close')):
+                    if inspect.iscoroutinefunction(getattr(obj, 'close')):
                         await getattr(obj, 'close')()
                     else:
                         getattr(obj, 'close')()
