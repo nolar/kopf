@@ -58,7 +58,8 @@ jobs:
       - run: pip install -r requirements.txt
       - run: pip install -e .[${{ matrix.install-extras }}]
         if: ${{ matrix.install-extras }}
-      - run: pytest --color=yes --timeout=2 --cov=kopf --cov-branch
+      - run: pytest --color=yes --timeout=2
+#      - run: pytest --color=yes --timeout=2 --cov=kopf --cov-branch
 
       - name: Publish coverage to Coveralls.io
         if: success()
