@@ -80,7 +80,7 @@ def main(__controls: CLIControls) -> None:
 @click.option('-A', '--all-namespaces', 'clusterwide', is_flag=True)
 @click.option('-n', '--namespace', 'namespaces', multiple=True)
 @click.option('--standalone', is_flag=True, default=None)
-@click.option('--dev', 'priority', type=int, is_flag=True, flag_value=666)
+@click.option('--dev', is_flag=True)
 @click.option('-L', '--liveness', 'liveness_endpoint', type=str)
 @click.option('-P', '--peering', 'peering_name', type=str, envvar='KOPF_RUN_PEERING')
 @click.option('-p', '--priority', type=int)
@@ -93,12 +93,14 @@ def run(
         modules: list[str],
         peering_name: Optional[str],
         priority: Optional[int],
+        dev: Optional[bool],
         standalone: Optional[bool],
         namespaces: Collection[references.NamespacePattern],
         clusterwide: bool,
         liveness_endpoint: Optional[str],
 ) -> None:
     """ Start an operator process and handle all the requests. """
+    priority = 666 if dev else priority
     if os.environ.get('KOPF_RUN_NAMESPACE'):  # legacy for single-namespace mode
         namespaces = tuple(namespaces) + (os.environ.get('KOPF_RUN_NAMESPACE', ''),)
     if namespaces and clusterwide:
@@ -131,7 +133,7 @@ def run(
 @click.option('-n', '--namespace', 'namespaces', multiple=True)
 @click.option('-A', '--all-namespaces', 'clusterwide', is_flag=True)
 @click.option('-i', '--id', type=str, default=None)
-@click.option('--dev', 'priority', flag_value=666)
+@click.option('--dev', is_flag=True)
 @click.option('-P', '--peering', 'peering_name', required=True, envvar='KOPF_FREEZE_PEERING')
 @click.option('-p', '--priority', type=int, default=100, required=True)
 @click.option('-t', '--lifetime', type=int, required=True)
@@ -146,8 +148,10 @@ def freeze(
         clusterwide: bool,
         peering_name: str,
         priority: int,
+        dev: bool,
 ) -> None:
     """ Pause the resource handling in the operator(s). """
+    priority = 666 if dev else priority
     identity = peering.Identity(id) if id else peering.detect_own_id(manual=True)
     insights = references.Insights()
     settings = configuration.OperatorSettings()
