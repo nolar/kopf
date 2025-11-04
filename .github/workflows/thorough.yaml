@@ -19,8 +19,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5  # usually 1-2, rarely 3 mins (because of installations)
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
       - run: pip install -r requirements.txt
@@ -50,15 +50,16 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5  # usually 2-3 mins
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
       - run: pip install -r requirements.txt
       - run: pip install -e .[${{ matrix.install-extras }}]
         if: ${{ matrix.install-extras }}
-      - run: pytest --color=yes --timeout=2 --cov=kopf --cov-branch
+      - run: pytest --color=yes --timeout=2
+#      - run: pytest --color=yes --timeout=2 --cov=kopf --cov-branch
 
       - name: Publish coverage to Coveralls.io
         if: success()
@@ -67,7 +68,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.github_token }}
         continue-on-error: true
       - name: Publish coverage to CodeCov.io
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         if: success()
         env:
           PYTHON: ${{ matrix.python-version }}
@@ -90,8 +91,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -107,13 +108,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        k3s: [latest, v1.31, v1.30, v1.29]
+        k3s: [latest, v1.33, v1.32, v1.31]
     name: K3s ${{matrix.k3s}}
     runs-on: ubuntu-24.04
     timeout-minutes: 10  # usually 4-5 mins
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
       - uses: nolar/setup-k3d-k3s@v1
@@ -127,15 +128,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        k8s: [latest, v1.31.2, v1.30.6, v1.29.10]
+        k8s: [latest, v1.33.5, v1.32.9, v1.31.13]
     name: K8s ${{matrix.k8s}}
     runs-on: ubuntu-24.04
     timeout-minutes: 10  # usually 4-5 mins
     env:
       K8S: ${{ matrix.k8s }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
       - run: tools/install-minikube.sh
@@ -147,7 +148,7 @@ jobs:
     needs: [unit-tests, pypy-tests, functional]
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
       - run: pip install coveralls
       - run: coveralls --service=github --finish
         env:

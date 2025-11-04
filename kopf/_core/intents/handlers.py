@@ -32,8 +32,7 @@ class ResourceHandler(execution.Handler):
             old = dicts.resolve(cause.old, self.field, None)
             new = dicts.resolve(cause.new, self.field, None)
             diff = diffs.reduce(cause.diff, self.field)
-            new_cause = dataclasses.replace(cause, old=old, new=new, diff=diff)
-            return cast(execution.CauseT, new_cause)  # TODO: mypy bug?
+            return dataclasses.replace(cause, old=old, new=new, diff=diff)
         else:
             return cause
 

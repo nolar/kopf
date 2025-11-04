@@ -12,7 +12,7 @@ import copy
 import enum
 import logging
 from collections.abc import MutableMapping
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, TextIO
 
 # Luckily, we do not mock these ones in tests, so we can import them into our namespace.
 try:
@@ -177,6 +177,18 @@ class TerseObjectLogger(LocalObjectLogger):
         return super().isEnabledFor(level if level >= logging.WARNING else level - 10)
 
 
+# Used to identify and remove our own handlers on re-runs in e2e tests. Every e2e test injects
+# its own handler, but the previous handlers of preceding tests can have the stream closed,
+# since they stream into an stderr interceptor of Click's runner, not to the real stderr.
+# We have to remove the closed streams either when the test finishes, or when the new one starts.
+if TYPE_CHECKING:
+    class _KopfStreamHandler(logging.StreamHandler[TextIO]):
+        pass
+else:
+    class _KopfStreamHandler(logging.StreamHandler):
+        pass
+
+
 def configure(
         debug: Optional[bool] = None,
         verbose: Optional[bool] = None,
@@ -187,9 +199,10 @@ def configure(
 ) -> None:
     log_level = 'DEBUG' if debug or verbose else 'WARNING' if quiet else 'INFO'
     formatter = make_formatter(log_format=log_format, log_prefix=log_prefix, log_refkey=log_refkey)
-    handler = logging.StreamHandler()
+    handler = _KopfStreamHandler()
     handler.setFormatter(formatter)
     logger = logging.getLogger()
+    logger.handlers[:] = [h for h in logger.handlers if not isinstance(h, _KopfStreamHandler)]
     logger.addHandler(handler)
     logger.setLevel(log_level)
 
