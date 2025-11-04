@@ -240,7 +240,7 @@ def walk(
         # Pykube is yielded as an underlying dict, never as its own class.
         yield from walk(objs.obj, nested=nested)
     elif isinstance(objs, thirdparty.KubernetesModel):
-        yield objs  # type: ignore
+        yield objs
         for subfield in (nested if nested is not None else []):
             try:
                 yield resolve_obj(objs, parse_field(subfield))

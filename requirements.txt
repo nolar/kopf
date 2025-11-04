@@ -22,7 +22,7 @@ git+https://github.com/wbond/oscrypto.git@1547f535001ba568b239b8797465536759c742
 import-linter
 isort
 lxml
-mypy==1.15.0
+mypy==1.18.2
 pre-commit
 pyngrok
 pytest>=6.0.0
