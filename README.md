@@ -129,7 +129,7 @@ That easy! For more features, see the [documentation](https://kopf.readthedocs.i
 
 ## Usage
 
-Python 3.9+ is required:
+Python 3.10+ is required:
 [CPython](https://www.python.org/) and [PyPy](https://www.pypy.org/)
 are officially supported and tested; other Python implementations can work too.
 
