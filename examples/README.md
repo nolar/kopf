@@ -9,5 +9,5 @@ kubectl apply -f crd.yaml
 Also, some libraries are needed for some operators and handlers:
 
 ```bash
-pip install -r requirements.txt
+pip install --group test -e .
 ```

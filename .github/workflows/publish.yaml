@@ -19,8 +19,8 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
-      - run: pip install --upgrade pip setuptools wheel twine
-      - run: python setup.py sdist bdist_wheel
+      - run: pip install --upgrade pip build
+      - run: python -m build  # includes sdist & wheel by default
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           skip_existing: true
