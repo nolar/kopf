@@ -29,28 +29,12 @@ class CLIControls:
     loop: Optional[asyncio.AbstractEventLoop] = None
 
 
-# With Click>=8.2.0, that should be `click.Choice[LogFormat]`, but it is good for now, too.
-# TODO: when Python 3.9 is dropped, upgrade dependencies to click>=8.2.0, and remake the class here.
-#       see: https://github.com/nolar/kopf/pull/1174
-class LogFormatParamType(click.Choice):  # type: ignore
-
-    def __init__(self) -> None:
-        super().__init__(choices=[v.name.lower() for v in loggers.LogFormat])
-
-    def convert(self, value: Any, param: Any, ctx: Any) -> loggers.LogFormat:
-        if isinstance(value, loggers.LogFormat):
-            return value
-        else:
-            name: str = super().convert(value, param, ctx)
-            return loggers.LogFormat[name.upper()]
-
-
 def logging_options(fn: Callable[..., Any]) -> Callable[..., Any]:
     """ A decorator to configure logging in all commands the same way."""
     @click.option('-v', '--verbose', is_flag=True)
     @click.option('-d', '--debug', is_flag=True)
     @click.option('-q', '--quiet', is_flag=True)
-    @click.option('--log-format', type=LogFormatParamType(), default='full')
+    @click.option('--log-format', type=click.Choice(loggers.LogFormat, case_sensitive=False), default='full')
     @click.option('--log-refkey', type=str)
     @click.option('--log-prefix/--no-log-prefix', default=None)
     @functools.wraps(fn)  # to preserve other opts/args
