@@ -10,13 +10,13 @@ This modules defines them in a most suitable and reusable way. Plus it adds
 some common plain type definitions used across the codebase (for convenience).
 """
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 if TYPE_CHECKING:
-    LoggerAdapter = logging.LoggerAdapter[Any]
+    LoggerAdapter: TypeAlias = logging.LoggerAdapter[Any]
 else:
-    LoggerAdapter = logging.LoggerAdapter
+    LoggerAdapter: TypeAlias = logging.LoggerAdapter
 
 # As publicly exposed: we only promise that it is based on one of the built-in loggable classes.
 # Mind that these classes have multi-versioned stubs, so we avoid redefining the protocol ourselves.
-Logger = logging.Logger | LoggerAdapter
+Logger: TypeAlias = logging.Logger | LoggerAdapter

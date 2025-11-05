@@ -10,7 +10,7 @@ import contextlib
 import contextvars
 import functools
 from collections.abc import Coroutine, Iterable, Iterator, Mapping
-from typing import Any, Callable, TypeVar, final
+from typing import Any, Callable, TypeAlias, TypeVar, final
 
 from kopf._cogs.configs import configuration
 
@@ -18,7 +18,7 @@ from kopf._cogs.configs import configuration
 # or an async fn which returns a coroutine which, in turn, returns the result.
 # Used in some protocols only and is never exposed to other modules.
 _R = TypeVar('_R')
-SyncOrAsync = _R | Coroutine[None, None, _R]
+SyncOrAsync: TypeAlias = _R | Coroutine[None, None, _R]
 
 # A generic sync-or-async callable with no args/kwargs checks (unlike in protocols).
 # Used for the Handler and generic invocation methods (which do not care about protocols).

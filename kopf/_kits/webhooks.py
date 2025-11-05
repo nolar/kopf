@@ -15,7 +15,7 @@ import ssl
 import tempfile
 import urllib.parse
 from collections.abc import AsyncIterator, Collection, Iterable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeAlias
 
 import aiohttp.web
 
@@ -28,9 +28,9 @@ from kopf._kits import webhacks
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    StrPath = str | os.PathLike[str]
+    StrPath: TypeAlias = str | os.PathLike[str]
 else:
-    StrPath = str | os.PathLike
+    StrPath: TypeAlias = str | os.PathLike
 
 
 class MissingDependencyError(ImportError):

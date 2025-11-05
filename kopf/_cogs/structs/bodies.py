@@ -42,13 +42,13 @@ In case the operators are also type-checked, type casting can be used
 """
 
 from collections.abc import Mapping
-from typing import Any, Literal, TypedDict, cast
+from typing import Any, Literal, TypeAlias, TypedDict, cast
 
 from kopf._cogs.structs import dicts, references
 
 # Make sure every kwarg has a corresponding same-named type in the root package.
-Labels = Mapping[str, str]
-Annotations = Mapping[str, str]
+Labels: TypeAlias = Mapping[str, str]
+Annotations: TypeAlias = Mapping[str, str]
 
 #
 # Everything marked "raw" is a plain unwrapped unprocessed data as JSON-decoded

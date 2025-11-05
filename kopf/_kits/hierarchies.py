@@ -5,15 +5,15 @@ import collections.abc
 import enum
 import warnings
 from collections.abc import Iterable, Iterator, Mapping, MutableMapping
-from typing import Any, cast
+from typing import Any, TypeAlias, cast
 
 from kopf._cogs.helpers import thirdparty
 from kopf._cogs.structs import bodies, dicts
 from kopf._core.actions import execution
 from kopf._core.intents import causes
 
-K8sObject = MutableMapping[Any, Any] | thirdparty.PykubeObject | thirdparty.KubernetesModel
-K8sObjects = K8sObject | Iterable[K8sObject]
+K8sObject: TypeAlias = MutableMapping[Any, Any] | thirdparty.PykubeObject | thirdparty.KubernetesModel
+K8sObjects: TypeAlias = K8sObject | Iterable[K8sObject]
 
 
 class _UNSET(enum.Enum):

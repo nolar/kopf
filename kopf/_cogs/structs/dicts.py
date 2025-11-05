@@ -4,12 +4,12 @@ Some basic dicts and field-in-a-dict manipulation helpers.
 import collections.abc
 import enum
 from collections.abc import Iterable, Iterator, Mapping, MutableMapping
-from typing import Any, Callable, Generic, TypeVar
+from typing import Any, Callable, Generic, TypeAlias, TypeVar
 
 from kopf._cogs.helpers import thirdparty
 
-FieldPath = tuple[str, ...]
-FieldSpec = str | FieldPath | list[str] | None
+FieldPath: TypeAlias = tuple[str, ...]
+FieldSpec: TypeAlias = str | FieldPath | list[str] | None
 
 _T = TypeVar('_T')
 _K = TypeVar('_K', bound=str)  # int & bool keys are possible but discouraged

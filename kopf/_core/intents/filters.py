@@ -1,6 +1,6 @@
 import enum
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, TypeAlias
 
 from kopf._core.intents import callbacks
 
@@ -20,4 +20,4 @@ MetaFilter = Mapping[str, str | MetaFilterToken | callbacks.MetaFilterFn]
 
 # Filters for old/new values of a field.
 # NB: `Any` covers all other values, but we want to highlight that they are specially treated.
-ValueFilter = Any | MetaFilterToken | callbacks.MetaFilterFn | None
+ValueFilter: TypeAlias = Any | MetaFilterToken | callbacks.MetaFilterFn | None
