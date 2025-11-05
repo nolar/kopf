@@ -8,9 +8,7 @@ to the versioning system, not to the codebase).
 
 The version is determined only once at startup when the code is loaded.
 """
-from typing import Optional
-
-version: Optional[str] = None
+version: str | None = None
 
 try:
     import importlib.metadata

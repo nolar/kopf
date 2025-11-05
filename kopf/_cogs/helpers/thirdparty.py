@@ -5,7 +5,7 @@ This utility does all the trickery needed to import the libraries if possible,
 or to skip them and make typing/runtime dummies for the rest of the codebase.
 """
 import abc
-from typing import Any, Optional
+from typing import Any, Protocol, TypeAlias
 
 
 # Since client libraries are optional, support their objects only if they are installed.
@@ -27,6 +27,23 @@ except ImportError:
     V1ObjectMeta = V1OwnerReference = None
 
 
+class V1OwnerReferenceProtocol(Protocol):
+    block_owner_deletion: bool
+    controller: bool
+    api_version: str
+    kind: str
+    name: str
+    uid: str
+
+
+class V1ObjectMetaProtocol(Protocol):
+    owner_references: list[V1OwnerReferenceProtocol]
+    labels: dict[str, str]
+    name: str
+    namespace: str | None
+    generate_name: str | None
+
+
 # Kubernetes client does not have any common base classes, its code is fully generated.
 # Only recognise classes from a specific module. Ignore all API/HTTP/auth-related tools.
 class KubernetesModel(abc.ABC):
@@ -38,9 +55,9 @@ class KubernetesModel(abc.ABC):
         return NotImplemented
 
     @property
-    def metadata(self) -> Optional[V1ObjectMeta]:
+    def metadata(self) -> V1ObjectMetaProtocol | None:
         raise NotImplementedError
 
     @metadata.setter
-    def metadata(self, _: Optional[V1ObjectMeta]) -> None:
+    def metadata(self, _: V1ObjectMetaProtocol | None) -> None:
         raise NotImplementedError

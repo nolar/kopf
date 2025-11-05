@@ -42,13 +42,13 @@ In case the operators are also type-checked, type casting can be used
 """
 
 from collections.abc import Mapping
-from typing import Any, Literal, Optional, TypedDict, Union, cast
+from typing import Any, Literal, TypeAlias, TypedDict, cast
 
 from kopf._cogs.structs import dicts, references
 
 # Make sure every kwarg has a corresponding same-named type in the root package.
-Labels = Mapping[str, str]
-Annotations = Mapping[str, str]
+Labels: TypeAlias = Mapping[str, str]
+Annotations: TypeAlias = Mapping[str, str]
 
 #
 # Everything marked "raw" is a plain unwrapped unprocessed data as JSON-decoded
@@ -97,7 +97,7 @@ class RawError(TypedDict, total=False):
 # As received from the stream before processing the errors and special cases.
 class RawInput(TypedDict, total=True):
     type: RawInputType
-    object: Union[RawBody, RawError]
+    object: RawBody | RawError
 
 
 # As passed to the framework after processing the errors and special cases.
@@ -148,24 +148,24 @@ class Meta(dicts.MappingView[str, Any]):
         return self._annotations
 
     @property
-    def uid(self) -> Optional[str]:
-        return cast(Optional[str], self.get('uid'))
+    def uid(self) -> str | None:
+        return cast(str | None, self.get('uid'))
 
     @property
-    def name(self) -> Optional[str]:
-        return cast(Optional[str], self.get('name'))
+    def name(self) -> str | None:
+        return cast(str | None, self.get('name'))
 
     @property
     def namespace(self) -> references.Namespace:
         return cast(references.Namespace, self.get('namespace'))
 
     @property
-    def creation_timestamp(self) -> Optional[str]:
-        return cast(Optional[str], self.get('creationTimestamp'))
+    def creation_timestamp(self) -> str | None:
+        return cast(str | None, self.get('creationTimestamp'))
 
     @property
-    def deletion_timestamp(self) -> Optional[str]:
-        return cast(Optional[str], self.get('deletionTimestamp'))
+    def deletion_timestamp(self) -> str | None:
+        return cast(str | None, self.get('deletionTimestamp'))
 
 
 class Spec(dicts.MappingView[str, Any]):
@@ -210,7 +210,7 @@ class Body(dicts.ReplaceableMappingView[str, Any]):
 class ObjectReference(TypedDict, total=False):
     apiVersion: str
     kind: str
-    namespace: Optional[str]
+    namespace: str | None
     name: str
     uid: str
 
@@ -246,8 +246,8 @@ def build_object_reference(
 def build_owner_reference(
         body: Body,
         *,
-        controller: Optional[bool] = True,
-        block_owner_deletion: Optional[bool] = True,
+        controller: bool | None = True,
+        block_owner_deletion: bool | None = True,
 ) -> OwnerReference:
     """
     Construct an owner reference object for the parent-children relationships.

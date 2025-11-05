@@ -5,7 +5,7 @@ import ssl
 import tempfile
 from collections.abc import Iterator, Mapping
 from contextvars import ContextVar
-from typing import Any, Callable, Optional, TypeVar, cast
+from typing import Any, Callable, TypeVar, cast
 
 import aiohttp
 
@@ -82,7 +82,7 @@ class APIContext:
 
     # Contextual information for URL building.
     server: str
-    default_namespace: Optional[str]
+    default_namespace: str | None
 
     # List of open responses.
     responses: list[aiohttp.ClientResponse]
@@ -98,9 +98,9 @@ class APIContext:
 
         # Some SSL data are not accepted directly, so we have to use temp files.
         tempfiles = _TempFiles()
-        ca_path: Optional[str]
-        certificate_path: Optional[str]
-        private_key_path: Optional[str]
+        ca_path: str | None
+        certificate_path: str | None
+        private_key_path: str | None
 
         if info.ca_path and info.ca_data:
             raise credentials.LoginError("Both CA path & data are set. Need only one.")
@@ -156,7 +156,7 @@ class APIContext:
             headers['Authorization'] = f'Bearer {info.token}'
 
         # The basic auth part.
-        auth: Optional[aiohttp.BasicAuth]
+        auth: aiohttp.BasicAuth | None
         if info.username and info.password:
             auth = aiohttp.BasicAuth(info.username, info.password)
         else:

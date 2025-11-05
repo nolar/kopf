@@ -1,11 +1,10 @@
 import asyncio
 import contextlib
 from collections.abc import Generator
-from typing import Optional
 
 
 @contextlib.contextmanager
-def proper_loop(suggested_loop: Optional[asyncio.AbstractEventLoop] = None) -> Generator[None, None, None]:
+def proper_loop(suggested_loop: asyncio.AbstractEventLoop | None = None) -> Generator[None, None, None]:
     """
     Ensure that we have the proper loop, either suggested or properly managed.
 

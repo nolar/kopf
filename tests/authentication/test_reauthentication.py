@@ -1,5 +1,3 @@
-from typing import Optional
-
 import aiohttp.web
 
 from kopf._cogs.clients.auth import APIContext, authenticated
@@ -10,7 +8,7 @@ from kopf._cogs.structs.credentials import ConnectionInfo
 async def fn(
         x: int,
         *,
-        context: Optional[APIContext],
+        context: APIContext | None,
 ) -> tuple[APIContext, int]:
     return context, x + 100
 

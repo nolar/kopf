@@ -12,7 +12,7 @@ This module is a part of the framework's public interface.
 import warnings
 from collections.abc import Collection
 # TODO: add cluster=True support (different API methods)
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable
 
 from kopf._cogs.structs import dicts, references, reviews
 from kopf._core.actions import execution
@@ -31,14 +31,14 @@ TimerDecorator = Callable[[callbacks.TimerFn], callbacks.TimerFn]
 def startup(  # lgtm[py/similar-function]
         *,
         # Handler's behaviour specification:
-        id: Optional[str] = None,
-        param: Optional[Any] = None,
-        errors: Optional[execution.ErrorsMode] = None,
-        timeout: Optional[float] = None,
-        retries: Optional[int] = None,
-        backoff: Optional[float] = None,
+        id: str | None = None,
+        param: Any | None = None,
+        errors: execution.ErrorsMode | None = None,
+        timeout: float | None = None,
+        retries: int | None = None,
+        backoff: float | None = None,
         # Operator specification:
-        registry: Optional[registries.OperatorRegistry] = None,
+        registry: registries.OperatorRegistry | None = None,
 ) -> ActivityDecorator:
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ActivityFn,
@@ -58,14 +58,14 @@ def startup(  # lgtm[py/similar-function]
 def cleanup(  # lgtm[py/similar-function]
         *,
         # Handler's behaviour specification:
-        id: Optional[str] = None,
-        param: Optional[Any] = None,
-        errors: Optional[execution.ErrorsMode] = None,
-        timeout: Optional[float] = None,
-        retries: Optional[int] = None,
-        backoff: Optional[float] = None,
+        id: str | None = None,
+        param: Any | None = None,
+        errors: execution.ErrorsMode | None = None,
+        timeout: float | None = None,
+        retries: int | None = None,
+        backoff: float | None = None,
         # Operator specification:
-        registry: Optional[registries.OperatorRegistry] = None,
+        registry: registries.OperatorRegistry | None = None,
 ) -> ActivityDecorator:
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ActivityFn,
@@ -85,14 +85,14 @@ def cleanup(  # lgtm[py/similar-function]
 def login(  # lgtm[py/similar-function]
         *,
         # Handler's behaviour specification:
-        id: Optional[str] = None,
-        param: Optional[Any] = None,
-        errors: Optional[execution.ErrorsMode] = None,
-        timeout: Optional[float] = None,
-        retries: Optional[int] = None,
-        backoff: Optional[float] = None,
+        id: str | None = None,
+        param: Any | None = None,
+        errors: execution.ErrorsMode | None = None,
+        timeout: float | None = None,
+        retries: int | None = None,
+        backoff: float | None = None,
         # Operator specification:
-        registry: Optional[registries.OperatorRegistry] = None,
+        registry: registries.OperatorRegistry | None = None,
 ) -> ActivityDecorator:
     """ ``@kopf.on.login()`` handler for custom (re-)authentication. """
     def decorator(  # lgtm[py/similar-function]
@@ -113,14 +113,14 @@ def login(  # lgtm[py/similar-function]
 def probe(  # lgtm[py/similar-function]
         *,
         # Handler's behaviour specification:
-        id: Optional[str] = None,
-        param: Optional[Any] = None,
-        errors: Optional[execution.ErrorsMode] = None,
-        timeout: Optional[float] = None,
-        retries: Optional[int] = None,
-        backoff: Optional[float] = None,
+        id: str | None = None,
+        param: Any | None = None,
+        errors: execution.ErrorsMode | None = None,
+        timeout: float | None = None,
+        retries: int | None = None,
+        backoff: float | None = None,
         # Operator specification:
-        registry: Optional[registries.OperatorRegistry] = None,
+        registry: registries.OperatorRegistry | None = None,
 ) -> ActivityDecorator:
     """ ``@kopf.on.probe()`` handler for arbitrary liveness metrics. """
     def decorator(  # lgtm[py/similar-function]
@@ -140,34 +140,34 @@ def probe(  # lgtm[py/similar-function]
 
 def validate(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: Optional[Union[str, references.Marker]] = None,
-        __version_or_name: Optional[Union[str, references.Marker]] = None,
-        __name: Optional[Union[str, references.Marker]] = None,
+        __group_or_groupversion_or_name: str | references.Marker | None = None,
+        __version_or_name: str | references.Marker | None = None,
+        __name: str | references.Marker | None = None,
         *,
-        group: Optional[str] = None,
-        version: Optional[str] = None,
-        kind: Optional[str] = None,
-        plural: Optional[str] = None,
-        singular: Optional[str] = None,
-        shortcut: Optional[str] = None,
-        category: Optional[str] = None,
+        group: str | None = None,
+        version: str | None = None,
+        kind: str | None = None,
+        plural: str | None = None,
+        singular: str | None = None,
+        shortcut: str | None = None,
+        category: str | None = None,
         # Handler's behaviour specification:
-        id: Optional[str] = None,
-        param: Optional[Any] = None,
-        operation: Optional[reviews.Operation] = None,  # deprecated -> .webhooks.*.rules.*.operations[0]
-        operations: Optional[Collection[reviews.Operation]] = None,  # -> .webhooks.*.rules.*.operations
-        subresource: Optional[str] = None,  # -> .webhooks.*.rules.*.resources[]
-        persistent: Optional[bool] = None,
-        side_effects: Optional[bool] = None,  # -> .webhooks.*.sideEffects
-        ignore_failures: Optional[bool] = None,  # -> .webhooks.*.failurePolicy=Ignore
+        id: str | None = None,
+        param: Any | None = None,
+        operation: reviews.Operation | None = None,  # deprecated -> .webhooks.*.rules.*.operations[0]
+        operations: Collection[reviews.Operation] | None = None,  # -> .webhooks.*.rules.*.operations
+        subresource: str | None = None,  # -> .webhooks.*.rules.*.resources[]
+        persistent: bool | None = None,
+        side_effects: bool | None = None,  # -> .webhooks.*.sideEffects
+        ignore_failures: bool | None = None,  # -> .webhooks.*.failurePolicy=Ignore
         # Resource object specification:
-        labels: Optional[filters.MetaFilter] = None,
-        annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenFilterFn] = None,
-        field: Optional[dicts.FieldSpec] = None,
-        value: Optional[filters.ValueFilter] = None,
+        labels: filters.MetaFilter | None = None,
+        annotations: filters.MetaFilter | None = None,
+        when: callbacks.WhenFilterFn | None = None,
+        field: dicts.FieldSpec | None = None,
+        value: filters.ValueFilter | None = None,
         # Operator specification:
-        registry: Optional[registries.OperatorRegistry] = None,
+        registry: registries.OperatorRegistry | None = None,
 ) -> WebhookDecorator:
     """ ``@kopf.on.validate()`` handler for validating admission webhooks. """
     def decorator(  # lgtm[py/similar-function]
@@ -200,34 +200,34 @@ def validate(  # lgtm[py/similar-function]
 
 def mutate(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: Optional[Union[str, references.Marker]] = None,
-        __version_or_name: Optional[Union[str, references.Marker]] = None,
-        __name: Optional[Union[str, references.Marker]] = None,
+        __group_or_groupversion_or_name: str | references.Marker | None = None,
+        __version_or_name: str | references.Marker | None = None,
+        __name: str | references.Marker | None = None,
         *,
-        group: Optional[str] = None,
-        version: Optional[str] = None,
-        kind: Optional[str] = None,
-        plural: Optional[str] = None,
-        singular: Optional[str] = None,
-        shortcut: Optional[str] = None,
-        category: Optional[str] = None,
+        group: str | None = None,
+        version: str | None = None,
+        kind: str | None = None,
+        plural: str | None = None,
+        singular: str | None = None,
+        shortcut: str | None = None,
+        category: str | None = None,
         # Handler's behaviour specification:
-        id: Optional[str] = None,
-        param: Optional[Any] = None,
-        operation: Optional[reviews.Operation] = None,  # deprecated -> .webhooks.*.rules.*.operations[0]
-        operations: Optional[Collection[reviews.Operation]] = None,  # -> .webhooks.*.rules.*.operations
-        subresource: Optional[str] = None,  # -> .webhooks.*.rules.*.resources[]
-        persistent: Optional[bool] = None,
-        side_effects: Optional[bool] = None,  # -> .webhooks.*.sideEffects
-        ignore_failures: Optional[bool] = None,  # -> .webhooks.*.failurePolicy=Ignore
+        id: str | None = None,
+        param: Any | None = None,
+        operation: reviews.Operation | None = None,  # deprecated -> .webhooks.*.rules.*.operations[0]
+        operations: Collection[reviews.Operation] | None = None,  # -> .webhooks.*.rules.*.operations
+        subresource: str | None = None,  # -> .webhooks.*.rules.*.resources[]
+        persistent: bool | None = None,
+        side_effects: bool | None = None,  # -> .webhooks.*.sideEffects
+        ignore_failures: bool | None = None,  # -> .webhooks.*.failurePolicy=Ignore
         # Resource object specification:
-        labels: Optional[filters.MetaFilter] = None,
-        annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenFilterFn] = None,
-        field: Optional[dicts.FieldSpec] = None,
-        value: Optional[filters.ValueFilter] = None,
+        labels: filters.MetaFilter | None = None,
+        annotations: filters.MetaFilter | None = None,
+        when: callbacks.WhenFilterFn | None = None,
+        field: dicts.FieldSpec | None = None,
+        value: filters.ValueFilter | None = None,
         # Operator specification:
-        registry: Optional[registries.OperatorRegistry] = None,
+        registry: registries.OperatorRegistry | None = None,
 ) -> WebhookDecorator:
     """ ``@kopf.on.mutate()`` handler for mutating admission webhooks. """
     def decorator(  # lgtm[py/similar-function]
@@ -260,33 +260,33 @@ def mutate(  # lgtm[py/similar-function]
 
 def resume(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: Optional[Union[str, references.Marker]] = None,
-        __version_or_name: Optional[Union[str, references.Marker]] = None,
-        __name: Optional[Union[str, references.Marker]] = None,
+        __group_or_groupversion_or_name: str | references.Marker | None = None,
+        __version_or_name: str | references.Marker | None = None,
+        __name: str | references.Marker | None = None,
         *,
-        group: Optional[str] = None,
-        version: Optional[str] = None,
-        kind: Optional[str] = None,
-        plural: Optional[str] = None,
-        singular: Optional[str] = None,
-        shortcut: Optional[str] = None,
-        category: Optional[str] = None,
+        group: str | None = None,
+        version: str | None = None,
+        kind: str | None = None,
+        plural: str | None = None,
+        singular: str | None = None,
+        shortcut: str | None = None,
+        category: str | None = None,
         # Handler's behaviour specification:
-        id: Optional[str] = None,
-        param: Optional[Any] = None,
-        errors: Optional[execution.ErrorsMode] = None,
-        timeout: Optional[float] = None,
-        retries: Optional[int] = None,
-        backoff: Optional[float] = None,
-        deleted: Optional[bool] = None,
+        id: str | None = None,
+        param: Any | None = None,
+        errors: execution.ErrorsMode | None = None,
+        timeout: float | None = None,
+        retries: int | None = None,
+        backoff: float | None = None,
+        deleted: bool | None = None,
         # Resource object specification:
-        labels: Optional[filters.MetaFilter] = None,
-        annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenFilterFn] = None,
-        field: Optional[dicts.FieldSpec] = None,
-        value: Optional[filters.ValueFilter] = None,
+        labels: filters.MetaFilter | None = None,
+        annotations: filters.MetaFilter | None = None,
+        when: callbacks.WhenFilterFn | None = None,
+        field: dicts.FieldSpec | None = None,
+        value: filters.ValueFilter | None = None,
         # Operator specification:
-        registry: Optional[registries.OperatorRegistry] = None,
+        registry: registries.OperatorRegistry | None = None,
 ) -> ChangingDecorator:
     """ ``@kopf.on.resume()`` handler for the object resuming on operator (re)start. """
     def decorator(  # lgtm[py/similar-function]
@@ -317,32 +317,32 @@ def resume(  # lgtm[py/similar-function]
 
 def create(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: Optional[Union[str, references.Marker]] = None,
-        __version_or_name: Optional[Union[str, references.Marker]] = None,
-        __name: Optional[Union[str, references.Marker]] = None,
+        __group_or_groupversion_or_name: str | references.Marker | None = None,
+        __version_or_name: str | references.Marker | None = None,
+        __name: str | references.Marker | None = None,
         *,
-        group: Optional[str] = None,
-        version: Optional[str] = None,
-        kind: Optional[str] = None,
-        plural: Optional[str] = None,
-        singular: Optional[str] = None,
-        shortcut: Optional[str] = None,
-        category: Optional[str] = None,
+        group: str | None = None,
+        version: str | None = None,
+        kind: str | None = None,
+        plural: str | None = None,
+        singular: str | None = None,
+        shortcut: str | None = None,
+        category: str | None = None,
         # Handler's behaviour specification:
-        id: Optional[str] = None,
-        param: Optional[Any] = None,
-        errors: Optional[execution.ErrorsMode] = None,
-        timeout: Optional[float] = None,
-        retries: Optional[int] = None,
-        backoff: Optional[float] = None,
+        id: str | None = None,
+        param: Any | None = None,
+        errors: execution.ErrorsMode | None = None,
+        timeout: float | None = None,
+        retries: int | None = None,
+        backoff: float | None = None,
         # Resource object specification:
-        labels: Optional[filters.MetaFilter] = None,
-        annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenFilterFn] = None,
-        field: Optional[dicts.FieldSpec] = None,
-        value: Optional[filters.ValueFilter] = None,
+        labels: filters.MetaFilter | None = None,
+        annotations: filters.MetaFilter | None = None,
+        when: callbacks.WhenFilterFn | None = None,
+        field: dicts.FieldSpec | None = None,
+        value: filters.ValueFilter | None = None,
         # Operator specification:
-        registry: Optional[registries.OperatorRegistry] = None,
+        registry: registries.OperatorRegistry | None = None,
 ) -> ChangingDecorator:
     """ ``@kopf.on.create()`` handler for the object creation. """
     def decorator(  # lgtm[py/similar-function]
@@ -373,34 +373,34 @@ def create(  # lgtm[py/similar-function]
 
 def update(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: Optional[Union[str, references.Marker]] = None,
-        __version_or_name: Optional[Union[str, references.Marker]] = None,
-        __name: Optional[Union[str, references.Marker]] = None,
+        __group_or_groupversion_or_name: str | references.Marker | None = None,
+        __version_or_name: str | references.Marker | None = None,
+        __name: str | references.Marker | None = None,
         *,
-        group: Optional[str] = None,
-        version: Optional[str] = None,
-        kind: Optional[str] = None,
-        plural: Optional[str] = None,
-        singular: Optional[str] = None,
-        shortcut: Optional[str] = None,
-        category: Optional[str] = None,
+        group: str | None = None,
+        version: str | None = None,
+        kind: str | None = None,
+        plural: str | None = None,
+        singular: str | None = None,
+        shortcut: str | None = None,
+        category: str | None = None,
         # Handler's behaviour specification:
-        id: Optional[str] = None,
-        param: Optional[Any] = None,
-        errors: Optional[execution.ErrorsMode] = None,
-        timeout: Optional[float] = None,
-        retries: Optional[int] = None,
-        backoff: Optional[float] = None,
+        id: str | None = None,
+        param: Any | None = None,
+        errors: execution.ErrorsMode | None = None,
+        timeout: float | None = None,
+        retries: int | None = None,
+        backoff: float | None = None,
         # Resource object specification:
-        labels: Optional[filters.MetaFilter] = None,
-        annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenFilterFn] = None,
-        field: Optional[dicts.FieldSpec] = None,
-        value: Optional[filters.ValueFilter] = None,
-        old: Optional[filters.ValueFilter] = None,
-        new: Optional[filters.ValueFilter] = None,
+        labels: filters.MetaFilter | None = None,
+        annotations: filters.MetaFilter | None = None,
+        when: callbacks.WhenFilterFn | None = None,
+        field: dicts.FieldSpec | None = None,
+        value: filters.ValueFilter | None = None,
+        old: filters.ValueFilter | None = None,
+        new: filters.ValueFilter | None = None,
         # Operator specification:
-        registry: Optional[registries.OperatorRegistry] = None,
+        registry: registries.OperatorRegistry | None = None,
 ) -> ChangingDecorator:
     """ ``@kopf.on.update()`` handler for the object update or change. """
     def decorator(  # lgtm[py/similar-function]
@@ -431,33 +431,33 @@ def update(  # lgtm[py/similar-function]
 
 def delete(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: Optional[Union[str, references.Marker]] = None,
-        __version_or_name: Optional[Union[str, references.Marker]] = None,
-        __name: Optional[Union[str, references.Marker]] = None,
+        __group_or_groupversion_or_name: str | references.Marker | None = None,
+        __version_or_name: str | references.Marker | None = None,
+        __name: str | references.Marker | None = None,
         *,
-        group: Optional[str] = None,
-        version: Optional[str] = None,
-        kind: Optional[str] = None,
-        plural: Optional[str] = None,
-        singular: Optional[str] = None,
-        shortcut: Optional[str] = None,
-        category: Optional[str] = None,
+        group: str | None = None,
+        version: str | None = None,
+        kind: str | None = None,
+        plural: str | None = None,
+        singular: str | None = None,
+        shortcut: str | None = None,
+        category: str | None = None,
         # Handler's behaviour specification:
-        id: Optional[str] = None,
-        param: Optional[Any] = None,
-        errors: Optional[execution.ErrorsMode] = None,
-        timeout: Optional[float] = None,
-        retries: Optional[int] = None,
-        backoff: Optional[float] = None,
-        optional: Optional[bool] = None,
+        id: str | None = None,
+        param: Any | None = None,
+        errors: execution.ErrorsMode | None = None,
+        timeout: float | None = None,
+        retries: int | None = None,
+        backoff: float | None = None,
+        optional: bool | None = None,
         # Resource object specification:
-        labels: Optional[filters.MetaFilter] = None,
-        annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenFilterFn] = None,
-        field: Optional[dicts.FieldSpec] = None,
-        value: Optional[filters.ValueFilter] = None,
+        labels: filters.MetaFilter | None = None,
+        annotations: filters.MetaFilter | None = None,
+        when: callbacks.WhenFilterFn | None = None,
+        field: dicts.FieldSpec | None = None,
+        value: filters.ValueFilter | None = None,
         # Operator specification:
-        registry: Optional[registries.OperatorRegistry] = None,
+        registry: registries.OperatorRegistry | None = None,
 ) -> ChangingDecorator:
     """ ``@kopf.on.delete()`` handler for the object deletion. """
     def decorator(  # lgtm[py/similar-function]
@@ -488,34 +488,34 @@ def delete(  # lgtm[py/similar-function]
 
 def field(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: Optional[Union[str, references.Marker]] = None,
-        __version_or_name: Optional[Union[str, references.Marker]] = None,
-        __name: Optional[Union[str, references.Marker]] = None,
+        __group_or_groupversion_or_name: str | references.Marker | None = None,
+        __version_or_name: str | references.Marker | None = None,
+        __name: str | references.Marker | None = None,
         *,
-        group: Optional[str] = None,
-        version: Optional[str] = None,
-        kind: Optional[str] = None,
-        plural: Optional[str] = None,
-        singular: Optional[str] = None,
-        shortcut: Optional[str] = None,
-        category: Optional[str] = None,
+        group: str | None = None,
+        version: str | None = None,
+        kind: str | None = None,
+        plural: str | None = None,
+        singular: str | None = None,
+        shortcut: str | None = None,
+        category: str | None = None,
         # Handler's behaviour specification:
-        id: Optional[str] = None,
-        param: Optional[Any] = None,
-        errors: Optional[execution.ErrorsMode] = None,
-        timeout: Optional[float] = None,
-        retries: Optional[int] = None,
-        backoff: Optional[float] = None,
+        id: str | None = None,
+        param: Any | None = None,
+        errors: execution.ErrorsMode | None = None,
+        timeout: float | None = None,
+        retries: int | None = None,
+        backoff: float | None = None,
         # Resource object specification:
-        labels: Optional[filters.MetaFilter] = None,
-        annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenFilterFn] = None,
+        labels: filters.MetaFilter | None = None,
+        annotations: filters.MetaFilter | None = None,
+        when: callbacks.WhenFilterFn | None = None,
         field: dicts.FieldSpec,
-        value: Optional[filters.ValueFilter] = None,
-        old: Optional[filters.ValueFilter] = None,
-        new: Optional[filters.ValueFilter] = None,
+        value: filters.ValueFilter | None = None,
+        old: filters.ValueFilter | None = None,
+        new: filters.ValueFilter | None = None,
         # Operator specification:
-        registry: Optional[registries.OperatorRegistry] = None,
+        registry: registries.OperatorRegistry | None = None,
 ) -> ChangingDecorator:
     """ ``@kopf.on.field()`` handler for the individual field changes. """
     def decorator(  # lgtm[py/similar-function]
@@ -546,32 +546,32 @@ def field(  # lgtm[py/similar-function]
 
 def index(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: Optional[Union[str, references.Marker]] = None,
-        __version_or_name: Optional[Union[str, references.Marker]] = None,
-        __name: Optional[Union[str, references.Marker]] = None,
+        __group_or_groupversion_or_name: str | references.Marker | None = None,
+        __version_or_name: str | references.Marker | None = None,
+        __name: str | references.Marker | None = None,
         *,
-        group: Optional[str] = None,
-        version: Optional[str] = None,
-        kind: Optional[str] = None,
-        plural: Optional[str] = None,
-        singular: Optional[str] = None,
-        shortcut: Optional[str] = None,
-        category: Optional[str] = None,
+        group: str | None = None,
+        version: str | None = None,
+        kind: str | None = None,
+        plural: str | None = None,
+        singular: str | None = None,
+        shortcut: str | None = None,
+        category: str | None = None,
         # Handler's behaviour specification:
-        id: Optional[str] = None,
-        param: Optional[Any] = None,
-        errors: Optional[execution.ErrorsMode] = None,
-        timeout: Optional[float] = None,
-        retries: Optional[int] = None,
-        backoff: Optional[float] = None,
+        id: str | None = None,
+        param: Any | None = None,
+        errors: execution.ErrorsMode | None = None,
+        timeout: float | None = None,
+        retries: int | None = None,
+        backoff: float | None = None,
         # Resource object specification:
-        labels: Optional[filters.MetaFilter] = None,
-        annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenFilterFn] = None,
-        field: Optional[dicts.FieldSpec] = None,
-        value: Optional[filters.ValueFilter] = None,
+        labels: filters.MetaFilter | None = None,
+        annotations: filters.MetaFilter | None = None,
+        when: callbacks.WhenFilterFn | None = None,
+        field: dicts.FieldSpec | None = None,
+        value: filters.ValueFilter | None = None,
         # Operator specification:
-        registry: Optional[registries.OperatorRegistry] = None,
+        registry: registries.OperatorRegistry | None = None,
 ) -> IndexingDecorator:
     """ ``@kopf.index()`` handler for the indexing callbacks. """
     def decorator(  # lgtm[py/similar-function]
@@ -600,28 +600,28 @@ def index(  # lgtm[py/similar-function]
 
 def event(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: Optional[Union[str, references.Marker]] = None,
-        __version_or_name: Optional[Union[str, references.Marker]] = None,
-        __name: Optional[Union[str, references.Marker]] = None,
+        __group_or_groupversion_or_name: str | references.Marker | None = None,
+        __version_or_name: str | references.Marker | None = None,
+        __name: str | references.Marker | None = None,
         *,
-        group: Optional[str] = None,
-        version: Optional[str] = None,
-        kind: Optional[str] = None,
-        plural: Optional[str] = None,
-        singular: Optional[str] = None,
-        shortcut: Optional[str] = None,
-        category: Optional[str] = None,
+        group: str | None = None,
+        version: str | None = None,
+        kind: str | None = None,
+        plural: str | None = None,
+        singular: str | None = None,
+        shortcut: str | None = None,
+        category: str | None = None,
         # Handler's behaviour specification:
-        id: Optional[str] = None,
-        param: Optional[Any] = None,
+        id: str | None = None,
+        param: Any | None = None,
         # Resource object specification:
-        labels: Optional[filters.MetaFilter] = None,
-        annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenFilterFn] = None,
-        field: Optional[dicts.FieldSpec] = None,
-        value: Optional[filters.ValueFilter] = None,
+        labels: filters.MetaFilter | None = None,
+        annotations: filters.MetaFilter | None = None,
+        when: callbacks.WhenFilterFn | None = None,
+        field: dicts.FieldSpec | None = None,
+        value: filters.ValueFilter | None = None,
         # Operator specification:
-        registry: Optional[registries.OperatorRegistry] = None,
+        registry: registries.OperatorRegistry | None = None,
 ) -> WatchingDecorator:
     """ ``@kopf.on.event()`` handler for the silent spies on the events. """
     def decorator(  # lgtm[py/similar-function]
@@ -650,36 +650,36 @@ def event(  # lgtm[py/similar-function]
 
 def daemon(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: Optional[Union[str, references.Marker]] = None,
-        __version_or_name: Optional[Union[str, references.Marker]] = None,
-        __name: Optional[Union[str, references.Marker]] = None,
+        __group_or_groupversion_or_name: str | references.Marker | None = None,
+        __version_or_name: str | references.Marker | None = None,
+        __name: str | references.Marker | None = None,
         *,
-        group: Optional[str] = None,
-        version: Optional[str] = None,
-        kind: Optional[str] = None,
-        plural: Optional[str] = None,
-        singular: Optional[str] = None,
-        shortcut: Optional[str] = None,
-        category: Optional[str] = None,
+        group: str | None = None,
+        version: str | None = None,
+        kind: str | None = None,
+        plural: str | None = None,
+        singular: str | None = None,
+        shortcut: str | None = None,
+        category: str | None = None,
         # Handler's behaviour specification:
-        id: Optional[str] = None,
-        param: Optional[Any] = None,
-        errors: Optional[execution.ErrorsMode] = None,
-        timeout: Optional[float] = None,
-        retries: Optional[int] = None,
-        backoff: Optional[float] = None,
-        initial_delay: Optional[float] = None,
-        cancellation_backoff: Optional[float] = None,
-        cancellation_timeout: Optional[float] = None,
-        cancellation_polling: Optional[float] = None,
+        id: str | None = None,
+        param: Any | None = None,
+        errors: execution.ErrorsMode | None = None,
+        timeout: float | None = None,
+        retries: int | None = None,
+        backoff: float | None = None,
+        initial_delay: float | None = None,
+        cancellation_backoff: float | None = None,
+        cancellation_timeout: float | None = None,
+        cancellation_polling: float | None = None,
         # Resource object specification:
-        labels: Optional[filters.MetaFilter] = None,
-        annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenFilterFn] = None,
-        field: Optional[dicts.FieldSpec] = None,
-        value: Optional[filters.ValueFilter] = None,
+        labels: filters.MetaFilter | None = None,
+        annotations: filters.MetaFilter | None = None,
+        when: callbacks.WhenFilterFn | None = None,
+        field: dicts.FieldSpec | None = None,
+        value: filters.ValueFilter | None = None,
         # Operator specification:
-        registry: Optional[registries.OperatorRegistry] = None,
+        registry: registries.OperatorRegistry | None = None,
 ) -> DaemonDecorator:
     """ ``@kopf.daemon()`` decorator for the background threads/tasks. """
     def decorator(  # lgtm[py/similar-function]
@@ -712,36 +712,36 @@ def daemon(  # lgtm[py/similar-function]
 
 def timer(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: Optional[Union[str, references.Marker]] = None,
-        __version_or_name: Optional[Union[str, references.Marker]] = None,
-        __name: Optional[Union[str, references.Marker]] = None,
+        __group_or_groupversion_or_name: str | references.Marker | None = None,
+        __version_or_name: str | references.Marker | None = None,
+        __name: str | references.Marker | None = None,
         *,
-        group: Optional[str] = None,
-        version: Optional[str] = None,
-        kind: Optional[str] = None,
-        plural: Optional[str] = None,
-        singular: Optional[str] = None,
-        shortcut: Optional[str] = None,
-        category: Optional[str] = None,
+        group: str | None = None,
+        version: str | None = None,
+        kind: str | None = None,
+        plural: str | None = None,
+        singular: str | None = None,
+        shortcut: str | None = None,
+        category: str | None = None,
         # Handler's behaviour specification:
-        id: Optional[str] = None,
-        param: Optional[Any] = None,
-        errors: Optional[execution.ErrorsMode] = None,
-        timeout: Optional[float] = None,
-        retries: Optional[int] = None,
-        backoff: Optional[float] = None,
-        interval: Optional[float] = None,
-        initial_delay: Optional[float] = None,
-        sharp: Optional[bool] = None,
-        idle: Optional[float] = None,
+        id: str | None = None,
+        param: Any | None = None,
+        errors: execution.ErrorsMode | None = None,
+        timeout: float | None = None,
+        retries: int | None = None,
+        backoff: float | None = None,
+        interval: float | None = None,
+        initial_delay: float | None = None,
+        sharp: bool | None = None,
+        idle: float | None = None,
         # Resource object specification:
-        labels: Optional[filters.MetaFilter] = None,
-        annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenFilterFn] = None,
-        field: Optional[dicts.FieldSpec] = None,
-        value: Optional[filters.ValueFilter] = None,
+        labels: filters.MetaFilter | None = None,
+        annotations: filters.MetaFilter | None = None,
+        when: callbacks.WhenFilterFn | None = None,
+        field: dicts.FieldSpec | None = None,
+        value: filters.ValueFilter | None = None,
         # Operator specification:
-        registry: Optional[registries.OperatorRegistry] = None,
+        registry: registries.OperatorRegistry | None = None,
 ) -> TimerDecorator:
     """ ``@kopf.timer()`` handler for the regular events. """
     def decorator(  # lgtm[py/similar-function]
@@ -773,20 +773,20 @@ def timer(  # lgtm[py/similar-function]
 def subhandler(  # lgtm[py/similar-function]
         *,
         # Handler's behaviour specification:
-        id: Optional[str] = None,
-        param: Optional[Any] = None,
-        errors: Optional[execution.ErrorsMode] = None,
-        timeout: Optional[float] = None,
-        retries: Optional[int] = None,
-        backoff: Optional[float] = None,
+        id: str | None = None,
+        param: Any | None = None,
+        errors: execution.ErrorsMode | None = None,
+        timeout: float | None = None,
+        retries: int | None = None,
+        backoff: float | None = None,
         # Resource object specification:
-        labels: Optional[filters.MetaFilter] = None,
-        annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenFilterFn] = None,
-        field: Optional[dicts.FieldSpec] = None,
-        value: Optional[filters.ValueFilter] = None,
-        old: Optional[filters.ValueFilter] = None,  # only for on.update's subhandlers
-        new: Optional[filters.ValueFilter] = None,  # only for on.update's subhandlers
+        labels: filters.MetaFilter | None = None,
+        annotations: filters.MetaFilter | None = None,
+        when: callbacks.WhenFilterFn | None = None,
+        field: dicts.FieldSpec | None = None,
+        value: filters.ValueFilter | None = None,
+        old: filters.ValueFilter | None = None,  # only for on.update's subhandlers
+        new: filters.ValueFilter | None = None,  # only for on.update's subhandlers
 ) -> ChangingDecorator:
     """
     ``@kopf.subhandler()`` decorator for the dynamically generated sub-handlers.
@@ -847,16 +847,16 @@ def register(  # lgtm[py/similar-function]
         fn: callbacks.ChangingFn,
         *,
         # Handler's behaviour specification:
-        id: Optional[str] = None,
-        param: Optional[Any] = None,
-        errors: Optional[execution.ErrorsMode] = None,
-        timeout: Optional[float] = None,
-        retries: Optional[int] = None,
-        backoff: Optional[float] = None,
+        id: str | None = None,
+        param: Any | None = None,
+        errors: execution.ErrorsMode | None = None,
+        timeout: float | None = None,
+        retries: int | None = None,
+        backoff: float | None = None,
         # Resource object specification:
-        labels: Optional[filters.MetaFilter] = None,
-        annotations: Optional[filters.MetaFilter] = None,
-        when: Optional[callbacks.WhenFilterFn] = None,
+        labels: filters.MetaFilter | None = None,
+        annotations: filters.MetaFilter | None = None,
+        when: callbacks.WhenFilterFn | None = None,
 ) -> callbacks.ChangingFn:
     """
     Register a function as a sub-handler of the currently executed handler.
@@ -891,9 +891,9 @@ def register(  # lgtm[py/similar-function]
 
 
 def _verify_operations(
-        operation: Optional[reviews.Operation] = None,  # deprecated
-        operations: Optional[Collection[reviews.Operation]] = None,
-) -> Optional[Collection[reviews.Operation]]:
+        operation: reviews.Operation | None = None,  # deprecated
+        operations: Collection[reviews.Operation] | None = None,
+) -> Collection[reviews.Operation] | None:
     if operation is not None:
         warnings.warn("operation= is deprecated, use operations={...}.", DeprecationWarning)
         operations = frozenset([] if operations is None else operations) | {operation}
@@ -903,8 +903,8 @@ def _verify_operations(
 
 
 def _verify_filters(
-        labels: Optional[filters.MetaFilter],
-        annotations: Optional[filters.MetaFilter],
+        labels: filters.MetaFilter | None,
+        annotations: filters.MetaFilter | None,
 ) -> None:
     if labels is not None:
         for key, val in labels.items():
@@ -919,10 +919,10 @@ def _verify_filters(
 
 
 def _warn_conflicting_values(
-        field: Optional[dicts.FieldSpec],
-        value: Optional[filters.ValueFilter],
-        old: Optional[filters.ValueFilter] = None,
-        new: Optional[filters.ValueFilter] = None,
+        field: dicts.FieldSpec | None,
+        value: filters.ValueFilter | None,
+        old: filters.ValueFilter | None = None,
+        new: filters.ValueFilter | None = None,
 ) -> None:
     if field is None and (value is not None or old is not None or new is not None):
         raise TypeError("Value/old/new filters are specified without a mandatory field.")

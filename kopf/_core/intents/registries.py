@@ -17,7 +17,7 @@ import functools
 from collections.abc import Collection, Container, Iterable, Iterator, \
                             Mapping, MutableMapping, Sequence
 from types import FunctionType, MethodType
-from typing import Any, Callable, Generic, Optional, TypeVar, cast
+from typing import Any, Callable, Generic, TypeVar, cast
 
 from kopf._cogs.structs import dicts, ids, references
 from kopf._core.actions import execution
@@ -313,9 +313,9 @@ class SmartOperatorRegistry(OperatorRegistry):
 
 def generate_id(
         fn: Callable[..., Any],
-        id: Optional[str],
-        prefix: Optional[str] = None,
-        suffix: Optional[str] = None,
+        id: str | None,
+        prefix: str | None = None,
+        suffix: str | None = None,
 ) -> ids.HandlerId:
     real_id: str
     real_id = id if id is not None else get_callable_id(fn)
@@ -326,22 +326,23 @@ def generate_id(
 
 def get_callable_id(c: Callable[..., Any]) -> str:
     """ Get an reasonably good id of any commonly used callable. """
-    if c is None:
-        raise ValueError("Cannot build a persistent id of None.")
-    elif isinstance(c, functools.partial):
-        return get_callable_id(c.func)
-    elif hasattr(c, '__wrapped__'):  # @functools.wraps()
-        return get_callable_id(getattr(c, '__wrapped__'))
-    elif isinstance(c, FunctionType) and c.__name__ == '<lambda>':
-        # The best we can do to keep the id stable across the process restarts,
-        # assuming at least no code changes. The code changes are not detectable.
-        line = c.__code__.co_firstlineno
-        path = c.__code__.co_filename
-        return f'lambda:{path}:{line}'
-    elif isinstance(c, (FunctionType, MethodType)):
-        return str(getattr(c, '__qualname__', getattr(c, '__name__', repr(c))))
-    else:
-        raise ValueError(f"Cannot get id of {c!r}.")
+    match c:
+        case None:
+            raise ValueError("Cannot build a persistent id of None.")
+        case functools.partial():
+            return get_callable_id(c.func)
+        case _ if hasattr(c, '__wrapped__'):  # @functools.wraps()
+            return get_callable_id(getattr(c, '__wrapped__'))
+        case FunctionType() if c.__name__ == '<lambda>':
+            # The best we can do to keep the id stable across the process restarts,
+            # assuming at least no code changes. The code changes are not detectable.
+            line = c.__code__.co_firstlineno
+            path = c.__code__.co_filename
+            return f'lambda:{path}:{line}'
+        case FunctionType() | MethodType():
+            return str(getattr(c, '__qualname__', getattr(c, '__name__', repr(c))))
+        case _:
+            raise ValueError(f"Cannot get id of {c!r}.")
 
 
 def _deduplicated(
@@ -562,7 +563,7 @@ class _UNSET(enum.Enum):
     token = enum.auto()
 
 
-_default_registry: Optional[OperatorRegistry] = None
+_default_registry: OperatorRegistry | None = None
 
 
 def get_default_registry() -> OperatorRegistry:

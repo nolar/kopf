@@ -26,7 +26,6 @@ import dataclasses
 import time
 import warnings
 from collections.abc import Collection, Iterable, Mapping, MutableMapping, Sequence
-from typing import Optional
 
 from kopf._cogs.aiokits import aiotasks, aiotime, aiotoggles
 from kopf._cogs.configs import configuration
@@ -47,7 +46,7 @@ class Daemon:
 @dataclasses.dataclass(frozen=False)
 class DaemonsMemory:
     # For background and timed threads/tasks (invoked with the kwargs of the last-seen body).
-    live_fresh_body: Optional[bodies.Body] = None
+    live_fresh_body: bodies.Body | None = None
     idle_reset_time: float = dataclasses.field(default_factory=time.monotonic)
     forever_stopped: set[ids.HandlerId] = dataclasses.field(default_factory=set)
     running_daemons: dict[ids.HandlerId, Daemon] = dataclasses.field(default_factory=dict)
@@ -190,16 +189,17 @@ async def stop_daemons(
         age = (now - (stopper.when or now))
 
         handler = daemon.handler
-        if isinstance(handler, handlers_.DaemonHandler):
-            backoff = handler.cancellation_backoff
-            timeout = handler.cancellation_timeout
-            polling = handler.cancellation_polling or settings.background.cancellation_polling
-        elif isinstance(handler, handlers_.TimerHandler):
-            backoff = None
-            timeout = None
-            polling = settings.background.cancellation_polling
-        else:
-            raise RuntimeError(f"Unsupported daemon handler: {handler!r}")
+        match handler:
+            case handlers_.DaemonHandler():
+                backoff = handler.cancellation_backoff
+                timeout = handler.cancellation_timeout
+                polling = handler.cancellation_polling or settings.background.cancellation_polling
+            case handlers_.TimerHandler():
+                backoff = None
+                timeout = None
+                polling = settings.background.cancellation_polling
+            case _:
+                raise RuntimeError(f"Unsupported daemon handler: {handler!r}")
 
         # Whatever happens with other flags & logs & timings, this flag must be surely set.
         if not stopper.is_set(reason=reason):

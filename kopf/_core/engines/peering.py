@@ -36,7 +36,7 @@ import logging
 import os
 import random
 from collections.abc import Iterable, Mapping
-from typing import Any, NewType, NoReturn, Optional, cast
+from typing import Any, NewType, NoReturn, cast
 
 import iso8601
 
@@ -61,7 +61,7 @@ class Peer:
             identity: Identity,
             priority: int = 0,
             lifetime: int = 60,
-            lastseen: Optional[str] = None,
+            lastseen: str | None = None,
             **_: Any,  # for the forward-compatibility with the new fields
     ):
         super().__init__()
@@ -95,11 +95,11 @@ async def process_peering_event(
         identity: Identity,
         settings: configuration.OperatorSettings,
         autoclean: bool = True,
-        stream_pressure: Optional[asyncio.Event] = None,  # None for tests
-        conflicts_found: Optional[aiotoggles.Toggle] = None,  # None for tests & observation
+        stream_pressure: asyncio.Event | None = None,  # None for tests
+        conflicts_found: aiotoggles.Toggle | None = None,  # None for tests & observation
         # Must be accepted whether used or not -- as passed by watcher()/worker().
-        resource_indexed: Optional[aiotoggles.Toggle] = None,  # None for tests & observation
-        operator_indexed: Optional[aiotoggles.ToggleSet] = None,  # None for tests & observation
+        resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
+        operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
 ) -> None:
     """
     Handle a single update of the peers by us or by other operators.
@@ -207,7 +207,7 @@ async def touch(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         namespace: references.Namespace,
-        lifetime: Optional[int] = None,
+        lifetime: int | None = None,
 ) -> None:
     name = settings.peering.name
     peer = Peer(
@@ -297,7 +297,7 @@ def guess_selectors(settings: configuration.OperatorSettings) -> Iterable[refere
 
 async def touch_command(
         *,
-        lifetime: Optional[int],
+        lifetime: int | None,
         insights: references.Insights,
         identity: Identity,
         settings: configuration.OperatorSettings,

@@ -3,7 +3,7 @@ import enum
 import threading
 import time
 from collections.abc import Awaitable, Generator
-from typing import Generic, Optional, TypeVar
+from typing import Generic, TypeVar
 
 FlagReasonT = TypeVar('FlagReasonT', bound=enum.Flag)
 
@@ -33,8 +33,8 @@ class FlagSetter(Generic[FlagReasonT]):
 
     def __init__(self) -> None:
         super().__init__()
-        self.when: Optional[float] = None
-        self.reason: Optional[FlagReasonT] = None
+        self.when: float | None = None
+        self.reason: FlagReasonT | None = None
         self.sync_event = threading.Event()
         self.async_event = asyncio.Event()
         self.sync_waiter: SyncFlagWaiter[FlagReasonT] = SyncFlagWaiter(self)
@@ -43,14 +43,14 @@ class FlagSetter(Generic[FlagReasonT]):
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__}: {self.is_set()}, reason={self.reason}>'
 
-    def is_set(self, reason: Optional[FlagReasonT] = None) -> bool:
+    def is_set(self, reason: FlagReasonT | None = None) -> bool:
         """
         Check if the daemon stopper is set: at all or for a specific reason.
         """
         matching_reason = reason is None or (self.reason is not None and reason in self.reason)
         return matching_reason and self.sync_event.is_set()
 
-    def set(self, reason: Optional[FlagReasonT] = None) -> None:
+    def set(self, reason: FlagReasonT | None = None) -> None:
         reason = reason if reason is not None else self.reason  # to keep existing values
         self.when = self.when if self.when is not None else time.monotonic()
         self.reason = reason if self.reason is None or reason is None else self.reason | reason
@@ -90,11 +90,11 @@ class FlagWaiter(Generic[FlagReasonT]):
         return self._setter.is_set()
 
     @property
-    def reason(self) -> Optional[FlagReasonT]:
+    def reason(self) -> FlagReasonT | None:
         return self._setter.reason
 
     # See the docstring for AsyncFlagPromise for explanation.
-    def wait(self, timeout: Optional[float] = None) -> "FlagWaiter[FlagReasonT]":
+    def wait(self, timeout: float | None = None) -> "FlagWaiter[FlagReasonT]":
         # Presumably, `await stopped.wait(n).wait(m)` in async mode.
         raise NotImplementedError("Please report the use-case in the issue tracker if needed.")
 
@@ -106,13 +106,13 @@ class FlagWaiter(Generic[FlagReasonT]):
 
 
 class SyncFlagWaiter(FlagWaiter[FlagReasonT], Generic[FlagReasonT]):
-    def wait(self, timeout: Optional[float] = None) -> "SyncFlagWaiter[FlagReasonT]":
+    def wait(self, timeout: float | None = None) -> "SyncFlagWaiter[FlagReasonT]":
         self._setter.sync_event.wait(timeout=timeout)
         return self
 
 
 class AsyncFlagWaiter(FlagWaiter[FlagReasonT], Generic[FlagReasonT]):
-    def wait(self, timeout: Optional[float] = None) -> "AsyncFlagPromise[FlagReasonT]":
+    def wait(self, timeout: float | None = None) -> "AsyncFlagPromise[FlagReasonT]":
         # A new checker instance, which is awaitable and returns the original checker in the end.
         return AsyncFlagPromise(self, timeout=timeout)
 
@@ -159,7 +159,7 @@ class AsyncFlagPromise(FlagWaiter[FlagReasonT],
     But all checkers except the time-limited one prohibit waiting for them.
     """
 
-    def __init__(self, waiter: AsyncFlagWaiter[FlagReasonT], *, timeout: Optional[float]) -> None:
+    def __init__(self, waiter: AsyncFlagWaiter[FlagReasonT], *, timeout: float | None) -> None:
         super().__init__(waiter._setter)
         self._timeout = timeout
         self._waiter = waiter

@@ -2,7 +2,7 @@ import abc
 import copy
 import json
 from collections.abc import Collection, Iterable
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from kopf._cogs.configs import conventions
 from kopf._cogs.structs import bodies, dicts, patches
@@ -30,7 +30,7 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
             self,
             *,
             body: bodies.Body,
-            extra_fields: Optional[Iterable[dicts.FieldSpec]] = None,
+            extra_fields: Iterable[dicts.FieldSpec] | None = None,
     ) -> bodies.BodyEssence:
         """
         Extract only the relevant fields for the state comparisons.
@@ -90,7 +90,7 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
             self,
             *,
             body: bodies.Body,
-    ) -> Optional[bodies.BodyEssence]:
+    ) -> bodies.BodyEssence | None:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -120,7 +120,7 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
             self,
             *,
             body: bodies.Body,
-            extra_fields: Optional[Iterable[dicts.FieldSpec]] = None,
+            extra_fields: Iterable[dicts.FieldSpec] | None = None,
     ) -> bodies.BodyEssence:
         essence = super().build(body=body, extra_fields=extra_fields)
         self.remove_annotations(essence, set(self.make_keys(self.key, body=body)))
@@ -131,7 +131,7 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
             self,
             *,
             body: bodies.Body,
-    ) -> Optional[bodies.BodyEssence]:
+    ) -> bodies.BodyEssence | None:
         for full_key in self.make_keys(self.key, body=body):
             encoded = body.metadata.annotations.get(full_key, None)
             decoded = json.loads(encoded) if encoded is not None else None
@@ -179,7 +179,7 @@ class StatusDiffBaseStorage(DiffBaseStorage):
             self,
             *,
             body: bodies.Body,
-            extra_fields: Optional[Iterable[dicts.FieldSpec]] = None,
+            extra_fields: Iterable[dicts.FieldSpec] | None = None,
     ) -> bodies.BodyEssence:
         essence = super().build(body=body, extra_fields=extra_fields)
 
@@ -193,9 +193,9 @@ class StatusDiffBaseStorage(DiffBaseStorage):
             self,
             *,
             body: bodies.Body,
-    ) -> Optional[bodies.BodyEssence]:
-        encoded: Optional[str] = dicts.resolve(body, self.field, None)
-        essence: Optional[bodies.BodyEssence] = json.loads(encoded) if encoded is not None else None
+    ) -> bodies.BodyEssence | None:
+        encoded: str | None = dicts.resolve(body, self.field, None)
+        essence: bodies.BodyEssence | None = json.loads(encoded) if encoded is not None else None
         return essence
 
     def store(
@@ -223,7 +223,7 @@ class MultiDiffBaseStorage(DiffBaseStorage):
             self,
             *,
             body: bodies.Body,
-            extra_fields: Optional[Iterable[dicts.FieldSpec]] = None,
+            extra_fields: Iterable[dicts.FieldSpec] | None = None,
     ) -> bodies.BodyEssence:
         essence = super().build(body=body, extra_fields=extra_fields)
         for storage in self.storages:
@@ -236,7 +236,7 @@ class MultiDiffBaseStorage(DiffBaseStorage):
             self,
             *,
             body: bodies.Body,
-    ) -> Optional[bodies.BodyEssence]:
+    ) -> bodies.BodyEssence | None:
         for storage in self.storages:
             content = storage.fetch(body=body)
             if content is not None:

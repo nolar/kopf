@@ -7,7 +7,7 @@ import logging
 import re
 import urllib.parse
 from collections.abc import Collection, Iterable, Mapping
-from typing import Any, AsyncContextManager, Literal, Optional, TypedDict
+from typing import Any, AsyncContextManager, Literal, TypedDict
 
 from kopf._cogs.aiokits import aiovalues
 from kopf._cogs.clients import creating, errors, patching
@@ -33,8 +33,8 @@ class AdmissionError(execution.PermanentError):
     """
     def __init__(
             self,
-            message: Optional[str] = '',
-            code: Optional[int] = 500,
+            message: str | None = '',
+            code: int | None = 500,
     ) -> None:
         super().__init__(message)
         self.code = code
@@ -76,7 +76,7 @@ class MemoGetter(metaclass=abc.ABCMeta):
             self,
             raw_body: bodies.RawBody,
             *,
-            memobase: Optional[ephemera.AnyMemo] = None,
+            memobase: ephemera.AnyMemo | None = None,
             ephemeral: bool = False,
     ) -> ephemera.AnyMemo:
         raise NotImplementedError
@@ -87,10 +87,10 @@ async def serve_admission_request(
         request: reviews.Request,
         *,
         # Optional for webhook servers that can recognise this information:
-        headers: Optional[Mapping[str, str]] = None,
-        sslpeer: Optional[Mapping[str, Any]] = None,
-        webhook: Optional[ids.HandlerId] = None,
-        reason: Optional[causes.WebhookType] = None,  # TODO: undocumented: requires typing clarity!
+        headers: Mapping[str, str] | None = None,
+        sslpeer: Mapping[str, Any] | None = None,
+        webhook: ids.HandlerId | None = None,
+        reason: causes.WebhookType | None = None,  # TODO: undocumented: requires typing clarity!
         # Injected by partial() from spawn_tasks():
         settings: configuration.OperatorSettings,
         memories: MemoGetter,
@@ -357,7 +357,7 @@ async def configuration_manager(
     # Execute either when actually changed (yielded from the webhook server),
     # or the condition is chain-notified (from the insights: on resources/namespaces revision).
     # Ignore inconsistencies: they are expected -- the server fills the defaults.
-    client_config: Optional[reviews.WebhookClientConfig] = None
+    client_config: reviews.WebhookClientConfig | None = None
     try:
         async for client_config in container.as_changed():
             logger.info(f"Reconfiguring the {reason.value} webhook {settings.admission.managed}.")
@@ -441,10 +441,10 @@ def build_webhooks(
 class MatchExpression(TypedDict, total=False):
     key: str
     operator: Literal['Exists', 'DoesNotExist', 'In', 'NotIn']
-    values: Optional[Collection[str]]
+    values: Collection[str] | None
 
 
-def _build_labels_selector(labels: Optional[filters.MetaFilter]) -> Optional[Mapping[str, Any]]:
+def _build_labels_selector(labels: filters.MetaFilter | None) -> Mapping[str, Any] | None:
     # https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#resources-that-support-set-based-requirements
     exprs: Collection[MatchExpression] = [
         {'key': key, 'operator': 'Exists'} if val is filters.MetaFilterToken.PRESENT else

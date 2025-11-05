@@ -59,7 +59,7 @@ setup(
     install_requires=[
         'python-json-logger',   # 0.05 MB
         'iso8601',              # 0.07 MB
-        'click',                # 0.60 MB
+        'click>=8.2.0',         # 0.60 MB
         'aiohttp',              # 7.80 MB
         'aiohttp>=3.9.0; python_version>="3.12"',
         'pyyaml',               # 0.90 MB

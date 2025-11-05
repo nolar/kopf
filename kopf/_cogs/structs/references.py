@@ -5,18 +5,18 @@ import fnmatch
 import re
 import urllib.parse
 from collections.abc import Collection, Iterable, Iterator, Mapping, MutableMapping
-from typing import NewType, Optional, Union
+from typing import NewType
 
 # A namespace specification with globs, negations, and some minimal syntax; see `match_namespace()`.
 # Regexps are also supported if pre-compiled from the code, not from the CLI options as raw strings.
-NamespacePattern = Union[str, re.Pattern[str]]
+NamespacePattern = str | re.Pattern[str]
 
 # A specific really existing addressable namespace (at least, the one assumed to be so).
 # Made as a NewType for stricter type-checking to avoid collisions with patterns and other strings.
 NamespaceName = NewType('NamespaceName', str)
 
 # A namespace reference usable in the API calls. `None` means cluster-wide API calls.
-Namespace = Optional[NamespaceName]
+Namespace = NamespaceName | None
 
 
 def select_specific_namespaces(patterns: Iterable[NamespacePattern]) -> Collection[NamespaceName]:
@@ -97,7 +97,7 @@ def match_namespace(name: NamespaceName, pattern: NamespacePattern) -> bool:
 # Detect conventional API versions for some cases: e.g. in "myresources.v1alpha1.example.com".
 # Non-conventional versions are indistinguishable from API groups ("myresources.foo1.example.com").
 # See also: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definition-versioning/
-K8S_VERSION_PATTERN = re.compile(r'^v\d+(?:(?:alpha|beta)\d+)?$')
+K8S_GROUP_VERSION_PATTERN = re.compile(r'^[^\.]* \. v\d+(?:(?:alpha|beta)\d+)? (?:\..*)?$', re.X)
 
 
 @dataclasses.dataclass(frozen=True, eq=False, repr=False)
@@ -128,12 +128,12 @@ class Resource:
     It is used as an API endpoint, together with API group & version.
     """
 
-    kind: Optional[str] = None
+    kind: str | None = None
     """
     The resource's kind (as in YAML files); e.g. ``"Pod"``, ``"KopfExample"``.
     """
 
-    singular: Optional[str] = None
+    singular: str | None = None
     """
     The resource's singular name; e.g. ``"pod"``, ``"kopfexample"``.
     """
@@ -153,7 +153,7 @@ class Resource:
     The resource's subresources, if defined; e.g. ``{"status", "scale"}``.
     """
 
-    namespaced: Optional[bool] = None
+    namespaced: bool | None = None
     """
     Whether the resource is namespaced (``True``) or cluster-scoped (``False``).
     """
@@ -195,11 +195,11 @@ class Resource:
     def get_url(
             self,
             *,
-            server: Optional[str] = None,
+            server: str | None = None,
             namespace: Namespace = None,
-            name: Optional[str] = None,
-            subresource: Optional[str] = None,
-            params: Optional[Mapping[str, str]] = None,
+            name: str | None = None,
+            subresource: str | None = None,
+            params: Mapping[str, str] | None = None,
     ) -> str:
         """
         Build a URL to be used with K8s API.
@@ -222,7 +222,7 @@ class Resource:
         if self.namespaced and namespace is None and name is not None:
             raise ValueError("Specific namespaces are required for specific namespaced resources.")
 
-        parts: list[Optional[str]] = [
+        parts: list[str | None] = [
             '/api' if self.group == '' and self.version == 'v1' else '/apis',
             self.group,
             self.version,
@@ -266,60 +266,63 @@ class Selector:
     no variations, they still remain specifications.
     """
 
-    arg1: dataclasses.InitVar[Union[None, str, Marker]] = None
-    arg2: dataclasses.InitVar[Union[None, str, Marker]] = None
-    arg3: dataclasses.InitVar[Union[None, str, Marker]] = None
+    arg1: dataclasses.InitVar[str | Marker | None] = None
+    arg2: dataclasses.InitVar[str | Marker | None] = None
+    arg3: dataclasses.InitVar[str | Marker | None] = None
     argN: dataclasses.InitVar[None] = None  # a runtime guard against too many positional arguments
 
-    group: Optional[str] = None
-    version: Optional[str] = None
+    group: str | None = None
+    version: str | None = None
 
-    kind: Optional[str] = None
-    plural: Optional[str] = None
-    singular: Optional[str] = None
-    shortcut: Optional[str] = None
-    category: Optional[str] = None
-    any_name: Optional[Union[str, Marker]] = None
+    kind: str | None = None
+    plural: str | None = None
+    singular: str | None = None
+    shortcut: str | None = None
+    category: str | None = None
+    any_name: str | Marker | None = None
 
     def __post_init__(
             self,
-            arg1: Union[None, str, Marker],
-            arg2: Union[None, str, Marker],
-            arg3: Union[None, str, Marker],
+            arg1: str | Marker | None,
+            arg2: str | Marker | None,
+            arg3: str | Marker | None,
             argN: None,  # a runtime guard against too many positional arguments
     ) -> None:
 
         # Since the class is frozen & read-only, post-creation field adjustment is done via a hack.
         # This is the same hack as used in the frozen dataclasses to initialise their fields.
-        if argN is not None:
-            raise TypeError("Too many positional arguments. Max 3 positional args are accepted.")
-        elif arg3 is not None:
-            object.__setattr__(self, 'group', arg1)
-            object.__setattr__(self, 'version', arg2)
-            object.__setattr__(self, 'any_name', arg3)
-        elif arg2 is not None and isinstance(arg1, str) and '/' in arg1:
-            object.__setattr__(self, 'group', arg1.rsplit('/', 1)[0])
-            object.__setattr__(self, 'version', arg1.rsplit('/')[-1])
-            object.__setattr__(self, 'any_name', arg2)
-        elif arg2 is not None and arg1 == 'v1':
-            object.__setattr__(self, 'group', '')
-            object.__setattr__(self, 'version', arg1)
-            object.__setattr__(self, 'any_name', arg2)
-        elif arg2 is not None:
-            object.__setattr__(self, 'group', arg1)
-            object.__setattr__(self, 'any_name', arg2)
-        elif arg1 is not None and isinstance(arg1, Marker):
-            object.__setattr__(self, 'any_name', arg1)
-        elif arg1 is not None and '.' in arg1 and K8S_VERSION_PATTERN.match(arg1.split('.')[1]):
-            if len(arg1.split('.')) >= 3:
-                object.__setattr__(self, 'group', arg1.split('.', 2)[2])
-            object.__setattr__(self, 'version', arg1.split('.')[1])
-            object.__setattr__(self, 'any_name', arg1.split('.')[0])
-        elif arg1 is not None and '.' in arg1:
-            object.__setattr__(self, 'group', arg1.split('.', 1)[1])
-            object.__setattr__(self, 'any_name', arg1.split('.')[0])
-        elif arg1 is not None:
-            object.__setattr__(self, 'any_name', arg1)
+        match arg1, arg2, arg3, argN:
+            case None, None, None, None:
+                pass
+            case Marker.EVERYTHING, None, None, None:
+                object.__setattr__(self, 'any_name', arg1)
+            case str(), None, None, None if K8S_GROUP_VERSION_PATTERN.fullmatch(arg1):
+                if len(arg1.split('.')) >= 3:
+                    object.__setattr__(self, 'group', arg1.split('.', 2)[2])
+                object.__setattr__(self, 'version', arg1.split('.')[1])
+                object.__setattr__(self, 'any_name', arg1.split('.')[0])
+            case str(), None, None, None if '.' in arg1:
+                object.__setattr__(self, 'group', arg1.split('.', 1)[1])
+                object.__setattr__(self, 'any_name', arg1.split('.')[0])
+            case _, None, None, None:
+                object.__setattr__(self, 'any_name', arg1)
+            case str(), _, None, None if '/' in arg1:
+                object.__setattr__(self, 'group', arg1.rsplit('/', 1)[0])
+                object.__setattr__(self, 'version', arg1.rsplit('/')[-1])
+                object.__setattr__(self, 'any_name', arg2)
+            case 'v1', _, None, None:
+                object.__setattr__(self, 'group', '')
+                object.__setattr__(self, 'version', arg1)
+                object.__setattr__(self, 'any_name', arg2)
+            case _, _, None, None:
+                object.__setattr__(self, 'group', arg1)
+                object.__setattr__(self, 'any_name', arg2)
+            case _, _, _, None:
+                object.__setattr__(self, 'group', arg1)
+                object.__setattr__(self, 'version', arg2)
+                object.__setattr__(self, 'any_name', arg3)
+            case _, _, _, _:
+                raise TypeError("Too many positional arguments. Max 3 positional args are accepted.")
 
         # Verify that explicit & interpreted arguments have produced an unambiguous specification.
         names = [self.kind, self.plural, self.singular, self.shortcut, self.category, self.any_name]

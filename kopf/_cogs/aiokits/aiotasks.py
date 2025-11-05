@@ -11,7 +11,7 @@ so there is no added overhead; instead, the implicit overhead is made explicit.
 """
 import asyncio
 from collections.abc import Collection, Coroutine
-from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, NamedTuple, TypeVar
 
 from kopf._cogs.helpers import typedefs
 
@@ -30,7 +30,7 @@ else:
 async def cancel_coro(
         coro: Coroutine[Any, Any, Any],
         *,
-        name: Optional[str] = None,
+        name: str | None = None,
 ) -> None:
     """
     Cancel the coroutine if the wrapped code block is cancelled or fails.
@@ -65,10 +65,10 @@ async def guard(
         coro: Coroutine[Any, Any, Any],
         name: str,
         *,
-        flag: Optional[asyncio.Event] = None,
+        flag: asyncio.Event | None = None,
         finishable: bool = False,
         cancellable: bool = False,
-        logger: Optional[typedefs.Logger] = None,
+        logger: typedefs.Logger | None = None,
 ) -> None:
     """
     A guard for a presumably eternal (never-finishing) task.
@@ -111,10 +111,10 @@ def create_guarded_task(
         coro: Coroutine[Any, Any, Any],
         name: str,
         *,
-        flag: Optional[asyncio.Event] = None,
+        flag: asyncio.Event | None = None,
         finishable: bool = False,
         cancellable: bool = False,
-        logger: Optional[typedefs.Logger] = None,
+        logger: typedefs.Logger | None = None,
 ) -> Task:
     """
     Create a guarded eternal task. See :func:`guard` for explanation.
@@ -135,7 +135,7 @@ def create_guarded_task(
 async def wait(
         tasks: Collection[Task],
         *,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
         return_when: Any = asyncio.ALL_COMPLETED,
 ) -> tuple[set[Task], set[Task]]:
     """
@@ -153,8 +153,8 @@ async def stop(
         title: str,
         quiet: bool = False,
         cancelled: bool = False,
-        interval: Optional[float] = None,
-        logger: Optional[typedefs.Logger] = None,
+        interval: float | None = None,
+        logger: typedefs.Logger | None = None,
 ) -> tuple[set[Task], set[Task]]:
     """
     Cancel the tasks and wait for them to finish; log if some are stuck.
@@ -246,7 +246,7 @@ async def all_tasks(
 
 class SchedulerJob(NamedTuple):
     coro: Coroutine[Any, Any, Any]
-    name: Optional[str]
+    name: str | None
 
 
 class Scheduler:
@@ -280,8 +280,8 @@ class Scheduler:
     def __init__(
             self,
             *,
-            limit: Optional[int] = None,
-            exception_handler: Optional[Callable[[BaseException], None]] = None,
+            limit: int | None = None,
+            exception_handler: Callable[[BaseException], None] | None = None,
     ) -> None:
         super().__init__()
         self._closed = False
@@ -326,7 +326,7 @@ class Scheduler:
             self,
             coro: Coroutine[Any, Any, Any],
             *,
-            name: Optional[str] = None,
+            name: str | None = None,
     ) -> None:
         """
         Schedule a coroutine for ownership and eventual execution.
@@ -390,7 +390,7 @@ class Scheduler:
         self._cleaning_queue.put_nowait(task)
 
         # If failed, initiate a callback defined by the owner of the task (if any).
-        exc: Optional[BaseException]
+        exc: BaseException | None
         try:
             exc = task.exception()
         except asyncio.CancelledError:

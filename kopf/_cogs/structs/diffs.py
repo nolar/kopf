@@ -4,7 +4,7 @@ All the functions to calculate the diffs of the dicts.
 import collections.abc
 import enum
 from collections.abc import Iterable, Iterator, Sequence
-from typing import Any, NamedTuple, Union, overload
+from typing import Any, NamedTuple, overload
 
 from kopf._cogs.structs import dicts
 
@@ -92,7 +92,7 @@ class Diff(Sequence[DiffItem]):
     @overload
     def __getitem__(self, s: slice) -> Sequence[DiffItem]: ...
 
-    def __getitem__(self, item: Union[int, slice]) -> Union[DiffItem, Sequence[DiffItem]]:
+    def __getitem__(self, item: int | slice) -> DiffItem | Sequence[DiffItem]:
         return self._items[item]
 
     def __eq__(self, other: object) -> bool:
@@ -164,23 +164,24 @@ def diff_iter(
     * https://github.com/seperman/deepdiff
     * https://python-json-patch.readthedocs.io/en/latest/tutorial.html
     """
-    if a == b:  # incl. cases when both are None
-        pass
-    elif a is None:
-        yield DiffItem(DiffOperation.ADD, path, a, b)
-    elif b is None:
-        yield DiffItem(DiffOperation.REMOVE, path, a, b)
-    elif isinstance(a, collections.abc.Mapping) and isinstance(b, collections.abc.Mapping):
-        a_keys = frozenset(a.keys())
-        b_keys = frozenset(b.keys())
-        for key in (b_keys - a_keys if DiffScope.RIGHT in scope else ()):
-            yield from diff_iter(None, b[key], path=path+(key,), scope=scope)
-        for key in (a_keys - b_keys if DiffScope.LEFT in scope else ()):
-            yield from diff_iter(a[key], None, path=path+(key,), scope=scope)
-        for key in (a_keys & b_keys):
-            yield from diff_iter(a[key], b[key], path=path+(key,), scope=scope)
-    else:
-        yield DiffItem(DiffOperation.CHANGE, path, a, b)
+    match a, b:
+        case a, b if a == b:  # incl. cases when both are None
+            pass
+        case None, _:
+            yield DiffItem(DiffOperation.ADD, path, a, b)
+        case _, None:
+            yield DiffItem(DiffOperation.REMOVE, path, a, b)
+        case collections.abc.Mapping(), collections.abc.Mapping():
+            a_keys = frozenset(a.keys())
+            b_keys = frozenset(b.keys())
+            for key in (b_keys - a_keys if DiffScope.RIGHT in scope else ()):
+                yield from diff_iter(None, b[key], path=path+(key,), scope=scope)
+            for key in (a_keys - b_keys if DiffScope.LEFT in scope else ()):
+                yield from diff_iter(a[key], None, path=path+(key,), scope=scope)
+            for key in (a_keys & b_keys):
+                yield from diff_iter(a[key], b[key], path=path+(key,), scope=scope)
+        case _:
+            yield DiffItem(DiffOperation.CHANGE, path, a, b)
 
 
 def diff(

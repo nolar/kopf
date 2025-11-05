@@ -11,7 +11,7 @@ execute in the order they are registered, one by one.
 import logging
 import random
 from collections.abc import Sequence
-from typing import Any, Optional
+from typing import Any
 
 from kopf._core.actions import execution
 
@@ -56,7 +56,7 @@ def get_default_lifecycle() -> execution.LifeCycleFn:
     return _default_lifecycle
 
 
-def set_default_lifecycle(lifecycle: Optional[execution.LifeCycleFn]) -> None:
+def set_default_lifecycle(lifecycle: execution.LifeCycleFn | None) -> None:
     global _default_lifecycle
     if _default_lifecycle is not None:
         logger.warning(f"The default lifecycle is already set to {_default_lifecycle}, overriding it to {lifecycle}.")

@@ -1,5 +1,3 @@
-from typing import Optional
-
 from kopf._cogs.clients import api, errors
 from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import typedefs
@@ -11,10 +9,10 @@ async def patch_obj(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         namespace: references.Namespace,
-        name: Optional[str],
+        name: str | None,
         patch: patches.Patch,
         logger: typedefs.Logger,
-) -> Optional[bodies.RawBody]:
+) -> bodies.RawBody | None:
     """
     Patch a resource of specific kind.
 

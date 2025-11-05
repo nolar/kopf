@@ -15,7 +15,7 @@ import ssl
 import tempfile
 import urllib.parse
 from collections.abc import AsyncIterator, Collection, Iterable
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, TypeAlias
 
 import aiohttp.web
 
@@ -28,9 +28,9 @@ from kopf._kits import webhacks
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    StrPath = Union[str, os.PathLike[str]]
+    StrPath: TypeAlias = str | os.PathLike[str]
 else:
-    StrPath = Union[str, os.PathLike]
+    StrPath: TypeAlias = str | os.PathLike
 
 
 class MissingDependencyError(ImportError):
@@ -79,56 +79,56 @@ class WebhookServer(webhacks.WebhookContextManager):
       This is used in ngrok for a local endpoint, but can be used for debugging
       or when the certificate-generating dependencies/extras are not installed.
     """
-    DEFAULT_HOST: Optional[str] = None
+    DEFAULT_HOST: str | None = None
 
-    addr: Optional[str]  # None means "all interfaces"
-    port: Optional[int]  # None means random port
-    host: Optional[str]
-    path: Optional[str]
+    addr: str | None  # None means "all interfaces"
+    port: int | None  # None means random port
+    host: str | None
+    path: str | None
 
-    cadata: Optional[bytes]  # -> .webhooks.*.clientConfig.caBundle
-    cafile: Optional[StrPath]
-    cadump: Optional[StrPath]
+    cadata: bytes | None  # -> .webhooks.*.clientConfig.caBundle
+    cafile: StrPath | None
+    cadump: StrPath | None
 
-    context: Optional[ssl.SSLContext]
+    context: ssl.SSLContext | None
     insecure: bool
-    certfile: Optional[StrPath]
-    pkeyfile: Optional[StrPath]
-    password: Optional[str]
+    certfile: StrPath | None
+    pkeyfile: StrPath | None
+    password: str | None
 
     extra_sans: Iterable[str]
 
-    verify_mode: Optional[ssl.VerifyMode]
-    verify_cafile: Optional[StrPath]
-    verify_capath: Optional[StrPath]
-    verify_cadata: Optional[Union[str, bytes]]
+    verify_mode: ssl.VerifyMode | None
+    verify_cafile: StrPath | None
+    verify_capath: StrPath | None
+    verify_cadata: str | bytes | None
 
     def __init__(
             self,
             *,
             # Listening socket, root URL path, and the reported URL hostname:
-            addr: Optional[str] = None,
-            port: Optional[int] = None,
-            path: Optional[str] = None,
-            host: Optional[str] = None,
+            addr: str | None = None,
+            port: int | None = None,
+            path: str | None = None,
+            host: str | None = None,
             # The CA bundle to be passed to "client configs":
-            cadata: Optional[bytes] = None,
-            cafile: Optional[StrPath] = None,
-            cadump: Optional[StrPath] = None,
+            cadata: bytes | None = None,
+            cafile: StrPath | None = None,
+            cadump: StrPath | None = None,
             # A pre-configured SSL context (if any):
-            context: Optional[ssl.SSLContext] = None,
+            context: ssl.SSLContext | None = None,
             # The server's own certificate, or lack of it (loaded into the context):
             insecure: bool = False,  # http is needed for ngrok
-            certfile: Optional[StrPath] = None,
-            pkeyfile: Optional[StrPath] = None,
-            password: Optional[str] = None,
+            certfile: StrPath | None = None,
+            pkeyfile: StrPath | None = None,
+            password: str | None = None,
             # Generated certificate's extra info.
             extra_sans: Iterable[str] = (),
             # Verification of client certificates (loaded into the context):
-            verify_mode: Optional[ssl.VerifyMode] = None,
-            verify_cafile: Optional[StrPath] = None,
-            verify_capath: Optional[StrPath] = None,
-            verify_cadata: Optional[Union[str, bytes]] = None,
+            verify_mode: ssl.VerifyMode | None = None,
+            verify_cafile: StrPath | None = None,
+            verify_capath: StrPath | None = None,
+            verify_cadata: str | bytes | None = None,
     ) -> None:
         super().__init__()
         self.addr = addr
@@ -231,7 +231,7 @@ class WebhookServer(webhacks.WebhookContextManager):
             return int(s.getsockname()[1])
 
     @staticmethod
-    def _get_accessible_addr(addr: Optional[str]) -> str:
+    def _get_accessible_addr(addr: str | None) -> str:
         """
         Convert a "catch-all" listening address to the accessible hostname.
 
@@ -271,7 +271,7 @@ class WebhookServer(webhacks.WebhookContextManager):
         netloc = host if is_default_port else f'{host}:{port}'
         return urllib.parse.urlunsplit([schema, netloc, path, '', ''])
 
-    def _build_ssl(self) -> tuple[Optional[bytes], Optional[ssl.SSLContext]]:
+    def _build_ssl(self) -> tuple[bytes | None, ssl.SSLContext | None]:
         """
         A macros to construct an SSL context, possibly generating SSL certs.
 
@@ -345,7 +345,7 @@ class WebhookServer(webhacks.WebhookContextManager):
     @staticmethod
     def build_certificate(
             hostnames: Collection[str],
-            password: Optional[str] = None,
+            password: str | None = None,
     ) -> tuple[bytes, bytes]:
         """
         Build a self-signed certificate with SANs (subject alternative names).
@@ -380,7 +380,7 @@ class WebhookServer(webhacks.WebhookContextManager):
 
         # Detect which ones of the hostnames are probably IPv4/IPv6 addresses.
         # A side-effect: bring them all to their canonical forms.
-        parsed_ips: dict[str, Union[ipaddress.IPv4Address, ipaddress.IPv6Address]] = {}
+        parsed_ips: dict[str, ipaddress.IPv4Address | ipaddress.IPv6Address] = {}
         for hostname in hostnames:
             try:
                 parsed_ips[hostname] = ipaddress.IPv4Address(hostname)
@@ -494,22 +494,22 @@ class WebhookNgrokTunnel(webhacks.WebhookContextManager):
         Additionally, you can add random paths. However, this is not "security",
         only a bit of safety for a short time (enough for development runs).
     """
-    addr: Optional[str]  # None means "any interface"
-    port: Optional[int]  # None means a random port
-    path: Optional[str]
-    token: Optional[str]
-    region: Optional[str]
-    binary: Optional[StrPath]
+    addr: str | None  # None means "any interface"
+    port: int | None  # None means a random port
+    path: str | None
+    token: str | None
+    region: str | None
+    binary: StrPath | None
 
     def __init__(
             self,
             *,
-            addr: Optional[str] = None,
-            port: Optional[int] = None,
-            path: Optional[str] = None,
-            token: Optional[str] = None,
-            region: Optional[str] = None,
-            binary: Optional[StrPath] = None,
+            addr: str | None = None,
+            port: int | None = None,
+            path: str | None = None,
+            token: str | None = None,
+            region: str | None = None,
+            binary: StrPath | None = None,
     ) -> None:
         super().__init__()
         self.addr = addr
@@ -536,7 +536,7 @@ class WebhookNgrokTunnel(webhacks.WebhookContextManager):
             ngrok.set_auth_token(self.token)
 
         # Ngrok only supports HTTP with a free plan; HTTPS requires a paid subscription.
-        tunnel: Optional[ngrok.NgrokTunnel] = None
+        tunnel: ngrok.NgrokTunnel | None = None
         loop = asyncio.get_running_loop()
         async with WebhookServer(addr=self.addr, port=self.port,
                                  path=self.path, insecure=True) as server:
@@ -579,7 +579,7 @@ class ClusterDetector:
     Note: the SSL certificate of the Kubernetes API is checked, not of webhooks.
     """
     @staticmethod
-    async def guess_host() -> Optional[str]:
+    async def guess_host() -> str | None:
         try:
             import certvalidator
         except ImportError:
@@ -655,16 +655,16 @@ class WebhookAutoTunnel(ClusterDetector, webhacks.WebhookContextManager):
         All other options are specific to their servers/tunnels
         and the auto-guessing logic cannot use/accept/pass them.
     """
-    addr: Optional[str]  # None means "any interface"
-    port: Optional[int]  # None means a random port
-    path: Optional[str]
+    addr: str | None  # None means "any interface"
+    port: int | None  # None means a random port
+    path: str | None
 
     def __init__(
             self,
             *,
-            addr: Optional[str] = None,
-            port: Optional[int] = None,
-            path: Optional[str] = None,
+            addr: str | None = None,
+            port: int | None = None,
+            path: str | None = None,
     ) -> None:
         super().__init__()
         self.addr = addr
@@ -672,7 +672,7 @@ class WebhookAutoTunnel(ClusterDetector, webhacks.WebhookContextManager):
         self.path = path
 
     async def __call__(self, fn: reviews.WebhookFn) -> AsyncIterator[reviews.WebhookClientConfig]:
-        server: Union[WebhookNgrokTunnel, WebhookServer]
+        server: WebhookNgrokTunnel | WebhookServer
         host = await self.guess_host()
         if host is None:
             logger.debug(f"Cluster detection failed, using an ngrok tunnel.")

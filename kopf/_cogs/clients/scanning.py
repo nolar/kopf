@@ -1,6 +1,5 @@
 import asyncio
 from collections.abc import Collection, Mapping
-from typing import Optional
 
 from kopf._cogs.clients import api, errors
 from kopf._cogs.configs import configuration
@@ -21,7 +20,7 @@ async def scan_resources(
         *,
         settings: configuration.OperatorSettings,
         logger: typedefs.Logger,
-        groups: Optional[Collection[str]] = None,
+        groups: Collection[str] | None = None,
 ) -> Collection[references.Resource]:
     coros = {
         _read_old_api(groups=groups, settings=settings, logger=logger),
@@ -37,7 +36,7 @@ async def _read_old_api(
         *,
         settings: configuration.OperatorSettings,
         logger: typedefs.Logger,
-        groups: Optional[Collection[str]],
+        groups: Collection[str] | None,
 ) -> Collection[references.Resource]:
     resources: set[references.Resource] = set()
     if groups is None or '' in groups:
@@ -62,7 +61,7 @@ async def _read_new_apis(
         *,
         settings: configuration.OperatorSettings,
         logger: typedefs.Logger,
-        groups: Optional[Collection[str]],
+        groups: Collection[str] | None,
 ) -> Collection[references.Resource]:
     resources: set[references.Resource] = set()
     if groups is None or set(groups or {}) - {''}:
