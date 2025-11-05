@@ -326,22 +326,23 @@ def generate_id(
 
 def get_callable_id(c: Callable[..., Any]) -> str:
     """ Get an reasonably good id of any commonly used callable. """
-    if c is None:
-        raise ValueError("Cannot build a persistent id of None.")
-    elif isinstance(c, functools.partial):
-        return get_callable_id(c.func)
-    elif hasattr(c, '__wrapped__'):  # @functools.wraps()
-        return get_callable_id(getattr(c, '__wrapped__'))
-    elif isinstance(c, FunctionType) and c.__name__ == '<lambda>':
-        # The best we can do to keep the id stable across the process restarts,
-        # assuming at least no code changes. The code changes are not detectable.
-        line = c.__code__.co_firstlineno
-        path = c.__code__.co_filename
-        return f'lambda:{path}:{line}'
-    elif isinstance(c, (FunctionType, MethodType)):
-        return str(getattr(c, '__qualname__', getattr(c, '__name__', repr(c))))
-    else:
-        raise ValueError(f"Cannot get id of {c!r}.")
+    match c:
+        case None:
+            raise ValueError("Cannot build a persistent id of None.")
+        case functools.partial():
+            return get_callable_id(c.func)
+        case _ if hasattr(c, '__wrapped__'):  # @functools.wraps()
+            return get_callable_id(getattr(c, '__wrapped__'))
+        case FunctionType() if c.__name__ == '<lambda>':
+            # The best we can do to keep the id stable across the process restarts,
+            # assuming at least no code changes. The code changes are not detectable.
+            line = c.__code__.co_firstlineno
+            path = c.__code__.co_filename
+            return f'lambda:{path}:{line}'
+        case FunctionType() | MethodType():
+            return str(getattr(c, '__qualname__', getattr(c, '__name__', repr(c))))
+        case _:
+            raise ValueError(f"Cannot get id of {c!r}.")
 
 
 def _deduplicated(

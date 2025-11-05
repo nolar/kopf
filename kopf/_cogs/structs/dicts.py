@@ -33,14 +33,15 @@ def parse_field(
     * ``("field", "subfield")``
     * ``["field", "subfield"]``
     """
-    if field is None:
-        return ()
-    elif isinstance(field, str):
-        return tuple(field.split('.'))
-    elif isinstance(field, (list, tuple)):
-        return tuple(field)
-    else:
-        raise ValueError(f"Field must be either a str, or a list/tuple. Got {field!r}")
+    match field:
+        case None:
+            return ()
+        case str():
+            return tuple(field.split('.'))
+        case list() | tuple():
+            return tuple(field)
+        case _:
+            raise ValueError(f"Field must be either a str, or a list/tuple. Got {field!r}")
 
 
 def resolve_obj(
@@ -59,19 +60,20 @@ def resolve_obj(
     try:
         result = d
         for key in path:
-            if isinstance(result, collections.abc.Mapping):
-                result = result[key]
-            elif isinstance(result, thirdparty.KubernetesModel):
-                attrmap: Mapping[str, str] = getattr(result, 'attribute_map', {})
-                attrs = [attr for attr, schema_key in attrmap.items() if schema_key == key]
-                key = attrs[0] if attrs else key
-                result = getattr(result, key)
-            elif not isinstance(result, (tuple, list, set, frozenset, str, bytes)):
-                result = getattr(result, key)
-            elif not isinstance(default, _UNSET):
-                return default
-            else:
-                raise TypeError(f"The structure has no field {key!r}: {result!r}")
+            match result:
+                case collections.abc.Mapping():
+                    result = result[key]
+                case thirdparty.KubernetesModel():
+                    attrmap: Mapping[str, str] = getattr(result, 'attribute_map', {})
+                    attrs = [attr for attr, schema_key in attrmap.items() if schema_key == key]
+                    key = attrs[0] if attrs else key
+                    result = getattr(result, key)
+                case tuple() | list() | set() | frozenset() | str() | bytes():
+                    if default is _UNSET.token:
+                        raise TypeError(f"The structure has no field {key!r}: {result!r}")
+                    return default
+                case _:
+                    result = getattr(result, key)
         return result
     except (AttributeError, KeyError):
         if not isinstance(default, _UNSET):
@@ -117,12 +119,13 @@ def resolve(
     try:
         result = d
         for key in path:
-            if isinstance(result, collections.abc.Mapping):
-                result = result[key]
-            elif not isinstance(default, _UNSET):
-                return default
-            else:
-                raise TypeError(f"The structure is not a dict with field {key!r}: {result!r}")
+            match result:
+                case collections.abc.Mapping():
+                    result = result[key]
+                case _:
+                    if default is _UNSET.token:
+                        raise TypeError(f"The structure is not a dict with field {key!r}: {result!r}")
+                    return default
         return result
     except KeyError:
         if not isinstance(default, _UNSET):
@@ -231,30 +234,31 @@ def walk(
     for type-checker's limitations. The actual nesting can be infinite.
     It is highly unlikely that there will be anything deeper than one level.
     """
-    if objs is None:
-        pass
-    elif isinstance(objs, thirdparty.PykubeObject):
-        # Pykube is yielded as an underlying dict, never as its own class.
-        yield from walk(objs.obj, nested=nested)
-    elif isinstance(objs, thirdparty.KubernetesModel):
-        yield objs
-        for subfield in (nested if nested is not None else []):
-            try:
-                yield resolve_obj(objs, parse_field(subfield))
-            except (AttributeError, KeyError):
-                pass  # do not dive deep into non-existent fields or non-dicts
-    elif isinstance(objs, collections.abc.Mapping):
-        yield objs  # type: ignore
-        for subfield in (nested if nested is not None else []):
-            try:
-                yield resolve(objs, parse_field(subfield))
-            except KeyError:
-                pass  # avoid diving into non-dicts, ignore them
-    elif isinstance(objs, collections.abc.Iterable):
-        for obj in objs:
-            yield from walk(obj, nested=nested)
-    else:
-        yield objs  # NB: not a mapping or a known type => no nested sub-fields.
+    match objs:
+        case None:
+            pass
+        case thirdparty.PykubeObject():
+            # Pykube is yielded as an underlying dict, never as its own class.
+            yield from walk(objs.obj, nested=nested)
+        case thirdparty.KubernetesModel():
+            yield objs
+            for subfield in (nested if nested is not None else []):
+                try:
+                    yield resolve_obj(objs, parse_field(subfield))
+                except (AttributeError, KeyError):
+                    pass  # do not dive deep into non-existent fields or non-dicts
+        case collections.abc.Mapping():
+            yield objs  # type: ignore
+            for subfield in (nested if nested is not None else []):
+                try:
+                    yield resolve(objs, parse_field(subfield))
+                except KeyError:
+                    pass  # avoid diving into non-dicts, ignore them
+        case collections.abc.Iterable():
+            for obj in objs:
+                yield from walk(obj, nested=nested)
+        case _:
+            yield objs  # NB: not a mapping or a known type => no nested sub-fields.
 
 
 class MappingView(Mapping[_K, _V], Generic[_K, _V]):

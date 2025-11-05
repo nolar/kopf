@@ -97,7 +97,7 @@ def match_namespace(name: NamespaceName, pattern: NamespacePattern) -> bool:
 # Detect conventional API versions for some cases: e.g. in "myresources.v1alpha1.example.com".
 # Non-conventional versions are indistinguishable from API groups ("myresources.foo1.example.com").
 # See also: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definition-versioning/
-K8S_VERSION_PATTERN = re.compile(r'^v\d+(?:(?:alpha|beta)\d+)?$')
+K8S_GROUP_VERSION_PATTERN = re.compile(r'^[^\.]* \. v\d+(?:(?:alpha|beta)\d+)? (?:\..*)?$', re.X)
 
 
 @dataclasses.dataclass(frozen=True, eq=False, repr=False)
@@ -291,35 +291,38 @@ class Selector:
 
         # Since the class is frozen & read-only, post-creation field adjustment is done via a hack.
         # This is the same hack as used in the frozen dataclasses to initialise their fields.
-        if argN is not None:
-            raise TypeError("Too many positional arguments. Max 3 positional args are accepted.")
-        elif arg3 is not None:
-            object.__setattr__(self, 'group', arg1)
-            object.__setattr__(self, 'version', arg2)
-            object.__setattr__(self, 'any_name', arg3)
-        elif arg2 is not None and isinstance(arg1, str) and '/' in arg1:
-            object.__setattr__(self, 'group', arg1.rsplit('/', 1)[0])
-            object.__setattr__(self, 'version', arg1.rsplit('/')[-1])
-            object.__setattr__(self, 'any_name', arg2)
-        elif arg2 is not None and arg1 == 'v1':
-            object.__setattr__(self, 'group', '')
-            object.__setattr__(self, 'version', arg1)
-            object.__setattr__(self, 'any_name', arg2)
-        elif arg2 is not None:
-            object.__setattr__(self, 'group', arg1)
-            object.__setattr__(self, 'any_name', arg2)
-        elif arg1 is not None and isinstance(arg1, Marker):
-            object.__setattr__(self, 'any_name', arg1)
-        elif arg1 is not None and '.' in arg1 and K8S_VERSION_PATTERN.match(arg1.split('.')[1]):
-            if len(arg1.split('.')) >= 3:
-                object.__setattr__(self, 'group', arg1.split('.', 2)[2])
-            object.__setattr__(self, 'version', arg1.split('.')[1])
-            object.__setattr__(self, 'any_name', arg1.split('.')[0])
-        elif arg1 is not None and '.' in arg1:
-            object.__setattr__(self, 'group', arg1.split('.', 1)[1])
-            object.__setattr__(self, 'any_name', arg1.split('.')[0])
-        elif arg1 is not None:
-            object.__setattr__(self, 'any_name', arg1)
+        match arg1, arg2, arg3, argN:
+            case None, None, None, None:
+                pass
+            case Marker.EVERYTHING, None, None, None:
+                object.__setattr__(self, 'any_name', arg1)
+            case str(), None, None, None if K8S_GROUP_VERSION_PATTERN.fullmatch(arg1):
+                if len(arg1.split('.')) >= 3:
+                    object.__setattr__(self, 'group', arg1.split('.', 2)[2])
+                object.__setattr__(self, 'version', arg1.split('.')[1])
+                object.__setattr__(self, 'any_name', arg1.split('.')[0])
+            case str(), None, None, None if '.' in arg1:
+                object.__setattr__(self, 'group', arg1.split('.', 1)[1])
+                object.__setattr__(self, 'any_name', arg1.split('.')[0])
+            case _, None, None, None:
+                object.__setattr__(self, 'any_name', arg1)
+            case str(), _, None, None if '/' in arg1:
+                object.__setattr__(self, 'group', arg1.rsplit('/', 1)[0])
+                object.__setattr__(self, 'version', arg1.rsplit('/')[-1])
+                object.__setattr__(self, 'any_name', arg2)
+            case 'v1', _, None, None:
+                object.__setattr__(self, 'group', '')
+                object.__setattr__(self, 'version', arg1)
+                object.__setattr__(self, 'any_name', arg2)
+            case _, _, None, None:
+                object.__setattr__(self, 'group', arg1)
+                object.__setattr__(self, 'any_name', arg2)
+            case _, _, _, None:
+                object.__setattr__(self, 'group', arg1)
+                object.__setattr__(self, 'version', arg2)
+                object.__setattr__(self, 'any_name', arg3)
+            case _, _, _, _:
+                raise TypeError("Too many positional arguments. Max 3 positional args are accepted.")
 
         # Verify that explicit & interpreted arguments have produced an unambiguous specification.
         names = [self.kind, self.plural, self.singular, self.shortcut, self.category, self.any_name]

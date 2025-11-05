@@ -221,20 +221,21 @@ def make_formatter(
         log_refkey: str | None = None,
 ) -> ObjectFormatter:
     log_prefix = log_prefix if log_prefix is not None else bool(log_format is not LogFormat.JSON)
-    if log_format is LogFormat.JSON:
-        if log_prefix:
-            return ObjectPrefixingJsonFormatter(refkey=log_refkey)
-        else:
-            return ObjectJsonFormatter(refkey=log_refkey)
-    elif isinstance(log_format, LogFormat):
-        if log_prefix:
-            return ObjectPrefixingTextFormatter(log_format.value)
-        else:
-            return ObjectTextFormatter(log_format.value)
-    elif isinstance(log_format, str):
-        if log_prefix:
-            return ObjectPrefixingTextFormatter(log_format)
-        else:
-            return ObjectTextFormatter(log_format)
-    else:
-        raise ValueError(f"Unsupported log format: {log_format!r}")
+    match log_format:
+        case LogFormat.JSON:
+            if log_prefix:
+                return ObjectPrefixingJsonFormatter(refkey=log_refkey)
+            else:
+                return ObjectJsonFormatter(refkey=log_refkey)
+        case LogFormat():
+            if log_prefix:
+                return ObjectPrefixingTextFormatter(log_format.value)
+            else:
+                return ObjectTextFormatter(log_format.value)
+        case str():
+            if log_prefix:
+                return ObjectPrefixingTextFormatter(log_format)
+            else:
+                return ObjectTextFormatter(log_format)
+        case _:
+            raise ValueError(f"Unsupported log format: {log_format!r}")
