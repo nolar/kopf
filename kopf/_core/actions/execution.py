@@ -12,7 +12,7 @@ import contextlib
 import dataclasses
 import datetime
 import enum
-from collections.abc import AsyncIterator, Collection, Iterable, Mapping, MutableMapping, Sequence
+from collections.abc import AsyncIterator, Collection, Iterable, Mapping, Sequence
 from contextvars import ContextVar
 from typing import Any, AsyncContextManager, Callable, NewType, Optional, Protocol, TypeVar
 
@@ -134,7 +134,7 @@ class Cause(invocation.Kwargable):
     logger: typedefs.Logger
 
     @property
-    def _kwargs(self) -> Mapping[str, Any]:
+    def _kwargs(self) -> dict[str, Any]:
         # Similar to `dataclasses.asdict()`, but not recursive for other dataclasses.
         return {field.name: getattr(self, field.name) for field in dataclasses.fields(self)}
 
@@ -198,7 +198,7 @@ async def execute_handlers_once(
         state: State,
         extra_context: ExtraContext = no_extra_context,
         default_errors: ErrorsMode = ErrorsMode.TEMPORARY,
-) -> Mapping[ids.HandlerId, Outcome]:
+) -> dict[ids.HandlerId, Outcome]:
     """
     Call the next handler(s) from the chain of the handlers.
 
@@ -214,7 +214,7 @@ async def execute_handlers_once(
     handlers_plan = lifecycle(handlers_todo, state=state, **cause.kwargs)
 
     # Execute all planned (selected) handlers in one event reaction cycle, even if there are a few.
-    outcomes: MutableMapping[ids.HandlerId, Outcome] = {}
+    outcomes: dict[ids.HandlerId, Outcome] = {}
     for handler in handlers_plan:
         outcome = await execute_handler_once(
             settings=settings,

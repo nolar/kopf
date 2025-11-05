@@ -21,7 +21,6 @@ could execute on the yet-existing object (and its children, if created).
 """
 import dataclasses
 import enum
-from collections.abc import Mapping
 from typing import Any, Optional
 
 from kopf._cogs.configs import configuration
@@ -106,14 +105,14 @@ class BaseCause(execution.Cause):
     memo: ephemera.AnyMemo
 
     @property
-    def _kwargs(self) -> Mapping[str, Any]:
+    def _kwargs(self) -> dict[str, Any]:
         kwargs = dict(super()._kwargs)
         del kwargs['indices']
         return kwargs
 
     @property
-    def _super_kwargs(self) -> Mapping[str, Any]:
-        return self.indices
+    def _super_kwargs(self) -> dict[str, Any]:
+        return dict(self.indices)
 
 
 @dataclasses.dataclass
@@ -129,7 +128,7 @@ class ResourceCause(BaseCause):
     body: bodies.Body
 
     @property
-    def _kwargs(self) -> Mapping[str, Any]:
+    def _kwargs(self) -> dict[str, Any]:
         return dict(
             super()._kwargs,
             spec=self.body.spec,
@@ -148,8 +147,8 @@ class WebhookCause(ResourceCause):
     dryrun: bool
     reason: Optional[WebhookType]  # None means "all" or expects the webhook id
     webhook: Optional[ids.HandlerId]  # None means "all"
-    headers: Mapping[str, str]
-    sslpeer: Mapping[str, Any]
+    headers: reviews.Headers
+    sslpeer: reviews.SSLPeer
     userinfo: reviews.UserInfo
     warnings: list[str]  # mutable!
     operation: Optional[reviews.Operation]  # None if not provided for some reason
@@ -159,7 +158,7 @@ class WebhookCause(ResourceCause):
     diff: Optional[diffs.Diff] = None
 
     @property
-    def _kwargs(self) -> Mapping[str, Any]:
+    def _kwargs(self) -> dict[str, Any]:
         kwargs = dict(super()._kwargs)
         del kwargs['reason']
         del kwargs['webhook']
@@ -196,7 +195,7 @@ class SpawningCause(ResourceCause):
     reset: bool
 
     @property
-    def _kwargs(self) -> Mapping[str, Any]:
+    def _kwargs(self) -> dict[str, Any]:
         kwargs = dict(super()._kwargs)
         del kwargs['reset']
         return kwargs
@@ -217,7 +216,7 @@ class ChangingCause(ResourceCause):
     new: Optional[bodies.BodyEssence] = None
 
     @property
-    def _kwargs(self) -> Mapping[str, Any]:
+    def _kwargs(self) -> dict[str, Any]:
         kwargs = dict(super()._kwargs)
         del kwargs['initial']
         return kwargs
@@ -250,18 +249,18 @@ class DaemonCause(ResourceCause):
     stopper: stoppers.DaemonStopper  # a signaller for the termination and its reason.
 
     @property
-    def _kwargs(self) -> Mapping[str, Any]:
+    def _kwargs(self) -> dict[str, Any]:
         kwargs = dict(super()._kwargs)
         del kwargs['stopper']
         return kwargs
 
     @property
-    def _sync_kwargs(self) -> Mapping[str, Any]:
-        return dict(super()._sync_kwargs, stopped=self.stopper.sync_waiter)
+    def _sync_kwargs(self) -> dict[str, Any]:
+        return super()._sync_kwargs | dict(stopped=self.stopper.sync_waiter)
 
     @property
-    def _async_kwargs(self) -> Mapping[str, Any]:
-        return dict(super()._async_kwargs, stopped=self.stopper.async_waiter)
+    def _async_kwargs(self) -> dict[str, Any]:
+        return super()._async_kwargs | dict(stopped=self.stopper.async_waiter)
 
 
 def detect_watching_cause(

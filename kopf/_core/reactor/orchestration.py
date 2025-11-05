@@ -27,7 +27,7 @@ import dataclasses
 import functools
 import itertools
 import logging
-from collections.abc import Collection, Container, Iterable, MutableMapping
+from collections.abc import Collection, Container, Iterable
 from typing import Any, NamedTuple, Optional, Protocol
 
 from kopf._cogs.aiokits import aiotasks, aiotoggles
@@ -65,7 +65,7 @@ class Ensemble:
     #       ToggleSet is used because it is the closest equivalent of such a primitive.
     operator_indexed: aiotoggles.ToggleSet
 
-    # Multidimentional pausing: for every namespace, and a few for the whole cluster (for CRDs).
+    # Multidimensional pausing: for every namespace, and a few for the whole cluster (for CRDs).
     operator_paused: aiotoggles.ToggleSet
     peering_missing: aiotoggles.Toggle
     conflicts_found: dict[EnsembleKey, aiotoggles.Toggle] = dataclasses.field(default_factory=dict)
@@ -90,7 +90,7 @@ class Ensemble:
         return {toggle for key, toggle in self.conflicts_found.items() if key in keys}
 
     def del_keys(self, keys: Container[EnsembleKey]) -> None:
-        d: MutableMapping[EnsembleKey, Any]
+        d: dict[EnsembleKey, Any]
         for d in [self.watcher_tasks, self.peering_tasks, self.pinging_tasks]:
             for key in set(d):
                 if key in keys:

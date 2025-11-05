@@ -47,6 +47,7 @@ from typing import Any, Literal, Optional, TypedDict, Union, cast
 from kopf._cogs.structs import dicts, references
 
 # Make sure every kwarg has a corresponding same-named type in the root package.
+# Usually, they are "live views" into dicts, so they are not dicts themselves.
 Labels = Mapping[str, str]
 Annotations = Mapping[str, str]
 
@@ -66,8 +67,8 @@ class RawMeta(TypedDict, total=False):
     uid: str
     name: str
     namespace: str
-    labels: Labels
-    annotations: Annotations
+    labels: dict[str, str]
+    annotations: dict[str, str]
     finalizers: list[str]
     resourceVersion: str
     deletionTimestamp: str
@@ -79,15 +80,15 @@ class RawBody(TypedDict, total=False):
     apiVersion: str
     kind: str
     metadata: RawMeta
-    spec: Mapping[str, Any]
-    status: Mapping[str, Any]
+    spec: dict[str, Any]
+    status: dict[str, Any]
 
 
 # A special payload for type==ERROR (this is not a connection or client error).
 class RawError(TypedDict, total=False):
     apiVersion: str     # usually: Literal['v1']
     kind: str           # usually: Literal['Status']
-    metadata: Mapping[Any, Any]
+    metadata: dict[Any, Any]
     code: int
     reason: str
     status: str
@@ -114,14 +115,14 @@ class RawEvent(TypedDict, total=True):
 
 
 class MetaEssence(TypedDict, total=False):
-    labels: Labels
-    annotations: Annotations
+    labels: dict[str, str]
+    annotations: dict[str, str]
 
 
 class BodyEssence(TypedDict, total=False):
     metadata: MetaEssence
-    spec: Mapping[str, Any]
-    status: Mapping[str, Any]
+    spec: dict[str, Any]
+    status: dict[str, Any]
 
 
 #
@@ -180,7 +181,7 @@ class Status(dicts.MappingView[str, Any]):
 
 class Body(dicts.ReplaceableMappingView[str, Any]):
 
-    def __init__(self, __src: Mapping[str, Any]) -> None:
+    def __init__(self, __src: Union[RawBody, BodyEssence]) -> None:
         super().__init__(__src)
         self._meta = Meta(self)
         self._spec = Spec(self)

@@ -66,7 +66,7 @@ class Patch(dict[str, Any]):
 
     def __init__(
         self,
-        __src: Optional[collections.abc.MutableMapping[str, Any]] = None,
+        __src: Optional[dict[str, Any]] = None,
         body: Optional[bodies.RawBody] = None
     ) -> None:
         super().__init__(__src or {})

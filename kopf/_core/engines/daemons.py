@@ -25,7 +25,7 @@ import asyncio
 import dataclasses
 import time
 import warnings
-from collections.abc import Collection, Iterable, Mapping, MutableMapping, Sequence
+from collections.abc import Collection, Iterable, Sequence
 from typing import Optional
 
 from kopf._cogs.aiokits import aiotasks, aiotime, aiotoggles
@@ -70,7 +70,7 @@ async def spawn_daemons(
         *,
         settings: configuration.OperatorSettings,
         handlers: Sequence[handlers_.SpawningHandler],
-        daemons: MutableMapping[ids.HandlerId, Daemon],
+        daemons: dict[ids.HandlerId, Daemon],
         cause: causes.SpawningCause,
         memory: DaemonsMemory,
 ) -> Collection[float]:
@@ -115,7 +115,7 @@ async def match_daemons(
         *,
         settings: configuration.OperatorSettings,
         handlers: Sequence[handlers_.SpawningHandler],
-        daemons: MutableMapping[ids.HandlerId, Daemon],
+        daemons: dict[ids.HandlerId, Daemon],
 ) -> Collection[float]:
     """
     Re-match the running daemons with the filters, and stop those mismatching.
@@ -139,7 +139,7 @@ async def match_daemons(
 async def stop_daemons(
         *,
         settings: configuration.OperatorSettings,
-        daemons: Mapping[ids.HandlerId, Daemon],
+        daemons: dict[ids.HandlerId, Daemon],
         reason: stoppers.DaemonStoppingReason = stoppers.DaemonStoppingReason.RESOURCE_DELETED,
 ) -> Collection[float]:
     """
@@ -392,7 +392,7 @@ async def _wait_for_instant_exit(
 async def _runner(
         *,
         settings: configuration.OperatorSettings,
-        daemons: MutableMapping[ids.HandlerId, Daemon],
+        daemons: dict[ids.HandlerId, Daemon],
         handler: handlers_.SpawningHandler,
         memory: DaemonsMemory,
         cause: causes.DaemonCause,
