@@ -8,10 +8,11 @@ This eliminates the need to log & post the same messages, which complicates
 the operators' code, and can lead to information loss or mismatch
 (e.g. when logging call is added, but posting is forgotten).
 """
+import contextlib
 import copy
 import enum
 import logging
-from collections.abc import MutableMapping
+from collections.abc import Iterator, MutableMapping
 from typing import TYPE_CHECKING, Any, TextIO
 
 # Luckily, we do not mock these ones in tests, so we can import them into our namespace.
@@ -177,16 +178,43 @@ class TerseObjectLogger(LocalObjectLogger):
         return super().isEnabledFor(level if level >= logging.WARNING else level - 10)
 
 
-# Used to identify and remove our own handlers on re-runs in e2e tests. Every e2e test injects
-# its own handler, but the previous handlers of preceding tests can have the stream closed,
-# since they stream into an stderr interceptor of Click's runner, not to the real stderr.
-# We have to remove the closed streams either when the test finishes, or when the new one starts.
-if TYPE_CHECKING:
-    class _KopfStreamHandler(logging.StreamHandler[TextIO]):
-        pass
-else:
-    class _KopfStreamHandler(logging.StreamHandler):
-        pass
+# EXPERIMENTAL: it fails only in CI, works locally; TODO rewrite, do not merge.
+@contextlib.contextmanager
+def configured(
+        debug: bool | None = None,
+        verbose: bool | None = None,
+        quiet: bool | None = None,
+        log_format: LogFormat = LogFormat.FULL,
+        log_prefix: bool | None = False,
+        log_refkey: str | None = None,
+) -> Iterator[None]:
+    log_level = 'DEBUG' if debug or verbose else 'WARNING' if quiet else 'INFO'
+    formatter = make_formatter(log_format=log_format, log_prefix=log_prefix, log_refkey=log_refkey)
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    logger = logging.getLogger()
+    logger.addHandler(handler)
+    previous_level = logger.level
+    logger.setLevel(log_level)
+
+    # Prevent the low-level logging unless in the debug mode. Keep only the operator's messages.
+    # For no-propagation loggers, add a dummy null handler to prevent printing the messages.
+    # debug = False
+    for name in ['asyncio']:
+        logger = logging.getLogger(name)
+        prev_asyncio_handlers = logger.handlers[:]
+        prev_asyncio_propagate = logger.propagate
+        logger.propagate = bool(debug)
+        if not debug:
+            logger.handlers[:] = [logging.NullHandler()]
+
+    try:
+        yield
+    finally:
+        logging.getLogger().removeHandler(handler)
+        logging.getLogger().setLevel(previous_level)
+        logging.getLogger('asyncio').handlers[:] = prev_asyncio_handlers
+        logging.getLogger('asyncio').propagate = prev_asyncio_propagate
 
 
 def configure(
@@ -199,12 +227,22 @@ def configure(
 ) -> None:
     log_level = 'DEBUG' if debug or verbose else 'WARNING' if quiet else 'INFO'
     formatter = make_formatter(log_format=log_format, log_prefix=log_prefix, log_refkey=log_refkey)
-    handler = _KopfStreamHandler()
+    handler = logging.StreamHandler()
     handler.setFormatter(formatter)
     logger = logging.getLogger()
-    logger.handlers[:] = [h for h in logger.handlers if not isinstance(h, _KopfStreamHandler)]
     logger.addHandler(handler)
     logger.setLevel(log_level)
+
+    # A hack for e2e tests: drop all stderr streams to Click's interceptors from the previous tests.
+    # Every run injects its own stderr handler, but the previous runs could leave the handlers that
+    # point into the stderr interceptors of previously closed Click runners, not to the real stderr.
+    # We have to remove the closed streams either when the test finishes, or when a new one starts.
+    logger.handlers[:] = [
+        h for h in logger.handlers
+        if not isinstance(h, logging.StreamHandler)
+           or not hasattr(h.stream, 'closed')  # no better typing: it is of type SupportsWrite only
+           or not h.stream.closed
+    ]
 
     # Prevent the low-level logging unless in the debug mode. Keep only the operator's messages.
     # For no-propagation loggers, add a dummy null handler to prevent printing the messages.

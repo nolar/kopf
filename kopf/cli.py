@@ -1,6 +1,7 @@
 import asyncio
 import dataclasses
 import functools
+import logging
 import os
 from collections.abc import Collection
 from typing import Any, Callable
@@ -43,9 +44,10 @@ def logging_options(fn: Callable[..., Any]) -> Callable[..., Any]:
                 log_prefix: bool | None = False,
                 log_refkey: str | None = None,
                 *args: Any, **kwargs: Any) -> Any:
-        loggers.configure(debug=debug, verbose=verbose, quiet=quiet,
-                          log_format=log_format, log_refkey=log_refkey, log_prefix=log_prefix)
-        return fn(*args, **kwargs)
+        with loggers.configured(debug=debug, verbose=verbose, quiet=quiet,
+                          log_format=log_format, log_refkey=log_refkey, log_prefix=log_prefix):
+            logging.getLogger().error('EXPERIMENTAL boom!')
+            return fn(*args, **kwargs)
 
     return wrapper
 
