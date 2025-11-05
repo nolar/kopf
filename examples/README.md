@@ -6,8 +6,8 @@ For the examples to work, a sample CRD (Custom Resource Definition) should be cr
 kubectl apply -f crd.yaml
 ```
 
-Also, some libraries are needed for some operators and handlers:
+Also, some dev libraries are needed for some operators and handlers:
 
 ```bash
-pip install -r requirements.txt
+pip install --group dev -e .
 ```
