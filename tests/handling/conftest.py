@@ -34,7 +34,7 @@ all possible cases properly. In the top-level event handling, we assume they do,
 and only check for the upper-level behaviour, not all of the input combinations.
 """
 import dataclasses
-from typing import Callable
+from collections.abc import Callable
 from unittest.mock import Mock
 
 import pytest

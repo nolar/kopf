@@ -1,8 +1,8 @@
 """
 Admission reviews: requests & responses, also the webhook server protocols.
 """
-from collections.abc import AsyncIterator, Awaitable, Mapping
-from typing import Any, Callable, Literal, Protocol, TypedDict
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
+from typing import Any, Literal, Protocol, TypedDict
 
 from kopf._cogs.structs import bodies
 

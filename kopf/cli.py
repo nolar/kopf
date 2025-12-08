@@ -2,8 +2,8 @@ import asyncio
 import dataclasses
 import functools
 import os
-from collections.abc import Collection
-from typing import Any, Callable
+from collections.abc import Callable, Collection
+from typing import Any
 
 import click
 
