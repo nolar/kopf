@@ -95,7 +95,7 @@ def run(
         paths=paths,
         modules=modules,
     )
-    with loops.proper_loop(__controls.loop):
+    with loops.proper_loop(suggested_loop=__controls.loop) as actual_loop:
         return running.run(
             standalone=standalone,
             namespaces=namespaces,
@@ -108,7 +108,7 @@ def run(
             stop_flag=__controls.stop_flag,
             ready_flag=__controls.ready_flag,
             vault=__controls.vault,
-            loop=__controls.loop,
+            loop=actual_loop,
         )
 
 
@@ -141,13 +141,14 @@ def freeze(
     settings = configuration.OperatorSettings()
     settings.peering.name = peering_name
     settings.peering.priority = priority
-    with loops.proper_loop(__controls.loop):
+    with loops.proper_loop(suggested_loop=__controls.loop) as actual_loop:
         return running.run(
             clusterwide=clusterwide,
             namespaces=namespaces,
             insights=insights,
             identity=identity,
             settings=settings,
+            loop=actual_loop,
             _command=peering.touch_command(
                 insights=insights,
                 identity=identity,
@@ -174,13 +175,14 @@ def resume(
     insights = references.Insights()
     settings = configuration.OperatorSettings()
     settings.peering.name = peering_name
-    with loops.proper_loop(__controls.loop):
+    with loops.proper_loop(suggested_loop=__controls.loop) as actual_loop:
         return running.run(
             clusterwide=clusterwide,
             namespaces=namespaces,
             insights=insights,
             identity=identity,
             settings=settings,
+            loop=actual_loop,
             _command=peering.touch_command(
                 insights=insights,
                 identity=identity,

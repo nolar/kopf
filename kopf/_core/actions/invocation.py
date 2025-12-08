@@ -9,6 +9,7 @@ import asyncio
 import contextlib
 import contextvars
 import functools
+import inspect
 from collections.abc import Callable, Coroutine, Iterable, Iterator, Mapping
 from typing import Any, TypeAlias, TypeVar, final
 
@@ -154,4 +155,4 @@ def is_async_fn(
     elif hasattr(fn, '__wrapped__'):  # @functools.wraps()
         return is_async_fn(fn.__wrapped__)
     else:
-        return asyncio.iscoroutinefunction(fn)
+        return inspect.iscoroutinefunction(fn)
