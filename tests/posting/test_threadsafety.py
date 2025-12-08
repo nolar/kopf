@@ -127,4 +127,6 @@ async def test_queueing_is_threadsafe(timer, awakener, threader, event_queue, ev
     with timer:
         await event_queue.get()
 
-    assert 0.2 <= timer.seconds <= 0.4
+    # TODO revert back 0.6 -> 0.4? (why is it 0.43-0.52s in GHA python 3.12 full-auth only?)
+    #   probably caused by a bad vm/container randomly selected with "noisy neighbours".
+    assert 0.2 <= timer.seconds <= 0.6
