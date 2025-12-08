@@ -10,8 +10,8 @@ all function calls with multiple awaiables (e.g. :func:`asyncio.wait`),
 so there is no added overhead; instead, the implicit overhead is made explicit.
 """
 import asyncio
-from collections.abc import Collection, Coroutine
-from typing import TYPE_CHECKING, Any, Callable, NamedTuple, TypeVar
+from collections.abc import Callable, Collection, Coroutine
+from typing import TYPE_CHECKING, Any, NamedTuple, TypeVar
 
 from kopf._cogs.helpers import typedefs
 

@@ -1,6 +1,6 @@
 import functools
-from collections.abc import AsyncGenerator, AsyncIterator
-from typing import Any, Callable, TypeVar, cast
+from collections.abc import AsyncGenerator, AsyncIterator, Callable
+from typing import Any, TypeVar, cast
 
 from kopf._cogs.structs import reviews
 

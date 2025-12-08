@@ -12,9 +12,10 @@ import contextlib
 import dataclasses
 import datetime
 import enum
-from collections.abc import AsyncIterator, Collection, Iterable, Mapping, MutableMapping, Sequence
+from collections.abc import AsyncIterator, Callable, Collection, \
+                            Iterable, Mapping, MutableMapping, Sequence
 from contextvars import ContextVar
-from typing import Any, AsyncContextManager, Callable, NewType, Protocol, TypeVar
+from typing import Any, AsyncContextManager, NewType, Protocol, TypeVar
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import typedefs

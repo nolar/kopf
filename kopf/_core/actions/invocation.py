@@ -9,8 +9,8 @@ import asyncio
 import contextlib
 import contextvars
 import functools
-from collections.abc import Coroutine, Iterable, Iterator, Mapping
-from typing import Any, Callable, TypeAlias, TypeVar, final
+from collections.abc import Callable, Coroutine, Iterable, Iterator, Mapping
+from typing import Any, TypeAlias, TypeVar, final
 
 from kopf._cogs.configs import configuration
 

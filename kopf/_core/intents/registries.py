@@ -14,10 +14,10 @@ of the handlers to be executed on each reaction cycle.
 import abc
 import enum
 import functools
-from collections.abc import Collection, Container, Iterable, Iterator, \
-                            Mapping, MutableMapping, Sequence
+from collections.abc import Callable, Collection, Container, Iterable, \
+                            Iterator, Mapping, MutableMapping, Sequence
 from types import FunctionType, MethodType
-from typing import Any, Callable, Generic, TypeVar, cast
+from typing import Any, Generic, TypeVar, cast
 
 from kopf._cogs.structs import dicts, ids, references
 from kopf._core.actions import execution

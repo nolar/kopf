@@ -28,8 +28,8 @@ import collections
 import dataclasses
 import datetime
 import random
-from collections.abc import AsyncIterable, AsyncIterator, Mapping
-from typing import Callable, NewType, TypeVar, cast
+from collections.abc import AsyncIterable, AsyncIterator, Callable, Mapping
+from typing import NewType, TypeVar, cast
 
 
 class LoginError(Exception):
