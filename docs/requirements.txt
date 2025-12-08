@@ -1,7 +1,0 @@
-# Everything needed to build the docs.
-# The runtime dependencies of the framework, as if via `pip install kopf`.
--e .
-sphinx>=2.0.0
-sphinx-autobuild
-sphinx-autodoc-typehints
-sphinx_rtd_theme>=0.5

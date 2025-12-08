@@ -38,7 +38,9 @@ from kopf._cogs.helpers.typedefs import (
     Logger,
 )
 from kopf._cogs.helpers.versions import (
-    version as __version__,
+    __version__,
+    __version_tuple__,
+    __commit_id__,
 )
 from kopf._cogs.structs.bodies import (
     RawEventType,

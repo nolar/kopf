@@ -1,0 +1,128 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm>=8.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kopf"
+description = "Kubernetes Operator Pythonic Framework (Kopf)"
+keywords = ["kubernetes", "operator", "framework", "python", "k8s"]
+authors = [{name = "Sergey Vasilyev", email = "nolar@nolar.info"}]
+maintainers = [{name = "Sergey Vasilyev", email = "nolar@nolar.info"}]
+license = "MIT"
+readme = "README.md"
+classifiers = [
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Software Development :: Libraries",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "python-json-logger",   # 0.05 MB
+    "iso8601",              # 0.07 MB
+    "pyyaml",               # 0.90 MB
+    "click>=8.2.0",         # 0.60 MB
+    "aiohttp",              # 7.80 MB
+    "aiohttp>=3.9.0; python_version >= '3.12'",
+]
+dynamic = ["version"]  # taken from git tags
+
+[project.urls]
+homepage = "https://github.com/nolar/kopf"
+repository = "https://github.com/nolar/kopf"
+documentation = "https://kopf.readthedocs.io"
+
+[project.scripts]
+kopf = "kopf.cli:main"
+
+[project.optional-dependencies]
+full-auth = [
+    "pykube-ng",            # 4.90 MB
+    "kubernetes",           # 40.0 MB (!)
+]
+uvloop = [
+    "uvloop",               # 9.00 MB
+    "uvloop>=0.18.0; python_version>='3.12'",
+]
+dev = [
+    # NB: oscrypto is pinned for Ubuntu 24.04+ in dependency-group - read the details there.
+    "oscrypto",             # 2.80 MB (smaller than cryptography: 8.7 MB)
+    "certbuilder",          # +0.1 MB (2.90 MB if alone)
+    "certvalidator",        # +0.1 MB (2.90 MB if alone)
+    "pyngrok",              # 1.00 MB + a downloaded binary
+]
+
+[dependency-groups]
+docs = [
+    "sphinx>=2.0.0",
+    "sphinx-autobuild",
+    "sphinx-autodoc-typehints",
+    "sphinx_rtd_theme>=0.5",
+]
+test = [
+    "aresponses",
+    "astpath[xpath]",
+    "certbuilder",
+    "certvalidator",
+    "codecov",
+    "coverage",
+    "coveralls",
+    "freezegun",
+    "lxml",
+    "pyngrok",
+    "pytest>=6.0.0",
+    "pytest-aiohttp",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pytest-mock",
+    "pytest-timeout",
+    "types-pyyaml",
+    "types-setuptools",
+
+    # Enforce the hotfix for Ubuntu 24.04 in CI. Otherwise, we are stuck in Ubuntu 22.04.
+    # The bugfix is merged but not released: https://github.com/wbond/oscrypto/issues/78
+    # Pinning this in the final operators is the decision of the operator developers,
+    # including the protocols of accessing the repo or vendoring the dependency code.
+    # The dev-mode dependency is used ONLY with a temporary insecure self-signed CA for simplicity,
+    # and ONLY with Ubuntu 24.04+. Therefore, it is not pinned in the main dependencies (e.g., works fine in 22.04).
+    # In the worst case, configure the operator with a self-signed CA made in the OpenSSL CLI.
+    "oscrypto @ git+https://github.com/wbond/oscrypto.git@1547f535001ba568b239b8797465536759c742a3",
+]
+lint = [
+    {include-group = "test"},
+    "mypy==1.19.0",
+    "import-linter",
+    "isort",
+    "pre-commit",
+]
+
+[tool.setuptools_scm]
+version_file = "kopf/_cogs/helpers/versions.py"
+
+[tool.mypy]
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.pytest]
+minversion = "9.0"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = ["--strict-markers"]
+
+[tool.isort]
+line_length = 100
+multi_line_output = 11
+balanced_wrapping = true
+combine_as_imports = true
+case_sensitive = true
+known_first_party = ["kopf"]
+filter_files = true
+skip_glob = ["examples/*.py"]

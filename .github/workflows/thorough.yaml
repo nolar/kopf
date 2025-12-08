@@ -23,7 +23,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
-      - run: pip install -r requirements.txt
+      - run: pip install --group lint -e .
       - run: pre-commit run --all-files
       - run: mypy kopf --strict
       - run: |
@@ -55,7 +55,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - run: pip install -r requirements.txt
+      - run: pip install --group test -e .
       - run: pip install -e .[${{ matrix.install-extras }}]
         if: ${{ matrix.install-extras }}
       - run: pytest --color=yes --timeout=2
@@ -99,7 +99,7 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install libxml2-dev libxslt-dev
       - run: pip install --upgrade pip wheel setuptools
 
-      - run: pip install -r requirements.txt
+      - run: pip install --group test -e .
       - run: pip install -e .[${{ matrix.install-extras }}]
         if: ${{ matrix.install-extras }}
       - run: pytest --color=yes --timeout=2 --no-cov
@@ -121,7 +121,7 @@ jobs:
         with:
           version: ${{ matrix.k3s }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: pip install -r requirements.txt -r examples/requirements.txt
+      - run: pip install --group test -e . -r examples/requirements.txt
       - run: pytest --color=yes --timeout=30 --only-e2e
 
   full-scale:
@@ -140,7 +140,7 @@ jobs:
         with:
           python-version: "3.13"
       - run: tools/install-minikube.sh
-      - run: pip install -r requirements.txt -r examples/requirements.txt
+      - run: pip install --group test -e . -r examples/requirements.txt
       - run: pytest --color=yes --timeout=30 --only-e2e
 
   coveralls-finish:
