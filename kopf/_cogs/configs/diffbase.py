@@ -91,7 +91,7 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
                 try:
                     dicts.remove(essence, ignored_field)
                 except TypeError:
-                    # If the field is not present or does not support item deletion, just skip it.
+                    # If the field does not support item deletion, just skip it.
                     pass
 
         return cast(bodies.BodyEssence, essence)
