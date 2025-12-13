@@ -181,7 +181,7 @@ def test_get_essence_clones_body(
 
 
 @pytest.mark.parametrize('cls', ALL_STORAGES)
-def test_status_storage_removes_fields(
+def test_status_storage_removes_ignored_fields(
         cls: type[DiffBaseStorage]):
     body = Body({
         'a': {
@@ -196,7 +196,7 @@ def test_status_storage_removes_fields(
             'i': 'j',
         }
     })
-    storage = cls(remove_fields=['a.b', 'a.e.f.g', 'h', 'k.l.m'])
+    storage = cls(ignored_fields=['a.b', 'a.e.f.g', 'h', 'k.l.m'])
     essence = storage.build(body=body)
 
     assert 'a' in essence
