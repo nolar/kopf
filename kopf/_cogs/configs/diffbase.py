@@ -111,10 +111,12 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
             *,
             prefix: str = 'kopf.zalando.org',
             key: str = 'last-handled-configuration',
+            remove_fields: Iterable[str] = None,
             v1: bool = True,  # will be switched to False a few releases later
     ) -> None:
         super().__init__(prefix=prefix, v1=v1)
         self.key = key
+        self._remove_fields = list(remove_fields) if remove_fields else []
 
     def build(
             self,
@@ -123,6 +125,18 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
             extra_fields: Iterable[dicts.FieldSpec] | None = None,
     ) -> bodies.BodyEssence:
         essence = super().build(body=body, extra_fields=extra_fields)
+
+        # Remove extra fields if specified
+        for path in self._remove_fields:
+            d = essence
+            keys = path.split('.')
+            for k in keys[:-1]:
+                # If current parent field is not a dict then the path is invalid; skip removal
+                if not isinstance(d.get(k, {}), dict):
+                    break
+                d = d.get(k, {})
+            d.pop(keys[-1], None)
+
         self.remove_annotations(essence, set(self.make_keys(self.key, body=body)))
         self.remove_empty_stanzas(essence)
         return essence
@@ -160,11 +174,13 @@ class StatusDiffBaseStorage(DiffBaseStorage):
             *,
             name: str = 'kopf',
             field: dicts.FieldSpec = 'status.{name}.last-handled-configuration',
+            remove_fields: Iterable[str] = None,
     ) -> None:
         super().__init__()
         self._name = name
         real_field = field.format(name=self._name) if isinstance(field, str) else field
         self._field = dicts.parse_field(real_field)
+        self._remove_fields = list(remove_fields) if remove_fields else []
 
     @property
     def field(self) -> dicts.FieldPath:
@@ -182,6 +198,17 @@ class StatusDiffBaseStorage(DiffBaseStorage):
             extra_fields: Iterable[dicts.FieldSpec] | None = None,
     ) -> bodies.BodyEssence:
         essence = super().build(body=body, extra_fields=extra_fields)
+
+        # Remove extra fields if specified
+        for path in self._remove_fields:
+            d = essence
+            keys = path.split('.')
+            for k in keys[:-1]:
+                # If current parent field is not a dict then the path is invalid; skip removal
+                if not isinstance(d.get(k, {}), dict):
+                    break
+                d = d.get(k, {})
+            d.pop(keys[-1], None)
 
         # Work around an issue with mypy not treating TypedDicts as MutableMappings.
         essence_dict = cast(dict[Any, Any], essence)

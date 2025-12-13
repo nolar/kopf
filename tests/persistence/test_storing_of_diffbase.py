@@ -65,11 +65,21 @@ def test_annotations_storage_with_prefix_and_key():
     assert storage.prefix == 'my-operator.my-company.com'
     assert storage.key == 'diff-base'
 
+def test_annotations_storage_with_remove_fields():
+    storage = AnnotationsDiffBaseStorage(
+        remove_fields=['a.b', 'a.e.f.g', 'h', 'k.l.m']
+    )
+    assert storage._remove_fields == ['a.b', 'a.e.f.g', 'h', 'k.l.m']
 
 def test_status_storage_with_field():
     storage = StatusDiffBaseStorage(field='status.my-operator.diff-base')
     assert storage.field == ('status', 'my-operator', 'diff-base')
 
+def test_status_storage_with_remove_fields():
+    storage = StatusDiffBaseStorage(
+        remove_fields=['a.b', 'a.e.f.g', 'h', 'k.l.m']
+    )
+    assert storage._remove_fields == ['a.b', 'a.e.f.g', 'h', 'k.l.m']
 
 #
 # Common behaviour.
