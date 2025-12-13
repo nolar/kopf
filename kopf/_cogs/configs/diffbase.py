@@ -111,12 +111,12 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
             *,
             prefix: str = 'kopf.zalando.org',
             key: str = 'last-handled-configuration',
-            ignored_fields: Iterable[str] = None,
+            ignored_fields: Iterable[dicts.FieldSpec] = None,
             v1: bool = True,  # will be switched to False a few releases later
     ) -> None:
         super().__init__(prefix=prefix, v1=v1)
         self.key = key
-        self._ignored_fields = list(ignored_fields) if ignored_fields else []
+        self._ignored_fields = ignored_fields if ignored_fields else []
 
     def build(
             self,
@@ -127,15 +127,12 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
         essence = super().build(body=body, extra_fields=extra_fields)
 
         # Remove ignored fields if specified
-        for path in self._ignored_fields:
-            d = essence
-            keys = path.split('.')
-            for k in keys[:-1]:
-                # If current parent field is not a dict then the path is invalid; skip removal
-                if not isinstance(d.get(k, {}), dict):
-                    break
-                d = d.get(k, {})
-            d.pop(keys[-1], None)
+        for f in self._ignored_fields:
+            try:
+                dicts.remove(essence, f)
+            except TypeError:
+                # If the field is not present or does not support item deletion, just skip it.
+                pass
 
         self.remove_annotations(essence, set(self.make_keys(self.key, body=body)))
         self.remove_empty_stanzas(essence)
@@ -174,13 +171,13 @@ class StatusDiffBaseStorage(DiffBaseStorage):
             *,
             name: str = 'kopf',
             field: dicts.FieldSpec = 'status.{name}.last-handled-configuration',
-            ignored_fields: Iterable[str] = None,
+            ignored_fields: Iterable[dicts.FieldSpec] = None,
     ) -> None:
         super().__init__()
         self._name = name
         real_field = field.format(name=self._name) if isinstance(field, str) else field
         self._field = dicts.parse_field(real_field)
-        self._ignored_fields = list(ignored_fields) if ignored_fields else []
+        self._ignored_fields = ignored_fields if ignored_fields else []
 
     @property
     def field(self) -> dicts.FieldPath:
@@ -200,15 +197,12 @@ class StatusDiffBaseStorage(DiffBaseStorage):
         essence = super().build(body=body, extra_fields=extra_fields)
 
         # Remove ignored fields if specified
-        for path in self._ignored_fields:
-            d = essence
-            keys = path.split('.')
-            for k in keys[:-1]:
-                # If current parent field is not a dict then the path is invalid; skip removal
-                if not isinstance(d.get(k, {}), dict):
-                    break
-                d = d.get(k, {})
-            d.pop(keys[-1], None)
+        for f in self._ignored_fields:
+            try:
+                dicts.remove(essence, f)
+            except TypeError:
+                # If the field is not present or does not support item deletion, just skip it.
+                pass
 
         # Work around an issue with mypy not treating TypedDicts as MutableMappings.
         essence_dict = cast(dict[Any, Any], essence)
