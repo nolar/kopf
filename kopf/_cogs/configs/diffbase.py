@@ -26,12 +26,15 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
     https://kubernetes.io/docs/concepts/overview/object-management-kubectl/declarative-config/
     """
 
+    def __init__(self, ignored_fields: Iterable[dicts.FieldSpec] | None = None) -> None:
+        super().__init__()
+        self.ignored_fields = list(ignored_fields or [])  # materialize the iterable
+
     def build(
             self,
             *,
             body: bodies.Body,
             extra_fields: Iterable[dicts.FieldSpec] | None = None,
-            ignored_fields: Iterable[dicts.FieldSpec] | None = None,
     ) -> bodies.BodyEssence:
         """
         Extract only the relevant fields for the state comparisons.
@@ -86,13 +89,12 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
         self.remove_empty_stanzas(cast(bodies.BodyEssence, essence))
 
         # Remove ignored fields if specified
-        if ignored_fields:
-            for ignored_field in ignored_fields:
-                try:
-                    dicts.remove(essence, ignored_field)
-                except TypeError:
-                    # If the field does not support item deletion, just skip it.
-                    pass
+        for ignored_field in self.ignored_fields:
+            try:
+                dicts.remove(essence, ignored_field)
+            except TypeError:
+                # If the field does not support item deletion, just skip it.
+                pass
 
         return cast(bodies.BodyEssence, essence)
 
@@ -125,9 +127,8 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
             ignored_fields: Iterable[dicts.FieldSpec] | None = None,
             v1: bool = True,  # will be switched to False a few releases later
     ) -> None:
-        super().__init__(prefix=prefix, v1=v1)
+        super().__init__(prefix=prefix, v1=v1, ignored_fields=ignored_fields)
         self.key = key
-        self._ignored_fields = ignored_fields
 
     def build(
             self,
@@ -135,12 +136,7 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
             body: bodies.Body,
             extra_fields: Iterable[dicts.FieldSpec] | None = None,
     ) -> bodies.BodyEssence:
-        essence = super().build(
-            body=body,
-            extra_fields=extra_fields,
-            ignored_fields=self._ignored_fields
-        )
-
+        essence = super().build(body=body, extra_fields=extra_fields)
         self.remove_annotations(essence, set(self.make_keys(self.key, body=body)))
         self.remove_empty_stanzas(essence)
         return essence
@@ -180,11 +176,10 @@ class StatusDiffBaseStorage(DiffBaseStorage):
             field: dicts.FieldSpec = 'status.{name}.last-handled-configuration',
             ignored_fields: Iterable[dicts.FieldSpec] | None = None,
     ) -> None:
-        super().__init__()
+        super().__init__(ignored_fields=ignored_fields)
         self._name = name
         real_field = field.format(name=self._name) if isinstance(field, str) else field
         self._field = dicts.parse_field(real_field)
-        self._ignored_fields = ignored_fields
 
     @property
     def field(self) -> dicts.FieldPath:
@@ -201,11 +196,7 @@ class StatusDiffBaseStorage(DiffBaseStorage):
             body: bodies.Body,
             extra_fields: Iterable[dicts.FieldSpec] | None = None,
     ) -> bodies.BodyEssence:
-        essence = super().build(
-            body=body,
-            extra_fields=extra_fields,
-            ignored_fields=self._ignored_fields
-        )
+        essence = super().build(body=body, extra_fields=extra_fields)
 
         # Work around an issue with mypy not treating TypedDicts as MutableMappings.
         essence_dict = cast(dict[Any, Any], essence)
