@@ -1,6 +1,7 @@
 import asyncio
 import dataclasses
 import importlib
+import inspect
 import io
 import json
 import logging
@@ -36,6 +37,9 @@ def pytest_configure(config):
 
     # TODO: Remove when fixed in https://github.com/pytest-dev/pytest-asyncio/issues/460:
     config.addinivalue_line('filterwarnings', 'ignore:There is no current event loop:DeprecationWarning:pytest_asyncio')
+
+    # Aresponses uses the legacy function that is deprecated since 3.14 and will be removed in 3.16.
+    config.addinivalue_line('filterwarnings', "ignore:'asyncio.iscoroutinefunction' is deprecated:DeprecationWarning:aresponses")
 
     # Python 3.12 transitional period:
     config.addinivalue_line('filterwarnings', 'ignore:datetime*:DeprecationWarning:dateutil')
@@ -257,7 +261,7 @@ def resp_mocker(fake_vault, enforced_session, aresponses):
     """
     A factory of server-side callbacks for `aresponses` with mocking/spying.
 
-    The value of the fixture is a function, which return a coroutine mock.
+    The value of the fixture is a function, which returns a coroutine mock.
     That coroutine mock should be passed to `aresponses.add` as a response
     callback function. When called, it calls the mock defined by the function's
     arguments (specifically, return_value or side_effects).
@@ -291,7 +295,9 @@ def resp_mocker(fake_vault, enforced_session, aresponses):
 
             # Get a response/error as it was intended (via return_value/side_effect).
             response = actual_response()
-            if asyncio.iscoroutine(response):
+            if inspect.isawaitable(response):
+                response = await response
+            elif inspect.iscoroutinefunction(response):
                 response = await response
             return response
 
