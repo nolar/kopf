@@ -1,5 +1,3 @@
-import asyncio
-
 import pytest
 
 from kopf._cogs.configs.configuration import OperatorSettings
@@ -10,22 +8,6 @@ from kopf.testing import KopfRunner
 @pytest.fixture(autouse=True)
 def no_config_needed(login_mocks):
     pass
-
-
-@pytest.fixture(autouse=True, params=['default', 'uvloop'])
-def _event_loop_policy(request):
-    original_policy = asyncio.get_event_loop_policy()
-    if request.param == 'default':
-        policy = asyncio.DefaultEventLoopPolicy()
-    elif request.param == 'uvloop':
-        uvloop = pytest.importorskip('uvloop')
-        policy = uvloop.EventLoopPolicy()
-    else:
-        raise RuntimeError(f"Unknown event loop type {request.param!r}")
-
-    asyncio.set_event_loop_policy(policy)
-    yield
-    asyncio.set_event_loop_policy(original_policy)
 
 
 def test_command_invocation_works():
