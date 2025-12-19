@@ -26,6 +26,10 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
     https://kubernetes.io/docs/concepts/overview/object-management-kubectl/declarative-config/
     """
 
+    def __init__(self, ignored_fields: Iterable[dicts.FieldSpec] | None = None) -> None:
+        super().__init__()
+        self.ignored_fields = list(ignored_fields or [])  # materialize the iterable
+
     def build(
             self,
             *,
@@ -83,6 +87,15 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
         dicts.cherrypick(src=body, dst=essence, fields=extra_fields, picker=copy.deepcopy)
 
         self.remove_empty_stanzas(cast(bodies.BodyEssence, essence))
+
+        # Remove ignored fields if specified
+        for ignored_field in self.ignored_fields:
+            try:
+                dicts.remove(essence, ignored_field)
+            except TypeError:
+                # If the field does not support item deletion, just skip it.
+                pass
+
         return cast(bodies.BodyEssence, essence)
 
     @abc.abstractmethod
@@ -111,9 +124,10 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
             *,
             prefix: str = 'kopf.zalando.org',
             key: str = 'last-handled-configuration',
+            ignored_fields: Iterable[dicts.FieldSpec] | None = None,
             v1: bool = True,  # will be switched to False a few releases later
     ) -> None:
-        super().__init__(prefix=prefix, v1=v1)
+        super().__init__(prefix=prefix, v1=v1, ignored_fields=ignored_fields)
         self.key = key
 
     def build(
@@ -160,8 +174,9 @@ class StatusDiffBaseStorage(DiffBaseStorage):
             *,
             name: str = 'kopf',
             field: dicts.FieldSpec = 'status.{name}.last-handled-configuration',
+            ignored_fields: Iterable[dicts.FieldSpec] | None = None,
     ) -> None:
-        super().__init__()
+        super().__init__(ignored_fields=ignored_fields)
         self._name = name
         real_field = field.format(name=self._name) if isinstance(field, str) else field
         self._field = dicts.parse_field(real_field)

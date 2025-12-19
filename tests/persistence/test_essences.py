@@ -178,3 +178,33 @@ def test_get_essence_clones_body(
     assert essence['spec'] is not body['spec']
     assert essence['spec']['depth'] is not body['spec']['depth']
     assert essence['spec']['depth']['field'] == 'x'
+
+
+@pytest.mark.parametrize('cls', ALL_STORAGES)
+def test_status_storage_removes_ignored_fields(
+        cls: type[DiffBaseStorage]):
+    body = Body({
+        'a': {
+            'b': {
+                'c': 'd',
+            },
+            'e': {
+                'f': 'g',
+            }
+        },
+        'h': {
+            'i': 'j',
+        }
+    })
+    storage = cls(ignored_fields=['a.b', 'a.e.f.g', 'h', 'k.l.m'])
+    essence = storage.build(body=body)
+
+    assert 'a' in essence
+    assert 'e' in essence['a']
+    assert 'f' in essence['a']['e']
+
+    assert 'b' not in essence['a']
+    # 'f' is the inner-most field with a string value 'g', removing field 'g' in 'a.e.f.g' should have no effect
+    assert 'g' == essence['a']['e']['f']
+    assert 'h' not in essence
+    assert 'k' not in essence
