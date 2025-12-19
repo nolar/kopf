@@ -16,7 +16,7 @@ First of all, the operator must be packaged as a docker image with Python 3.10 o
     :caption: Dockerfile
     :name: dockerfile
 
-    FROM python:3.13
+    FROM python:3.14
     RUN pip install kopf
     ADD . /src
     CMD kopf run /src/handlers.py --verbose

@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - run: pip install --group lint -e .
       - run: pre-commit run --all-files
       - run: mypy kopf --strict
@@ -38,10 +38,10 @@ jobs:
       fail-fast: false
       matrix:
         install-extras: [ "", "full-auth" ]
-        python-version: [ "3.10", "3.11", "3.12", "3.13" ]
+        python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
         include:
           - install-extras: "uvloop"
-            python-version: "3.13"
+            python-version: "3.14"
     name: Python ${{ matrix.python-version }}${{ matrix.install-extras && ' ' || '' }}${{ matrix.install-extras }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5  # usually 2-3 mins
@@ -112,7 +112,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - uses: nolar/setup-k3d-k3s@v1
         with:
           version: ${{ matrix.k3s }}
