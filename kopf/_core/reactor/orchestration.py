@@ -101,7 +101,7 @@ class Ensemble:
                     del d[key]
 
 
-async def ochestrator(
+async def orchestrator(
         *,
         processor: ResourceWatchStreamProcessor,
         settings: configuration.OperatorSettings,

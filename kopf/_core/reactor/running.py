@@ -328,7 +328,7 @@ async def spawn_tasks(
     else:
         tasks.append(aiotasks.create_guarded_task(
             name="multidimensional multitasker", flag=started_flag, logger=logger,
-            coro=orchestration.ochestrator(
+            coro=orchestration.orchestrator(
                 settings=settings,
                 insights=insights,
                 identity=identity,
