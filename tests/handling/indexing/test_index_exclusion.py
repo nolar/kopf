@@ -82,7 +82,7 @@ async def test_temporary_failures_with_expired_delays_are_reindexed(
         resource, namespace, settings, registry, memories, indexers, index, caplog, event_type, handlers):
     caplog.set_level(logging.DEBUG)
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
-    record = ProgressRecord(delayed='2020-12-31T23:59:59.000000')
+    record = ProgressRecord(delayed='2020-12-31T23:59:59.000000Z')
     state = State({HandlerId('index_fn'): HandlerState.from_storage(record)})
     memory = await memories.recall(raw_body=body)
     memory.indexing_memory.indexing_state = state

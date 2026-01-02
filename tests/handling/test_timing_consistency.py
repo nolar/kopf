@@ -35,10 +35,10 @@ async def test_consistent_awakening(registry, settings, resource, k8s_mocked, mo
     """
 
     # Simulate that the object is scheduled to be awakened between the watch-event and sleep.
-    ts0 = iso8601.parse_date('2019-12-30T10:56:43')
-    tsA_triggered = "2019-12-30T10:56:42.999999"
-    ts0_scheduled = "2019-12-30T10:56:43.000000"
-    tsB_delivered = "2019-12-30T10:56:43.000001"
+    ts0 = iso8601.parse_date('2019-12-30T10:56:43Z')
+    tsA_triggered = "2019-12-30T10:56:42.999999Z"
+    ts0_scheduled = "2019-12-30T10:56:43.000000Z"
+    tsB_delivered = "2019-12-30T10:56:43.000001Z"
 
     # A dummy handler: it will not be selected for execution anyway, we just need to have it.
     @kopf.on.create(*resource, id='some-id')
