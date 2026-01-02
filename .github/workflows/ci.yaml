@@ -65,12 +65,13 @@ jobs:
         continue-on-error: true
       - name: Publish coverage to CodeCov.io
         uses: codecov/codecov-action@v5
-        if: success()
         env:
           PYTHON: ${{ matrix.python-version }}
         with:
           flags: unit
           env_vars: PYTHON
+          token: ${{ secrets.CODECOV_TOKEN }}
+        if: success()
         continue-on-error: true
 
   # Only the core functionality is tested: no e2e or functional tests (for simplicity).
