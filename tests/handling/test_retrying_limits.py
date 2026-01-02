@@ -16,7 +16,7 @@ from kopf._core.reactor.processing import process_resource_event
 # The extrahandlers are needed to prevent the cycle ending and status purging.
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 @pytest.mark.parametrize('now, ts', [
-    ['2099-12-31T23:59:59', '2020-01-01T00:00:00'],
+    ['2099-12-31T23:59:59Z', '2020-01-01T00:00:00Z'],
 ], ids=['slow'])
 async def test_timed_out_handler_fails(
         registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,

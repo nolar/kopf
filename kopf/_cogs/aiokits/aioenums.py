@@ -1,7 +1,6 @@
 import asyncio
 import enum
 import threading
-import time
 from collections.abc import Awaitable, Generator
 from typing import Generic, TypeVar
 
@@ -52,7 +51,7 @@ class FlagSetter(Generic[FlagReasonT]):
 
     def set(self, reason: FlagReasonT | None = None) -> None:
         reason = reason if reason is not None else self.reason  # to keep existing values
-        self.when = self.when if self.when is not None else time.monotonic()
+        self.when = self.when if self.when is not None else asyncio.get_running_loop().time()
         self.reason = reason if self.reason is None or reason is None else self.reason | reason
         self.sync_event.set()
         self.async_event.set()  # it is thread-safe: always called in operator's event loop.

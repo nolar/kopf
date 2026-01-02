@@ -8,8 +8,8 @@ from kopf._core.actions.throttlers import Throttler, throttled
 
 
 @pytest.fixture(autouse=True)
-def clock(mocker):
-    return mocker.patch('time.monotonic', return_value=0)
+async def clock(mocker):
+    return mocker.patch.object(asyncio.get_running_loop(), 'time', return_value=0)
 
 
 @pytest.fixture(autouse=True)

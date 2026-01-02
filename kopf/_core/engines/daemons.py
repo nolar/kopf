@@ -23,7 +23,6 @@ of the daemons, and they are not actually "hung".
 import abc
 import asyncio
 import dataclasses
-import time
 import warnings
 from collections.abc import Collection, Iterable, Mapping, MutableMapping, Sequence
 
@@ -33,6 +32,10 @@ from kopf._cogs.helpers import typedefs
 from kopf._cogs.structs import bodies, ids, patches
 from kopf._core.actions import application, execution, lifecycles, loggers, progression
 from kopf._core.intents import causes, handlers as handlers_, stoppers
+
+
+def _loop_time() -> float:
+    return asyncio.get_running_loop().time()
 
 
 @dataclasses.dataclass(frozen=True)
@@ -47,7 +50,7 @@ class Daemon:
 class DaemonsMemory:
     # For background and timed threads/tasks (invoked with the kwargs of the last-seen body).
     live_fresh_body: bodies.Body | None = None
-    idle_reset_time: float = dataclasses.field(default_factory=time.monotonic)
+    idle_reset_time: float = dataclasses.field(default_factory=_loop_time)
     forever_stopped: set[ids.HandlerId] = dataclasses.field(default_factory=set)
     running_daemons: dict[ids.HandlerId, Daemon] = dataclasses.field(default_factory=dict)
 
@@ -182,7 +185,7 @@ async def stop_daemons(
     (as by their surrounding circumstances: deletion handlers and finalizers).
     """
     delays: list[float] = []
-    now = time.monotonic()
+    now = asyncio.get_running_loop().time()
     for daemon in list(daemons.values()):
         logger = daemon.logger
         stopper = daemon.stopper
@@ -537,6 +540,7 @@ async def _timer(
         await aiotime.sleep(handler.initial_delay, wakeup=stopper.async_event)
 
     # Similar to activities (in-memory execution), but applies patches on every attempt.
+    clock = asyncio.get_running_loop().time
     state = progression.State.from_scratch().with_handlers([handler])
     while not stopper.is_set():  # NB: ignore state.done! it is checked below explicitly.
 
@@ -548,14 +552,14 @@ async def _timer(
         # Both `now` and `last_seen_time` are moving targets: the last seen time is updated
         # on every watch-event received, and prolongs the sleep. The sleep is never shortened.
         if handler.idle is not None:
-            while not stopper.is_set() and time.monotonic() - memory.idle_reset_time < handler.idle:
-                delay = memory.idle_reset_time + handler.idle - time.monotonic()
+            while not stopper.is_set() and clock() - memory.idle_reset_time < handler.idle:
+                delay = memory.idle_reset_time + handler.idle - clock()
                 await aiotime.sleep(delay, wakeup=stopper.async_event)
             if stopper.is_set():
                 continue
 
         # Remember the start time for the sharp timing and idle-time-waster below.
-        started = time.monotonic()
+        started = clock()
 
         # Execute the handler as usually, in-memory, but handle its outcome on every attempt.
         outcomes = await execution.execute_handlers_once(
@@ -585,7 +589,7 @@ async def _timer(
         #       |-----|-----|-----|-----|-----|-----|---> (interval=5, sharp=True)
         #       [slow_handler]....[slow_handler]....[slow...
         elif handler.interval is not None and handler.sharp:
-            passed_duration = time.monotonic() - started
+            passed_duration = clock() - started
             remaining_delay = handler.interval - (passed_duration % handler.interval)
             await aiotime.sleep(remaining_delay, wakeup=stopper.async_event)
 
