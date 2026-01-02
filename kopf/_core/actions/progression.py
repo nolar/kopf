@@ -39,9 +39,8 @@ class HandlerState(execution.HandlerState):
     but not participating in the current handling cycle.
     """
 
-    # Some fields may overlap the base class's fields, but this is fine (the types are the same).
-    active: bool | None = None  # is it used in done/delays [T]? or only in counters/purges [F]?
-    started: datetime.datetime | None = None  # None means this information was lost.
+    active: bool  # whether it is used in done/delays [T] or only in counters/purges [F].
+    started: datetime.datetime
     stopped: datetime.datetime | None = None  # None means it is still running (e.g. delayed).
     delayed: datetime.datetime | None = None  # None means it is finished (succeeded/failed).
     purpose: str | None = None  # None is a catch-all marker for upgrades/rollbacks.
@@ -51,6 +50,24 @@ class HandlerState(execution.HandlerState):
     message: str | None = None
     subrefs: Collection[ids.HandlerId] = ()  # ids of actual sub-handlers of all levels deep.
     _origin: progress.ProgressRecord | None = None  # to check later if it has actually changed.
+
+    @property
+    def finished(self) -> bool:
+        return bool(self.success or self.failure)
+
+    @property
+    def sleeping(self) -> bool:
+        ts = self.delayed
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        return not self.finished and ts is not None and ts > now
+
+    @property
+    def awakened(self) -> bool:
+        return bool(not self.finished and not self.sleeping)
+
+    @property
+    def runtime(self) -> datetime.timedelta:
+        return datetime.datetime.now(tz=datetime.timezone.utc) - self.started
 
     @classmethod
     def from_scratch(cls, *, purpose: str | None = None) -> "HandlerState":
@@ -111,8 +128,8 @@ class HandlerState(execution.HandlerState):
         return cls(
             active=self.active,
             purpose=self.purpose,
-            started=self.started if self.started else now,
-            stopped=self.stopped if self.stopped else now if outcome.final else None,
+            started=self.started,
+            stopped=self.stopped if self.stopped is not None else now if outcome.final else None,
             delayed=now + datetime.timedelta(seconds=outcome.delay) if outcome.delay is not None else None,
             success=bool(outcome.final and outcome.exception is None),
             failure=bool(outcome.final and outcome.exception is not None),
