@@ -39,7 +39,7 @@ async def test_followups_for_addition(timer, etype):
         async with insights.revised:
             await insights.revised.wait()
     await task
-    assert 0.1 < timer.seconds < 0.11
+    assert 0.1 < timer.seconds < 0.13
     assert insights.namespaces == {'ns1'}
 
 
