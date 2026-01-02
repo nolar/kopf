@@ -71,7 +71,7 @@ async def test_errors_are_ignored(
 
     assert_logs([
         "Handler 'event_fn' is invoked.",
-        "Handler 'event_fn' failed with an exception. Will ignore.",
+        "Handler 'event_fn' failed with an exception and will ignore it: oops",
         "Handler 'event_fn2' is invoked.",
         "Handler 'event_fn2' succeeded.",
     ])
