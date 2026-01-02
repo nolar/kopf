@@ -358,9 +358,20 @@ class Selector:
         """
         # Core v1 events are excluded from EVERYTHING: they are implicitly produced during handling,
         # and thus trigger unnecessary handling cycles (even for other resources, not for events).
+        
+        # For category-based selection, we should include all resources that match the category,
+        # regardless of version preference. For other selectors, preserve the original behavior.
+        version_matches = (
+            self.version == resource.version or 
+            (self.version is None and (
+                resource.preferred or  # Original behavior for non-category selectors
+                self.category is not None  # New: allow all versions for category selectors
+            ))
+        )
+        
         return (
             (self.group is None or self.group == resource.group) and
-            ((self.version is None and resource.preferred) or self.version == resource.version) and
+            version_matches and
             (self.kind is None or self.kind == resource.kind) and
             (self.plural is None or self.plural == resource.plural) and
             (self.singular is None or self.singular == resource.singular) and
