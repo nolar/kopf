@@ -66,8 +66,8 @@ docs = [
     "sphinx>=9.0.0",
     "sphinx-autobuild",
     "sphinx-autodoc-typehints",
-    "sphinx_rtd_theme>=3.1.0rc1",
     "sphinx-llm>=0.1.4",
+    "furo",
 ]
 test = [
     "aresponses",
