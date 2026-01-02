@@ -143,8 +143,9 @@ async def test_tasks_are_parallel_if_limit_is_not_reached(timer):
         assert task2_started.is_set()
         await task2_finished.wait()
 
+    # TODO: LATER: code coverage takes even more code overhead. Redesign when switch to looptime.
     assert timer.seconds > 0.1
-    assert timer.seconds < 0.1 + CODE_OVERHEAD
+    assert timer.seconds < 0.1 + CODE_OVERHEAD * 8
 
     await scheduler.close()
 

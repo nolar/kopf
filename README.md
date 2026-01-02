@@ -4,7 +4,7 @@
 [![CI](https://github.com/nolar/kopf/actions/workflows/thorough.yaml/badge.svg)](https://github.com/nolar/kopf/actions/workflows/thorough.yaml)
 [![Supported Python versions](https://img.shields.io/pypi/pyversions/kopf.svg)](https://pypi.org/project/kopf/)
 [![codecov](https://codecov.io/gh/nolar/kopf/branch/main/graph/badge.svg)](https://codecov.io/gh/nolar/kopf)
-[![Coverage Status](https://coveralls.io/repos/github/nolar/kopf/badge.svg?branch=main)](https://coveralls.io/github/nolar/kopf?branch=main)
+[![coverage](https://coveralls.io/repos/github/nolar/kopf/badge.svg?branch=main)](https://coveralls.io/github/nolar/kopf?branch=main)
 
 **Kopf** —Kubernetes Operator Pythonic Framework— is a framework and a library
 to make Kubernetes operators development easier, just in a few lines of Python code.

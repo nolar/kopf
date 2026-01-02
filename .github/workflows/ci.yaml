@@ -54,24 +54,23 @@ jobs:
       - run: pip install --group test -e .
       - run: pip install -e .[${{ matrix.install-extras }}]
         if: ${{ matrix.install-extras }}
-      - run: pytest --color=yes --timeout=2
-#      - run: pytest --color=yes --timeout=2 --cov=kopf --cov-branch
+      - run: coverage run --branch --source=kopf -m pytest --color=yes --timeout=2
 
       - name: Publish coverage to Coveralls.io
+        uses: coverallsapp/github-action@v2
+        with:
+          parallel: true
+          flag-name: ${{ matrix.python-version }}${{ matrix.install-extras && ' ' || '' }}${{ matrix.install-extras }}
         if: success()
-        run: coveralls --service=github
-        env:
-          GITHUB_TOKEN: ${{ secrets.github_token }}
-        continue-on-error: true
       - name: Publish coverage to CodeCov.io
         uses: codecov/codecov-action@v5
-        if: success()
         env:
           PYTHON: ${{ matrix.python-version }}
         with:
           flags: unit
           env_vars: PYTHON
-        continue-on-error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+        if: success()
 
   # Only the core functionality is tested: no e2e or functional tests (for simplicity).
   # No coverage: PyPy performs extremely poorly with tracing/coverage (13 mins vs. 3 mins).
@@ -125,9 +124,7 @@ jobs:
     needs: [unit-tests, pypy-tests, functional]
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/setup-python@v6
-      - run: pip install coveralls
-      - run: coveralls --service=github --finish
-        env:
-          GITHUB_TOKEN: ${{ secrets.github_token }}
-        continue-on-error: true
+      - name: Finish coverage at Coveralls.io
+        uses: coverallsapp/github-action@v2
+        with:
+          parallel-finished: true
