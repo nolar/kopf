@@ -58,8 +58,7 @@ jobs:
       - run: pip install --group test -e .
       - run: pip install -e .[${{ matrix.install-extras }}]
         if: ${{ matrix.install-extras }}
-      - run: pytest --color=yes --timeout=2
-#      - run: pytest --color=yes --timeout=2 --cov=kopf --cov-branch
+      - run: coverage run --branch --source=kopf -m pytest --color=yes --timeout=2
 
       - name: Publish coverage to Coveralls.io
         if: success()
