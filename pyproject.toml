@@ -76,7 +76,6 @@ test = [
     "certvalidator",
     "codecov",
     "coverage>=7.12.0",
-    "coveralls",
     "freezegun",
     "lxml",
     "pyngrok",
