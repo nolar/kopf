@@ -140,13 +140,3 @@ async def test_timer_retried_until_timeout(
 
     assert looptime == 6.9  # 2*3.45 -- 2 sleeps between 3 attempts
     assert dummy.mock.call_count == 3
-
-
-# TODO: next steps:
-#   extract the PR with test refactoring, where it is all simplified:
-#       - "dummy" is converted to Condition, not just Events.
-#       - in all daemons & timers, not only here!
-#   specifically:
-#       - dummy.mock is now called WITH kwargs in one operation, not separately
-#       - dummy.steps must be gone entirely; instead, local Conditions should be used
-#       - daemon/timer handlers should look as natural as possible, no hacks

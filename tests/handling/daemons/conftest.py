@@ -1,5 +1,4 @@
 import asyncio
-import collections
 import contextlib
 from unittest.mock import MagicMock
 
@@ -20,15 +19,6 @@ class DaemonDummy:
     def __init__(self):
         super().__init__()
         self.mock = MagicMock()
-        self._flag_statuses = collections.defaultdict(bool)
-        self.steps = {
-            'called': asyncio.Event(),
-            'finish': asyncio.Event(),
-            'error': asyncio.Event(),
-        }
-        self.called = asyncio.Condition()
-        self.failed = asyncio.Event()
-        self.finished = asyncio.Event()
 
     async def wait_for_daemon_done(self) -> None:
         stopped = self.mock.call_args[1]['stopped']

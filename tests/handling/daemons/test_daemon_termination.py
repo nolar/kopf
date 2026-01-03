@@ -11,19 +11,22 @@ async def test_daemon_exits_gracefully_and_instantly_on_resource_deletion(
         settings, resource, dummy, simulate_cycle,
         looptime, caplog, assert_logs, k8s_mocked, mocker):
     caplog.set_level(logging.DEBUG)
+    called = asyncio.Condition()
 
     # A daemon-under-test.
     @kopf.daemon(*resource, id='fn')
     async def fn(**kwargs):
         dummy.mock(**kwargs)
-        dummy.steps['called'].set()
+        async with called:
+            called.notify_all()
         await kwargs['stopped'].wait()
 
     # 0th cycle: trigger spawning and wait until ready. Assume the finalizers are already added.
     finalizer = settings.persistence.finalizer
     event_object = {'metadata': {'finalizers': [finalizer]}}
     await simulate_cycle(event_object)
-    await dummy.steps['called'].wait()
+    async with called:
+        await called.wait()
 
     # 1st stage: trigger termination due to resource deletion.
     mocker.resetall()
@@ -43,19 +46,22 @@ async def test_daemon_exits_gracefully_and_instantly_on_operator_exiting(
         settings, resource, dummy, simulate_cycle, background_daemon_killer,
         looptime, caplog, assert_logs, k8s_mocked, mocker):
     caplog.set_level(logging.DEBUG)
+    called = asyncio.Condition()
 
     # A daemon-under-test.
     @kopf.daemon(*resource, id='fn')
     async def fn(**kwargs):
         dummy.mock(**kwargs)
-        dummy.steps['called'].set()
+        async with called:
+            called.notify_all()
         await kwargs['stopped'].wait()
 
     # 0th cycle: trigger spawning and wait until ready. Assume the finalizers are already added.
     finalizer = settings.persistence.finalizer
     event_object = {'metadata': {'finalizers': [finalizer]}}
     await simulate_cycle(event_object)
-    await dummy.steps['called'].wait()
+    async with called:
+        await called.wait()
 
     # 1st stage: trigger termination due to operator exiting.
     mocker.resetall()
@@ -77,19 +83,22 @@ async def test_daemon_exits_gracefully_and_instantly_on_operator_pausing(
         settings, memories, resource, dummy, simulate_cycle, conflicts_found,
         looptime, caplog, assert_logs, k8s_mocked, mocker):
     caplog.set_level(logging.DEBUG)
+    called = asyncio.Condition()
 
     # A daemon-under-test.
     @kopf.daemon(*resource, id='fn')
     async def fn(**kwargs):
         dummy.mock(**kwargs)
-        dummy.steps['called'].set()
+        async with called:
+            called.notify_all()
         await kwargs['stopped'].wait()
 
     # 0th cycle: trigger spawning and wait until ready. Assume the finalizers are already added.
     finalizer = settings.persistence.finalizer
     event_object = {'metadata': {'finalizers': [finalizer]}}
     await simulate_cycle(event_object)
-    await dummy.steps['called'].wait()
+    async with called:
+        await called.wait()
 
     # 1st stage: trigger termination due to the operator's pause.
     mocker.resetall()
@@ -110,19 +119,22 @@ async def test_daemon_exits_instantly_on_cancellation_with_backoff(
         settings, resource, dummy, simulate_cycle,
         looptime, caplog, assert_logs, k8s_mocked, mocker):
     caplog.set_level(logging.DEBUG)
+    called = asyncio.Condition()
 
     # A daemon-under-test.
     @kopf.daemon(*resource, id='fn', cancellation_backoff=1.23, cancellation_timeout=10)
     async def fn(**kwargs):
         dummy.mock(**kwargs)
-        dummy.steps['called'].set()
+        async with called:
+            called.notify_all()
         await asyncio.Event().wait()  # this one is cancelled.
 
     # Trigger spawning and wait until ready. Assume the finalizers are already added.
     finalizer = settings.persistence.finalizer
     event_object = {'metadata': {'finalizers': [finalizer]}}
     await simulate_cycle(event_object)
-    await dummy.steps['called'].wait()
+    async with called:
+        await called.wait()
 
     # 1st stage: trigger termination due to resource deletion. Wait for backoff.
     mocker.resetall()
@@ -150,22 +162,27 @@ async def test_daemon_exits_slowly_on_cancellation_with_backoff(
         settings, resource, dummy, simulate_cycle,
         looptime, caplog, assert_logs, k8s_mocked, mocker):
     caplog.set_level(logging.DEBUG)
+    called = asyncio.Condition()
+    finish = asyncio.Condition()
 
     # A daemon-under-test.
     @kopf.daemon(*resource, id='fn', cancellation_backoff=1.23, cancellation_timeout=4.56)
     async def fn(**kwargs):
         dummy.mock(**kwargs)
-        dummy.steps['called'].set()
+        async with called:
+            called.notify_all()
         try:
             await asyncio.Event().wait()  # this one is cancelled.
         except asyncio.CancelledError:
-            await dummy.steps['finish'].wait()  # simulated slow (non-instant) exiting.
+            async with finish:
+                await finish.wait()  # simulated slow (non-instant) exiting.
 
     # Trigger spawning and wait until ready. Assume the finalizers are already added.
     finalizer = settings.persistence.finalizer
     event_object = {'metadata': {'finalizers': [finalizer]}}
     await simulate_cycle(event_object)
-    await dummy.steps['called'].wait()
+    async with called:
+        await called.wait()
 
     # 1st stage: trigger termination due to resource deletion. Wait for backoff.
     mocker.resetall()
@@ -187,7 +204,8 @@ async def test_daemon_exits_slowly_on_cancellation_with_backoff(
 
     # 3rd cycle: the daemon has exited, the resource should be unblocked from actual deletion.
     mocker.resetall()
-    dummy.steps['finish'].set()
+    async with finish:
+        finish.notify_all()
     await asyncio.sleep(0)  # let the daemon to exit and all the routines to trigger
     await simulate_cycle(event_object)
     await dummy.wait_for_daemon_done()
@@ -201,22 +219,28 @@ async def test_daemon_is_abandoned_due_to_cancellation_timeout_reached(
         settings, resource, dummy, simulate_cycle,
         looptime, caplog, assert_logs, k8s_mocked, mocker):
     caplog.set_level(logging.DEBUG)
+    called = asyncio.Condition()
+    finish = asyncio.Condition()
 
     # A daemon-under-test.
     @kopf.daemon(*resource, id='fn', cancellation_timeout=4.56)
     async def fn(**kwargs):
         dummy.mock(**kwargs)
-        dummy.steps['called'].set()
+        async with called:
+            called.notify_all()
         try:
-            await dummy.steps['finish'].wait()  # this one is cancelled.
+            async with finish:
+                await finish.wait()  # this one is cancelled.
         except asyncio.CancelledError:
-            await dummy.steps['finish'].wait()  # simulated disobedience to be cancelled.
+            async with finish:
+                await finish.wait()  # simulated disobedience to be cancelled.
 
     # 0th cycle:tTrigger spawning and wait until ready. Assume the finalizers are already added.
     finalizer = settings.persistence.finalizer
     event_object = {'metadata': {'finalizers': [finalizer]}}
     await simulate_cycle(event_object)
-    await dummy.steps['called'].wait()
+    async with called:
+        await called.wait()
 
     # 1st stage: trigger termination due to resource deletion. Wait for backoff.
     mocker.resetall()
@@ -240,5 +264,6 @@ async def test_daemon_is_abandoned_due_to_cancellation_timeout_reached(
     assert_logs(["Daemon 'fn' did not exit in time. Leaving it orphaned."])
 
     # Cleanup.
-    dummy.steps['finish'].set()
+    async with finish:
+        finish.notify_all()
     await dummy.wait_for_daemon_done()
