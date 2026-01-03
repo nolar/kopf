@@ -1,9 +1,8 @@
 import asyncio
 import contextlib
-import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import freezegun
+import looptime
 import pytest
 
 import kopf
@@ -20,23 +19,24 @@ class DaemonDummy:
     def __init__(self):
         super().__init__()
         self.mock = MagicMock()
-        self.kwargs = {}
-        self.steps = {
-            'called': asyncio.Event(),
-            'finish': asyncio.Event(),
-            'error': asyncio.Event(),
-        }
 
-    async def wait_for_daemon_done(self):
-        stopped = self.kwargs['stopped']
+    async def wait_for_daemon_done(self) -> None:
+        stopped = self.mock.call_args[1]['stopped']
         await stopped.wait()
-        while not stopped.reason & stopped.reason.DONE:
+        while stopped.reason is None or not stopped.reason & stopped.reason.DONE:
             await asyncio.sleep(0)  # give control back to asyncio event loop
 
 
 @pytest.fixture()
-def dummy():
-    return DaemonDummy()
+async def dummy(simulate_cycle):
+    dummy = DaemonDummy()
+    yield dummy
+
+    # Cancel the background tasks, if any.
+    event_object = {'metadata': {'deletionTimestamp': '...'}}
+    with looptime.enabled(strict=True):
+        await simulate_cycle(event_object)
+        await dummy.wait_for_daemon_done()
 
 
 @pytest.fixture()
@@ -52,7 +52,11 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
             else:
                 dst[key] = val
 
-    async def _simulate_cycle(event_object: RawBody):
+    async def _simulate_cycle(
+            event_object: RawBody,
+            *,
+            stream_pressure: asyncio.Event | None = None,
+    ) -> None:
         mocker.resetall()
 
         await process_resource_event(
@@ -65,6 +69,7 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
             indexers=OperatorIndexers(),
             raw_event={'type': 'irrelevant', 'object': event_object},
             event_queue=asyncio.Queue(),
+            stream_pressure=stream_pressure,
         )
 
         # Do the same as k8s does: merge the patches into the object.
@@ -96,33 +101,3 @@ async def background_daemon_killer(settings, memories, operator_paused):
     with contextlib.suppress(asyncio.CancelledError):
         task.cancel()
         await task
-
-
-@pytest.fixture()
-async def frozen_time():
-    """
-    A helper to simulate time movements to step over long sleeps/timeouts.
-    """
-    with freezegun.freeze_time("2020-01-01 00:00:00") as frozen:
-        # Use freezegun-supported time instead of system clocks -- for testing purposes only.
-        # NB: Patch strictly after the time is frozen -- to use fake_time(), not real time().
-        # NB: StdLib's event loops use time.monotonic(), but uvloop uses its own C-level time,
-        #     so patch the loop object directly instead of its implied underlying implementation.
-        with patch.object(asyncio.get_running_loop(), 'time', time.time):
-            yield frozen
-
-
-# The time-driven tests mock the sleeps, and shift the time as much as it was requested to sleep.
-# This makes the sleep realistic for the app code, though executed instantly for the tests.
-@pytest.fixture()
-def manual_time(k8s_mocked, frozen_time):
-    async def sleep_substitute(delay, *_, **__):
-        if delay is None:
-            pass
-        elif isinstance(delay, float):
-            frozen_time.tick(delay)
-        else:
-            frozen_time.tick(min(delay))
-
-    k8s_mocked.sleep.side_effect = sleep_substitute
-    yield frozen_time

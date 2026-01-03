@@ -16,7 +16,7 @@ EVENT_TYPES_WHEN_EXISTS = [None, 'ADDED', 'MODIFIED']
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_1st_level(registry, settings, resource, cause_mock, event_type,
-                         caplog, assert_logs, k8s_mocked):
+                         caplog, assert_logs, k8s_mocked, looptime):
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = Reason.CREATE
 
@@ -57,7 +57,7 @@ async def test_1st_level(registry, settings, resource, cause_mock, event_type,
     assert sub1a_mock.call_count == 1
     assert sub1b_mock.call_count == 1
 
-    assert k8s_mocked.sleep.call_count == 0
+    assert looptime == 0
     assert k8s_mocked.patch.call_count == 1
     assert not event_queue.empty()
 
@@ -76,7 +76,7 @@ async def test_1st_level(registry, settings, resource, cause_mock, event_type,
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_2nd_level(registry, settings, resource, cause_mock, event_type,
-                         caplog, assert_logs, k8s_mocked):
+                         caplog, assert_logs, k8s_mocked, looptime):
     caplog.set_level(logging.DEBUG)
     cause_mock.reason = Reason.CREATE
 
@@ -137,7 +137,7 @@ async def test_2nd_level(registry, settings, resource, cause_mock, event_type,
     assert sub1b2a_mock.call_count == 1
     assert sub1b2b_mock.call_count == 1
 
-    assert k8s_mocked.sleep.call_count == 0
+    assert looptime == 0
     assert k8s_mocked.patch.call_count == 1
     assert not event_queue.empty()
 

@@ -20,7 +20,7 @@ from kopf._core.reactor.processing import process_resource_event
 ], ids=['slow'])
 async def test_timed_out_handler_fails(
         registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,
-        caplog, assert_logs, k8s_mocked, now, ts):
+        caplog, assert_logs, k8s_mocked, looptime, now, ts):
     caplog.set_level(logging.DEBUG)
     name1 = f'{cause_type}_fn'
 
@@ -54,7 +54,7 @@ async def test_timed_out_handler_fails(
     assert not handlers.resume_mock.called
 
     # Progress is reset, as the handler is not going to retry.
-    assert not k8s_mocked.sleep.called
+    assert looptime == 0
     assert k8s_mocked.patch.called
 
     patch = k8s_mocked.patch.call_args_list[0][1]['payload']
@@ -71,7 +71,7 @@ async def test_timed_out_handler_fails(
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_retries_limited_handler_fails(
         registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,
-        caplog, assert_logs, k8s_mocked):
+        caplog, assert_logs, k8s_mocked, looptime):
     caplog.set_level(logging.DEBUG)
     name1 = f'{cause_type}_fn'
 
@@ -104,7 +104,7 @@ async def test_retries_limited_handler_fails(
     assert not handlers.resume_mock.called
 
     # Progress is reset, as the handler is not going to retry.
-    assert not k8s_mocked.sleep.called
+    assert looptime == 0
     assert k8s_mocked.patch.called
 
     patch = k8s_mocked.patch.call_args_list[0][1]['payload']

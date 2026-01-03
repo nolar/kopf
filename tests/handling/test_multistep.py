@@ -18,7 +18,7 @@ from kopf._core.reactor.processing import process_resource_event
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_1st_step_stores_progress_by_patching(
         registry, settings, handlers, extrahandlers,
-        resource, cause_mock, cause_type, k8s_mocked, deletion_ts):
+        resource, cause_mock, cause_type, k8s_mocked, looptime, deletion_ts):
     name1 = f'{cause_type}_fn'
     name2 = f'{cause_type}_fn2'
 
@@ -46,7 +46,7 @@ async def test_1st_step_stores_progress_by_patching(
     assert handlers.delete_mock.call_count == (1 if cause_type == Reason.DELETE else 0)
     assert handlers.resume_mock.call_count == (1 if cause_type == Reason.RESUME else 0)
 
-    assert not k8s_mocked.sleep.called
+    assert looptime == 0
     assert k8s_mocked.patch.called
 
     patch = k8s_mocked.patch.call_args_list[0][1]['payload']
@@ -74,7 +74,7 @@ async def test_1st_step_stores_progress_by_patching(
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_2nd_step_finishes_the_handlers(caplog,
         registry, settings, handlers, extrahandlers,
-        resource, cause_mock, cause_type, k8s_mocked, deletion_ts):
+        resource, cause_mock, cause_type, k8s_mocked, looptime, deletion_ts):
     name1 = f'{cause_type}_fn'
     name2 = f'{cause_type}_fn2'
 
@@ -106,7 +106,7 @@ async def test_2nd_step_finishes_the_handlers(caplog,
     assert extrahandlers.delete_mock.call_count == (1 if cause_type == Reason.DELETE else 0)
     assert extrahandlers.resume_mock.call_count == (1 if cause_type == Reason.RESUME else 0)
 
-    assert not k8s_mocked.sleep.called
+    assert looptime == 0
     assert k8s_mocked.patch.called
 
     patch = k8s_mocked.patch.call_args_list[0][1]['payload']

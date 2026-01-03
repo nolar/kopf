@@ -16,7 +16,7 @@ from kopf._core.reactor.processing import process_resource_event
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_fatal_error_stops_handler(
         registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,
-        caplog, assert_logs, k8s_mocked):
+        caplog, assert_logs, k8s_mocked, looptime):
     caplog.set_level(logging.DEBUG)
     name1 = f'{cause_type}_fn'
 
@@ -44,7 +44,7 @@ async def test_fatal_error_stops_handler(
     assert handlers.delete_mock.call_count == (1 if cause_type == Reason.DELETE else 0)
     assert handlers.resume_mock.call_count == (1 if cause_type == Reason.RESUME else 0)
 
-    assert not k8s_mocked.sleep.called
+    assert looptime == 0
     assert k8s_mocked.patch.called
 
     patch = k8s_mocked.patch.call_args_list[0][1]['payload']
@@ -61,7 +61,7 @@ async def test_fatal_error_stops_handler(
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_retry_error_delays_handler(
         registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,
-        caplog, assert_logs, k8s_mocked):
+        caplog, assert_logs, k8s_mocked, looptime):
     caplog.set_level(logging.DEBUG)
     name1 = f'{cause_type}_fn'
 
@@ -89,7 +89,7 @@ async def test_retry_error_delays_handler(
     assert handlers.delete_mock.call_count == (1 if cause_type == Reason.DELETE else 0)
     assert handlers.resume_mock.call_count == (1 if cause_type == Reason.RESUME else 0)
 
-    assert not k8s_mocked.sleep.called
+    assert looptime == 0
     assert k8s_mocked.patch.called
 
     patch = k8s_mocked.patch.call_args_list[0][1]['payload']
@@ -107,7 +107,7 @@ async def test_retry_error_delays_handler(
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_arbitrary_error_delays_handler(
         registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,
-        caplog, assert_logs, k8s_mocked):
+        caplog, assert_logs, k8s_mocked, looptime):
     caplog.set_level(logging.DEBUG)
     name1 = f'{cause_type}_fn'
 
@@ -135,7 +135,7 @@ async def test_arbitrary_error_delays_handler(
     assert handlers.delete_mock.call_count == (1 if cause_type == Reason.DELETE else 0)
     assert handlers.resume_mock.call_count == (1 if cause_type == Reason.RESUME else 0)
 
-    assert not k8s_mocked.sleep.called
+    assert looptime == 0
     assert k8s_mocked.patch.called
 
     patch = k8s_mocked.patch.call_args_list[0][1]['payload']

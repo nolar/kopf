@@ -77,6 +77,7 @@ test = [
     "codecov",
     "coverage>=7.12.0",
     "freezegun",
+    "looptime>=0.7",
     "lxml",
     "pyngrok",
     "pytest>=9.0.0",
@@ -116,7 +117,7 @@ ignore_missing_imports = true
 minversion = "9.0"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-addopts = ["--strict-markers"]
+addopts = ["--strict-markers", "--looptime"]
 
 [tool.isort]
 line_length = 100

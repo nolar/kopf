@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 from unittest.mock import Mock
 
@@ -380,12 +381,17 @@ async def test_started_from_storage(storage, handler, body, expected):
     (TSB_ISO, {'status': {'kopf': {'progress': {'some-id': {'started': TSB_ISO}}}}}),
     (TSA_ISO, {'status': {'kopf': {'progress': {'some-id': {'started': TSA_ISO}}}}}),
 ])
-async def test_started_from_storage_is_preferred_over_from_scratch(storage, handler, body, expected):
-    with freezegun.freeze_time(TS0):
-        state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
-    with freezegun.freeze_time(TS1):
-        state = state.with_handlers([handler])
+@freezegun.freeze_time(TS0)
+async def test_started_from_storage_is_preferred_over_from_scratch(storage, handler, body, expected, looptime):
     patch = Patch()
+    state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
+
+    # The state uses both the loop time and the wall-clock "base time", so we move them in sync.
+    await asyncio.sleep(123)
+    with freezegun.freeze_time() as ft:
+        ft.tick(123)
+
+    state = state.with_handlers([handler])
     state.store(body=Body({}), patch=patch, storage=storage)
     assert patch['status']['kopf']['progress']['some-id']['started'] == expected
 
@@ -507,7 +513,11 @@ async def test_awakened_flag(storage, handler, expected, body):
     (None, {'status': {'kopf': {'progress': {'some-id': {}}}}}),
     (None, {'status': {'kopf': {'progress': {'some-id': {'delayed': None}}}}}),
     (TS0, {'status': {'kopf': {'progress': {'some-id': {'delayed': TS0_ISO}}}}}),
+    (TS1, {'status': {'kopf': {'progress': {'some-id': {'delayed': TS1_ISO}}}}}),
+    (TSB, {'status': {'kopf': {'progress': {'some-id': {'delayed': TSB_ISO}}}}}),
+    (TSA, {'status': {'kopf': {'progress': {'some-id': {'delayed': TSA_ISO}}}}}),
 ])
+@freezegun.freeze_time(TS0)
 async def test_awakening_time(storage, handler, expected, body):
     state = State.from_storage(body=Body(body), handlers=[handler], storage=storage)
     state = state.with_handlers([handler])

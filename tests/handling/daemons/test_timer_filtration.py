@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 import pytest
@@ -11,21 +12,22 @@ import kopf
 async def test_timer_filtration_satisfied(
         settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle):
     caplog.set_level(logging.DEBUG)
+    executed = asyncio.Event()
 
     @kopf.timer(*resource, id='fn',
                 labels={'a': 'value', 'b': kopf.PRESENT, 'c': kopf.ABSENT},
                 annotations={'x': 'value', 'y': kopf.PRESENT, 'z': kopf.ABSENT})
     async def fn(**kwargs):
-        dummy.kwargs = kwargs
-        dummy.steps['called'].set()
+        dummy.mock(**kwargs)
+        executed.set()
 
     event_body = {'metadata': {'labels': {'a': 'value', 'b': '...'},
                                'annotations': {'x': 'value', 'y': '...'},
                                'finalizers': [settings.persistence.finalizer]}}
     await simulate_cycle(event_body)
+    await executed.wait()
 
-    await dummy.steps['called'].wait()
-    await dummy.wait_for_daemon_done()
+    assert dummy.mock.call_count == 1
 
 
 @pytest.mark.parametrize('labels, annotations', [
@@ -54,6 +56,7 @@ async def test_timer_filtration_mismatched(
                                'annotations': annotations,
                                'finalizers': [settings.persistence.finalizer]}}
     await simulate_cycle(event_body)
+    await asyncio.sleep(123)  # give it enough time to do something when nothing is expected
 
     assert spawn_daemons.called
     assert spawn_daemons.call_args_list[0][1]['handlers'] == []

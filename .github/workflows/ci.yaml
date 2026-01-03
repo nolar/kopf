@@ -13,7 +13,7 @@ jobs:
   linters:
     name: Linting and static analysis
     runs-on: ubuntu-24.04
-    timeout-minutes: 5  # usually 1-2, rarely 3 mins (because of installations)
+    timeout-minutes: 7  # usually 5 mins with coverage
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -44,7 +44,7 @@ jobs:
             python-version: "3.14"
     name: Python ${{ matrix.python-version }}${{ matrix.install-extras && ' ' || '' }}${{ matrix.install-extras }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 5  # usually 2-3 mins
+    timeout-minutes: 7  # usually 5 mins with coverage
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -84,7 +84,7 @@ jobs:
         python-version: [ "pypy-3.10", "pypy-3.11" ]
     name: Python ${{ matrix.python-version }}${{ matrix.install-extras && ' ' || '' }}${{ matrix.install-extras }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
