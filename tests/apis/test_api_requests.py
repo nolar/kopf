@@ -248,16 +248,18 @@ async def test_settings_timeout_in_streams(
     pytest.param(2, [1], [{'fake': 'result1'}], id='fast-single'),
     pytest.param(9, [1, 4], [{'fake': 'result1'}, {'fake': 'result2'}], id='inf-double'),
 ])
+@pytest.mark.parametrize('initial', [True, False], ids=['slow-headers', 'fast-headers'])
 @pytest.mark.parametrize('method', ['get'])  # the only supported method at the moment
 async def test_stopper_in_streams(
-        resp_mocker, aresponses, hostname, method, delay, settings, logger, looptime,
+        resp_mocker, aresponses, hostname, method, delay, initial, settings, logger, looptime,
         expected_items, expected_times):
 
     async def stream_slowly(request: aiohttp.web.Request) -> aiohttp.web.StreamResponse:
         response = aiohttp.web.StreamResponse()
+        await asyncio.sleep(1 if initial else 0)  # before the http headers are sent
         await response.prepare(request)
         try:
-            await asyncio.sleep(1)
+            await asyncio.sleep(0 if initial else 1)  # after the headers are sent
             await response.write(b'{"fake": "result1"}\n')
             await asyncio.sleep(3)
             await response.write(b'{"fake": "result2"}\n')

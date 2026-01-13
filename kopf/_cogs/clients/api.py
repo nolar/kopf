@@ -212,16 +212,44 @@ async def stream(
         stopper: aiotasks.Future | None = None,
         logger: typedefs.Logger,
 ) -> AsyncIterator[Any]:
-    response = await request(
-        method='get',
-        url=url,
-        payload=payload,
-        headers=headers,
-        timeout=timeout,
-        settings=settings,
-        logger=logger,
-    )
-    response_close_callback = lambda _: response.close()  # to remove the positional arg.
+    # This dirty trickery is for cases when the server thinks too slowly before
+    # sending the headers, but the stopper is already set during the initial wait.
+    def request_cancel_callback(_: aiotasks.Future) -> None:
+        task = asyncio.current_task()
+        assert task is not None  # for type-checkers; this is `async def`, so always in a task.
+        task.cancel()
+
+    if stopper is not None and not stopper.done():
+        stopper.add_done_callback(request_cancel_callback)
+    try:
+        response = await request(
+            method='get',
+            url=url,
+            payload=payload,
+            headers=headers,
+            timeout=timeout,
+            settings=settings,
+            logger=logger,
+        )
+    except asyncio.CancelledError:
+        if stopper is not None and stopper.done():
+            return
+        else:
+            raise  # triggered not by the stopper, escalate
+    finally:
+        if stopper is not None:
+            stopper.remove_done_callback(request_cancel_callback)
+
+    # Do not proceed if managed to avoid the cancellation somehow, but got here.
+    if stopper is not None and stopper.done():
+        response.close()
+        return
+
+    # Once the headers were sent & received, the stopper works slightly differently:
+    # it closes the response instead of cancelling the already performed request.
+    def response_close_callback(_: aiotasks.Future) -> None:
+        response.close()
+
     if stopper is not None:
         stopper.add_done_callback(response_close_callback)
     try:
@@ -232,7 +260,7 @@ async def stream(
         if stopper is not None and stopper.done():
             pass
         else:
-            raise
+            raise  # triggered not by the stopper, escalate
     finally:
         if stopper is not None:
             stopper.remove_done_callback(response_close_callback)
