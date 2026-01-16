@@ -63,7 +63,7 @@ dev = [
 
 [dependency-groups]
 docs = [
-    "sphinx>=9.0.0",
+    "sphinx>=9.0.0; python_version>='3.11'",  # TODO: remove when 3.10 is dropped (≈Oct'26)
     "sphinx-autobuild",
     "sphinx-autodoc-typehints",
     "sphinx-copybutton",
