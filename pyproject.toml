@@ -116,6 +116,11 @@ lint = [
     "pyngrok",
     "uvloop",
 ]
+dev = [
+    {include-group = "docs"},
+    {include-group = "lint"},
+    {include-group = "test"},
+]
 
 [tool.setuptools.packages.find]
 # The star is for the versions.py, which is gitignored in docker builds (somewhy).
