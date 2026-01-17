@@ -74,6 +74,8 @@ as the operator is not listening for any incoming connections,
 but only makes the outcoming calls to the Kubernetes API.
 
 
+.. _rbac:
+
 RBAC
 ====
 
@@ -87,10 +89,10 @@ For the example operator, those are:
 * ``kind: Pod/Job/PersistentVolumeClaim`` as the children objects.
 * And others as needed.
 
-For that, the RBAC_ (Role-Based Access Control) could be used
+For that, the RBAC__ (Role-Based Access Control) could be used
 and attached to the operator's pod via a service account.
 
-.. _RBAC: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+__: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
 
 Here is an example of what an RBAC config should look like
 (remove the parts which are not needed: e.g. the cluster roles/bindings
