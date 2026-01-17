@@ -105,6 +105,11 @@ lint = [
     "isort",
     "pre-commit",
 ]
+dev = [
+    {include-group = "docs"},
+    {include-group = "lint"},
+    {include-group = "test"},
+]
 
 [tool.setuptools_scm]
 version_file = "kopf/_cogs/helpers/versions.py"
