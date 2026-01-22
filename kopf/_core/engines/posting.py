@@ -82,9 +82,15 @@ def enqueue(
         queue.put_nowait(event)
     else:
         # No event-loop or another event-loop - assume another thread.
-        # Use the cross-thread thread-safe methods. Block until enqueued there.
-        future = asyncio.run_coroutine_threadsafe(queue.put(event), loop=loop)
-        future.result()  # block, wait, re-raise.
+        # Use the cross-thread thread-safe methods. Do not block or wait.
+        # Beware of #1212: `run_coroutine_threadsafe(queue.put(…), loop=loop)` is flawed.
+        queue.put_nowait(event)
+        loop.call_soon_threadsafe(_no_op_event_loop_awakener)
+
+
+# The same as `lambda: None`, but with no closure data attached & better for JIT in PyPy.
+def _no_op_event_loop_awakener() -> None:
+    pass
 
 
 def event(
@@ -186,7 +192,7 @@ class K8sPoster(logging.Handler):
     """
     if sys.version_info[:2] < (3, 13):
         # Disable this optimisation for Python >= 3.13.
-        # The `handle` no longer support having `None` as lock.
+        # The `handle` no longer supports having `None` as lock.
         def createLock(self) -> None:
             # Save some time on unneeded locks. Events are posted in the background.
             # We only put events to the queue, which is already lock-protected.
