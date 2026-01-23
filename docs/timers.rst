@@ -103,6 +103,28 @@ It is possible to postpone the invocations:
 This is similar to idling, except that it is applied only once per
 resource/operator lifecycle in the very beginning.
 
+The ``initial_delay`` can also be a callable, which accepts the same arguments
+as the handler itself, and returns the delay in seconds:
+
+.. code-block:: python
+
+    import random
+    import kopf
+
+    def get_delay(body, **kwargs):
+        return random.randint(
+            body.get('spec', {}).get('minDelay', 0),
+            body.get('spec', {}).get('maxDelay', 60),
+        )
+
+    @kopf.timer('kopfexamples', interval=1, initial_delay=get_delay)
+    def ping_kex(spec, **kwargs):
+        ...
+
+This is primarily intended for load balancing during operator restarts (e.g. by
+using a random delay). If you need more complex or periodic random timing,
+consider using a daemon with custom sleeps instead of a timer.
+
 
 Combined timing
 ===============

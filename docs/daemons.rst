@@ -226,6 +226,28 @@ The start of the daemon will be delayed by 30 seconds after the resource
 creation (or operator startup). For example, this can be used to give some time
 for regular event-driven handlers to finish without producing too much activity.
 
+The ``initial_delay`` can also be a callable, which accepts the same arguments
+as the handler itself, and returns the delay in seconds:
+
+.. code-block:: python
+
+    import random
+    import kopf
+
+    def get_delay(body, **kwargs):
+        return random.randint(
+            body.get('spec', {}).get('minDelay', 0),
+            body.get('spec', {}).get('maxDelay', 60),
+        )
+
+    @kopf.daemon('kopfexamples', initial_delay=get_delay)
+    async def monitor_kex(stopped, **kwargs):
+        ...
+
+This is primarily intended for load balancing during operator restarts (e.g. by
+using a random delay). If you need more complex or periodic random timing,
+consider using a daemon with custom sleeps instead of a timer.
+
 
 Restarting
 ==========

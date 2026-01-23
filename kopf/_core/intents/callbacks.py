@@ -27,6 +27,7 @@ if not TYPE_CHECKING:  # pragma: nocover
     WebhookFn = Callable[..., invocation.SyncOrAsync[object | None]]
     DaemonFn = Callable[..., invocation.SyncOrAsync[object | None]]
     TimerFn = Callable[..., invocation.SyncOrAsync[object | None]]
+    DelayFn = Callable[..., float]  # strictly sync, no async!
     WhenFilterFn = Callable[..., bool]  # strictly sync, no async!
     MetaFilterFn = Callable[..., bool]  # strictly sync, no async!
 else:
@@ -194,6 +195,28 @@ else:
             KwArg(Any),
         ],
         invocation.SyncOrAsync[object | None]
+    ]
+
+    DelayFn = Callable[
+        [
+            NamedArg(ephemera.Index[Any, Any], "*"),
+            NamedArg(bodies.Annotations, "annotations"),
+            NamedArg(bodies.Labels, "labels"),
+            NamedArg(bodies.Body, "body"),
+            NamedArg(bodies.Meta, "meta"),
+            NamedArg(bodies.Spec, "spec"),
+            NamedArg(bodies.Status, "status"),
+            NamedArg(references.Resource, "resource"),
+            NamedArg(str | None, "uid"),
+            NamedArg(str | None, "name"),
+            NamedArg(str | None, "namespace"),
+            NamedArg(patches.Patch, "patch"),
+            NamedArg(typedefs.Logger, "logger"),
+            NamedArg(Any, "memo"),
+            DefaultNamedArg(Any, "param"),
+            KwArg(Any),
+        ],
+        float  # strictly sync, no async!
     ]
 
     WhenFilterFn = Callable[

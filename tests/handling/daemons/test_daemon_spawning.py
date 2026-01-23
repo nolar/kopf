@@ -35,3 +35,23 @@ async def test_daemon_initial_delay_obeyed(
     await executed.wait()
 
     assert looptime == 5.0
+
+
+async def test_daemon_initial_delay_callable_obeyed(
+        resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
+    caplog.set_level(logging.DEBUG)
+    executed = asyncio.Event()
+
+    def get_delay(body, **_):
+        return body.get('spec', {}).get('delay', 0.0)
+
+    @kopf.daemon(*resource, id='fn', initial_delay=get_delay)
+    async def fn(**kwargs):
+        dummy.mock(**kwargs)
+        executed.set()
+
+    await simulate_cycle({'spec': {'delay': 7.0}})
+    await executed.wait()
+
+    assert looptime == 7.0
+    assert dummy.mock.call_count == 1

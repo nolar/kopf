@@ -668,7 +668,7 @@ def daemon(  # lgtm[py/similar-function]
         timeout: float | None = None,
         retries: int | None = None,
         backoff: float | None = None,
-        initial_delay: float | None = None,
+        initial_delay: float | callbacks.DelayFn | None = None,
         cancellation_backoff: float | None = None,
         cancellation_timeout: float | None = None,
         cancellation_polling: float | None = None,
@@ -731,7 +731,7 @@ def timer(  # lgtm[py/similar-function]
         retries: int | None = None,
         backoff: float | None = None,
         interval: float | None = None,
-        initial_delay: float | None = None,
+        initial_delay: float | callbacks.DelayFn | None = None,
         sharp: bool | None = None,
         idle: float | None = None,
         # Resource object specification:
