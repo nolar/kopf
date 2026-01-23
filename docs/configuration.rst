@@ -144,14 +144,22 @@ The event-posting can be disabled completely (the default is to be enabled):
     def configure(settings: kopf.OperatorSettings, **_):
         settings.posting.enabled = False
 
-.. note::
+These two settings also affect :func:`kopf.event` and related functions:
+:func:`kopf.info`, :func:`kopf.warn`, :func:`kopf.exception` --
+even if they are called explicitly in the code.
 
-    These settings also affect `kopf.event` and related functions:
-    `kopf.info`, `kopf.warn`, `kopf.exception`, etc --
-    even if they are called explicitly in the code.
+By default, all log messages made by the handlers on their ``logger`` are also
+posted as Kubernetes events. This can be disabled if it is not desired,
+e.g. to keep the events list clean, so that only the explicit event-posting
+calls are posted:
 
-    To avoid these settings having an impact on your code, post events
-    directly with an API client library instead of the Kopf-provided toolkit.
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.posting.loggers = False
 
 
 .. _configure-sync-handlers:
