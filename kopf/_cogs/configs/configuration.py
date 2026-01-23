@@ -71,6 +71,15 @@ class PostingSettings:
     (``kopf.info()``, ``kopf.warn()``, ``kopf.exception()``).
     """
 
+    loggers: bool = True
+    """
+    Should the log messages from the loggers be posted as K8s Events.
+
+    If true (the default), the log messages from the regular loggers (such as
+    those used in the handlers) are posted as K8s Events. If false, only
+    explicitly called event-posting routines are posted (e.g. ``kopf.event()``).
+    """
+
     level: int = logging.INFO
     """
     A minimal level of logging events that will be posted as K8s Events.
