@@ -468,7 +468,8 @@ async def _daemon(
     body = cause.body
 
     if handler.initial_delay is not None:
-        await aiotime.sleep(handler.initial_delay, wakeup=cause.stopper.async_event)
+        delay = handler.initial_delay(**cause.kwargs) if callable(handler.initial_delay) else handler.initial_delay
+        await aiotime.sleep(delay, wakeup=cause.stopper.async_event)
 
     # Similar to activities (in-memory execution), but applies patches on every attempt.
     state = progression.State.from_scratch().with_handlers([handler])
@@ -537,7 +538,8 @@ async def _timer(
     body = cause.body
 
     if handler.initial_delay is not None:
-        await aiotime.sleep(handler.initial_delay, wakeup=stopper.async_event)
+        delay = handler.initial_delay(**cause.kwargs) if callable(handler.initial_delay) else handler.initial_delay
+        await aiotime.sleep(delay, wakeup=stopper.async_event)
 
     # Similar to activities (in-memory execution), but applies patches on every attempt.
     clock = asyncio.get_running_loop().time

@@ -90,7 +90,7 @@ class ChangingHandler(ResourceHandler):
 @dataclasses.dataclass(frozen=True)
 class SpawningHandler(ResourceHandler):
     requires_finalizer: bool | None
-    initial_delay: float | None
+    initial_delay: float | callbacks.DelayFn | None
 
 
 @dataclasses.dataclass(frozen=True)
