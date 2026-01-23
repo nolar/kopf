@@ -4,6 +4,7 @@ Several webhooks servers & tunnels supported out of the box.
 import asyncio
 import base64
 import contextlib
+import datetime
 import functools
 import ipaddress
 import json
@@ -155,37 +156,45 @@ class WebhookServer(webhacks.WebhookContextManager):
         async def _serve_fn(request: aiohttp.web.Request) -> aiohttp.web.Response:
             return await self._serve(fn, request)
 
-        cadata, context = self._build_ssl()
-        path = self.path.rstrip('/') if self.path else ''
-        app = aiohttp.web.Application()
-        app.add_routes([aiohttp.web.post(f"{path}/{{id:.*}}", _serve_fn)])
-        runner = aiohttp.web.AppRunner(app, handle_signals=False)
-        await runner.setup()
-        try:
-            # Note: reuse_port is mostly (but not only) for fast-running tests with SSL sockets;
-            # multi-threaded sockets are not really used -- high load is not expected for webhooks.
-            addr = self.addr or None  # None is aiohttp's "any interface"
-            port = self.port or self._allocate_free_port()
-            site = aiohttp.web.TCPSite(runner, addr, port, ssl_context=context, reuse_port=True)
-            await site.start()
+        while True:
+            cadata, context, expiration = self._build_ssl()
+            path = self.path.rstrip('/') if self.path else ''
+            app = aiohttp.web.Application()
+            app.add_routes([aiohttp.web.post(f"{path}/{{id:.*}}", _serve_fn)])
+            runner = aiohttp.web.AppRunner(app, handle_signals=False)
+            await runner.setup()
+            try:
+                # Note: reuse_port is mostly (but not only) for fast-running tests with SSL sockets;
+                # multi-threaded sockets are not really used -- high load is not expected for webhooks.
+                addr = self.addr or None  # None is aiohttp's "any interface"
+                port = self.port or self._allocate_free_port()
+                site = aiohttp.web.TCPSite(runner, addr, port, ssl_context=context, reuse_port=True)
+                await site.start()
 
-            # Log with the actual URL: normalised, with hostname/port set.
-            schema = 'http' if context is None else 'https'
-            url = self._build_url(schema, addr or '*', port, self.path or '')
-            logger.debug(f"Listening for webhooks at {url}")
-            host = self.host or self.DEFAULT_HOST or self._get_accessible_addr(self.addr)
-            url = self._build_url(schema, host, port, self.path or '')
-            logger.debug(f"Accessing the webhooks at {url}")
+                # Log with the actual URL: normalised, with hostname/port set.
+                schema = 'http' if context is None else 'https'
+                url = self._build_url(schema, addr or '*', port, self.path or '')
+                logger.debug(f"Listening for webhooks at {url}")
+                host = self.host or self.DEFAULT_HOST or self._get_accessible_addr(self.addr)
+                url = self._build_url(schema, host, port, self.path or '')
+                logger.debug(f"Accessing the webhooks at {url}")
 
-            client_config = reviews.WebhookClientConfig(url=url)
-            if cadata is not None:
-                client_config['caBundle'] = base64.b64encode(cadata).decode('ascii')
+                client_config = reviews.WebhookClientConfig(url=url)
+                if cadata is not None:
+                    client_config['caBundle'] = base64.b64encode(cadata).decode('ascii')
 
-            yield client_config
-            await asyncio.Event().wait()
-        finally:
-            # On any reason of exit, stop serving the endpoint.
-            await runner.cleanup()
+                yield client_config
+
+                if expiration is not None:
+                    now = datetime.datetime.now(datetime.timezone.utc)
+                    remaining = (expiration - now).total_seconds()
+                    sleep_time = max(0., remaining - 60)
+                    await asyncio.sleep(sleep_time)
+                else:
+                    await asyncio.Event().wait()
+            finally:
+                # On any reason of exit, stop serving the endpoint.
+                await runner.cleanup()
 
     @staticmethod
     async def _serve(
@@ -271,16 +280,18 @@ class WebhookServer(webhacks.WebhookContextManager):
         netloc = host if is_default_port else f'{host}:{port}'
         return urllib.parse.urlunsplit([schema, netloc, path, '', ''])
 
-    def _build_ssl(self) -> tuple[bytes | None, ssl.SSLContext | None]:
+    def _build_ssl(self) -> tuple[bytes | None, ssl.SSLContext | None, datetime.datetime | None]:
         """
         A macros to construct an SSL context, possibly generating SSL certs.
 
         Returns a CA bundle to be passed to the "client configs",
-        and a properly initialised SSL context to be used by the server.
-        Or ``None`` for both if an HTTP server is needed.
+        a properly initialised SSL context to be used by the server,
+        and an optional expiration timestamp of the server certificate.
+        Or ``None`` for all if an HTTP server is needed.
         """
         cadata = self.cadata
         context = self.context
+        expiration: datetime.datetime | None = None
         if self.insecure and self.context is not None:
             raise ValueError("Insecure mode cannot have an SSL context specified.")
 
@@ -319,6 +330,13 @@ class WebhookServer(webhacks.WebhookContextManager):
                 )
                 if cadata is None and self.certfile is not None:
                     cadata = pathlib.Path(self.certfile).read_bytes()
+
+                cert_dict = ssl._ssl._test_decode_cert(str(self.certfile))  # type: ignore[attr-defined]
+                not_after = cert_dict.get('notAfter')
+                if not_after:
+                    seconds = ssl.cert_time_to_seconds(not_after)
+                    expiration = datetime.datetime.fromtimestamp(seconds, tz=datetime.timezone.utc)
+
             else:
                 logger.debug("Generating a self-signed certificate for HTTPS.")
                 host = self.host or self.DEFAULT_HOST
@@ -332,6 +350,12 @@ class WebhookServer(webhacks.WebhookContextManager):
                     pkeyf.flush()
                     context.load_cert_chain(certf.name, pkeyf.name, self.password)
 
+                    cert_dict = ssl._ssl._test_decode_cert(certf.name)  # type: ignore[attr-defined]
+                    not_after = cert_dict.get('notAfter')
+                    if not_after:
+                        seconds = ssl.cert_time_to_seconds(not_after)
+                        expiration = datetime.datetime.fromtimestamp(seconds, tz=datetime.timezone.utc)
+
                 # For a self-signed certificate, the CA bundle is the certificate itself,
                 # regardless of what cafile/cadata are provided from outside.
                 cadata = certdata
@@ -340,7 +364,7 @@ class WebhookServer(webhacks.WebhookContextManager):
         if self.cadump is not None and cadata is not None:
             pathlib.Path(self.cadump).write_bytes(cadata)
 
-        return cadata, context
+        return cadata, context, expiration
 
     @staticmethod
     def build_certificate(
