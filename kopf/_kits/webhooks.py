@@ -22,6 +22,7 @@ import aiohttp.web
 
 from kopf._cogs.clients import api, scanning
 from kopf._cogs.configs import configuration
+from kopf._cogs.helpers import certparser
 from kopf._cogs.structs import reviews
 from kopf._core.engines import admission
 from kopf._kits import webhacks
@@ -186,6 +187,7 @@ class WebhookServer(webhacks.WebhookContextManager):
                 yield client_config
 
                 if expiration is not None:
+                    expiration = expiration.astimezone(datetime.timezone.utc)
                     now = datetime.datetime.now(datetime.timezone.utc)
                     remaining = (expiration - now).total_seconds()
                     sleep_time = max(0., remaining - 60)
@@ -331,11 +333,12 @@ class WebhookServer(webhacks.WebhookContextManager):
                 if cadata is None and self.certfile is not None:
                     cadata = pathlib.Path(self.certfile).read_bytes()
 
-                cert_dict = ssl._ssl._test_decode_cert(str(self.certfile))  # type: ignore[attr-defined]
-                not_after = cert_dict.get('notAfter')
-                if not_after:
-                    seconds = ssl.cert_time_to_seconds(not_after)
-                    expiration = datetime.datetime.fromtimestamp(seconds, tz=datetime.timezone.utc)
+                try:
+                    validity = certparser.parse_validity_from_pem_file(str(self.certfile))
+                except ValueError:
+                    expiration = None
+                else:
+                    expiration = validity.not_after
 
             else:
                 logger.debug("Generating a self-signed certificate for HTTPS.")
@@ -350,11 +353,12 @@ class WebhookServer(webhacks.WebhookContextManager):
                     pkeyf.flush()
                     context.load_cert_chain(certf.name, pkeyf.name, self.password)
 
-                    cert_dict = ssl._ssl._test_decode_cert(certf.name)  # type: ignore[attr-defined]
-                    not_after = cert_dict.get('notAfter')
-                    if not_after:
-                        seconds = ssl.cert_time_to_seconds(not_after)
-                        expiration = datetime.datetime.fromtimestamp(seconds, tz=datetime.timezone.utc)
+                    try:
+                        validity = certparser.parse_validity_from_pem_file(certf.name)
+                    except ValueError:
+                        expiration = None
+                    else:
+                        expiration = validity.not_after
 
                 # For a self-signed certificate, the CA bundle is the certificate itself,
                 # regardless of what cafile/cadata are provided from outside.
