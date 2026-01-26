@@ -567,10 +567,18 @@ This applies to all servers:
     @kopf.on.startup()
     def config(settings: kopf.OperatorSettings, **_):
         settings.admission.server = kopf.WebhookServer(
-            cafile='ca.pem',        # or cadata, or capath.
-            certfile='cert.pem',
-            pkeyfile='pkey.pem',
-            password='...')         # for the private key, if used.
+            cafile='/secrets/ca.pem',       # or cadata, or capath.
+            certfile='/secrets/cert.pem',
+            pkeyfile='/secrets/pkey.pem',
+            password='...',                 # for the private key, if used.
+            file_check_interval=60,
+        )
+
+You can use cert-manager or other externally provided certificate files
+at their known (mounted) locations without the full restart of the operator.
+Once any of the specified files changes, e.g. due to certificate or private key
+automated renewal, the webhook server will restart with the new certificate
+(at the latest after ``file_check_interval`` seconds, which defaults to 60s).
 
 .. note::
     ``cadump`` (output) can be used together with ``cafile``/``cadata`` (input),
