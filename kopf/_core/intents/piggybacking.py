@@ -122,7 +122,7 @@ async def login_via_async_client(
         *,
         logger: typedefs.Logger,
         **_: Any,
-) -> Optional[credentials.ConnectionInfo]:
+) -> credentials.ConnectionInfo | None:
 
     # Keep imports in the function, as module imports are mocked in some tests.
     try:
@@ -151,7 +151,7 @@ async def login_via_async_client(
     # For auth-providers, this method is monkey-patched with the auth-provider's one.
     # We need the actual auth-provider's token, so we call it instead of accessing api_key.
     # Other keys (token, tokenFile) also end up being retrieved via this method.
-    header: Optional[str] = config.get_api_key_with_prefix('BearerToken')
+    header: str | None = config.get_api_key_with_prefix('BearerToken')
     parts: Sequence[str] = header.split(' ', 1) if header else []
     scheme, token = ((None, None) if len(parts) == 0 else
                      (None, parts[0]) if len(parts) == 1 else
