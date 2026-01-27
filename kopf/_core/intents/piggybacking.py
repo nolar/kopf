@@ -132,7 +132,9 @@ async def login_via_async_client(
         return None
 
     try:
-        kubernetes_asyncio.config.load_incluster_config()  # cluster env vars
+        # Kubernetes-asyncio is marked as typed, this function is untyped (and no .pyi files).
+        # Somewhy, MyPy does not complain about another similar function below. But we do not care.
+        kubernetes_asyncio.config.load_incluster_config()  # type: ignore  # cluster env vars
         logger.debug("Async client is configured in cluster with service account.")
     except kubernetes_asyncio.config.ConfigException as e1:
         try:
@@ -152,7 +154,7 @@ async def login_via_async_client(
     # For auth-providers, this method is monkey-patched with the auth-provider's one.
     # We need the actual auth-provider's token, so we call it instead of accessing api_key.
     # Other keys (token, tokenFile) also end up being retrieved via this method.
-    header: str | None = config.get_api_key_with_prefix('BearerToken')
+    header: str | None = await config.get_api_key_with_prefix('BearerToken')
     parts: Sequence[str] = header.split(' ', 1) if header else []
     scheme, token = ((None, None) if len(parts) == 0 else
                      (None, parts[0]) if len(parts) == 1 else
@@ -160,6 +162,7 @@ async def login_via_async_client(
 
     # Interpret the config object for our own minimalistic credentials.
     # Note: kubernetes client has no concept of a "current" context's namespace.
+    assert config.host is not None  # for type-checkers (that is a fatality anyway)
     return credentials.ConnectionInfo(
         server=config.host,
         ca_path=config.ssl_ca_cert,  # can be a temporary file
