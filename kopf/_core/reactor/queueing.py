@@ -323,9 +323,13 @@ async def worker(
                 expected_version = None
                 consistency_time = None
 
+            # Relieve the pressure only if this is the last event, thus letting the processor sleep.
+            # If there are more events to process, fast-skip the sleep as if they have just arrived.
+            if backlog.empty():
+                pressure.clear()
+
             # Process the event. It might include sleeping till the time of consistency assumption
             # (i.e. ignoring that the patched version was not received and behaving as if it was).
-            pressure.clear()
             newer_patch_version = await processor(
                 raw_event=raw_event,
                 stream_pressure=pressure,

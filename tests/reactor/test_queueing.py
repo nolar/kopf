@@ -21,7 +21,7 @@ import weakref
 
 import pytest
 
-from kopf._core.reactor.queueing import EOS, watcher
+from kopf._core.reactor.queueing import EOS, ObjectUid, Stream, watcher, worker
 
 
 @pytest.mark.parametrize('uids, cnts, events', [
@@ -168,6 +168,32 @@ async def test_garbage_collection_of_streams(
 
     # Truly garbage-collected? Memory freed?
     assert all([ref() is None for ref in refs])
+
+
+async def test_stream_pressure_maintained_until_the_queue_is_empty(settings, resource, processor):
+
+    flags: list[bool] = []
+    processor.side_effect = lambda stream_pressure, **_: flags.append(stream_pressure.is_set())
+
+    # It is very important for this test that the stream (queue+flag) is pre-constructed,
+    # i.e., that it is not populated by the watcher at a random speed, but pre-populated manually.
+    # Therefore, we test the worker(), not the watcher().
+    key = (resource, ObjectUid('uid1'))
+    stream = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
+    stream.backlog.put_nowait({'type': 'ADDED', 'object': {'metadata': {'uid': 'uid1'}}})
+    stream.backlog.put_nowait({'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid1'}}})
+    stream.backlog.put_nowait({'type': 'DELETED', 'object': {'metadata': {'uid': 'uid1'}}})
+    stream.pressure.set()
+    await worker(
+        signaller=asyncio.Condition(),  # irrelevant
+        settings=settings,
+        processor=processor,
+        streams={key: stream},
+        key=key,
+    )
+
+    assert flags == [True, True, False]
+    assert not stream.pressure.is_set()
 
 
 # TODO: also add tests for the depletion of the workers pools on cancellation (+timing)
