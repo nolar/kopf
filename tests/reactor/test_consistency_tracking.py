@@ -38,8 +38,8 @@ async def test_consistency_tracking_in_the_watcher(
         settings, caplog, processor):
 
     # Override the default timeouts to make the tests faster.
-    settings.batching.idle_timeout = 100  # should not be involved, fail if it is
-    settings.batching.exit_timeout = 100  # should exit instantly, fail if it didn't
+    settings.queueing.idle_timeout = 100  # should not be involved, fail if it is
+    settings.queueing.exit_timeout = 100  # should exit instantly, fail if it didn't
     settings.persistence.consistency_timeout = 3.45
     processed = asyncio.Event()
 

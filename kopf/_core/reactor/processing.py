@@ -78,7 +78,7 @@ async def process_resource_event(
     async with throttlers.throttled(
         throttler=memory.error_throttler,
         logger=local_logger,
-        delays=settings.batching.error_delays,
+        delays=settings.queueing.error_delays,
         wakeup=stream_pressure,
     ) as should_run:
         if should_run:

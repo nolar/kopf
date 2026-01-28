@@ -202,7 +202,7 @@ class WatchingSettings:
 
 
 @dataclasses.dataclass
-class BatchingSettings:
+class QueueingSettings:
     """
     Settings for how raw events are batched and processed.
     """
@@ -471,10 +471,17 @@ class OperatorSettings:
     posting: PostingSettings = dataclasses.field(default_factory=PostingSettings)
     peering: PeeringSettings = dataclasses.field(default_factory=PeeringSettings)
     watching: WatchingSettings = dataclasses.field(default_factory=WatchingSettings)
-    batching: BatchingSettings = dataclasses.field(default_factory=BatchingSettings)
+    queueing: QueueingSettings = dataclasses.field(default_factory=QueueingSettings)
     scanning: ScanningSettings = dataclasses.field(default_factory=ScanningSettings)
     admission: AdmissionSettings =dataclasses.field(default_factory=AdmissionSettings)
     execution: ExecutionSettings = dataclasses.field(default_factory=ExecutionSettings)
     background: BackgroundSettings = dataclasses.field(default_factory=BackgroundSettings)
     networking: NetworkingSettings = dataclasses.field(default_factory=NetworkingSettings)
     persistence: PersistenceSettings = dataclasses.field(default_factory=PersistenceSettings)
+
+    @property
+    def batching(self) -> QueueingSettings:
+        warnings.warn("Batching settings are now queueing settings. "
+                      "Please rename `settings.batching` -> `settings.queueing`",
+                      DeprecationWarning)
+        return self.queueing

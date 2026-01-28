@@ -168,7 +168,7 @@ async def watcher(
     # All per-object workers are handled as fire-and-forget jobs via the scheduler,
     # and communicated via the per-object event queues.
     signaller = asyncio.Condition()
-    scheduler = aiotasks.Scheduler(limit=settings.batching.worker_limit,
+    scheduler = aiotasks.Scheduler(limit=settings.queueing.worker_limit,
                                    exception_handler=exception_handler)
     streams: Streams = {}
 
@@ -295,7 +295,7 @@ async def worker(
 
             # Get an event ASAP (no delay) if possible. But expect the queue can be empty.
             # Save memory by finishing the worker if the backlog is empty for some time.
-            timeout = max(settings.batching.idle_timeout,
+            timeout = max(settings.queueing.idle_timeout,
                           consistency_time - loop.time() if consistency_time is not None else 0)
             try:
                 raw_event = await asyncio.wait_for(backlog.get(), timeout=timeout)
@@ -383,7 +383,7 @@ async def _wait_for_depletion(
         try:
             await asyncio.wait_for(
                 signaller.wait_for(lambda: not streams or scheduler.empty()),
-                timeout=settings.batching.exit_timeout)
+                timeout=settings.queueing.exit_timeout)
         except asyncio.TimeoutError:
             pass  # if not depleted as configured, proceed with what's left and let it fail
 

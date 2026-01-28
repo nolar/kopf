@@ -606,7 +606,7 @@ on the next error.
 
 .. note::
 
-    The format is the same as for ``settings.batching.error_delays``.
+    The format is the same as for ``settings.queueing.error_delays``.
     The only difference: if the API operation does not succeed by the end
     of the sequence, the error of the last attempt escalates instead of blocking
     and retrying forever with the last delay in the sequence.
@@ -632,15 +632,12 @@ flooding, it is possible to throttle the activities on a per-resource basis:
 
     @kopf.on.startup()
     def configure(settings: kopf.OperatorSettings, **_):
-        settings.batching.error_delays = [10, 20, 30]
+        settings.queueing.error_delays = [10, 20, 30]
 
 In that case, all unhandled errors in the framework or in the Kubernetes API
 would be backed-off by 10s after the 1st error, then by 20s after the 2nd one,
 and then by 30s after the 3rd, 4th, 5th errors and so on. On the first success,
 the backoff intervals will be reset and re-used again on the next error.
-
-Once the errors stop and the operator is back to work, it processes only
-the latest event seen for that malfunctioning resource (due to event batching).
 
 The default is a sequence of Fibonacci numbers from 1 second to 10 minutes.
 

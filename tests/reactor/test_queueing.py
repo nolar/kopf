@@ -51,8 +51,8 @@ async def test_watchevent_demultiplexing(worker_mock, looptime, resource, proces
     """ Verify that every unique uid goes into its own queue+worker, which are never shared. """
 
     # Override the default timeouts to make the tests faster.
-    settings.batching.idle_timeout = 100  # should not be involved, fail if it is
-    settings.batching.exit_timeout = 100  # should exit instantly, fail if it didn't
+    settings.queueing.idle_timeout = 100  # should not be involved, fail if it is
+    settings.queueing.exit_timeout = 100  # should exit instantly, fail if it didn't
 
     # Inject the events of unique objects - to produce a few streams/workers.
     stream.feed(events, namespace=None)
@@ -117,8 +117,8 @@ async def test_garbage_collection_of_streams(
 ):
 
     # Override the default timeouts to make the tests faster.
-    settings.batching.exit_timeout = 999  # should exit instantly, fail if it didn't
-    settings.batching.idle_timeout = 5  # finish workers faster, but not as fast as batching
+    settings.queueing.exit_timeout = 999  # should exit instantly, fail if it didn't
+    settings.queueing.idle_timeout = 5  # finish workers faster, but not as fast as batching
     settings.watching.reconnect_backoff = 100  # to prevent src depletion
 
     # Inject the events of unique objects - to produce a few streams/workers.
@@ -143,7 +143,7 @@ async def test_garbage_collection_of_streams(
     # Give the workers some time to finish waiting for the events.
     # After the idle timeout is reached, they will exit and gc their streams.
     allowed_timeout = (
-        settings.batching.idle_timeout +  # idling on empty queues.
+        settings.queueing.idle_timeout +  # idling on empty queues.
         1.0)  # the code itself takes time: add a max tolerable delay.
     with contextlib.suppress(asyncio.TimeoutError):
         async with signaller:
