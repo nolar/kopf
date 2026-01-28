@@ -16,36 +16,44 @@ import pytest
 
 from kopf._cogs.clients.watching import Bookmark, WatchingError, continuous_watch
 
-STREAM_WITH_NORMAL_EVENTS = [
+STREAM_WITH_ERROR_410GONE_ONLY = (
+    {'type': 'ERROR', 'object': {'code': 410}},
+)
+STREAM_WITH_NORMAL_EVENTS = (
     {'type': 'ADDED', 'object': {'spec': 'a'}},
     {'type': 'ADDED', 'object': {'spec': 'b'}},
-]
-STREAM_WITH_UNKNOWN_EVENT = [
+)
+STREAM_WITH_UNKNOWN_EVENT = (
     {'type': 'ADDED', 'object': {'spec': 'a'}},
     {'type': 'UNKNOWN', 'object': {}},
     {'type': 'ADDED', 'object': {'spec': 'b'}},
-]
-STREAM_WITH_ERROR_410GONE = [
+)
+STREAM_WITH_ERROR_410GONE = (
     {'type': 'ADDED', 'object': {'spec': 'a'}},
     {'type': 'ERROR', 'object': {'code': 410}},
     {'type': 'ADDED', 'object': {'spec': 'b'}},
-]
-STREAM_WITH_ERROR_CODE = [
+)
+STREAM_WITH_ERROR_CODE = (
     {'type': 'ADDED', 'object': {'spec': 'a'}},
     {'type': 'ERROR', 'object': {'code': 666}},
     {'type': 'ADDED', 'object': {'spec': 'b'}},
-]
+)
+EOS = ({'type': 'ERROR', 'object': {'code': 410}},)
+
+
+@pytest.fixture(autouse=True)
+def _stubs(kmock, resource):
+    # The watch-stream makes an initial listing, so ensure there is a dummy response instead of 404.
+    # Also ensure the continuous watcher terminates in the end (one "410 Gone" guarantees this).
+    (kmock['list', resource] ** -60) << {'items': []}
+    (kmock['watch', resource] ** -60) << STREAM_WITH_ERROR_410GONE_ONLY
 
 
 class SampleException(Exception):
     pass
 
 
-async def test_empty_stream_yields_nothing(
-        settings, resource, stream, namespace):
-
-    stream.feed([], namespace=namespace)
-    stream.close(namespace=namespace)
+async def test_empty_stream_yields_nothing(kmock, settings, resource, namespace):
 
     events = []
     async for event in continuous_watch(settings=settings,
@@ -58,11 +66,8 @@ async def test_empty_stream_yields_nothing(
     assert events[0] == Bookmark.LISTED
 
 
-async def test_event_stream_yields_everything(
-        settings, resource, stream, namespace):
-
-    stream.feed(STREAM_WITH_NORMAL_EVENTS, namespace=namespace)
-    stream.close(namespace=namespace)
+async def test_event_stream_yields_everything(kmock, settings, resource, namespace):
+    kmock['watch', resource, kmock.namespace(namespace)] << STREAM_WITH_NORMAL_EVENTS << EOS
 
     events = []
     async for event in continuous_watch(settings=settings,
@@ -77,12 +82,9 @@ async def test_event_stream_yields_everything(
     assert events[2]['object']['spec'] == 'b'
 
 
-async def test_unknown_event_type_ignored(
-        settings, resource, stream, namespace, caplog):
+async def test_unknown_event_type_ignored(kmock, settings, resource, namespace, caplog):
+    kmock['watch', resource, kmock.namespace(namespace)] << STREAM_WITH_UNKNOWN_EVENT << EOS
     caplog.set_level(logging.DEBUG)
-
-    stream.feed(STREAM_WITH_UNKNOWN_EVENT, namespace=namespace)
-    stream.close(namespace=namespace)
 
     events = []
     async for event in continuous_watch(settings=settings,
@@ -99,12 +101,9 @@ async def test_unknown_event_type_ignored(
     assert "UNKNOWN" in caplog.text
 
 
-async def test_error_410gone_exits_normally(
-        settings, resource, stream, namespace, caplog):
+async def test_error_410gone_exits_normally(kmock, settings, resource, namespace, caplog):
+    kmock['watch', resource, kmock.namespace(namespace)] << STREAM_WITH_ERROR_410GONE << EOS
     caplog.set_level(logging.DEBUG)
-
-    stream.feed(STREAM_WITH_ERROR_410GONE, namespace=namespace)
-    stream.close(namespace=namespace)
 
     events = []
     async for event in continuous_watch(settings=settings,
@@ -119,11 +118,8 @@ async def test_error_410gone_exits_normally(
     assert "Restarting the watch-stream" in caplog.text
 
 
-async def test_unknown_error_raises_exception(
-        settings, resource, stream, namespace):
-
-    stream.feed(STREAM_WITH_ERROR_CODE, namespace=namespace)
-    stream.close(namespace=namespace)
+async def test_unknown_error_raises_exception(kmock, settings, resource, namespace):
+    kmock['watch', resource, kmock.namespace(namespace)] << STREAM_WITH_ERROR_CODE << EOS
 
     events = []
     with pytest.raises(WatchingError) as e:
@@ -139,12 +135,9 @@ async def test_unknown_error_raises_exception(
     assert '666' in str(e.value)
 
 
-async def test_exception_escalates(
-        settings, resource, stream, namespace, enforced_session, mocker):
-
+async def test_exception_escalates(kmock, settings, resource, namespace, enforced_session, mocker):
     enforced_session.request = mocker.Mock(side_effect=SampleException())
-    stream.feed([], namespace=namespace)
-    stream.close(namespace=namespace)
+    kmock['watch', resource, kmock.namespace(namespace)] << ()
 
     events = []
     with pytest.raises(SampleException):
@@ -158,16 +151,12 @@ async def test_exception_escalates(
 
 
 # See: See: https://github.com/zalando-incubator/kopf/issues/275
-async def test_long_line_parsing(
-        settings, resource, stream, namespace, aresponses):
-
-    content = [
+async def test_long_line_parsing(kmock, settings, resource, namespace):
+    kmock['watch', resource, kmock.namespace(namespace)] << (
         {'type': 'ADDED', 'object': {'spec': {'field': 'x'}}},
         {'type': 'ADDED', 'object': {'spec': {'field': 'y' * (2 * 1024 * 1024)}}},
         {'type': 'ADDED', 'object': {'spec': {'field': 'z' * (4 * 1024 * 1024)}}},
-    ]
-    stream.feed(content, namespace=namespace)
-    stream.close(namespace=namespace)
+    ) << EOS
 
     events = []
     async for event in continuous_watch(settings=settings,
@@ -190,11 +179,8 @@ async def test_long_line_parsing(
     ]
 )
 async def test_list_objs_connection_errors_are_caught(
-        settings, resource, stream, namespace, enforced_session, mocker, connection_error):
-
+        settings, resource, namespace, enforced_session, mocker, connection_error):
     enforced_session.request = mocker.Mock(side_effect=connection_error())
-    stream.feed([], namespace=namespace)
-    stream.close(namespace=namespace)
 
     events = []
     async for event in continuous_watch(settings=settings,

@@ -173,7 +173,7 @@ class WebhookServer(webhacks.WebhookContextManager):
                 # multi-threaded sockets are not really used -- high load is not expected for webhooks.
                 addr = self.addr or None  # None is aiohttp's "any interface"
                 port = self.port or self._allocate_free_port()
-                site = aiohttp.web.TCPSite(runner, addr, port, ssl_context=context, reuse_port=True)
+                site = aiohttp.web.TCPSite(runner, addr, port, ssl_context=context, reuse_port=True, reuse_address=True)
                 await site.start()
 
                 # Log with the actual URL: normalised, with hostname/port set.

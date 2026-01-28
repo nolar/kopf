@@ -70,13 +70,13 @@ docs = [
     "furo",
 ]
 test = [
-    "aresponses",
     "astpath[xpath]",
     "certbuilder",
     "certvalidator",
     "codecov",
     "coverage>=7.12.0",
     "freezegun",
+    "kmock>=0.3",
     "looptime>=0.7",
     "lxml",
     "pyngrok",
@@ -113,6 +113,11 @@ lint = [
     "certvalidator",
     "pyngrok",
     "uvloop",
+]
+dev = [
+    {include-group = "docs"},
+    {include-group = "lint"},
+    {include-group = "test"},
 ]
 
 [tool.setuptools_scm]

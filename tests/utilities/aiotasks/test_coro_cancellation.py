@@ -66,9 +66,10 @@ async def test_coro_is_awaited_via_a_task_with_no_warning(coromock_task_factory)
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter('default')
         mock = Mock()
-        coro = AsyncMock(wraps=f(mock))
-        del coro.close
-        await cancel_coro(coro)
+        coro = f(mock)
+        coromock = AsyncMock(wraps=coro, spec=coro)
+        del coromock.close
+        await cancel_coro(coromock)
 
         # The warnings come only from the garbage collection, so dereference it.
         del coro
