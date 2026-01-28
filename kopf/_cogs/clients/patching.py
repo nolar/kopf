@@ -51,7 +51,8 @@ async def patch_obj(
             )
 
         if status_patch:
-            response = await api.patch(
+            # NB: we need the new resourceVersion, so we take the whole new patched body.
+            patched_body = await api.patch(
                 url=resource.get_url(namespace=namespace, name=name,
                                      subresource='status' if as_subresource else None),
                 headers={'Content-Type': 'application/merge-patch+json'},
@@ -59,7 +60,6 @@ async def patch_obj(
                 settings=settings,
                 logger=logger,
             )
-            patched_body['status'] = response.get('status')
 
         return patched_body
 

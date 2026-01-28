@@ -7,6 +7,29 @@ from kopf._cogs.clients.errors import APIError
 from kopf._cogs.clients.patching import patch_obj
 from kopf._cogs.structs.patches import Patch
 
+OBJECT_RESPONSE = {'metadata': {'resourceVersion': 'xyz123', 'extra': '123'},
+                   'spec': {'x': 'y', 'extra': '123'},
+                   'status': {'extra': '123'}}
+STATUS_RESPONSE = {'metadata': {'resourceVersion': 'abc456', 'extra': '456'},
+                   'spec': {'x': 'y', 'extra': '456'},
+                   'status': {'extra': '456', 's': 't'}}
+
+
+@pytest.fixture()
+def object_patch_mock(hostname, resource, namespace, resp_mocker, aresponses):
+    url = resource.get_url(namespace=namespace, name='name1')
+    mock = resp_mocker(return_value=aiohttp.web.json_response(OBJECT_RESPONSE))
+    aresponses.add(hostname, url, 'patch', mock)
+    return mock
+
+
+@pytest.fixture()
+def status_patch_mock(hostname, resource, namespace, resp_mocker, aresponses):
+    url = resource.get_url(namespace=namespace, name='name1', subresource='status')
+    mock = resp_mocker(return_value=aiohttp.web.json_response(STATUS_RESPONSE))
+    aresponses.add(hostname, url, 'patch', mock)
+    return mock
+
 
 async def test_without_subresources(
         resp_mocker, aresponses, hostname, settings, resource, namespace, logger):
@@ -32,25 +55,9 @@ async def test_without_subresources(
 
 
 async def test_status_as_subresource_with_combined_payload(
-        resp_mocker, aresponses, hostname, settings, resource, namespace, logger):
+        settings, resource, namespace, logger, object_patch_mock, status_patch_mock):
     resource = dataclasses.replace(resource, subresources=['status'])
-
-    # Simulate Kopf's initial state and intention.
     patch = Patch({'spec': {'x': 'y'}, 'status': {'s': 't'}})
-
-    # Simulate K8s API's behaviour. Assume something extra is added remotely.
-    object_response = {'metadata': {'namespace': 'ns1', 'name': 'name1', 'extra': '123'},
-                       'spec': {'x': 'y', 'extra': '456'},
-                       'status': '...'}
-    status_response = {'status': {'s': 't', 'extra': '789'}}
-
-    object_url = resource.get_url(namespace=namespace, name='name1')
-    status_url = resource.get_url(namespace=namespace, name='name1', subresource='status')
-    object_patch_mock = resp_mocker(return_value=aiohttp.web.json_response(object_response))
-    status_patch_mock = resp_mocker(return_value=aiohttp.web.json_response(status_response))
-    aresponses.add(hostname, object_url, 'patch', object_patch_mock)
-    aresponses.add(hostname, status_url, 'patch', status_patch_mock)
-
     reconstructed = await patch_obj(
         logger=logger,
         settings=settings,
@@ -70,31 +77,13 @@ async def test_status_as_subresource_with_combined_payload(
     data = status_patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
     assert data == {'status': {'s': 't'}}
 
-    assert reconstructed == {'metadata': {'namespace': 'ns1', 'name': 'name1', 'extra': '123'},
-                             'spec': {'x': 'y', 'extra': '456'},
-                             'status': {'s': 't', 'extra': '789'}}
+    assert reconstructed == STATUS_RESPONSE  # ignore the body response if status was patched
 
 
 async def test_status_as_subresource_with_object_fields_only(
-        resp_mocker, aresponses, hostname, settings, resource, namespace, logger):
+        settings, resource, namespace, logger, object_patch_mock, status_patch_mock):
     resource = dataclasses.replace(resource, subresources=['status'])
-
-    # Simulate Kopf's initial state and intention.
     patch = Patch({'spec': {'x': 'y'}})
-
-    # Simulate K8s API's behaviour. Assume something extra is added remotely.
-    object_response = {'metadata': {'namespace': 'ns1', 'name': 'name1', 'extra': '123'},
-                       'spec': {'x': 'y', 'extra': '456'},
-                       'status': '...'}
-    status_response = {'status': {'s': 't', 'extra': '789'}}
-
-    object_url = resource.get_url(namespace=namespace, name='name1')
-    status_url = resource.get_url(namespace=namespace, name='name1', subresource='status')
-    object_patch_mock = resp_mocker(return_value=aiohttp.web.json_response(object_response))
-    status_patch_mock = resp_mocker(return_value=aiohttp.web.json_response(status_response))
-    aresponses.add(hostname, object_url, 'patch', object_patch_mock)
-    aresponses.add(hostname, status_url, 'patch', status_patch_mock)
-
     reconstructed = await patch_obj(
         logger=logger,
         settings=settings,
@@ -111,31 +100,13 @@ async def test_status_as_subresource_with_object_fields_only(
     data = object_patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
     assert data == {'spec': {'x': 'y'}}
 
-    assert reconstructed == {'metadata': {'namespace': 'ns1', 'name': 'name1', 'extra': '123'},
-                             'spec': {'x': 'y', 'extra': '456'},
-                             'status': '...'}
+    assert reconstructed == OBJECT_RESPONSE  # ignore the status response if status was not patched
 
 
 async def test_status_as_subresource_with_status_fields_only(
-        resp_mocker, aresponses, hostname, settings, resource, namespace, logger):
+        settings, resource, namespace, logger, object_patch_mock, status_patch_mock):
     resource = dataclasses.replace(resource, subresources=['status'])
-
-    # Simulate Kopf's initial state and intention.
     patch = Patch({'status': {'s': 't'}})
-
-    # Simulate K8s API's behaviour. Assume something extra is added remotely.
-    object_response = {'metadata': {'namespace': 'ns1', 'name': 'name1', 'extra': '123'},
-                       'spec': {'x': 'y', 'extra': '456'},
-                       'status': '...'}
-    status_response = {'status': {'s': 't', 'extra': '789'}}
-
-    object_url = resource.get_url(namespace=namespace, name='name1')
-    status_url = resource.get_url(namespace=namespace, name='name1', subresource='status')
-    object_patch_mock = resp_mocker(return_value=aiohttp.web.json_response(object_response))
-    status_patch_mock = resp_mocker(return_value=aiohttp.web.json_response(status_response))
-    aresponses.add(hostname, object_url, 'patch', object_patch_mock)
-    aresponses.add(hostname, status_url, 'patch', status_patch_mock)
-
     reconstructed = await patch_obj(
         logger=logger,
         settings=settings,
@@ -152,28 +123,12 @@ async def test_status_as_subresource_with_status_fields_only(
     data = status_patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
     assert data == {'status': {'s': 't'}}
 
-    assert reconstructed == {'status': {'s': 't', 'extra': '789'}}
+    assert reconstructed == STATUS_RESPONSE  # ignore the body response if status was patched
 
 
 async def test_status_as_body_field_with_combined_payload(
-        resp_mocker, aresponses, hostname, settings, resource, namespace, logger):
-
-    # Simulate Kopf's initial state and intention.
+        settings, resource, namespace, logger, object_patch_mock, status_patch_mock):
     patch = Patch({'spec': {'x': 'y'}, 'status': {'s': 't'}})
-
-    # Simulate K8s API's behaviour. Assume something extra is added remotely.
-    object_response = {'metadata': {'namespace': 'ns1', 'name': 'name1', 'extra': '123'},
-                       'spec': {'x': 'y', 'extra': '456'},
-                       'status': '...'}
-    status_response = {'s': 't', 'extra': '789'}
-
-    object_url = resource.get_url(namespace=namespace, name='name1')
-    status_url = resource.get_url(namespace=namespace, name='name1', subresource='status')
-    object_patch_mock = resp_mocker(return_value=aiohttp.web.json_response(object_response))
-    status_patch_mock = resp_mocker(return_value=aiohttp.web.json_response(status_response))
-    aresponses.add(hostname, object_url, 'patch', object_patch_mock)
-    aresponses.add(hostname, status_url, 'patch', status_patch_mock)
-
     reconstructed = await patch_obj(
         logger=logger,
         settings=settings,
@@ -190,9 +145,7 @@ async def test_status_as_body_field_with_combined_payload(
     data = object_patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
     assert data == {'spec': {'x': 'y'}, 'status': {'s': 't'}}
 
-    assert reconstructed == {'metadata': {'namespace': 'ns1', 'name': 'name1', 'extra': '123'},
-                             'spec': {'x': 'y', 'extra': '456'},
-                             'status': '...'}
+    assert reconstructed == OBJECT_RESPONSE  # ignore the status response if status was not patched
 
 
 @pytest.mark.parametrize('status', [404])
