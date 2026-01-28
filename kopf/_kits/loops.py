@@ -47,7 +47,7 @@ def proper_loop(suggested_loop: asyncio.AbstractEventLoop | None = None) -> Iter
                 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
         try:
-            yield
+            yield None
 
         finally:
             try:

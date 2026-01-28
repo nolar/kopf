@@ -25,14 +25,14 @@ jobs:
           python-version: "3.14"
       - run: pip install --group lint -e .
       - run: pre-commit run --all-files
-      - run: mypy kopf --strict
+      - run: mypy
       - run: |
-          # Mypying the examples
+          # Separately, because the shared module name "example.py" causes naming conflicts.
           exit_codes=0
           for d in $(find examples -maxdepth 1 -mindepth 1 -type d)
           do
             echo "Checking ${d}"
-            mypy $d
+            mypy --config-file= --ignore-missing-imports $d
             exit_codes=$[${exit_codes} + $?]
           done
           exit ${exit_codes}
