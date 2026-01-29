@@ -28,6 +28,7 @@ the root object, while keeping the legacy names for backward compatibility.
 import concurrent.futures
 import dataclasses
 import logging
+import warnings
 from collections.abc import Iterable
 
 from kopf._cogs.configs import diffbase, progress
@@ -201,7 +202,7 @@ class WatchingSettings:
 
 
 @dataclasses.dataclass
-class BatchingSettings:
+class QueueingSettings:
     """
     Settings for how raw events are batched and processed.
     """
@@ -214,13 +215,8 @@ class BatchingSettings:
 
     idle_timeout: float = 5.0
     """
-    How soon an idle worker is exited and garbage-collected if no events arrive.
-    """
-
-    batch_window: float = 0.1
-    """
-    How fast/slow does a worker deplete the queue when an event is received.
-    All events arriving within this window will be ignored except the last one.
+    How soon an idle worker exits and lets the garbage collector to purge itself
+    if no new events arrive from the watch-stream for that resource object.
     """
 
     exit_timeout: float = 2.0
@@ -235,6 +231,21 @@ class BatchingSettings:
 
     For more information on error throttling, see :ref:`error-throttling`.
     """
+
+    _batch_window: float = 0.1  # deprecated
+
+    @property
+    def batch_window(self) -> float:
+        """ Deprecated and affects nothing. """
+        warnings.warn("Time-based event batching was removed. Please stop configuring it.",
+                      DeprecationWarning)
+        return self._batch_window
+
+    @batch_window.setter
+    def batch_window(self, value: float) -> None:
+        warnings.warn("Time-based event batching was removed. Please stop configuring it.",
+                      DeprecationWarning)
+        self._batch_window = value
 
 
 @dataclasses.dataclass
@@ -387,6 +398,13 @@ class PersistenceSettings:
     How the resource's essence (non-technical, contentful fields) are stored.
     """
 
+    consistency_timeout: float = 5.0
+    """
+    For how long a patched resource version is awaited (seconds).
+
+    See :ref:`consistency` for detailed explanation.
+    """
+
 
 @dataclasses.dataclass
 class BackgroundSettings:
@@ -453,10 +471,17 @@ class OperatorSettings:
     posting: PostingSettings = dataclasses.field(default_factory=PostingSettings)
     peering: PeeringSettings = dataclasses.field(default_factory=PeeringSettings)
     watching: WatchingSettings = dataclasses.field(default_factory=WatchingSettings)
-    batching: BatchingSettings = dataclasses.field(default_factory=BatchingSettings)
+    queueing: QueueingSettings = dataclasses.field(default_factory=QueueingSettings)
     scanning: ScanningSettings = dataclasses.field(default_factory=ScanningSettings)
     admission: AdmissionSettings =dataclasses.field(default_factory=AdmissionSettings)
     execution: ExecutionSettings = dataclasses.field(default_factory=ExecutionSettings)
     background: BackgroundSettings = dataclasses.field(default_factory=BackgroundSettings)
     networking: NetworkingSettings = dataclasses.field(default_factory=NetworkingSettings)
     persistence: PersistenceSettings = dataclasses.field(default_factory=PersistenceSettings)
+
+    @property
+    def batching(self) -> QueueingSettings:
+        warnings.warn("Batching settings are now queueing settings. "
+                      "Please rename `settings.batching` -> `settings.queueing`",
+                      DeprecationWarning)
+        return self.queueing

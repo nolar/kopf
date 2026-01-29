@@ -1,5 +1,7 @@
 import logging
 
+import pytest
+
 import kopf
 
 
@@ -18,11 +20,10 @@ async def test_declared_public_interface_and_promised_defaults():
     assert settings.watching.connect_timeout is None
     assert settings.watching.server_timeout is None
     assert settings.watching.client_timeout is None
-    assert settings.batching.worker_limit is None
-    assert settings.batching.idle_timeout == 5.0
-    assert settings.batching.exit_timeout == 2.0
-    assert settings.batching.batch_window == 0.1
-    assert settings.batching.error_delays == (1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610)
+    assert settings.queueing.worker_limit is None
+    assert settings.queueing.idle_timeout == 5.0
+    assert settings.queueing.exit_timeout == 2.0
+    assert settings.queueing.error_delays == (1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610)
     assert settings.scanning.disabled == False
     assert settings.admission.server is None
     assert settings.admission.managed is None
@@ -30,6 +31,7 @@ async def test_declared_public_interface_and_promised_defaults():
     assert settings.execution.max_workers is None
     assert settings.networking.request_timeout == 5 * 60
     assert settings.networking.connect_timeout is None
+    assert settings.persistence.consistency_timeout == 5.0
 
 
 async def test_peering_namespaced_is_modified_by_clusterwide():
@@ -44,3 +46,19 @@ async def test_peering_clusterwide_is_modified_by_namespaced():
     assert settings.peering.clusterwide == False
     settings.peering.namespaced = not settings.peering.namespaced
     assert settings.peering.clusterwide == True
+
+
+async def test_deprecated_batching_settings():
+    settings = kopf.OperatorSettings()
+    with pytest.warns(DeprecationWarning, match=r"Batching settings are now queueing settings."):
+        assert settings.batching.worker_limit is None
+
+
+async def test_deprecated_batch_window_is_still_persisted():
+    settings = kopf.OperatorSettings()
+    with pytest.warns(DeprecationWarning, match=r"Time-based event batching was removed."):
+        assert settings.queueing.batch_window == 0.1
+    with pytest.warns(DeprecationWarning, match=r"Time-based event batching was removed."):
+        settings.queueing.batch_window = 123
+    with pytest.warns(DeprecationWarning, match=r"Time-based event batching was removed."):
+        assert settings.queueing.batch_window == 123  # persisted as set above
