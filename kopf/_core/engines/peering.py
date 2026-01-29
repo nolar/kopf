@@ -4,7 +4,7 @@ Peer monitoring: knowing which other operators do run, and exchanging the basic 
 The main use-case is to suppress all deployed operators when a developer starts a dev-/debug-mode
 operator for the same cluster on their workstation -- to avoid any double-processing.
 
-See also: `kopf freeze` & `kopf resume` CLI commands for the same purpose.
+See also: ``kopf freeze`` & ``kopf resume`` CLI commands for the same purpose.
 
 WARNING: There are **NO** per-object locks between the operators, so only one operator
 should be functional for the cluster, i.e. only one with the highest priority running.
@@ -21,12 +21,12 @@ For this, special CRDs ``kind: ClusterKopfPeering`` & ``kind: KopfPeering``
 should be registered in the cluster, and their ``status`` field is used
 by all the operators to sync their keep-alive info.
 
-The namespace-bound operators (e.g. `--namespace=`) report their individual
+The namespace-bound operators (e.g. ``--namespace=…``) report their individual
 namespaces are part of the payload, can see all other cluster and namespaced
 operators (even from the different namespaces), and behave accordingly.
 
 The CRD is not applied automatically, so you have to deploy it yourself explicitly.
-To disable the peers monitoring, use the `--standalone` CLI option.
+To disable the peers monitoring, use the ``--standalone`` CLI option.
 """
 
 import asyncio
@@ -271,7 +271,7 @@ def detect_own_id(*, manual: bool) -> Identity:
             fieldRef:
               fieldPath: metadata.name
 
-    Used in the `kopf._core.reactor.queueing` when the reactor starts,
+    Used in the :mod:`kopf._core.reactor.queueing` when the reactor starts,
     but is kept here, close to the rest of the peering logic.
     """
 

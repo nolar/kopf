@@ -1,14 +1,14 @@
 """
 A registry of the handlers, attached to the resources or events.
 
-The global registry is populated by the `kopf.on` decorators, and is used
+The global registry is populated by the ``@kopf.on`` decorators, and is used
 to register the resources being watched and handled, and to attach
 the handlers to the specific causes (create/update/delete/field-change).
 
 The simple registry is part of the global registry (for each individual
 resource), and also used for the sub-handlers within a top-level handler.
 
-Both are used in the `kopf._core.actions.execution` to retrieve the list
+Both are used in the :mod:`kopf._core.actions.execution` to retrieve the list
 of the handlers to be executed on each reaction cycle.
 """
 import abc
@@ -380,7 +380,7 @@ def _deduplicated(
     When a resource is created during the operator downtime, it is
     both creation and resuming at the same time: the object is new (not yet
     handled) **AND** it is detected as per-existing before operator start.
-    But `fn()` should be called only once for this cause.
+    But ``fn()`` should be called only once for this cause.
     """
     seen_ids: set[tuple[int, ids.HandlerId]] = set()
     for handler in src:

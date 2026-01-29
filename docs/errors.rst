@@ -155,5 +155,5 @@ The default is 60 seconds.
 
 .. note::
 
-    This only affects the arbitrary errors. When `TemporaryError`
+    This only affects the arbitrary errors. When :class:`kopf.TemporaryError`
     is explicitly used, the delay should be configured with ``delay=...``.

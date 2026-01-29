@@ -44,8 +44,8 @@ class KopfRunner(_AbstractKopfRunner):
             assert 'And here we are!' in runner.output
 
     All the args & kwargs are passed directly to Click's invocation method.
-    See: `click.testing.CliRunner`.
-    All properties proxy directly to Click's `click.testing.Result` object
+    See: :class:`click.testing.CliRunner`.
+    All properties proxy directly to Click's :class:`click.testing.Result`
     when it is available (i.e. after the context manager exits).
 
     CLI commands have to be invoked in parallel threads, never in processes:

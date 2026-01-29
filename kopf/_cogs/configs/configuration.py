@@ -37,7 +37,7 @@ from kopf._cogs.structs import reviews
 @dataclasses.dataclass
 class ProcessSettings:
     """
-    Settings for Kopf's OS processes: e.g. when started via CLI as `kopf run`.
+    Settings for Kopf's OS processes: e.g. when started via CLI as ``kopf run``.
     """
 
     ultimate_exiting_timeout: float | None = 10 * 60
@@ -51,7 +51,7 @@ class ProcessSettings:
     The countdown goes from when a graceful signal arrives (SIGTERM/SIGINT),
     regardless of what is happening in the graceful exiting routine.
 
-    Measured in seconds. Set to `None` to disable (on your own risk).
+    Measured in seconds. Set to ``None`` to disable (on your own risk).
 
     The default is 10 minutes -- high enough for all common sense cases,
     and higher than K8s pods' ``terminationGracePeriodSeconds`` --
@@ -427,11 +427,11 @@ class BackgroundSettings:
     There is a speed-up hack to let the daemons/timers to exit instantly,
     without external patching & polling. For this, ``asyncio.sleep(0)`` is used
     to give control back to the event loop and their coroutines. However,
-    the daemons/timers can do extra `await` calls (even zero-time) before
+    the daemons/timers can do extra ``await`` calls (even zero-time) before
     actually exiting, which prematurely returns the control flow back
     to the daemon-stopper coroutine.
 
-    This configuration value is a maximum amount of zero-time `await` statements
+    This configuration value is a maximum amount of zero-time ``await`` calls
     that can happen before exiting: both in the daemon and in the framework.
 
     It the daemons/timers coroutines exit earlier, extra cycles are not used.

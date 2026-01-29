@@ -165,8 +165,10 @@ are not desired, the rudimentary login functions can be used directly:
         return kopf.login_with_service_account(**kwargs) or kopf.login_with_kubeconfig(**kwargs)
 
 .. seealso::
-    `kopf.login_via_pykube`, `kopf.login_via_client`,
-    `kopf.login_with_kubeconfig`, `kopf.login_with_service_account`.
+    * :func:`kopf.login_via_pykube`
+    * :func:`kopf.login_via_client`
+    * :func:`kopf.login_with_kubeconfig`
+    * :func:`kopf.login_with_service_account`
 
 
 Credentials lifecycle

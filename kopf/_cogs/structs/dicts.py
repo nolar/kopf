@@ -50,9 +50,9 @@ def resolve_obj(
         default: _T | _UNSET = _UNSET.token,
 ) -> Any | _T:
     """
-    Mirrors `resolve`, but for a nested mix of dict keys & object attributes.
+    Mirrors ``resolve``, but for a nested mix of dict keys & object attributes.
 
-    While `resolve` is used mostly in certain dictionaries (e.g. diffs),
+    While ``resolve`` is used mostly in certain dictionaries (e.g. diffs),
     this function is used for walking over 3rd-party API objects & models
     with nested structures. The algorithm is essentially the same.
     """

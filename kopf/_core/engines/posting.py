@@ -9,8 +9,9 @@ and posts the k8s-events as soon as they are queued.
 
 The k8s-events are queued in two ways:
 
-* Explicit calls to `kopf.event`, `kopf.info`, `kopf.warn`, `kopf.exception`.
-* Logging messages made on the object logger (above INFO level by default).
+* Explicit calls to event-posting functions :func:`kopf.event`,
+  :func:`kopf.info`, :func:`kopf.warn`, :func:`kopf.exception`.
+* Logging messages made on the object logger (above the INFO level by default).
 
 This also includes all logging messages posted by the framework itself.
 """
@@ -163,8 +164,8 @@ async def poster(
     When the events come from the logging system, they have
     their reason, type, and other fields adjusted to meet Kubernetes's concepts.
 
-    When the events are explicitly defined via `kopf.event` and similar calls,
-    they have these special fields defined already.
+    When the events are explicitly defined via :func:`kopf.event` and similar
+    calls, they have these special fields defined already.
 
     In either case, we pass the queued events directly to the K8s client
     (or a client wrapper/adapter), with no extra processing.

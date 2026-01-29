@@ -40,7 +40,7 @@ async def execute(
     """
     Execute the handlers in an isolated lifecycle.
 
-    This function is just a public wrapper for `execute` with multiple
+    This function is just a public wrapper for :func:`execute` with multiple
     ways to specify the handlers: either as the raw functions, or as the
     pre-created handlers, or as a registry (as used in the object handling).
 

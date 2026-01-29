@@ -216,7 +216,7 @@ The admission warnings look like this (requires kubectl 1.19+):
     Despite Kopf's intention to utilise Python's native features that
     semantically map to Kubernetes's or operators' features,
     Python StdLib's :mod:`warnings` is not used for admission warnings
-    (the initial idea was to catch `UserWarning` and ``warnings.warn("...")``
+    (the initial idea was to catch ``UserWarning`` and ``warnings.warn("...")``
     calls and return them as admission warnings).
 
     The StdLib's module is documented as thread-unsafe (therefore, task-unsafe)

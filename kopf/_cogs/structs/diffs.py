@@ -194,7 +194,7 @@ def diff(
         scope: DiffScope = DiffScope.FULL,
 ) -> Diff:
     """
-    Same as `diff`, but returns the whole tuple instead of iterator.
+    Same as ``diff``, but returns the whole tuple instead of iterator.
     """
     return Diff(diff_iter(a, b, path=path, scope=scope))
 

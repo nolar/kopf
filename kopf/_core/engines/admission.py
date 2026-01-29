@@ -23,8 +23,9 @@ class AdmissionError(execution.PermanentError):
     """
     Raised by admission handlers when an API operation under check is bad.
 
-    An admission error behaves the same as `kopf.PermanentError`, but provides
-    admission-specific payload for the response: a message & a numeric code.
+    An admission error behaves the same as :class:`kopf.PermanentError`,
+    but provides admission-specific payload for the response:
+    a message and a numeric code.
 
     This error type is preferred when selecting only one error to report back
     to apiservers as the admission review result -- in case multiple handlers
@@ -62,14 +63,14 @@ class MemoGetter(metaclass=abc.ABCMeta):
     """
     An interface as a way to break the reversed dependency of modules:
 
-    * The lower-level admission engine needs `Memories` for memos.
-    * The memories are implemented in the higher-level `reactor.inventory`.
+    * The lower-level admission engine needs :class:`Memories` for memos.
+    * The memories are implemented in the higher-level ``reactor.inventory``.
     * The inventory must be there in the high-level reactor because
-      it requires specialised memory classes from `daemons`, `indexing`, etc.
+      it requires specialised memory classes from ``daemons``, ``indexing``, …
     * And the inventory cannot be shifted down from the reactor to engines
       because it is not an engine semantically.
 
-    Implemented by `inventory.Memories` or by any of its views.
+    Implemented by :class:`inventory.Memories` or by any of its views.
     """
     @abc.abstractmethod
     async def recall_memo(
@@ -100,13 +101,13 @@ async def serve_admission_request(
         indices: ephemera.Indices,
 ) -> reviews.Response:
     """
-    The actual and the only implementation of the `WebhookFn` protocol.
+    The actual and the only implementation of the :class:`WebhookFn` protocol.
 
     This function is passed to all webhook servers/tunnels to be called
     whenever a new admission request is received.
 
     Some parameters are provided by the framework itself via partial binding,
-    so that the resulting function matches the `WebhookFn` protocol. Other
+    so that the resulting function matches the ``WebhookFn`` protocol. Other
     parameters are passed by the webhook servers when they call the function.
     """
 

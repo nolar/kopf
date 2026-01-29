@@ -75,7 +75,7 @@ class WebhookServer(webhacks.WebhookContextManager):
     * ``verify_mode``, ``verify_cafile``, ``verify_capath``, ``verify_cadata``
       will be loaded into the SSL context for verifying the client certificates
       when provided and if provided by the clients, i.e. apiservers or curl;
-      (`ssl.SSLContext.verify_mode`, `ssl.SSLContext.load_verify_locations`).
+      (``ssl.SSLContext.verify_mode``, ``ssl.SSLContext.load_verify_locations``).
     * ``insecure`` flag disables HTTPS and runs an HTTP webhook server.
       This is used in ngrok for a local endpoint, but can be used for debugging
       or when the certificate-generating dependencies/extras are not installed.
@@ -243,7 +243,7 @@ class WebhookServer(webhacks.WebhookContextManager):
         """
         Convert a "catch-all" listening address to the accessible hostname.
 
-        "Catch-all" interfaces like `0.0.0.0` or `::/0` can be used
+        "Catch-all" interfaces like ``0.0.0.0`` or ``::/0`` can be used
         for listening to utilise all interfaces, but cannot be accessed.
         Some other real ("specified") address must be used for that.
 
@@ -498,7 +498,7 @@ class WebhookNgrokTunnel(webhacks.WebhookContextManager):
     .. _ngrok: https://ngrok.com/
 
     ``addr``, ``port``, and ``path`` have the same meaning as in
-    `kopf.WebhookServer`: where to listen for connections locally.
+    :class:`kopf.WebhookServer`: where to listen for connections locally.
     Ngrok then tunnels this endpoint remotely with.
 
     Mind that the ngrok webhook tunnel runs the local webhook server
@@ -659,7 +659,7 @@ class WebhookAutoServer(ClusterDetector, WebhookServer):
     (K3d/K3d and Minikube at the moment). In all other cases,
     a regular local server is started without hostname overrides.
 
-    If automatic tunneling is possible, consider `WebhookAutoTunnel` instead.
+    If automatic tunneling is possible, consider :class:`WebhookAutoTunnel`.
     """
     async def __call__(self, fn: reviews.WebhookFn) -> AsyncIterator[reviews.WebhookClientConfig]:
         host = self.DEFAULT_HOST = await self.guess_host()
@@ -673,14 +673,15 @@ class WebhookAutoServer(ClusterDetector, WebhookServer):
 
 class WebhookAutoTunnel(ClusterDetector, webhacks.WebhookContextManager):
     """
-    The same as `WebhookAutoServer`, but with possible tunneling.
+    The same as :class:`WebhookAutoServer`, but with possible tunneling.
 
     Generally, tunneling gives more possibilities to run in any environment,
     but it must not happen without a permission from the developers,
     and is not possible if running in a completely isolated/local/CI/CD cluster.
     Therefore, developers should activated automatic setup explicitly.
 
-    If automatic tunneling is prohibited or impossible, use `WebhookAutoServer`.
+    If automatic tunneling is prohibited or impossible,
+    use :class:`WebhookAutoServer`.
 
     .. note::
 

@@ -2,7 +2,7 @@
 Authentication-related structures.
 
 Kopf handles some rudimentary authentication directly, and exposes the ways
-to implement custom authentication methods (via `on.login` handlers).
+to implement custom authentication methods (via ``on.login`` handlers).
 
 For that, a minimally sufficient data structure is introduced -- both
 to bring all the credentials together in a structured and type-annotated way,
@@ -77,7 +77,7 @@ class VaultItem:
     Used for proper garbage collection when the key is removed from the vault
     (to avoid orchestrating extra cache structures and keeping them in sync).
 
-    The caches are populated by `Vault.extended` on-demand.
+    The caches are populated by :meth:`Vault.extended` on-demand.
     """
     info: ConnectionInfo
     caches: dict[str, object] | None = None
@@ -149,7 +149,7 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
         The cached objects are identified by the purpose (an arbitrary string).
         Multiple types of objects can be cached under different names.
 
-        The factory is a one-argument function of a `ConnectionInfo`,
+        The factory is a one-argument function of :class:`kopf.ConnectionInfo`,
         that returns the object to be cached for this connection info.
         It is called only once per item and purpose.
         """
@@ -172,7 +172,7 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
         Yield the raw items as stored in the vault in random order.
 
         The items are yielded until either all of them are depleted,
-        or until the yielded one does not fail (no `.invalidate` call made).
+        or until the yielded one does not fail (no ``.invalidate`` call made).
         Restart on every re-authentication (if new items are added).
         """
 
@@ -374,8 +374,8 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
         when the connection info items are removed from the vault -- so that
         the sessions/connectors would not complain that they were not close.
 
-        Built-in garbage-collection is not sufficient, as it is synchronous,
-        and cannot call the async coroutines like `aiohttp.ClientSession.close`.
+        Built-in garbage-collection is not sufficient, as it is synchronous, and
+        cannot call the async coroutines like ``aiohttp.ClientSession.close()``.
 
         .. note::
             Currently, we assume the ``close()`` method only (both sync/async).

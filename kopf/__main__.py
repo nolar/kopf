@@ -1,5 +1,5 @@
 """
-CLI entry point, when used as a module: `python -m kopf`.
+CLI entry point, when used as a module: ``python -m kopf``.
 
 Useful for debugging in the IDEs (use the start-mode "Module", module "kopf").
 """

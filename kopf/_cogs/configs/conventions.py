@@ -18,11 +18,11 @@ Terminology (to be on the same page; `aligned with K8s's documentation`__):
 
 __ https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/#syntax-and-character-set
 
-* **prefix** is a fqdn-like optional part (e.g. `kopf.zalando.org/`);
-* **name** is the main part of an annotation/label (e.g. `kopf-managed`);
+* **prefix** is a fqdn-like optional part (e.g. ``kopf.zalando.org/``);
+* **name** is the main part of an annotation/label (e.g. ``kopf-managed``);
 * **key** (a dictionary key, a full key) is the **prefix** plus the **name**,
   possibly suffixed, infixed (named-prefixed), fully or partially hashed
-  (e.g. `example.com/kopf-managed` or `kopf.zalando.org/handler1.subhandlerA`),
+  (``example.com/kopf-managed`` or ``kopf.zalando.org/handler1.subhandlerA``),
   but used as a dictionary key for the annotations (hence the name).
 
 Note: there are also progress storages' **record keys**, which are not related
@@ -204,7 +204,7 @@ class StorageKeyMarkingConvention:
     To detect the annotations as belonging to Kopf-based operators, the storages
     inject a marker into the annotation names, and later detect these markers.
 
-    As an extra safety measure, all names of the whole `domain.tld/` prefix,
+    As an extra safety measure, all names of the whole ``domain.tld/`` prefix,
     both V1 & V2, are detected as marked if there is at least one marked V2 name
     under that prefix -- assuming that the prefix is for a Kopf-based operator.
     For non-prefixed storages, the V1 names are detected by their V2

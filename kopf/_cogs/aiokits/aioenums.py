@@ -19,7 +19,7 @@ class FlagSetter(Generic[FlagReasonT]):
 
     The stopped flag is a graceful way of a daemon termination.
     If the daemons do not react to their stoppers and continue running,
-    their tasks are cancelled by raising a `asyncio.CancelledError`.
+    their tasks are cancelled by raising a ``asyncio.CancelledError``.
 
     .. warning::
         In case of synchronous handlers, which are executed in the threads,
