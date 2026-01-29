@@ -2,8 +2,6 @@
 Contributing
 ============
 
-.. highlight:: bash
-
 In a nutshell, to contribute, follow this scenario:
 
 * Fork the repo in GitHub.
@@ -27,23 +25,29 @@ in the individual forks, not in the feature branches of the main repo.
 The recommended setup:
 
 * Fork a repo on GitHub and clone the fork (not the original repo).
-* Configure the ``upstream`` remote in addition to ``origin``::
+* Configure the ``upstream`` remote in addition to ``origin``:
 
-        git remote add upstream git@github.com:nolar/kopf.git
-        git fetch upstream
+.. code-block:: bash
 
-* Sync your ``main`` branch with the upstream regularly::
+    git remote add upstream git@github.com:nolar/kopf.git
+    git fetch upstream
 
-        git checkout main
-        git pull upstream main --ff
-        git push origin main
+* Sync your ``main`` branch with the upstream regularly:
+
+.. code-block:: bash
+
+    git checkout main
+    git pull upstream main --ff
+    git push origin main
 
 Work in the feature branches of your fork, not in the upstream's branches:
 
-* Create a feature branch in the fork::
+* Create a feature branch in the fork:
 
-        git checkout -b feature-x
-        git push origin feature-x
+.. code-block:: bash
+
+    git checkout -b feature-x
+    git push origin feature-x
 
 * Once the feature is ready, create a pull request
   from your fork to the main repo.
@@ -107,7 +111,9 @@ In case of doubt, adhere to PEP-8 and
 The line length is 100 characters for code, 80 for docstrings and RsT files.
 Long URLs can exceed this length.
 
-For linting, minor code styling, import sorting, layered modules checks, run::
+For linting, minor code styling, import sorting, layered modules checks, run:
+
+.. code-block:: bash
 
     pre-commit run
 
@@ -116,12 +122,16 @@ Tests
 =====
 
 If possible, run the unit-tests locally before submitting
-(this will save you some time, but is not mandatory)::
+(this will save you some time, but is not mandatory):
+
+.. code-block:: bash
 
     pytest
 
 If possible, run the functional tests with a realistic local cluster
-(for examples, with k3s/k3d on MacOS; Kind and Minikube are also fine)::
+(for examples, with k3s/k3d on MacOS; Kind and Minikube are also fine):
+
+.. code-block:: bash
 
     brew install k3d
     k3d cluster create

@@ -1,11 +1,15 @@
 """
 A contract for the import linter to secure 3rd-party clients importing.
 
-Wrong::
+Wrong:
+
+.. code-block:: python
 
     import kubernetes
 
-Right::
+Right:
+
+.. code-block:: python
 
     try:
         import kubernetes

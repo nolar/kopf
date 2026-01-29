@@ -39,7 +39,9 @@ information to the keyword arguments.
 Registering
 ===========
 
-To register a handler for an event, use the ``@kopf.on`` decorator::
+To register a handler for an event, use the ``@kopf.on`` decorator:
+
+.. code-block:: python
 
     import kopf
 
@@ -59,7 +61,9 @@ __ https://github.com/nolar/kopf/issues/849
 
 Would you still want to use classes for namespacing, register the handlers
 by using Kopf's decorators explicitly for specific instances/sub-classes thus
-resolving the mentioned vagueness and giving the meaning to ``self``/``cls``::
+resolving the mentioned vagueness and giving the meaning to ``self``/``cls``:
+
+.. code-block:: python
 
     import kopf
 
@@ -80,7 +84,9 @@ storing the handlers' status (errors, retries, successes) on the object.
 This can be useful if the operator needs to watch over the objects
 of another operator or controller, without adding its data.
 
-The following event-handler is available::
+The following event-handler is available:
+
+.. code-block:: python
 
     import kopf
 
@@ -118,7 +124,9 @@ i.e. what happened to the object:
     which triggers its low-level events, but these events are not detected
     as separate causes, as there is nothing changed *essentially*.
 
-The following 3 core cause-handlers are available::
+The following 3 core cause-handlers are available:
+
+.. code-block:: python
 
     import kopf
 
@@ -149,7 +157,11 @@ Resuming handlers
 =================
 
 A special kind of handlers can be used for cases when the operator restarts
-and detects an object that existed before::
+and detects an object that existed before:
+
+.. code-block:: python
+
+    import kopf
 
     @kopf.on.resume('kopfexamples')
     def my_handler(spec, **_):
@@ -169,7 +181,11 @@ handling cycles, and are executed in the order they are declared.
 It is a common pattern to declare both creation and resuming handler
 pointing to the same function, so that this function is called either
 when an object is created ("started) while the operator is alive ("exists"), or
-when the operator is started ("created") when the object is existent ("alive")::
+when the operator is started ("created") when the object is existent ("alive"):
+
+.. code-block:: python
+
+    import kopf
 
     @kopf.on.resume('kopfexamples')
     @kopf.on.create('kopfexamples')
@@ -184,7 +200,11 @@ This is done intentionally to prevent the cases when the resuming handlers start
 threads/tasks or allocate the resources, and the deletion handlers stop/free
 them: it can happen so that the resuming handlers would be executed after
 the deletion handlers, thus starting threads/tasks and never stopping them.
-For example::
+For example:
+
+.. code-block:: python
+
+    import kopf
 
     TASKS = {}
 
@@ -206,7 +226,11 @@ Otherwise, there would be a resource (e.g. memory) leak.
 
 If the resume handlers are still desired during the deletion handling, they
 can be explicitly marked as compatible with the deleted state of the object
-with ``deleted=True`` option::
+with ``deleted=True`` option:
+
+.. code-block:: python
+
+    import kopf
 
     @kopf.on.resume('kopfexamples', deleted=True)
     def my_handler(spec, **_):
@@ -219,7 +243,9 @@ the developer's responsibility to ensure this does not lead to memory leaks.
 Field handlers
 ==============
 
-Specific fields can be handled instead of the whole object::
+Specific fields can be handled instead of the whole object:
+
+.. code-block:: python
 
     import kopf
 
@@ -257,7 +283,9 @@ partials (`functools.partial`), or the inner functions in the closures:
         - item2
 
 Sub-handlers can be implemented either imperatively
-(where it requires :doc:`asynchronous handlers <async>` and ``async/await``)::
+(where it requires :doc:`asynchronous handlers <async>` and ``async/await``):
+
+.. code-block:: python
 
     import functools
     import kopf
@@ -274,7 +302,9 @@ Sub-handlers can be implemented either imperatively
     def handle_item(item, *, spec, **_):
         pass
 
-Or declaratively with decorators::
+Or declaratively with decorators:
+
+.. code-block:: python
 
     import kopf
 

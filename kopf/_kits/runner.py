@@ -28,17 +28,20 @@ class KopfRunner(_AbstractKopfRunner):
     """
     A context manager to run a Kopf-based operator in parallel with the tests.
 
-    Usage::
+    Usage:
+
+    .. code-block:: python
 
         from kopf.testing import KopfRunner
 
-        with KopfRunner(['run', '-A', '--verbose', 'examples/01-minimal/example.py']) as runner:
-            # do something while the operator is running.
-            time.sleep(3)
+        def test_operator():
+            with KopfRunner(['run', '-A', '--verbose', 'examples/01-minimal/example.py']) as runner:
+                # do something while the operator is running.
+                time.sleep(3)
 
-        assert runner.exit_code == 0
-        assert runner.exception is None
-        assert 'And here we are!' in runner.output
+            assert runner.exit_code == 0
+            assert runner.exception is None
+            assert 'And here we are!' in runner.output
 
     All the args & kwargs are passed directly to Click's invocation method.
     See: `click.testing.CliRunner`.

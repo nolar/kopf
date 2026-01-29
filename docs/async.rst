@@ -4,7 +4,9 @@ Async/Await
 
 .. todo:: Fit this page into the walk-through sample story?
 
-Kopf supports asynchronous handler functions::
+Kopf supports asynchronous handler functions:
+
+.. code-block:: python
 
     import asyncio
     import kopf

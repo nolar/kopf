@@ -273,12 +273,16 @@ async def iter_jsonlines(
     """
     Iterate line by line over the response's content.
 
-    Usage::
+    Usage:
+
+    .. code-block:: python
 
         async for line in _iter_lines(response.content):
             pass
 
-    This is an equivalent of::
+    This is an equivalent of:
+
+    .. code-block:: python
 
         async for line in response.content:
             pass

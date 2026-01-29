@@ -66,12 +66,16 @@ class FlagWaiter(Generic[FlagReasonT]):
     The flag setter is hidden from the users, and is an internal class.
     The users should not be able to trigger the stopping activities.
 
-    Usage::
+    Usage:
+
+    .. code-block:: python
+
+        import kopf
 
         @kopf.daemon('kopfexamples')
         def handler(stopped, **kwargs):
             while not stopped:
-                ...
+                ...  # do something useful
                 stopped.wait(60)
     """
 

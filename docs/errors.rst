@@ -19,7 +19,9 @@ Temporary errors
 
 If an exception raised inherits from :class:`kopf.TemporaryError`,
 it will postpone the current handler for the next iteration,
-which can happen either immediately, or after some delay::
+which can happen either immediately, or after some delay:
+
+.. code-block:: python
 
     import kopf
 
@@ -49,7 +51,9 @@ If a raised exception inherits from :class:`kopf.PermanentError`, the handler
 is considered as non-retriable and non-recoverable and completely failed.
 
 Use this when the domain logic of the application means that there
-is no need to retry over time, as it will not become better::
+is no need to retry over time, as it will not become better:
+
+.. code-block:: python
 
     import kopf
 
@@ -74,7 +78,9 @@ As such, as default behaviour,
 Kopf retries the handlers with arbitrary errors
 infinitely until the handlers either succeed or fail permanently.
 
-The reaction to the arbitrary errors can be configured::
+The reaction to the arbitrary errors can be configured:
+
+.. code-block:: python
 
     import kopf
 
@@ -92,7 +98,9 @@ Possible values of ``errors`` are:
 Timeouts
 ========
 
-The overall runtime of the handler can be limited::
+The overall runtime of the handler can be limited:
+
+.. code-block:: python
 
     import kopf
 
@@ -113,7 +121,9 @@ By default, there is no timeout, so the retries continue forever.
 Retries
 =======
 
-The number of retries can be limited too::
+The number of retries can be limited too:
+
+.. code-block:: python
 
     import kopf
 
@@ -131,7 +141,9 @@ Backoff
 
 The interval between retries on arbitrary errors, when an external environment
 is supposed to recover and be able to succeed the handler execution,
-can be configured::
+can be configured:
+
+.. code-block:: python
 
     import kopf
 

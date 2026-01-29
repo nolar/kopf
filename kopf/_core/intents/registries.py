@@ -365,7 +365,11 @@ def _deduplicated(
     single event/cause, even if it is registered with multiple decorators
     (e.g. different filtering criteria or different but same-effect causes).
 
-    One of the ways how this could happen::
+    One of the ways how this could happen:
+
+    .. code-block:: python
+
+        import kopf
 
         @kopf.on.create(...)
         @kopf.on.resume(...)

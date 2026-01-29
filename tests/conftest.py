@@ -270,9 +270,13 @@ def resp_mocker(fake_vault, enforced_session, aresponses):
     by that callback at all (i.e. HTTP URL & method matched), especially
     if there are multiple responses registered.
 
-    Sample usage::
+    Sample usage:
 
-        def test_me(resp_mocker):
+    .. code-block:: python
+
+        import aiohttp.web
+
+        def test_me(aresponses, resp_mocker):
             response = aiohttp.web.json_response({'a': 'b'})
             callback = resp_mocker(return_value=response)
             aresponses.add(hostname, '/path/', 'get', callback)

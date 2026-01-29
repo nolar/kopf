@@ -31,7 +31,9 @@ you have a specific and unusual cluster setup (e.g. your own auth tokens).
 
 To implement a custom authentication method, one or a few login-handlers
 can be added. The login handlers should either return nothing (``None``)
-or an instance of :class:`kopf.ConnectionInfo`::
+or an instance of :class:`kopf.ConnectionInfo`:
+
+.. code-block:: python
 
     import datetime
     import kopf
@@ -58,7 +60,9 @@ Both TZ-naive & TZ-aware expiration times are supported.
 The TZ-naive timestamps are always treated as UTC.
 
 As with any other handlers, the login handler can be async if the network
-communication is needed and async mode is supported::
+communication is needed and async mode is supported:
+
+.. code-block:: python
 
     import kopf
 
@@ -117,7 +121,9 @@ and all the credentials will be utilised in random order.
 
 If that is not the desired case, and only one of the libraries is needed,
 declare a custom login handler explicitly, and use only the preferred library
-by calling one of the piggybacking functions::
+by calling one of the piggybacking functions:
+
+.. code-block:: python
 
     import kopf
 
@@ -125,7 +131,9 @@ by calling one of the piggybacking functions::
     def login_fn(**kwargs):
         return kopf.login_via_pykube(**kwargs)
 
-Or::
+Or:
+
+.. code-block:: python
 
     import kopf
 
@@ -135,7 +143,9 @@ Or::
 
 The same trick is also useful to limit the authentication attempts
 by time or by number of retries (by default, it tries forever
-until succeeded, returned nothing, or explicitly failed)::
+until succeeded, returned nothing, or explicitly failed):
+
+.. code-block:: python
 
     import kopf
 
@@ -144,7 +154,9 @@ until succeeded, returned nothing, or explicitly failed)::
         return kopf.login_via_pykube(**kwargs)
 
 Similarly, if the libraries are installed and needed, but their credentials
-are not desired, the rudimentary login functions can be used directly::
+are not desired, the rudimentary login functions can be used directly:
+
+.. code-block:: python
 
     import kopf
 
@@ -187,9 +199,14 @@ knowing how it works internally. See :class:`Vault`.
 
 If the expiration is intended to be often (e.g. every few minutes),
 you might want to disable the logging of re-authenication (whether this is
-a good idea or not, you decide using the information about your system)::
+a good idea or not, you decide using the information about your system):
+
+.. code-block:: python
 
     import logging
+    import kopf
 
-    logging.getLogger('kopf.activities.authentication').disabled = True
-    logging.getLogger('kopf._core.engines.activities').disabled = True
+    @kopf.on.startup()
+    def disable_auth_logs(**_):
+        logging.getLogger('kopf.activities.authentication').disabled = True
+        logging.getLogger('kopf._core.engines.activities').disabled = True

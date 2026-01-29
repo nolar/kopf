@@ -261,7 +261,9 @@ def detect_own_id(*, manual: bool) -> Identity:
     (if in the cluster), or who runs the operator (if not in the cluster,
     i.e. in the dev-mode), and how long ago was it started.
 
-    The pod id can be specified by::
+    The pod id can be specified by:
+
+    .. code-block:: yaml
 
         env:
         - name: POD_ID
