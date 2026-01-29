@@ -300,7 +300,7 @@ def detect_changing_cause(
     Detect the cause of the event to be handled.
 
     This is a purely computational function with no side-effects.
-    The causes are then consumed by `custom_object_handler`,
+    The causes are then consumed by :func:`process_resource_causes`,
     which performs the actual handler invocation, logging, patching,
     and other side-effects.
     """

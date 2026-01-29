@@ -15,14 +15,14 @@ async def test_consistent_awakening(registry, settings, resource, k8s_mocked, mo
     """
     A special case to ensure that "now" is consistent during the handling.
 
-    Previously, "now" of `handler.awakened` and "now" of `state.delay` were
+    Previously, "now" of ``handler.awakened`` and "now" of ``state.delay`` were
     different (maybe for less than 1 ms). If the scheduled awakening time was
     unlucky to be between these two points in time, the operator stopped
     reacting on this object until any other events or changes arrive.
 
     Implementation-wise, the operator neither selected the handlers (because
-    it was "1ms too early", as per `handler.awakened`),
-    nor did it sleep (because it was "1ms too late", as per `state.delay`),
+    it was "1ms too early", as per ``handler.awakened``),
+    nor did it sleep (because it was "1ms too late", as per ``state.delay``),
     nor did it produce even a dummy patch (because zero-sleep meant "no sleep").
 
     After the fix, zero-sleep produces a dummy patch to trigger the reaction

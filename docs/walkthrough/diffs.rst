@@ -67,11 +67,15 @@ Kopf tracks the state of the objects and calculates the diffs.
 The diffs are provided as the :kwarg:`diff` kwarg; the old & new states
 of the object or field -- as the :kwarg:`old` & :kwarg:`new` kwargs.
 
-A diff-object has this structure::
+A diff-object has this structure:
+
+.. code-block:: python
 
     ((action, n-tuple of object or field path, old, new),)
 
-with example::
+with example:
+
+.. code-block:: python
 
     (('add', ('metadata', 'labels', 'label1'), None, 'new-value'),
      ('change', ('metadata', 'labels', 'label2'), 'old-value', 'new-value'),
@@ -81,7 +85,9 @@ with example::
 For the field-handlers, it will be the same,
 but the field path will be relative to the handled field,
 and unrelated fields will be filtered out.
-For example, if the field is ``metadata.labels``::
+For example, if the field is ``metadata.labels``:
+
+.. code-block:: python
 
     (('add', ('label1',), None, 'new-value'),
      ('change', ('label2',), 'old-value', 'new-value'),

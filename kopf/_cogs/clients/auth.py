@@ -68,8 +68,8 @@ class APIContext:
     """
     A container for an aiohttp session and the caches of the environment info.
 
-    The container is constructed only once for every `ConnectionInfo`,
-    and then cached for later re-use (see `Vault.extended`).
+    The container is constructed only once for every :class:`ConnectionInfo`,
+    and then cached for later re-use (see :meth:`Vault.extended`).
 
     We assume that the whole operator runs in the same event loop, so there is
     no need to split the sessions for multiple loops. Synchronous handlers are
@@ -218,9 +218,10 @@ class _TempFiles(Mapping[bytes, str]):
     """
     A container for the temporary files, which are purged on garbage collection.
 
-    The files are purged when the container is garbage-collected. The container
-    is garbage-collected when its parent `APISession` is garbage-collected or
-    explicitly closed (by `Vault` on removal of corresponding credentials).
+    The files are purged when the container is garbage-collected.
+    The container is garbage-collected when its parent :class:`APISession`
+    is garbage-collected or explicitly closed
+    (e.g., by :class:`Vault` on removal of corresponding credentials).
     """
 
     def __init__(self) -> None:

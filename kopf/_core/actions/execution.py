@@ -1,7 +1,7 @@
 """
 Execution of pre-selected handlers, in batches or individually.
 
-These functions are invoked from `kopf._core.reactor.processing`,
+These functions are invoked from :mod:`kopf._core.reactor.processing`,
 where the raw watch-events are interpreted and wrapped into extended *causes*.
 
 The handler execution can also be used in other places, such as in-memory
@@ -74,7 +74,7 @@ class Outcome:
     are handled specially: e.g., the temporary errors have exceptions,
     but the handler should be retried later, unlike with the permanent errors.
 
-    Note the difference: `HandlerState` is a persistent state of the handler,
+    Note the difference: ``HandlerState`` is a persistent state of the handler,
     possibly after a few executions, and consisting of simple data types
     (for YAML/JSON serialisation) rather than the actual in-memory objects.
     """
@@ -89,7 +89,7 @@ class HandlerState(Protocol):
     """
     A minimal necessary protocol (interface) of a handler's runtime state.
 
-    The implementation and detailed fields are in `progression.HandlerState`.
+    The implementation and detailed fields are in ``progression.HandlerState``.
     """
     started: datetime.datetime
     retries: int
@@ -222,8 +222,8 @@ async def execute_handler_once(
     Execute one and only one handler for one and only one time.
 
     *Execution* means not just *calling* the handler in properly set context
-    (see `_call_handler`), but also interpreting its result and errors, and
-    wrapping them into am `Outcome` object -- to be stored in the state.
+    (see ``_call_handler``), but also interpreting its result and errors, and
+    wrapping them into am :class:`Outcome` object -- to be stored in the state.
 
     The *execution* can be long -- depending on how the handler is implemented.
     For daemons, it is normal to run for hours and days if needed.
@@ -381,7 +381,7 @@ async def invoke_handler(
 
     Ensure the global context for this asyncio task is set to the handler and
     its cause -- for proper population of the sub-handlers via the decorators
-    (see `@kopf.subhandler`).
+    (see ``@kopf.subhandler``).
     """
 
     # For the field-handlers, the old/new/diff values must match the field, not the whole object.

@@ -50,9 +50,9 @@ def resolve_obj(
         default: _T | _UNSET = _UNSET.token,
 ) -> Any | _T:
     """
-    Mirrors `resolve`, but for a nested mix of dict keys & object attributes.
+    Mirrors ``resolve``, but for a nested mix of dict keys & object attributes.
 
-    While `resolve` is used mostly in certain dictionaries (e.g. diffs),
+    While ``resolve`` is used mostly in certain dictionaries (e.g. diffs),
     this function is used for walking over 3rd-party API objects & models
     with nested structures. The algorithm is essentially the same.
     """
@@ -225,7 +225,9 @@ def walk(
     of objects with any level of nesting. The dicts/mappings are excluded,
     despite they are iterables too, as they are treated as objects themselves.
 
-    For the output, it yields all the objects in a flat iterable suitable for::
+    For the output, it yields all the objects in a flat iterable suitable for:
+
+    .. code-block:: python
 
         for obj in walk(objs):
             pass

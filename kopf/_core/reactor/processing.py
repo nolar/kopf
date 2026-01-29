@@ -1,7 +1,7 @@
 """
 Conversion of low-level events to high-level causes, and handling them.
 
-These functions are invoked from `kopf._core.reactor.processing`,
+These functions are invoked from :mod:`kopf._core.reactor.processing`,
 which are the actual event loop of the operator process.
 
 The conversion of the low-level events to the high-level causes is done by
@@ -287,7 +287,7 @@ async def process_watching_cause(
     without any progress persistence. Multi-step calls are also not supported.
     If the handler fails, it fails and is never retried.
 
-    Note: K8s-event posting is skipped for `kopf.on.event` handlers,
+    Note: K8s-event posting is skipped for ``@kopf.on.event`` handlers,
     as they should be silent. Still, the messages are logged normally.
     """
     handlers = registry._watching.get_handlers(cause=cause)

@@ -16,11 +16,11 @@ _V = TypeVar('_V')
 
 class Store(ephemera.Store[_V], Generic[_V]):
     """
-    A specific implementation of `.ephemera.Store` usable by inxeders.
+    A specific implementation of ``.ephemera.Store`` usable by inxeders.
 
     The resources-to-values association is internal and is not exposed
     to handlers or operators. Currently, it is a dictionary
-    with the keys of form ``(namespace, name, uid)`` of type `Key`,
+    with the keys of form ``(namespace, name, uid)`` of type ``Key``,
     but the implementation can later change without notice.
 
     The store is O(1) for updates/deletions due to ``dict`` used internally.
@@ -62,7 +62,7 @@ class Store(ephemera.Store[_V], Generic[_V]):
 
 class Index(ephemera.Index[_K, _V], Generic[_K, _V]):
     """
-    A specific implementation of `.ephemera.Index` usable by indexers.
+    A specific implementation of ``.ephemera.Index`` usable by indexers.
 
     The indexers and all writing interfaces for indices are not exposed
     to handlers or operators or developers, they remain strictly internal.
@@ -246,8 +246,8 @@ class OperatorIndices(ephemera.Indices):
     * "causation" requires "OperatorIndexers" from "indexing".
     * "indexing" requires "IndexingCause" from "causation".
 
-    The chain is broken by having a separate interface: `~ephemera.Indices`,
-    while the implementation remains here.
+    The chain is broken by having a separate interface:
+    :class:`~ephemera.Indices`, while the implementation remains here.
 
     Second, read-write indexers create a temptation to modify them
     in modules and components that should not do this.
@@ -296,7 +296,7 @@ async def index_resource(
     any real handlers are invoked. Multi-step calls are also not supported.
     If the handler fails, it fails and is never retried.
 
-    Note: K8s-event posting is skipped for `kopf.on.event` handlers,
+    Note: K8s-event posting is skipped for ``@kopf.on.event`` handlers,
     as they should be silent. Still, the messages are logged normally.
     """
     if not registry._indexing.has_handlers(resource=resource):

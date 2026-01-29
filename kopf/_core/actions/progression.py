@@ -8,7 +8,8 @@ There could be more than one low-level k8s watch-events per one actual
 high-level kopf-event (a cause). The handlers are called at different times,
 and the overall handling routine should persist the handler status somewhere.
 
-The states are persisted in a state storage: see `kopf._cogs.configs.progress`.
+The states are persisted in a state storage:
+see :mod:`kopf._cogs.configs.progress`.
 
 MOCKED LOOP TIME:
 
@@ -91,7 +92,7 @@ class HandlerState(execution.HandlerState):
     """
     A persisted state of a single handler, as stored on the resource's status.
 
-    Note the difference: `Outcome` is for in-memory results of handlers,
+    Note the difference: :class:`Outcome` is for in-memory results of handlers,
     which is then additionally converted before being storing as a state.
 
     Active handler states are those used in .done/.delays for the current
@@ -454,11 +455,13 @@ def deliver_results(
 
 
 @overload
-def format_iso8601(val: None) -> None: ...
+def format_iso8601(val: None) -> None:
+    ...
 
 
 @overload
-def format_iso8601(val: datetime.datetime) -> str: ...
+def format_iso8601(val: datetime.datetime) -> str:
+    ...
 
 
 def format_iso8601(val: datetime.datetime | None) -> str | None:
@@ -466,11 +469,13 @@ def format_iso8601(val: datetime.datetime | None) -> str | None:
 
 
 @overload
-def parse_iso8601(val: None) -> None: ...
+def parse_iso8601(val: None) -> None:
+    ...
 
 
 @overload
-def parse_iso8601(val: str) -> datetime.datetime: ...
+def parse_iso8601(val: str) -> datetime.datetime:
+    ...
 
 
 def parse_iso8601(val: str | None) -> datetime.datetime | None:

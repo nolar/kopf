@@ -19,7 +19,7 @@ class FlagSetter(Generic[FlagReasonT]):
 
     The stopped flag is a graceful way of a daemon termination.
     If the daemons do not react to their stoppers and continue running,
-    their tasks are cancelled by raising a `asyncio.CancelledError`.
+    their tasks are cancelled by raising a ``asyncio.CancelledError``.
 
     .. warning::
         In case of synchronous handlers, which are executed in the threads,
@@ -66,12 +66,16 @@ class FlagWaiter(Generic[FlagReasonT]):
     The flag setter is hidden from the users, and is an internal class.
     The users should not be able to trigger the stopping activities.
 
-    Usage::
+    Usage:
+
+    .. code-block:: python
+
+        import kopf
 
         @kopf.daemon('kopfexamples')
         def handler(stopped, **kwargs):
             while not stopped:
-                ...
+                ...  # do something useful
                 stopped.wait(60)
     """
 

@@ -68,7 +68,7 @@ class Store(Collection[_V], Generic[_V]):
 
     .. note::
         This class is only an abstract interface of an indexed store.
-        The actual implementation is in `.indexing.Store`.
+        The actual implementation is in ``.indexing.Store``.
 
     .. seealso:
         :doc:`/indexing`.
@@ -84,7 +84,7 @@ class Index(Mapping[_K, Store[_V]], Generic[_K, _V]):
 
     .. note::
         This class is only an abstract interface of an index.
-        The actual implementation is in `.indexing.Index`.
+        The actual implementation is in ``.indexing.Index``.
 
     .. seealso:
         :doc:`/indexing`.

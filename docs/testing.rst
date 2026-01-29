@@ -39,4 +39,4 @@ exit code and output are available to the test (for additional assertions).
 
 .. note::
     The operator runs against the cluster which is currently authenticated ---
-    same as if would be executed with `kopf run`.
+    same as if would be executed with ``kopf run``.

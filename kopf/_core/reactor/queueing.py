@@ -20,7 +20,7 @@ to prevent the often queue/worker destruction and re-creation
 in case the events are for any reason delayed by Kubernetes.
 
 The conversion of the low-level watch-events to the high-level causes
-is done in the `kopf._core.reactor.processing` routines.
+is done in the :mod:`kopf._core.reactor.processing` routines.
 """
 import asyncio
 import contextlib
@@ -45,7 +45,8 @@ class WatchStreamProcessor(Protocol):
             stream_pressure: asyncio.Event | None = None,  # None for tests
             resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
             operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
-    ) -> None: ...
+    ) -> None:
+        ...
 
 
 # An end-of-stream marker sent from the watcher to the workers.
@@ -142,7 +143,7 @@ async def watcher(
 
     Watchers spend their time in the infinite watch stream, not in task waiting.
     The only valid way for a worker to wake up the watcher is to cancel it:
-    this will terminate any i/o operation with `asyncio.CancelledError`, where
+    this will terminate any i/o operation with ``asyncio.CancelledError``, where
     we can make a decision on whether it was a real cancellation, or our own.
     """
 

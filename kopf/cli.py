@@ -20,7 +20,7 @@ from kopf._kits import loops
 
 @dataclasses.dataclass()
 class CLIControls:
-    """ `KopfRunner` controls, which are impossible to pass via CLI. """
+    """ :class:`KopfRunner` controls, which are impossible to pass via CLI. """
     ready_flag: aioadapters.Flag | None = None
     stop_flag: aioadapters.Flag | None = None
     vault: credentials.Vault | None = None

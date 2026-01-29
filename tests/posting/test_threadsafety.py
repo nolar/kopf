@@ -2,7 +2,7 @@
 A little note on how these tests work:
 
 Almost all asyncio objects are not thread-safe, as per the official doc.
-This includes `asyncio.Queue`. This queue is used for k8s-event posting.
+This includes :class:`asyncio.Queue`. This queue is used for k8s-event posting.
 
 K8s-events are posted via ``kopf.event()`` and similar calls,
 and also via ``logger.info()`` for per-object logging messages.
@@ -17,11 +17,11 @@ The calls originate from various threads:
 In the main thread, there is an event-loop running, and it has an asyncio task
 to get the k8s-event events from the queue and to post them to the K8s API.
 
-In the non-thread-safe mode, putting an object via `queue.put_nowait()``
-does **NOT** wake up the pending ``queue.get()`` in the `poster` task
+In the non-thread-safe mode, putting an object via ``queue.put_nowait()``
+does **NOT** wake up the pending ``queue.get()`` in the :func:`poster` task
 until something happens on the event-loop (not necessary on the queue).
 
-In the thread-safe mode, putting an an object via `queue.put()``
+In the thread-safe mode, putting an an object via ``queue.put()``
 (which is a coroutine and must be executed in the loop)
 wakes the pending ``queue.get()`` call immediately.
 

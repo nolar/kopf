@@ -2,7 +2,7 @@
 A connection between object logger and background k8s-event poster.
 
 Everything logged to the object logger (except for debug information) is also
-posted as a k8s-event -- in the background by `kopf._core.engines.posting`.
+posted as a k8s-event -- in the background by :mod:`kopf._core.engines.posting`.
 
 This eliminates the need to log & post the same messages, which complicates
 the operators' code, and can lead to information loss or mismatch
@@ -111,7 +111,7 @@ class ObjectLogger(typedefs.LoggerAdapter):
     A logger/adapter to carry the object identifiers for formatting.
 
     The identifiers are then used both for formatting the per-object messages
-    in `ObjectPrefixingFormatter`, and when posting the per-object k8s-events.
+    in :class:`ObjectPrefixingFormatter`, and when posting the k8s-events.
 
     Constructed in event handling of each individual object.
 
@@ -119,7 +119,7 @@ class ObjectLogger(typedefs.LoggerAdapter):
     but can change over time to anything needed for our internal purposes.
     However, as little information should be carried as possible,
     and the information should be protected against the object modification
-    (e.g. in case of background posting via the queue; see `K8sPoster`).
+    (e.g. in case of background posting via the queue; see :class:`K8sPoster`).
     """
 
     def __init__(self, *, body: bodies.Body, settings: configuration.OperatorSettings) -> None:
@@ -148,7 +148,7 @@ class ObjectLogger(typedefs.LoggerAdapter):
 
 class LocalObjectLogger(ObjectLogger):
     """
-    The same as `ObjectLogger`, but does not post the messages as k8s-events.
+    The same as :class:`ObjectLogger`, but does not post the messages as k8s-events.
 
     Used in the resource-watching handlers to log the handler's invocation
     successes/failures without overloading K8s with excessively many k8s-events.
