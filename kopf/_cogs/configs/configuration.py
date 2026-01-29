@@ -261,7 +261,7 @@ class ScanningSettings:
     If enabled (the default), then the operator will try to observe
     the namespaces and custom resources, and will gracefully start/stop
     the watch streams for them (also the peering activities, if applicable).
-    This requires RBAC permissions to list/watch the V1 namespaces and CRDs.
+    This requires the RBAC permissions to list/watch the V1 namespaces and CRDs.
 
     If disabled or if enabled but the permission is not granted, then only
     the specific namespaces will be served, with namespace patterns ignored;

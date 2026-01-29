@@ -535,6 +535,33 @@ e.g. by arbitrarily labelling them, so that a new diff-base is generated:
 Then, switch to the new storage alone, without the transitional setup.
 
 
+Cluster discovery
+=================
+
+``settings.scanning.disabled`` controls the cluster discovery at runtime.
+
+If enabled (the default), then the operator will try to observe
+the namespaces and custom resources, and will gracefully start/stop
+the watch streams for them (also the peering activities, if applicable).
+This requires the RBAC permissions to list/watch the V1 namespaces and CRDs.
+
+If disabled or if enabled but the permission is not granted, then only
+the specific namespaces will be served, with namespace patterns ignored;
+and only the resources detected at startup will be served, with added CRDs
+or CRD versions being ignored, and the deleted CRDs causing failures.
+
+The default mode is good enough for most cases, unless the strict
+(non-dynamic) mode is intended -- to prevent the warnings in the logs.
+
+If you have very restrictive cluster permissions, disable the cluster discovery:
+
+.. code-block:: python
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.scanning.disabled = True
+
+
 .. _api-retrying:
 
 Retrying of API errors
