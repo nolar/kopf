@@ -101,13 +101,10 @@ async def process_resource_event(
             )
 
             # Wait for all other individual resources and all other resource kinds' lists to finish.
-            # If this one has changed while waiting for the global readiness, let it be reprocessed.
             if operator_indexed is not None and resource_indexed is not None:
                 await operator_indexed.drop_toggle(resource_indexed)
             if operator_indexed is not None:
                 await operator_indexed.wait_for(True)  # other resource kinds & objects.
-            if stream_pressure is not None and stream_pressure.is_set():
-                return None
 
             # Do the magic -- do the job.
             delays, matched = await process_resource_causes(
