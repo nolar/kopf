@@ -454,11 +454,13 @@ def deliver_results(
 
 
 @overload
-def format_iso8601(val: None) -> None: ...
+def format_iso8601(val: None) -> None:
+    ...
 
 
 @overload
-def format_iso8601(val: datetime.datetime) -> str: ...
+def format_iso8601(val: datetime.datetime) -> str:
+    ...
 
 
 def format_iso8601(val: datetime.datetime | None) -> str | None:
@@ -466,11 +468,13 @@ def format_iso8601(val: datetime.datetime | None) -> str | None:
 
 
 @overload
-def parse_iso8601(val: None) -> None: ...
+def parse_iso8601(val: None) -> None:
+    ...
 
 
 @overload
-def parse_iso8601(val: str) -> datetime.datetime: ...
+def parse_iso8601(val: str) -> datetime.datetime:
+    ...
 
 
 def parse_iso8601(val: str | None) -> datetime.datetime | None:

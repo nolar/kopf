@@ -45,7 +45,8 @@ class WatchStreamProcessor(Protocol):
             stream_pressure: asyncio.Event | None = None,  # None for tests
             resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
             operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
-    ) -> None: ...
+    ) -> None:
+        ...
 
 
 # An end-of-stream marker sent from the watcher to the workers.

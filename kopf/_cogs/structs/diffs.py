@@ -87,10 +87,12 @@ class Diff(Sequence[DiffItem]):
         return iter(self._items)
 
     @overload
-    def __getitem__(self, i: int) -> DiffItem: ...
+    def __getitem__(self, i: int) -> DiffItem:
+        ...
 
     @overload
-    def __getitem__(self, s: slice) -> Sequence[DiffItem]: ...
+    def __getitem__(self, s: slice) -> Sequence[DiffItem]:
+        ...
 
     def __getitem__(self, item: int | slice) -> DiffItem | Sequence[DiffItem]:
         return self._items[item]

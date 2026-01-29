@@ -128,7 +128,8 @@ class WebhookFn(Protocol):
             webhook: str | None = None,
             headers: Mapping[str, str] | None = None,
             sslpeer: Mapping[str, Any] | None = None,
-    ) -> Awaitable[Response]: ...
+    ) -> Awaitable[Response]:
+        ...
 
 
 # A server (either a coroutine or a callable object).
