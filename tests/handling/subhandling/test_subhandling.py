@@ -1,5 +1,4 @@
 import asyncio
-import logging
 from unittest.mock import Mock
 
 import pytest
@@ -16,8 +15,7 @@ EVENT_TYPES_WHEN_EXISTS = [None, 'ADDED', 'MODIFIED']
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_1st_level(registry, settings, resource, cause_mock, event_type,
-                         caplog, assert_logs, k8s_mocked, looptime):
-    caplog.set_level(logging.DEBUG)
+                         assert_logs, k8s_mocked, looptime):
     cause_mock.reason = Reason.CREATE
 
     fn_mock = Mock(return_value=None)
@@ -76,8 +74,7 @@ async def test_1st_level(registry, settings, resource, cause_mock, event_type,
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_2nd_level(registry, settings, resource, cause_mock, event_type,
-                         caplog, assert_logs, k8s_mocked, looptime):
-    caplog.set_level(logging.DEBUG)
+                         assert_logs, k8s_mocked, looptime):
     cause_mock.reason = Reason.CREATE
 
     fn_mock = Mock(return_value=None)

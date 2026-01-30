@@ -1,5 +1,4 @@
 import asyncio
-import logging
 
 import pytest
 
@@ -18,8 +17,7 @@ EVENT_TYPES_WHEN_EXISTS = [None, 'ADDED', 'MODIFIED']
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_create(registry, settings, handlers, resource, cause_mock, event_type,
-                      caplog, assert_logs, k8s_mocked):
-    caplog.set_level(logging.DEBUG)
+                      assert_logs, k8s_mocked):
     cause_mock.reason = Reason.CREATE
 
     event_queue = asyncio.Queue()
@@ -58,8 +56,7 @@ async def test_create(registry, settings, handlers, resource, cause_mock, event_
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_update(registry, settings, handlers, resource, cause_mock, event_type,
-                      caplog, assert_logs, k8s_mocked):
-    caplog.set_level(logging.DEBUG)
+                      assert_logs, k8s_mocked):
     cause_mock.reason = Reason.UPDATE
 
     event_queue = asyncio.Queue()
@@ -98,8 +95,7 @@ async def test_update(registry, settings, handlers, resource, cause_mock, event_
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_delete(registry, settings, handlers, resource, cause_mock, event_type,
-                      caplog, assert_logs, k8s_mocked):
-    caplog.set_level(logging.DEBUG)
+                      assert_logs, k8s_mocked):
     cause_mock.reason = Reason.DELETE
     finalizer = settings.persistence.finalizer
     event_body = {'metadata': {'deletionTimestamp': '...', 'finalizers': [finalizer]}}
@@ -140,8 +136,7 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES)
 async def test_gone(registry, settings, handlers, resource, cause_mock, event_type,
-                    caplog, assert_logs, k8s_mocked):
-    caplog.set_level(logging.DEBUG)
+                    assert_logs, k8s_mocked):
     cause_mock.reason = Reason.GONE
 
     event_queue = asyncio.Queue()
@@ -171,8 +166,7 @@ async def test_gone(registry, settings, handlers, resource, cause_mock, event_ty
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES)
 async def test_free(registry, settings, handlers, resource, cause_mock, event_type,
-                    caplog, assert_logs, k8s_mocked):
-    caplog.set_level(logging.DEBUG)
+                    assert_logs, k8s_mocked):
     cause_mock.reason = Reason.FREE
 
     event_queue = asyncio.Queue()
@@ -201,8 +195,7 @@ async def test_free(registry, settings, handlers, resource, cause_mock, event_ty
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES)
 async def test_noop(registry, settings, handlers, resource, cause_mock, event_type,
-                    caplog, assert_logs, k8s_mocked):
-    caplog.set_level(logging.DEBUG)
+                    assert_logs, k8s_mocked):
     cause_mock.reason = Reason.NOOP
 
     event_queue = asyncio.Queue()

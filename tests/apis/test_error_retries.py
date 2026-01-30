@@ -19,9 +19,7 @@ def request_fn(mocker):
 
 
 async def test_regular_errors_escalate_without_retries(
-        caplog, assert_logs, settings, logger, resp_mocker, aresponses, hostname, request_fn):
-    caplog.set_level(0)
-
+        assert_logs, settings, logger, resp_mocker, aresponses, hostname, request_fn):
     request_fn.side_effect = Exception("boo")
 
     settings.networking.error_backoffs = [1, 2, 3]
@@ -35,9 +33,7 @@ async def test_regular_errors_escalate_without_retries(
 
 @pytest.mark.parametrize('status', [400, 404, 499, 666, 999])
 async def test_client_errors_escalate_without_retries(
-        caplog, assert_logs, settings, logger, resp_mocker, aresponses, hostname, status):
-    caplog.set_level(0)
-
+        assert_logs, settings, logger, resp_mocker, aresponses, hostname, status):
     # side_effect instead of return_value -- to generate a new response on every call, not reuse it.
     mock = resp_mocker(side_effect=lambda: aiohttp.web.json_response({}, status=status, reason='oops'))
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
@@ -56,9 +52,7 @@ async def test_client_errors_escalate_without_retries(
 
 @pytest.mark.parametrize('status', [500, 503, 599])
 async def test_server_errors_escalate_with_retries(
-        caplog, assert_logs, settings, logger, resp_mocker, aresponses, hostname, status):
-    caplog.set_level(0)
-
+        assert_logs, settings, logger, resp_mocker, aresponses, hostname, status):
     # side_effect instead of return_value -- to generate a new response on every call, not reuse it.
     mock = resp_mocker(side_effect=lambda: aiohttp.web.json_response({}, status=status, reason='oops'))
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
@@ -81,9 +75,7 @@ async def test_server_errors_escalate_with_retries(
 
 
 async def test_connection_errors_escalate_with_retries(
-        caplog, assert_logs, settings, logger, resp_mocker, aresponses, hostname, request_fn):
-    caplog.set_level(0)
-
+        assert_logs, settings, logger, resp_mocker, aresponses, hostname, request_fn):
     request_fn.side_effect = aiohttp.ClientConnectionError()
 
     settings.networking.error_backoffs = [0, 0, 0]
@@ -100,9 +92,7 @@ async def test_connection_errors_escalate_with_retries(
 
 
 async def test_timeout_errors_escalate_with_retries(
-        caplog, assert_logs, settings, logger, resp_mocker, aresponses, hostname, request_fn):
-    caplog.set_level(0)
-
+        assert_logs, settings, logger, resp_mocker, aresponses, hostname, request_fn):
     request_fn.side_effect = asyncio.TimeoutError()
 
     settings.networking.error_backoffs = [0, 0, 0]
@@ -119,9 +109,7 @@ async def test_timeout_errors_escalate_with_retries(
 
 
 async def test_retried_until_succeeded(
-        caplog, assert_logs, settings, logger, resp_mocker, aresponses, hostname):
-    caplog.set_level(0)
-
+        assert_logs, settings, logger, resp_mocker, aresponses, hostname):
     mock = resp_mocker(side_effect=[
         aiohttp.web.json_response({}, status=505, reason='oops'),
         aiohttp.web.json_response({}, status=505, reason='oops'),
@@ -153,10 +141,8 @@ async def test_retried_until_succeeded(
     ([1, 2], 3),
 ])
 async def test_backoffs_as_lists(
-        caplog, assert_logs, settings, logger, resp_mocker, aresponses, hostname, sleep,
+        assert_logs, settings, logger, resp_mocker, aresponses, hostname, sleep,
         backoffs, exp_calls):
-    caplog.set_level(0)
-
     # side_effect instead of return_value -- to generate a new response on every call, not reuse it.
     mock = resp_mocker(side_effect=lambda: aiohttp.web.json_response({}, status=500, reason='oops'))
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
@@ -174,9 +160,7 @@ async def test_backoffs_as_lists(
 
 
 async def test_backoffs_as_floats(
-        caplog, assert_logs, settings, logger, resp_mocker, aresponses, hostname, sleep):
-    caplog.set_level(0)
-
+        assert_logs, settings, logger, resp_mocker, aresponses, hostname, sleep):
     # side_effect instead of return_value -- to generate a new response on every call, not reuse it.
     mock = resp_mocker(side_effect=lambda: aiohttp.web.json_response({}, status=500, reason='oops'))
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
@@ -192,8 +176,7 @@ async def test_backoffs_as_floats(
 
 
 async def test_backoffs_as_iterables(
-        caplog, assert_logs, settings, logger, resp_mocker, aresponses, hostname, sleep):
-    caplog.set_level(0)
+        assert_logs, settings, logger, resp_mocker, aresponses, hostname, sleep):
 
     class Itr:
         def __iter__(self):

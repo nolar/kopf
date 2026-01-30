@@ -1,5 +1,4 @@
 import asyncio
-import logging
 
 import freezegun
 import iso8601
@@ -46,9 +45,7 @@ async def test_all_logs_are_prefixed(registry, settings, resource, namespace, ha
 ])
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_diffs_logged_if_present(registry, settings, resource, handlers,
-                                       cause_type, cause_mock, caplog, assert_logs, diff):
-    caplog.set_level(logging.DEBUG)
-
+                                       cause_type, cause_mock, assert_logs, diff):
     event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_type
     cause_mock.diff = diff
@@ -79,9 +76,7 @@ async def test_diffs_logged_if_present(registry, settings, resource, handlers,
     pytest.param((), id='empty-tuple-diff'),
 ])
 async def test_diffs_not_logged_if_absent(registry, settings, resource, handlers, cause_type, cause_mock,
-                                          caplog, assert_logs, diff):
-    caplog.set_level(logging.DEBUG)
-
+                                          assert_logs, diff):
     event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_type
     cause_mock.diff = diff
@@ -116,9 +111,7 @@ TS1_ISO = '2021-01-01T00:00:00.123456'
 ])
 @freezegun.freeze_time(TS0)
 async def test_supersession_is_logged(
-        registry, settings, resource, handlers, cause_types, cause_mock, caplog, assert_logs):
-    caplog.set_level(logging.DEBUG)
-
+        registry, settings, resource, handlers, cause_types, cause_mock, assert_logs):
     settings.persistence.progress_storage = StatusProgressStorage()
     body = {'status': {'kopf': {'progress': {
         'create_fn': {'purpose': cause_types[0]},

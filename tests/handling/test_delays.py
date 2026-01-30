@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-import logging
 
 import freezegun
 import pytest
@@ -23,9 +22,7 @@ from kopf._core.reactor.processing import process_resource_event
 ], ids=['fast'])
 async def test_delayed_handlers_progress(
         registry, settings, handlers, resource, cause_mock, cause_reason,
-        caplog, assert_logs, k8s_mocked, now, delayed_iso, delay):
-    caplog.set_level(logging.DEBUG)
-
+        assert_logs, k8s_mocked, now, delayed_iso, delay):
     handlers.create_mock.side_effect = TemporaryError("oops", delay=delay)
     handlers.update_mock.side_effect = TemporaryError("oops", delay=delay)
     handlers.delete_mock.side_effect = TemporaryError("oops", delay=delay)
@@ -71,8 +68,7 @@ async def test_delayed_handlers_progress(
 ], ids=['fast', 'slow'])
 async def test_delayed_handlers_sleep(
         registry, settings, handlers, resource, cause_mock, cause_reason,
-        caplog, assert_logs, k8s_mocked, now, delayed_iso, delay, looptime):
-    caplog.set_level(logging.DEBUG)
+        assert_logs, k8s_mocked, now, delayed_iso, delay, looptime):
 
     # Any "future" time works and affects nothing as long as it is the same
     basetime = datetime.datetime.now(tz=datetime.timezone.utc)

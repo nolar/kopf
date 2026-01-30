@@ -4,7 +4,6 @@ depending on the consistency or inconsistency of the incoming stream of events.
 """
 import asyncio
 import contextlib
-import logging
 
 import pytest
 
@@ -27,9 +26,7 @@ def _no_throttling(mocker, resource, registry):
 
 @pytest.mark.parametrize('cause_reason', HANDLER_REASONS)
 async def test_preexisting_consistency(
-        resource, registry, settings, handlers, caplog, cause_mock, cause_reason, k8s_mocked, looptime):
-    caplog.set_level(logging.DEBUG)
-
+        resource, registry, settings, handlers, cause_mock, cause_reason, k8s_mocked, looptime):
     event_type = None if cause_reason == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_reason
 
@@ -69,9 +66,7 @@ async def test_preexisting_consistency(
 
 @pytest.mark.parametrize('cause_reason', HANDLER_REASONS)
 async def test_past_consistency(
-        resource, registry, settings, handlers, caplog, cause_mock, cause_reason, k8s_mocked, looptime):
-    caplog.set_level(logging.DEBUG)
-
+        resource, registry, settings, handlers, cause_mock, cause_reason, k8s_mocked, looptime):
     event_type = None if cause_reason == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_reason
 
@@ -114,9 +109,7 @@ async def test_past_consistency(
 
 @pytest.mark.parametrize('cause_reason', HANDLER_REASONS)
 async def test_future_consistency(
-        resource, registry, settings, handlers, caplog, cause_mock, cause_reason, k8s_mocked, looptime):
-    caplog.set_level(logging.DEBUG)
-
+        resource, registry, settings, handlers, cause_mock, cause_reason, k8s_mocked, looptime):
     settings.persistence.consistency_timeout = 55
 
     event_type = None if cause_reason == Reason.RESUME else 'irrelevant'
@@ -158,9 +151,8 @@ async def test_future_consistency(
 
 @pytest.mark.parametrize('cause_reason', HANDLER_REASONS)
 async def test_no_consistency_wait_without_changing_handlers(
-        resource, registry, settings, caplog, cause_mock, cause_reason, watching_handlers,
+        resource, registry, settings, cause_mock, cause_reason, watching_handlers,
         k8s_mocked, looptime):
-    caplog.set_level(logging.DEBUG)
     cause_mock.reason = cause_reason
 
     event_queue = asyncio.Queue()
@@ -186,9 +178,8 @@ async def test_no_consistency_wait_without_changing_handlers(
 
 @pytest.mark.parametrize('cause_reason', HANDLER_REASONS)
 async def test_stream_pressure_awakening_prevents_change_handlers(
-        resource, registry, settings, caplog, cause_mock, cause_reason, handlers,
+        resource, registry, settings, cause_mock, cause_reason, handlers,
         k8s_mocked, looptime):
-    caplog.set_level(logging.DEBUG)
     cause_mock.reason = cause_reason
 
     stream_pressure = asyncio.Event()
@@ -227,9 +218,8 @@ async def test_stream_pressure_awakening_prevents_change_handlers(
 
 @pytest.mark.parametrize('cause_reason', HANDLER_REASONS)
 async def test_resource_version_is_returned_from_patching(
-        resource, registry, settings, caplog, cause_mock, cause_reason, watching_handlers,
+        resource, registry, settings, cause_mock, cause_reason, watching_handlers,
         k8s_mocked, looptime):
-    caplog.set_level(logging.DEBUG)
     cause_mock.reason = Reason.CREATE
 
     k8s_mocked.patch.return_value = {'metadata': {'resourceVersion': 'some-rv'}}
