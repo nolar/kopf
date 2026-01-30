@@ -255,6 +255,20 @@ The server-side timeouts are unpredictable, they can be 10 seconds or
 10 minutes. Yet, it feels wrong to assume any "good" values in a framework
 (especially since it works without timeouts defined, just produces extra logs).
 
+.. warning::
+    Some setups that involve any kind of a load balancer (LB), such as
+    the cloud-hosted Kubernetes clusters, have a well-known problem
+    of freezing and going silent for no reason if nothing happens
+    in the cluster for some time. The best guess is that the connection
+    operator<>LB remains alive, while the connection LB<>K8s closes.
+    Kopf-based operators remain unaware of this disruption.
+
+    Setting either the client or the server timeout solves the problem
+    of waking up from such freezes, but at the cost of regular reconnections
+    in the normal flow of operations. There is no good default value either,
+    you should guess it experimentally based on your operational requirements,
+    cluster size and activity level, usually in the range 1-10 minutes.
+
 ``settings.watching.reconnect_backoff`` (seconds) is a backoff interval between
 watching requests -- to prevent API flooding in case of errors or disconnects.
 The default is 0.1 seconds (nearly instant, but not flooding).
