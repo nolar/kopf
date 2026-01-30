@@ -255,6 +255,20 @@ The server-side timeouts are unpredictable, they can be 10 seconds or
 10 minutes. Yet, it feels wrong to assume any "good" values in a framework
 (especially since it works without timeouts defined, just produces extra logs).
 
+.. warning::
+    Some setups that involve any kind of a load balancer (LB), such as
+    the cloud-hosted Kubernetes clusters, have a well-known problem
+    of freezing and going silent for no reason if nothing happens
+    in the cluster for some time. The best guess is that the connection
+    operator<>LB remains alive, while the connection LB<>K8s closes.
+    Kopf-based operators remain unaware of this disruption.
+
+    Setting either the client or the server timeout solves the problem
+    of waking up from such freezes, but at the cost of regular reconnections
+    in the normal flow of operations. There is no good default value either,
+    you should guess it experimentally based on your operational requirements,
+    cluster size and activity level, usually in the range 1-10 minutes.
+
 ``settings.watching.reconnect_backoff`` (seconds) is a backoff interval between
 watching requests -- to prevent API flooding in case of errors or disconnects.
 The default is 0.1 seconds (nearly instant, but not flooding).
@@ -679,3 +693,61 @@ Interpret it as: no throttling delays set --- no throttling sleeps done.
 If needed, this value can be an arbitrary collection/iterator/object:
 only ``iter()`` is called on every new throttling cycle, no other protocols
 are required; but make sure that it is re-iterable for multiple uses.
+
+
+Log levels & filters
+====================
+
+In case the logs of any component are too exessive, or contain secret data,
+this can be controlled with the usual Python logging machinery.
+
+For example, to disable the access logs of the probing server:
+
+.. code-block:: python
+
+    import logging
+
+    @kopf.on.startup()
+    async def configure(**_):
+        logging.getLogger('aiohttp.access').propagate = False
+
+To selectively filter only some log messages but not the others:
+
+.. code-block:: python
+
+    import logging
+    import kopf
+
+    class ExcludeProbesFilter(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> bool:
+            return 'GET /healthz ' not in record.getMessage()
+
+    @kopf.on.startup()
+    async def configure_access_logs(**_):
+        logging.getLogger('aiohttp.access').addFilter(ExcludeProbesFilter())
+
+For more information on the logging configuration, see:
+`logging <https://docs.python.org/3/library/logging.html>`_.
+
+In particular, you can use the special logger ``kopf.objects`` to filter
+the object-related log messages coming from the :kwarg:`logger` and from
+Kopf's internals, which are then posted as Kubernetes events (``v1/events``):
+
+.. code-block:: python
+
+    import logging
+    import kopf
+
+    class ExcludeKopfInternals(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> bool:
+            return '/kopf/' not in record.pathname
+
+    @kopf.on.startup()
+    async def configure_kopf_logs(**_):
+        logging.getLogger('kopf.objects').addFilter(ExcludeKopfInternals())
+
+.. warning::
+    Beware: the path names and module names of internal modules,
+    so as the extra fields of ``logging.LogRecord`` added by Kopf,
+    can change without warning, do not rely on their stability.
+    They are not a public interface of Kopf.
