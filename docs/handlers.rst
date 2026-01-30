@@ -142,6 +142,23 @@ The following 3 core cause-handlers are available:
     def my_handler(spec, **_):
         pass
 
+Despite the handlers see the full body of the resource object, they react
+only to _essential_ changes, as implemented  by:class:`kopf.DiffBaseStorage`
+or its descendants (:ref:`diffbase-storing`).
+
+In particular, Kopf ignores the whole ``status`` stanza as non-essential,
+and all fields of ``metadata`` except for ``labels`` & ``annotations`` —
+it remains blind to changes in these fields unless explicitly told to see them.
+For example, to react to changes in the status of ``kind: Job``:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.update('batch/v1', 'jobs', field='status')
+    def job_status_changes(**_):
+        pass
+
 .. note::
     Kopf's finalizers will be added to the object when there are delete
     handlers specified. Finalizers block Kubernetes from fully deleting
