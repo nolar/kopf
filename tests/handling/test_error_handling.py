@@ -1,5 +1,4 @@
 import asyncio
-import logging
 
 import pytest
 
@@ -16,8 +15,7 @@ from kopf._core.reactor.processing import process_resource_event
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_fatal_error_stops_handler(
         registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,
-        caplog, assert_logs, k8s_mocked, looptime):
-    caplog.set_level(logging.DEBUG)
+        assert_logs, k8s_mocked, looptime):
     name1 = f'{cause_type}_fn'
 
     event_type = None if cause_type == Reason.RESUME else 'irrelevant'
@@ -61,8 +59,7 @@ async def test_fatal_error_stops_handler(
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_retry_error_delays_handler(
         registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,
-        caplog, assert_logs, k8s_mocked, looptime):
-    caplog.set_level(logging.DEBUG)
+        assert_logs, k8s_mocked, looptime):
     name1 = f'{cause_type}_fn'
 
     event_type = None if cause_type == Reason.RESUME else 'irrelevant'
@@ -107,8 +104,7 @@ async def test_retry_error_delays_handler(
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_arbitrary_error_delays_handler(
         registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,
-        caplog, assert_logs, k8s_mocked, looptime):
-    caplog.set_level(logging.DEBUG)
+        assert_logs, k8s_mocked, looptime):
     name1 = f'{cause_type}_fn'
 
     event_type = None if cause_type == Reason.RESUME else 'irrelevant'

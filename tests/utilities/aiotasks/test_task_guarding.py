@@ -22,23 +22,20 @@ async def sample() -> None:
     pass
 
 
-async def test_guard_logs_on_exit(assert_logs, caplog):
-    caplog.set_level(0)
+async def test_guard_logs_on_exit(assert_logs):
     logger = logging.getLogger()
     await create_guarded_task(sample(), name='this task', logger=logger)
     assert_logs(["This task has finished unexpectedly"])
 
 
-async def test_guard_logs_on_failure(assert_logs, caplog):
-    caplog.set_level(0)
+async def test_guard_logs_on_failure(assert_logs):
     logger = logging.getLogger()
     task = create_guarded_task(coro=fail("boo!"), name='this task', logger=logger)
     await asyncio.wait([task], timeout=0.01)  # let it start & react
     assert_logs(["This task has failed: boo!"])
 
 
-async def test_guard_logs_on_cancellation(assert_logs, caplog):
-    caplog.set_level(0)
+async def test_guard_logs_on_cancellation(assert_logs):
     logger = logging.getLogger()
     task = create_guarded_task(coro=delay(1), name='this task', logger=logger)
     await asyncio.wait([task], timeout=0.01)  # let it start
@@ -48,21 +45,19 @@ async def test_guard_logs_on_cancellation(assert_logs, caplog):
 
 
 async def test_guard_is_silent_when_finishable(assert_logs, caplog):
-    caplog.set_level(0)
     logger = logging.getLogger()
     await create_guarded_task(sample(), name='this task', logger=logger, finishable=True)
-    assert_logs([], prohibited=["This task has finished unexpectedly"])
+    assert_logs(prohibited=["This task has finished unexpectedly"])
     assert not caplog.messages
 
 
 async def test_guard_is_silent_when_cancellable(assert_logs, caplog):
-    caplog.set_level(0)
     logger = logging.getLogger()
     task = create_guarded_task(coro=delay(1), name='this task', logger=logger, cancellable=True)
     await asyncio.wait([task], timeout=0.01)  # let it start
     task.cancel()
     await asyncio.wait([task], timeout=0.01)  # let it react
-    assert_logs([], prohibited=["This task is cancelled"])
+    assert_logs(prohibited=["This task is cancelled"])
     assert not caplog.messages
 
 

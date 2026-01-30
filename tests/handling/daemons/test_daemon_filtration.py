@@ -10,8 +10,7 @@ import kopf
 
 
 async def test_daemon_filtration_satisfied(
-        settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle):
-    caplog.set_level(logging.DEBUG)
+        settings, resource, dummy, assert_logs, k8s_mocked, simulate_cycle):
     executed = asyncio.Event()
 
     @kopf.daemon(*resource, id='fn',
@@ -43,8 +42,7 @@ async def test_daemon_filtration_satisfied(
 ])
 async def test_daemon_filtration_mismatched(
         settings, resource, mocker, labels, annotations,
-        caplog, assert_logs, k8s_mocked, simulate_cycle):
-    caplog.set_level(logging.DEBUG)
+        assert_logs, k8s_mocked, simulate_cycle):
     spawn_daemons = mocker.patch('kopf._core.engines.daemons.spawn_daemons')
 
     @kopf.daemon(*resource, id='fn',

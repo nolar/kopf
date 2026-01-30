@@ -1,5 +1,4 @@
 import asyncio
-import logging
 
 import pytest
 
@@ -16,9 +15,7 @@ EVENT_TYPES = EVENT_TYPES_WHEN_EXISTS + EVENT_TYPES_WHEN_GONE
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_reporting_on_resource_readiness(
-        resource, settings, registry, indexers, caplog, event_type, handlers, looptime):
-    caplog.set_level(logging.DEBUG)
-
+        resource, settings, registry, indexers, event_type, handlers, looptime):
     operator_indexed = ToggleSet(all)
     resource_indexed = await operator_indexed.make_toggle()
     await process_resource_event(
@@ -42,9 +39,7 @@ async def test_reporting_on_resource_readiness(
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_blocking_when_operator_is_not_ready(
-        resource, settings, registry, indexers, caplog, event_type, handlers, looptime):
-    caplog.set_level(logging.DEBUG)
-
+        resource, settings, registry, indexers, event_type, handlers, looptime):
     operator_indexed = ToggleSet(all)
     resource_listed = await operator_indexed.make_toggle()
     resource_indexed = await operator_indexed.make_toggle()
@@ -71,8 +66,7 @@ async def test_blocking_when_operator_is_not_ready(
 @pytest.mark.parametrize('pressure_on', [False, True])
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_unblocking_once_operator_is_ready(
-        resource, settings, registry, indexers, caplog, event_type, pressure_on, handlers, looptime):
-    caplog.set_level(logging.DEBUG)
+        resource, settings, registry, indexers, event_type, pressure_on, handlers, looptime):
 
     async def delayed_readiness(delay: float):
         await asyncio.sleep(delay)

@@ -1,13 +1,11 @@
 import asyncio
-import logging
 
 import kopf
 from kopf._core.intents.stoppers import DaemonStoppingReason
 
 
 async def test_running_daemon_is_stopped_when_mismatches(
-        resource, dummy, looptime, mocker, caplog, assert_logs, k8s_mocked, simulate_cycle):
-    caplog.set_level(logging.DEBUG)
+        resource, dummy, looptime, mocker, assert_logs, k8s_mocked, simulate_cycle):
     executed = asyncio.Event()
 
     @kopf.daemon(*resource, id='fn', when=lambda **_: is_matching)

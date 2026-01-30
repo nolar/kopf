@@ -1,5 +1,4 @@
 import asyncio
-import logging
 
 import freezegun
 import pytest
@@ -20,8 +19,7 @@ from kopf._core.reactor.processing import process_resource_event
 ], ids=['slow'])
 async def test_timed_out_handler_fails(
         registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,
-        caplog, assert_logs, k8s_mocked, looptime, now, ts):
-    caplog.set_level(logging.DEBUG)
+        assert_logs, k8s_mocked, looptime, now, ts):
     name1 = f'{cause_type}_fn'
 
     event_type = None if cause_type == Reason.RESUME else 'irrelevant'
@@ -71,8 +69,7 @@ async def test_timed_out_handler_fails(
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_retries_limited_handler_fails(
         registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,
-        caplog, assert_logs, k8s_mocked, looptime):
-    caplog.set_level(logging.DEBUG)
+        assert_logs, k8s_mocked, looptime):
     name1 = f'{cause_type}_fn'
 
     event_type = None if cause_type == Reason.RESUME else 'irrelevant'

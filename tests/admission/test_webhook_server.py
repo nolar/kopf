@@ -41,8 +41,7 @@ async def test_unspecified_port_allocates_a_random_port(responder):
             break  # do not sleep
 
 
-async def test_unspecified_addr_uses_all_interfaces(responder, caplog, assert_logs):
-    caplog.set_level(0)
+async def test_unspecified_addr_uses_all_interfaces(responder, assert_logs):
     server = WebhookServer(port=22533, path='/p1/p2', insecure=True)
     async with server:
         async for client_config in server(responder.fn):

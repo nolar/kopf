@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-import logging
 
 import freezegun
 import iso8601
@@ -29,9 +28,7 @@ EVENT_TYPES = EVENT_TYPES_WHEN_EXISTS + EVENT_TYPES_WHEN_GONE
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_successes_are_removed_from_the_indexing_state(
-        resource, namespace, settings, registry, memories, indexers, caplog, event_type, handlers):
-    caplog.set_level(logging.DEBUG)
-
+        resource, namespace, settings, registry, memories, indexers, event_type, handlers):
     # Any "future" time works and affects nothing as long as it is the same
     basetime = datetime.datetime.now(tz=datetime.timezone.utc)
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
@@ -58,9 +55,7 @@ async def test_successes_are_removed_from_the_indexing_state(
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_temporary_failures_with_no_delays_are_reindexed(
-        resource, namespace, settings, registry, memories, indexers, index, caplog, event_type, handlers):
-    caplog.set_level(logging.DEBUG)
-
+        resource, namespace, settings, registry, memories, indexers, index, event_type, handlers):
     # Any "future" time works and affects nothing as long as it is the same
     basetime = datetime.datetime.now(tz=datetime.timezone.utc)
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
@@ -86,9 +81,7 @@ async def test_temporary_failures_with_no_delays_are_reindexed(
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_temporary_failures_with_expired_delays_are_reindexed(
-        resource, namespace, settings, registry, memories, indexers, index, caplog, event_type, handlers):
-    caplog.set_level(logging.DEBUG)
-
+        resource, namespace, settings, registry, memories, indexers, index, event_type, handlers):
     # Any "future" time works and affects nothing as long as it is the same
     basetime = datetime.datetime.now(tz=datetime.timezone.utc)
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
@@ -113,9 +106,7 @@ async def test_temporary_failures_with_expired_delays_are_reindexed(
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_permanent_failures_are_not_reindexed(
-        resource, namespace, settings, registry, memories, indexers, index, caplog, event_type, handlers):
-    caplog.set_level(logging.DEBUG)
-
+        resource, namespace, settings, registry, memories, indexers, index, event_type, handlers):
     # Any "future" time works and affects nothing as long as it is the same
     basetime = datetime.datetime.now(tz=datetime.timezone.utc)
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
@@ -148,8 +139,7 @@ async def test_permanent_failures_are_not_reindexed(
 @pytest.mark.usefixtures('indexed_123')
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_removed_and_remembered_on_permanent_errors(
-        resource, namespace, settings, registry, memories, indexers, index, caplog, event_type, handlers):
-    caplog.set_level(logging.DEBUG)
+        resource, namespace, settings, registry, memories, indexers, index, event_type, handlers):
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     memory = await memories.recall(raw_body=body)
     handlers.index_mock.side_effect = PermanentError("boo!")
@@ -184,8 +174,7 @@ async def test_removed_and_remembered_on_permanent_errors(
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_removed_and_remembered_on_temporary_errors(
         resource, namespace, settings, registry, memories, indexers, index, handlers,
-        caplog, event_type, delay_kwargs, expected_delayed):
-    caplog.set_level(logging.DEBUG)
+        event_type, delay_kwargs, expected_delayed):
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     memory = await memories.recall(raw_body=body)
     handlers.index_mock.side_effect = TemporaryError("boo!", **delay_kwargs)
@@ -212,8 +201,7 @@ async def test_removed_and_remembered_on_temporary_errors(
 @pytest.mark.usefixtures('indexed_123')
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_preserved_on_ignored_errors(
-        resource, namespace, settings, registry, memories, indexers, index, caplog, event_type, handlers):
-    caplog.set_level(logging.DEBUG)
+        resource, namespace, settings, registry, memories, indexers, index, event_type, handlers):
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     memory = await memories.recall(raw_body=body)
     handlers.index_mock.side_effect = Exception("boo!")
