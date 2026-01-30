@@ -693,3 +693,61 @@ Interpret it as: no throttling delays set --- no throttling sleeps done.
 If needed, this value can be an arbitrary collection/iterator/object:
 only ``iter()`` is called on every new throttling cycle, no other protocols
 are required; but make sure that it is re-iterable for multiple uses.
+
+
+Log levels & filters
+====================
+
+In case the logs of any component are too exessive, or contain secret data,
+this can be controlled with the usual Python logging machinery.
+
+For example, to disable the access logs of the probing server:
+
+.. code-block:: python
+
+    import logging
+
+    @kopf.on.startup()
+    async def configure(**_):
+        logging.getLogger('aiohttp.access').propagate = False
+
+To selectively filter only some log messages but not the others:
+
+.. code-block:: python
+
+    import logging
+    import kopf
+
+    class ExcludeProbesFilter(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> bool:
+            return 'GET /healthz ' not in record.getMessage()
+
+    @kopf.on.startup()
+    async def configure_access_logs(**_):
+        logging.getLogger('aiohttp.access').addFilter(ExcludeProbesFilter())
+
+For more information on the logging configuration, see:
+`logging <https://docs.python.org/3/library/logging.html>`_.
+
+In particular, you can use the special logger ``kopf.objects`` to filter
+the object-related log messages coming from the :kwarg:`logger` and from
+Kopf's internals, which are then posted as Kubernetes events (``v1/events``):
+
+.. code-block:: python
+
+    import logging
+    import kopf
+
+    class ExcludeKopfInternals(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> bool:
+            return '/kopf/' not in record.pathname
+
+    @kopf.on.startup()
+    async def configure_kopf_logs(**_):
+        logging.getLogger('kopf.objects').addFilter(ExcludeKopfInternals())
+
+.. warning::
+    Beware: the path names and module names of internal modules,
+    so as the extra fields of ``logging.LogRecord`` added by Kopf,
+    can change without warning, do not rely on their stability.
+    They are not a public interface of Kopf.
