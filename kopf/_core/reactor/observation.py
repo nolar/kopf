@@ -347,5 +347,5 @@ def is_deleted(raw_event: bodies.RawEvent) -> bool:
 
 def get_blockers(raw_event: bodies.RawEvent) -> list[tuple[str | None, str | None]]:
     conditions = raw_event['object'].get('status', {}).get('conditions', [])
-    conditions = [cond for cond in conditions if cond['status'] == 'True']
-    return [(cond['reason'], cond['message']) for cond in conditions]
+    conditions = [cond for cond in conditions if cond.get('status') == 'True']
+    return [(cond.get('reason', ''), cond.get('message', '')) for cond in conditions]
