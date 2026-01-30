@@ -201,7 +201,11 @@ def revise_namespaces(
         namespace = references.NamespaceName(raw_event['object']['metadata']['name'])
         matched = any(references.match_namespace(namespace, pattern) for pattern in namespaces)
         deleted = is_deleted(raw_event)
-        if deleted:
+        blockers = get_blockers(raw_event)
+        if deleted and blockers:
+            for reason, message in blockers:
+                logger.debug(f"Namespace {namespace!r} termination pending: {reason}: {message}")
+        elif deleted:
             insights.namespaces.discard(namespace)
         elif matched:
             insights.namespaces.add(namespace)
@@ -334,6 +338,14 @@ def _disable_unsuitable_resources(
 
 
 def is_deleted(raw_event: bodies.RawEvent) -> bool:
+    # Simply marking for deletion is not enough, it must prove it can be deleted first.
+    has_conditions = bool(raw_event['object'].get('status', {}).get('conditions'))
     marked_as_deleted = bool(raw_event['object'].get('metadata', {}).get('deletionTimestamp'))
-    really_is_deleted = raw_event['type'] == 'DELETED'
-    return marked_as_deleted or really_is_deleted
+    really_is_deleted = raw_event['type'] == 'DELETED'  # does not arrive sometimes
+    return (marked_as_deleted and has_conditions) or really_is_deleted
+
+
+def get_blockers(raw_event: bodies.RawEvent) -> list[tuple[str | None, str | None]]:
+    conditions = raw_event['object'].get('status', {}).get('conditions', [])
+    conditions = [cond for cond in conditions if cond['status'] == 'True']
+    return [(cond['reason'], cond['message']) for cond in conditions]
