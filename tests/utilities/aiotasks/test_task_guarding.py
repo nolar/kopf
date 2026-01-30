@@ -51,7 +51,7 @@ async def test_guard_is_silent_when_finishable(assert_logs, caplog):
     caplog.set_level(0)
     logger = logging.getLogger()
     await create_guarded_task(sample(), name='this task', logger=logger, finishable=True)
-    assert_logs([], prohibited=["This task has finished unexpectedly"])
+    assert_logs(prohibited=["This task has finished unexpectedly"])
     assert not caplog.messages
 
 
@@ -62,7 +62,7 @@ async def test_guard_is_silent_when_cancellable(assert_logs, caplog):
     await asyncio.wait([task], timeout=0.01)  # let it start
     task.cancel()
     await asyncio.wait([task], timeout=0.01)  # let it react
-    assert_logs([], prohibited=["This task is cancelled"])
+    assert_logs(prohibited=["This task is cancelled"])
     assert not caplog.messages
 
 

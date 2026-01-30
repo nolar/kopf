@@ -22,7 +22,7 @@ async def test_pausing_is_ignored_if_turned_off(
         pass
 
     assert looptime == 0
-    assert_logs([], prohibited=[
+    assert_logs(prohibited=[
         r"Pausing the watch-stream for",
         r"Resuming the watch-stream for",
     ])

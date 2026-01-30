@@ -84,7 +84,7 @@ async def test_logs_are_skipped_in_stealth_mode(
     await touch(identity='id1', resource=peering_resource, settings=settings,
                 namespace=peering_namespace)
 
-    assert_logs([], prohibited=[
+    assert_logs(prohibited=[
         "Keep-alive in",
     ])
 

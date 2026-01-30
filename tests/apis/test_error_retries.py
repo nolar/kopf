@@ -30,7 +30,7 @@ async def test_regular_errors_escalate_without_retries(
 
     assert str(err.value) == "boo"
     assert request_fn.call_count == 1
-    assert_logs([], prohibited=["attempt", "escalating", "retry"])
+    assert_logs(prohibited=["attempt", "escalating", "retry"])
 
 
 @pytest.mark.parametrize('status', [400, 404, 499, 666, 999])
@@ -51,7 +51,7 @@ async def test_client_errors_escalate_without_retries(
 
     assert err.value.status == status
     assert mock.call_count == 1
-    assert_logs([], prohibited=["attempt", "escalating", "retry"])
+    assert_logs(prohibited=["attempt", "escalating", "retry"])
 
 
 @pytest.mark.parametrize('status', [500, 503, 599])

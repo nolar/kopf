@@ -122,7 +122,7 @@ async def test_ignored_for_higher_priority_peer_when_already_on(
     assert conflicts_found.is_on()
     assert looptime == 1.23
     assert not k8s_mocked.patch.called
-    assert_logs([], prohibited=[
+    assert_logs(prohibited=[
         "Possibly conflicting operators",
         "Pausing all operators, including self",
         "Pausing operations in favour of",
@@ -217,7 +217,7 @@ async def test_ignored_for_lower_priority_peer_when_already_off(
     assert conflicts_found.is_off()
     assert looptime == 0
     assert not k8s_mocked.patch.called
-    assert_logs([], prohibited=[
+    assert_logs(prohibited=[
         "Possibly conflicting operators",
         "Pausing all operators, including self",
         "Pausing operations in favour of",
