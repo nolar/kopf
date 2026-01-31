@@ -1,6 +1,6 @@
 import pytest
 
-from kopf._cogs.clients.errors import APIClientError, APIError
+from kopf._cogs.clients.errors import APIError, APITooManyRequestsError
 from kopf._cogs.clients.watching import Bookmark, infinite_watch
 
 STREAM_WITH_UNKNOWN_EVENT = [
@@ -65,17 +65,36 @@ async def test_infinite_watch_never_exits_normally(
     assert events[4]['object']['spec'] == 'b'
 
 
-async def test_too_many_requests_exception(
+async def test_too_many_requests_exception_old_style(
         settings, resource, stream, namespace, enforced_session, mocker):
 
-    exc = APIClientError({
+    exc = APITooManyRequestsError({
         "apiVersion": "v1",
-        "code": 429,
+        "code": 666,  # must be irrelevant, purely informational
         "status": "Failure",
         "details": {
             "retryAfterSeconds": 1,
         }
     }, status=429, headers={})
+    enforced_session.request = mocker.Mock(side_effect=exc)
+    stream.feed([], namespace=namespace)
+    stream.close(namespace=namespace)
+
+    events = []
+    async for event in infinite_watch(settings=settings,
+                                      resource=resource,
+                                      namespace=namespace,
+                                      _iterations=1):
+        events.append(event)
+
+    assert len(events) == 0
+
+
+async def test_too_many_requests_exception_new_style(
+        settings, resource, stream, namespace, enforced_session, mocker):
+
+    headers = {'Retry-After': '1'}
+    exc = APITooManyRequestsError("Too many requests.", status=429, headers=headers)
     enforced_session.request = mocker.Mock(side_effect=exc)
     stream.feed([], namespace=namespace)
     stream.close(namespace=namespace)

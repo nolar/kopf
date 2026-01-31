@@ -658,6 +658,21 @@ on the next error.
     For errors in the framework, see :ref:`error-throttling`.
 
 
+Throttling of "too many requests"
+=================================
+
+When the API server responds with HTTP 429 "Too Many Requests", Kopf will retry
+as for usual errors. However, it will obey the server-suggested interval
+if it is longer than what Kopf would use otherwise from its own
+``settings.networking.error_backoffs``.
+
+``settings.networking.enforce_retry_after`` (boolean) tells Kopf what to do
+when its own backoff interval is longer than the server-requested interval.
+If ``True``, the server-provided interval will be used. If ``False`` (default),
+Kopf's longer backoff interval will be used. Either way, the backoff interval
+will never be shorter than what the server requested.
+
+
 .. _error-throttling:
 
 Throttling of unexpected errors
