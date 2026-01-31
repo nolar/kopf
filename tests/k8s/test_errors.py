@@ -141,3 +141,19 @@ async def test_error_with_parseable_nonk8s_payload(
     assert err.value.message is None
     assert err.value.details is None
     assert str(err.value) == ""
+
+
+async def test_cutting_the_text_response_overflow(resp_mocker, aresponses, hostname):
+    resp = aresponses.Response(
+        status=400,
+        reason='oops',
+        headers={'Content-Type': 'application/json'},
+        text='helloworld'*1000,
+    )
+    aresponses.add(hostname, '/', 'get', resp_mocker(return_value=resp))
+
+    with pytest.raises(APIError) as err:
+        await get_it(f"http://{hostname}/")
+
+    # 256 comes from TEXT_ERROR_MAX_SIZE, 10 is the length of "helloworld".
+    assert str(err.value) == "helloworld" * (256//10) + "hel..."
