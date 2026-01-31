@@ -75,7 +75,7 @@ async def test_too_many_requests_exception(
         "details": {
             "retryAfterSeconds": 1,
         }
-    }, status=429)
+    }, status=429, headers={})
     enforced_session.request = mocker.Mock(side_effect=exc)
     stream.feed([], namespace=namespace)
     stream.close(namespace=namespace)
