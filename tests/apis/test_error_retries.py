@@ -142,11 +142,12 @@ async def test_retried_until_succeeded(
     ([0, 0], 3),
     ([1, 2], 3),
 ])
+@pytest.mark.parametrize('status', [429, 500])
 async def test_backoffs_as_lists(
         assert_logs, settings, logger, resp_mocker, aresponses, hostname, sleep,
-        backoffs, exp_calls):
+        backoffs, exp_calls, status):
     # side_effect instead of return_value -- to generate a new response on every call, not reuse it.
-    mock = resp_mocker(side_effect=lambda: aiohttp.web.json_response({}, status=500, reason='oops'))
+    mock = resp_mocker(side_effect=lambda: aiohttp.web.json_response({}, status=status, reason='oops'))
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
     aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
@@ -204,3 +205,74 @@ async def test_backoffs_as_iterables(
     assert mock.call_count == 8
     all_sleeps = [call[0][0] for call in sleep.call_args_list]
     assert all_sleeps == [1, 2, 3, 1, 2, 3]
+
+
+
+@pytest.mark.parametrize('headers, payload', [
+    pytest.param({'Retry-After': '10'}, {}, id='new-style'),
+    pytest.param({}, {'kind': 'Status', 'details': {'retryAfterSeconds': 10}}, id='old-style'),
+])
+async def test_retry_after_overrides_backoffs_when_enforced(
+        assert_logs, settings, logger, resp_mocker, aresponses, hostname, sleep, headers, payload):
+
+    # side_effect instead of return_value -- to generate a new response on every call, not reuse it.
+    mock = resp_mocker(side_effect=lambda: aiohttp.web.json_response(payload, status=429, headers=headers))
+    aresponses.add(hostname, '/url', 'get', mock)
+    aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
+    aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
+    aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
+    aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
+
+    settings.networking.enforce_retry_after = True
+    settings.networking.error_backoffs = [5, 10, 15]
+    with pytest.raises(APIError):
+        await request('get', '/url', settings=settings, logger=logger)
+
+    assert_logs([
+        "Overriding the backoff 5s with the retry-after 10s",
+        "attempt #1/4 failed; will retry",
+        "Overriding the backoff 10s with the retry-after 10s",
+        "attempt #2/4 failed; will retry",
+        "Overriding the backoff 15s with the retry-after 10s",
+        "attempt #3/4 failed",
+        "attempt #4/4 failed; escalating",
+    ])
+
+    assert mock.call_count == 4
+    all_sleeps = [call[0][0] for call in sleep.call_args_list]
+    assert all_sleeps == [10, 10, 10]  # enforced retry-after
+
+
+@pytest.mark.parametrize('headers, payload', [
+    pytest.param({'Retry-After': '10'}, {}, id='new-style'),
+    pytest.param({}, {'kind': 'Status', 'details': {'retryAfterSeconds': 10}}, id='old-style'),
+])
+async def test_retry_after_overrides_backoffs_when_longer(
+        assert_logs, settings, logger, resp_mocker, aresponses, hostname, sleep, headers, payload):
+
+    # side_effect instead of return_value -- to generate a new response on every call, not reuse it.
+    mock = resp_mocker(side_effect=lambda: aiohttp.web.json_response(payload, status=429, headers=headers))
+    aresponses.add(hostname, '/url', 'get', mock)
+    aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
+    aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
+    aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
+    aresponses.add(hostname, '/url', 'get', mock)  # repeat=N would copy the mock, lose all counts
+
+    settings.networking.error_backoffs = [5, 10, 15]
+    with pytest.raises(APIError):
+        await request('get', '/url', settings=settings, logger=logger)
+
+    assert_logs([
+        "Overriding the backoff 5s with the retry-after 10s",  # because retry-after is bigger
+        "attempt #1/4 failed; will retry",
+        "attempt #2/4 failed; will retry",
+        "attempt #3/4 failed",
+        "attempt #4/4 failed",
+    ], prohibited=[
+        "Overriding the backoff 10s with the retry-after 10s",
+        "Overriding the backoff 15s with the retry-after 10s",
+    ])
+
+    assert mock.call_count == 4
+    all_sleeps = [call[0][0] for call in sleep.call_args_list]
+    assert all_sleeps == [10, 10, 15]  # never smaller than retry-after

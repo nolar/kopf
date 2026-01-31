@@ -87,17 +87,9 @@ async def infinite_watch(
                     async for raw_event in stream:
                         yield raw_event
                 except errors.APITooManyRequestsError as ex:
-                    if ex.headers and ex.headers.get("Retry-After"):  # the new way
-                        retry_after = int(ex.headers["Retry-After"])
-                    elif ex.details and ex.details.get("retryAfterSeconds"):  # the old way
-                        retry_after = ex.details["retryAfterSeconds"]
-                    else:
-                        retry_after = DEFAULT_RETRY_DELAY_SECONDS
-                    logger.warning(
-                        f"Receiving `too many requests` error from server, will retry after "
-                        f"{retry_after} seconds. Error details: {ex!r}"
-                    )
-                    await asyncio.sleep(retry_after)
+                    # If it has escalated after all the retries, go back to trying anyway.
+                    # This stream is not allowed to fail, unlike other regular requests.
+                    pass
             await asyncio.sleep(settings.watching.reconnect_backoff)
     finally:
         logger.debug(f"Stopping the watch-stream for {resource} {where}.")

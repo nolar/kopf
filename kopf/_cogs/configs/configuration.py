@@ -376,6 +376,19 @@ class NetworkingSettings:
     For more information on the API errors retrying, see :doc:`api-retrying`.
     """
 
+    enforce_retry_after: bool = False
+    """
+    Should we obey the error backoffs if a retry-after is received from the API?
+
+    If ``True``, the retry-after is used always, regardless of the error backoff
+    of the current request attempt (e.g., for the HTTP 429 Too Many Requests).
+
+    If ``False``, the error backoff is used if longer than the retry-after.
+
+    Regardless of the setting, the retry-after is always the minimum backoff
+    (the request attempt never awaits shorter than what the server asked for).
+    """
+
 
 @dataclasses.dataclass
 class PersistenceSettings:
