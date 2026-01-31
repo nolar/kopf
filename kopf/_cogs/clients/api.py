@@ -96,7 +96,8 @@ async def request(
             raise
 
         # NOTE(vsaienko): during k8s upgrade API might throw 403 forbidden. Use retries for this exception as well.
-        except (aiohttp.ClientConnectionError, errors.APIServerError, asyncio.TimeoutError, errors.APIForbiddenError) as e:
+        except (aiohttp.ClientConnectionError, errors.APIServerError, asyncio.TimeoutError,
+                errors.APIForbiddenError, errors.APITooManyRequestsError) as e:
             if '[SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY]' in str(e):  # for ClientOSError
                 logger.error(f"Request attempt {idx} failed; SSL closed; will re-authenticate: {what}")
                 raise errors.APISessionClosed("SSL data stream is closed.") from e

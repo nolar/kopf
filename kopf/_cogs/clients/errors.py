@@ -133,6 +133,10 @@ class APIConflictError(APIClientError):
     pass
 
 
+class APITooManyRequestsError(APIClientError):
+    pass
+
+
 class APISessionClosed(Exception):
     """
     A helper to escalate from inside the requests to cause re-authentication.
@@ -175,6 +179,7 @@ async def check_response(
             APIForbiddenError if response.status == 403 else
             APINotFoundError if response.status == 404 else
             APIConflictError if response.status == 409 else
+            APITooManyRequestsError if response.status == 429 else
             APIClientError if 400 <= response.status < 500 else
             APIServerError if 500 <= response.status < 600 else
             APIError

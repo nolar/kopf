@@ -3,8 +3,8 @@ import pytest
 
 from kopf._cogs.clients.auth import APIContext, authenticated
 from kopf._cogs.clients.errors import APIClientError, APIConflictError, APIError, \
-                                      APIForbiddenError, APINotFoundError, \
-                                      APIServerError, check_response
+                                      APIForbiddenError, APINotFoundError, APIServerError, \
+                                      APITooManyRequestsError, check_response
 
 
 @authenticated
@@ -68,6 +68,7 @@ async def test_no_error_on_success(
     (403, APIForbiddenError),
     (404, APINotFoundError),
     (409, APIConflictError),
+    (429, APITooManyRequestsError),
     (400, APIClientError),
     (403, APIClientError),
     (404, APIClientError),
@@ -99,7 +100,7 @@ async def test_error_with_dict_payload(
     assert err.value.details == {'a': 'b'}
 
 
-@pytest.mark.parametrize('status', [400, 500, 666])
+@pytest.mark.parametrize('status', [400, 429, 500, 666])
 async def test_error_with_text_payload(
         resp_mocker, aresponses, hostname, status):
 

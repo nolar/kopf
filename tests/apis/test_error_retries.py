@@ -31,8 +31,9 @@ async def test_regular_errors_escalate_without_retries(
     assert_logs(prohibited=["attempt", "escalating", "retry"])
 
 
-@pytest.mark.parametrize('status', [400, 404, 499, 666, 999])
-async def test_client_errors_escalate_without_retries(
+# All client errors except explicitly retryable (403, 429).
+@pytest.mark.parametrize('status', [400, 404, 409, 499, 666, 999])
+async def test_permanent_errors_escalate_without_retries(
         assert_logs, settings, logger, resp_mocker, aresponses, hostname, status):
     # side_effect instead of return_value -- to generate a new response on every call, not reuse it.
     mock = resp_mocker(side_effect=lambda: aiohttp.web.json_response({}, status=status, reason='oops'))
@@ -50,8 +51,9 @@ async def test_client_errors_escalate_without_retries(
     assert_logs(prohibited=["attempt", "escalating", "retry"])
 
 
-@pytest.mark.parametrize('status', [500, 503, 599])
-async def test_server_errors_escalate_with_retries(
+# All server errors, certain client errors (403, 429).
+@pytest.mark.parametrize('status', [403, 429, 500, 503, 599])
+async def test_temporary_errors_escalate_with_retries(
         assert_logs, settings, logger, resp_mocker, aresponses, hostname, status):
     # side_effect instead of return_value -- to generate a new response on every call, not reuse it.
     mock = resp_mocker(side_effect=lambda: aiohttp.web.json_response({}, status=status, reason='oops'))
