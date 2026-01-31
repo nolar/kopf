@@ -5,6 +5,7 @@ import asyncio
 import base64
 import contextlib
 import functools
+import hashlib
 import ipaddress
 import json
 import logging
@@ -74,7 +75,7 @@ class WebhookServer(webhacks.WebhookContextManager):
     * ``verify_mode``, ``verify_cafile``, ``verify_capath``, ``verify_cadata``
       will be loaded into the SSL context for verifying the client certificates
       when provided and if provided by the clients, i.e. apiservers or curl;
-      (`ssl.SSLContext.verify_mode`, `ssl.SSLContext.load_verify_locations`).
+      (``ssl.SSLContext.verify_mode``, ``ssl.SSLContext.load_verify_locations``).
     * ``insecure`` flag disables HTTPS and runs an HTTP webhook server.
       This is used in ngrok for a local endpoint, but can be used for debugging
       or when the certificate-generating dependencies/extras are not installed.
@@ -103,6 +104,8 @@ class WebhookServer(webhacks.WebhookContextManager):
     verify_capath: StrPath | None
     verify_cadata: str | bytes | None
 
+    file_check_interval: float
+
     def __init__(
             self,
             *,
@@ -129,6 +132,8 @@ class WebhookServer(webhacks.WebhookContextManager):
             verify_cafile: StrPath | None = None,
             verify_capath: StrPath | None = None,
             verify_cadata: str | bytes | None = None,
+            # File re-reading interval for cert renewals:
+            file_check_interval: float = 60.,
     ) -> None:
         super().__init__()
         self.addr = addr
@@ -148,6 +153,7 @@ class WebhookServer(webhacks.WebhookContextManager):
         self.verify_cafile = verify_cafile
         self.verify_capath = verify_capath
         self.verify_cadata = verify_cadata
+        self.file_check_interval = file_check_interval
 
     async def __call__(self, fn: reviews.WebhookFn) -> AsyncIterator[reviews.WebhookClientConfig]:
 
@@ -155,37 +161,39 @@ class WebhookServer(webhacks.WebhookContextManager):
         async def _serve_fn(request: aiohttp.web.Request) -> aiohttp.web.Response:
             return await self._serve(fn, request)
 
-        cadata, context = self._build_ssl()
-        path = self.path.rstrip('/') if self.path else ''
-        app = aiohttp.web.Application()
-        app.add_routes([aiohttp.web.post(f"{path}/{{id:.*}}", _serve_fn)])
-        runner = aiohttp.web.AppRunner(app, handle_signals=False)
-        await runner.setup()
-        try:
-            # Note: reuse_port is mostly (but not only) for fast-running tests with SSL sockets;
-            # multi-threaded sockets are not really used -- high load is not expected for webhooks.
-            addr = self.addr or None  # None is aiohttp's "any interface"
-            port = self.port or self._allocate_free_port()
-            site = aiohttp.web.TCPSite(runner, addr, port, ssl_context=context, reuse_port=True)
-            await site.start()
+        while True:
+            cadata, context = self._build_ssl()
+            path = self.path.rstrip('/') if self.path else ''
+            app = aiohttp.web.Application()
+            app.add_routes([aiohttp.web.post(f"{path}/{{id:.*}}", _serve_fn)])
+            runner = aiohttp.web.AppRunner(app, handle_signals=False)
+            await runner.setup()
+            try:
+                # Note: reuse_port is mostly (but not only) for fast-running tests with SSL sockets;
+                # multi-threaded sockets are not really used -- high load is not expected for webhooks.
+                addr = self.addr or None  # None is aiohttp's "any interface"
+                port = self.port or self._allocate_free_port()
+                site = aiohttp.web.TCPSite(runner, addr, port, ssl_context=context, reuse_port=True)
+                await site.start()
 
-            # Log with the actual URL: normalised, with hostname/port set.
-            schema = 'http' if context is None else 'https'
-            url = self._build_url(schema, addr or '*', port, self.path or '')
-            logger.debug(f"Listening for webhooks at {url}")
-            host = self.host or self.DEFAULT_HOST or self._get_accessible_addr(self.addr)
-            url = self._build_url(schema, host, port, self.path or '')
-            logger.debug(f"Accessing the webhooks at {url}")
+                # Log with the actual URL: normalised, with hostname/port set.
+                schema = 'http' if context is None else 'https'
+                url = self._build_url(schema, addr or '*', port, self.path or '')
+                logger.debug(f"Listening for webhooks at {url}")
+                host = self.host or self.DEFAULT_HOST or self._get_accessible_addr(self.addr)
+                url = self._build_url(schema, host, port, self.path or '')
+                logger.debug(f"Accessing the webhooks at {url}")
 
-            client_config = reviews.WebhookClientConfig(url=url)
-            if cadata is not None:
-                client_config['caBundle'] = base64.b64encode(cadata).decode('ascii')
+                client_config = reviews.WebhookClientConfig(url=url)
+                if cadata is not None:
+                    client_config['caBundle'] = base64.b64encode(cadata).decode('ascii')
 
-            yield client_config
-            await asyncio.Event().wait()
-        finally:
-            # On any reason of exit, stop serving the endpoint.
-            await runner.cleanup()
+                yield client_config
+                await self.__sleep_forever_or_until_ssl_files_change()
+                logger.debug(f"Restarting with the renewed SSL certificate files.")
+            finally:
+                # On any reason of exit, stop serving the endpoint.
+                await runner.cleanup()
 
     @staticmethod
     async def _serve(
@@ -235,7 +243,7 @@ class WebhookServer(webhacks.WebhookContextManager):
         """
         Convert a "catch-all" listening address to the accessible hostname.
 
-        "Catch-all" interfaces like `0.0.0.0` or `::/0` can be used
+        "Catch-all" interfaces like ``0.0.0.0`` or ``::/0`` can be used
         for listening to utilise all interfaces, but cannot be accessed.
         Some other real ("specified") address must be used for that.
 
@@ -341,6 +349,33 @@ class WebhookServer(webhacks.WebhookContextManager):
             pathlib.Path(self.cadump).write_bytes(cadata)
 
         return cadata, context
+
+    async def __sleep_forever_or_until_ssl_files_change(self) -> None:
+        """
+        Wake up every time the SSL cert files change. Sleep forever otherwise.
+
+        The mounted secrets do not renew their metadata or send the filesystem
+        events, so only full re-read is the guarnateed way of file monitoring.
+        """
+        paths = [self.certfile, self.pkeyfile, self.cafile]
+        paths = [path for path in paths if path is not None]
+        initial_digest: str | None = None
+        while True:
+            # For security, do not keep the secrets in memory, hash & garbage collect them asap.
+            # Also, minimize the memory footprint by keeping only a tiny hash of all files combined.
+            hasher = hashlib.new('sha256')  # the algorith is irrelevant
+            for path in paths:
+                with open(str(path), 'rb') as f:
+                    hasher.update(f.read())
+            digest = hasher.hexdigest()
+
+            if initial_digest is None:
+                initial_digest = digest
+
+            if digest == initial_digest:
+                await asyncio.sleep(self.file_check_interval)
+            else:
+                return
 
     @staticmethod
     def build_certificate(
@@ -463,7 +498,7 @@ class WebhookNgrokTunnel(webhacks.WebhookContextManager):
     .. _ngrok: https://ngrok.com/
 
     ``addr``, ``port``, and ``path`` have the same meaning as in
-    `kopf.WebhookServer`: where to listen for connections locally.
+    :class:`kopf.WebhookServer`: where to listen for connections locally.
     Ngrok then tunnels this endpoint remotely with.
 
     Mind that the ngrok webhook tunnel runs the local webhook server
@@ -624,7 +659,7 @@ class WebhookAutoServer(ClusterDetector, WebhookServer):
     (K3d/K3d and Minikube at the moment). In all other cases,
     a regular local server is started without hostname overrides.
 
-    If automatic tunneling is possible, consider `WebhookAutoTunnel` instead.
+    If automatic tunneling is possible, consider :class:`WebhookAutoTunnel`.
     """
     async def __call__(self, fn: reviews.WebhookFn) -> AsyncIterator[reviews.WebhookClientConfig]:
         host = self.DEFAULT_HOST = await self.guess_host()
@@ -638,14 +673,15 @@ class WebhookAutoServer(ClusterDetector, WebhookServer):
 
 class WebhookAutoTunnel(ClusterDetector, webhacks.WebhookContextManager):
     """
-    The same as `WebhookAutoServer`, but with possible tunneling.
+    The same as :class:`WebhookAutoServer`, but with possible tunneling.
 
     Generally, tunneling gives more possibilities to run in any environment,
     but it must not happen without a permission from the developers,
     and is not possible if running in a completely isolated/local/CI/CD cluster.
     Therefore, developers should activated automatic setup explicitly.
 
-    If automatic tunneling is prohibited or impossible, use `WebhookAutoServer`.
+    If automatic tunneling is prohibited or impossible,
+    use :class:`WebhookAutoServer`.
 
     .. note::
 

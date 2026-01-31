@@ -88,7 +88,9 @@ Create a peering object as needed with one of:
 Custom peering
 ==============
 
-The operator can be instructed to use alternative peering objects::
+The operator can be instructed to use alternative peering objects:
+
+.. code-block:: bash
 
     kopf run --peering=example ...
     kopf run --peering=example --namespace=some-ns ...
@@ -125,7 +127,9 @@ Standalone mode
 ===============
 
 To prevent an operator from peering and talking to other operators,
-the standalone mode can be enabled::
+the standalone mode can be enabled:
+
+.. code-block:: bash
 
     kopf run --standalone ...
 

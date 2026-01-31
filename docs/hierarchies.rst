@@ -117,11 +117,17 @@ can be marked as "owned" by one or more other resources (owners or parents).
 If the owner is deleted, its children will be deleted too, automatically,
 and no additional handlers are needed.
 
+The ``owner`` is dict containing the fields ``apiVersion``, ``kind``,
+``metadata.name``, ``metadata.uid`` (other fields are ignored).
+Usually this can be the :kwarg:`body` from the handler keyword arguments,
+but you can construct your own dict or get it from a 3rd-party client library.
+
 To set the ownership, use :func:`kopf.append_owner_reference`.
 To remove the ownership, use :func:`kopf.remove_owner_reference`:
 
 .. code-block:: python
 
+    owner = {'apiVersion': 'v1', 'kind': 'Pod', 'metadata': {'name': 'pod1', 'uid': '123…'}}
     kopf.append_owner_reference(objs, owner)
     kopf.remove_owner_reference(objs, owner)
 

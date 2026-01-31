@@ -7,7 +7,6 @@ import json
 import logging
 import re
 import sys
-import time
 from unittest.mock import AsyncMock, Mock
 
 import aiohttp.web
@@ -235,7 +234,7 @@ async def enforced_context(fake_vault, mocker):
     Patchable context/session for some tests, e.g. with local exceptions.
 
     The local exceptions are supposed to simulate either the code issues,
-    or the connection issues. `aresponses` does not allow to raise arbitrary
+    or the connection issues. ``aresponses`` does not allow to raise arbitrary
     exceptions on the client side, but only to return the erroneous responses.
 
     This test forces the re-authenticating decorators to always use one specific
@@ -258,21 +257,25 @@ async def enforced_session(enforced_context: APIContext):
 @pytest.fixture()
 def resp_mocker(fake_vault, enforced_session, aresponses):
     """
-    A factory of server-side callbacks for `aresponses` with mocking/spying.
+    A factory of server-side callbacks for ``aresponses`` with mocking/spying.
 
     The value of the fixture is a function, which returns a coroutine mock.
-    That coroutine mock should be passed to `aresponses.add` as a response
+    That coroutine mock should be passed to ``aresponses.add()`` as a response
     callback function. When called, it calls the mock defined by the function's
     arguments (specifically, return_value or side_effects).
 
-    The difference from passing the responses directly to `aresponses.add`
+    The difference from passing the responses directly to ``aresponses.add()``
     is that it is possible to assert on whether the response was handled
     by that callback at all (i.e. HTTP URL & method matched), especially
     if there are multiple responses registered.
 
-    Sample usage::
+    Sample usage:
 
-        def test_me(resp_mocker):
+    .. code-block:: python
+
+        import aiohttp.web
+
+        def test_me(aresponses, resp_mocker):
             response = aiohttp.web.json_response({'a': 'b'})
             callback = resp_mocker(return_value=response)
             aresponses.add(hostname, '/path/', 'get', callback)
@@ -347,7 +350,7 @@ def stream(fake_vault, resp_mocker, aresponses, hostname, resource, version_api)
     def close(*, namespace: str | None):
         """
         A way to stop the stream from reconnecting: say it that the resource version is gone
-        (we know a priori that it stops on this condition, and escalates to `infinite_stream`).
+        (we know a priori that it stops on this condition, and escalates to ``infinite_stream``).
         """
         feed([{'type': 'ERROR', 'object': {'code': 410}}], namespace=namespace)
 
@@ -428,7 +431,7 @@ async def _fake_vault(mocker, hostname, aresponses):
 
     We cannot keep both the ContextVar and vault closing in the same fixture.
     Pytest runs every async setup and every async teardown in a separate task
-    (a separate ``run_until_complete()``). The `vault_var` remains invisible
+    (a separate ``run_until_complete()``). The ``vault_var`` remains invisible
     to tests (with API calls) and even to the fixture's finalizing part.
     Sync (global) context vars do work and propagate fine — hence 2 fixtures.
 
@@ -453,7 +456,7 @@ def fake_vault(_fake_vault):
 
     Most of the tests expect some credentials to be at least provided
     (even if not used). So, we create and set the vault as if every coroutine
-    is invoked from the central `operator` method (where it is set normally).
+    is invoked from the central :func:`operator` method (where it is set).
 
     Any blocking activities are mocked, so that the tests do not hang.
     """
@@ -608,7 +611,9 @@ def assert_logs(caplog):
     The listed message patterns MUST be present, in the order specified.
     Some other log messages can also be present, but they are ignored.
     """
-    def assert_logs_fn(patterns, prohibited=[], strict=False):
+    caplog.set_level(logging.DEBUG)
+
+    def assert_logs_fn(patterns=[], prohibited=[], strict=False):
         __traceback_hide__ = True
         remaining_patterns = list(patterns)
         for message in caplog.messages:
@@ -650,13 +655,13 @@ def _no_asyncio_pending_tasks(request: pytest.FixtureRequest):
     Ensure there are no unattended asyncio tasks after the test.
 
     It looks  both in the test's main event-loop, and in all other event-loops,
-    such as the background thread of `KopfRunner` (used in e2e tests).
+    such as the background thread of :class:`KopfRunner` (used in e2e tests).
 
     Current solution uses some internals of asyncio, since there is no public
     interface for that. The warnings are printed only at the end of pytest.
 
-    An alternative way: set event-loop's exception handler, force garbage
-    collection after every test, and check messages from `asyncio.Task.__del__`.
+    An alternative way: set the event-loop's exception handler, force garbage
+    collection on every test, and check messages from ``asyncio.Task.__del__``.
     This, however, requires intercepting all event-loop creation in the code.
     """
     before = _get_all_tasks()
@@ -697,7 +702,7 @@ def _no_asyncio_pending_tasks(request: pytest.FixtureRequest):
 
 
 def _get_all_tasks() -> set[asyncio.Task]:
-    """Similar to `asyncio.all_tasks`, but for all event loops at once."""
+    """Similar to :func:`asyncio.all_tasks`, but for all event loops at once."""
     i = 0
     while True:
         try:

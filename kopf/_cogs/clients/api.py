@@ -69,7 +69,7 @@ async def request(
     backoffs = backoffs if isinstance(backoffs, collections.abc.Iterable) else [backoffs]
     count = len(backoffs) + 1 if isinstance(backoffs, collections.abc.Sized) else None
     backoff: float | None
-    for retry, backoff in enumerate(itertools.chain(backoffs, [None]), start=1):
+    for retry, backoff in enumerate(itertools.chain(backoffs, itertools.repeat(None)), start=1):
         idx = f"#{retry}/{count}" if count is not None else f"#{retry}"
         what = f"{method.upper()} {url}"
         try:
@@ -95,12 +95,29 @@ async def request(
                 raise errors.APISessionClosed("Session is closed.") from e
             raise
 
-        # NOTE(vsaienko): during k8s upgrade API might throw 403 forbidden. Use retries for this exception as well.
-        except (aiohttp.ClientConnectionError, errors.APIServerError, asyncio.TimeoutError, errors.APIForbiddenError) as e:
+        # During k8s upgrades, API might throw 403 Forbidden. Use retries for this error as well.
+        except (aiohttp.ClientConnectionError, errors.APIServerError, asyncio.TimeoutError,
+                errors.APIForbiddenError, errors.APITooManyRequestsError) as e:
+
+            # If we are asked to retry later, do so, and obey the requested backoff.
+            if isinstance(e, errors.APITooManyRequestsError):
+                if e.headers and e.headers.get("Retry-After"):
+                    retry_after = int(float(e.headers["Retry-After"]))  # the new style
+                elif e.details and e.details.get("retryAfterSeconds"):
+                    retry_after = int(e.details["retryAfterSeconds"])  # the old style
+                else:
+                    retry_after = None
+
+                if retry_after is not None and backoff is not None:
+                    if settings.networking.enforce_retry_after or retry_after > backoff:
+                        logger.debug(f"Overriding the backoff {backoff}s "
+                                     f"with the retry-after {retry_after}s from the server: {what}")
+                        backoff = retry_after
+
             if '[SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY]' in str(e):  # for ClientOSError
                 logger.error(f"Request attempt {idx} failed; SSL closed; will re-authenticate: {what}")
                 raise errors.APISessionClosed("SSL data stream is closed.") from e
-            elif backoff is None:  # i.e. the last or the only attempt.
+            elif backoff is None:  # the last or the only attempt.
                 logger.error(f"Request attempt {idx} failed; escalating: {what} -> {e!r}")
                 raise
             else:
@@ -273,12 +290,16 @@ async def iter_jsonlines(
     """
     Iterate line by line over the response's content.
 
-    Usage::
+    Usage:
+
+    .. code-block:: python
 
         async for line in _iter_lines(response.content):
             pass
 
-    This is an equivalent of::
+    This is an equivalent of:
+
+    .. code-block:: python
 
         async for line in response.content:
             pass

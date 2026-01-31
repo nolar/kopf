@@ -2,14 +2,14 @@
 Watching and streaming watch-events.
 
 Kubernetes client's watching streams are synchronous. To make them asynchronous,
-we put them into a `concurrent.futures.ThreadPoolExecutor`,
+we put them into a :class:`concurrent.futures.ThreadPoolExecutor`,
 and yield from there asynchronously.
 
-However, async/await coroutines misbehave with `StopIteration` exceptions
-raised by the `next` method: see `PEP-479`_.
+However, async/await coroutines misbehave with ``StopIteration`` exceptions
+raised by the ``next`` method: see `PEP-479`_.
 
-As a workaround, we replace `StopIteration` with our custom `StopStreaming`
-inherited from `RuntimeError` (as suggested by `PEP-479`_),
+As a workaround, we replace ``StopIteration`` with our custom ``StopStreaming``
+inherited from ``RuntimeError`` (as suggested by `PEP-479`_),
 and re-implement the generators to make them async.
 
 All of this is a workaround for the standard Kubernetes client's limitations.
@@ -86,17 +86,10 @@ async def infinite_watch(
                 try:
                     async for raw_event in stream:
                         yield raw_event
-                except errors.APIClientError as ex:
-                    if ex.code != HTTP_TOO_MANY_REQUESTS_CODE:
-                        raise
-
-                    retry_after = ex.details.get("retryAfterSeconds") if ex.details else None
-                    retry_wait = retry_after or DEFAULT_RETRY_DELAY_SECONDS
-                    logger.warning(
-                        f"Receiving `too many requests` error from server, will retry after "
-                        f"{retry_wait} seconds. Error details: {ex}"
-                    )
-                    await asyncio.sleep(retry_wait)
+                except errors.APITooManyRequestsError as ex:
+                    # If it has escalated after all the retries, go back to trying anyway.
+                    # This stream is not allowed to fail, unlike other regular requests.
+                    pass
             await asyncio.sleep(settings.watching.reconnect_backoff)
     finally:
         logger.debug(f"Stopping the watch-stream for {resource} {where}.")
@@ -115,14 +108,14 @@ async def streaming_block(
     This prevents both watching and listing while the operator is paused,
     until it is off. Specifically, the watch-stream closes its connection
     once paused, so the while-true & for-event-in-stream cycles exit,
-    and the streaming coroutine is started again by `infinite_stream()`
+    and the streaming coroutine is started again by ``infinite_stream()``
     (the watcher timeout is swallowed by the pause time).
 
     Returns a future (or a task) that is set (or finished) when paused again.
 
     A stop-future is a client-specific way of terminating the streaming HTTPS
     connections when paused again. The low-level streaming API call attaches
-    its `response.close()` to the future's "done" callback,
+    its ``response.close()`` to the future's "done" callback,
     so that the stream is closed once the operator is paused.
 
     Note: this routine belongs to watching and does not belong to peering.

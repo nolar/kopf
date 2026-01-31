@@ -49,7 +49,7 @@ def run(
     of the current _context_ (by asyncio's default, the current thread).
     See: https://docs.python.org/3/library/asyncio-policy.html for details.
 
-    Alternatively, use `asyncio.run(kopf.operator(...))` with the same options.
+    Alternatively, use ``asyncio.run(kopf.operator(...))`` with the same args.
     It will take care of a new event loop's creation and finalization for this
     call. See: :func:`asyncio.run`.
     """
@@ -111,7 +111,7 @@ async def operator(
     This function should be used to run an operator in an asyncio event-loop
     if the operator is orchestrated explicitly and manually.
 
-    It is efficiently `spawn_tasks` + `run_tasks` with some safety.
+    It is efficiently :func:`spawn_tasks` + :func:`run_tasks` with some safety.
     """
     existing_tasks = await aiotasks.all_tasks()
     operator_tasks = await spawn_tasks(

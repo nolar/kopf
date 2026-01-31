@@ -76,7 +76,11 @@ We can see that with kubectl:
 
 Let's add a yet another handler, but for the "update" cause.
 This handler gets this stored PVC name from the creation handler,
-and patches the PVC with the new size from the EVC::
+and patches the PVC with the new size from the EVC:
+
+.. code-block:: python
+
+    import kopf
 
     @kopf.on.update('ephemeralvolumeclaims')
     def update_fn(spec, status, namespace, logger, **kwargs):

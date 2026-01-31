@@ -1,5 +1,4 @@
 import asyncio
-import logging
 
 import pytest
 
@@ -16,9 +15,7 @@ EVENT_TYPES = EVENT_TYPES_WHEN_EXISTS + EVENT_TYPES_WHEN_GONE
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_reporting_on_resource_readiness(
-        resource, settings, registry, indexers, caplog, event_type, handlers, looptime):
-    caplog.set_level(logging.DEBUG)
-
+        resource, settings, registry, indexers, event_type, handlers, looptime):
     operator_indexed = ToggleSet(all)
     resource_indexed = await operator_indexed.make_toggle()
     await process_resource_event(
@@ -42,10 +39,8 @@ async def test_reporting_on_resource_readiness(
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_blocking_when_operator_is_not_ready_post_indexing(
-        resource, settings, registry, indexers, caplog, event_type, handlers, looptime):
+        resource, settings, registry, indexers, event_type, handlers, looptime):
     """Post-indexing events (resource_indexed=None) block until operator is ready."""
-    caplog.set_level(logging.DEBUG)
-
     operator_indexed = ToggleSet(all)
     resource_listed = await operator_indexed.make_toggle()
     with pytest.raises(asyncio.TimeoutError):
@@ -68,15 +63,20 @@ async def test_blocking_when_operator_is_not_ready_post_indexing(
     assert not handlers.event_mock.called
 
 
+@pytest.mark.parametrize('pressure_on', [False, True])
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_unblocking_once_operator_is_ready_post_indexing(
-        resource, settings, registry, indexers, caplog, event_type, handlers, looptime):
+        resource, settings, registry, indexers, event_type, pressure_on, handlers, looptime):
     """Post-indexing events (resource_indexed=None) unblock once operator is ready."""
-    caplog.set_level(logging.DEBUG)
 
     async def delayed_readiness(delay: float):
         await asyncio.sleep(delay)
         await resource_listed.turn_to(True)
+
+    # An extra check: no event is skipped regardless of the presence of newer events.
+    stream_pressure = asyncio.Event()
+    if pressure_on:
+        stream_pressure.set()
 
     operator_indexed = ToggleSet(all)
     resource_listed = await operator_indexed.make_toggle()
@@ -91,6 +91,7 @@ async def test_unblocking_once_operator_is_ready_post_indexing(
         memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
         event_queue=asyncio.Queue(),
+        stream_pressure=stream_pressure,
         operator_indexed=operator_indexed,
         resource_indexed=None,
     )
@@ -102,10 +103,8 @@ async def test_unblocking_once_operator_is_ready_post_indexing(
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_no_blocking_during_initial_indexing(
-        resource, settings, registry, indexers, caplog, event_type, handlers, looptime):
+        resource, settings, registry, indexers, event_type, handlers, looptime):
     """Initial indexing (resource_indexed is set) does NOT block even with pending toggles."""
-    caplog.set_level(logging.DEBUG)
-
     operator_indexed = ToggleSet(all)
     resource_listed = await operator_indexed.make_toggle()
     resource_indexed = await operator_indexed.make_toggle()
@@ -130,10 +129,8 @@ async def test_no_blocking_during_initial_indexing(
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES_WHEN_EXISTS)
 async def test_initial_indexing_drops_toggle_without_waiting(
-        resource, settings, registry, indexers, caplog, event_type, handlers, looptime):
+        resource, settings, registry, indexers, event_type, handlers, looptime):
     """Initial indexing drops its toggle immediately without waiting for operator readiness."""
-    caplog.set_level(logging.DEBUG)
-
     operator_indexed = ToggleSet(all)
     resource_listed = await operator_indexed.make_toggle()
     resource_indexed = await operator_indexed.make_toggle()

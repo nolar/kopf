@@ -100,16 +100,29 @@ test = [
 ]
 lint = [
     {include-group = "test"},
-    "mypy==1.19.0",
+    "mypy==1.19.1",
     "import-linter",
     "isort",
     "pre-commit",
+    # All extras — for proper type-checks of imports (only for linting, not for testing!).
+    "kubernetes",
+    "kubernetes-asyncio",
+    "pykube-ng",
+    "oscrypto",
+    "certbuilder",
+    "certvalidator",
+    "pyngrok",
+    "uvloop",
 ]
 
 [tool.setuptools_scm]
 version_file = "kopf/_cogs/helpers/versions.py"
 
 [tool.mypy]
+strict = true
+packages = ["kopf"]
+python_version = "3.10"
+exclude_gitignore = true
 warn_unused_configs = true
 ignore_missing_imports = true
 

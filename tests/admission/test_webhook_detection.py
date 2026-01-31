@@ -66,8 +66,7 @@ async def test_k3d_via_version_infix(hostname, aresponses):
     assert hostname == 'host.k3d.internal'
 
 
-async def test_server_detects(responder, aresponses, hostname, caplog, assert_logs):
-    caplog.set_level(0)
+async def test_server_detects(responder, aresponses, hostname, assert_logs):
     aresponses.add(hostname, '/version', 'get', {'gitVersion': 'v1.20.4+k3s1'})
     server = WebhookAutoServer(insecure=True)
     async with server:
@@ -77,8 +76,7 @@ async def test_server_detects(responder, aresponses, hostname, caplog, assert_lo
 
 
 async def test_server_works(
-        responder, aresponses, hostname, caplog, assert_logs):
-    caplog.set_level(0)
+        responder, aresponses, hostname, assert_logs):
     aresponses.add(hostname, '/version', 'get', {'gitVersion': 'v1.20.4'})
     server = WebhookAutoServer(insecure=True)
     async with server:
@@ -87,8 +85,7 @@ async def test_server_works(
     assert_logs(["Cluster detection failed, running a simple local server"])
 
 
-async def test_tunnel_detects(responder, pyngrok_mock, aresponses, hostname, caplog, assert_logs):
-    caplog.set_level(0)
+async def test_tunnel_detects(responder, pyngrok_mock, aresponses, hostname, assert_logs):
     aresponses.add(hostname, '/version', 'get', {'gitVersion': 'v1.20.4+k3s1'})
     server = WebhookAutoTunnel()
     async with server:
@@ -97,8 +94,7 @@ async def test_tunnel_detects(responder, pyngrok_mock, aresponses, hostname, cap
     assert_logs(["Cluster detection found the hostname: host.k3d.internal"])
 
 
-async def test_tunnel_works(responder, pyngrok_mock, aresponses, hostname, caplog, assert_logs):
-    caplog.set_level(0)
+async def test_tunnel_works(responder, pyngrok_mock, aresponses, hostname, assert_logs):
     aresponses.add(hostname, '/version', 'get', {'gitVersion': 'v1.20.4'})
     server = WebhookAutoTunnel()
     async with server:

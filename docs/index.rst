@@ -89,6 +89,7 @@ Kopf: Kubernetes Operators Framework
    vision
    naming
    alternatives
+   status
 
 
 Indices and tables

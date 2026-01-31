@@ -31,10 +31,10 @@ class Kwargable:
     Something that can provide kwargs to the function invocation rotuine.
 
     Technically, there is only one source of kwargs in the framework --
-    `Cause` and descendants across the source code (e.g. ``causes.py``).
+    :class:`Cause` and descendants across the source code (e.g. ``causes.py``).
     However, we do not want to introduce a new dependency of a low-level
     function invocation module on the specialised causation logic & structures.
-    For this reason, the `Cause` & `Kwargable` classes are split.
+    For this reason, the :class:`Cause` & :class:`Kwargable` classes are split.
     """
 
     @property

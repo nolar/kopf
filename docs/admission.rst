@@ -216,7 +216,7 @@ The admission warnings look like this (requires kubectl 1.19+):
     Despite Kopf's intention to utilise Python's native features that
     semantically map to Kubernetes's or operators' features,
     Python StdLib's :mod:`warnings` is not used for admission warnings
-    (the initial idea was to catch `UserWarning` and ``warnings.warn("...")``
+    (the initial idea was to catch ``UserWarning`` and ``warnings.warn("...")``
     calls and return them as admission warnings).
 
     The StdLib's module is documented as thread-unsafe (therefore, task-unsafe)
@@ -567,10 +567,18 @@ This applies to all servers:
     @kopf.on.startup()
     def config(settings: kopf.OperatorSettings, **_):
         settings.admission.server = kopf.WebhookServer(
-            cafile='ca.pem',        # or cadata, or capath.
-            certfile='cert.pem',
-            pkeyfile='pkey.pem',
-            password='...')         # for the private key, if used.
+            cafile='/secrets/ca.pem',       # or cadata, or capath.
+            certfile='/secrets/cert.pem',
+            pkeyfile='/secrets/pkey.pem',
+            password='...',                 # for the private key, if used.
+            file_check_interval=60,
+        )
+
+You can use cert-manager or other externally provided certificate files
+at their known (mounted) locations without the full restart of the operator.
+Once any of the specified files changes, e.g. due to certificate or private key
+automated renewal, the webhook server will restart with the new certificate
+(at the latest after ``file_check_interval`` seconds, which defaults to 60s).
 
 .. note::
     ``cadump`` (output) can be used together with ``cafile``/``cadata`` (input),

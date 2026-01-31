@@ -5,12 +5,14 @@ The usage of these classes is spread over the codebase, so they are extracted
 into a separate module of such type definitions.
 
 For strict type-checking, they are detailed to the per-field level
-(e.g. `TypedDict` instead of just ``Mapping[Any, Any]``) --
+(e.g. ``TypedDict`` instead of just ``Mapping[Any, Any]``) --
 as used by the framework. The operators can use arbitrary fields at runtime,
 which are not declared in the type definitions at type-checking time.
 
 In case the operators are also type-checked, type casting can be used
-(without `cast`, this code fails at type-checking, though works at runtime)::
+(without ``cast()``, this code fails at type-checking, though works at runtime):
+
+.. code-block:: python
 
     from typing import cast
     import kopf

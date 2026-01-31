@@ -28,7 +28,11 @@ from kopf._core.engines import admission, daemons, indexing
 
 @dataclasses.dataclass(frozen=False)
 class ResourceMemory:
-    """ A system memo about a single resource/object. Usually stored in `Memories`. """
+    """
+    A system memo about a single resource/object.
+
+    Usually stored in :class:`Memories`.
+    """
     memo: ephemera.AnyMemo = dataclasses.field(default_factory=lambda: ephemera.AnyMemo(ephemera.Memo()))
     error_throttler: throttlers.Throttler = dataclasses.field(default_factory=throttlers.Throttler)
     indexing_memory: indexing.IndexingMemory = dataclasses.field(default_factory=indexing.IndexingMemory)

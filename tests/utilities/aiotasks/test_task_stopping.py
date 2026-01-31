@@ -17,9 +17,8 @@ async def stuck() -> None:
         await asyncio.Event().wait()
 
 
-async def test_stop_with_no_tasks(assert_logs, caplog, looptime):
+async def test_stop_with_no_tasks(assert_logs, looptime):
     logger = logging.getLogger()
-    caplog.set_level(0)
     done, pending = await stop([], title='sample', logger=logger)
     assert not done
     assert not pending
@@ -27,19 +26,17 @@ async def test_stop_with_no_tasks(assert_logs, caplog, looptime):
     assert looptime == 0
 
 
-async def test_stop_with_no_tasks_when_quiet(assert_logs, caplog, looptime):
+async def test_stop_with_no_tasks_when_quiet(assert_logs, looptime):
     logger = logging.getLogger()
-    caplog.set_level(0)
     done, pending = await stop([], title='sample', logger=logger, quiet=True)
     assert not done
     assert not pending
-    assert not caplog.messages
+    assert_logs(prohibited=['.*'])
     assert looptime == 0
 
 
-async def test_stop_immediately_with_finishing(assert_logs, caplog, looptime):
+async def test_stop_immediately_with_finishing(assert_logs, looptime):
     logger = logging.getLogger()
-    caplog.set_level(0)
     task1 = asyncio.create_task(simple())
     task2 = asyncio.create_task(simple())
     done, pending = await stop([task1, task2], title='sample', logger=logger, cancelled=False)
@@ -51,9 +48,8 @@ async def test_stop_immediately_with_finishing(assert_logs, caplog, looptime):
     assert looptime == 0
 
 
-async def test_stop_immediately_with_cancelling(assert_logs, caplog, looptime):
+async def test_stop_immediately_with_cancelling(assert_logs, looptime):
     logger = logging.getLogger()
-    caplog.set_level(0)
     task1 = asyncio.create_task(simple())
     task2 = asyncio.create_task(simple())
     done, pending = await stop([task1, task2], title='sample', logger=logger, cancelled=True)
@@ -66,9 +62,8 @@ async def test_stop_immediately_with_cancelling(assert_logs, caplog, looptime):
 
 
 @pytest.mark.parametrize('cancelled', [False, True])
-async def test_stop_iteratively(assert_logs, caplog, cancelled, looptime):
+async def test_stop_iteratively(assert_logs, cancelled, looptime):
     logger = logging.getLogger()
-    caplog.set_level(0)
     task1 = asyncio.create_task(simple())
     task2 = asyncio.create_task(stuck())
     stask = asyncio.create_task(stop([task1, task2], title='sample', logger=logger, interval=1, cancelled=cancelled))
@@ -95,9 +90,8 @@ async def test_stop_iteratively(assert_logs, caplog, cancelled, looptime):
 
 
 @pytest.mark.parametrize('cancelled', [False, True])
-async def test_stop_itself_is_cancelled(assert_logs, caplog, cancelled, looptime):
+async def test_stop_itself_is_cancelled(assert_logs, cancelled, looptime):
     logger = logging.getLogger()
-    caplog.set_level(0)
     task1 = asyncio.create_task(simple())
     task2 = asyncio.create_task(stuck())
     stask = asyncio.create_task(stop([task1, task2], title='sample', logger=logger, interval=1, cancelled=cancelled))

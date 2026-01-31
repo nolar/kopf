@@ -71,10 +71,9 @@ async def test_expiring_a_peer_purges_it(
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
 async def test_logs_are_skipped_in_stealth_mode(
-        hostname, aresponses, resp_mocker, settings, assert_logs, caplog,
+        hostname, aresponses, resp_mocker, settings, assert_logs,
         peering_resource, peering_namespace):
 
-    caplog.set_level(0)
     settings.peering.stealth = True
     settings.peering.name = 'name0'
     patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
@@ -84,16 +83,15 @@ async def test_logs_are_skipped_in_stealth_mode(
     await touch(identity='id1', resource=peering_resource, settings=settings,
                 namespace=peering_namespace)
 
-    assert_logs([], prohibited=[
+    assert_logs(prohibited=[
         "Keep-alive in",
     ])
 
 
 async def test_logs_are_logged_in_exposed_mode(
-        hostname, aresponses, resp_mocker, settings, assert_logs, caplog,
+        hostname, aresponses, resp_mocker, settings, assert_logs,
         peering_resource, peering_namespace):
 
-    caplog.set_level(0)
     settings.peering.stealth = False
     settings.peering.name = 'name0'
     patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
@@ -110,10 +108,9 @@ async def test_logs_are_logged_in_exposed_mode(
 
 @pytest.mark.parametrize('stealth', [True, False], ids=['stealth', 'exposed'])
 async def test_logs_are_logged_when_absent(
-        hostname, aresponses, resp_mocker, stealth, settings, assert_logs, caplog,
+        hostname, aresponses, resp_mocker, stealth, settings, assert_logs,
         peering_resource, peering_namespace):
 
-    caplog.set_level(0)
     settings.peering.stealth = stealth
     settings.peering.name = 'name0'
     patch_mock = resp_mocker(return_value=aresponses.Response(status=404, reason='oops'))

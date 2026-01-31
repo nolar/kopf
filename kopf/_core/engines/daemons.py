@@ -57,9 +57,9 @@ class DaemonsMemory:
 
 class DaemonsMemoriesIterator(metaclass=abc.ABCMeta):
     """
-    Re-iterable view of all the running daemons for the `daemon_killer`.
+    Re-iterable view of all the running daemons for the :func:`daemon_killer`.
 
-    Implemented in `Memories`. This is a clean hack to resolve circular imports
+    Implemented in :class:`Memories`. A clean hack to resolve circular imports
     (the daemon killer needs memories, but the memories contain Daemon records)
     by splitting the specialised interface (this class) from the implementation.
     """
@@ -122,7 +122,7 @@ async def match_daemons(
     """
     Re-match the running daemons with the filters, and stop those mismatching.
 
-    Stopping can take a few iterations, same as `stop_daemons` would do.
+    Stopping can take a few iterations, same as :func:`stop_daemons` would do.
     """
     matching_daemon_ids = {handler.id for handler in handlers}
     mismatching_daemons = {
@@ -157,8 +157,8 @@ async def stop_daemons(
 
     **Notes on this non-trivial implementation:**
 
-    There is a same-purpose function `stop_daemon`, which works fully in-memory.
-    That method is used when killing the daemons on operator exit.
+    There is a same-purpose function :func:`stop_daemon`, which works fully
+    in-memory. That method is used when killing the daemons on operator exit.
     This method is used when the resource is deleted.
 
     The difference is that in this method (termination with delays and patches),
@@ -321,11 +321,11 @@ async def stop_daemon(
     """
     Stop a single daemon.
 
-    The purpose is the same as in `stop_daemons`, but this function
+    The purpose is the same as in :func:`stop_daemons`, but this function
     is called on operator exiting, so there is no multi-step handling,
     everything happens in memory and linearly (while respecting the timing).
 
-    For explanation on different implementations, see `stop_daemons`.
+    For explanation on different implementations, see :func:`stop_daemons`.
     """
     handler = daemon.handler
     if isinstance(handler, handlers_.DaemonHandler):
@@ -376,7 +376,7 @@ async def _wait_for_instant_exit(
 
     There is nothing "instant", of course. Any code takes some time to execute.
     We just assume that the "instant" is something defined by a small timeout
-    and a few zero-time asyncio cycles (read as: zero-time `await` statements).
+    and a few zero-time asyncio cycles (read as: zero-time ``await`` calls).
     """
 
     if daemon.task.done():
@@ -404,7 +404,7 @@ async def _runner(
     Guard a running daemon during its life cycle.
 
     Note: synchronous daemons are awaited to the exit and postpone cancellation.
-    The runner will not exit until the thread exits. See `invoke` for details.
+    The runner will not exit until the thread exits. See ``invoke`` for details.
     """
     stopper = cause.stopper
 

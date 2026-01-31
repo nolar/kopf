@@ -1,5 +1,3 @@
-import logging
-
 import aiohttp.web
 import pytest
 
@@ -20,7 +18,7 @@ from kopf._core.actions.loggers import LocalObjectLogger
                  id='response-exact'),
 
     pytest.param({'spec': {'x': 'y'}, 'status': {'s': 't'}},
-                 {'spec': {'x': 'y'}, 'status': {'s': 't'}, 'metadata': '...'},
+                 {'spec': {'x': 'y'}, 'status': {'s': 't'}, 'extra': '...'},
                  id='response-root-extra'),
 
     pytest.param({'spec': {'x': 'y'}, 'status': {'s': 't'}},
@@ -42,10 +40,9 @@ from kopf._core.actions.loggers import LocalObjectLogger
 
 ])
 async def test_patching_without_inconsistencies(
-        resource, namespace, settings, caplog, assert_logs, version_api,
+        resource, namespace, settings, assert_logs, version_api,
         aresponses, hostname, resp_mocker,
         patch, response):
-    caplog.set_level(logging.DEBUG)
 
     url = resource.get_url(namespace=namespace, name='name1')
     patch_mock = resp_mocker(return_value=aiohttp.web.json_response(response))
@@ -105,10 +102,9 @@ async def test_patching_without_inconsistencies(
 
 ])
 async def test_patching_with_inconsistencies(
-        resource, namespace, settings, caplog, assert_logs, version_api,
+        resource, namespace, settings, assert_logs, version_api,
         aresponses, hostname, resp_mocker,
         patch, response):
-    caplog.set_level(logging.DEBUG)
 
     url = resource.get_url(namespace=namespace, name='name1')
     patch_mock = resp_mocker(return_value=aiohttp.web.json_response(response))
@@ -131,9 +127,8 @@ async def test_patching_with_inconsistencies(
 
 
 async def test_patching_with_disappearance(
-        resource, namespace, settings, caplog, assert_logs, version_api,
+        resource, namespace, settings, assert_logs, version_api,
         aresponses, hostname, resp_mocker):
-    caplog.set_level(logging.DEBUG)
 
     patch = {'spec': {'x': 'y'}, 'status': {'s': 't'}}  # irrelevant
     url = resource.get_url(namespace=namespace, name='name1')

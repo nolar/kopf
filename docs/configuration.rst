@@ -255,6 +255,20 @@ The server-side timeouts are unpredictable, they can be 10 seconds or
 10 minutes. Yet, it feels wrong to assume any "good" values in a framework
 (especially since it works without timeouts defined, just produces extra logs).
 
+.. warning::
+    Some setups that involve any kind of a load balancer (LB), such as
+    the cloud-hosted Kubernetes clusters, have a well-known problem
+    of freezing and going silent for no reason if nothing happens
+    in the cluster for some time. The best guess is that the connection
+    operator<>LB remains alive, while the connection LB<>K8s closes.
+    Kopf-based operators remain unaware of this disruption.
+
+    Setting either the client or the server timeout solves the problem
+    of waking up from such freezes, but at the cost of regular reconnections
+    in the normal flow of operations. There is no good default value either,
+    you should guess it experimentally based on your operational requirements,
+    cluster size and activity level, usually in the range 1-10 minutes.
+
 ``settings.watching.reconnect_backoff`` (seconds) is a backoff interval between
 watching requests -- to prevent API flooding in case of errors or disconnects.
 The default is 0.1 seconds (nearly instant, but not flooding).
@@ -268,6 +282,61 @@ The default is 0.1 seconds (nearly instant, but not flooding).
         settings.networking.connect_timeout = 10
         settings.networking.request_timeout = 60
         settings.watching.server_timeout = 10 * 60
+
+
+.. _consistency:
+
+Consistency
+===========
+
+Generally, Kopf processes the resource events and updates streamed
+from the Kubernetes API as soon as possible, with no delays or skipping.
+However, high-level change-detection handlers (creation/resume/update/deletion)
+require a consistent state of the resource. _Consistency_ means that all
+patches applied by Kopf itself have arrived back via the watch-stream.
+If Kopf did not patch the resource recently, it is consistent by definition.
+
+The _inconsistent_ states can happen in relatively rare circumstances
+on slow networks (with high latency between operator and api-servers)
+or under high load (high number of resources or changes), especially when
+an unrelated application or another operator patches the resources on their own.
+
+Handling the _inconsistent_ states could cause double-processing
+(i.e. double handler execution) and some other undesired side effects.
+To prevent handling the inconsistent states, all state-dependent handlers
+wait the _consistency_ is reached via one of the following two ways:
+
+* The expected resource version from the PATCH API operation arrives
+  via the watch-stream of the resource within the specified time window.
+* The expected resource version from the PATCH API operation does not arrive
+  via the watch-stream within the specified time window, in which case
+  Kopf assumes the consistency after the time window ends,
+  and the processing continues as if the version has arrived,
+  possibly causing the mentioned side-effects.
+
+The time window is measured relative to the time of the latest ``PATCH`` call.
+The timeout should be long enough to assume that if the expected resource
+version did not arrive within the specified time, it will never arrive.
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.persistence.consistency_timeout = 10
+
+The default value (5 seconds) aims to the safest scenario out of the box.
+
+The value of ``0`` will effectively disable the consistency tracking
+and declare all resource states as consistent -- even if they are not.
+Use this with care -- e.g., with self-made persistence storages instead of
+Kopf's annotations (see :ref:`progress-storing` and :ref:`diffbase-storing`).
+
+The consistency timeout does not affect low-level handlers with no persistence,
+such as ``@kopf.on.event``, ``@kopf.index``, ``@kopf.daemon``, ``@kopf.timer``
+-- these handlers run for each and every watch-event with no delay
+(if they match the :doc:`filters <filters>`, of course).
 
 
 Finalizers
@@ -480,6 +549,33 @@ e.g. by arbitrarily labelling them, so that a new diff-base is generated:
 Then, switch to the new storage alone, without the transitional setup.
 
 
+Cluster discovery
+=================
+
+``settings.scanning.disabled`` controls the cluster discovery at runtime.
+
+If enabled (the default), then the operator will try to observe
+the namespaces and custom resources, and will gracefully start/stop
+the watch streams for them (also the peering activities, if applicable).
+This requires the RBAC permissions to list/watch the V1 namespaces and CRDs.
+
+If disabled or if enabled but the permission is not granted, then only
+the specific namespaces will be served, with namespace patterns ignored;
+and only the resources detected at startup will be served, with added CRDs
+or CRD versions being ignored, and the deleted CRDs causing failures.
+
+The default mode is good enough for most cases, unless the strict
+(non-dynamic) mode is intended -- to prevent the warnings in the logs.
+
+If you have very restrictive cluster permissions, disable the cluster discovery:
+
+.. code-block:: python
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.scanning.disabled = True
+
+
 .. _api-retrying:
 
 Retrying of API errors
@@ -551,7 +647,7 @@ on the next error.
 
 .. note::
 
-    The format is the same as for ``settings.batching.error_delays``.
+    The format is the same as for ``settings.queueing.error_delays``.
     The only difference: if the API operation does not succeed by the end
     of the sequence, the error of the last attempt escalates instead of blocking
     and retrying forever with the last delay in the sequence.
@@ -560,6 +656,21 @@ on the next error.
     These back-offs cover only the server-side and networking errors.
     For errors in handlers, see :doc:`/errors`.
     For errors in the framework, see :ref:`error-throttling`.
+
+
+Throttling of "too many requests"
+=================================
+
+When the API server responds with HTTP 429 "Too Many Requests", Kopf will retry
+as for usual errors. However, it will obey the server-suggested interval
+if it is longer than what Kopf would use otherwise from its own
+``settings.networking.error_backoffs``.
+
+``settings.networking.enforce_retry_after`` (boolean) tells Kopf what to do
+when its own backoff interval is longer than the server-requested interval.
+If ``True``, the server-provided interval will be used. If ``False`` (default),
+Kopf's longer backoff interval will be used. Either way, the backoff interval
+will never be shorter than what the server requested.
 
 
 .. _error-throttling:
@@ -577,15 +688,12 @@ flooding, it is possible to throttle the activities on a per-resource basis:
 
     @kopf.on.startup()
     def configure(settings: kopf.OperatorSettings, **_):
-        settings.batching.error_delays = [10, 20, 30]
+        settings.queueing.error_delays = [10, 20, 30]
 
 In that case, all unhandled errors in the framework or in the Kubernetes API
 would be backed-off by 10s after the 1st error, then by 20s after the 2nd one,
 and then by 30s after the 3rd, 4th, 5th errors and so on. On the first success,
 the backoff intervals will be reset and re-used again on the next error.
-
-Once the errors stop and the operator is back to work, it processes only
-the latest event seen for that malfunctioning resource (due to event batching).
 
 The default is a sequence of Fibonacci numbers from 1 second to 10 minutes.
 
@@ -600,3 +708,61 @@ Interpret it as: no throttling delays set --- no throttling sleeps done.
 If needed, this value can be an arbitrary collection/iterator/object:
 only ``iter()`` is called on every new throttling cycle, no other protocols
 are required; but make sure that it is re-iterable for multiple uses.
+
+
+Log levels & filters
+====================
+
+In case the logs of any component are too exessive, or contain secret data,
+this can be controlled with the usual Python logging machinery.
+
+For example, to disable the access logs of the probing server:
+
+.. code-block:: python
+
+    import logging
+
+    @kopf.on.startup()
+    async def configure(**_):
+        logging.getLogger('aiohttp.access').propagate = False
+
+To selectively filter only some log messages but not the others:
+
+.. code-block:: python
+
+    import logging
+    import kopf
+
+    class ExcludeProbesFilter(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> bool:
+            return 'GET /healthz ' not in record.getMessage()
+
+    @kopf.on.startup()
+    async def configure_access_logs(**_):
+        logging.getLogger('aiohttp.access').addFilter(ExcludeProbesFilter())
+
+For more information on the logging configuration, see:
+`logging <https://docs.python.org/3/library/logging.html>`_.
+
+In particular, you can use the special logger ``kopf.objects`` to filter
+the object-related log messages coming from the :kwarg:`logger` and from
+Kopf's internals, which are then posted as Kubernetes events (``v1/events``):
+
+.. code-block:: python
+
+    import logging
+    import kopf
+
+    class ExcludeKopfInternals(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> bool:
+            return '/kopf/' not in record.pathname
+
+    @kopf.on.startup()
+    async def configure_kopf_logs(**_):
+        logging.getLogger('kopf.objects').addFilter(ExcludeKopfInternals())
+
+.. warning::
+    Beware: the path names and module names of internal modules,
+    so as the extra fields of ``logging.LogRecord`` added by Kopf,
+    can change without warning, do not rely on their stability.
+    They are not a public interface of Kopf.

@@ -28,6 +28,7 @@ the root object, while keeping the legacy names for backward compatibility.
 import concurrent.futures
 import dataclasses
 import logging
+import warnings
 from collections.abc import Iterable
 
 from kopf._cogs.configs import diffbase, progress
@@ -37,7 +38,7 @@ from kopf._cogs.structs import reviews
 @dataclasses.dataclass
 class ProcessSettings:
     """
-    Settings for Kopf's OS processes: e.g. when started via CLI as `kopf run`.
+    Settings for Kopf's OS processes: e.g. when started via CLI as ``kopf run``.
     """
 
     ultimate_exiting_timeout: float | None = 10 * 60
@@ -51,7 +52,7 @@ class ProcessSettings:
     The countdown goes from when a graceful signal arrives (SIGTERM/SIGINT),
     regardless of what is happening in the graceful exiting routine.
 
-    Measured in seconds. Set to `None` to disable (on your own risk).
+    Measured in seconds. Set to ``None`` to disable (on your own risk).
 
     The default is 10 minutes -- high enough for all common sense cases,
     and higher than K8s pods' ``terminationGracePeriodSeconds`` --
@@ -201,7 +202,7 @@ class WatchingSettings:
 
 
 @dataclasses.dataclass
-class BatchingSettings:
+class QueueingSettings:
     """
     Settings for how raw events are batched and processed.
     """
@@ -214,13 +215,8 @@ class BatchingSettings:
 
     idle_timeout: float = 5.0
     """
-    How soon an idle worker is exited and garbage-collected if no events arrive.
-    """
-
-    batch_window: float = 0.1
-    """
-    How fast/slow does a worker deplete the queue when an event is received.
-    All events arriving within this window will be ignored except the last one.
+    How soon an idle worker exits and lets the garbage collector to purge itself
+    if no new events arrive from the watch-stream for that resource object.
     """
 
     exit_timeout: float = 2.0
@@ -236,6 +232,21 @@ class BatchingSettings:
     For more information on error throttling, see :ref:`error-throttling`.
     """
 
+    _batch_window: float = 0.1  # deprecated
+
+    @property
+    def batch_window(self) -> float:
+        """ Deprecated and affects nothing. """
+        warnings.warn("Time-based event batching was removed. Please stop configuring it.",
+                      DeprecationWarning)
+        return self._batch_window
+
+    @batch_window.setter
+    def batch_window(self, value: float) -> None:
+        warnings.warn("Time-based event batching was removed. Please stop configuring it.",
+                      DeprecationWarning)
+        self._batch_window = value
+
 
 @dataclasses.dataclass
 class ScanningSettings:
@@ -250,7 +261,7 @@ class ScanningSettings:
     If enabled (the default), then the operator will try to observe
     the namespaces and custom resources, and will gracefully start/stop
     the watch streams for them (also the peering activities, if applicable).
-    This requires RBAC permissions to list/watch the V1 namespaces and CRDs.
+    This requires the RBAC permissions to list/watch the V1 namespaces and CRDs.
 
     If disabled or if enabled but the permission is not granted, then only
     the specific namespaces will be served, with namespace patterns ignored;
@@ -365,6 +376,19 @@ class NetworkingSettings:
     For more information on the API errors retrying, see :doc:`api-retrying`.
     """
 
+    enforce_retry_after: bool = False
+    """
+    Should we obey the error backoffs if a retry-after is received from the API?
+
+    If ``True``, the retry-after is used always, regardless of the error backoff
+    of the current request attempt (e.g., for the HTTP 429 Too Many Requests).
+
+    If ``False``, the error backoff is used if longer than the retry-after.
+
+    Regardless of the setting, the retry-after is always the minimum backoff
+    (the request attempt never awaits shorter than what the server asked for).
+    """
+
 
 @dataclasses.dataclass
 class PersistenceSettings:
@@ -385,6 +409,13 @@ class PersistenceSettings:
         default_factory=diffbase.AnnotationsDiffBaseStorage)
     """
     How the resource's essence (non-technical, contentful fields) are stored.
+    """
+
+    consistency_timeout: float = 5.0
+    """
+    For how long a patched resource version is awaited (seconds).
+
+    See :ref:`consistency` for detailed explanation.
     """
 
 
@@ -427,11 +458,11 @@ class BackgroundSettings:
     There is a speed-up hack to let the daemons/timers to exit instantly,
     without external patching & polling. For this, ``asyncio.sleep(0)`` is used
     to give control back to the event loop and their coroutines. However,
-    the daemons/timers can do extra `await` calls (even zero-time) before
+    the daemons/timers can do extra ``await`` calls (even zero-time) before
     actually exiting, which prematurely returns the control flow back
     to the daemon-stopper coroutine.
 
-    This configuration value is a maximum amount of zero-time `await` statements
+    This configuration value is a maximum amount of zero-time ``await`` calls
     that can happen before exiting: both in the daemon and in the framework.
 
     It the daemons/timers coroutines exit earlier, extra cycles are not used.
@@ -453,10 +484,17 @@ class OperatorSettings:
     posting: PostingSettings = dataclasses.field(default_factory=PostingSettings)
     peering: PeeringSettings = dataclasses.field(default_factory=PeeringSettings)
     watching: WatchingSettings = dataclasses.field(default_factory=WatchingSettings)
-    batching: BatchingSettings = dataclasses.field(default_factory=BatchingSettings)
+    queueing: QueueingSettings = dataclasses.field(default_factory=QueueingSettings)
     scanning: ScanningSettings = dataclasses.field(default_factory=ScanningSettings)
     admission: AdmissionSettings =dataclasses.field(default_factory=AdmissionSettings)
     execution: ExecutionSettings = dataclasses.field(default_factory=ExecutionSettings)
     background: BackgroundSettings = dataclasses.field(default_factory=BackgroundSettings)
     networking: NetworkingSettings = dataclasses.field(default_factory=NetworkingSettings)
     persistence: PersistenceSettings = dataclasses.field(default_factory=PersistenceSettings)
+
+    @property
+    def batching(self) -> QueueingSettings:
+        warnings.warn("Batching settings are now queueing settings. "
+                      "Please rename `settings.batching` -> `settings.queueing`",
+                      DeprecationWarning)
+        return self.queueing

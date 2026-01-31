@@ -1,13 +1,11 @@
 import asyncio
-import logging
 
 import kopf
 from kopf._core.actions.execution import ErrorsMode, PermanentError, TemporaryError
 
 
 async def test_daemon_stopped_on_permanent_error(
-        settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
-    caplog.set_level(logging.DEBUG)
+        settings, resource, dummy, assert_logs, k8s_mocked, simulate_cycle, looptime):
 
     @kopf.daemon(*resource, id='fn', backoff=1.23)
     async def fn(**kwargs):
@@ -31,8 +29,7 @@ async def test_daemon_stopped_on_permanent_error(
 
 
 async def test_daemon_stopped_on_arbitrary_errors_with_mode_permanent(
-        settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
-    caplog.set_level(logging.DEBUG)
+        settings, resource, dummy, assert_logs, k8s_mocked, simulate_cycle, looptime):
 
     @kopf.daemon(*resource, id='fn', errors=ErrorsMode.PERMANENT, backoff=1.23)
     async def fn(**kwargs):
@@ -57,8 +54,7 @@ async def test_daemon_stopped_on_arbitrary_errors_with_mode_permanent(
 
 async def test_daemon_retried_on_temporary_error(
         registry, settings, resource, dummy,
-        caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
-    caplog.set_level(logging.DEBUG)
+        assert_logs, k8s_mocked, simulate_cycle, looptime):
     finished = asyncio.Event()
 
     @kopf.daemon(*resource, id='fn', backoff=1.23)
@@ -83,8 +79,7 @@ async def test_daemon_retried_on_temporary_error(
 
 
 async def test_daemon_retried_on_arbitrary_error_with_mode_temporary(
-        settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
-    caplog.set_level(logging.DEBUG)
+        settings, resource, dummy, assert_logs, k8s_mocked, simulate_cycle, looptime):
     finished = asyncio.Event()
 
     @kopf.daemon(*resource, id='fn', errors=ErrorsMode.TEMPORARY, backoff=1.23)
@@ -110,7 +105,6 @@ async def test_daemon_retried_on_arbitrary_error_with_mode_temporary(
 
 async def test_daemon_retried_until_retries_limit(
         resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
-    caplog.set_level(logging.DEBUG)
     trigger = asyncio.Condition()
 
     @kopf.daemon(*resource, id='fn', retries=3)
@@ -130,7 +124,6 @@ async def test_daemon_retried_until_retries_limit(
 
 async def test_daemon_retried_until_timeout(
         resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
-    caplog.set_level(logging.DEBUG)
     trigger = asyncio.Condition()
 
     @kopf.daemon(*resource, id='fn', timeout=4)

@@ -17,17 +17,21 @@ The project was originally started as `zalando-incubator/kopf` in March 2019,
 and then forked as `nolar/kopf` in August 2020: but it is the same codebase,
 the same packages, the same developer(s).
 
-As of now, the project is in maintenance mode since approximately mid-2021:
-Python, Kubernetes, CI tooling, dependencies are upgraded, new bugs are fixed,
-new versions are released from time to time, but no new big features are added
-— there is nothing to add to this project without exploding its scope
-beyond the "operator framework" definition (ideas are welcome!).
-
-
 ## Documentation
 
 * https://kopf.readthedocs.io/
 
+## Status
+
+Kopf is production-ready and stable (semantic v1).
+Major bugs are fixed ASAP (there were none for a long time).
+Minor bugs are fixed as time and energy permit, or a workaround is provided.
+
+There is no active development of **new major** functionality for Kopf — the whole idea of a framework for operators is fully expressed and implemented, I have nothing more to add. This piece of art is finished. (This might change.)
+
+Minor feature requests can be implemented from time to time.
+Maintenance for new versions of Python and Kubernetes is performed regularly.
+Some internal optimizations are planned, such as minimizing the memory footprint, high-load readiness, or agentic friendliness — but will be backwards-compatible (no semantic v2 with breaking changes on the horizon).
 
 ## Features
 

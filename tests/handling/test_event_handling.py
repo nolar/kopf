@@ -1,5 +1,4 @@
 import asyncio
-import logging
 
 import pytest
 
@@ -14,8 +13,7 @@ from kopf._core.reactor.processing import process_resource_event
 @pytest.mark.parametrize('cause_type', ALL_REASONS)
 async def test_handlers_called_always(
         registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,
-        caplog, assert_logs, k8s_mocked):
-    caplog.set_level(logging.DEBUG)
+        assert_logs, k8s_mocked):
     cause_mock.reason = cause_type
 
     await process_resource_event(
@@ -49,8 +47,7 @@ async def test_handlers_called_always(
 @pytest.mark.parametrize('cause_type', ALL_REASONS)
 async def test_errors_are_ignored(
         registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,
-        caplog, assert_logs, k8s_mocked):
-    caplog.set_level(logging.DEBUG)
+        assert_logs, k8s_mocked):
     cause_mock.reason = cause_type
     handlers.event_mock.side_effect = Exception("oops")
 

@@ -12,7 +12,9 @@ It is capitalised in natural language texts:
 
     *I like using Kopf to manage my domain in Kubernetes.*
 
-It is lower-cased in all system and code references::
+It is lower-cased in all system and code references:
+
+.. code-block:: text
 
     pip install kopf
     import kopf

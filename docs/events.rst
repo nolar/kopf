@@ -17,7 +17,9 @@ Handled objects
 .. todo:: the ``body`` arg must be optional, meaning the currently handled object.
 
 Kopf provides some tools to report arbitrary information
-for the handled objects as Kubernetes events::
+for the handled objects as Kubernetes events:
+
+.. code-block:: python
 
     import kopf
 
@@ -34,7 +36,9 @@ The message is also arbitrary free-text.
 However, newlines are not rendered nicely
 (they break the whole output of ``kubectl``).
 
-For convenience, a few shortcuts are provided to mimic the Python's ``logging``::
+For convenience, a few shortcuts are provided to mimic the Python's ``logging``:
+
+.. code-block:: python
 
     import kopf
 
@@ -73,7 +77,9 @@ Other objects
 .. todo:: kubernetes and pykube objects should be accepted natively, not only the dicts.
 
 Events can be also attached to other objects, not only those handled
-at the moment (and not event the children)::
+at the moment (and not event the children):
+
+.. code-block:: python
 
     import kopf
     import kubernetes

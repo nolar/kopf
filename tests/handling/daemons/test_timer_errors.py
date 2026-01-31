@@ -1,13 +1,11 @@
 import asyncio
-import logging
 
 import kopf
 from kopf._core.actions.execution import ErrorsMode, PermanentError, TemporaryError
 
 
 async def test_timer_stopped_on_permanent_error(
-        settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
-    caplog.set_level(logging.DEBUG)
+        settings, resource, dummy, assert_logs, k8s_mocked, simulate_cycle, looptime):
 
     @kopf.timer(*resource, id='fn', backoff=1.23, interval=999)
     async def fn(**kwargs):
@@ -29,8 +27,7 @@ async def test_timer_stopped_on_permanent_error(
 
 
 async def test_timer_stopped_on_arbitrary_errors_with_mode_permanent(
-        settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
-    caplog.set_level(logging.DEBUG)
+        settings, resource, dummy, assert_logs, k8s_mocked, simulate_cycle, looptime):
 
     @kopf.timer(*resource, id='fn', errors=ErrorsMode.PERMANENT, backoff=1.23, interval=999)
     async def fn(**kwargs):
@@ -52,8 +49,7 @@ async def test_timer_stopped_on_arbitrary_errors_with_mode_permanent(
 
 
 async def test_timer_retried_on_temporary_error(
-        settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
-    caplog.set_level(logging.DEBUG)
+        settings, resource, dummy, assert_logs, k8s_mocked, simulate_cycle, looptime):
     finished = asyncio.Event()
 
     @kopf.timer(*resource, id='fn', backoff=1.23, interval=2.34)
@@ -76,8 +72,7 @@ async def test_timer_retried_on_temporary_error(
 
 
 async def test_timer_retried_on_arbitrary_error_with_mode_temporary(
-        settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
-    caplog.set_level(logging.DEBUG)
+        settings, resource, dummy, assert_logs, k8s_mocked, simulate_cycle, looptime):
     finished = asyncio.Event()
 
     @kopf.timer(*resource, id='fn', errors=ErrorsMode.TEMPORARY, backoff=1.23, interval=2.34)
@@ -101,7 +96,6 @@ async def test_timer_retried_on_arbitrary_error_with_mode_temporary(
 
 async def test_timer_retried_until_retries_limit(
         settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
-    caplog.set_level(logging.DEBUG)
     trigger = asyncio.Condition()
 
     @kopf.timer(*resource, id='fn', retries=3, interval=2.34)
@@ -122,7 +116,6 @@ async def test_timer_retried_until_retries_limit(
 
 async def test_timer_retried_until_timeout(
         settings, resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
-    caplog.set_level(logging.DEBUG)
     trigger = asyncio.Condition()
 
     @kopf.timer(*resource, id='fn', timeout=10.0, interval=1.23)

@@ -9,7 +9,6 @@ If the intentions change, the tests should be rewritten.
 They are NOT part of the public interface of the framework.
 """
 import asyncio
-import logging
 
 import aiohttp
 import pytest
@@ -78,9 +77,7 @@ async def test_event_stream_yields_everything(
 
 
 async def test_unknown_event_type_ignored(
-        settings, resource, stream, namespace, caplog):
-    caplog.set_level(logging.DEBUG)
-
+        settings, resource, stream, namespace, assert_logs):
     stream.feed(STREAM_WITH_UNKNOWN_EVENT, namespace=namespace)
     stream.close(namespace=namespace)
 
@@ -95,14 +92,12 @@ async def test_unknown_event_type_ignored(
     assert events[0] == Bookmark.LISTED
     assert events[1]['object']['spec'] == 'a'
     assert events[2]['object']['spec'] == 'b'
-    assert "Ignoring an unsupported event type" in caplog.text
-    assert "UNKNOWN" in caplog.text
+    assert_logs(["Ignoring an unsupported event type"])
+    assert_logs(["UNKNOWN"])
 
 
 async def test_error_410gone_exits_normally(
-        settings, resource, stream, namespace, caplog):
-    caplog.set_level(logging.DEBUG)
-
+        settings, resource, stream, namespace, assert_logs):
     stream.feed(STREAM_WITH_ERROR_410GONE, namespace=namespace)
     stream.close(namespace=namespace)
 
@@ -116,7 +111,7 @@ async def test_error_410gone_exits_normally(
     assert len(events) == 2
     assert events[0] == Bookmark.LISTED
     assert events[1]['object']['spec'] == 'a'
-    assert "Restarting the watch-stream" in caplog.text
+    assert_logs(["Restarting the watch-stream"])
 
 
 async def test_unknown_error_raises_exception(

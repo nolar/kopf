@@ -1,12 +1,10 @@
 import asyncio
-import logging
 
 import kopf
 
 
 async def test_timer_regular_interval(
-        resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
-    caplog.set_level(logging.DEBUG)
+        resource, dummy, assert_logs, k8s_mocked, simulate_cycle, looptime):
     trigger = asyncio.Condition()
 
     @kopf.timer(*resource, id='fn', interval=1.0, sharp=False)
@@ -26,8 +24,7 @@ async def test_timer_regular_interval(
 
 
 async def test_timer_sharp_interval(
-        resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
-    caplog.set_level(logging.DEBUG)
+        resource, dummy, assert_logs, k8s_mocked, simulate_cycle, looptime):
     trigger = asyncio.Condition()
 
     @kopf.timer(*resource, id='fn', interval=1.0, sharp=True)

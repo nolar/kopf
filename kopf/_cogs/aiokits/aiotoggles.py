@@ -6,11 +6,11 @@ class Toggle:
     """
     An synchronisation primitive that can be awaited both until set or cleared.
 
-    For one-directional toggles, `asyncio.Event` is sufficient.
+    For one-directional toggles, ``asyncio.Event`` is sufficient.
     But these events cannot be awaited until cleared.
 
     The bi-directional toggles are needed in some places in the code, such as
-    in the population/depletion of a `Vault`, or as in the operator's pause.
+    in the population/depletion of :class:`Vault`, or as in the operator pause.
 
     The optional name is used only for hinting in reprs. It can be used when
     there are many toggles, and they need to be distinguished somehow.

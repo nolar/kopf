@@ -1,12 +1,10 @@
 import asyncio
-import logging
 
 import kopf
 
 
 async def test_timer_is_spawned_at_least_once(
-        resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
-    caplog.set_level(logging.DEBUG)
+        resource, dummy, assert_logs, k8s_mocked, simulate_cycle, looptime):
     trigger = asyncio.Condition()
 
     @kopf.timer(*resource, id='fn', interval=1.0)
@@ -25,8 +23,7 @@ async def test_timer_is_spawned_at_least_once(
 
 
 async def test_timer_initial_delay_obeyed(
-        resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
-    caplog.set_level(logging.DEBUG)
+        resource, dummy, assert_logs, k8s_mocked, simulate_cycle, looptime):
     trigger = asyncio.Condition()
 
     @kopf.timer(*resource, id='fn', initial_delay=5.0, interval=1.0)
@@ -45,8 +42,7 @@ async def test_timer_initial_delay_obeyed(
 
 
 async def test_timer_initial_delay_callable_obeyed(
-        resource, dummy, caplog, assert_logs, k8s_mocked, simulate_cycle, looptime):
-    caplog.set_level(logging.DEBUG)
+        resource, dummy, assert_logs, k8s_mocked, simulate_cycle, looptime):
     trigger = asyncio.Condition()
 
     def get_delay(body, **_):

@@ -49,7 +49,7 @@ async def apply(
         delays: Collection[float],
         logger: loggers.ObjectLogger,
         stream_pressure: asyncio.Event | None = None,  # None for tests
-) -> bool:
+) -> tuple[bool, str | None]:
     delay = min(delays) if delays else None
 
     # Delete dummies on occasion, but don't trigger special patching for them [discussable].
@@ -57,7 +57,7 @@ async def apply(
         settings.persistence.progress_storage.touch(body=body, patch=patch, value=None)
 
     # Actually patch if it was not empty originally or after the dummies removal.
-    await patch_and_check(
+    resource_version = await patch_and_check(
         settings=settings,
         resource=resource,
         logger=logger,
@@ -92,7 +92,7 @@ async def apply(
             value = datetime.datetime.now(datetime.timezone.utc).isoformat()
             touch = patches.Patch()
             settings.persistence.progress_storage.touch(body=body, patch=touch, value=value)
-            await patch_and_check(
+            resource_version = await patch_and_check(
                 settings=settings,
                 resource=resource,
                 logger=logger,
@@ -101,7 +101,7 @@ async def apply(
             )
     elif not patch:  # no patch/touch and no delay
         applied = True
-    return applied
+    return applied, resource_version
 
 
 async def patch_and_check(
@@ -111,7 +111,7 @@ async def patch_and_check(
         body: bodies.Body,
         patch: patches.Patch,
         logger: typedefs.Logger,
-) -> None:
+) -> str | None:  # patched resource version
     """
     Apply a patch and verify that it is applied correctly.
 
@@ -146,3 +146,5 @@ async def patch_and_check(
             logger.debug(f"Patching was skipped: the object does not exist anymore.")
         elif inconsistencies:
             logger.warning(f"Patching failed with inconsistencies: {inconsistencies}")
+        return (resulting_body or {}).get('metadata', {}).get('resourceVersion')
+    return None

@@ -5,7 +5,9 @@ Shutdown
 The cleanup handlers are executed when the operator exits
 either by a signal (e.g. SIGTERM) or by catching an exception,
 or by raising the stop-flag, or by cancelling the operator's task
-(for :doc:`embedded operators </embedding>`)::
+(for :doc:`embedded operators </embedding>`):
+
+.. code-block:: python
 
     import kopf
 

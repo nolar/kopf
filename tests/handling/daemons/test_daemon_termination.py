@@ -1,6 +1,5 @@
 import asyncio
 import contextlib
-import logging
 
 import pytest
 
@@ -9,8 +8,7 @@ import kopf
 
 async def test_daemon_exits_gracefully_and_instantly_on_resource_deletion(
         settings, resource, dummy, simulate_cycle,
-        looptime, caplog, assert_logs, k8s_mocked, mocker):
-    caplog.set_level(logging.DEBUG)
+        looptime, assert_logs, k8s_mocked, mocker):
     called = asyncio.Condition()
 
     # A daemon-under-test.
@@ -44,8 +42,7 @@ async def test_daemon_exits_gracefully_and_instantly_on_resource_deletion(
 
 async def test_daemon_exits_gracefully_and_instantly_on_operator_exiting(
         settings, resource, dummy, simulate_cycle, background_daemon_killer,
-        looptime, caplog, assert_logs, k8s_mocked, mocker):
-    caplog.set_level(logging.DEBUG)
+        looptime, assert_logs, k8s_mocked, mocker):
     called = asyncio.Condition()
 
     # A daemon-under-test.
@@ -81,8 +78,7 @@ async def test_daemon_exits_gracefully_and_instantly_on_operator_exiting(
 @pytest.mark.usefixtures('background_daemon_killer')
 async def test_daemon_exits_gracefully_and_instantly_on_operator_pausing(
         settings, memories, resource, dummy, simulate_cycle, conflicts_found,
-        looptime, caplog, assert_logs, k8s_mocked, mocker):
-    caplog.set_level(logging.DEBUG)
+        looptime, assert_logs, k8s_mocked, mocker):
     called = asyncio.Condition()
 
     # A daemon-under-test.
@@ -117,8 +113,7 @@ async def test_daemon_exits_gracefully_and_instantly_on_operator_pausing(
 
 async def test_daemon_exits_instantly_on_cancellation_with_backoff(
         settings, resource, dummy, simulate_cycle,
-        looptime, caplog, assert_logs, k8s_mocked, mocker):
-    caplog.set_level(logging.DEBUG)
+        looptime, assert_logs, k8s_mocked, mocker):
     called = asyncio.Condition()
 
     # A daemon-under-test.
@@ -160,8 +155,7 @@ async def test_daemon_exits_instantly_on_cancellation_with_backoff(
 
 async def test_daemon_exits_slowly_on_cancellation_with_backoff(
         settings, resource, dummy, simulate_cycle,
-        looptime, caplog, assert_logs, k8s_mocked, mocker):
-    caplog.set_level(logging.DEBUG)
+        looptime, assert_logs, k8s_mocked, mocker):
     called = asyncio.Condition()
     finish = asyncio.Condition()
 
@@ -217,8 +211,7 @@ async def test_daemon_exits_slowly_on_cancellation_with_backoff(
 
 async def test_daemon_is_abandoned_due_to_cancellation_timeout_reached(
         settings, resource, dummy, simulate_cycle,
-        looptime, caplog, assert_logs, k8s_mocked, mocker):
-    caplog.set_level(logging.DEBUG)
+        looptime, assert_logs, k8s_mocked, mocker):
     called = asyncio.Condition()
     finish = asyncio.Condition()
 

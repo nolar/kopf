@@ -95,7 +95,7 @@ def test_corev1_overrides_ambuigity(registry, decorator, caplog, assert_logs, in
 
     revise_resources(registry=registry, insights=insights, group=None, resources=[r1, r2])
     assert insights.watched_resources == {r1}
-    assert_logs([], prohibited=[r"Ambiguous resources will not be served"])
+    assert_logs(prohibited=[r"Ambiguous resources will not be served"])
 
 
 @pytest.mark.parametrize('decorator', [
@@ -111,7 +111,7 @@ def test_no_ambiguity_in_generic_selector(registry, decorator, caplog, assert_lo
 
     revise_resources(registry=registry, insights=insights, group=None, resources=[r1, r2])
     assert insights.watched_resources == {r1, r2}
-    assert_logs([], prohibited=[r"Ambiguous resources will not be served"])
+    assert_logs(prohibited=[r"Ambiguous resources will not be served"])
 
 
 @pytest.mark.parametrize('decorator', [

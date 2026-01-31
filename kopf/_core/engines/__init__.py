@@ -1,5 +1,5 @@
 """
-Engines are things that run around the reactor (see `kopf._core.reactor`)
+Engines are things that run around the reactor (see :mod:`kopf._core.reactor`)
 to help it to function at full strength, but are not part of it.
 For example, all never-ending side-tasks for peering and k8s-event-posting.
 
