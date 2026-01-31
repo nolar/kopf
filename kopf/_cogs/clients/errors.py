@@ -63,16 +63,25 @@ class APIError(Exception):
 
     def __init__(
             self,
-            payload: RawStatus | None,
+            payload: RawStatus | str | None = None,
             *,
             status: int,
             headers: dict[str, str],
     ) -> None:
-        message = payload.get('message') if payload else None
-        super().__init__(message, payload)
+        if isinstance(payload, str):
+            super().__init__(payload)
+        elif payload:
+            super().__init__(payload.get('message'), payload)
+        else:
+            super().__init__()
         self._status = status
         self._headers = headers
         self._payload = payload
+
+    def __repr__(self) -> str:
+        subreprs = [repr(arg) for arg in self.args]
+        subreprs.append(f'status={self._status!r}')
+        return f"{self.__class__.__name__}({', '.join(subreprs)})"
 
     @property
     def status(self) -> int:
@@ -84,15 +93,15 @@ class APIError(Exception):
 
     @property
     def code(self) -> int | None:
-        return self._payload.get('code') if self._payload else None
+        return self._payload.get('code') if isinstance(self._payload, dict) else None
 
     @property
     def message(self) -> str | None:
-        return self._payload.get('message') if self._payload else None
+        return self._payload.get('message') if isinstance(self._payload, dict) else None
 
     @property
     def details(self) -> RawStatusDetails | None:
-        return self._payload.get('details') if self._payload else None
+        return self._payload.get('details') if isinstance(self._payload, dict) else None
 
 
 class APIClientError(APIError):  # all 4xx
@@ -141,14 +150,15 @@ async def check_response(
     if response.status >= 400:
 
         # Read the response's body before it is closed by raise_for_status().
-        payload: RawStatus | None
+        payload: RawStatus | str | None
         try:
             payload = await response.json()
         except (json.JSONDecodeError, aiohttp.ContentTypeError, aiohttp.ClientConnectionError):
-            payload = None
+            payload = await response.text()
+            payload = payload.strip() or None
 
         # Better be safe: who knows which sensitive information can be dumped unless kind==Status.
-        if not isinstance(payload, collections.abc.Mapping) or payload.get('kind') != 'Status':
+        if isinstance(payload, dict) and payload.get('kind') != 'Status':
             payload = None
 
         cls = (

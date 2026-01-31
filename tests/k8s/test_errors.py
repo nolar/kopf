@@ -19,19 +19,33 @@ def test_aiohttp_is_not_leaked_outside():
 
 
 def test_exception_without_payload():
-    exc = APIError(None, status=456, headers={'X-H': 'abc'})
+    exc = APIError(status=456, headers={'X-H': 'abc'})
     assert exc.status == 456
     assert exc.code is None
     assert exc.message is None
     assert exc.details is None
+    assert str(exc) == ""
+    assert repr(exc) == "APIError(status=456)"  # no headers!
 
 
-def test_exception_with_payload():
+def test_exception_with_dict_payload():
     exc = APIError({"message": "msg", "code": 123, "details": {"a": "b"}}, status=456, headers={'X-H': 'abc'})
     assert exc.status == 456
     assert exc.code == 123
     assert exc.message == "msg"
     assert exc.details == {"a": "b"}
+    assert str(exc) == "('msg', {'message': 'msg', 'code': 123, 'details': {'a': 'b'}})"
+    assert repr(exc) == "APIError('msg', {'message': 'msg', 'code': 123, 'details': {'a': 'b'}}, status=456)"
+
+
+def test_exception_with_text_payload():
+    exc = APIError("oops!", status=456, headers={'X-H': 'abc'})
+    assert exc.status == 456
+    assert exc.code is None
+    assert exc.message is None
+    assert exc.details is None
+    assert str(exc) == "oops!"
+    assert repr(exc) == "APIError('oops!', status=456)"  # no headers!
 
 
 @pytest.mark.parametrize('status', [200, 202, 300, 304])
@@ -63,7 +77,7 @@ async def test_no_error_on_success(
     (500, APIError),
     (666, APIError),
 ])
-async def test_error_with_payload(
+async def test_error_with_dict_payload(
         resp_mocker, aresponses, hostname, status, exctype):
 
     resp = aresponses.Response(
@@ -86,7 +100,7 @@ async def test_error_with_payload(
 
 
 @pytest.mark.parametrize('status', [400, 500, 666])
-async def test_error_with_nonjson_payload(
+async def test_error_with_text_payload(
         resp_mocker, aresponses, hostname, status):
 
     resp = aresponses.Response(
@@ -104,6 +118,7 @@ async def test_error_with_nonjson_payload(
     assert err.value.code is None
     assert err.value.message is None
     assert err.value.details is None
+    assert str(err.value) == "unparsable json"
 
 
 @pytest.mark.parametrize('status', [400, 500, 666])
@@ -125,3 +140,4 @@ async def test_error_with_parseable_nonk8s_payload(
     assert err.value.code is None
     assert err.value.message is None
     assert err.value.details is None
+    assert str(err.value) == ""
