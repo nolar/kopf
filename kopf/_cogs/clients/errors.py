@@ -66,15 +66,21 @@ class APIError(Exception):
             payload: RawStatus | None,
             *,
             status: int,
+            headers: dict[str, str],
     ) -> None:
         message = payload.get('message') if payload else None
         super().__init__(message, payload)
         self._status = status
+        self._headers = headers
         self._payload = payload
 
     @property
     def status(self) -> int:
         return self._status
+
+    @property
+    def headers(self) -> dict[str, str]:
+        return self._headers
 
     @property
     def code(self) -> int | None:
@@ -160,4 +166,4 @@ async def check_response(
         try:
             response.raise_for_status()
         except aiohttp.ClientResponseError as e:
-            raise cls(payload, status=response.status) from e
+            raise cls(payload, status=response.status, headers=dict(response.headers)) from e

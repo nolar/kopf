@@ -19,7 +19,7 @@ def test_aiohttp_is_not_leaked_outside():
 
 
 def test_exception_without_payload():
-    exc = APIError(None, status=456)
+    exc = APIError(None, status=456, headers={'X-H': 'abc'})
     assert exc.status == 456
     assert exc.code is None
     assert exc.message is None
@@ -27,7 +27,7 @@ def test_exception_without_payload():
 
 
 def test_exception_with_payload():
-    exc = APIError({"message": "msg", "code": 123, "details": {"a": "b"}}, status=456)
+    exc = APIError({"message": "msg", "code": 123, "details": {"a": "b"}}, status=456, headers={'X-H': 'abc'})
     assert exc.status == 456
     assert exc.code == 123
     assert exc.message == "msg"

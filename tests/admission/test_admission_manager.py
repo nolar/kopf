@@ -67,7 +67,7 @@ async def test_creation_ignores_if_exists_already(
 
     container = Container()
     mocker.patch.object(container, 'as_changed', return_value=aiter([]))
-    k8s_mocked.post.side_effect = APIConflictError({}, status=409)
+    k8s_mocked.post.side_effect = APIConflictError({}, status=409, headers={})
 
     settings.admission.managed = 'xyz'
     await configuration_manager(
@@ -92,7 +92,7 @@ async def test_creation_escalates_on_errors(
 
     container = Container()
     mocker.patch.object(container, 'as_changed', return_value=aiter([]))
-    k8s_mocked.post.side_effect = error({}, status=400)
+    k8s_mocked.post.side_effect = error({}, status=400, headers={})
 
     with pytest.raises(error):
         settings.admission.managed = 'xyz'
