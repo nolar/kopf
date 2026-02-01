@@ -102,15 +102,6 @@ class APIContext:
         certificate_path: str | None
         private_key_path: str | None
 
-        if info.ca_path and info.ca_data:
-            raise credentials.LoginError("Both CA path & data are set. Need only one.")
-        elif info.ca_path:
-            ca_path = info.ca_path
-        elif info.ca_data:
-            ca_path = tempfiles[base64.b64decode(info.ca_data)]
-        else:
-            ca_path = None
-
         if info.certificate_path and info.certificate_data:
             raise credentials.LoginError("Both certificate path & data are set. Need only one.")
         elif info.certificate_path:
@@ -134,13 +125,17 @@ class APIContext:
         if certificate_path and private_key_path:
             context = ssl.create_default_context(
                 purpose=ssl.Purpose.SERVER_AUTH,
-                cafile=ca_path)
+                cafile=info.ca_path,
+                cadata=base64.b64decode(info.ca_data).decode('ascii') if info.ca_data else None,
+            )
             context.load_cert_chain(
                 certfile=certificate_path,
                 keyfile=private_key_path)
         else:
             context = ssl.create_default_context(
-                cafile=ca_path)
+                cafile=info.ca_path,
+                cadata=base64.b64decode(info.ca_data).decode('ascii') if info.ca_data else None,
+            )
 
         if info.insecure:
             context.check_hostname = False
