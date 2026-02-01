@@ -62,6 +62,14 @@ class ConnectionInfo:
     priority: int = 0
     expiration: datetime.datetime | None = None  # TZ-aware or TZ-naive (implies UTC)
 
+    def __post_init__(self) -> None:
+        if self.ca_path and self.ca_data:
+            raise ValueError("Both CA path & data are set. Need only one.")
+        if self.certificate_path and self.certificate_data:
+            raise ValueError("Both certificate path & data are set. Need only one.")
+        if self.private_key_path and self.private_key_data:
+            raise ValueError("Both private key path & data are set. Need only one.")
+
 
 _T = TypeVar('_T', bound=object)
 

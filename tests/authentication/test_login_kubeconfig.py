@@ -125,7 +125,56 @@ def test_mini_kubeconfig_reading(tmpdir, mocker):
     assert credentials.default_namespace is None
 
 
-def test_full_kubeconfig_reading(tmpdir, mocker):
+def test_full_kubeconfig_reading_with_ssl_files(tmpdir, mocker):
+    kubeconfig = tmpdir.join('config')
+    kubeconfig.write('''
+        kind: Config
+        current-context: ctx
+        contexts:
+          - name: ctx
+            context:
+              cluster: clstr
+              user: usr
+              namespace: ns
+          - name: def
+        clusters:
+          - name: clstr
+            cluster:
+              server: https://hostname:1234/
+              certificate-authority: /pathA
+              insecure-skip-tls-verify: true
+          - name: hij
+        users:
+          - name: usr
+            user:
+              username: uname
+              password: passw
+              client-certificate: /pathC
+              client-key: /pathK
+              token: tkn
+          - name: klm
+    ''')
+
+    mocker.patch.dict(os.environ, clear=True, KUBECONFIG=str(kubeconfig))
+    credentials = login_with_kubeconfig()
+
+    assert credentials is not None
+    assert credentials.server == 'https://hostname:1234/'
+    assert credentials.insecure == True
+    assert credentials.scheme is None
+    assert credentials.token == 'tkn'
+    assert credentials.certificate_path == '/pathC'
+    assert credentials.certificate_data is None
+    assert credentials.private_key_path == '/pathK'
+    assert credentials.private_key_data is None
+    assert credentials.ca_path == '/pathA'
+    assert credentials.ca_data is None
+    assert credentials.password == 'passw'
+    assert credentials.username == 'uname'
+    assert credentials.default_namespace == 'ns'
+
+
+def test_full_kubeconfig_reading_with_ssl_data(tmpdir, mocker):
     kubeconfig = tmpdir.join('config')
     kubeconfig.write('''
         kind: Config
@@ -142,7 +191,6 @@ def test_full_kubeconfig_reading(tmpdir, mocker):
             cluster:
               server: https://hostname:1234/
               certificate-authority-data: base64dataA
-              certificate-authority: /pathA
               insecure-skip-tls-verify: true
           - name: hij
         users:
@@ -151,9 +199,7 @@ def test_full_kubeconfig_reading(tmpdir, mocker):
               username: uname
               password: passw
               client-certificate-data: base64dataC
-              client-certificate: /pathC
               client-key-data: base64dataK
-              client-key: /pathK
               token: tkn
           - name: klm
     ''')
@@ -166,11 +212,11 @@ def test_full_kubeconfig_reading(tmpdir, mocker):
     assert credentials.insecure == True
     assert credentials.scheme is None
     assert credentials.token == 'tkn'
-    assert credentials.certificate_path == '/pathC'
+    assert credentials.certificate_path is None
     assert credentials.certificate_data == 'base64dataC'
-    assert credentials.private_key_path == '/pathK'
+    assert credentials.private_key_path is None
     assert credentials.private_key_data == 'base64dataK'
-    assert credentials.ca_path == '/pathA'
+    assert credentials.ca_path is None
     assert credentials.ca_data == 'base64dataA'
     assert credentials.password == 'passw'
     assert credentials.username == 'uname'
