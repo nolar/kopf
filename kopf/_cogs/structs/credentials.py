@@ -24,14 +24,20 @@ and nothing more than that:
     :func:`authentication` and :mod:`piggybacking`.
 """
 import asyncio
+import base64
 import collections
+import contextlib
 import dataclasses
 import datetime
 import inspect
 import os
 import random
+import ssl
+import tempfile
 from collections.abc import AsyncIterable, AsyncIterator, Callable, Mapping
 from typing import NewType, TypeVar, cast
+
+import aiohttp
 
 
 class LoginError(Exception):
@@ -42,8 +48,23 @@ class AccessError(Exception):
     """ Raised when the operator cannot access the cluster API. """
 
 
-@dataclasses.dataclass(frozen=True)
-class ConnectionInfo:
+# Naming: "ConnectionInfo" is the best name, but it is already a part of the public interface.
+# Anything "Cluster…" is too narrow. `Credentials` are more suited for the current `ConnectionInfo`.
+# "KubeContext" mimics the kubeconfig's terminology & content, so seemingly fits the best.
+# The class is anyway hidden from users, so we can use any name. Class inheritance is not supported.
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class KubeContext:
+    """
+    A base connection info with no credentials (added in descendant classes).
+    """
+    server: str  # e.g. "https://localhost:443"
+    priority: int = 0
+    default_namespace: str | None = None  # used for cluster objects' k8s-events.
+    expiration: datetime.datetime | None = None  # TZ-aware or TZ-naive (implies UTC)
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class ConnectionInfo(KubeContext):
     """
     A single endpoint with specific credentials and connection flags to use.
     """
@@ -71,6 +92,102 @@ class ConnectionInfo:
         if self.private_key_path and self.private_key_data:
             raise ValueError("Both private key path & data are set. Need only one.")
 
+    def as_aiohttp_basic_auth(self) -> aiohttp.BasicAuth | None:
+        """Make a basic auth for username/password, or ``None`` if absent."""
+        if self.username and self.password:
+            return aiohttp.BasicAuth(self.username, self.password)
+        else:
+            return None
+
+    def as_http_headers(self) -> dict[str, str]:
+        """
+        Make a dict with the ``Authorization`` header set to scheme+token,
+        or an empty dict if there are no tokens or schemes.
+        """
+        if self.scheme and self.token:
+            return {'Authorization': f'{self.scheme} {self.token}'}
+        elif self.scheme:
+            return {'Authorization': f'{self.scheme}'}
+        elif self.token:
+            return {'Authorization': f'Bearer {self.token}'}
+        else:
+            return {}
+
+    def as_ssl_context(self) -> ssl.SSLContext:
+        """
+        Make an SSL context with CA and client cert using Python's :mod:`ssl`.
+
+        .. warning::
+            It will store the :attr:`kopf.ConnectionInfo.certificate_data` and
+            :attr:`kopf.ConnectionInfo.private_key_data` into temporary files
+            for a brief moment of time until the SSL context is constructed,
+            since Python's :mod:`ssl` cannot load them from memory.
+        """
+        # Some SSL data are not accepted directly, so we have to use temp files.
+        # Do not even create temporary files if there is no need. It can be a readonly filesystem.
+        with contextlib.ExitStack() as stack:
+
+            cert_path: str | bytes | os.PathLike[str] | os.PathLike[bytes] | None
+            if self.certificate_path:
+                cert_path = self.certificate_path
+            elif self.certificate_data:
+                cert_file = stack.enter_context(tempfile.NamedTemporaryFile(buffering=0))
+                cert_file.write(self.__decode_to_pem(self.certificate_data).encode('ascii'))
+                cert_path = cert_file.name
+            else:
+                cert_path = None
+
+            pkey_path: str | bytes | os.PathLike[str] | os.PathLike[bytes] | None
+            if self.private_key_path:
+                pkey_path = self.private_key_path
+            elif self.private_key_data:
+                pkey_file = stack.enter_context(tempfile.NamedTemporaryFile(buffering=0))
+                pkey_file.write(self.__decode_to_pem(self.private_key_data).encode('ascii'))
+                pkey_path = pkey_file.name
+            else:
+                pkey_path = None
+
+            # The SSL part (both client certificate auth and CA verification).
+            context: ssl.SSLContext
+            if cert_path and pkey_path:
+                context = ssl.create_default_context(
+                    purpose=ssl.Purpose.SERVER_AUTH,
+                    cafile=self.ca_path,
+                    cadata=self.__decode_to_pem(self.ca_data) if self.ca_data is not None else None,
+                )
+                context.load_cert_chain(certfile=cert_path, keyfile=pkey_path)
+            else:
+                context = ssl.create_default_context(
+                    cafile=self.ca_path,
+                    cadata=self.__decode_to_pem(self.ca_data) if self.ca_data is not None else None,
+                )
+
+        if self.insecure:
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+
+        return context
+
+    @staticmethod
+    def __decode_to_pem(data: str | bytes) -> str:
+        match data:
+            case str() if data.startswith('-----BEGIN '):
+                return data
+            case bytes() if data.startswith(b'-----BEGIN '):
+                return data.decode('ascii')
+            case _:
+                return base64.b64decode(data).decode('ascii')
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class AiohttpSession(KubeContext):
+    """
+    A custom ``aiohttp`` session to use instead of the built-in one.
+
+    See: :ref:`auth-custom-session` for details.
+    """
+    aiohttp_session: aiohttp.ClientSession
+
 
 _T = TypeVar('_T', bound=object)
 
@@ -88,11 +205,11 @@ class VaultItem:
 
     The caches are populated by :meth:`Vault.extended` on-demand.
     """
-    info: ConnectionInfo
+    info: KubeContext
     caches: dict[str, object] | None = None
 
 
-class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
+class Vault(AsyncIterable[tuple[VaultKey, KubeContext]]):
     """
     A store for currently valid authentication methods.
 
@@ -143,22 +260,22 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
 
     async def __aiter__(
             self,
-    ) -> AsyncIterator[tuple[VaultKey, ConnectionInfo]]:
+    ) -> AsyncIterator[tuple[VaultKey, KubeContext]]:
         async for key, item in self._items():
             yield key, item.info
 
     async def extended(
             self,
-            factory: Callable[[ConnectionInfo], _T],
+            factory: Callable[[KubeContext], _T],
             purpose: str | None = None,
-    ) -> AsyncIterator[tuple[VaultKey, ConnectionInfo, _T]]:
+    ) -> AsyncIterator[tuple[VaultKey, KubeContext, _T]]:
         """
         Iterate the connection info items with their cached object.
 
         The cached objects are identified by the purpose (an arbitrary string).
         Multiple types of objects can be cached under different names.
 
-        The factory is a one-argument function of :class:`kopf.ConnectionInfo`,
+        The factory is a one-argument function of :class:`.KubeContext`,
         that returns the object to be cached for this connection info.
         It is called only once per item and purpose.
         """
@@ -278,7 +395,7 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
     async def invalidate(
             self,
             key: VaultKey,
-            info: ConnectionInfo,
+            info: KubeContext,
             *,
             exc: Exception | None = None,
     ) -> None:
@@ -410,8 +527,8 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
     ) -> None:
         for key, info in __src.items():
             key = VaultKey(str(key))
-            if not isinstance(info, ConnectionInfo):
-                raise ValueError("Only ConnectionInfo instances are currently accepted.")
+            if not isinstance(info, KubeContext):
+                raise ValueError("Only ConnectionInfo/AiohttpSession instances are accepted.")
             if info not in [data.info for data in self._invalid[key]]:
                 self._current[key] = VaultItem(info=info)
         self._update_expiration()

@@ -3,10 +3,11 @@ import os.path
 import pathlib
 import ssl
 
+import aiohttp
 import pytest
 
 from kopf._cogs.clients.auth import APIContext, authenticated, vault_var
-from kopf._cogs.structs.credentials import ConnectionInfo, Vault
+from kopf._cogs.structs.credentials import AiohttpSession, ConnectionInfo, Vault
 
 # These are Minikube's locally generated certificates (CN=minikubeCA).
 # They are not in any public use, and are regenerated regularly.
@@ -178,3 +179,52 @@ async def test_ssl_context_from_data(vault, ca_data, cert_data, pkey_data):
         assert ca[0]['subject'] == ((('commonName', 'minikubeCA'),),)
         assert ca[0]['notAfter'] == 'May 19 09:18:36 2029 GMT'
         assert ca[0]['notBefore'] == 'May 21 09:18:36 2019 GMT'
+
+
+async def test_custom_aiohttp_session(vault):
+    sample_session = aiohttp.ClientSession()
+    await vault.populate({
+        'id': AiohttpSession(
+            server='http://localhost',
+            aiohttp_session=sample_session,
+        ),
+    })
+    actual_session = await fn()
+    async with actual_session:
+        assert actual_session is sample_session
+
+
+async def test_user_agent_with_a_default_session(vault):
+    await vault.populate({
+        'id': ConnectionInfo(
+            server='http://localhost',
+        ),
+    })
+    session = await fn()
+    async with session:
+        assert session.headers['User-Agent'].startswith('kopf/')
+
+
+async def test_user_agent_with_a_custom_aiohttp_session(vault):
+    await vault.populate({
+        'id': AiohttpSession(
+            server='http://localhost',
+            aiohttp_session=aiohttp.ClientSession(),  # no headers, no user-agent
+        ),
+    })
+    session = await fn()
+    async with session:
+        assert session.headers['User-Agent'].startswith('kopf/')  # injected regardless
+
+
+async def test_custom_user_agent_preserved(vault):
+    headers = {'User-Agent': 'myoperator/1.2.3'}
+    await vault.populate({
+        'id': AiohttpSession(
+            server='http://localhost',
+            aiohttp_session=aiohttp.ClientSession(headers=headers),
+        ),
+    })
+    session = await fn()
+    async with session:
+        assert session.headers['User-Agent'] == 'myoperator/1.2.3'

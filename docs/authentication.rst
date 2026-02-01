@@ -93,6 +93,81 @@ Multiple handlers can be declared to retrieve different credentials
 or the same credentials via different libraries. All of the retrieved
 credentials will be used in random order with no specific priority.
 
+
+.. _auth-custom-session:
+
+Custom HTTP sessions
+====================
+
+Advanced users can provide their own ``aiohttp`` client session instead
+of the pre-built one by returning an instance of :class:`kopf.AiohttpSession`
+from the login handlers.
+
+You can, for example, inject extra headers, remove or replace the existing ones,
+add sophisticated authentication schemes, or set the networking parameters,
+such as timeouts or connection limits (for client-side rate-limiting).
+
+However, if you provide a custom session, you must configure the authentication
+yourself. This includes the username/password, tokens, or SSL certificates.
+Kopf will not modify the provided session (except for injecting ``User-Agent``),
+and cannot do so: most of these fields are either hidden by ``aiohttp``,
+or are read-only, so they can only be set at the session creation.
+
+For your convenience, :class:`kopf.ConnectionInfo` from the existing login
+functions —see :ref:`auth-piggybacking`— provides the methods to convert
+it to the typical components of the HTTP sessions:
+
+- :meth:`kopf.ConnectionInfo.as_aiohttp_basic_auth` for username/password.
+- :meth:`kopf.ConnectionInfo.as_http_headers` for all tokens.
+- :meth:`kopf.ConnectionInfo.as_ssl_context` for CA & SSL client certificates.
+
+.. note::
+    :meth:`kopf.ConnectionInfo.as_ssl_context` will store the certificate
+    and private key data blobs to the disk files temporaily for a brief time,
+    since Python's :mod:`ssl` can only load it from files, not from data blobs.
+    It will delete the files as soon as the SSL context is constructed.
+
+You do not need to worry about the session termination or closing —
+Kopf will own and manage the provided session and will close it when needed.
+
+.. code-block:: python
+
+    import aiohttp
+    import kopf
+
+    @kopf.on.login()
+    async def login_fn(**kwargs) -> kopf.AiohttpSession:
+        credentials = kopf.login_with_kubeconfig()  # or any other available method
+        headers = {
+            'X-Custom-Header': 'helloworld',
+            'Authorization': 'VeryAdvancedAuthScheme xyz',
+            'User-Agent': f'myoperator/1.2.3 kopf/{kopf.__version__}',
+        }
+        session = aiohttp.ClientSession(
+            connector=aiohttp.TCPConnector(
+                limit_per_host=10, limit=20,
+                keepalive_timeout=30.
+                ssl=credentials.as_ssl_context(),
+            ),
+            headers=credentials.as_http_headers() | headers,
+            auth=credentials.as_aiohttp_basic_auth(),
+            trust_env=True,  # to use HTTP_PROXY and ~/.netrc
+        )
+        return kopf.AiohttpSession(
+            aiohttp_session=session,
+            server=credentials.server,
+            default_namespace=credentials.default_namespace,
+        )
+
+.. warning::
+    As a rule, ``aiohttp`` is the internal detail of the implementation
+    and is normally not exposed to users except for very advanced use-cases.
+    Kopf reserves the right to change its internal HTTP library
+    without warning or backwards compatibility. In that case, Kopf will
+    fail running if this field is set (will raise an exception) — to prevent
+    the unnoticed accidental damage during such upgrades. Use at your own risk.
+
+
 .. _auth-piggybacking:
 
 Piggybacking
