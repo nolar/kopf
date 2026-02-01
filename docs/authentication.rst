@@ -113,6 +113,20 @@ Kopf will not modify the provided session (except for injecting ``User-Agent``),
 and cannot do so: most of these fields are either hidden by ``aiohttp``,
 or are read-only, so they can only be set at the session creation.
 
+For your convenience, :class:`kopf.ConnectionInfo` from the existing login
+functions —see :ref:`auth-piggybacking`— provides the methods to convert
+it to the typical components of the HTTP sessions:
+
+- :meth:`kopf.ConnectionInfo.as_aiohttp_basic_auth` for username/password.
+- :meth:`kopf.ConnectionInfo.as_http_headers` for all tokens.
+- :meth:`kopf.ConnectionInfo.as_ssl_context` for CA & SSL client certificates.
+
+.. note::
+    :meth:`kopf.ConnectionInfo.as_ssl_context` will store the certificate
+    and private key data blobs to the disk files temporaily for a brief time,
+    since Python's :mod:`ssl` can only load it from files, not from data blobs.
+    It will delete the files as soon as the SSL context is constructed.
+
 You do not need to worry about the session termination or closing —
 Kopf will own and manage the provided session and will close it when needed.
 
@@ -130,8 +144,13 @@ Kopf will own and manage the provided session and will close it when needed.
             'User-Agent': f'myoperator/1.2.3 kopf/{kopf.__version__}',
         }
         session = aiohttp.ClientSession(
-            connector=aiohttp.TCPConnector(limit_per_host=10, limit=20, keepalive_timeout=30),
-            headers=headers,
+            connector=aiohttp.TCPConnector(
+                limit_per_host=10, limit=20,
+                keepalive_timeout=30.
+                ssl=credentials.as_ssl_context(),
+            ),
+            headers=credentials.as_http_headers() | headers,
+            auth=credentials.as_aiohttp_basic_auth(),
             trust_env=True,  # to use HTTP_PROXY and ~/.netrc
         )
         return kopf.AiohttpSession(

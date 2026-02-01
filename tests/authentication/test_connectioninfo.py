@@ -1,4 +1,6 @@
 import datetime
+import pathlib
+import ssl
 
 import aiohttp
 import pytest
@@ -101,6 +103,55 @@ def test_conflicting_certificate_data_and_path():
 def test_conflicting_private_key_data_and_path():
     with pytest.raises(ValueError, match="Both private key path & data"):
         ConnectionInfo(server='', private_key_path='/path', private_key_data=b'data')
+
+
+def test_connection_info_as_aiohttp_basic_auth():
+    info = ConnectionInfo(
+        server='https://localhost',
+        username='username',
+        password='password',
+    )
+    assert info.as_aiohttp_basic_auth() == aiohttp.BasicAuth('username', 'password')
+    assert info.as_http_headers() == {}
+
+
+def test_connection_info_as_http_headers():
+    info = ConnectionInfo(
+        server='https://localhost',
+        scheme='Bearer',
+        token='xyz'
+    )
+    assert info.as_aiohttp_basic_auth() is None
+    assert info.as_http_headers() == {'Authorization': 'Bearer xyz'}
+
+
+def test_connection_info_as_ssl_context_when_insecure():
+    info = ConnectionInfo(
+        server='https://localhost',
+        insecure=True,
+    )
+    ssl_context = info.as_ssl_context()
+    ca = ssl_context.get_ca_certs()
+    assert ssl_context.verify_mode == ssl.CERT_NONE
+    assert ssl_context.check_hostname is False
+    assert ca  # at least some default CAs must be loaded, but we do not know which ones.
+
+
+def test_connection_info_as_ssl_context_when_defined():
+    info = ConnectionInfo(
+        server='https://localhost',
+        ca_path=pathlib.Path(__file__).parent / 'fixtures/ca.pem',
+        certificate_path=pathlib.Path(__file__).parent / 'fixtures/cert.pem',
+        private_key_path=pathlib.Path(__file__).parent / 'fixtures/pkey.pem',
+    )
+    ssl_context = info.as_ssl_context()
+    ca = ssl_context.get_ca_certs()
+    assert ssl_context.verify_mode == ssl.CERT_REQUIRED
+    assert ssl_context.check_hostname is True
+    assert ca[0]['issuer'] == ((('commonName', 'minikubeCA'),),)
+    assert ca[0]['subject'] == ((('commonName', 'minikubeCA'),),)
+    assert ca[0]['notAfter'] == 'May 19 09:18:36 2029 GMT'
+    assert ca[0]['notBefore'] == 'May 21 09:18:36 2019 GMT'
 
 
 async def test_creation_of_aiohttp_session():

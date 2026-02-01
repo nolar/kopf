@@ -1,9 +1,4 @@
-import base64
-import contextlib
 import functools
-import os
-import ssl
-import tempfile
 from collections.abc import Callable
 from contextvars import ContextVar
 from typing import Any, TypeVar, cast
@@ -97,7 +92,14 @@ class APIContext:
         # Generic aiohttp session based on the constructed credentials.
         match info:
             case credentials.ConnectionInfo():
-                self.session = self.make_aiohttp_session(info)
+                self.session = aiohttp.ClientSession(
+                    connector=aiohttp.TCPConnector(
+                        limit=0,
+                        ssl=info.as_ssl_context(),
+                    ),
+                    headers=info.as_http_headers(),
+                    auth=info.as_aiohttp_basic_auth(),
+                )
             case credentials.AiohttpSession():
                 self.session = info.aiohttp_session
             case _:
@@ -112,76 +114,6 @@ class APIContext:
         self.default_namespace = info.default_namespace
 
         self.responses = []
-
-    def make_aiohttp_session(self, info: credentials.ConnectionInfo) -> aiohttp.ClientSession:
-
-        # Some SSL data are not accepted directly, so we have to use temp files.
-        # Do not even create temporary files if there is no need. It can be a readonly filesystem.
-        with contextlib.ExitStack() as stack:
-
-            cert_path: str | bytes | os.PathLike[str] | os.PathLike[bytes] | None
-            if info.certificate_path:
-                cert_path = info.certificate_path
-            elif info.certificate_data:
-                cert_file = stack.enter_context(tempfile.NamedTemporaryFile(buffering=0))
-                cert_file.write(decode_to_pem(info.certificate_data).encode('ascii'))
-                cert_path = cert_file.name
-            else:
-                cert_path = None
-
-            pkey_path: str | bytes | os.PathLike[str] | os.PathLike[bytes] | None
-            if info.private_key_path:
-                pkey_path = info.private_key_path
-            elif info.private_key_data:
-                pkey_file = stack.enter_context(tempfile.NamedTemporaryFile(buffering=0))
-                pkey_file.write(decode_to_pem(info.private_key_data).encode('ascii'))
-                pkey_path = pkey_file.name
-            else:
-                pkey_path = None
-
-            # The SSL part (both client certificate auth and CA verification).
-            context: ssl.SSLContext
-            if cert_path and pkey_path:
-                context = ssl.create_default_context(
-                    purpose=ssl.Purpose.SERVER_AUTH,
-                    cafile=info.ca_path,
-                    cadata=decode_to_pem(info.ca_data) if info.ca_data is not None else None,
-                )
-                context.load_cert_chain(certfile=cert_path, keyfile=pkey_path)
-            else:
-                context = ssl.create_default_context(
-                    cafile=info.ca_path,
-                    cadata=decode_to_pem(info.ca_data) if info.ca_data is not None else None,
-                )
-
-        if info.insecure:
-            context.check_hostname = False
-            context.verify_mode = ssl.CERT_NONE
-
-        # The token auth part.
-        headers: dict[str, str] = {}
-        if info.scheme and info.token:
-            headers['Authorization'] = f'{info.scheme} {info.token}'
-        elif info.scheme:
-            headers['Authorization'] = f'{info.scheme}'
-        elif info.token:
-            headers['Authorization'] = f'Bearer {info.token}'
-
-        # The basic auth part.
-        auth: aiohttp.BasicAuth | None
-        if info.username and info.password:
-            auth = aiohttp.BasicAuth(info.username, info.password)
-        else:
-            auth = None
-
-        return aiohttp.ClientSession(
-            connector=aiohttp.TCPConnector(
-                limit=0,
-                ssl=context,
-            ),
-            headers=headers,
-            auth=auth,
-        )
 
     def flush_closed_responses(self) -> None:
         # There's no point keeping references to already closed responses.
@@ -207,13 +139,3 @@ class APIContext:
 
         # Closing is triggered by `Vault._flush_caches()` -- forward it to the actual session.
         await self.session.close()
-
-
-def decode_to_pem(data: str | bytes) -> str:
-    match data:
-        case str() if data.startswith('-----BEGIN '):
-            return data
-        case bytes() if data.startswith(b'-----BEGIN '):
-            return data.decode('ascii')
-        case _:
-            return base64.b64decode(data).decode('ascii')
