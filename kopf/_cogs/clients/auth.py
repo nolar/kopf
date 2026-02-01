@@ -1,9 +1,9 @@
 import base64
+import contextlib
 import functools
-import os
 import ssl
 import tempfile
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable
 from contextvars import ContextVar
 from typing import Any, TypeVar, cast
 
@@ -87,9 +87,6 @@ class APIContext:
     # List of open responses.
     responses: list[aiohttp.ClientResponse]
 
-    # Temporary caches of the information retrieved for and from the environment.
-    _tempfiles: "_TempFiles"
-
     def __init__(
             self,
             info: credentials.ConnectionInfo,
@@ -97,45 +94,43 @@ class APIContext:
         super().__init__()
 
         # Some SSL data are not accepted directly, so we have to use temp files.
-        tempfiles = _TempFiles()
-        ca_path: str | None
-        certificate_path: str | None
-        private_key_path: str | None
+        # Do not even create temporary files if there is no need. It can be a readonly filesystem.
+        with contextlib.ExitStack() as stack:
 
-        if info.certificate_path and info.certificate_data:
-            raise credentials.LoginError("Both certificate path & data are set. Need only one.")
-        elif info.certificate_path:
-            certificate_path = info.certificate_path
-        elif info.certificate_data:
-            certificate_path = tempfiles[base64.b64decode(info.certificate_data)]
-        else:
-            certificate_path = None
+            cert_path: str | None
+            if info.certificate_path:
+                cert_path = info.certificate_path
+            elif info.certificate_data:
+                cert_file = stack.enter_context(tempfile.NamedTemporaryFile(buffering=0))
+                cert_file.write(base64.b64decode(info.certificate_data))
+                cert_path = cert_file.name
+            else:
+                cert_path = None
 
-        if info.private_key_path and info.private_key_data:
-            raise credentials.LoginError("Both private key path & data are set. Need only one.")
-        elif info.private_key_path:
-            private_key_path = info.private_key_path
-        elif info.private_key_data:
-            private_key_path = tempfiles[base64.b64decode(info.private_key_data)]
-        else:
-            private_key_path = None
+            pkey_path: str | None
+            if info.private_key_path:
+                pkey_path = info.private_key_path
+            elif info.private_key_data:
+                pkey_file = stack.enter_context(tempfile.NamedTemporaryFile(buffering=0))
+                pkey_file.write(base64.b64decode(info.private_key_data))
+                pkey_path = pkey_file.name
+            else:
+                pkey_path = None
 
-        # The SSL part (both client certificate auth and CA verification).
-        context: ssl.SSLContext
-        if certificate_path and private_key_path:
-            context = ssl.create_default_context(
-                purpose=ssl.Purpose.SERVER_AUTH,
-                cafile=info.ca_path,
-                cadata=base64.b64decode(info.ca_data).decode('ascii') if info.ca_data else None,
-            )
-            context.load_cert_chain(
-                certfile=certificate_path,
-                keyfile=private_key_path)
-        else:
-            context = ssl.create_default_context(
-                cafile=info.ca_path,
-                cadata=base64.b64decode(info.ca_data).decode('ascii') if info.ca_data else None,
-            )
+            # The SSL part (both client certificate auth and CA verification).
+            context: ssl.SSLContext
+            if cert_path and pkey_path:
+                context = ssl.create_default_context(
+                    purpose=ssl.Purpose.SERVER_AUTH,
+                    cafile=info.ca_path,
+                    cadata=base64.b64decode(info.ca_data).decode('ascii') if info.ca_data else None,
+                )
+                context.load_cert_chain(certfile=cert_path, keyfile=pkey_path)
+            else:
+                context = ssl.create_default_context(
+                    cafile=info.ca_path,
+                    cadata=base64.b64decode(info.ca_data).decode('ascii') if info.ca_data else None,
+                )
 
         if info.insecure:
             context.check_hostname = False
@@ -176,9 +171,6 @@ class APIContext:
 
         self.responses = []
 
-        # For purging on garbage collection.
-        self._tempfiles = tempfiles
-
     def flush_closed_responses(self) -> None:
         # There's no point keeping references to already closed responses.
         self.responses[:] = [_response for _response in self.responses if not _response.closed]
@@ -203,46 +195,3 @@ class APIContext:
 
         # Closing is triggered by `Vault._flush_caches()` -- forward it to the actual session.
         await self.session.close()
-
-        # Additionally, explicitly remove any temporary files we have created.
-        # They will be purged on garbage collection anyway, but it is better to make it sooner.
-        self._tempfiles.purge()
-
-
-class _TempFiles(Mapping[bytes, str]):
-    """
-    A container for the temporary files, which are purged on garbage collection.
-
-    The files are purged when the container is garbage-collected.
-    The container is garbage-collected when its parent :class:`APISession`
-    is garbage-collected or explicitly closed
-    (e.g., by :class:`Vault` on removal of corresponding credentials).
-    """
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._paths: dict[bytes, str] = {}
-
-    def __del__(self) -> None:
-        self.purge()
-
-    def __len__(self) -> int:
-        return len(self._paths)
-
-    def __iter__(self) -> Iterator[bytes]:
-        return iter(self._paths)
-
-    def __getitem__(self, item: bytes) -> str:
-        if item not in self._paths:
-            with tempfile.NamedTemporaryFile(delete=False) as f:
-                f.write(item)
-            self._paths[item] = f.name
-        return self._paths[item]
-
-    def purge(self) -> None:
-        for _, path in self._paths.items():
-            try:
-                os.remove(path)
-            except OSError:
-                pass  # already removed
-        self._paths.clear()
