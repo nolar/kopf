@@ -31,7 +31,7 @@ dependencies = [
     "iso8601",              # 0.07 MB
     "pyyaml",               # 0.90 MB
     "click>=8.2.0",         # 0.60 MB
-    "aiohttp",              # 7.80 MB
+    "aiohttp>=3.0.0",       # 7.80 MB
     "aiohttp>=3.9.0; python_version >= '3.12'",
 ]
 dynamic = ["version"]  # taken from git tags
