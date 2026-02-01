@@ -28,6 +28,7 @@ import collections
 import dataclasses
 import datetime
 import inspect
+import os
 import random
 from collections.abc import AsyncIterable, AsyncIterator, Callable, Mapping
 from typing import NewType, TypeVar, cast
@@ -47,20 +48,28 @@ class ConnectionInfo:
     A single endpoint with specific credentials and connection flags to use.
     """
     server: str  # e.g. "https://localhost:443"
-    ca_path: str | None = None
-    ca_data: bytes | None = None
+    ca_path: str | bytes | os.PathLike[str] | os.PathLike[bytes] | None = None
+    ca_data: str | bytes | None = None
     insecure: bool | None = None
     username: str | None = None
     password: str | None = None
     scheme: str | None = None  # RFC-7235/5.1: e.g. Bearer, Basic, Digest, etc.
     token: str | None = None
-    certificate_path: str | None = None
-    certificate_data: bytes | None = None
-    private_key_path: str | None = None
-    private_key_data: bytes | None = None
+    certificate_path: str | bytes | os.PathLike[str] | os.PathLike[bytes] | None = None
+    certificate_data: str | bytes | None = None
+    private_key_path: str | bytes | os.PathLike[str] | os.PathLike[bytes] | None = None
+    private_key_data: str | bytes | None = None
     default_namespace: str | None = None  # used for cluster objects' k8s-events.
     priority: int = 0
     expiration: datetime.datetime | None = None  # TZ-aware or TZ-naive (implies UTC)
+
+    def __post_init__(self) -> None:
+        if self.ca_path and self.ca_data:
+            raise ValueError("Both CA path & data are set. Need only one.")
+        if self.certificate_path and self.certificate_data:
+            raise ValueError("Both certificate path & data are set. Need only one.")
+        if self.private_key_path and self.private_key_data:
+            raise ValueError("Both private key path & data are set. Need only one.")
 
 
 _T = TypeVar('_T', bound=object)
