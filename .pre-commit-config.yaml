@@ -3,7 +3,8 @@
 exclude: |
   (?x)^(
     docs/.*\.xml|
-    docs/.*\.png
+    docs/.*\.png|
+    tests/authentication/fixtures/pkey.pem
   )
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
