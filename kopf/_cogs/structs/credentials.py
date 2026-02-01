@@ -33,6 +33,8 @@ import random
 from collections.abc import AsyncIterable, AsyncIterator, Callable, Mapping
 from typing import NewType, TypeVar, cast
 
+import aiohttp
+
 
 class LoginError(Exception):
     """ Raised when the operator cannot login to the API. """
@@ -42,8 +44,23 @@ class AccessError(Exception):
     """ Raised when the operator cannot access the cluster API. """
 
 
-@dataclasses.dataclass(frozen=True)
-class ConnectionInfo:
+# Naming: "ConnectionInfo" is the best name, but it is already a part of the public interface.
+# Anything "Cluster…" is too narrow. `Credentials` are more suited for the current `ConnectionInfo`.
+# "KubeContext" mimics the kubeconfig's terminology & content, so seemingly fits the best.
+# The class is anyway hidden from users, so we can use any name. Class inheritance is not supported.
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class KubeContext:
+    """
+    A base connection info with no credentials (added in descendant classes).
+    """
+    server: str  # e.g. "https://localhost:443"
+    priority: int = 0
+    default_namespace: str | None = None  # used for cluster objects' k8s-events.
+    expiration: datetime.datetime | None = None  # TZ-aware or TZ-naive (implies UTC)
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class ConnectionInfo(KubeContext):
     """
     A single endpoint with specific credentials and connection flags to use.
     """
@@ -72,6 +89,16 @@ class ConnectionInfo:
             raise ValueError("Both private key path & data are set. Need only one.")
 
 
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class AiohttpSession(KubeContext):
+    """
+    A custom ``aiohttp`` session to use instead of the built-in one.
+
+    See: :ref:`auth-custom-session` for details.
+    """
+    aiohttp_session: aiohttp.ClientSession
+
+
 _T = TypeVar('_T', bound=object)
 
 # Usually taken from the HandlerId (also a string), but semantically it is on its own.
@@ -88,11 +115,11 @@ class VaultItem:
 
     The caches are populated by :meth:`Vault.extended` on-demand.
     """
-    info: ConnectionInfo
+    info: KubeContext
     caches: dict[str, object] | None = None
 
 
-class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
+class Vault(AsyncIterable[tuple[VaultKey, KubeContext]]):
     """
     A store for currently valid authentication methods.
 
@@ -143,22 +170,22 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
 
     async def __aiter__(
             self,
-    ) -> AsyncIterator[tuple[VaultKey, ConnectionInfo]]:
+    ) -> AsyncIterator[tuple[VaultKey, KubeContext]]:
         async for key, item in self._items():
             yield key, item.info
 
     async def extended(
             self,
-            factory: Callable[[ConnectionInfo], _T],
+            factory: Callable[[KubeContext], _T],
             purpose: str | None = None,
-    ) -> AsyncIterator[tuple[VaultKey, ConnectionInfo, _T]]:
+    ) -> AsyncIterator[tuple[VaultKey, KubeContext, _T]]:
         """
         Iterate the connection info items with their cached object.
 
         The cached objects are identified by the purpose (an arbitrary string).
         Multiple types of objects can be cached under different names.
 
-        The factory is a one-argument function of :class:`kopf.ConnectionInfo`,
+        The factory is a one-argument function of :class:`.KubeContext`,
         that returns the object to be cached for this connection info.
         It is called only once per item and purpose.
         """
@@ -278,7 +305,7 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
     async def invalidate(
             self,
             key: VaultKey,
-            info: ConnectionInfo,
+            info: KubeContext,
             *,
             exc: Exception | None = None,
     ) -> None:
@@ -410,8 +437,8 @@ class Vault(AsyncIterable[tuple[VaultKey, ConnectionInfo]]):
     ) -> None:
         for key, info in __src.items():
             key = VaultKey(str(key))
-            if not isinstance(info, ConnectionInfo):
-                raise ValueError("Only ConnectionInfo instances are currently accepted.")
+            if not isinstance(info, KubeContext):
+                raise ValueError("Only ConnectionInfo/AiohttpSession instances are accepted.")
             if info not in [data.info for data in self._invalid[key]]:
                 self._current[key] = VaultItem(info=info)
         self._update_expiration()

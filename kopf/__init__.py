@@ -61,6 +61,7 @@ from kopf._cogs.structs.bodies import (
 from kopf._cogs.structs.credentials import (
     LoginError,
     ConnectionInfo,
+    AiohttpSession,
 )
 from kopf._cogs.structs.dicts import (
     FieldSpec,
@@ -193,6 +194,7 @@ __all__ = [
     'login_with_service_account',
     'LoginError',
     'ConnectionInfo',
+    'AiohttpSession',
     'event', 'info', 'warn', 'exception',
     'spawn_tasks', 'run_tasks', 'operator', 'run',
     'adopt', 'label',

@@ -69,7 +69,7 @@ class APIContext:
     """
     A container for an aiohttp session and the caches of the environment info.
 
-    The container is constructed only once for every :class:`ConnectionInfo`,
+    The container is constructed only once for every :class:`KubeContext`,
     and then cached for later re-use (see :meth:`Vault.extended`).
 
     We assume that the whole operator runs in the same event loop, so there is
@@ -90,9 +90,30 @@ class APIContext:
 
     def __init__(
             self,
-            info: credentials.ConnectionInfo,
+            info: credentials.KubeContext,
     ) -> None:
         super().__init__()
+
+        # Generic aiohttp session based on the constructed credentials.
+        match info:
+            case credentials.ConnectionInfo():
+                self.session = self.make_aiohttp_session(info)
+            case credentials.AiohttpSession():
+                self.session = info.aiohttp_session
+            case _:
+                raise TypeError(f"Unsupported credentials type: {info!r}")
+
+        # It is a good practice to self-identify a bit, even with a user-provided session.
+        if self.session.headers.get('User-Agent') is None:
+            self.session.headers['User-Agent'] = f'kopf/{versions.version or "unknown"}'
+
+        # Add the extra payload information. We avoid overriding the constructor.
+        self.server = info.server
+        self.default_namespace = info.default_namespace
+
+        self.responses = []
+
+    def make_aiohttp_session(self, info: credentials.ConnectionInfo) -> aiohttp.ClientSession:
 
         # Some SSL data are not accepted directly, so we have to use temp files.
         # Do not even create temporary files if there is no need. It can be a readonly filesystem.
@@ -153,11 +174,7 @@ class APIContext:
         else:
             auth = None
 
-        # It is a good practice to self-identify a bit.
-        headers['User-Agent'] = f'kopf/{versions.version or "unknown"}'
-
-        # Generic aiohttp session based on the constructed credentials.
-        self.session = aiohttp.ClientSession(
+        return aiohttp.ClientSession(
             connector=aiohttp.TCPConnector(
                 limit=0,
                 ssl=context,
@@ -165,12 +182,6 @@ class APIContext:
             headers=headers,
             auth=auth,
         )
-
-        # Add the extra payload information. We avoid overriding the constructor.
-        self.server = info.server
-        self.default_namespace = info.default_namespace
-
-        self.responses = []
 
     def flush_closed_responses(self) -> None:
         # There's no point keeping references to already closed responses.
