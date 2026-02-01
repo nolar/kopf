@@ -1,6 +1,7 @@
 import base64
 import contextlib
 import functools
+import os
 import ssl
 import tempfile
 from collections.abc import Callable
@@ -97,7 +98,7 @@ class APIContext:
         # Do not even create temporary files if there is no need. It can be a readonly filesystem.
         with contextlib.ExitStack() as stack:
 
-            cert_path: str | None
+            cert_path: str | bytes | os.PathLike[str] | os.PathLike[bytes] | None
             if info.certificate_path:
                 cert_path = info.certificate_path
             elif info.certificate_data:
@@ -107,7 +108,7 @@ class APIContext:
             else:
                 cert_path = None
 
-            pkey_path: str | None
+            pkey_path: str | bytes | os.PathLike[str] | os.PathLike[bytes] | None
             if info.private_key_path:
                 pkey_path = info.private_key_path
             elif info.private_key_data:
