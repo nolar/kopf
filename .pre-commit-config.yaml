@@ -4,6 +4,7 @@ exclude: |
   (?x)^(
     docs/.*\.xml|
     docs/.*\.png|
+    tests/authentication/_proxy_server.py|
     tests/authentication/fixtures/pkey.pem
   )
 repos:

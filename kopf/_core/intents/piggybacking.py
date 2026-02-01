@@ -113,6 +113,7 @@ def login_via_client(
         token=token,
         certificate_path=config.cert_file,  # can be a temporary file
         private_key_path=config.key_file,  # can be a temporary file
+        proxy_url=config.proxy,
         priority=PRIORITY_OF_CLIENT,
     )
 
@@ -173,6 +174,7 @@ async def login_via_async_client(
         token=token,
         certificate_path=config.cert_file,  # can be a temporary file
         private_key_path=config.key_file,  # can be a temporary file
+        proxy_url=config.proxy,
         priority=PRIORITY_OF_ASYNC_CLIENT,
     )
 
@@ -223,6 +225,7 @@ def login_via_pykube(
         certificate_path=cert.filename() if cert else None,  # can be a temporary file
         private_key_path=pkey.filename() if pkey else None,  # can be a temporary file
         default_namespace=config.namespace,
+        proxy_url=config.cluster.get('proxy-url'),
         priority=PRIORITY_OF_PYKUBE,
     )
 
@@ -340,5 +343,6 @@ def login_with_kubeconfig(**_: Any) -> credentials.ConnectionInfo | None:
         password=user.get('password'),
         token=user.get('token') or provider_token,
         default_namespace=context.get('namespace'),
+        proxy_url=cluster.get('proxy-url'),
         priority=PRIORITY_OF_KUBECONFIG,
     )
