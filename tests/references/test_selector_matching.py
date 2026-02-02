@@ -122,6 +122,31 @@ def test_catchall_versions_are_ignored_for_nonpreferred_resources():
     assert not matches
 
 
+def test_callable_false(resource):
+    selector = Selector(lambda _: False)
+    matches = selector.check(resource)
+    assert not matches
+
+
+def test_callable_true(resource):
+    selector = Selector(lambda _: True)
+    matches = selector.check(resource)
+    assert matches
+
+
+def test_callable_true_selects_nonpreferred():
+    resource = Resource('group1', 'version1', 'plural1', preferred=False)
+    selector = Selector(lambda _: True)
+    matches = selector.check(resource)
+    assert matches
+
+
+def test_callable_receives_a_resource(resource):
+    selector = Selector(lambda res: res is resource)
+    matches = selector.check(resource)
+    assert matches
+
+
 @pytest.mark.parametrize('selector_args', [
     pytest.param(['events'], id='only-name'),
     pytest.param(['v1', 'events'], id='with-version'),
@@ -149,6 +174,25 @@ def test_events_are_matched_when_explicitly_named(selector_args):
 def test_events_are_excluded_from_everything(resource_kwargs, selector_args):
     resource = Resource(**resource_kwargs, plural='events')
     selector = Selector(*selector_args)
+    matches = selector.check(resource)
+    assert not matches
+
+
+@pytest.mark.parametrize('selector_args', [
+    pytest.param([EVERYTHING], id='only-marker'),
+    pytest.param(['v1', EVERYTHING], id='with-core-version'),
+    pytest.param(['', 'v1', EVERYTHING], id='with-core-groupversion'),
+    pytest.param(['events.k8s.io', EVERYTHING], id='with-k8sio-group'),
+    pytest.param(['events.k8s.io', 'v1beta1', EVERYTHING], id='with-k8sio-groupversion'),
+])
+@pytest.mark.parametrize('resource_kwargs', [
+    pytest.param(dict(group='', version='v1'), id='core-v1'),
+    pytest.param(dict(group='events.k8s.io', version='v1'), id='k8sio-v1'),
+    pytest.param(dict(group='events.k8s.io', version='v1beta1'), id='k8sio-v1beta1'),
+])
+def test_events_are_excluded_from_callable(resource_kwargs, selector_args):
+    resource = Resource(**resource_kwargs, plural='events')
+    selector = Selector(lambda _: True)
     matches = selector.check(resource)
     assert not matches
 

@@ -2,6 +2,9 @@
 Resource specification
 ======================
 
+By-name resource selectors
+==========================
+
 The following notations are supported to specify the resources to be handled.
 As a rule of thumb, they are designed so that the intentions of a developer
 are guessed the best way possible, and similar to ``kubectl`` semantics.
@@ -12,6 +15,8 @@ of the resource -- given as either two separate strings, or as one,
 but separated with a slash:
 
 .. code-block:: python
+
+    import kopf
 
     @kopf.on.event('kopf.dev', 'v1', 'kopfexamples')
     @kopf.on.event('kopf.dev/v1', 'kopfexamples')
@@ -26,6 +31,8 @@ as an API group, and the preferred API version of that API group is used:
 
 .. code-block:: python
 
+    import kopf
+
     @kopf.on.event('kopf.dev', 'kopfexamples')
     @kopf.on.event('apps', 'deployments')
     def fn(**_):
@@ -34,6 +41,8 @@ as an API group, and the preferred API version of that API group is used:
 It is also possible to specify the resources with ``kubectl``'s semantics:
 
 .. code-block:: python
+
+    import kopf
 
     @kopf.on.event('kopfexamples.kopf.dev')
     @kopf.on.event('deployments.apps')
@@ -46,6 +55,8 @@ to an empty API group name. The following specifications are equivalent:
 
 .. code-block:: python
 
+    import kopf
+
     @kopf.on.event('v1', 'pods')
     @kopf.on.event('', 'v1', 'pods')
     def fn(**_):
@@ -56,6 +67,8 @@ all resources with that name would match regardless of the API groups/versions.
 However, it is reasonable to expect only one:
 
 .. code-block:: python
+
+    import kopf
 
     @kopf.on.event('kopfexamples')
     @kopf.on.event('deployments')
@@ -70,6 +83,8 @@ possible names of the specific resources once those are discovered:
 
 .. code-block:: python
 
+    import kopf
+
     @kopf.on.event('kopfexamples')
     @kopf.on.event('kopfexample')
     @kopf.on.event('KopfExample')
@@ -80,21 +95,32 @@ possible names of the specific resources once those are discovered:
     def fn(**_):
         pass
 
-The resource specification can be more specific on which name to match:
+The resource specification can be more specific on which name to match
+by using the keyword arguments:
 
 .. code-block:: python
+
+    import kopf
 
     @kopf.on.event(kind='KopfExample')
     @kopf.on.event(plural='kopfexamples')
     @kopf.on.event(singular='kopfexample')
     @kopf.on.event(shortcut='kex')
+    @kopf.on.event(group='kopf.dev', plural='kopfexamples')
+    @kopf.on.event(group='kopf.dev', version='v1', plural='kopfexamples')
     def fn(**_):
         pass
+
+
+By-category resource selectors
+==============================
 
 The whole categories of resources can be served, but they must be explicitly
 specified to avoid unintended consequences:
 
 .. code-block:: python
+
+    import kopf
 
     @kopf.on.event(category='all')
     def fn(**_):
@@ -104,10 +130,16 @@ Note that the conventional category ``all`` does not really mean all resources,
 but only those explicitly added to this category; some built-in resources
 are excluded (e.g. ingresses, secrets).
 
+
+Catch-all resource selectors
+============================
+
 To handle all resources in an API group/version, use a special marker instead
 of the mandatory resource name:
 
 .. code-block:: python
+
+    import kopf
 
     @kopf.on.event('kopf.dev', 'v1', kopf.EVERYTHING)
     @kopf.on.event('kopf.dev/v1', kopf.EVERYTHING)
@@ -121,6 +153,8 @@ omit the API group/version, and use the marker only:
 
 .. code-block:: python
 
+    import kopf
+
     @kopf.on.event(kopf.EVERYTHING)
     def fn(**_):
         pass
@@ -129,31 +163,106 @@ Serving everything is better when it is used with filters:
 
 .. code-block:: python
 
+    import kopf
+
     @kopf.on.event(kopf.EVERYTHING, labels={'only-this': kopf.PRESENT})
     def fn(**_):
         pass
 
+
+Callable resource selectors
+===========================
+
+To have fine-grained control over which resources are handled,
+you can use a single positional callback as the resource specifier.
+It must accept one positional argument of type :class:`kopf.Resource`
+and return a boolean on whether to handle the resource or not:
+
+.. code-block:: python
+
+    import kopf
+
+    def kex_selector(resource: kopf.Resource) -> bool:
+        return resource.plural == 'kopfexamples' and resource.preferred
+
+    @kopf.on.event(kex_selector)
+    def fn(**_):
+        pass
+
+You can combine the callable resource selectors with other keyword selectors
+(but not the positional by-name or catch-all selectors):
+
+.. code-block:: python
+
+    import kopf
+
+    def kex_selector(resource: kopf.Resource) -> bool:
+        return resource.plural == 'kopfexamples' and resource.preferred
+
+    @kopf.on.event(kex_selector, group='kopf.dev')
+    def fn(**_):
+        pass
+
+There is a subtle difference between callable resource selectors and filters
+(see ``when=…`` in :doc:`filters`): the callable filter applies to all events
+coming from a live watch stream identified by a resource kind and a namespace
+(or by a resource kind only for watch streams of cluster-wide operators);
+the callable resource selector decides whether to start the watch-stream
+for that resource kind at all, which can help reduce the load on the API.
+
 .. note::
+    Normally, Kopf selects only the "preferred" versions of each API group
+    when filtered by names. This does not apply to callable selectors.
+    To handle non-preferred versions, define a callable and return ``True``
+    regardless of the version or its preferred field.
 
-    Core v1 events are excluded from ``EVERYTHING``: they are created during
-    handling of other resources in the implicit :doc:`events` from log messages,
-    so they would cause unnecessary handling cycles for every essential change.
 
-    To handle core v1 events, they must be named explicitly, e.g. like this:
+Exclusion of core v1 events
+===========================
 
-    .. code-block:: python
+Core v1 events are excluded from ``EVERYTHING`` and from callable selectors
+regardless of what that selector function returns: events are created during
+handling of other resources in the implicit :doc:`events` from log messages,
+so they would cause unnecessary handling cycles for every essential change.
 
-        @kopf.on.event('v1', 'events')
-        def fn(**_):
-            pass
+To handle core v1 events, name them directly and explicitly:
+
+.. code-block:: python
+
+    import kopf
+
+    def all_core_v1(resource: kopf.Resource) -> bool:
+        return resource.group == '' and resource.preferred
+
+    @kopf.on.event(all_core_v1)
+    @kopf.on.event('v1', 'events')
+    def fn(**_):
+        pass
+
+
+Multiple resource selectors
+===========================
 
 The resource specifications do not support multiple values, masks or globs.
 To handle multiple independent resources, add multiple decorators
-to the same handler function -- as shown above.
+to the same handler function -- as shown above. Or use a callable selector.
 The handlers are deduplicated by the underlying function and its handler id
 (which, in turn, equals to the function's name by default unless overridden),
 so one function will never be triggered multiple times for the same resource
 if there are some accidental overlaps in the specifications.
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.event('kopfexamples')
+    @kopf.on.event('v1', 'pods')
+    def fn(**_):
+        pass
+
+
+Ambiguous resource selectors
+============================
 
 .. warning::
 

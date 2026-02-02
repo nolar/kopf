@@ -118,6 +118,20 @@ def test_three_args(group, version, name):
     assert selector.any_name == name
 
 
+def test_callable_arg():
+    fn = lambda _: False
+    selector = Selector(fn)
+    assert selector.fn is fn
+    assert selector.group is None
+    assert selector.version is None
+    assert selector.plural is None
+
+
+def test_callable_with_extra_args():
+    with pytest.raises(TypeError, match="cannot have any other selectors") as err:
+        Selector(lambda _: False, 'name1')
+
+
 def test_too_many_args():
     with pytest.raises(TypeError) as err:
         Selector('group1', 'version1', 'name1', 'etc')
@@ -222,21 +236,21 @@ def test_kwarg_any_name():
 
 @pytest.mark.parametrize('kwargs', [
     {kwarg1: 'name1', kwarg2: 'name2'}
-    for kwarg1 in ['kind', 'plural', 'singular', 'shortcut', 'category', 'any_name']
-    for kwarg2 in ['kind', 'plural', 'singular', 'shortcut', 'category', 'any_name']
+    for kwarg1 in ['kind', 'plural', 'singular', 'shortcut', 'category', 'any_name', 'fn']
+    for kwarg2 in ['kind', 'plural', 'singular', 'shortcut', 'category', 'any_name', 'fn']
     if kwarg1 != kwarg2
 ])
 def test_conflicting_names_with_only_kwargs(kwargs):
     with pytest.raises(TypeError) as err:
         Selector(**kwargs)
-    assert "Ambiguous resource specification with names" in str(err.value)
+    assert "Ambiguous resource specification with" in str(err.value)
 
 
 @pytest.mark.parametrize('kwarg', ['kind', 'plural', 'singular', 'shortcut', 'category'])
 def test_conflicting_name_with_positional_name(kwarg):
     with pytest.raises(TypeError) as err:
         Selector('name1', **{kwarg: 'name2'})
-    assert "Ambiguous resource specification with names" in str(err.value)
+    assert "Ambiguous resource specification with" in str(err.value)
 
 
 @pytest.mark.parametrize('kwarg', ['kind', 'plural', 'singular', 'shortcut', 'category'])
