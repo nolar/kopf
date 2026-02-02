@@ -141,6 +141,7 @@ def test_full_kubeconfig_reading_with_ssl_files(tmpdir, mocker):
           - name: clstr
             cluster:
               server: https://hostname:1234/
+              proxy-url: http://localhost:8080/
               certificate-authority: /pathA
               insecure-skip-tls-verify: true
           - name: hij
@@ -160,6 +161,7 @@ def test_full_kubeconfig_reading_with_ssl_files(tmpdir, mocker):
 
     assert credentials is not None
     assert credentials.server == 'https://hostname:1234/'
+    assert credentials.proxy_url == 'http://localhost:8080/'
     assert credentials.insecure == True
     assert credentials.scheme is None
     assert credentials.token == 'tkn'
@@ -190,6 +192,7 @@ def test_full_kubeconfig_reading_with_ssl_data(tmpdir, mocker):
           - name: clstr
             cluster:
               server: https://hostname:1234/
+              proxy-url: http://localhost:8080/
               certificate-authority-data: base64dataA
               insecure-skip-tls-verify: true
           - name: hij
@@ -209,6 +212,7 @@ def test_full_kubeconfig_reading_with_ssl_data(tmpdir, mocker):
 
     assert credentials is not None
     assert credentials.server == 'https://hostname:1234/'
+    assert credentials.proxy_url == 'http://localhost:8080/'
     assert credentials.insecure == True
     assert credentials.scheme is None
     assert credentials.token == 'tkn'

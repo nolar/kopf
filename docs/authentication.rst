@@ -42,6 +42,7 @@ or an instance of :class:`kopf.ConnectionInfo`:
     def login_fn(**kwargs):
         return kopf.ConnectionInfo(
             server='https://localhost',
+            proxy_url='http://localhost:8080',
             ca_path='/etc/ssl/ca.crt',
             ca_data=b'...',
             insecure=True,
@@ -80,6 +81,18 @@ for making the API calls, but not the ways of retrieving them. Specifically:
 * HTTP ``Authorization: Basic username:password``.
 * HTTP ``Authorization: Bearer token`` (or other schemes: Bearer, Digest, etc).
 * URL's default namespace for the cases when this is implied.
+* HTTP/HTTPS proxy url, possibly with credentials.
+
+.. note::
+    Proxy support is limited to what ``aiohttp`` supports__. Specifically,
+    it supports plain HTTP proxies, some limited HTTPS proxies, but not SOCKS5.
+    Would you need more sophisticated proxying or tunneling, implement it
+    as a custom HTTP session with a custom connector, for example using
+    `aiohttp_socks <https://github.com/romis2012/aiohttp-socks>`_
+    (Kopf claims no responsibility for the quality if this library;
+    do your own due diligence).
+
+__ https://docs.aiohttp.org/en/stable/client_advanced.html#proxy-support
 
 No matter how the endpoints or credentials are retrieved, they are directly
 mapped to TCP/SSL/HTTPS protocols in the API clients. It is the responsibility
@@ -94,7 +107,7 @@ or the same credentials via different libraries. All of the retrieved
 credentials will be used in random order with no specific priority.
 
 
-.. _auth-custom-session:
+.. _custom-http-sessions:
 
 Custom HTTP sessions
 ====================

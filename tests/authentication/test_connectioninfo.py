@@ -31,6 +31,7 @@ def test_creation_with_minimal_fields():
     assert info.private_key_path is None
     assert info.private_key_data is None
     assert info.default_namespace is None
+    assert info.proxy_url is None
     assert info.priority == 0
     assert info.expiration is None
 
@@ -44,6 +45,7 @@ def test_creation_with_regular_fields():
         scheme='scheme',
         token='token',
         default_namespace='default',
+        proxy_url='https://username:password@localhost',
         priority=123,
         expiration=datetime.datetime.max,
     )
@@ -55,6 +57,7 @@ def test_creation_with_regular_fields():
     assert info.token == 'token'
     assert info.default_namespace == 'default'
     assert info.priority == 123
+    assert info.proxy_url == 'https://username:password@localhost'
     assert info.expiration == datetime.datetime.max
 
 

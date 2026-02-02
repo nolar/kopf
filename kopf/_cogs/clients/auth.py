@@ -99,6 +99,7 @@ class APIContext:
                     ),
                     headers=info.as_http_headers(),
                     auth=info.as_aiohttp_basic_auth(),
+                    proxy=info.proxy_url,
                 )
             case credentials.AiohttpSession():
                 self.session = info.aiohttp_session

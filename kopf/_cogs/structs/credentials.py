@@ -81,6 +81,7 @@ class ConnectionInfo(KubeContext):
     private_key_path: str | bytes | os.PathLike[str] | os.PathLike[bytes] | None = None
     private_key_data: str | bytes | None = None
     default_namespace: str | None = None  # used for cluster objects' k8s-events.
+    proxy_url: str | None = None
     priority: int = 0
     expiration: datetime.datetime | None = None  # TZ-aware or TZ-naive (implies UTC)
 
@@ -184,7 +185,7 @@ class AiohttpSession(KubeContext):
     """
     A custom ``aiohttp`` session to use instead of the built-in one.
 
-    See: :ref:`auth-custom-session` for details.
+    See: :ref:`custom-http-sessions` for details.
     """
     aiohttp_session: aiohttp.ClientSession
 

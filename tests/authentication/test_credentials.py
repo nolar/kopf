@@ -1,13 +1,19 @@
+import asyncio
 import base64
+import logging
 import os.path
 import pathlib
 import ssl
 
 import aiohttp
 import pytest
+import pytest_asyncio
+from _proxy_server import ProxyServer
 
+from kopf._cogs.clients.api import post
 from kopf._cogs.clients.auth import APIContext, authenticated, vault_var
 from kopf._cogs.structs.credentials import AiohttpSession, ConnectionInfo, Vault
+from kopf._kits.webhooks import WebhookServer
 
 # These are Minikube's locally generated certificates (CN=minikubeCA).
 # They are not in any public use, and are regenerated regularly.
@@ -228,3 +234,60 @@ async def test_custom_user_agent_preserved(vault):
     session = await fn()
     async with session:
         assert session.headers['User-Agent'] == 'myoperator/1.2.3'
+
+
+@pytest_asyncio.fixture()
+async def proxy():
+    server = ProxyServer()
+    task = asyncio.create_task(server.run())
+    try:
+        yield server
+    finally:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass  # it is expected (intentionally caused)
+
+
+@pytest.mark.looptime(noop_cycles=1000)
+async def test_proxy(vault, settings, proxy):
+    requests = []
+
+    async def callback(request, **_):
+        requests.append(request)
+        return {'general': 'Kenobi'}
+
+    # Our proxy supports only CONNECT, so only HTTPS. Run ANY https server locally for test.
+    # Aresponses runs http. Probing runs http. Webhooks are the only https we have.
+    async with WebhookServer() as server:
+        async for config in server(callback):
+            await vault.populate({
+                'id': ConnectionInfo(
+                    ca_data=config['caBundle'],
+                    server=config['url'],
+                    proxy_url=proxy.url,
+                ),
+            })
+
+            # Check that it was configured client-side (but not necessary used).
+            session = await fn()
+            assert session._default_proxy == proxy.url
+
+            # Perform the actual request.
+            logger = logging.getLogger('irrelevant')
+            settings.networking.error_backoffs = []
+            resp = await post('/', payload={'hello': 'there'}, logger=logger, settings=settings)
+
+            # Check that the request landed in the destination server, not elsewhere.
+            assert requests == [{'hello': 'there'}]
+            assert resp == {'general': 'Kenobi'}
+
+            # Check that the request went through the proxy (it was indeed used).
+            assert len(proxy.requests) == 1
+            proxied_url = f"https://{proxy.requests[0].server_host}:{proxy.requests[0].server_port}"
+            assert proxied_url == config['url']
+
+            # Release the resources.
+            await session.close()
+            break  # webhook-server-specific: we only need one config
