@@ -4,7 +4,7 @@ import enum
 import fnmatch
 import re
 import urllib.parse
-from collections.abc import Collection, Iterable, Iterator, Mapping, MutableMapping
+from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, MutableMapping
 from typing import NewType
 
 # A namespace specification with globs, negations, and some minimal syntax; see `match_namespace()`.
@@ -266,7 +266,7 @@ class Selector:
     no variations, they still remain specifications.
     """
 
-    arg1: dataclasses.InitVar[str | Marker | None] = None
+    arg1: dataclasses.InitVar[str | Marker | Callable[[Resource], bool] | None] = None
     arg2: dataclasses.InitVar[str | Marker | None] = None
     arg3: dataclasses.InitVar[str | Marker | None] = None
     argN: dataclasses.InitVar[None] = None  # a runtime guard against too many positional arguments
@@ -281,9 +281,11 @@ class Selector:
     category: str | None = None
     any_name: str | Marker | None = None
 
+    fn: Callable[[Resource], bool] | None = None
+
     def __post_init__(
             self,
-            arg1: str | Marker | None,
+            arg1: str | Marker | Callable[[Resource], bool] | None,
             arg2: str | Marker | None,
             arg3: str | Marker | None,
             argN: None,  # a runtime guard against too many positional arguments
@@ -292,6 +294,10 @@ class Selector:
         # Since the class is frozen & read-only, post-creation field adjustment is done via a hack.
         # This is the same hack as used in the frozen dataclasses to initialise their fields.
         match arg1, arg2, arg3, argN:
+            case _, _, _, _ if callable(arg1):
+                if any(arg is not None for arg in (arg2, arg3, argN)):
+                    raise TypeError("The callable filter cannot have any other selectors.")
+                object.__setattr__(self, 'fn', arg1)
             case None, None, None, None:
                 pass
             case Marker.EVERYTHING, None, None, None:
@@ -325,10 +331,10 @@ class Selector:
                 raise TypeError("Too many positional arguments. Max 3 positional args are accepted.")
 
         # Verify that explicit & interpreted arguments have produced an unambiguous specification.
-        names = [self.kind, self.plural, self.singular, self.shortcut, self.category, self.any_name]
+        names = [self.kind, self.plural, self.singular, self.shortcut, self.category, self.any_name, self.fn]
         clean = [name for name in names if name is not None]
         if len(clean) > 1:
-            raise TypeError(f"Ambiguous resource specification with names {clean}")
+            raise TypeError(f"Ambiguous resource specification with {clean}")
         if len(clean) < 1:
             raise TypeError(f"Unspecific resource with no names.")
 
@@ -360,7 +366,8 @@ class Selector:
         # and thus trigger unnecessary handling cycles (even for other resources, not for events).
         return (
             (self.group is None or self.group == resource.group) and
-            ((self.version is None and resource.preferred) or self.version == resource.version) and
+            ((self.version is None and (resource.preferred or self.fn is not None)) or
+             (self.version is not None and self.version == resource.version)) and
             (self.kind is None or self.kind == resource.kind) and
             (self.plural is None or self.plural == resource.plural) and
             (self.singular is None or self.singular == resource.singular) and
@@ -373,7 +380,12 @@ class Selector:
              self.any_name in resource.shortcuts or
              (self.any_name is Marker.EVERYTHING and
               not EVENTS.check(resource) and
-              not EVENTS_K8S.check(resource))))
+              not EVENTS_K8S.check(resource))) and
+            (self.fn is None or
+             (self.fn(resource) and
+              not EVENTS.check(resource) and
+              not EVENTS_K8S.check(resource)))
+        )
 
     def select(self, resources: Collection[Resource]) -> Collection[Resource]:
         result = {resource for resource in resources if self.check(resource)}

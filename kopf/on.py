@@ -142,9 +142,10 @@ def probe(  # lgtm[py/similar-function]
 
 def validate(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: str | references.Marker | None = None,
-        __version_or_name: str | references.Marker | None = None,
-        __name: str | references.Marker | None = None,
+        arg1: str | references.Marker | Callable[[references.Resource], bool] | None = None,
+        arg2: str | references.Marker | None = None,
+        arg3: str | references.Marker | None = None,
+        /,
         *,
         group: str | None = None,
         version: str | None = None,
@@ -183,7 +184,7 @@ def validate(  # lgtm[py/similar-function]
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         selector = references.Selector(
-            __group_or_groupversion_or_name, __version_or_name, __name,
+            arg1, arg2, arg3,
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
@@ -202,9 +203,10 @@ def validate(  # lgtm[py/similar-function]
 
 def mutate(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: str | references.Marker | None = None,
-        __version_or_name: str | references.Marker | None = None,
-        __name: str | references.Marker | None = None,
+        arg1: str | references.Marker | Callable[[references.Resource], bool] | None = None,
+        arg2: str | references.Marker | None = None,
+        arg3: str | references.Marker | None = None,
+        /,
         *,
         group: str | None = None,
         version: str | None = None,
@@ -243,7 +245,7 @@ def mutate(  # lgtm[py/similar-function]
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         selector = references.Selector(
-            __group_or_groupversion_or_name, __version_or_name, __name,
+            arg1, arg2, arg3,
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
@@ -262,9 +264,10 @@ def mutate(  # lgtm[py/similar-function]
 
 def resume(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: str | references.Marker | None = None,
-        __version_or_name: str | references.Marker | None = None,
-        __name: str | references.Marker | None = None,
+        arg1: str | references.Marker | Callable[[references.Resource], bool] | None = None,
+        arg2: str | references.Marker | None = None,
+        arg3: str | references.Marker | None = None,
+        /,
         *,
         group: str | None = None,
         version: str | None = None,
@@ -300,7 +303,7 @@ def resume(  # lgtm[py/similar-function]
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         selector = references.Selector(
-            __group_or_groupversion_or_name, __version_or_name, __name,
+            arg1, arg2, arg3,
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
@@ -319,9 +322,10 @@ def resume(  # lgtm[py/similar-function]
 
 def create(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: str | references.Marker | None = None,
-        __version_or_name: str | references.Marker | None = None,
-        __name: str | references.Marker | None = None,
+        arg1: str | references.Marker | Callable[[references.Resource], bool] | None = None,
+        arg2: str | references.Marker | None = None,
+        arg3: str | references.Marker | None = None,
+        /,
         *,
         group: str | None = None,
         version: str | None = None,
@@ -356,7 +360,7 @@ def create(  # lgtm[py/similar-function]
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         selector = references.Selector(
-            __group_or_groupversion_or_name, __version_or_name, __name,
+            arg1, arg2, arg3,
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
@@ -375,9 +379,10 @@ def create(  # lgtm[py/similar-function]
 
 def update(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: str | references.Marker | None = None,
-        __version_or_name: str | references.Marker | None = None,
-        __name: str | references.Marker | None = None,
+        arg1: str | references.Marker | Callable[[references.Resource], bool] | None = None,
+        arg2: str | references.Marker | None = None,
+        arg3: str | references.Marker | None = None,
+        /,
         *,
         group: str | None = None,
         version: str | None = None,
@@ -414,7 +419,7 @@ def update(  # lgtm[py/similar-function]
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         selector = references.Selector(
-            __group_or_groupversion_or_name, __version_or_name, __name,
+            arg1, arg2, arg3,
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
@@ -433,9 +438,10 @@ def update(  # lgtm[py/similar-function]
 
 def delete(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: str | references.Marker | None = None,
-        __version_or_name: str | references.Marker | None = None,
-        __name: str | references.Marker | None = None,
+        arg1: str | references.Marker | Callable[[references.Resource], bool] | None = None,
+        arg2: str | references.Marker | None = None,
+        arg3: str | references.Marker | None = None,
+        /,
         *,
         group: str | None = None,
         version: str | None = None,
@@ -471,7 +477,7 @@ def delete(  # lgtm[py/similar-function]
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         selector = references.Selector(
-            __group_or_groupversion_or_name, __version_or_name, __name,
+            arg1, arg2, arg3,
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
@@ -490,9 +496,10 @@ def delete(  # lgtm[py/similar-function]
 
 def field(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: str | references.Marker | None = None,
-        __version_or_name: str | references.Marker | None = None,
-        __name: str | references.Marker | None = None,
+        arg1: str | references.Marker | Callable[[references.Resource], bool] | None = None,
+        arg2: str | references.Marker | None = None,
+        arg3: str | references.Marker | None = None,
+        /,
         *,
         group: str | None = None,
         version: str | None = None,
@@ -529,7 +536,7 @@ def field(  # lgtm[py/similar-function]
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         selector = references.Selector(
-            __group_or_groupversion_or_name, __version_or_name, __name,
+            arg1, arg2, arg3,
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
@@ -548,9 +555,10 @@ def field(  # lgtm[py/similar-function]
 
 def index(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: str | references.Marker | None = None,
-        __version_or_name: str | references.Marker | None = None,
-        __name: str | references.Marker | None = None,
+        arg1: str | references.Marker | Callable[[references.Resource], bool] | None = None,
+        arg2: str | references.Marker | None = None,
+        arg3: str | references.Marker | None = None,
+        /,
         *,
         group: str | None = None,
         version: str | None = None,
@@ -585,7 +593,7 @@ def index(  # lgtm[py/similar-function]
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id)
         selector = references.Selector(
-            __group_or_groupversion_or_name, __version_or_name, __name,
+            arg1, arg2, arg3,
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
@@ -602,9 +610,10 @@ def index(  # lgtm[py/similar-function]
 
 def event(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: str | references.Marker | None = None,
-        __version_or_name: str | references.Marker | None = None,
-        __name: str | references.Marker | None = None,
+        arg1: str | references.Marker | Callable[[references.Resource], bool] | None = None,
+        arg2: str | references.Marker | None = None,
+        arg3: str | references.Marker | None = None,
+        /,
         *,
         group: str | None = None,
         version: str | None = None,
@@ -635,7 +644,7 @@ def event(  # lgtm[py/similar-function]
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         selector = references.Selector(
-            __group_or_groupversion_or_name, __version_or_name, __name,
+            arg1, arg2, arg3,
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
@@ -652,9 +661,10 @@ def event(  # lgtm[py/similar-function]
 
 def daemon(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: str | references.Marker | None = None,
-        __version_or_name: str | references.Marker | None = None,
-        __name: str | references.Marker | None = None,
+        arg1: str | references.Marker | Callable[[references.Resource], bool] | None = None,
+        arg2: str | references.Marker | None = None,
+        arg3: str | references.Marker | None = None,
+        /,
         *,
         group: str | None = None,
         version: str | None = None,
@@ -693,7 +703,7 @@ def daemon(  # lgtm[py/similar-function]
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         selector = references.Selector(
-            __group_or_groupversion_or_name, __version_or_name, __name,
+            arg1, arg2, arg3,
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )
@@ -714,9 +724,10 @@ def daemon(  # lgtm[py/similar-function]
 
 def timer(  # lgtm[py/similar-function]
         # Resource type specification:
-        __group_or_groupversion_or_name: str | references.Marker | None = None,
-        __version_or_name: str | references.Marker | None = None,
-        __name: str | references.Marker | None = None,
+        arg1: str | references.Marker | Callable[[references.Resource], bool] | None = None,
+        arg2: str | references.Marker | None = None,
+        arg3: str | references.Marker | None = None,
+        /,
         *,
         group: str | None = None,
         version: str | None = None,
@@ -755,7 +766,7 @@ def timer(  # lgtm[py/similar-function]
         real_field = dicts.parse_field(field) or None  # to not store tuple() as a no-field case.
         real_id = registries.generate_id(fn=fn, id=id, suffix=".".join(real_field or []))
         selector = references.Selector(
-            __group_or_groupversion_or_name, __version_or_name, __name,
+            arg1, arg2, arg3,
             group=group, version=version,
             kind=kind, plural=plural, singular=singular, shortcut=shortcut, category=category,
         )

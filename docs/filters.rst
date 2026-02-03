@@ -265,6 +265,13 @@ They can filter by any kwarg data, e.g. by a :kwarg:`reason` of this invocation,
 remembered :kwarg:`memo` values, etc. However, it is highly recommended that
 the filters do not modify the state of the operator -- keep it for handlers.
 
+There is a subtle difference between callable filters and resource selectors
+(see :doc:`resources`): the callable filter applies to all events
+coming from a live watch stream identified by a resource kind and a namespace
+(or by a resource kind only for watch streams of cluster-wide operators);
+the callable resource selector decides whether to start the watch-stream
+for that resource kind at all, which can help reduce the load on the API.
+
 
 Callback helpers
 ================
