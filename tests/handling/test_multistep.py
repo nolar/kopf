@@ -115,4 +115,4 @@ async def test_2nd_step_finishes_the_handlers(caplog,
     # Finalizers could be removed for resources being deleted on the 2nd step.
     # The logic can vary though: either by deletionTimestamp, or by reason==DELETE.
     if deletion_ts and deletion_ts['deletionTimestamp']:
-        assert patch['metadata']['finalizers'] == []
+        assert patch['metadata']['$deleteFromPrimitiveList/finalizers'] == [settings.persistence.finalizer]

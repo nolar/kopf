@@ -36,7 +36,7 @@ def test_append_finalizers_to_others():
     body = {'metadata': {'finalizers': ['other1', 'other2']}}
     patch = {}
     block_deletion(body=body, patch=patch, finalizer='fin')
-    assert patch == {'metadata': {'finalizers': ['other1', 'other2', 'fin']}}
+    assert patch == {'metadata': {'finalizers': ['fin']}}
 
 
 def test_append_finalizers_to_empty():
@@ -60,7 +60,7 @@ def test_remove_finalizers_keeps_others(finalizer):
     body = {'metadata': {'finalizers': ['other1', finalizer, 'other2']}}
     patch = {}
     allow_deletion(body=body, patch=patch, finalizer='fin')
-    assert patch == {'metadata': {'finalizers': ['other1', 'other2']}}
+    assert patch == {'metadata': {'$deleteFromPrimitiveList/finalizers': ['fin']}}
 
 
 def test_remove_finalizers_when_absent():

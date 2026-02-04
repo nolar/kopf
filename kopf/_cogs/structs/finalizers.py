@@ -29,8 +29,7 @@ def block_deletion(
         finalizer: str,
 ) -> None:
     if not is_deletion_blocked(body=body, finalizer=finalizer):
-        finalizers = body.get('metadata', {}).get('finalizers', [])
-        patch.setdefault('metadata', {}).setdefault('finalizers', list(finalizers))
+        patch.setdefault('metadata', {}).setdefault('finalizers', [])
         patch['metadata']['finalizers'].append(finalizer)
 
 
@@ -41,7 +40,5 @@ def allow_deletion(
         finalizer: str,
 ) -> None:
     if is_deletion_blocked(body=body, finalizer=finalizer):
-        finalizers = body.get('metadata', {}).get('finalizers', [])
-        patch.setdefault('metadata', {}).setdefault('finalizers', list(finalizers))
-        if finalizer in patch['metadata']['finalizers']:
-            patch['metadata']['finalizers'].remove(finalizer)
+        patch.setdefault('metadata', {}).setdefault('$deleteFromPrimitiveList/finalizers', [])
+        patch['metadata']['$deleteFromPrimitiveList/finalizers'].append(finalizer)

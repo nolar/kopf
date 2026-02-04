@@ -50,8 +50,34 @@ async def test_without_subresources(
     assert patch_mock.called
     assert patch_mock.call_count == 1
 
-    data = patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
-    assert data == {'x': 'y'}
+    request = patch_mock.call_args_list[0][0][0]  # [callidx][args/kwargs][argidx]
+    assert request.data == {'x': 'y'}
+    assert request.content_type == 'application/strategic-merge-patch+json'
+
+
+async def test_strategic_merge_patch_cleans_finalizer_directives(
+        resp_mocker, aresponses, hostname, settings, resource, namespace, logger):
+
+    patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
+    aresponses.add(hostname, resource.get_url(namespace=namespace, name='name1'), 'patch', patch_mock)
+
+    patch = Patch({'metadata': {'$deleteFromPrimitiveList/finalizers': ['fin'],
+                                'annotations': {'x': 'y'}}})
+    await patch_obj(
+        logger=logger,
+        settings=settings,
+        resource=resource,
+        namespace=namespace,
+        name='name1',
+        patch=patch,
+    )
+
+    request = patch_mock.call_args_list[0][0][0]
+    assert request.data == {'metadata': {'$deleteFromPrimitiveList/finalizers': ['fin'],
+                                         'annotations': {'x': 'y'}}}
+    # Strategic merge directives are cleaned from the source patch after sending,
+    # so that the caller's inconsistency check doesn't see them.
+    assert patch == {'metadata': {'annotations': {'x': 'y'}}}
 
 
 async def test_status_as_subresource_with_combined_payload(

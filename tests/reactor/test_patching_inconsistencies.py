@@ -96,8 +96,10 @@ async def test_patching_without_inconsistencies(
                  id='response-status-undeleted'),
 
     # True-positive inconsistencies for K8s-managed fields with possible false-positives.
+    # NB: finalizers are excluded -- with strategic merge patch, the partial list in the patch
+    # won't match the full list in the response, and the directives ($deleteFromPrimitiveList)
+    # are cleaned up before the check. So finalizer inconsistencies are no longer detectable.
     pytest.param({'metadata': {'annotations': {'x': 'y'}}}, {'metadata': {}}, id='true-annotations'),
-    pytest.param({'metadata': {'finalizers': ['x', 'y']}}, {'metadata': {}}, id='true-finalizers'),
     pytest.param({'metadata': {'labels': {'x': 'y'}}}, {'metadata': {}}, id='true-labels'),
 
 ])

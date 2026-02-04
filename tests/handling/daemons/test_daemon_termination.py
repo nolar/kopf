@@ -37,7 +37,7 @@ async def test_daemon_exits_gracefully_and_instantly_on_resource_deletion(
 
     assert looptime == 0
     assert k8s_mocked.patch.call_count == 1
-    assert k8s_mocked.patch.call_args_list[0][1]['payload']['metadata']['finalizers'] == []
+    assert k8s_mocked.patch.call_args_list[0][1]['payload']['metadata']['$deleteFromPrimitiveList/finalizers'] == [finalizer]
 
 
 async def test_daemon_exits_gracefully_and_instantly_on_operator_exiting(
@@ -147,7 +147,7 @@ async def test_daemon_exits_instantly_on_cancellation_with_backoff(
 
     assert looptime == 1.23  # i.e. no additional sleeps happened
     assert k8s_mocked.patch.call_count == 1
-    assert k8s_mocked.patch.call_args_list[0][1]['payload']['metadata']['finalizers'] == []
+    assert k8s_mocked.patch.call_args_list[0][1]['payload']['metadata']['$deleteFromPrimitiveList/finalizers'] == [finalizer]
 
     # Cleanup.
     await dummy.wait_for_daemon_done()
@@ -206,7 +206,7 @@ async def test_daemon_exits_slowly_on_cancellation_with_backoff(
 
     assert looptime == 1.23 + 4.56  # i.e. not additional sleeps happened
     assert k8s_mocked.patch.call_count == 1
-    assert k8s_mocked.patch.call_args_list[0][1]['payload']['metadata']['finalizers'] == []
+    assert k8s_mocked.patch.call_args_list[0][1]['payload']['metadata']['$deleteFromPrimitiveList/finalizers'] == [finalizer]
 
 
 async def test_daemon_is_abandoned_due_to_cancellation_timeout_reached(
@@ -253,7 +253,7 @@ async def test_daemon_is_abandoned_due_to_cancellation_timeout_reached(
 
     assert looptime == 1000 + 4.56
     assert k8s_mocked.patch.call_count == 1
-    assert k8s_mocked.patch.call_args_list[0][1]['payload']['metadata']['finalizers'] == []
+    assert k8s_mocked.patch.call_args_list[0][1]['payload']['metadata']['$deleteFromPrimitiveList/finalizers'] == [finalizer]
     assert_logs(["Daemon 'fn' did not exit in time. Leaving it orphaned."])
 
     # Cleanup.

@@ -44,7 +44,7 @@ async def patch_obj(
         if body_patch:
             patched_body = await api.patch(
                 url=resource.get_url(namespace=namespace, name=name),
-                headers={'Content-Type': 'application/merge-patch+json'},
+                headers={'Content-Type': 'application/strategic-merge-patch+json'},
                 payload=body_patch,
                 settings=settings,
                 logger=logger,
@@ -55,11 +55,26 @@ async def patch_obj(
             patched_body = await api.patch(
                 url=resource.get_url(namespace=namespace, name=name,
                                      subresource='status' if as_subresource else None),
-                headers={'Content-Type': 'application/merge-patch+json'},
+                headers={'Content-Type': 'application/strategic-merge-patch+json'},
                 payload={'status': status_patch},
                 settings=settings,
                 logger=logger,
             )
+
+        # Clean up strategic merge patch directives from the source patch dict.
+        # With strategic merge, finalizer additions use a partial list (not the full list)
+        # and removals use $deleteFromPrimitiveList directives -- neither will match
+        # the response body. Removing them prevents false-positive inconsistency warnings.
+        # NB: build a new dict instead of mutating in-place, since body_patch shares
+        # the same metadata dict object due to the shallow copy above.
+        metadata = patch.get('metadata')
+        if metadata is not None:
+            cleaned = {k: v for k, v in metadata.items()
+                       if k != 'finalizers' and not k.startswith('$')}
+            if cleaned:
+                patch['metadata'] = cleaned
+            else:
+                patch.pop('metadata', None)
 
         return patched_body
 
