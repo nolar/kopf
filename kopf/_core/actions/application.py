@@ -44,6 +44,10 @@ KNOWN_INCONSISTENCIES = (
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class PendingConsistency:
     resource_version: str | None = None
+    deemed_consistency_deadline: float | None = None
+
+    def with_deadline(self, deadline: float) -> 'PendingConsistency':
+        return dataclasses.replace(self, deemed_consistency_deadline=deadline)
 
 
 async def apply(

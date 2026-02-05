@@ -46,7 +46,7 @@ class WatchStreamProcessor(Protocol):
             stream_pressure: asyncio.Event | None = None,  # None for tests
             resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
             operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
-            consistency_time: float | None = None,  # None for tests
+            consistency_goal: application.PendingConsistency,
     ) -> application.PendingConsistency:
         ...
 
@@ -289,15 +289,16 @@ async def worker(
     backlog = streams[key].backlog
     pressure = streams[key].pressure
     shouldstop = False
-    consistency_time: float | None = None  # None if nothing is expected/awaited.
+    consistency_goal = application.PendingConsistency()  # Empty if nothing is expected/awaited.
     expected_version: str | None = None  # None/non-None is synced with the patch-end-time.
     try:
         while not shouldstop:
 
             # Get an event ASAP (no delay) if possible. But expect the queue can be empty.
             # Save memory by finishing the worker if the backlog is empty for some time.
+            deadline = consistency_goal.deemed_consistency_deadline
             timeout = max(settings.queueing.idle_timeout,
-                          consistency_time - loop.time() if consistency_time is not None else 0)
+                          deadline - loop.time() if deadline is not None else 0)
             try:
                 raw_event = await asyncio.wait_for(backlog.get(), timeout=timeout)
             except asyncio.TimeoutError:
@@ -322,7 +323,7 @@ async def worker(
             # See `settings.persistence.consistency_timeout` for the explanation of consistency.
             if expected_version is not None and expected_version == get_version(raw_event):
                 expected_version = None
-                consistency_time = None
+                consistency_goal = application.PendingConsistency()
 
             # Relieve the pressure only if this is the last event, thus letting the processor sleep.
             # If there are more events to process, fast-skip the sleep as if they have just arrived.
@@ -336,13 +337,13 @@ async def worker(
                 stream_pressure=pressure,
                 resource_indexed=resource_indexed,
                 operator_indexed=operator_indexed,
-                consistency_time=consistency_time,
+                consistency_goal=consistency_goal,
             )
 
             # With every new PATCH API call (if done), restart the consistency waiting.
             if pending.resource_version is not None and settings.persistence.consistency_timeout:
                 expected_version = pending.resource_version
-                consistency_time = loop.time() + settings.persistence.consistency_timeout
+                consistency_goal = pending.with_deadline(loop.time() + settings.persistence.consistency_timeout)
 
     except Exception:
         # Log the error for every worker: there can be several of them failing at the same time,
