@@ -40,7 +40,7 @@ async def process_resource_event(
         resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
         operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
         consistency_time: float | None = None,  # None for tests
-) -> str | None:  # patched resource version, if patched
+) -> application.PendingConsistency:
     """
     Handle a single custom object low-level watch-event.
 
@@ -127,7 +127,7 @@ async def process_resource_event(
             # But only once, to reduce the number of API calls and the generated irrelevant events.
             # And only if the object is at least supposed to exist (not "GONE"), even if actually does not.
             if raw_event['type'] != 'DELETED':
-                applied, resource_version = await application.apply(
+                applied, pending = await application.apply(
                     settings=settings,
                     resource=resource,
                     body=body,
@@ -138,8 +138,8 @@ async def process_resource_event(
                 )
                 if applied and matched:
                     local_logger.debug("Handling cycle is finished, waiting for new changes.")
-                return resource_version
-    return None
+                return pending
+    return application.PendingConsistency()
 
 
 class _Causes(NamedTuple):
