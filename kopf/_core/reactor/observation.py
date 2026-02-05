@@ -151,7 +151,7 @@ async def process_discovered_namespace_event(
         stream_pressure: asyncio.Event | None = None,  # None for tests
         resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
         operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
-        consistency_time: float | None = None,  # None for tests & observation
+        consistency_goal: application.PendingConsistency = application.PendingConsistency(),
 ) -> application.PendingConsistency:
     if raw_event['type'] is None:
         return application.PendingConsistency()
@@ -172,7 +172,7 @@ async def process_discovered_resource_event(
         stream_pressure: asyncio.Event | None = None,  # None for tests
         resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
         operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
-        consistency_time: float | None = None,  # None for tests & observation
+        consistency_goal: application.PendingConsistency = application.PendingConsistency(),
 ) -> application.PendingConsistency:
     # Ignore the initial listing, as all custom resources were already noticed by API listing.
     # This prevents numerous unneccessary API requests at the the start of the operator.
