@@ -33,6 +33,7 @@ from kopf._cogs.aiokits import aiotasks, aiotoggles
 from kopf._cogs.clients import watching
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, references
+from kopf._core.actions import application
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ class WatchStreamProcessor(Protocol):
             resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
             operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
             consistency_time: float | None = None,  # None for tests
-    ) -> str | None:  # patched resource version, if patched
+    ) -> application.PendingConsistency:
         ...
 
 
@@ -330,7 +331,7 @@ async def worker(
 
             # Process the event. It might include sleeping till the time of consistency assumption
             # (i.e. ignoring that the patched version was not received and behaving as if it was).
-            newer_patch_version = await processor(
+            pending = await processor(
                 raw_event=raw_event,
                 stream_pressure=pressure,
                 resource_indexed=resource_indexed,
@@ -339,8 +340,8 @@ async def worker(
             )
 
             # With every new PATCH API call (if done), restart the consistency waiting.
-            if newer_patch_version is not None and settings.persistence.consistency_timeout:
-                expected_version = newer_patch_version
+            if pending.resource_version is not None and settings.persistence.consistency_timeout:
+                expected_version = pending.resource_version
                 consistency_time = loop.time() + settings.persistence.consistency_timeout
 
     except Exception:

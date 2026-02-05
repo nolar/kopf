@@ -29,6 +29,7 @@ from kopf._cogs.aiokits import aiotoggles
 from kopf._cogs.clients import errors, fetching, scanning
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, references
+from kopf._core.actions import application
 from kopf._core.intents import handlers, registries
 from kopf._core.reactor import queueing
 
@@ -151,13 +152,14 @@ async def process_discovered_namespace_event(
         resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
         operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
         consistency_time: float | None = None,  # None for tests & observation
-) -> None:
+) -> application.PendingConsistency:
     if raw_event['type'] is None:
-        return
+        return application.PendingConsistency()
 
     async with insights.revised:
         revise_namespaces(raw_events=[raw_event], insights=insights, namespaces=namespaces)
         insights.revised.notify_all()
+    return application.PendingConsistency()
 
 
 async def process_discovered_resource_event(
@@ -171,11 +173,11 @@ async def process_discovered_resource_event(
         resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
         operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
         consistency_time: float | None = None,  # None for tests & observation
-) -> None:
+) -> application.PendingConsistency:
     # Ignore the initial listing, as all custom resources were already noticed by API listing.
     # This prevents numerous unneccessary API requests at the the start of the operator.
     if raw_event['type'] is None:
-        return
+        return application.PendingConsistency()
 
     # Re-scan the whole dimension of resources if any single one of them changes. By this, we make
     # K8s's /apis/ endpoint the source of truth for all resources & versions & preferred versions,
@@ -187,6 +189,7 @@ async def process_discovered_resource_event(
         revise_resources(resources=resources, insights=insights, registry=registry, group=group)
         await insights.backbone.fill(resources=resources)
         insights.revised.notify_all()
+    return application.PendingConsistency()
 
 
 def revise_namespaces(

@@ -45,6 +45,7 @@ from kopf._cogs.clients import patching
 from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import hostnames
 from kopf._cogs.structs import bodies, patches, references
+from kopf._core.actions import application
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +102,7 @@ async def process_peering_event(
         resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
         operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
         consistency_time: float | None = None,  # None for tests & observation
-) -> None:
+) -> application.PendingConsistency:
     """
     Handle a single update of the peers by us or by other operators.
 
@@ -114,7 +115,7 @@ async def process_peering_event(
 
     # Silently ignore the peering objects which are not ours to worry.
     if meta.get('name') != settings.peering.name:
-        return
+        return application.PendingConsistency()
 
     # Find if we are still the highest priority operator.
     pairs = cast(Mapping[str, Mapping[str, Any]], body.get('status', {}))
@@ -160,6 +161,7 @@ async def process_peering_event(
             resource=resource,
             namespace=namespace,
         )
+    return application.PendingConsistency()
 
 
 async def keepalive(
