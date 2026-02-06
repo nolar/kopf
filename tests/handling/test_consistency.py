@@ -9,6 +9,7 @@ import pytest
 
 import kopf
 from kopf._cogs.structs.ephemera import Memo
+from kopf._core.actions.application import PendingConsistency
 from kopf._core.engines.indexing import OperatorIndexers
 from kopf._core.intents.causes import HANDLER_REASONS, Reason
 from kopf._core.reactor.inventory import ResourceMemories
@@ -41,7 +42,7 @@ async def test_preexisting_consistency(
         memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
         event_queue=event_queue,
-        consistency_time=None,  # assume the pre-existing consistency
+        consistency_goal=PendingConsistency(),  # assume the pre-existing consistency
     )
 
     assert looptime == 0
@@ -84,7 +85,7 @@ async def test_past_consistency(
         memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
         event_queue=event_queue,
-        consistency_time=50,  # expect the consistency in the past
+        consistency_goal=PendingConsistency(deemed_consistency_deadline=50),  # in the past
     )
 
     assert looptime == 100
@@ -126,7 +127,7 @@ async def test_future_consistency(
         memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
         event_queue=event_queue,
-        consistency_time=123,  # expect the consistency in the future
+        consistency_goal=PendingConsistency(deemed_consistency_deadline=123),  # in the future
     )
 
     assert looptime == 123  # non-zero means it has slept for some time
@@ -166,7 +167,7 @@ async def test_no_consistency_wait_without_changing_handlers(
         memobase=Memo(),
         raw_event={'type': '...', 'object': {}},
         event_queue=event_queue,
-        consistency_time=456,  # expect the consistency in the future
+        consistency_goal=PendingConsistency(deemed_consistency_deadline=456),  # in the future
     )
 
     assert looptime == 0  # zero means it did not sleep, as expected
@@ -196,7 +197,7 @@ async def test_stream_pressure_awakening_prevents_change_handlers(
         memobase=Memo(),
         raw_event={'type': '...', 'object': {}},
         event_queue=event_queue,
-        consistency_time=456,  # expect the consistency in the future
+        consistency_goal=PendingConsistency(deemed_consistency_deadline=456),  # in the future
         stream_pressure=stream_pressure,
     )
 
@@ -226,7 +227,7 @@ async def test_resource_version_is_returned_from_patching(
     watching_handlers.event_mock.return_value = 'something-to-provoke-patching'
 
     event_queue = asyncio.Queue()
-    rv = await process_resource_event(
+    pending = await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
         registry=registry,
         settings=settings,
@@ -237,5 +238,6 @@ async def test_resource_version_is_returned_from_patching(
         raw_event={'type': '...', 'object': {}},
         event_queue=event_queue,
     )
-    assert rv == 'some-rv'
+    assert pending.resource_version == 'some-rv'
+    assert pending.remaining_patch == {}
     assert looptime == 0  # zero means everything has happened instantly
