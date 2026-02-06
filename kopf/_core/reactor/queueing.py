@@ -321,7 +321,12 @@ async def worker(
 
             # Keep track of the resource's consistency for high-level (state-dependent) handlers.
             # See `settings.persistence.consistency_timeout` for the explanation of consistency.
-            if expected_version is not None and expected_version == get_version(raw_event):
+            # Consistency is achieved when both the resource version matches and there is no
+            # remaining patch to apply. The remaining patch becomes empty when patch_obj()
+            # successfully applies all requested changes.
+            version_matches = expected_version is not None and expected_version == get_version(raw_event)
+            patch_applied = not consistency_goal.remaining_patch
+            if version_matches and patch_applied:
                 expected_version = None
                 consistency_goal = application.PendingConsistency()
 

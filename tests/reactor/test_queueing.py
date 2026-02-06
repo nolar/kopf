@@ -168,9 +168,15 @@ async def test_garbage_collection_of_streams(
 
 
 async def test_stream_pressure_maintained_until_the_queue_is_empty(settings, resource, processor):
+    from kopf._core.actions.application import PendingConsistency
 
     flags: list[bool] = []
-    processor.side_effect = lambda stream_pressure, **_: flags.append(stream_pressure.is_set())
+
+    def _side_effect(stream_pressure, **_):
+        flags.append(stream_pressure.is_set())
+        return PendingConsistency()
+
+    processor.side_effect = _side_effect
 
     # It is very important for this test that the stream (queue+flag) is pre-constructed,
     # i.e., that it is not populated by the watcher at a random speed, but pre-populated manually.

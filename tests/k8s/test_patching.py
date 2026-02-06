@@ -58,7 +58,7 @@ async def test_status_as_subresource_with_combined_payload(
         settings, resource, namespace, logger, object_patch_mock, status_patch_mock):
     resource = dataclasses.replace(resource, subresources=['status'])
     patch = Patch({'spec': {'x': 'y'}, 'status': {'s': 't'}})
-    reconstructed = await patch_obj(
+    reconstructed, remaining = await patch_obj(
         logger=logger,
         settings=settings,
         resource=resource,
@@ -78,13 +78,14 @@ async def test_status_as_subresource_with_combined_payload(
     assert data == {'status': {'s': 't'}}
 
     assert reconstructed == STATUS_RESPONSE  # ignore the body response if status was patched
+    assert remaining == {}
 
 
 async def test_status_as_subresource_with_object_fields_only(
         settings, resource, namespace, logger, object_patch_mock, status_patch_mock):
     resource = dataclasses.replace(resource, subresources=['status'])
     patch = Patch({'spec': {'x': 'y'}})
-    reconstructed = await patch_obj(
+    reconstructed, remaining = await patch_obj(
         logger=logger,
         settings=settings,
         resource=resource,
@@ -101,13 +102,14 @@ async def test_status_as_subresource_with_object_fields_only(
     assert data == {'spec': {'x': 'y'}}
 
     assert reconstructed == OBJECT_RESPONSE  # ignore the status response if status was not patched
+    assert remaining == {}
 
 
 async def test_status_as_subresource_with_status_fields_only(
         settings, resource, namespace, logger, object_patch_mock, status_patch_mock):
     resource = dataclasses.replace(resource, subresources=['status'])
     patch = Patch({'status': {'s': 't'}})
-    reconstructed = await patch_obj(
+    reconstructed, remaining = await patch_obj(
         logger=logger,
         settings=settings,
         resource=resource,
@@ -124,12 +126,13 @@ async def test_status_as_subresource_with_status_fields_only(
     assert data == {'status': {'s': 't'}}
 
     assert reconstructed == STATUS_RESPONSE  # ignore the body response if status was patched
+    assert remaining == {}
 
 
 async def test_status_as_body_field_with_combined_payload(
         settings, resource, namespace, logger, object_patch_mock, status_patch_mock):
     patch = Patch({'spec': {'x': 'y'}, 'status': {'s': 't'}})
-    reconstructed = await patch_obj(
+    reconstructed, remaining = await patch_obj(
         logger=logger,
         settings=settings,
         resource=resource,
@@ -146,6 +149,7 @@ async def test_status_as_body_field_with_combined_payload(
     assert data == {'spec': {'x': 'y'}, 'status': {'s': 't'}}
 
     assert reconstructed == OBJECT_RESPONSE  # ignore the status response if status was not patched
+    assert remaining == {}
 
 
 @pytest.mark.parametrize('status', [404])
@@ -160,7 +164,7 @@ async def test_ignores_absent_objects(
     aresponses.add(hostname, namespaced_url, 'patch', patch_mock)
 
     patch = {'x': 'y'}
-    result = await patch_obj(
+    result, remaining = await patch_obj(
         logger=logger,
         settings=settings,
         resource=resource,
@@ -170,6 +174,7 @@ async def test_ignores_absent_objects(
     )
 
     assert result is None
+    assert remaining == {}
 
 
 # Note: 401 is wrapped into a LoginError and is tested elsewhere.

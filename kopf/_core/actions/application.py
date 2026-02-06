@@ -44,6 +44,7 @@ KNOWN_INCONSISTENCIES = (
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class PendingConsistency:
     resource_version: str | None = None
+    remaining_patch: patches.Patch = dataclasses.field(default_factory=patches.Patch)
     deemed_consistency_deadline: float | None = None
 
     def with_deadline(self, deadline: float) -> 'PendingConsistency':
@@ -137,9 +138,10 @@ async def patch_and_check(
     a value and is persisted in the object and matches with the patch.
     """
     resource_version: str | None = None
+    remaining_patch: patches.Patch = patches.Patch()
     if patch:
         logger.debug(f"Patching with: {patch!r}")
-        resulting_body = await patching.patch_obj(
+        resulting_body, remaining_patch = await patching.patch_obj(
             settings=settings,
             resource=resource,
             namespace=body.metadata.namespace,
@@ -158,4 +160,4 @@ async def patch_and_check(
         elif inconsistencies:
             logger.warning(f"Patching failed with inconsistencies: {inconsistencies}")
         resource_version = (resulting_body or {}).get('metadata', {}).get('resourceVersion')
-    return PendingConsistency(resource_version=resource_version)
+    return PendingConsistency(resource_version=resource_version, remaining_patch=remaining_patch)

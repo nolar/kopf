@@ -4,6 +4,8 @@ from unittest.mock import DEFAULT
 
 import pytest
 
+from kopf._core.actions.application import PendingConsistency
+
 
 @pytest.fixture()
 def incremental_stream(hostname, aresponses, resource, namespace):
@@ -51,25 +53,25 @@ async def test_consistency_tracking_in_the_watcher(
     processor.side_effect = _processor
 
     # Stage 1: simulate the patching and setting the "expected" ResourceVersion.
-    processor.return_value = '3'
+    processor.return_value = PendingConsistency(resource_version='3')
     processed.clear()
     await processed.wait()
     assert processor.call_count == 1
     assert processor.call_args[1]['raw_event']['object']['metadata']['resourceVersion'] == '1'
-    assert processor.call_args[1]['consistency_time'] is None
+    assert processor.call_args[1]['consistency_goal'].deemed_consistency_deadline is None
 
     # Stage 2: simulate an event with an INCONSISTENT ResourceVersion, which should be ignored.
-    processor.return_value = None
+    processor.return_value = PendingConsistency()
     processed.clear()
     await processed.wait()
     assert processor.call_count == 2
     assert processor.call_args[1]['raw_event']['object']['metadata']['resourceVersion'] == '2'
-    assert processor.call_args[1]['consistency_time'] == 3.45
+    assert processor.call_args[1]['consistency_goal'].deemed_consistency_deadline == 3.45
 
     # Stage 3: simulate an event with a CONSISTENT ResourceVersion, which should be fully processed.
-    processor.return_value = None
+    processor.return_value = PendingConsistency()
     processed.clear()
     await processed.wait()
     assert processor.call_count == 3
     assert processor.call_args[1]['raw_event']['object']['metadata']['resourceVersion'] == '3'
-    assert processor.call_args[1]['consistency_time'] is None
+    assert processor.call_args[1]['consistency_goal'].deemed_consistency_deadline is None

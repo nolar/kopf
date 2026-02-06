@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from kopf._cogs.clients.watching import infinite_watch
+from kopf._core.actions.application import PendingConsistency
 from kopf._core.reactor.queueing import watcher, worker as original_worker
 
 
@@ -16,7 +17,7 @@ def _autouse_resp_mocker(resp_mocker):
 @pytest.fixture()
 def processor():
     """ A mock for processor -- to be checked if the handler has been called. """
-    return AsyncMock(return_value=None)
+    return AsyncMock(return_value=PendingConsistency())
 
 
 @pytest.fixture()
