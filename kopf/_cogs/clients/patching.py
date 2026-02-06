@@ -44,7 +44,7 @@ async def patch_obj(
     # partial or empty -- if the body/status patches are empty. This is fine: it is only used
     # to verify that the patched fields are matching the patch. No patch? No mismatch!
     try:
-        patched_body = bodies.RawBody()
+        patched_body: bodies.RawBody | None = None
 
         if body_patch:
             patched_body = await api.patch(
@@ -65,6 +65,25 @@ async def patch_obj(
                 settings=settings,
                 logger=logger,
             )
+
+        # Apply finalizer operations via JSON Patch with optimistic concurrency.
+        # Use the latest known body for reference when calculating the finalize indexes.
+        finalizer_body = patched_body if patched_body is not None else patch._original
+        json_patch = patch.build_finalizer_json_patch(finalizer_body) if finalizer_body is not None else []
+        if json_patch:
+            try:
+                patched_body = await api.patch(
+                    url=resource.get_url(namespace=namespace, name=name),
+                    headers={'Content-Type': 'application/json-patch+json'},
+                    payload=json_patch,
+                    settings=settings,
+                    logger=logger,
+                )
+            except errors.APIUnprocessableEntityError:
+                remaining = patches.Patch()
+                remaining._finalizers_to_append = list(patch._finalizers_to_append)
+                remaining._finalizers_to_remove = list(patch._finalizers_to_remove)
+                return patched_body, remaining
 
         return patched_body, patches.Patch()
 

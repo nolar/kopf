@@ -13,7 +13,7 @@ from typing import Any, Literal, TypedDict
 
 from kopf._cogs.structs import bodies, dicts
 
-JSONPatchOp = Literal["add", "replace", "remove"]
+JSONPatchOp = Literal["add", "replace", "remove", "test"]
 
 
 def _escaped_path(keys: list[str]) -> str:
@@ -66,14 +66,63 @@ class Patch(dict[str, Any]):
 
     def __init__(
         self,
-        __src: collections.abc.MutableMapping[str, Any] | None = None,
+        src: collections.abc.MutableMapping[str, Any] | None = None,
+        /,
         body: bodies.RawBody | None = None
     ) -> None:
-        super().__init__(__src or {})
+        super().__init__(src or {})
         self._meta = MetaPatch(self)
         self._spec = SpecPatch(self)
         self._status = StatusPatch(self)
         self._original = body
+        self._finalizers_to_append: list[str] = list(src._finalizers_to_append) if isinstance(src, Patch) else []
+        self._finalizers_to_remove: list[str] = list(src._finalizers_to_remove) if isinstance(src, Patch) else []
+
+    def __bool__(self) -> bool:
+        return (len(self) > 0
+                or bool(self._finalizers_to_append)
+                or bool(self._finalizers_to_remove))
+
+    def append_finalizer(self, finalizer: str) -> None:
+        self._finalizers_to_append.append(finalizer)
+        while finalizer in self._finalizers_to_remove:
+            self._finalizers_to_remove.remove(finalizer)
+
+    def remove_finalizer(self, finalizer: str) -> None:
+        self._finalizers_to_remove.append(finalizer)
+        while finalizer in self._finalizers_to_append:
+            self._finalizers_to_append.remove(finalizer)
+
+    def build_finalizer_json_patch(self, body: bodies.RawBody) -> JSONPatch:
+        current: list[str] = list(body.get('metadata', {}).get('finalizers', []))
+        resource_version: str | None = body.get('metadata', {}).get('resourceVersion')
+        field_exists = 'finalizers' in body.get('metadata', {})
+        ops: JSONPatch = []
+
+        for finalizer in self._finalizers_to_append:
+            if finalizer in current:
+                continue
+            if not field_exists:
+                ops.append(JSONPatchItem(op='add', path='/metadata/finalizers', value=[finalizer]))
+                current.append(finalizer)
+                field_exists = True
+            else:
+                ops.append(JSONPatchItem(op='add', path='/metadata/finalizers/-', value=finalizer))
+                current.append(finalizer)
+
+        for finalizer in self._finalizers_to_remove:
+            if finalizer not in current:
+                continue
+            idx = current.index(finalizer)
+            ops.append(JSONPatchItem(op='remove', path=f'/metadata/finalizers/{idx}'))
+            current.pop(idx)
+
+        if not ops:
+            return []
+
+        result: JSONPatch = [JSONPatchItem(op='test', path='/metadata/resourceVersion', value=resource_version)]
+        result.extend(ops)
+        return result
 
     @property
     def metadata(self) -> MetaPatch:
