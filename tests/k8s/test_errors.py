@@ -3,8 +3,9 @@ import pytest
 
 from kopf._cogs.clients.auth import APIContext, authenticated
 from kopf._cogs.clients.errors import APIClientError, APIConflictError, APIError, \
-                                      APIForbiddenError, APINotFoundError, APIServerError, \
-                                      APITooManyRequestsError, check_response
+                                      APIForbiddenError, APINotFoundError, \
+                                      APIServerError, APITooManyRequestsError, \
+                                      APIUnprocessableEntityError, check_response
 
 
 @authenticated
@@ -68,6 +69,7 @@ async def test_no_error_on_success(
     (403, APIForbiddenError),
     (404, APINotFoundError),
     (409, APIConflictError),
+    (422, APIUnprocessableEntityError),
     (429, APITooManyRequestsError),
     (400, APIClientError),
     (403, APIClientError),
