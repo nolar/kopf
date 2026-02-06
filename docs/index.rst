@@ -66,6 +66,7 @@ Kopf: Kubernetes Operators Framework
    :maxdepth: 2
    :caption: Recipes:
 
+   docker
    deployment
    continuity
    idempotence

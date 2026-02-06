@@ -115,6 +115,9 @@ lint = [
     "uvloop",
 ]
 
+[tool.setuptools.packages.find]
+include = ["kopf"]
+
 [tool.setuptools_scm]
 version_file = "kopf/_cogs/helpers/versions.py"
 
