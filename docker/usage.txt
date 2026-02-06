@@ -1,0 +1,40 @@
+
+Kopf Docker Image
+=================
+
+This image is for quick experimentation and ad-hoc operator development.
+For production, build your own image with `pip install kopf`.
+
+Usage
+-----
+
+Run an operator by mounting it at /app/main.py:
+
+    docker run --rm -it \
+        -v ./handler.py:/app/main.py:ro \
+        -v ~/.kube/config:/root/.kube/config:ro \
+        ghcr.io/nolar/kopf
+
+Run an operator at a custom path:
+
+    docker run --rm -it \
+        -v ./src:/src:ro \
+        -v ~/.kube/config:/root/.kube/config:ro \
+        ghcr.io/nolar/kopf run /src/handler.py
+
+Install extra dependencies via requirements.txt:
+
+    docker run --rm -it \
+        -v ./handler.py:/app/main.py:ro \
+        -v ./requirements.txt:/app/requirements.txt:ro \
+        -v ~/.kube/config:/root/.kube/config:ro \
+        ghcr.io/nolar/kopf
+
+Install extra dependencies via pyproject.toml:
+
+    docker run --rm -it \
+        -v ./myproject:/app:ro \
+        -v ~/.kube/config:/root/.kube/config:ro \
+        ghcr.io/nolar/kopf
+
+Documentation: https://kopf.readthedocs.io
