@@ -33,6 +33,7 @@ from typing import Any, NamedTuple, Protocol
 from kopf._cogs.aiokits import aiotasks, aiotoggles
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, references
+from kopf._core.actions import application
 from kopf._core.engines import peering
 from kopf._core.reactor import queueing
 
@@ -54,7 +55,7 @@ class ResourceWatchStreamProcessor(Protocol):
             stream_pressure: asyncio.Event | None = None,  # None for tests
             resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
             operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
-    ) -> str | None:
+    ) -> application.PendingConsistency:
         ...
 
 

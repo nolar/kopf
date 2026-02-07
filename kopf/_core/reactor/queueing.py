@@ -33,6 +33,7 @@ from kopf._cogs.aiokits import aiotasks, aiotoggles
 from kopf._cogs.clients import watching
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, references
+from kopf._core.actions import application
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +46,8 @@ class WatchStreamProcessor(Protocol):
             stream_pressure: asyncio.Event | None = None,  # None for tests
             resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
             operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
-            consistency_time: float | None = None,  # None for tests
-    ) -> str | None:  # patched resource version, if patched
+            consistency_goal: application.PendingConsistency,
+    ) -> application.PendingConsistency:
         ...
 
 
@@ -288,15 +289,16 @@ async def worker(
     backlog = streams[key].backlog
     pressure = streams[key].pressure
     shouldstop = False
-    consistency_time: float | None = None  # None if nothing is expected/awaited.
+    consistency_goal = application.PendingConsistency()  # Empty if nothing is expected/awaited.
     expected_version: str | None = None  # None/non-None is synced with the patch-end-time.
     try:
         while not shouldstop:
 
             # Get an event ASAP (no delay) if possible. But expect the queue can be empty.
             # Save memory by finishing the worker if the backlog is empty for some time.
+            deadline = consistency_goal.deemed_consistency_deadline
             timeout = max(settings.queueing.idle_timeout,
-                          consistency_time - loop.time() if consistency_time is not None else 0)
+                          deadline - loop.time() if deadline is not None else 0)
             try:
                 raw_event = await asyncio.wait_for(backlog.get(), timeout=timeout)
             except asyncio.TimeoutError:
@@ -319,9 +321,14 @@ async def worker(
 
             # Keep track of the resource's consistency for high-level (state-dependent) handlers.
             # See `settings.persistence.consistency_timeout` for the explanation of consistency.
-            if expected_version is not None and expected_version == get_version(raw_event):
+            # Consistency is achieved when both the resource version matches and there is no
+            # remaining patch to apply. The remaining patch becomes empty when patch_obj()
+            # successfully applies all requested changes.
+            version_matches = expected_version is not None and expected_version == get_version(raw_event)
+            patch_applied = not consistency_goal.remaining_patch
+            if version_matches and patch_applied:
                 expected_version = None
-                consistency_time = None
+                consistency_goal = application.PendingConsistency()
 
             # Relieve the pressure only if this is the last event, thus letting the processor sleep.
             # If there are more events to process, fast-skip the sleep as if they have just arrived.
@@ -330,18 +337,18 @@ async def worker(
 
             # Process the event. It might include sleeping till the time of consistency assumption
             # (i.e. ignoring that the patched version was not received and behaving as if it was).
-            newer_patch_version = await processor(
+            pending = await processor(
                 raw_event=raw_event,
                 stream_pressure=pressure,
                 resource_indexed=resource_indexed,
                 operator_indexed=operator_indexed,
-                consistency_time=consistency_time,
+                consistency_goal=consistency_goal,
             )
 
             # With every new PATCH API call (if done), restart the consistency waiting.
-            if newer_patch_version is not None and settings.persistence.consistency_timeout:
-                expected_version = newer_patch_version
-                consistency_time = loop.time() + settings.persistence.consistency_timeout
+            if pending.resource_version is not None and settings.persistence.consistency_timeout:
+                expected_version = pending.resource_version
+                consistency_goal = pending.with_deadline(loop.time() + settings.persistence.consistency_timeout)
 
     except Exception:
         # Log the error for every worker: there can be several of them failing at the same time,

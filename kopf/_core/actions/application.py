@@ -19,6 +19,7 @@ It is used from in :mod:`processing`, :mod:`actitivies`, and :mod:`daemons` --
 all the modules, of which the reactor's core consists.
 """
 import asyncio
+import dataclasses
 import datetime
 from collections.abc import Collection
 
@@ -40,6 +41,16 @@ KNOWN_INCONSISTENCIES = (
 )
 
 
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class PendingConsistency:
+    resource_version: str | None = None
+    remaining_patch: patches.Patch = dataclasses.field(default_factory=patches.Patch)
+    deemed_consistency_deadline: float | None = None
+
+    def with_deadline(self, deadline: float) -> 'PendingConsistency':
+        return dataclasses.replace(self, deemed_consistency_deadline=deadline)
+
+
 async def apply(
         *,
         settings: configuration.OperatorSettings,
@@ -49,7 +60,7 @@ async def apply(
         delays: Collection[float],
         logger: loggers.ObjectLogger,
         stream_pressure: asyncio.Event | None = None,  # None for tests
-) -> tuple[bool, str | None]:
+) -> tuple[bool, PendingConsistency]:
     delay = min(delays) if delays else None
 
     # Delete dummies on occasion, but don't trigger special patching for them [discussable].
@@ -57,7 +68,7 @@ async def apply(
         settings.persistence.progress_storage.touch(body=body, patch=patch, value=None)
 
     # Actually patch if it was not empty originally or after the dummies removal.
-    resource_version = await patch_and_check(
+    pending = await patch_and_check(
         settings=settings,
         resource=resource,
         logger=logger,
@@ -92,7 +103,7 @@ async def apply(
             value = datetime.datetime.now(datetime.timezone.utc).isoformat()
             touch = patches.Patch()
             settings.persistence.progress_storage.touch(body=body, patch=touch, value=value)
-            resource_version = await patch_and_check(
+            pending = await patch_and_check(
                 settings=settings,
                 resource=resource,
                 logger=logger,
@@ -101,7 +112,7 @@ async def apply(
             )
     elif not patch:  # no patch/touch and no delay
         applied = True
-    return applied, resource_version
+    return applied, pending
 
 
 async def patch_and_check(
@@ -111,7 +122,7 @@ async def patch_and_check(
         body: bodies.Body,
         patch: patches.Patch,
         logger: typedefs.Logger,
-) -> str | None:  # patched resource version
+) -> PendingConsistency:
     """
     Apply a patch and verify that it is applied correctly.
 
@@ -126,9 +137,11 @@ async def patch_and_check(
     For normal fields (e.g. in spec/status), an empty list/dict is still
     a value and is persisted in the object and matches with the patch.
     """
+    resource_version: str | None = None
+    remaining_patch: patches.Patch = patches.Patch()
     if patch:
         logger.debug(f"Patching with: {patch!r}")
-        resulting_body = await patching.patch_obj(
+        resulting_body, remaining_patch = await patching.patch_obj(
             settings=settings,
             resource=resource,
             namespace=body.metadata.namespace,
@@ -146,5 +159,5 @@ async def patch_and_check(
             logger.debug(f"Patching was skipped: the object does not exist anymore.")
         elif inconsistencies:
             logger.warning(f"Patching failed with inconsistencies: {inconsistencies}")
-        return (resulting_body or {}).get('metadata', {}).get('resourceVersion')
-    return None
+        resource_version = (resulting_body or {}).get('metadata', {}).get('resourceVersion')
+    return PendingConsistency(resource_version=resource_version, remaining_patch=remaining_patch)

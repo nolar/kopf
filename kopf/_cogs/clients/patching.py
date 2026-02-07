@@ -12,7 +12,7 @@ async def patch_obj(
         name: str | None,
         patch: patches.Patch,
         logger: typedefs.Logger,
-) -> bodies.RawBody | None:
+) -> tuple[bodies.RawBody | None, patches.Patch]:
     """
     Patch a resource of specific kind.
 
@@ -20,16 +20,21 @@ async def patch_obj(
     used for the namespaced resources, even if the operator serves
     the whole cluster (i.e. is not namespace-restricted).
 
-    Returns the patched body. The patched body can be partial (status-only,
-    no-status, or empty) -- depending on whether there were fields in the body
-    or in the status to patch; if neither had fields for patching, the result
-    is an empty body. The result should only be used to check against the patch:
-    if there was nothing to patch, it does not matter if the fields are absent.
+    Returns a tuple of (patched_body, remaining_patch):
 
-    Returns ``None`` if the underlying object is absent, as detected by trying
-    to patch it and failing with HTTP 404. This can happen if the object was
-    deleted in the operator's handlers or externally during the processing,
-    so that the framework was unaware of these changes until the last moment.
+    * The patched body can be partial (status-only, no-status, or empty) --
+      depending on whether there were fields in the body or in the status
+      to patch; if neither had fields for patching, the result is an empty body.
+      The result should only be used to check against the patch:
+      if there was nothing to patch, it does not matter if the fields are absent.
+      The body is ``None`` if the underlying object is absent, as detected
+      by trying to patch it and failing with HTTP 404. This can happen
+      if the object was deleted in the operator's handlers or externally
+      during the processing, so that the framework was unaware of these changes
+      until the last moment.
+
+    * The remaining patch contains parts that could not be applied
+      and should be retried in the next processing cycle.
     """
     as_subresource = 'status' in resource.subresources
     body_patch = dict(patch)  # shallow: for mutation of the top-level keys below.
@@ -39,7 +44,7 @@ async def patch_obj(
     # partial or empty -- if the body/status patches are empty. This is fine: it is only used
     # to verify that the patched fields are matching the patch. No patch? No mismatch!
     try:
-        patched_body = bodies.RawBody()
+        patched_body: bodies.RawBody | None = None
 
         if body_patch:
             patched_body = await api.patch(
@@ -61,7 +66,26 @@ async def patch_obj(
                 logger=logger,
             )
 
-        return patched_body
+        # Apply finalizer operations via JSON Patch with optimistic concurrency.
+        # Use the latest known body for reference when calculating the finalize indexes.
+        finalizer_body = patched_body if patched_body is not None else patch._original
+        json_patch = patch.build_finalizer_json_patch(finalizer_body) if finalizer_body is not None else []
+        if json_patch:
+            try:
+                patched_body = await api.patch(
+                    url=resource.get_url(namespace=namespace, name=name),
+                    headers={'Content-Type': 'application/json-patch+json'},
+                    payload=json_patch,
+                    settings=settings,
+                    logger=logger,
+                )
+            except errors.APIUnprocessableEntityError:
+                remaining = patches.Patch()
+                remaining._finalizers_to_append = list(patch._finalizers_to_append)
+                remaining._finalizers_to_remove = list(patch._finalizers_to_remove)
+                return patched_body, remaining
+
+        return patched_body, patches.Patch()
 
     except errors.APINotFoundError:
-        return None
+        return None, patches.Patch()

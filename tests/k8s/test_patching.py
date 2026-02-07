@@ -58,7 +58,7 @@ async def test_status_as_subresource_with_combined_payload(
         settings, resource, namespace, logger, object_patch_mock, status_patch_mock):
     resource = dataclasses.replace(resource, subresources=['status'])
     patch = Patch({'spec': {'x': 'y'}, 'status': {'s': 't'}})
-    reconstructed = await patch_obj(
+    reconstructed, remaining = await patch_obj(
         logger=logger,
         settings=settings,
         resource=resource,
@@ -78,13 +78,14 @@ async def test_status_as_subresource_with_combined_payload(
     assert data == {'status': {'s': 't'}}
 
     assert reconstructed == STATUS_RESPONSE  # ignore the body response if status was patched
+    assert remaining == {}
 
 
 async def test_status_as_subresource_with_object_fields_only(
         settings, resource, namespace, logger, object_patch_mock, status_patch_mock):
     resource = dataclasses.replace(resource, subresources=['status'])
     patch = Patch({'spec': {'x': 'y'}})
-    reconstructed = await patch_obj(
+    reconstructed, remaining = await patch_obj(
         logger=logger,
         settings=settings,
         resource=resource,
@@ -101,13 +102,14 @@ async def test_status_as_subresource_with_object_fields_only(
     assert data == {'spec': {'x': 'y'}}
 
     assert reconstructed == OBJECT_RESPONSE  # ignore the status response if status was not patched
+    assert remaining == {}
 
 
 async def test_status_as_subresource_with_status_fields_only(
         settings, resource, namespace, logger, object_patch_mock, status_patch_mock):
     resource = dataclasses.replace(resource, subresources=['status'])
     patch = Patch({'status': {'s': 't'}})
-    reconstructed = await patch_obj(
+    reconstructed, remaining = await patch_obj(
         logger=logger,
         settings=settings,
         resource=resource,
@@ -124,12 +126,13 @@ async def test_status_as_subresource_with_status_fields_only(
     assert data == {'status': {'s': 't'}}
 
     assert reconstructed == STATUS_RESPONSE  # ignore the body response if status was patched
+    assert remaining == {}
 
 
 async def test_status_as_body_field_with_combined_payload(
         settings, resource, namespace, logger, object_patch_mock, status_patch_mock):
     patch = Patch({'spec': {'x': 'y'}, 'status': {'s': 't'}})
-    reconstructed = await patch_obj(
+    reconstructed, remaining = await patch_obj(
         logger=logger,
         settings=settings,
         resource=resource,
@@ -146,6 +149,7 @@ async def test_status_as_body_field_with_combined_payload(
     assert data == {'spec': {'x': 'y'}, 'status': {'s': 't'}}
 
     assert reconstructed == OBJECT_RESPONSE  # ignore the status response if status was not patched
+    assert remaining == {}
 
 
 @pytest.mark.parametrize('status', [404])
@@ -160,7 +164,7 @@ async def test_ignores_absent_objects(
     aresponses.add(hostname, namespaced_url, 'patch', patch_mock)
 
     patch = {'x': 'y'}
-    result = await patch_obj(
+    result, remaining = await patch_obj(
         logger=logger,
         settings=settings,
         resource=resource,
@@ -170,6 +174,7 @@ async def test_ignores_absent_objects(
     )
 
     assert result is None
+    assert remaining == {}
 
 
 # Note: 401 is wrapped into a LoginError and is tested elsewhere.
@@ -195,3 +200,159 @@ async def test_raises_api_errors(
             patch=patch,
         )
     assert e.value.status == status
+
+
+FINALIZER_RESPONSE = {'metadata': {'resourceVersion': 'fin789', 'finalizers': ['new-fin']}}
+
+
+async def test_finalizer_json_patch_applied(
+        resp_mocker, aresponses, hostname, settings, resource, namespace, logger):
+
+    body = {'metadata': {'resourceVersion': 'rv1', 'finalizers': ['existing']}}
+    patch = Patch(body=body)
+    patch.append_finalizer('new-fin')
+
+    json_patch_mock = resp_mocker(return_value=aiohttp.web.json_response(FINALIZER_RESPONSE))
+    aresponses.add(hostname, resource.get_url(namespace=namespace, name='name1'), 'patch', json_patch_mock)
+
+    result, remaining = await patch_obj(
+        logger=logger,
+        settings=settings,
+        resource=resource,
+        namespace=namespace,
+        name='name1',
+        patch=patch,
+    )
+
+    assert json_patch_mock.called
+    assert json_patch_mock.call_count == 1
+
+    data = json_patch_mock.call_args_list[0][0][0].data
+    assert data == [
+        {'op': 'test', 'path': '/metadata/resourceVersion', 'value': 'rv1'},
+        {'op': 'add', 'path': '/metadata/finalizers/-', 'value': 'new-fin'},
+    ]
+
+    assert result == FINALIZER_RESPONSE
+    assert remaining == {}
+    assert not remaining._finalizers_to_append
+    assert not remaining._finalizers_to_remove
+
+
+async def test_finalizer_json_patch_with_merge_patch(
+        resp_mocker, aresponses, hostname, settings, resource, namespace, logger):
+
+    body = {'metadata': {'resourceVersion': 'rv1', 'finalizers': ['existing']}}
+    patch = Patch({'spec': {'x': 'y'}}, body=body)
+    patch.append_finalizer('new-fin')
+
+    merge_response = {'metadata': {'resourceVersion': 'rv2', 'finalizers': ['existing']},
+                      'spec': {'x': 'y'}}
+    merge_mock = resp_mocker(return_value=aiohttp.web.json_response(merge_response))
+    aresponses.add(hostname, resource.get_url(namespace=namespace, name='name1'), 'patch', merge_mock)
+
+    json_patch_mock = resp_mocker(return_value=aiohttp.web.json_response(FINALIZER_RESPONSE))
+    aresponses.add(hostname, resource.get_url(namespace=namespace, name='name1'), 'patch', json_patch_mock)
+
+    result, remaining = await patch_obj(
+        logger=logger,
+        settings=settings,
+        resource=resource,
+        namespace=namespace,
+        name='name1',
+        patch=patch,
+    )
+
+    assert merge_mock.called
+    assert json_patch_mock.called
+
+    # The JSON Patch should use the resourceVersion from the merge-patch response.
+    json_data = json_patch_mock.call_args_list[0][0][0].data
+    assert json_data[0] == {'op': 'test', 'path': '/metadata/resourceVersion', 'value': 'rv2'}
+
+    assert result == FINALIZER_RESPONSE
+    assert remaining == {}
+
+
+async def test_finalizer_json_patch_422_returns_remaining(
+        resp_mocker, aresponses, hostname, settings, resource, namespace, logger):
+
+    body = {'metadata': {'resourceVersion': 'rv1', 'finalizers': ['existing']}}
+    patch = Patch(body=body)
+    patch.append_finalizer('new-fin')
+    patch.remove_finalizer('old-fin')
+
+    error_mock = resp_mocker(return_value=aresponses.Response(status=422, reason='Unprocessable Entity'))
+    aresponses.add(hostname, resource.get_url(namespace=namespace, name='name1'), 'patch', error_mock)
+
+    result, remaining = await patch_obj(
+        logger=logger,
+        settings=settings,
+        resource=resource,
+        namespace=namespace,
+        name='name1',
+        patch=patch,
+    )
+
+    assert result is None  # no merge-patch was done, so patched_body stays None
+    assert remaining._finalizers_to_append == ['new-fin']
+    assert remaining._finalizers_to_remove == ['old-fin']
+
+
+async def test_finalizer_noop_when_already_present(
+        resp_mocker, aresponses, hostname, settings, resource, namespace, logger):
+
+    body = {'metadata': {'resourceVersion': 'rv1', 'finalizers': ['already-here']}}
+    patch = Patch(body=body)
+    patch.append_finalizer('already-here')
+
+    result, remaining = await patch_obj(
+        logger=logger,
+        settings=settings,
+        resource=resource,
+        namespace=namespace,
+        name='name1',
+        patch=patch,
+    )
+
+    assert result is None  # no API calls made
+    assert remaining == {}
+
+
+async def test_finalizer_noop_when_absent_for_removal(
+        resp_mocker, aresponses, hostname, settings, resource, namespace, logger):
+
+    body = {'metadata': {'resourceVersion': 'rv1', 'finalizers': ['other']}}
+    patch = Patch(body=body)
+    patch.remove_finalizer('not-there')
+
+    result, remaining = await patch_obj(
+        logger=logger,
+        settings=settings,
+        resource=resource,
+        namespace=namespace,
+        name='name1',
+        patch=patch,
+    )
+
+    assert result is None  # no API calls made
+    assert remaining == {}
+
+
+async def test_no_finalizer_patch_without_body(
+        resp_mocker, aresponses, hostname, settings, resource, namespace, logger):
+
+    patch = Patch()
+    patch.append_finalizer('fin')  # will be ignored — no body to build JSON Patch from
+
+    result, remaining = await patch_obj(
+        logger=logger,
+        settings=settings,
+        resource=resource,
+        namespace=namespace,
+        name='name1',
+        patch=patch,
+    )
+
+    assert result is None
+    assert remaining == {}

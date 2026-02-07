@@ -39,8 +39,8 @@ async def process_resource_event(
         stream_pressure: asyncio.Event | None = None,  # None for tests
         resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
         operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
-        consistency_time: float | None = None,  # None for tests
-) -> str | None:  # patched resource version, if patched
+        consistency_goal: application.PendingConsistency = application.PendingConsistency(),
+) -> application.PendingConsistency:
     """
     Handle a single custom object low-level watch-event.
 
@@ -64,7 +64,7 @@ async def process_resource_event(
     # 4. Same as where a patch object of a similar wrapping semantics is created.
     live_fresh_body = memory.daemons_memory.live_fresh_body
     body = live_fresh_body if live_fresh_body is not None else bodies.Body(raw_body)
-    patch = patches.Patch()
+    patch = patches.Patch(consistency_goal.remaining_patch, body=raw_body)
 
     # Different loggers for different cases with different verbosity and exposure.
     local_logger = loggers.LocalObjectLogger(body=body, settings=settings)
@@ -120,14 +120,14 @@ async def process_resource_event(
                 local_logger=local_logger,
                 event_logger=event_logger,
                 stream_pressure=stream_pressure,
-                consistency_time=consistency_time,
+                consistency_goal=consistency_goal,
             )
 
             # Whatever was done, apply the accumulated changes to the object, or sleep-n-touch for delays.
             # But only once, to reduce the number of API calls and the generated irrelevant events.
             # And only if the object is at least supposed to exist (not "GONE"), even if actually does not.
             if raw_event['type'] != 'DELETED':
-                applied, resource_version = await application.apply(
+                applied, pending = await application.apply(
                     settings=settings,
                     resource=resource,
                     body=body,
@@ -138,8 +138,8 @@ async def process_resource_event(
                 )
                 if applied and matched:
                     local_logger.debug("Handling cycle is finished, waiting for new changes.")
-                return resource_version
-    return None
+                return pending
+    return application.PendingConsistency()
 
 
 class _Causes(NamedTuple):
@@ -225,7 +225,7 @@ async def process_resource_causes(
         local_logger: loggers.ObjectLogger,
         event_logger: loggers.ObjectLogger,
         stream_pressure: asyncio.Event | None,  # None for tests
-        consistency_time: float | None,
+        consistency_goal: application.PendingConsistency,
 ) -> tuple[Collection[float], bool]:
     finalizer = settings.persistence.finalizer
     watching_cause, spawning_cause, changing_cause = _detect_causes(
@@ -299,11 +299,12 @@ async def process_resource_causes(
     # However, if a patch is accumulated by now, skip waiting and apply it instantly (by exiting).
     # In that case, we are guaranteed to be inconsistent, so also skip the state-dependent handlers.
     # Never release the object (i.e., remove the finalizer) in the inconsistent state, always wait.
+    deadline = consistency_goal.deemed_consistency_deadline
     consistency_is_required = changing_cause is not None
-    consistency_is_achieved = consistency_time is None  # i.e. preexisting consistency
-    if consistency_is_required and not consistency_is_achieved and not patch and consistency_time:
+    consistency_is_achieved = deadline is None  # i.e. preexisting consistency
+    if consistency_is_required and not consistency_is_achieved and not patch and deadline is not None:
         loop = asyncio.get_running_loop()
-        unslept = await aiotime.sleep(consistency_time - loop.time(), wakeup=stream_pressure)
+        unslept = await aiotime.sleep(deadline - loop.time(), wakeup=stream_pressure)
         consistency_is_achieved = unslept is None  # "woke up" vs. "timed out"
     if consistency_is_required and not consistency_is_achieved:
         return list(spawning_delays), False  # exit to PATCHing and/or re-iterating over new events.
