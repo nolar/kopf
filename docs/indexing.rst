@@ -23,7 +23,7 @@ Indices are declared with a ``@kopf.index`` decorator on an indexing function
     import kopf
 
     @kopf.index('pods')
-    def my_idx(**_):
+    async def my_idx(**_):
         ...
 
 The name of the function or its ``id=`` option is the index's name.
@@ -100,7 +100,7 @@ it is merged into the index under the key taken from the result:
     import kopf
 
     @kopf.index('pods')
-    def string_keys(namespace, name, **_):
+    async def string_keys(namespace, name, **_):
         return {namespace: name}
         # {'namespace1': ['pod1a', 'pod1b', ...],
         #  'namespace2': ['pod2a', 'pod2b', ...],
@@ -113,7 +113,7 @@ Multi-value keys are possible with e.g. tuples or other hashable types:
     import kopf
 
     @kopf.index('pods')
-    def tuple_keys(namespace, name, **_):
+    async def tuple_keys(namespace, name, **_):
         return {(namespace, name): 'hello'}
         # {('namespace1', 'pod1a'): ['hello'],
         #  ('namespace1', 'pod1b'): ['hello'],
@@ -129,7 +129,7 @@ They are all merged into their relevant places in the index:
     import kopf
 
     @kopf.index('pods')
-    def by_label(labels, name, **_):
+    async def by_label(labels, name, **_):
         return {(label, value): name for label, value in labels.items()}
         # {('label1', 'value1a'): ['pod1', 'pod2', ...],
         #  ('label1', 'value1b'): ['pod3', 'pod4', ...],
@@ -167,7 +167,7 @@ The resources are not indexed, but rather collected under the same key
     import kopf
 
     @kopf.index('pods')
-    def pod_names(name: str, **_):
+    async def pod_names(name: str, **_):
         return name
         # {None: ['pod1', 'pod2', ...]}
 
@@ -179,7 +179,7 @@ Other types and complex objects returned from the indexing function are stored
     import kopf
 
     @kopf.index('pods')
-    def container_names(spec: kopf.Spec, **_):
+    async def container_names(spec: kopf.Spec, **_):
         return {container['name'] for container in spec.get('containers', [])}
         # {None: [{'main1', 'sidecar2'}, {'main2'}, ...]}
 
@@ -198,7 +198,7 @@ you need mostly to iterate over all of them without key lookups:
     import kopf
 
     @kopf.index('pods')
-    def pods_list(namespace, name, **_):
+    async def pods_list(namespace, name, **_):
         return namespace, name
         # {None: [('namespace1', 'pod1a'),
         #         ('namespace1', 'pod1b'),
@@ -219,7 +219,7 @@ more often than index iterations:
     import kopf
 
     @kopf.index('pods')
-    def pods_dict(namespace, name, **_):
+    async def pods_dict(namespace, name, **_):
         return {(namespace, name): None}
         # {('namespace1', 'pod1a'): [None],
         #  ('namespace1', 'pod1b'): [None],
@@ -245,7 +245,7 @@ To store the whole resource or its essential parts, return them explicitly:
     import kopf
 
     @kopf.index('deployments')
-    def whole_deployments(name: str, namespace: str, body: kopf.Body, **_):
+    async def whole_deployments(name: str, namespace: str, body: kopf.Body, **_):
         return {(namespace, name): body}
 
     @kopf.timer('kopfexamples', interval=5)
@@ -286,7 +286,7 @@ while the secondary index will index pods' names by namespaces only:
     import kopf
 
     @kopf.index('pods')
-    def primary(namespace, name, spec, **_):
+    async def primary(namespace, name, spec, **_):
         container_names = {container['name'] for container in spec['containers']}
         return {(namespace, name): container_names}
         # {('namespace1', 'pod1a'): [{'main'}],
@@ -296,7 +296,7 @@ while the secondary index will index pods' names by namespaces only:
         #   ...}
 
     @kopf.index('pods')
-    def secondary(namespace, name, **_):
+    async def secondary(namespace, name, **_):
         return {namespace: name}
         # {'namespace1': ['pod1a', 'pod1b'],
         #  'namespace2': ['pod2a', 'pod2b'],
@@ -335,7 +335,7 @@ happen in the indexing function with the errors mode set to ``IGNORED``):
     import kopf
 
     @kopf.index('pods')
-    def empty_index(**_):
+    async def empty_index(**_):
         pass
         # {}
 
@@ -349,7 +349,7 @@ indices and collections with no values left in them are removed from the index:
     import kopf
 
     @kopf.index('pods')
-    def index_of_nones(**_):
+    async def index_of_nones(**_):
         return {'key': None}
         # {'key': [None, None, ...]}
 
@@ -372,7 +372,7 @@ as returning ``None``, except that the exception's stack trace is logged too:
     import kopf
 
     @kopf.index('pods', errors=kopf.ErrorsMode.IGNORED)  # the default
-    def fn1(**_):
+    async def fn1(**_):
         raise Exception("Keep the stale values, if any.")
 
 :class:`kopf.PermanentError` and arbitrary exceptions with ``errors=PERMANENT``
@@ -385,11 +385,11 @@ and exclude the failed resource from indexing by this index in the future
     import kopf
 
     @kopf.index('pods', errors=kopf.ErrorsMode.PERMANENT)
-    def fn1(**_):
+    async def fn1(**_):
         raise Exception("Excluded forever.")
 
     @kopf.index('pods')
-    def fn2(**_):
+    async def fn2(**_):
         raise kopf.PermamentError("Excluded forever.")
 
 :class:`kopf.TemporaryError` and arbitrary exceptions with ``errors=TEMPORARY``
@@ -404,11 +404,11 @@ but right now, problems are preventing this from happening:
     import kopf
 
     @kopf.index('pods', errors=kopf.ErrorsMode.TEMPORARY)
-    def fn1(**_):
+    async def fn1(**_):
         raise Exception("Excluded for 60s.")
 
     @kopf.index('pods')
-    def fn2(**_):
+    async def fn2(**_):
         raise kopf.TemporaryError("Excluded for 30s.", delay=30)
 
 In the "temporary" mode, the decorator's options for error handling are used:
@@ -531,3 +531,54 @@ know this for sure).
     ("batteries included").
 
     __ https://github.com/kubernetes/sample-controller/blob/master/docs/controller-client-go.md
+
+
+Precautions for huge clusters
+=============================
+
+.. warning::
+    In case of huge clusters with many resources, it is possible to hit
+    a deadlock situation with the indexing if the worker limit is lower
+    than the number of resources indexed.
+
+    All operator activities for every individual object freeze until
+    the operator fully indexes the cluster. This means that at a startup time,
+    there will be as many workers (asyncio tasks) as there are resources
+    matching the indexing criteria (by resource selectors and filters).
+
+    To solve this deadlock problem, use one of these two solutions:
+
+    - Keep ``settings.queueing.worker_limit=None`` (default).
+      The workers will anyway shut down after some time of inactivity (≈5s)
+      and release all the system resources.
+    - Ensure that ``settings.queueing.worker_limit`` is bigger
+      than the number of resources indexed, plus some reserves.
+
+    Also, minimize the number of resources indexed with more precise filters.
+
+.. warning::
+    Similarly, in huge cluster with many resources, there will be heavy
+    CPU load if sync handlers are used for indexing.
+
+    Sync handlers are executed in thread pools. If there are too many
+    resources rushing for indexing on operator startup, the pool can explode.
+    Threads are reused and the indexing handlers will go through the pool fast,
+    since indexing handlers are supposed to be fast and purely computational.
+    But this will not help against the initial wave.
+
+    Thread pools do not scale down automatically, so this number of threads
+    will remain throughout the life time of the operator.
+
+    To solve the thread explosion problem, use one of these two solutions:
+
+    - Declare the handlers as ``async def``, see :doc:`async`.
+      This will entirely eliminate threading from the indexing stage.
+    - Set the ``settings.execution.max_workers`` to any reasonable number
+      of threads allowed. It can be much lower than the number of resources,
+      but this will slow down the initial indexing proportionally.
+      There is no limit by default (``max_workers=None``).
+
+    Also, minimize the number of resources indexed with more precise filters.
+
+.. seealso::
+    See :doc:`configuration` for details on these settings.
