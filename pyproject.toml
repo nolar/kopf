@@ -115,6 +115,10 @@ lint = [
     "uvloop",
 ]
 
+[tool.setuptools.packages.find]
+# The star is for the versions.py, which is gitignored in docker builds (somewhy).
+include = ["kopf", "kopf.*"]
+
 [tool.setuptools_scm]
 version_file = "kopf/_cogs/helpers/versions.py"
 

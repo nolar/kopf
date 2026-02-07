@@ -6,6 +6,9 @@ Prerequisites:
 
 * Python >= 3.10 (CPython and PyPy are officially tested and supported).
 
+Installing packages
+===================
+
 To install Kopf:
 
 .. code-block:: bash
@@ -25,6 +28,10 @@ If you want extra i/o performance under the hood, install it as (also see :ref:`
 .. code-block:: bash
 
     pip install kopf[uvloop]
+
+
+Example resources
+=================
 
 Unless you use the standalone mode,
 create a few Kopf-specific custom resources in the cluster:
@@ -48,3 +55,23 @@ You are ready to go:
     kopf --help
     kopf run --help
     kopf run examples/01-minimal/example.py
+
+
+Docker image
+============
+
+Alternatively, a pre-built Docker image with all extras is available for quick
+experimentation --- no local Python installation needed:
+
+.. code-block:: bash
+
+    # Minimize the credentials exposure.
+    kubectl config view --minify --flatten > dev.kubeconfig
+
+    # Run the operator locally, target a local cluster (host networking).
+    docker run --rm -it --network=host \
+        -v ./examples/01-minimal/example.py:/app/main.py:ro \
+        -v ./dev.kubeconfig:/root/.kube/config:ro \
+        ghcr.io/nolar/kopf
+
+See :doc:`docker` for image variants, tags, and more usage examples.
