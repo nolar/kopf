@@ -1,0 +1,34 @@
+name: Deploy to GitHub Pages
+
+on:
+  pull_request:  # TODO: remove this before merging
+    branches:
+      - main
+  push:
+    branches: [main]
+    paths: [website/**]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  pages: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: website
+      - id: deployment
+        uses: actions/deploy-pages@v4
