@@ -10,6 +10,7 @@ in them, and extracts the basic credentials for its own use.
 .. seealso::
     :mod:`credentials` and :func:`authentication`.
 """
+import inspect
 import os
 from collections.abc import Sequence
 from typing import Any
@@ -155,7 +156,12 @@ async def login_via_async_client(
     # For auth-providers, this method is monkey-patched with the auth-provider's one.
     # We need the actual auth-provider's token, so we call it instead of accessing api_key.
     # Other keys (token, tokenFile) also end up being retrieved via this method.
-    header: str | None = await config.get_api_key_with_prefix('BearerToken')
+    header: str | None
+    maybe_header = config.get_api_key_with_prefix('BearerToken')
+    if inspect.isawaitable(maybe_header):
+        header = await maybe_header  # kubernetes-asyncio>=33.3.0
+    else:
+        header = maybe_header  # kubernetes-asyncio<33.3.0
     parts: Sequence[str] = header.split(' ', 1) if header else []
     scheme, token = ((None, None) if len(parts) == 0 else
                      (None, parts[0]) if len(parts) == 1 else
