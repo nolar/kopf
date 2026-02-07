@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kopf — Kubernetes Operator Pythonic Framework</title>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LQSMQ0TJSC"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-LQSMQ0TJSC');</script>
+  <meta name="description" content="Build Kubernetes operators in Python with minimal code. Production-ready, batteries-included framework with decorators, daemons, timers, webhooks, and more.">
+  <link rel="canonical" href="https://kopf.dev">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/dockerfile.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            kopf: {
+              50: '#eef7ff',
+              100: '#d9edff',
+              200: '#bce0ff',
+              300: '#8eccff',
+              400: '#59b0ff',
+              500: '#3490fc',
+              600: '#1e72f1',
+              700: '#165bde',
+              800: '#184ab4',
+              900: '#1a418e',
+              950: '#142956',
+            },
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    html { scroll-behavior: smooth; }
+    .hero-gradient {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #142956 100%);
+    }
+    .code-window {
+      background: #0d1117;
+      border: 1px solid #30363d;
+    }
+    .code-window-bar {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+    }
+    .feature-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .feature-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.15);
+    }
+    pre code.hljs {
+      background: transparent !important;
+      padding: 0 !important;
+    }
+    .tab-btn.active {
+      color: #3490fc;
+      border-color: #3490fc;
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+  </style>
+</head>
+
+<body class="bg-white text-slate-900 font-sans antialiased">
+
+  <!-- Navigation -->
+  <nav class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-lg border-b border-slate-200">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="#" class="flex items-center gap-2.5 text-xl font-bold tracking-tight text-slate-900">
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="8" fill="#1e72f1"/>
+          <text x="16" y="22" text-anchor="middle" fill="white" font-size="18" font-weight="bold" font-family="Inter, sans-serif">K</text>
+        </svg>
+        Kopf
+      </a>
+      <div class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
+        <a href="#features" class="hover:text-slate-900 transition-colors">Features</a>
+        <a href="#examples" class="hover:text-slate-900 transition-colors">Examples</a>
+        <a href="#get-started" class="hover:text-slate-900 transition-colors">Get Started</a>
+        <a href="https://kopf.readthedocs.io/" class="hover:text-slate-900 transition-colors" target="_blank" rel="noopener">Docs</a>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="https://github.com/nolar/kopf" target="_blank" rel="noopener"
+           class="text-slate-500 hover:text-slate-900 transition-colors" aria-label="GitHub">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+        </a>
+        <a href="https://pypi.org/project/kopf/" target="_blank" rel="noopener"
+           class="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-kopf-600 text-white text-sm font-medium hover:bg-kopf-700 transition-colors">
+          pip install kopf
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero-gradient pt-32 pb-20 md:pt-40 md:pb-28">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="grid lg:grid-cols-2 gap-12 items-center">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-kopf-600/20 text-kopf-300 text-sm font-medium mb-6">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            Production-ready &middot; Stable v1
+          </div>
+          <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight tracking-tight">
+            Kubernetes operators
+            <span class="text-kopf-400">in Python</span>
+          </h1>
+          <p class="mt-6 text-lg md:text-xl text-slate-300 leading-relaxed max-w-xl">
+            Write event-driven or state-driven handler functions with simple decorators.
+            No boilerplate, no infrastructure glue code.
+            Just your domain logic.
+          </p>
+          <div class="mt-8 flex flex-wrap gap-4">
+            <a href="#get-started"
+               class="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-kopf-600 text-white font-semibold hover:bg-kopf-500 transition-colors">
+              Get Started
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+            </a>
+            <a href="https://kopf.readthedocs.io/" target="_blank" rel="noopener"
+               class="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white/10 text-white font-semibold hover:bg-white/20 transition-colors">
+              Documentation
+            </a>
+          </div>
+        </div>
+        <div class="code-window rounded-xl overflow-hidden shadow-2xl">
+          <div class="code-window-bar px-4 py-3 flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-[#ff5f57]"></span>
+            <span class="w-3 h-3 rounded-full bg-[#febc2e]"></span>
+            <span class="w-3 h-3 rounded-full bg-[#28c840]"></span>
+            <span class="ml-3 text-xs text-slate-400 font-mono">handlers.py</span>
+          </div>
+          <div class="p-5 text-sm leading-relaxed overflow-x-auto">
+            <pre><code class="language-python">import kopf
+
+@kopf.on.create('kopfexamples')
+def create_fn(spec, name, **_):
+    print(f"Created {name} with spec: {spec}")
+
+@kopf.on.update('kopfexamples')
+def update_fn(old, new, diff, **_):
+    print(f"Updated with changes: {diff}")
+
+@kopf.on.delete('kopfexamples')
+def delete_fn(name, **_):
+    print(f"Deleted {name}. Goodbye!")</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats bar -->
+  <section class="bg-slate-50 border-b border-slate-200">
+    <div class="max-w-6xl mx-auto px-6 py-8 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+      <div>
+        <div class="text-2xl md:text-3xl font-bold text-slate-900">8 lines</div>
+        <div class="text-sm text-slate-500 mt-1">for a working operator</div>
+      </div>
+      <div>
+        <div class="text-2xl md:text-3xl font-bold text-slate-900">Python 3.10+</div>
+        <div class="text-sm text-slate-500 mt-1">CPython &amp; PyPy</div>
+      </div>
+      <div>
+        <div class="text-2xl md:text-3xl font-bold text-slate-900">MIT</div>
+        <div class="text-sm text-slate-500 mt-1">open-source license</div>
+      </div>
+      <div>
+        <div class="text-2xl md:text-3xl font-bold text-slate-900">Stable v1</div>
+        <div class="text-sm text-slate-500 mt-1">production-ready</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="py-20 md:py-28">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="text-center max-w-2xl mx-auto mb-16">
+        <h2 class="text-3xl md:text-4xl font-bold tracking-tight">Everything you need to build operators</h2>
+        <p class="mt-4 text-lg text-slate-600">From simple event handlers to daemons, webhooks, and multi-operator peering &mdash; all with clean, Pythonic APIs.</p>
+      </div>
+
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        <!-- Feature 1 -->
+        <div class="feature-card p-6 rounded-xl border border-slate-200 bg-white">
+          <div class="w-10 h-10 rounded-lg bg-kopf-100 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5 text-kopf-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <h3 class="font-semibold text-lg">Declarative handlers</h3>
+          <p class="mt-2 text-slate-600 text-sm leading-relaxed">Register handlers with decorators: <code class="text-xs bg-slate-100 px-1.5 py-0.5 rounded">@kopf.on.create</code>, <code class="text-xs bg-slate-100 px-1.5 py-0.5 rounded">@kopf.on.update</code>, <code class="text-xs bg-slate-100 px-1.5 py-0.5 rounded">@kopf.on.delete</code>. Focus on your domain logic, not K8s plumbing.</p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="feature-card p-6 rounded-xl border border-slate-200 bg-white">
+          <div class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </div>
+          <h3 class="font-semibold text-lg">Daemons &amp; timers</h3>
+          <p class="mt-2 text-slate-600 text-sm leading-relaxed">Run long-lived background tasks per resource with <code class="text-xs bg-slate-100 px-1.5 py-0.5 rounded">@kopf.daemon</code> or periodic logic with <code class="text-xs bg-slate-100 px-1.5 py-0.5 rounded">@kopf.timer</code>. Threads or async &mdash; your choice.</p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="feature-card p-6 rounded-xl border border-slate-200 bg-white">
+          <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          </div>
+          <h3 class="font-semibold text-lg">Admission webhooks</h3>
+          <p class="mt-2 text-slate-600 text-sm leading-relaxed">Validate and mutate resources with <code class="text-xs bg-slate-100 px-1.5 py-0.5 rounded">@kopf.on.validate</code> and <code class="text-xs bg-slate-100 px-1.5 py-0.5 rounded">@kopf.on.mutate</code>. Built-in dev-mode tunneling for local development.</p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="feature-card p-6 rounded-xl border border-slate-200 bg-white">
+          <div class="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
+          </div>
+          <h3 class="font-semibold text-lg">In-memory indexing</h3>
+          <p class="mt-2 text-slate-600 text-sm leading-relaxed">Maintain live indices of resources with <code class="text-xs bg-slate-100 px-1.5 py-0.5 rounded">@kopf.index</code>. Cross-resource awareness without extra API calls.</p>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="feature-card p-6 rounded-xl border border-slate-200 bg-white">
+          <div class="w-10 h-10 rounded-lg bg-rose-100 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <h3 class="font-semibold text-lg">Eventual consistency</h3>
+          <p class="mt-2 text-slate-600 text-sm leading-relaxed">Automatic retries with configurable limits. Progress persists across operator restarts. Handles changes after lengthy downtimes.</p>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="feature-card p-6 rounded-xl border border-slate-200 bg-white">
+          <div class="w-10 h-10 rounded-lg bg-cyan-100 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </div>
+          <h3 class="font-semibold text-lg">Multi-operator peering</h3>
+          <p class="mt-2 text-slate-600 text-sm leading-relaxed">Run multiple operators for the same resources without conflicts. Cross-pod awareness prevents double-processing.</p>
+        </div>
+
+        <!-- Feature 7 -->
+        <div class="feature-card p-6 rounded-xl border border-slate-200 bg-white">
+          <div class="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+          </div>
+          <h3 class="font-semibold text-lg">Smart filtering</h3>
+          <p class="mt-2 text-slate-600 text-sm leading-relaxed">Filter by labels, annotations, fields, or arbitrary callbacks. Stealth mode suppresses logging for filtered-out resources.</p>
+        </div>
+
+        <!-- Feature 8 -->
+        <div class="feature-card p-6 rounded-xl border border-slate-200 bg-white">
+          <div class="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </div>
+          <h3 class="font-semibold text-lg">Sync &amp; async</h3>
+          <p class="mt-2 text-slate-600 text-sm leading-relaxed">Write handlers as plain functions or async coroutines. Sync handlers run in threads automatically. Mix both styles freely.</p>
+        </div>
+
+        <!-- Feature 9 -->
+        <div class="feature-card p-6 rounded-xl border border-slate-200 bg-white">
+          <div class="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+          </div>
+          <h3 class="font-semibold text-lg">Testing toolkit</h3>
+          <p class="mt-2 text-slate-600 text-sm leading-relaxed">Built-in <code class="text-xs bg-slate-100 px-1.5 py-0.5 rounded">KopfRunner</code> for in-memory operator testing. Run your operator in tests without a cluster.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Code Examples -->
+  <section id="examples" class="py-20 md:py-28 bg-slate-50">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="text-center max-w-2xl mx-auto mb-16">
+        <h2 class="text-3xl md:text-4xl font-bold tracking-tight">See it in action</h2>
+        <p class="mt-4 text-lg text-slate-600">From a minimal handler to daemons and webhooks &mdash; everything stays readable and Pythonic.</p>
+      </div>
+
+      <!-- Tabs -->
+      <div class="max-w-3xl mx-auto">
+        <div class="flex gap-1 mb-6 border-b border-slate-200 overflow-x-auto" role="tablist">
+          <button class="tab-btn active px-4 py-2.5 text-sm font-medium text-slate-500 border-b-2 border-transparent whitespace-nowrap transition-colors" data-tab="handlers" role="tab">
+            Event Handlers
+          </button>
+          <button class="tab-btn px-4 py-2.5 text-sm font-medium text-slate-500 border-b-2 border-transparent whitespace-nowrap transition-colors" data-tab="daemons" role="tab">
+            Daemons &amp; Timers
+          </button>
+          <button class="tab-btn px-4 py-2.5 text-sm font-medium text-slate-500 border-b-2 border-transparent whitespace-nowrap transition-colors" data-tab="webhooks" role="tab">
+            Admission Webhooks
+          </button>
+          <button class="tab-btn px-4 py-2.5 text-sm font-medium text-slate-500 border-b-2 border-transparent whitespace-nowrap transition-colors" data-tab="errors" role="tab">
+            Error Handling
+          </button>
+          <button class="tab-btn px-4 py-2.5 text-sm font-medium text-slate-500 border-b-2 border-transparent whitespace-nowrap transition-colors" data-tab="testing" role="tab">
+            Testing
+          </button>
+        </div>
+
+        <!-- Tab: Handlers -->
+        <div id="tab-handlers" class="tab-content active">
+          <div class="code-window rounded-xl overflow-hidden shadow-lg">
+            <div class="code-window-bar px-4 py-3 flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-[#ff5f57]"></span>
+              <span class="w-3 h-3 rounded-full bg-[#febc2e]"></span>
+              <span class="w-3 h-3 rounded-full bg-[#28c840]"></span>
+              <span class="ml-3 text-xs text-slate-400 font-mono">handlers.py</span>
+            </div>
+            <div class="p-5 text-sm leading-relaxed overflow-x-auto">
+              <pre><code class="language-python">import kopf
+
+@kopf.on.create('kopfexamples')
+def create_fn(spec, name, **_):
+    print(f"Created {name} with spec: {spec}")
+    return {'message': f'Resource {name} created successfully'}
+
+@kopf.on.update('kopfexamples')
+def update_fn(old, new, diff, **_):
+    for op, field, old_val, new_val in diff:
+        print(f"{field}: {old_val} -> {new_val}")
+
+@kopf.on.delete('kopfexamples')
+def delete_fn(name, logger, **_):
+    logger.info(f"Cleaning up {name}...")  # Also a K8s event</code></pre>
+            </div>
+          </div>
+          <p class="mt-4 text-sm text-slate-500">High-level cause detection: Kopf translates raw K8s watch events into meaningful causes like create, update, and delete. Handler return values are persisted to the resource status.</p>
+        </div>
+
+        <!-- Tab: Daemons -->
+        <div id="tab-daemons" class="tab-content">
+          <div class="code-window rounded-xl overflow-hidden shadow-lg">
+            <div class="code-window-bar px-4 py-3 flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-[#ff5f57]"></span>
+              <span class="w-3 h-3 rounded-full bg-[#febc2e]"></span>
+              <span class="w-3 h-3 rounded-full bg-[#28c840]"></span>
+              <span class="ml-3 text-xs text-slate-400 font-mono">daemons.py</span>
+            </div>
+            <div class="p-5 text-sm leading-relaxed overflow-x-auto">
+              <pre><code class="language-python">import time
+import kopf
+
+# A background thread that runs while the resource exists
+@kopf.daemon('kopfexamples')
+def monitor(spec, stopped, **_):
+    while not stopped:
+        print(f"Monitoring: {spec}")
+        time.sleep(10)
+
+# Or use a timer for periodic checks
+@kopf.timer('kopfexamples', interval=60, idle=600)
+def reconcile(spec, **_):
+    print(f"Periodic reconciliation: {spec}")
+
+# Async works too
+@kopf.daemon('kopfexamples')
+async def async_monitor(spec, stopped, **_):
+    while not stopped:
+        await asyncio.sleep(5)</code></pre>
+            </div>
+          </div>
+          <p class="mt-4 text-sm text-slate-500">Daemons start when a resource appears and stop when it is deleted. Timers run periodically with configurable intervals and idle delays. Both support sync and async styles.</p>
+        </div>
+
+        <!-- Tab: Webhooks -->
+        <div id="tab-webhooks" class="tab-content">
+          <div class="code-window rounded-xl overflow-hidden shadow-lg">
+            <div class="code-window-bar px-4 py-3 flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-[#ff5f57]"></span>
+              <span class="w-3 h-3 rounded-full bg-[#febc2e]"></span>
+              <span class="w-3 h-3 rounded-full bg-[#28c840]"></span>
+              <span class="ml-3 text-xs text-slate-400 font-mono">webhooks.py</span>
+            </div>
+            <div class="p-5 text-sm leading-relaxed overflow-x-auto">
+              <pre><code class="language-python">import kopf
+
+@kopf.on.startup()
+def configure(settings: kopf.OperatorSettings, **_):
+    settings.admission.server = kopf.WebhookAutoServer()
+    settings.admission.managed = 'auto.kopf.dev'
+
+@kopf.on.validate('kopfexamples')
+def validate(spec, **_):
+    if spec.get('size') and spec['size'] > 100:
+        raise kopf.AdmissionError("Size must be <= 100")
+
+@kopf.on.mutate('kopfexamples')
+def set_defaults(patch: kopf.Patch, **_):
+    patch.spec['managed'] = True
+    patch.spec.setdefault('replicas', 1)</code></pre>
+            </div>
+          </div>
+          <p class="mt-4 text-sm text-slate-500">Validating and mutating admission webhooks with automatic webhook configuration management. Built-in dev-mode tunneling lets you develop webhooks locally.</p>
+        </div>
+
+        <!-- Tab: Errors -->
+        <div id="tab-errors" class="tab-content">
+          <div class="code-window rounded-xl overflow-hidden shadow-lg">
+            <div class="code-window-bar px-4 py-3 flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-[#ff5f57]"></span>
+              <span class="w-3 h-3 rounded-full bg-[#febc2e]"></span>
+              <span class="w-3 h-3 rounded-full bg-[#28c840]"></span>
+              <span class="ml-3 text-xs text-slate-400 font-mono">errors.py</span>
+            </div>
+            <div class="p-5 text-sm leading-relaxed overflow-x-auto">
+              <pre><code class="language-python">import kopf
+
+@kopf.on.create('kopfexamples', retries=5, timeout=300)
+def create_fn(spec, retry, **_):
+    # Temporary failures retry after a delay
+    if not is_dependency_ready(spec):
+        raise kopf.TemporaryError("Waiting for dependency", delay=10)
+
+    # Permanent failures never retry
+    if spec.get('field') == 'invalid':
+        raise kopf.PermanentError("Invalid configuration")
+
+    # Arbitrary exceptions also retry (with backoff)
+    result = provision_resource(spec)
+    return {'provisioned': result.id}</code></pre>
+            </div>
+          </div>
+          <p class="mt-4 text-sm text-slate-500">Fine-grained error handling with temporary and permanent errors. Retry counts, timeouts, and backoff are all configurable. Progress is persisted and survives operator restarts.</p>
+        </div>
+
+        <!-- Tab: Testing -->
+        <div id="tab-testing" class="tab-content">
+          <div class="code-window rounded-xl overflow-hidden shadow-lg">
+            <div class="code-window-bar px-4 py-3 flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-[#ff5f57]"></span>
+              <span class="w-3 h-3 rounded-full bg-[#febc2e]"></span>
+              <span class="w-3 h-3 rounded-full bg-[#28c840]"></span>
+              <span class="ml-3 text-xs text-slate-400 font-mono">test_operator.py</span>
+            </div>
+            <div class="p-5 text-sm leading-relaxed overflow-x-auto">
+              <pre><code class="language-python">import subprocess
+import time
+from kopf.testing import KopfRunner
+
+def test_operator_handles_creation():
+    with KopfRunner(['run', '-A', '--verbose', 'handlers.py']) as runner:
+        subprocess.run("kubectl apply -f obj.yaml",
+                       shell=True, check=True)
+        time.sleep(1)
+
+    assert runner.exit_code == 0
+    assert runner.exception is None
+    assert 'Created' in runner.output</code></pre>
+            </div>
+          </div>
+          <p class="mt-4 text-sm text-slate-500">The built-in testing toolkit runs your operator in-process for integration tests. Combine with kubectl commands to verify end-to-end behavior.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="py-20 md:py-28">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="text-center max-w-2xl mx-auto mb-16">
+        <h2 class="text-3xl md:text-4xl font-bold tracking-tight">How Kopf works</h2>
+        <p class="mt-4 text-lg text-slate-600">Kopf watches Kubernetes resources and translates raw watch events into high-level causes for your handlers.</p>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-8 md:gap-12">
+        <div class="text-center">
+          <div class="w-14 h-14 rounded-2xl bg-kopf-100 flex items-center justify-center mx-auto mb-5">
+            <span class="text-2xl font-bold text-kopf-600">1</span>
+          </div>
+          <h3 class="font-semibold text-lg mb-2">Watch</h3>
+          <p class="text-slate-600 text-sm leading-relaxed">Kopf opens watch streams to the Kubernetes API for the resource types you register handlers for.</p>
+        </div>
+        <div class="text-center">
+          <div class="w-14 h-14 rounded-2xl bg-kopf-100 flex items-center justify-center mx-auto mb-5">
+            <span class="text-2xl font-bold text-kopf-600">2</span>
+          </div>
+          <h3 class="font-semibold text-lg mb-2">Detect causes</h3>
+          <p class="text-slate-600 text-sm leading-relaxed">Raw events are analyzed to determine what actually changed: creation, update with diffs, deletion, or resumption after restart.</p>
+        </div>
+        <div class="text-center">
+          <div class="w-14 h-14 rounded-2xl bg-kopf-100 flex items-center justify-center mx-auto mb-5">
+            <span class="text-2xl font-bold text-kopf-600">3</span>
+          </div>
+          <h3 class="font-semibold text-lg mb-2">Run handlers</h3>
+          <p class="text-slate-600 text-sm leading-relaxed">Matching handlers are invoked with rich kwargs: <code class="text-xs bg-slate-100 px-1.5 py-0.5 rounded">spec</code>, <code class="text-xs bg-slate-100 px-1.5 py-0.5 rounded">diff</code>, <code class="text-xs bg-slate-100 px-1.5 py-0.5 rounded">old</code>/<code class="text-xs bg-slate-100 px-1.5 py-0.5 rounded">new</code>, <code class="text-xs bg-slate-100 px-1.5 py-0.5 rounded">logger</code>, and more. Results are persisted.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Supports everything -->
+  <section class="py-20 md:py-28 bg-slate-50">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="grid lg:grid-cols-2 gap-12 items-center">
+        <div>
+          <h2 class="text-3xl md:text-4xl font-bold tracking-tight">Works with any<br>K8s resource</h2>
+          <p class="mt-4 text-lg text-slate-600 leading-relaxed">Custom resources, built-in resources, multiple types in one operator. Both cluster-scoped and namespaced.</p>
+          <ul class="mt-8 space-y-4">
+            <li class="flex items-start gap-3">
+              <svg class="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              <span class="text-slate-700">Custom Resource Definitions (CRDs)</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <svg class="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              <span class="text-slate-700">Built-in resources: Pods, Namespaces, ConfigMaps, etc.</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <svg class="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              <span class="text-slate-700">Multiple resource types in a single operator</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <svg class="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              <span class="text-slate-700">Client agnostic: works with any K8s client library</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <svg class="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              <span class="text-slate-700">Embeddable into existing Python applications</span>
+            </li>
+          </ul>
+        </div>
+        <div class="code-window rounded-xl overflow-hidden shadow-lg">
+          <div class="code-window-bar px-4 py-3 flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-[#ff5f57]"></span>
+            <span class="w-3 h-3 rounded-full bg-[#febc2e]"></span>
+            <span class="w-3 h-3 rounded-full bg-[#28c840]"></span>
+            <span class="ml-3 text-xs text-slate-400 font-mono">multi.py</span>
+          </div>
+          <div class="p-5 text-sm leading-relaxed overflow-x-auto">
+            <pre><code class="language-python">import kopf
+
+# Custom resources
+@kopf.on.create('kopfexamples')
+def on_example_create(spec, **_):
+    return {'ready': True}
+
+# Built-in resources
+@kopf.on.create('', 'v1', 'pods')
+def on_pod_create(name, namespace, **_):
+    print(f"New pod: {namespace}/{name}")
+
+# Namespaced filtering
+@kopf.on.update('apps', 'v1', 'deployments',
+                labels={'managed-by': 'kopf'})
+def on_deploy_update(diff, **_):
+    for op, field, old, new in diff:
+        print(f"{field}: {old} -> {new}")</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Get Started -->
+  <section id="get-started" class="py-20 md:py-28">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="text-center max-w-2xl mx-auto mb-16">
+        <h2 class="text-3xl md:text-4xl font-bold tracking-tight">Get started in minutes</h2>
+        <p class="mt-4 text-lg text-slate-600">From install to a running operator in three steps.</p>
+      </div>
+
+      <div class="max-w-3xl mx-auto space-y-8">
+        <!-- Step 1 -->
+        <div class="flex gap-6">
+          <div class="flex-shrink-0 w-10 h-10 rounded-full bg-kopf-600 flex items-center justify-center text-white font-bold">1</div>
+          <div class="flex-1 min-w-0">
+            <h3 class="font-semibold text-lg">Install Kopf</h3>
+            <div class="code-window rounded-lg overflow-hidden mt-3">
+              <div class="p-4 text-sm overflow-x-auto">
+                <pre><code class="language-bash">pip install kopf</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="flex gap-6">
+          <div class="flex-shrink-0 w-10 h-10 rounded-full bg-kopf-600 flex items-center justify-center text-white font-bold">2</div>
+          <div class="flex-1 min-w-0">
+            <h3 class="font-semibold text-lg">Write your handlers</h3>
+            <div class="code-window rounded-lg overflow-hidden mt-3">
+              <div class="p-4 text-sm overflow-x-auto">
+                <pre><code class="language-python">import kopf
+
+@kopf.on.create('kopfexamples')
+def create_fn(spec, name, **_):
+    print(f"Created {name} with spec: {spec}")</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="flex gap-6">
+          <div class="flex-shrink-0 w-10 h-10 rounded-full bg-kopf-600 flex items-center justify-center text-white font-bold">3</div>
+          <div class="flex-1 min-w-0">
+            <h3 class="font-semibold text-lg">Run it</h3>
+            <div class="code-window rounded-lg overflow-hidden mt-3">
+              <div class="p-4 text-sm overflow-x-auto">
+                <pre><code class="language-bash">kopf run handlers.py --verbose</code></pre>
+              </div>
+            </div>
+            <p class="mt-3 text-sm text-slate-500">For production, package it in a Docker image:</p>
+            <div class="code-window rounded-lg overflow-hidden mt-2">
+              <div class="p-4 text-sm overflow-x-auto">
+                <pre><code class="language-dockerfile">FROM python:3.14
+ADD . /src
+RUN pip install kopf
+CMD kopf run /src/handlers.py --verbose</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="hero-gradient py-20 md:py-28">
+    <div class="max-w-3xl mx-auto px-6 text-center">
+      <h2 class="text-3xl md:text-4xl font-bold text-white tracking-tight">Ready to build your operator?</h2>
+      <p class="mt-4 text-lg text-slate-300">Kopf handles the infrastructure so you can focus on what matters: your domain logic.</p>
+      <div class="mt-8 flex flex-wrap justify-center gap-4">
+        <a href="https://kopf.readthedocs.io/" target="_blank" rel="noopener"
+           class="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-kopf-600 text-white font-semibold hover:bg-kopf-500 transition-colors">
+          Read the Docs
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        </a>
+        <a href="https://github.com/nolar/kopf" target="_blank" rel="noopener"
+           class="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white/10 text-white font-semibold hover:bg-white/20 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          View on GitHub
+        </a>
+        <a href="https://pypi.org/project/kopf/" target="_blank" rel="noopener"
+           class="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white/10 text-white font-semibold hover:bg-white/20 transition-colors">
+          PyPI Package
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-slate-900 text-slate-400 py-12">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="grid md:grid-cols-4 gap-8">
+        <div>
+          <div class="flex items-center gap-2.5 text-white font-bold text-lg mb-3">
+            <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="32" height="32" rx="8" fill="#1e72f1"/>
+              <text x="16" y="22" text-anchor="middle" fill="white" font-size="18" font-weight="bold" font-family="Inter, sans-serif">K</text>
+            </svg>
+            Kopf
+          </div>
+          <p class="text-sm leading-relaxed">Kubernetes Operator Pythonic Framework. Build operators in Python with minimal code.</p>
+        </div>
+        <div>
+          <h4 class="text-white font-semibold mb-3">Resources</h4>
+          <ul class="space-y-2 text-sm">
+            <li><a href="https://kopf.readthedocs.io/" class="hover:text-white transition-colors" target="_blank" rel="noopener">Documentation</a></li>
+            <li><a href="https://github.com/nolar/kopf/tree/main/examples" class="hover:text-white transition-colors" target="_blank" rel="noopener">Examples</a></li>
+            <li><a href="https://pypi.org/project/kopf/" class="hover:text-white transition-colors" target="_blank" rel="noopener">PyPI Package</a></li>
+            <li><a href="https://github.com/nolar/kopf/blob/main/CONTRIBUTING.md" class="hover:text-white transition-colors" target="_blank" rel="noopener">Contributing</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="text-white font-semibold mb-3">Community</h4>
+          <ul class="space-y-2 text-sm">
+            <li><a href="https://github.com/nolar/kopf" class="hover:text-white transition-colors" target="_blank" rel="noopener">GitHub</a></li>
+            <li><a href="https://github.com/nolar/kopf/issues" class="hover:text-white transition-colors" target="_blank" rel="noopener">Issues</a></li>
+            <li><a href="https://github.com/nolar/kopf/discussions" class="hover:text-white transition-colors" target="_blank" rel="noopener">Discussions</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="text-white font-semibold mb-3">Legal</h4>
+          <ul class="space-y-2 text-sm">
+            <li><a href="/impressum/" class="hover:text-white transition-colors">Impressum</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Syntax highlighting
+    hljs.highlightAll();
+
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+
+        // Update buttons
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Update content
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById('tab-' + tab).classList.add('active');
+
+        // Re-highlight new tab content
+        document.getElementById('tab-' + tab).querySelectorAll('pre code').forEach(block => {
+          hljs.highlightElement(block);
+        });
+      });
+    });
+  </script>
+
+</body>
+</html>
