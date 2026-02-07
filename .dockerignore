@@ -1,0 +1,17 @@
+__pycache__
+*.pyc
+.mypy_cache
+.pytest_cache
+tests/
+docs/
+examples/
+.github/
+.eggs/
+dist/
+build/
+*.egg-info
+.coverage
+htmlcov/
+.vscode
+.idea
+.claude/

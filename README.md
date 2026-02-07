@@ -150,6 +150,19 @@ CMD kopf run /src/handlers.py --verbose
 Where `handlers.py` is your Python script with the handlers
 (see `examples/*/example.py` for the examples).
 
+For quick experimentation, a pre-built image with all extras is available
+on GHCR — just mount your operator file and go:
+
+```bash
+docker run --rm -it \
+    -v ./handlers.py:/app/main.py:ro \
+    -v ~/.kube/config:/root/.kube/config:ro \
+    ghcr.io/nolar/kopf
+```
+
+See the [Docker image documentation](https://kopf.readthedocs.io/en/latest/docker/)
+for more details.
+
 See `kopf run --help` for other ways of attaching the handlers.
 
 
