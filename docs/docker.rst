@@ -110,15 +110,29 @@ pyproject.toml
 --------------
 
 Mount the entire project directory at ``/app/``. If a ``pyproject.toml`` is
-found, the entrypoint will run ``pip install /app/`` to install the project
-and its dependencies:
+found, the entrypoint will run ``pip install -e /app/`` to install the project
+and its dependencies (i.e., as an editable project from the source directory):
 
 .. code-block:: bash
 
     docker run --rm -it \
-        -v ./myproject:/app:ro \
+        -v .:/app:rw \
         -v ~/.kube/config:/root/.kube/config:ro \
         ghcr.io/nolar/kopf
+
+The main script should be ``main.py`` for auto-start.
+If not ``main.py``, add the CLI arguments to run the custom modules or files:
+
+.. code-block:: bash
+
+    docker run --rm -it \
+        -v .:/app:rw \
+        -v ~/.kube/config:/root/.kube/config:ro \
+        ghcr.io/nolar/kopf run -m myoperator.main
+
+.. note::
+    Note the ``:rw`` (read-write) mode on the ``/app`` directory —
+    ``pip`` needs it for building the package locally before installing it.
 
 
 Passing CLI options
