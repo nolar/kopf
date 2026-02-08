@@ -53,6 +53,27 @@ Tags without a variant suffix (e.g. ``1.42-python3.13``) point to the slim varia
 Tags without a Python version (e.g. ``1.42.5``) point to the default Python version.
 
 
+Kubeconfig security
+===================
+
+Mounting ``~/.kube/config`` directly into a container is risky: the default
+kubeconfig often contains access tokens or client certificates for multiple
+clusters, contexts, and service accounts. A container only needs access
+to one cluster in one context.
+
+For safer local development, create a minified copy that contains only
+the current context:
+
+.. code-block:: bash
+
+    kubectl config view --minify --flatten > dev.kubeconfig
+
+Review the resulting file to ensure it contains only what you expect.
+All examples in this guide mount this minified config rather than
+the full ``~/.kube/config``. Remember to regenerate the file when switching
+contexts or after token rotation.
+
+
 Quick start
 ===========
 
@@ -62,13 +83,14 @@ and run ``kopf run -v /app/main.py``:
 
 .. code-block:: bash
 
+    kubectl config view --minify --flatten > dev.kubeconfig
     docker run --rm -it \
         -v ./handler.py:/app/main.py:ro \
-        -v ~/.kube/config:/root/.kube/config:ro \
+        -v ./dev.kubeconfig:/root/.kube/config:ro \
         ghcr.io/nolar/kopf
 
-The kubeconfig mount (``~/.kube/config``) gives the operator access
-to the Kubernetes cluster. Adjust the path as needed for your setup.
+The ``dev.kubeconfig`` mount gives the operator access to the Kubernetes cluster
+(see `Kubeconfig security`_ above for how to create it).
 
 
 Running a specific file
@@ -79,9 +101,10 @@ with the path explicitly:
 
 .. code-block:: bash
 
+    kubectl config view --minify --flatten > dev.kubeconfig
     docker run --rm -it \
         -v ./src:/src:ro \
-        -v ~/.kube/config:/root/.kube/config:ro \
+        -v ./dev.kubeconfig:/root/.kube/config:ro \
         ghcr.io/nolar/kopf run -v /src/handler.py
 
 
@@ -100,10 +123,11 @@ starting the operator:
 
 .. code-block:: bash
 
+    kubectl config view --minify --flatten > dev.kubeconfig
     docker run --rm -it \
         -v ./handler.py:/app/main.py:ro \
         -v ./requirements.txt:/app/requirements.txt:ro \
-        -v ~/.kube/config:/root/.kube/config:ro \
+        -v ./dev.kubeconfig:/root/.kube/config:ro \
         ghcr.io/nolar/kopf
 
 pyproject.toml
@@ -115,9 +139,10 @@ and its dependencies (i.e., as an editable project from the source directory):
 
 .. code-block:: bash
 
+    kubectl config view --minify --flatten > dev.kubeconfig
     docker run --rm -it \
         -v .:/app:rw \
-        -v ~/.kube/config:/root/.kube/config:ro \
+        -v ./dev.kubeconfig:/root/.kube/config:ro \
         ghcr.io/nolar/kopf
 
 The main script should be ``main.py`` for auto-start.
@@ -125,9 +150,10 @@ If not ``main.py``, add the CLI arguments to run the custom modules or files:
 
 .. code-block:: bash
 
+    kubectl config view --minify --flatten > dev.kubeconfig
     docker run --rm -it \
         -v .:/app:rw \
-        -v ~/.kube/config:/root/.kube/config:ro \
+        -v ./dev.kubeconfig:/root/.kube/config:ro \
         ghcr.io/nolar/kopf run -m myoperator.main
 
 .. note::
@@ -143,9 +169,10 @@ CLI. For example, to run in verbose mode with a specific namespace:
 
 .. code-block:: bash
 
+    kubectl config view --minify --flatten > dev.kubeconfig
     docker run --rm -it \
         -v ./handler.py:/app/main.py:ro \
-        -v ~/.kube/config:/root/.kube/config:ro \
+        -v ./dev.kubeconfig:/root/.kube/config:ro \
         ghcr.io/nolar/kopf run /app/main.py --verbose --namespace=default
 
 To see all available CLI options:
@@ -171,9 +198,10 @@ network stack with the container:
 
 .. code-block:: bash
 
+    kubectl config view --minify --flatten > dev.kubeconfig
     docker run --rm -it --network host \
         -v ./handler.py:/app/main.py:ro \
-        -v ~/.kube/config:/root/.kube/config:ro \
+        -v ./dev.kubeconfig:/root/.kube/config:ro \
         ghcr.io/nolar/kopf
 
 With ``--network host``, the kubeconfig's ``127.0.0.1`` addresses work as-is.
@@ -201,7 +229,12 @@ to make the hostname resolve to the host.
 Using with Docker Compose
 =========================
 
-The image can be used in a Docker Compose setup for local development:
+The image can be used in a Docker Compose setup for local development.
+Prepare the kubeconfig first:
+
+.. code-block:: bash
+
+    kubectl config view --minify --flatten > dev.kubeconfig
 
 .. code-block:: yaml
 
@@ -210,9 +243,13 @@ The image can be used in a Docker Compose setup for local development:
         image: ghcr.io/nolar/kopf
         volumes:
           - ./handler.py:/app/main.py:ro
-          - ~/.kube/config:/root/.kube/config:ro
+          - ./dev.kubeconfig:/root/.kube/config:ro
 
 To target a local cluster (k3d, kind, etc.), use host networking:
+
+.. code-block:: bash
+
+    kubectl config view --minify --flatten > dev.kubeconfig
 
 .. code-block:: yaml
 
@@ -222,36 +259,7 @@ To target a local cluster (k3d, kind, etc.), use host networking:
         network_mode: host
         volumes:
           - ./handler.py:/app/main.py:ro
-          - ~/.kube/config:/root/.kube/config:ro
-
-
-Kubeconfig security
-===================
-
-Mounting ``~/.kube/config`` directly into the container is convenient but may
-expose more credentials than necessary. The default kubeconfig often contains
-access tokens or client certificates for multiple clusters and contexts.
-
-For safer local development, create a minified copy that contains only
-the current context and review it before mounting:
-
-.. code-block:: bash
-
-    kubectl config view --minify --flatten > dev.kubeconfig
-    # Review dev.kubeconfig to ensure it contains only what you expect.
-
-Then mount the minified config instead:
-
-.. code-block:: bash
-
-    docker run --rm -it \
-        -v ./handler.py:/app/main.py:ro \
-        -v ./dev.kubeconfig:/root/.kube/config:ro \
-        ghcr.io/nolar/kopf
-
-This limits the container to a single cluster and avoids accidentally leaking
-credentials for other clusters or service accounts. Remember to regenerate
-the file when switching contexts or after token rotation.
+          - ./dev.kubeconfig:/root/.kube/config:ro
 
 
 Building your own image
