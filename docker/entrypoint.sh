@@ -6,7 +6,7 @@ if [ -f /app/requirements.txt ]; then
     pip install --no-cache-dir -r /app/requirements.txt
 fi
 if [ -f /app/pyproject.toml ]; then
-    pip install --no-cache-dir /app/
+    pip install --no-cache-dir -e /app/
 fi
 
 # No CLI args: auto-detect or show help.
