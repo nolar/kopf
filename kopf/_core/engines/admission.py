@@ -253,7 +253,7 @@ async def admission_webhook_server(
         raise Exception(
             "Admission handlers exist, but no admission server/tunnel is configured "
             "in `settings.admission.server`. "
-            "More: https://kopf.readthedocs.io/en/stable/admission/")
+            "More: https://docs.kopf.dev/en/stable/admission/")
 
     # Do not start the endpoints until resources are scanned.
     # Otherwise, we generate 404 "Not Found" for requests that arrive too early.

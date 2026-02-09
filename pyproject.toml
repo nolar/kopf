@@ -37,9 +37,9 @@ dependencies = [
 dynamic = ["version"]  # taken from git tags
 
 [project.urls]
-homepage = "https://github.com/nolar/kopf"
+homepage = "https://kopf.dev/"
 repository = "https://github.com/nolar/kopf"
-documentation = "https://kopf.readthedocs.io"
+documentation = "https://docs.kopf.dev/"
 
 [project.scripts]
 kopf = "kopf.cli:main"

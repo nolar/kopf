@@ -37,4 +37,4 @@ Install extra dependencies via pyproject.toml:
         -v ~/.kube/config:/root/.kube/config:ro \
         ghcr.io/nolar/kopf
 
-Documentation: https://kopf.readthedocs.io
+Documentation: https://docs.kopf.dev

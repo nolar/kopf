@@ -342,7 +342,7 @@ class Vault(AsyncIterable[tuple[VaultKey, KubeContext]]):
         if not self._current:
             raise LoginError("Ran out of valid credentials. Consider installing "
                              "an API client library or adding a login handler. See more: "
-                             "https://kopf.readthedocs.io/en/stable/authentication/")
+                             "https://docs.kopf.dev/en/stable/authentication/")
         prioritised: dict[int, list[tuple[VaultKey, VaultItem]]]
         prioritised = collections.defaultdict(list)
         for key, item in self._current.items():
@@ -441,7 +441,7 @@ class Vault(AsyncIterable[tuple[VaultKey, KubeContext]]):
                 if exc is not None:
                     raise LoginError("Ran out of valid credentials. Consider installing "
                                      "an API client library or adding a login handler. See more: "
-                                     "https://kopf.readthedocs.io/en/stable/authentication/") from exc
+                                     "https://docs.kopf.dev/en/stable/authentication/") from exc
 
     async def populate(
             self,

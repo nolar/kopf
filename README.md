@@ -19,7 +19,7 @@ the same packages, the same developer(s).
 
 ## Documentation
 
-* https://kopf.readthedocs.io/
+* https://docs.kopf.dev/
 
 ## Status
 
@@ -103,7 +103,7 @@ def create_fn(spec, name, meta, status, **kwargs):
 
 Numerous kwargs are available, such as `body`, `meta`, `spec`, `status`,
 `name`, `namespace`, `retry`, `diff`, `old`, `new`, `logger`, etc:
-see [Arguments](https://kopf.readthedocs.io/en/latest/kwargs/)
+see [Arguments](https://docs.kopf.dev/en/latest/kwargs/)
 
 To run a never-exiting function for every resource as long as it exists:
 
@@ -128,7 +128,7 @@ def my_timer(spec, **kwargs):
     print(f"Object's spec: {spec}")
 ```
 
-That easy! For more features, see the [documentation](https://kopf.readthedocs.io/).
+That easy! For more features, see the [documentation](https://docs.kopf.dev/).
 
 
 ## Usage
@@ -164,7 +164,7 @@ docker run --rm -it --network=host \
     ghcr.io/nolar/kopf
 ```
 
-See the [Docker image documentation](https://kopf.readthedocs.io/en/latest/docker/)
+See the [Docker image documentation](https://docs.kopf.dev/en/latest/docker/)
 for more details.
 
 See `kopf run --help` for other ways of attaching the handlers.
