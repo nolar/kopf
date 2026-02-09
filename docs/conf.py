@@ -14,7 +14,7 @@ import docutils.nodes
 # sys.path.insert(0, os.path.abspath('.'))
 
 project = 'Kopf'
-copyright = '2020 Sergey Vasilyev; 2019-2020 Zalando SE'
+copyright = '2020-2026 Sergey Vasilyev; 2019-2020 Zalando SE'
 author = 'Sergey Vasilyev'
 
 extensions = [

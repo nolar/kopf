@@ -411,7 +411,7 @@ class WebhookServer(webhacks.WebhookContextManager):
                 "run `pip install certbuilder` or `pip install kopf[dev]`. "
                 "Or pass `insecure=True` to a webhook server to use only HTTP. "
                 "Or generate your own certificates and pass as certfile=/pkeyfile=. "
-                "More: https://kopf.readthedocs.io/en/stable/admission/")
+                "More: https://docs.kopf.dev/en/stable/admission/")
 
         # Detect which ones of the hostnames are probably IPv4/IPv6 addresses.
         # A side-effect: bring them all to their canonical forms.
@@ -561,7 +561,7 @@ class WebhookNgrokTunnel(webhacks.WebhookContextManager):
             raise MissingDependencyError(
                 "Using ngrok webhook tunnel requires an extra dependency: "
                 "run `pip install pyngrok` or `pip install kopf[dev]`. "
-                "More: https://kopf.readthedocs.io/en/stable/admission/")
+                "More: https://docs.kopf.dev/en/stable/admission/")
 
         if self.binary is not None:
             conf.get_default().ngrok_path = str(self.binary)
@@ -621,7 +621,7 @@ class ClusterDetector:
             raise MissingDependencyError(
                 "Auto-guessing cluster types requires an extra dependency: "
                 "run `pip install certvalidator` or `pip install kopf[dev]`. "
-                "More: https://kopf.readthedocs.io/en/stable/admission/")
+                "More: https://docs.kopf.dev/en/stable/admission/")
 
         hostname, cert = await api.read_sslcert()
         valcontext = certvalidator.ValidationContext(extra_trust_roots=[cert])

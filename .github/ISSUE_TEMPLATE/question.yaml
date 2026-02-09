@@ -22,7 +22,7 @@ body:
     attributes:
       value: >
         Before asking the question, please first try looking for the answers
-        in the [documentation](https://kopf.readthedocs.io/en/stable/)
+        in the [documentation](https://docs.kopf.dev/en/stable/)
         and similar [issues & questions](https://github.com/nolar/kopf/issues).
 
   - type: input
