@@ -91,6 +91,7 @@ Kopf: Kubernetes Operators Framework
    naming
    alternatives
    status
+   impressum
 
 
 Indices and tables

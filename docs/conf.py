@@ -24,6 +24,8 @@ extensions = [
     'sphinx.ext.extlinks',
     'sphinx.ext.linkcode',
     'sphinx.ext.intersphinx',
+    'sphinx_copybutton',
+    'sphinxcontrib.googleanalytics',
     'sphinx_llm.txt',
 ]
 
@@ -33,6 +35,7 @@ html_static_path = ['_static']
 html_theme = 'furo'
 
 default_role = 'py:obj'
+googleanalytics_id = 'G-42ZMK1ERG1'
 
 autodoc_typehints = 'description'
 autodoc_member_order = 'bysource'

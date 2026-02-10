@@ -66,6 +66,8 @@ docs = [
     "sphinx>=9.0.0",
     "sphinx-autobuild",
     "sphinx-autodoc-typehints",
+    "sphinx-copybutton",
+    "sphinxcontrib-googleanalytics",
     "sphinx-llm>=0.1.4",
     "furo",
 ]
