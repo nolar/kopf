@@ -35,6 +35,8 @@ html_static_path = ['_static']
 html_theme = 'furo'
 
 default_role = 'py:obj'
+
+html_baseurl = os.environ.get('READTHEDOCS_CANONICAL_URL', None)
 googleanalytics_id = 'G-42ZMK1ERG1'
 
 autodoc_typehints = 'description'
