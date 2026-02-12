@@ -100,11 +100,14 @@ async def process_resource_event(
                 logger=terse_logger,
             )
 
-            # Wait for all other individual resources and all other resource kinds' lists to finish.
+            # Mark this resource as indexed (drop its toggle from the wating set)
+            # This allows other workers to know this resource is done with indexing.
+            # IMPORTANT: we drop the toggle immediately after indexing, but don't wait here.
+            # The wait will happen inside process_resource_causes() before regular handlers run.
+            # This prevents deadlock when worker_limit < number of resources, as workers can
+            # return after indexing and pick up next resources from the queue.
             if operator_indexed is not None and resource_indexed is not None:
                 await operator_indexed.drop_toggle(resource_indexed)
-            if operator_indexed is not None:
-                await operator_indexed.wait_for(True)  # other resource kinds & objects.
 
             # Do the magic -- do the job.
             delays, matched = await process_resource_causes(
@@ -119,6 +122,8 @@ async def process_resource_event(
                 memory=memory,
                 local_logger=local_logger,
                 event_logger=event_logger,
+                resource_indexed=resource_indexed,
+                operator_indexed=operator_indexed,
                 stream_pressure=stream_pressure,
                 consistency_time=consistency_time,
             )
@@ -224,9 +229,22 @@ async def process_resource_causes(
         memory: inventory.ResourceMemory,
         local_logger: loggers.ObjectLogger,
         event_logger: loggers.ObjectLogger,
-        stream_pressure: asyncio.Event | None,  # None for tests
         consistency_time: float | None,
+        stream_pressure: asyncio.Event | None = None,
+        resource_indexed: aiotoggles.Toggle | None = None,
+        operator_indexed: aiotoggles.ToggleSet | None = None,
 ) -> tuple[Collection[float], bool]:
+    # Wait for all resources to be indexed before running regular handlers.
+    # IMPORTANT: skip this wait during tjhe initial indexing phase to avoid deadlock when worker_limit
+    # is set lower than the number of resources. We detect the initial indexng phase by checking
+    # if resource_indexed is not None (it's only set during initial indexing in queueing.py:201).
+    # During initial indexing is complete, resource_indexed becomes None, and we wait to ensure
+    # handlers for new events have access to complete indices.
+    if operator_indexed is not None and resource_indexed is None:
+        await operator_indexed.wait_for(True)
+    if stream_pressure is not None and stream_pressure.is_set():
+        return [], False
+
     finalizer = settings.persistence.finalizer
     watching_cause, spawning_cause, changing_cause = _detect_causes(
         indexers=indexers,
