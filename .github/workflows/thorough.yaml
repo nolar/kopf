@@ -20,19 +20,20 @@ jobs:
     timeout-minutes: 7  # usually 5 mins with coverage
     steps:
       - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.14"
-      - run: pip install --group lint -e .
-      - run: pre-commit run --all-files
-      - run: mypy
+      - run: uv sync --group lint
+      - run: uv run pre-commit run --all-files
+      - run: uv run mypy
       - run: |
           # Separately, because the shared module name "example.py" causes naming conflicts.
           exit_codes=0
           for d in $(find examples -maxdepth 1 -mindepth 1 -type d)
           do
             echo "Checking ${d}"
-            mypy --config-file= --ignore-missing-imports $d
+            uv run mypy --config-file= --ignore-missing-imports $d
             exit_codes=$[${exit_codes} + $?]
           done
           exit ${exit_codes}
@@ -51,14 +52,15 @@ jobs:
     timeout-minutes: 7  # usually 5 mins with coverage
     steps:
       - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
-      - run: pip install --group test -e .
-      - run: pip install -e .[${{ matrix.install-extras }}]
+      - run: uv sync --group test
+      - run: uv sync --group test --extra ${{ matrix.install-extras }}
         if: ${{ matrix.install-extras }}
-      - run: coverage run --branch --source=kopf -m pytest --color=yes --timeout=2
+      - run: uv run coverage run --branch --source=kopf -m pytest --color=yes --timeout=2
 
       - name: Publish coverage to Coveralls.io
         uses: coverallsapp/github-action@v2
@@ -66,6 +68,7 @@ jobs:
           parallel: true
           flag-name: ${{ matrix.python-version }}${{ matrix.install-extras && ' ' || '' }}${{ matrix.install-extras }}
         if: success()
+        continue-on-error: true  # tends to fail with no code changes (e.g. only CI/docs)
       - name: Publish coverage to CodeCov.io
         uses: codecov/codecov-action@v5
         env:
@@ -91,17 +94,17 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
       - run: sudo apt-get update && sudo apt-get install libxml2-dev libxslt-dev
-      - run: pip install --upgrade pip wheel setuptools
 
-      - run: pip install --group test -e .
-      - run: pip install -e .[${{ matrix.install-extras }}]
+      - run: uv sync --group test
+      - run: uv sync --group test --extra ${{ matrix.install-extras }}
         if: ${{ matrix.install-extras }}
-      - run: pytest --color=yes --timeout=2 --no-cov
+      - run: uv run pytest --color=yes --timeout=2 --no-cov
 
   functional:
     strategy:
@@ -113,6 +116,7 @@ jobs:
     timeout-minutes: 10  # usually 4-5 mins
     steps:
       - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.14"
@@ -120,8 +124,9 @@ jobs:
         with:
           version: ${{ matrix.k3s }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: pip install --group test -e . -r examples/requirements.txt
-      - run: pytest --color=yes --timeout=30 --only-e2e
+      - run: uv sync --group test
+      - run: uv pip install -r examples/requirements.txt
+      - run: uv run pytest --color=yes --timeout=30 --only-e2e
 
   full-scale:
     strategy:
@@ -135,12 +140,14 @@ jobs:
       K8S: ${{ matrix.k8s }}
     steps:
       - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.14"
       - run: tools/install-minikube.sh
-      - run: pip install --group test -e . -r examples/requirements.txt
-      - run: pytest --color=yes --timeout=30 --only-e2e
+      - run: uv sync --group test
+      - run: uv pip install -r examples/requirements.txt
+      - run: uv run pytest --color=yes --timeout=30 --only-e2e
 
   coveralls-finish:
     name: Finalize coveralls.io

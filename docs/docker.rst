@@ -34,23 +34,23 @@ Both variants are built for ``linux/amd64`` and ``linux/arm64`` platforms.
 Image tags
 ==========
 
-For a release such as ``1.42.5`` built with Python 3.14 (the default),
+For a release such as ``1.43.0`` built with Python 3.14 (the default),
 the following tags are available:
 
 * ``ghcr.io/nolar/kopf:latest`` --- the latest release with the default
   Python version and the default variant (slim).
-* ``ghcr.io/nolar/kopf:1.42.5`` --- a specific patch release.
-* ``ghcr.io/nolar/kopf:1.42`` --- the latest patch within a minor release.
+* ``ghcr.io/nolar/kopf:1.43.0`` --- a specific patch release.
+* ``ghcr.io/nolar/kopf:1.43`` --- the latest patch within a minor release.
 * ``ghcr.io/nolar/kopf:v1`` --- the latest release within a major version.
 
 To pin a specific Python version or variant, use the extended tag format:
 
-* ``ghcr.io/nolar/kopf:1.42.5-python3.13-alpine``
-* ``ghcr.io/nolar/kopf:1.42-python3.14-slim``
-* ``ghcr.io/nolar/kopf:v1-python3.13``
+* ``ghcr.io/nolar/kopf:1.43.0-python3.14-alpine``
+* ``ghcr.io/nolar/kopf:1.43-python3.14-slim``
+* ``ghcr.io/nolar/kopf:v1-python3.14``
 
-Tags without a variant suffix (e.g. ``1.42-python3.13``) point to the slim variant.
-Tags without a Python version (e.g. ``1.42.5``) point to the default Python version.
+Tags without a variant suffix (e.g. ``1.43-python3.14``) point to the slim variant.
+Tags without a Python version (e.g. ``1.43.0``) point to the default Python version.
 
 
 Kubeconfig security
