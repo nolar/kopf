@@ -21,10 +21,16 @@ try:
 except ImportError:
     PykubeObject = _dummy
 
+V1ObjectMeta = V1OwnerReference = None
+
+try:
+    from kubernetes_asyncio.client import V1ObjectMeta as V1ObjectMeta, V1OwnerReference as V1OwnerReference
+except ImportError:
+    pass
 try:
     from kubernetes.client import V1ObjectMeta as V1ObjectMeta, V1OwnerReference as V1OwnerReference
 except ImportError:
-    V1ObjectMeta = V1OwnerReference = None
+    pass
 
 
 class V1OwnerReferenceProtocol(Protocol):
@@ -51,6 +57,8 @@ class KubernetesModel(abc.ABC):
     def __subclasshook__(cls, subcls: Any) -> Any:  # suppress types in this hack
         if cls is KubernetesModel:
             if any(C.__module__.startswith('kubernetes.client.models.') for C in subcls.__mro__):
+                return True
+            if any(C.__module__.startswith('kubernetes_asyncio.client.models.') for C in subcls.__mro__):
                 return True
         return NotImplemented
 
