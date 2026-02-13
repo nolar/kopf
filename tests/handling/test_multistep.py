@@ -80,7 +80,8 @@ async def test_2nd_step_finishes_the_handlers(caplog,
 
     event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     event_body = {
-        'metadata': {'finalizers': [settings.persistence.finalizer]},
+        'metadata': {'finalizers': [settings.persistence.finalizer],
+                     'resourceVersion': '1234567890'},
         'status': {'kopf': {'progress': {
             name1: {'started': '1979-01-01T00:00:00Z', 'success': True},
             name2: {'started': '1979-01-01T00:00:00Z'},
@@ -109,10 +110,14 @@ async def test_2nd_step_finishes_the_handlers(caplog,
     assert looptime == 0
     assert k8s_mocked.patch.called
 
-    patch = k8s_mocked.patch.call_args_list[0].kwargs['payload']
-    assert patch['status']['kopf']['progress'] == {name1: None, name2: None}
+    patch1 = k8s_mocked.patch.call_args_list[0].kwargs['payload']
+    assert patch1['status']['kopf']['progress'] == {name1: None, name2: None}
 
     # Finalizers could be removed for resources being deleted on the 2nd step.
     # The logic can vary though: either by deletionTimestamp, or by reason==DELETE.
     if deletion_ts and deletion_ts['deletionTimestamp']:
-        assert patch['metadata']['finalizers'] == []
+        patch2 = k8s_mocked.patch.call_args_list[1].kwargs['payload']
+        assert patch2 == [
+            {'op': 'test', 'path': '/metadata/resourceVersion', 'value': '1234567890'},
+            {'op': 'remove', 'path': '/metadata/finalizers'},
+        ]
