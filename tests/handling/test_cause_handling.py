@@ -117,7 +117,7 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
     assert not handlers.update_mock.called
     assert handlers.delete_mock.call_count == 1
 
-    assert k8s_mocked.patch.call_count == 1
+    assert k8s_mocked.patch.call_count == 2  # (1) annotations, (2) finalizers.
     assert not event_queue.empty()
 
     assert_logs([

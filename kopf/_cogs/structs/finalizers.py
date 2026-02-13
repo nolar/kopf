@@ -22,26 +22,15 @@ def is_deletion_blocked(
     return finalizer in finalizers
 
 
-def block_deletion(
-        *,
-        body: bodies.Body,
-        patch: patches.Patch,
-        finalizer: str,
-) -> None:
-    if not is_deletion_blocked(body=body, finalizer=finalizer):
-        finalizers = body.get('metadata', {}).get('finalizers', [])
-        patch.setdefault('metadata', {}).setdefault('finalizers', list(finalizers))
-        patch['metadata']['finalizers'].append(finalizer)
+def block_deletion(body: bodies.RawBody, finalizer: str) -> None:
+    if finalizer not in body.get('metadata', {}).get('finalizers', []):
+        body.setdefault('metadata', {}).setdefault('finalizers', []).append(finalizer)
 
 
-def allow_deletion(
-        *,
-        body: bodies.Body,
-        patch: patches.Patch,
-        finalizer: str,
-) -> None:
-    if is_deletion_blocked(body=body, finalizer=finalizer):
-        finalizers = body.get('metadata', {}).get('finalizers', [])
-        patch.setdefault('metadata', {}).setdefault('finalizers', list(finalizers))
-        if finalizer in patch['metadata']['finalizers']:
-            patch['metadata']['finalizers'].remove(finalizer)
+def allow_deletion(body: bodies.RawBody, finalizer: str) -> None:
+    while finalizer in body.get('metadata', {}).get('finalizers', []):
+        body['metadata']['finalizers'].remove(finalizer)
+    if 'finalizers' in body.get('metadata', {}) and not body.get('metadata', {}).get('finalizers'):
+        del body['metadata']['finalizers']
+    if 'metadata' in body and not body['metadata']:
+        del body['metadata']

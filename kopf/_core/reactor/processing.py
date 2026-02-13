@@ -15,6 +15,7 @@ and therefore do not trigger the user-defined handlers.
 """
 import asyncio
 import contextlib
+import functools
 from collections.abc import Collection
 from typing import NamedTuple
 
@@ -292,12 +293,12 @@ async def process_resource_causes(
 
     if deletion_must_be_blocked and not deletion_is_blocked and not deletion_is_ongoing:
         local_logger.debug("Adding the finalizer, thus preventing the actual deletion.")
-        finalizers.block_deletion(body=body, patch=patch, finalizer=finalizer)
+        patch.fns.append(functools.partial(finalizers.block_deletion, finalizer=finalizer))
         changing_cause = None  # prevent further high-level processing this time
 
     if not deletion_must_be_blocked and deletion_is_blocked:
         local_logger.debug("Removing the finalizer, as there are no handlers requiring it.")
-        finalizers.allow_deletion(body=body, patch=patch, finalizer=finalizer)
+        patch.fns.append(functools.partial(finalizers.allow_deletion, finalizer=finalizer))
         changing_cause = None  # prevent further high-level processing this time
 
     # If the state is inconsistent (yet), wait for new events in a hope that they bring consistency.
@@ -332,7 +333,7 @@ async def process_resource_causes(
     # But not when it has already gone.
     if deletion_is_ongoing and deletion_is_blocked and not spawning_delays and not changing_delays:
         local_logger.debug("Removing the finalizer, thus allowing the actual deletion.")
-        finalizers.allow_deletion(body=body, patch=patch, finalizer=finalizer)
+        patch.fns.append(functools.partial(finalizers.allow_deletion, finalizer=finalizer))
 
     delays = list(spawning_delays) + list(changing_delays)
     return (delays, changing_cause is not None)
