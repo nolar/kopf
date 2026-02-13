@@ -176,15 +176,13 @@ after the handler. It is actively used internally by the framework itself,
 and is shared to the handlers for convenience _(since patching happens anyway
 in the framework, why make separate API calls for patching?)_.
 
-.. note::
-    Currently, it is just a dictionary, and the changes are applied
-    as ``application/merge-patch+json``: ``None`` values delete the fields,
-    other values override, dicts are merged.
+``patch`` also provides a ``fns`` property for appending transformation
+functions that operate on the raw resource body as a mutable dictionary.
+This is useful for list operations and other changes that depend
+on the current state of the resource.
 
-    In the future, at discretion of this framework, it can be converted
-    to JSON-patch (a list of add/change/remove operation), while keeping
-    the same Python mutable mapping protocol and remembering the changes
-    in the order they were made.
+See :doc:`patches` for details on both merge-patch and transformation
+functions.
 
 
 .. kwarg:: memo

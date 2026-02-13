@@ -2,6 +2,7 @@ import copy
 
 import pytest
 
+from kopf._cogs.structs.bodies import RawBody
 from kopf._cogs.structs.patches import Patch
 
 
@@ -188,6 +189,40 @@ def test_multiple_operations():
     ]
 
 
+def test_fn_only():
+    body = {'items': [1, 2]}
+    patch = Patch(body=body, fns=[lambda b: b['items'].append(3)])
+    ops = patch.as_json_patch()
+    assert ops == [
+        {'op': 'add', 'path': '/items/2', 'value': 3},
+    ]
+
+
+def test_fn_combined_with_merge_patch():
+    body = {'items': [1, 2], 'label': 'old'}
+    patch = Patch(body=body, fns=[lambda b: b['items'].append(3)])
+    patch['label'] = 'new'
+    ops = patch.as_json_patch()
+    assert sorted(ops, key=lambda op: op['path']) == [
+        {'op': 'add', 'path': '/items/2', 'value': 3},
+        {'op': 'replace', 'path': '/label', 'value': 'new'},
+    ]
+
+
+def test_fn_applied_strictly_after_merges():
+
+    def increment(body: RawBody) -> None:
+        body['xyz'] += 1
+
+    body = {'xyz': 100}
+    patch = Patch(body=body, fns=[increment])
+    patch['xyz'] = 200
+    ops = patch.as_json_patch()
+    assert sorted(ops, key=lambda op: op['path']) == [
+        {'op': 'replace', 'path': '/xyz', 'value': 201},
+    ]
+
+
 def test_escaping_of_key():
     body = {'~xyz/test': {'abc': '...', 'other': '...'}}
     patch = Patch(body=body)
@@ -211,6 +246,15 @@ def test_recursive_escape_of_key():
 def test_does_not_mutate_original_body():
     body = {'spec': {'x': 'original'}}
     patch = Patch(body=body)
+    patch['spec'] = {'x': 'modified'}
+    body_before = copy.deepcopy(body)
+    patch.as_json_patch()
+    assert body == body_before
+
+
+def test_does_not_mutate_original_body_with_fns():
+    body = {'spec': {'x': 'original'}}
+    patch = Patch(body=body, fns=[lambda b: b.setdefault('extra', 'added')])
     patch['spec'] = {'x': 'modified'}
     body_before = copy.deepcopy(body)
     patch.as_json_patch()
