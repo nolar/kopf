@@ -10,6 +10,7 @@ and then generates the JSON patch (RFC 6902).
 """
 import collections.abc
 import copy
+from collections.abc import Callable, Iterable
 from typing import Any, Literal, TypedDict, cast
 
 import jsonpatch
@@ -27,6 +28,9 @@ class JSONPatchItem(TypedDict, total=False):
 
 
 JSONPatch = list[JSONPatchItem]
+
+# An arbitrary transformation function, which modifies the body in place.
+PatchFn = Callable[[bodies.RawBody], None]
 
 
 class MetaPatch(dicts.MutableMappingView[str, Any]):
@@ -65,22 +69,30 @@ class Patch(dict[str, Any]):
         src: collections.abc.MutableMapping[str, Any] | None = None,
         /,
         body: bodies.RawBody | None = None,
+        fns: Iterable[PatchFn] = (),
     ) -> None:
         super().__init__(src or {})
         self._meta = MetaPatch(self)
         self._spec = SpecPatch(self)
         self._status = StatusPatch(self)
         self._original = body
+        self._fns = (src.fns if isinstance(src, Patch) else []) + list(fns)
 
     def __repr__(self) -> str:
         texts: list[str] = []
         if list(self):  # any keys at all?
             texts += [super().__repr__()]
+        if self.fns:
+            texts += [f"fns={list(self.fns)!r}"]
         text = ", ".join(texts)
         return f"{type(self).__name__}({text})"
 
     def __bool__(self) -> bool:
-        return len(self) > 0
+        return len(self) > 0 or bool(self.fns)
+
+    @property
+    def fns(self) -> list[PatchFn]:
+        return self._fns
 
     @property
     def metadata(self) -> MetaPatch:
@@ -118,8 +130,11 @@ class Patch(dict[str, Any]):
         if body_as_is is None or body_to_be is None:
             raise ValueError("Cannot build a JSON-patch without the original body as a reference.")
 
-        # Apply the changes on top of the mutated body.
+        # Apply the changes: merge-patches first (since they are not smart to be the last ones).
+        # Then all callable transformations on top of the mutated body.
         self._apply_patch(body_to_be, (), dict(self))
+        for fn in self.fns:
+            fn(body_to_be)
 
         # Calculate the actual JSON ops for this particular state of the resource.
         # No "test" operations in pure JSON-patches as used in the mutating admission calls.

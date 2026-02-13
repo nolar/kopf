@@ -34,6 +34,7 @@ Kopf: Kubernetes Operators Framework
    loading
    resources
    filters
+   patches
    results
    errors
    scopes
