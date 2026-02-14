@@ -117,6 +117,44 @@ async def test_patching_with_inconsistencies(
     ])
 
 
+@pytest.mark.parametrize('expect_mangled, response_metadata', [
+    pytest.param(False, {},
+                 id='alive-without-finalizers'),
+    pytest.param(False, {'finalizers': ['x']},
+                 id='alive-with-finalizers'),
+    pytest.param(False, {'deletionTimestamp': '2024-01-01T00:00:00Z', 'finalizers': ['x']},
+                 id='deleting-with-finalizers'),
+    pytest.param(True, {'deletionTimestamp': '2024-01-01T00:00:00Z'},
+                 id='deleting-without-finalizers'),
+    pytest.param(True, {'deletionTimestamp': '2024-01-01T00:00:00Z', 'finalizers': []},
+                 id='deleting-with-empty-finalizers'),
+])
+async def test_resource_version_on_deletion_workaround(
+        kmock, resource, namespace, settings, response_metadata, expect_mangled):
+    kmock.objects[resource, namespace, 'name1'] = {}  # suppress 404s
+    kmock['patch', resource, kmock.namespace(namespace), kmock.name('name1')] << {
+        'metadata': {'resourceVersion': '123', **response_metadata},
+        'spec': {'x': 'y'},
+    }
+
+    body = Body({'metadata': {'namespace': namespace, 'name': 'name1'}})
+    logger = LocalObjectLogger(body=body, settings=settings)
+    rv, _ = await patch_and_check(
+        settings=settings,
+        resource=resource,
+        body=body,
+        patch=Patch({'spec': {'x': 'y'}}),
+        logger=logger,
+    )
+
+    if expect_mangled:
+        assert rv is not None
+        assert rv != '123'
+        assert '~which~never~arrives' in rv
+    else:
+        assert rv == '123'
+
+
 async def test_patching_with_disappearance(
         kmock, resource, namespace, settings, assert_logs):
     kmock['patch', resource, kmock.namespace(namespace), kmock.name('name1')] << 404

@@ -153,5 +153,14 @@ async def patch_and_check(
         if inconsistencies and resulting_body is not None:
             logger.warning(f"Merge-patching finished with inconsistencies: {inconsistencies}")
         resource_version = (resulting_body or {}).get('metadata', {}).get('resourceVersion')
+
+        # A workaround for Kubernetes behaviour on the removal of the LAST finalizer on deletion:
+        # it does NOT increase the resourceVersion, and uses the last one from merge-patches.
+        # We should NEVER expect the consistent state — the object is gone in an instant.
+        deletion_ongoing = bool((resulting_body or {}).get('metadata', {}).get('deletionTimestamp'))
+        deletion_blocked = bool((resulting_body or {}).get('metadata', {}).get('finalizers'))
+        if deletion_ongoing and not deletion_blocked:
+            resource_version = f"{resource_version}~which~never~arrives"
+
         return resource_version, remaining_patch
     return None, None
