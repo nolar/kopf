@@ -71,6 +71,7 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
             raw_event={'type': 'irrelevant', 'object': event_object},
             event_queue=asyncio.Queue(),
             stream_pressure=stream_pressure,
+            no_throttling=True,
         )
 
         # Do the same as k8s does: merge the patches into the object.
