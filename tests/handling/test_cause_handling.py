@@ -137,9 +137,10 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
 # Informational causes: just log, and do nothing else.
 #
 
+@pytest.mark.parametrize('consistency_time', [0, 100], ids=['now', 'future'])
 @pytest.mark.parametrize('event_type', EVENT_TYPES)
 async def test_gone(registry, settings, handlers, resource, cause_mock, event_type,
-                    assert_logs, k8s_mocked):
+                    assert_logs, k8s_mocked, consistency_time, looptime):
     cause_mock.reason = Reason.GONE
 
     settings.posting.loggers = True
@@ -154,6 +155,7 @@ async def test_gone(registry, settings, handlers, resource, cause_mock, event_ty
         memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
         event_queue=event_queue,
+        consistency_time=consistency_time,
     )
 
     assert not handlers.create_mock.called
@@ -163,6 +165,7 @@ async def test_gone(registry, settings, handlers, resource, cause_mock, event_ty
     assert not k8s_mocked.patch.called
     assert event_queue.empty()
 
+    assert looptime == 0
     assert_logs([
         "Deleted, really deleted",
     ])
