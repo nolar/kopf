@@ -14,6 +14,7 @@ But these internal changes are filtered out from the cause detection
 and therefore do not trigger the user-defined handlers.
 """
 import asyncio
+import contextlib
 from collections.abc import Collection
 from typing import NamedTuple
 
@@ -40,6 +41,7 @@ async def process_resource_event(
         resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
         operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
         consistency_time: float | None = None,  # None for tests
+        no_throttling: bool = False,  # for tests & simulations
 ) -> str | None:  # patched resource version, if patched
     """
     Handle a single custom object low-level watch-event.
@@ -75,12 +77,13 @@ async def process_resource_event(
     # to prevent queue overfilling, but the processing is skipped (events are ignored).
     # Choice of place: late enough to have a per-resource memory for a throttler; also, a logger.
     # But early enough to catch environment errors from K8s API, and from most of the complex code.
-    async with throttlers.throttled(
+    throttled = contextlib.nullcontext(True) if no_throttling else throttlers.throttled(
         throttler=memory.error_throttler,
         logger=local_logger,
         delays=settings.queueing.error_delays,
         wakeup=stream_pressure,
-    ) as should_run:
+    )
+    async with throttled as should_run:
         if should_run:
 
             # Each object has its own prefixed logger, to distinguish parallel handling.
