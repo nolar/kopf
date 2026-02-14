@@ -308,6 +308,8 @@ async def process_resource_causes(
     # Never release the object (i.e., remove the finalizer) in the inconsistent state, always wait.
     consistency_is_required = changing_cause is not None
     consistency_is_achieved = consistency_time is None  # i.e. preexisting consistency
+    if changing_cause is not None and changing_cause.reason == causes.Reason.GONE:
+        consistency_is_achieved = True  # for the final goodbye log message
     if consistency_is_required and not consistency_is_achieved and not patch and consistency_time:
         loop = asyncio.get_running_loop()
         unslept = await aiotime.sleep(consistency_time - loop.time(), wakeup=stream_pressure)
