@@ -330,12 +330,14 @@ async def process_resource_causes(
         )
 
     # Release the object if everything is done, and it is marked for deletion.
-    # But not when it has already gone.
-    if deletion_is_ongoing and deletion_is_blocked and not spawning_delays and not changing_delays:
+    # Caveat: events of type DELETED show the last finalizer as present (K8s internal logic),
+    # falsely suggesting that it is still blocked and requires unblocking. No, it is not, does not.
+    delays = list(spawning_delays) + list(changing_delays)
+    deleted = raw_event['type'] == 'DELETED'
+    if not deleted and deletion_is_ongoing and deletion_is_blocked and not delays:
         local_logger.debug("Removing the finalizer, thus allowing the actual deletion.")
         patch.fns.append(functools.partial(finalizers.allow_deletion, finalizer=finalizer))
 
-    delays = list(spawning_delays) + list(changing_delays)
     return (delays, changing_cause is not None)
 
 
