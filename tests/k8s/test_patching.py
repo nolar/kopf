@@ -14,7 +14,7 @@ STATUS_RESPONSE = {'metadata': {'resourceVersion': 'abc456', 'extra': '456'},
                    'status': {'extra': '456', 's': 't'}}
 
 
-async def test_without_subresources(kmock, settings, resource, namespace, logger):
+async def test_without_subresources(kmock, settings, resource, namespace, logger, assert_logs):
     kmock.objects[resource, namespace, 'name1'] = {}
     patch = Patch({'x': 'y'})
     await patch_obj(
@@ -30,15 +30,20 @@ async def test_without_subresources(kmock, settings, resource, namespace, logger
     assert kmock[0].data == {'x': 'y'}
     assert kmock.objects[resource, namespace, 'name1'] == {'x': 'y'}
 
+    assert_logs([
+        "Merge-patching the resource with",
+    ], prohibited=[
+        "Merge-patching the status with",
+    ])
+
 
 async def test_status_as_subresource_with_combined_payload(
-        kmock, settings, resource, namespace, logger):
+        kmock, settings, resource, namespace, logger, assert_logs):
     kmock.objects[resource, namespace, 'name1'] = {
         'metadata': {'extra': '123'},
         'spec': {'extra': '456'},
         'status': {'extra': '789'},
     }
-
     resource = dataclasses.replace(resource, subresources=['status'])
     patch = Patch({'spec': {'x': 'y'}, 'status': {'s': 't'}})
     reconstructed = await patch_obj(
@@ -60,9 +65,14 @@ async def test_status_as_subresource_with_combined_payload(
                              'status': {'s': 't', 'extra': '789'}}
     assert kmock.objects[resource, namespace, 'name1'] == reconstructed
 
+    assert_logs([
+        "Merge-patching the resource with",
+        "Merge-patching the status with",
+    ])
+
 
 async def test_status_as_subresource_with_object_fields_only(
-        kmock, settings, resource, namespace, logger):
+        kmock, settings, resource, namespace, logger, assert_logs):
     kmock.objects[resource, namespace, 'name1'] = {
         'metadata': {'extra': '123'},
         'spec': {'extra': '456'},
@@ -88,9 +98,15 @@ async def test_status_as_subresource_with_object_fields_only(
                              'status': {'extra': '789'}}
     assert kmock.objects[resource, namespace, 'name1'] == reconstructed
 
+    assert_logs([
+        "Merge-patching the resource with",
+    ], prohibited=[
+        "Merge-patching the status with",
+    ])
+
 
 async def test_status_as_subresource_with_status_fields_only(
-        kmock, settings, resource, namespace, logger):
+        kmock, settings, resource, namespace, logger, assert_logs):
     kmock.objects[resource, namespace, 'name1'] = {
         'metadata': {'extra': '123'},
         'spec': {'extra': '456'},
@@ -116,9 +132,15 @@ async def test_status_as_subresource_with_status_fields_only(
                              'status': {'s': 't', 'extra': '789'}}
     assert kmock.objects[resource, namespace, 'name1'] == reconstructed
 
+    assert_logs([
+        "Merge-patching the status with",
+    ], prohibited=[
+        "Merge-patching the resource with",
+    ])
+
 
 async def test_status_as_body_field_with_combined_payload(
-        kmock, settings, resource, namespace, logger):
+        kmock, settings, resource, namespace, logger, assert_logs):
     kmock.objects[resource, namespace, 'name1'] = {
         'metadata': {'extra': '123'},
         'spec': {'extra': '456'},
@@ -143,10 +165,16 @@ async def test_status_as_body_field_with_combined_payload(
                              'status': {'s': 't', 'extra': '789'}}
     assert kmock.objects[resource, namespace, 'name1'] == reconstructed
 
+    assert_logs([
+        "Merge-patching the resource with",
+    ], prohibited=[
+        "Merge-patching the status with",
+    ])
+
 
 @pytest.mark.parametrize('status', [404])
 async def test_ignores_absent_objects(
-        kmock, settings, status, resource, namespace, logger,
+        kmock, settings, status, resource, namespace, logger, assert_logs,
         cluster_resource, namespaced_resource):
     kmock['patch', resource, kmock.name('name1')] << status
 
@@ -161,6 +189,10 @@ async def test_ignores_absent_objects(
     )
 
     assert result is None
+
+    assert_logs([
+        "Patching was skipped: the object does not exist anymore",
+    ])
 
 
 # Note: 401 is wrapped into a LoginError and is tested elsewhere.
