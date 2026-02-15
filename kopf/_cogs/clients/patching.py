@@ -34,6 +34,7 @@ async def patch_obj(
     as_subresource = 'status' in resource.subresources
     body_patch = dict(patch)  # shallow: for mutation of the top-level keys below.
     status_patch = body_patch.pop('status', None) if as_subresource else None
+    status_patch = {'status': status_patch} if status_patch is not None else None
 
     # Patch & reconstruct the actual body as reported by the server. The reconstructed body can be
     # partial or empty -- if the body/status patches are empty. This is fine: it is only used
@@ -42,6 +43,7 @@ async def patch_obj(
         patched_body = bodies.RawBody()
 
         if body_patch:
+            logger.debug(f"Merge-patching the resource with: {body_patch!r}")
             patched_body = await api.patch(
                 url=resource.get_url(namespace=namespace, name=name),
                 headers={'Content-Type': 'application/merge-patch+json'},
@@ -52,11 +54,12 @@ async def patch_obj(
 
         if status_patch:
             # NB: we need the new resourceVersion, so we take the whole new patched body.
+            logger.debug(f"Merge-patching the status with: {status_patch!r}")
             patched_body = await api.patch(
                 url=resource.get_url(namespace=namespace, name=name,
                                      subresource='status' if as_subresource else None),
                 headers={'Content-Type': 'application/merge-patch+json'},
-                payload={'status': status_patch},
+                payload=status_patch,
                 settings=settings,
                 logger=logger,
             )
@@ -64,4 +67,5 @@ async def patch_obj(
         return patched_body
 
     except errors.APINotFoundError:
+        logger.debug(f"Patching was skipped: the object does not exist anymore.")
         return None

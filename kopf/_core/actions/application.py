@@ -127,7 +127,6 @@ async def patch_and_check(
     a value and is persisted in the object and matches with the patch.
     """
     if patch:
-        logger.debug(f"Patching with: {patch!r}")
         resulting_body = await patching.patch_obj(
             settings=settings,
             resource=resource,
@@ -142,9 +141,7 @@ async def patch_and_check(
             for op, field, old, new in inconsistencies
             if old or new or field not in KNOWN_INCONSISTENCIES
         )
-        if resulting_body is None:
-            logger.debug(f"Patching was skipped: the object does not exist anymore.")
-        elif inconsistencies:
+        if inconsistencies and resulting_body is not None:
             logger.warning(f"Patching failed with inconsistencies: {inconsistencies}")
         return (resulting_body or {}).get('metadata', {}).get('resourceVersion')
     return None
