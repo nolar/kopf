@@ -54,9 +54,9 @@ async def test_patching_without_inconsistencies(
     )
 
     assert_logs([
-        "Patching with:",
+        "Merge-patching",
     ], prohibited=[
-        "Patching failed with inconsistencies:",
+        "inconsistencies",
     ])
 
 
@@ -112,8 +112,8 @@ async def test_patching_with_inconsistencies(
     )
 
     assert_logs([
-        "Patching with:",
-        "Patching failed with inconsistencies:",
+        "Merge-patching",
+        "Merge-patching finished with inconsistencies:",
     ])
 
 
@@ -133,7 +133,7 @@ async def test_patching_with_disappearance(
     )
 
     assert_logs([
-        "Patching with:",
+        "Merge-patching",
         "Patching was skipped: the object does not exist anymore",
     ], prohibited=[
         "inconsistencies"
