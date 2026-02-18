@@ -9,23 +9,19 @@ a dict-like behaviour, and remembers the changes in order of their execution,
 and then generates the JSON patch (RFC 6902).
 """
 import collections.abc
-from typing import Any, Literal, TypedDict
+import copy
+from typing import Any, Literal, TypedDict, cast
+
+import jsonpatch
 
 from kopf._cogs.structs import bodies, dicts
 
-JSONPatchOp = Literal["add", "replace", "remove"]
-
-
-def _escaped_path(keys: list[str]) -> str:
-    """Provides an appropriately escaped path for JSON Patches.
-
-    See https://datatracker.ietf.org/doc/html/rfc6901#section-3 for more details.
-    """
-    return '/'.join(map(lambda key: key.replace('~', '~0').replace('/', '~1'), keys))
+JSONPatchOp = Literal["add", "replace", "remove", "test", "move", "copy"]
 
 
 class JSONPatchItem(TypedDict, total=False):
     op: JSONPatchOp
+    # from: str  # but it is a python keyword
     path: str
     value: Any | None
 
@@ -102,29 +98,45 @@ class Patch(dict[str, Any]):
     def status(self) -> StatusPatch:
         return self._status
 
-    def as_json_patch(self) -> JSONPatch:
-        return [] if not self else self._as_json_patch(self, keys=[''])
+    def as_json_patch(self, body: bodies.RawBody | None = None) -> JSONPatch:
+        """
+        Build a list of JSON-patch ops for the changes & transformations.
 
-    def _as_json_patch(self, value: object, keys: list[str]) -> JSONPatch:
-        result: JSONPatch = []
-        if value is None:
-            result.append(JSONPatchItem(op='remove', path=_escaped_path(keys)))
-        elif len(keys) > 1 and self._original and not self._is_in_original_path(keys):
-            result.append(JSONPatchItem(op='add', path=_escaped_path(keys), value=value))
-        elif isinstance(value, collections.abc.Mapping) and value:
-            for key, val in value.items():
-                result.extend(self._as_json_patch(val, keys + [key]))
-        else:
-            result.append(JSONPatchItem(op='replace', path=_escaped_path(keys), value=value))
-        return result
+        As a reference resource body, either the argument is used (if provided),
+        or the original resource body. But the reference body is mandatory —
+        the patch calculates the differences relative to the reference body.
 
-    def _is_in_original_path(self, keys: list[str]) -> bool:
-        _search = self._original
-        for key in keys:
-            if key == '':
-                continue
-            try:
-                _search = _search[key]  # type: ignore
-            except (KeyError, TypeError):
-                return False
-        return True
+        Some changes might disappear from the list if they are useless (no-op):
+        e.g., setting a key to ``None`` to delete it when it is already absent;
+        or setting the key to a value which is already in the resource body.
+        """
+        # Clone the original body to be mutated in memory before diffing.
+        body_as_is = body if body is not None else self._original
+        body_to_be = copy.deepcopy(body_as_is)
+        if not self:
+            return []
+        if body_as_is is None or body_to_be is None:
+            raise ValueError("Cannot build a JSON-patch without the original body as a reference.")
+
+        # Apply the changes on top of the mutated body.
+        self._apply_patch(body_to_be, (), dict(self))
+
+        # Calculate the actual JSON ops for this particular state of the resource.
+        # No "test" operations in pure JSON-patches as used in the mutating admission calls.
+        ops: JSONPatch = jsonpatch.JsonPatch.from_diff(dict(body_as_is), dict(body_to_be)).patch
+        return ops
+
+    def _apply_patch(self, body: bodies.RawBody, path: dicts.FieldPath, value: object) -> None:
+        """Apply the merge-patch instructions to the mutable raw body."""
+        # TODO: LATER: optimize: we now dive into the dict for every key in dicts.ensure(),
+        #       but we can merge the dict + patch in one run — implement such a function.
+        #       priority: low — patches are usually small, so not a big problem for now.
+        match value:
+            case None:
+                dicts.remove(cast(dict[Any, Any], body), path)
+            case collections.abc.Mapping():
+                for key, val in value.items():
+                    self._apply_patch(body, path + (key,), val)
+            case _:
+                # NB: lists overwrite the whole value, as the merge-patch does; no strategic merges.
+                dicts.ensure(cast(dict[Any, Any], body), path, value)
