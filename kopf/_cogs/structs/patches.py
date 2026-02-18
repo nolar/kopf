@@ -66,14 +66,25 @@ class Patch(dict[str, Any]):
 
     def __init__(
         self,
-        __src: collections.abc.MutableMapping[str, Any] | None = None,
-        body: bodies.RawBody | None = None
+        src: collections.abc.MutableMapping[str, Any] | None = None,
+        /,
+        body: bodies.RawBody | None = None,
     ) -> None:
-        super().__init__(__src or {})
+        super().__init__(src or {})
         self._meta = MetaPatch(self)
         self._spec = SpecPatch(self)
         self._status = StatusPatch(self)
         self._original = body
+
+    def __repr__(self) -> str:
+        texts: list[str] = []
+        if list(self):  # any keys at all?
+            texts += [super().__repr__()]
+        text = ", ".join(texts)
+        return f"{type(self).__name__}({text})"
+
+    def __bool__(self) -> bool:
+        return len(self) > 0
 
     @property
     def metadata(self) -> MetaPatch:
