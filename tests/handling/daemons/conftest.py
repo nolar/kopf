@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 from unittest.mock import MagicMock
 
+import jsonpatch
 import looptime
 import pytest
 
@@ -74,7 +75,15 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
 
         # Do the same as k8s does: merge the patches into the object.
         for call in k8s_mocked.patch.call_args_list:
-            _merge_dicts(call.kwargs['payload'], event_object)
+            payload = call.kwargs['payload']
+            headers = call.kwargs['headers']
+            if headers.get('Content-Type') == 'application/merge-patch+json':
+                _merge_dicts(payload, event_object)
+            if headers.get('Content-Type') == 'application/json-patch+json':
+                # For tests, we do not care about resourceVersion checks.
+                # Even the json-patch application is optional, but we do it nevertheless.
+                payload = [item for item in payload if item['op'] != 'test']
+                jsonpatch.JsonPatch(payload).apply(event_object, in_place=True)
 
     return _simulate_cycle
 
