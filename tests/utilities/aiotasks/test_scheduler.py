@@ -43,11 +43,11 @@ async def test_task_spawning_and_graceful_finishing(looptime):
 
     await flag1.wait()
     assert looptime == 0
-    assert mock.call_args_list[0][0][0] == 'started'
+    assert mock.call_args_list[0].args[0] == 'started'
 
     await flag2.wait()
     assert looptime == 123
-    assert mock.call_args_list[1][0][0] == 'finished'
+    assert mock.call_args_list[1].args[0] == 'finished'
 
     await scheduler.close()
 
@@ -63,11 +63,11 @@ async def test_task_spawning_and_cancellation(looptime):
 
     await flag1.wait()
     assert looptime == 0
-    assert mock.call_args_list[0][0][0] == 'started'
+    assert mock.call_args_list[0].args[0] == 'started'
 
     await scheduler.close()
     assert looptime == 0
-    assert mock.call_args_list[1][0][0] == 'cancelled'
+    assert mock.call_args_list[1].args[0] == 'cancelled'
 
 
 async def test_no_tasks_are_accepted_after_closing():
@@ -108,7 +108,7 @@ async def test_exceptions_are_reported():
     await scheduler.wait()
     await scheduler.close()
     assert exception_handler.call_count == 1
-    assert exception_handler.call_args[0][0] is exception
+    assert exception_handler.call_args.args[0] is exception
 
 
 async def test_tasks_are_parallel_if_limit_is_not_reached(looptime):

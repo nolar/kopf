@@ -56,4 +56,4 @@ async def test_timer_filtration_mismatched(
     await asyncio.sleep(123)  # give it enough time to do something when nothing is expected
 
     assert spawn_daemons.called
-    assert spawn_daemons.call_args_list[0][1]['handlers'] == []
+    assert spawn_daemons.call_args_list[0].kwargs['handlers'] == []

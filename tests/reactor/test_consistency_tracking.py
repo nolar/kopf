@@ -55,21 +55,21 @@ async def test_consistency_tracking_in_the_watcher(
     processed.clear()
     await processed.wait()
     assert processor.call_count == 1
-    assert processor.call_args[1]['raw_event']['object']['metadata']['resourceVersion'] == '1'
-    assert processor.call_args[1]['consistency_time'] is None
+    assert processor.call_args.kwargs['raw_event']['object']['metadata']['resourceVersion'] == '1'
+    assert processor.call_args.kwargs['consistency_time'] is None
 
     # Stage 2: simulate an event with an INCONSISTENT ResourceVersion, which should be ignored.
     processor.return_value = None
     processed.clear()
     await processed.wait()
     assert processor.call_count == 2
-    assert processor.call_args[1]['raw_event']['object']['metadata']['resourceVersion'] == '2'
-    assert processor.call_args[1]['consistency_time'] == 3.45
+    assert processor.call_args.kwargs['raw_event']['object']['metadata']['resourceVersion'] == '2'
+    assert processor.call_args.kwargs['consistency_time'] == 3.45
 
     # Stage 3: simulate an event with a CONSISTENT ResourceVersion, which should be fully processed.
     processor.return_value = None
     processed.clear()
     await processed.wait()
     assert processor.call_count == 3
-    assert processor.call_args[1]['raw_event']['object']['metadata']['resourceVersion'] == '3'
-    assert processor.call_args[1]['consistency_time'] is None
+    assert processor.call_args.kwargs['raw_event']['object']['metadata']['resourceVersion'] == '3'
+    assert processor.call_args.kwargs['consistency_time'] is None

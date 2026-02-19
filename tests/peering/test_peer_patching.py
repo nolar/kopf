@@ -24,7 +24,7 @@ async def test_cleaning_peers_purges_them(
                 namespace=peering_namespace)
 
     assert patch_mock.called
-    patch = await patch_mock.call_args_list[0][0][0].json()
+    patch = await patch_mock.call_args_list[0].args[0].json()
     assert set(patch['status']) == {'id1'}
     assert patch['status']['id1'] is None
 
@@ -43,7 +43,7 @@ async def test_touching_a_peer_stores_it(
                 namespace=peering_namespace)
 
     assert patch_mock.called
-    patch = await patch_mock.call_args_list[0][0][0].json()
+    patch = await patch_mock.call_args_list[0].args[0].json()
     assert set(patch['status']) == {'id1'}
     assert patch['status']['id1']['priority'] == 0
     assert patch['status']['id1']['lastseen'] == '2020-12-31T23:59:59.123456+00:00'
@@ -64,7 +64,7 @@ async def test_expiring_a_peer_purges_it(
                 namespace=peering_namespace, lifetime=0)
 
     assert patch_mock.called
-    patch = await patch_mock.call_args_list[0][0][0].json()
+    patch = await patch_mock.call_args_list[0].args[0].json()
     assert set(patch['status']) == {'id1'}
     assert patch['status']['id1'] is None
 

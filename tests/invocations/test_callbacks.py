@@ -161,10 +161,10 @@ async def test_explicit_args_passed_properly(fn):
     assert mock.called
     assert mock.call_count == 1
 
-    assert len(mock.call_args[0]) == 0
-    assert len(mock.call_args[1]) >= 2  # also the magic kwargs
-    assert mock.call_args[1]['kw1'] == 300
-    assert mock.call_args[1]['kw2'] == 400
+    assert len(mock.call_args.args) == 0
+    assert len(mock.call_args.kwargs) >= 2  # also the magic kwargs
+    assert mock.call_args.kwargs['kw1'] == 300
+    assert mock.call_args.kwargs['kw2'] == 400
 
 
 @fns
@@ -195,5 +195,5 @@ async def test_special_kwargs_added(fn, resource):
     assert mock.call_count == 1
 
     # Only check that kwargs are passed at all. The exact kwargs per cause are tested separately.
-    assert 'logger' in mock.call_args[1]
-    assert 'resource' in mock.call_args[1]
+    assert 'logger' in mock.call_args.kwargs
+    assert 'resource' in mock.call_args.kwargs

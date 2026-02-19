@@ -158,7 +158,7 @@ async def test_backoffs_as_lists(
         await request('get', '/url', settings=settings, logger=logger)
 
     assert mock.call_count == exp_calls
-    all_sleeps = [call[0][0] for call in sleep.call_args_list]
+    all_sleeps = [call.args[0] for call in sleep.call_args_list]
     assert all_sleeps == backoffs
 
 
@@ -174,7 +174,7 @@ async def test_backoffs_as_floats(
         await request('get', '/url', settings=settings, logger=logger)
 
     assert mock.call_count == 2
-    all_sleeps = [call[0][0] for call in sleep.call_args_list]
+    all_sleeps = [call.args[0] for call in sleep.call_args_list]
     assert all_sleeps == [5.0]
 
 
@@ -203,7 +203,7 @@ async def test_backoffs_as_iterables(
         await request('get', '/url', settings=settings, logger=logger)
 
     assert mock.call_count == 8
-    all_sleeps = [call[0][0] for call in sleep.call_args_list]
+    all_sleeps = [call.args[0] for call in sleep.call_args_list]
     assert all_sleeps == [1, 2, 3, 1, 2, 3]
 
 
@@ -239,7 +239,7 @@ async def test_retry_after_overrides_backoffs_when_enforced(
     ])
 
     assert mock.call_count == 4
-    all_sleeps = [call[0][0] for call in sleep.call_args_list]
+    all_sleeps = [call.args[0] for call in sleep.call_args_list]
     assert all_sleeps == [10, 10, 10]  # enforced retry-after
 
 
@@ -274,5 +274,5 @@ async def test_retry_after_overrides_backoffs_when_longer(
     ])
 
     assert mock.call_count == 4
-    all_sleeps = [call[0][0] for call in sleep.call_args_list]
+    all_sleeps = [call.args[0] for call in sleep.call_args_list]
     assert all_sleeps == [10, 10, 15]  # never smaller than retry-after

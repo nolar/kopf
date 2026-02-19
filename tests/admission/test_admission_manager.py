@@ -56,8 +56,8 @@ async def test_creation_is_attempted(
     )
 
     assert k8s_mocked.post.call_count == 1
-    assert k8s_mocked.post.call_args_list[0][1]['url'].startswith('/apis/admissionregistration.k8s.io/')
-    assert k8s_mocked.post.call_args_list[0][1]['payload']['metadata']['name'] == 'xyz'
+    assert k8s_mocked.post.call_args_list[0].kwargs['url'].startswith('/apis/admissionregistration.k8s.io/')
+    assert k8s_mocked.post.call_args_list[0].kwargs['payload']['metadata']['name'] == 'xyz'
 
 
 @pytest.mark.parametrize('reason', set(WebhookType))
@@ -80,8 +80,8 @@ async def test_creation_ignores_if_exists_already(
     )
 
     assert k8s_mocked.post.call_count == 1
-    assert k8s_mocked.post.call_args_list[0][1]['url'].startswith('/apis/admissionregistration.k8s.io/')
-    assert k8s_mocked.post.call_args_list[0][1]['payload']['metadata']['name'] == 'xyz'
+    assert k8s_mocked.post.call_args_list[0].kwargs['url'].startswith('/apis/admissionregistration.k8s.io/')
+    assert k8s_mocked.post.call_args_list[0].kwargs['payload']['metadata']['name'] == 'xyz'
 
 
 @pytest.mark.parametrize('error', {APIError, APIForbiddenError, APIUnauthorizedError})
@@ -106,8 +106,8 @@ async def test_creation_escalates_on_errors(
         )
 
     assert k8s_mocked.post.call_count == 1
-    assert k8s_mocked.post.call_args_list[0][1]['url'].startswith('/apis/admissionregistration.k8s.io/')
-    assert k8s_mocked.post.call_args_list[0][1]['payload']['metadata']['name'] == 'xyz'
+    assert k8s_mocked.post.call_args_list[0].kwargs['url'].startswith('/apis/admissionregistration.k8s.io/')
+    assert k8s_mocked.post.call_args_list[0].kwargs['payload']['metadata']['name'] == 'xyz'
 
 
 @pytest.mark.parametrize('reason', set(WebhookType))
@@ -138,20 +138,20 @@ async def test_patching_on_changes(
     )
 
     assert k8s_mocked.patch.call_count == 3
-    assert k8s_mocked.patch.call_args_list[0][1]['url'].startswith('/apis/admissionregistration.k8s.io/')
-    assert k8s_mocked.patch.call_args_list[0][1]['url'].endswith('/xyz')
-    assert k8s_mocked.patch.call_args_list[1][1]['url'].startswith('/apis/admissionregistration.k8s.io/')
-    assert k8s_mocked.patch.call_args_list[1][1]['url'].endswith('/xyz')
-    assert k8s_mocked.patch.call_args_list[2][1]['url'].startswith('/apis/admissionregistration.k8s.io/')
-    assert k8s_mocked.patch.call_args_list[2][1]['url'].endswith('/xyz')
+    assert k8s_mocked.patch.call_args_list[0].kwargs['url'].startswith('/apis/admissionregistration.k8s.io/')
+    assert k8s_mocked.patch.call_args_list[0].kwargs['url'].endswith('/xyz')
+    assert k8s_mocked.patch.call_args_list[1].kwargs['url'].startswith('/apis/admissionregistration.k8s.io/')
+    assert k8s_mocked.patch.call_args_list[1].kwargs['url'].endswith('/xyz')
+    assert k8s_mocked.patch.call_args_list[2].kwargs['url'].startswith('/apis/admissionregistration.k8s.io/')
+    assert k8s_mocked.patch.call_args_list[2].kwargs['url'].endswith('/xyz')
 
-    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
+    patch = k8s_mocked.patch.call_args_list[0].kwargs['payload']
     assert patch['webhooks']
     assert patch['webhooks'][0]['clientConfig']['url'].startswith('https://hostname1/')
     assert patch['webhooks'][0]['rules']
     assert patch['webhooks'][0]['rules'][0]['resources'] == ['kopfexamples']
 
-    patch = k8s_mocked.patch.call_args_list[1][1]['payload']
+    patch = k8s_mocked.patch.call_args_list[1].kwargs['payload']
     assert patch['webhooks']
     assert patch['webhooks'][0]['clientConfig']['url'].startswith('https://hostname2/')
     assert patch['webhooks'][0]['rules']
@@ -185,7 +185,7 @@ async def test_patching_purges_non_permanent_webhooks(
     )
 
     assert k8s_mocked.patch.call_count == 2
-    patch = k8s_mocked.patch.call_args_list[-1][1]['payload']
+    patch = k8s_mocked.patch.call_args_list[-1].kwargs['payload']
     assert not patch['webhooks']
 
 
@@ -216,7 +216,7 @@ async def test_patching_leaves_permanent_webhooks(
     )
 
     assert k8s_mocked.patch.call_count == 2
-    patch = k8s_mocked.patch.call_args_list[-1][1]['payload']
+    patch = k8s_mocked.patch.call_args_list[-1].kwargs['payload']
     assert patch['webhooks'][0]['clientConfig']['url'].startswith('https://hostname/')
     assert patch['webhooks'][0]['rules']
     assert patch['webhooks'][0]['rules'][0]['resources'] == ['kopfexamples']

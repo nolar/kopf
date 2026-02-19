@@ -33,7 +33,7 @@ async def test_posting(
     assert post_mock.called
     assert post_mock.call_count == 1
 
-    req = post_mock.call_args_list[0][0][0]  # [callidx][args/kwargs][argidx]
+    req = post_mock.call_args_list[0].args[0]  # [callidx][args/kwargs][argidx]
     assert req.method == 'POST'
 
     data = req.data
@@ -149,7 +149,7 @@ async def test_message_is_cut_to_max_length(
         logger=logger,
     )
 
-    data = post_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
+    data = post_mock.call_args_list[0].args[0].data  # [callidx][args/kwargs][argidx]
     assert len(data['message']) <= 1024  # max supported API message length
     assert '...' in data['message']
     assert data['message'].startswith('start')

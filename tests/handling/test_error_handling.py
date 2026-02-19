@@ -45,7 +45,7 @@ async def test_fatal_error_stops_handler(
     assert looptime == 0
     assert k8s_mocked.patch.called
 
-    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
+    patch = k8s_mocked.patch.call_args_list[0].kwargs['payload']
     assert patch['status']['kopf']['progress'] is not None
     assert patch['status']['kopf']['progress'][name1]['failure'] is True
     assert patch['status']['kopf']['progress'][name1]['message'] == 'oops'
@@ -89,7 +89,7 @@ async def test_retry_error_delays_handler(
     assert looptime == 0
     assert k8s_mocked.patch.called
 
-    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
+    patch = k8s_mocked.patch.call_args_list[0].kwargs['payload']
     assert patch['status']['kopf']['progress'] is not None
     assert patch['status']['kopf']['progress'][name1]['failure'] is False
     assert patch['status']['kopf']['progress'][name1]['success'] is False
@@ -134,7 +134,7 @@ async def test_arbitrary_error_delays_handler(
     assert looptime == 0
     assert k8s_mocked.patch.called
 
-    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
+    patch = k8s_mocked.patch.call_args_list[0].kwargs['payload']
     assert patch['status']['kopf']['progress'] is not None
     assert patch['status']['kopf']['progress'][name1]['failure'] is False
     assert patch['status']['kopf']['progress'][name1]['success'] is False

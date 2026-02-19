@@ -28,5 +28,5 @@ async def test_running_daemon_is_stopped_when_mismatches(
     await dummy.wait_for_daemon_done()
 
     assert looptime == 0
-    stopped = dummy.mock.call_args[1]['stopped']
+    stopped = dummy.mock.call_args.kwargs['stopped']
     assert DaemonStoppingReason.FILTERS_MISMATCH in stopped.reason

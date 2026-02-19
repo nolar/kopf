@@ -28,7 +28,7 @@ def test_has_no_kubeconfig_when_nothing_is_provided(mocker, envs):
     result = has_kubeconfig()
     assert result is False
     assert exists_mock.call_count == 1
-    assert exists_mock.call_args_list[0][0][0].endswith('/.kube/config')
+    assert exists_mock.call_args_list[0].args[0].endswith('/.kube/config')
 
 
 @pytest.mark.parametrize('envs', [{'KUBECONFIG': 'x'}], ids=['set'])
@@ -38,7 +38,7 @@ def test_has_kubeconfig_when_envvar_is_set_but_no_homedir(mocker, envs):
     result = has_kubeconfig()
     assert result is True
     assert exists_mock.call_count == 1
-    assert exists_mock.call_args_list[0][0][0].endswith('/.kube/config')
+    assert exists_mock.call_args_list[0].args[0].endswith('/.kube/config')
 
 
 @pytest.mark.parametrize('envs', [{}, {'KUBECONFIG': ''}], ids=['absent', 'empty'])
@@ -48,7 +48,7 @@ def test_has_kubeconfig_when_homedir_exists_but_no_envvar(mocker, envs):
     result = has_kubeconfig()
     assert result is True
     assert exists_mock.call_count == 1
-    assert exists_mock.call_args_list[0][0][0].endswith('/.kube/config')
+    assert exists_mock.call_args_list[0].args[0].endswith('/.kube/config')
 
 
 @pytest.mark.parametrize('envs', [{}, {'KUBECONFIG': ''}], ids=['absent', 'empty'])
@@ -59,9 +59,9 @@ def test_homedir_is_used_if_it_exists(tmpdir, mocker, envs):
     mocker.patch.dict(os.environ, envs, clear=True)
     credentials = login_with_kubeconfig()
     assert exists_mock.call_count == 1
-    assert exists_mock.call_args_list[0][0][0].endswith('/.kube/config')
+    assert exists_mock.call_args_list[0].args[0].endswith('/.kube/config')
     assert open_mock.call_count == 1
-    assert open_mock.call_args_list[0][0][0].endswith('/.kube/config')
+    assert open_mock.call_args_list[0].args[0].endswith('/.kube/config')
     assert credentials is not None
 
 
@@ -73,7 +73,7 @@ def test_homedir_is_ignored_if_it_is_absent(tmpdir, mocker, envs):
     mocker.patch.dict(os.environ, envs, clear=True)
     credentials = login_with_kubeconfig()
     assert exists_mock.call_count == 1
-    assert exists_mock.call_args_list[0][0][0].endswith('/.kube/config')
+    assert exists_mock.call_args_list[0].args[0].endswith('/.kube/config')
     assert open_mock.call_count == 0
     assert credentials is None
 

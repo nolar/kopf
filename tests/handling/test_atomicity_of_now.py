@@ -76,4 +76,4 @@ async def test_consistent_awakening(registry, settings, resource, k8s_mocked, mo
     # Without "now"-time consistency, neither sleep() would be called, nor a patch applied.
     # Verify that the patch was actually applied, so that the reaction cycle continues.
     assert k8s_mocked.patch.called
-    assert 'dummy' in k8s_mocked.patch.call_args_list[-1][1]['payload']['status']['kopf']
+    assert 'dummy' in k8s_mocked.patch.call_args_list[-1].kwargs['payload']['status']['kopf']

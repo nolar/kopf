@@ -40,7 +40,7 @@ async def test_create(registry, settings, handlers, resource, cause_mock, event_
     assert k8s_mocked.patch.call_count == 1
     assert not event_queue.empty()
 
-    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
+    patch = k8s_mocked.patch.call_args_list[0].kwargs['payload']
     assert 'metadata' in patch
     assert 'annotations' in patch['metadata']
     assert LAST_SEEN_ANNOTATION in patch['metadata']['annotations']
@@ -79,7 +79,7 @@ async def test_update(registry, settings, handlers, resource, cause_mock, event_
     assert k8s_mocked.patch.call_count == 1
     assert not event_queue.empty()
 
-    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
+    patch = k8s_mocked.patch.call_args_list[0].kwargs['payload']
     assert 'metadata' in patch
     assert 'annotations' in patch['metadata']
     assert LAST_SEEN_ANNOTATION in patch['metadata']['annotations']
