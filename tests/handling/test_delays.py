@@ -52,7 +52,7 @@ async def test_delayed_handlers_progress(
     assert k8s_mocked.patch.called
 
     fname = f'{cause_reason}_fn'
-    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
+    patch = k8s_mocked.patch.call_args_list[0].kwargs['payload']
     assert patch['status']['kopf']['progress'][fname]['delayed'] == delayed_iso
 
     assert_logs([
@@ -109,7 +109,7 @@ async def test_delayed_handlers_sleep(
 
     # The dummy patch is needed to trigger the further changes. The value is irrelevant.
     assert k8s_mocked.patch.called
-    assert 'dummy' in k8s_mocked.patch.call_args_list[-1][1]['payload']['status']['kopf']
+    assert 'dummy' in k8s_mocked.patch.call_args_list[-1].kwargs['payload']['status']['kopf']
 
     # The duration of sleep should be as expected.
     assert looptime == delay

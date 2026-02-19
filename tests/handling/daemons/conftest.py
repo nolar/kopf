@@ -21,7 +21,7 @@ class DaemonDummy:
         self.mock = MagicMock()
 
     async def wait_for_daemon_done(self) -> None:
-        stopped = self.mock.call_args[1]['stopped']
+        stopped = self.mock.call_args.kwargs['stopped']
         await stopped.wait()
         while stopped.reason is None or not stopped.reason & stopped.reason.DONE:
             await asyncio.sleep(0)  # give control back to asyncio event loop
@@ -74,7 +74,7 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
 
         # Do the same as k8s does: merge the patches into the object.
         for call in k8s_mocked.patch.call_args_list:
-            _merge_dicts(call[1]['payload'], event_object)
+            _merge_dicts(call.kwargs['payload'], event_object)
 
     return _simulate_cycle
 

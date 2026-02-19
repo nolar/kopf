@@ -50,7 +50,7 @@ async def test_without_subresources(
     assert patch_mock.called
     assert patch_mock.call_count == 1
 
-    data = patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
+    data = patch_mock.call_args_list[0].args[0].data  # [callidx][args/kwargs][argidx]
     assert data == {'x': 'y'}
 
 
@@ -72,9 +72,9 @@ async def test_status_as_subresource_with_combined_payload(
     assert status_patch_mock.called
     assert status_patch_mock.call_count == 1
 
-    data = object_patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
+    data = object_patch_mock.call_args_list[0].args[0].data  # [callidx][args/kwargs][argidx]
     assert data == {'spec': {'x': 'y'}}
-    data = status_patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
+    data = status_patch_mock.call_args_list[0].args[0].data  # [callidx][args/kwargs][argidx]
     assert data == {'status': {'s': 't'}}
 
     assert reconstructed == STATUS_RESPONSE  # ignore the body response if status was patched
@@ -97,7 +97,7 @@ async def test_status_as_subresource_with_object_fields_only(
     assert object_patch_mock.call_count == 1
     assert not status_patch_mock.called
 
-    data = object_patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
+    data = object_patch_mock.call_args_list[0].args[0].data  # [callidx][args/kwargs][argidx]
     assert data == {'spec': {'x': 'y'}}
 
     assert reconstructed == OBJECT_RESPONSE  # ignore the status response if status was not patched
@@ -120,7 +120,7 @@ async def test_status_as_subresource_with_status_fields_only(
     assert status_patch_mock.called
     assert status_patch_mock.call_count == 1
 
-    data = status_patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
+    data = status_patch_mock.call_args_list[0].args[0].data  # [callidx][args/kwargs][argidx]
     assert data == {'status': {'s': 't'}}
 
     assert reconstructed == STATUS_RESPONSE  # ignore the body response if status was patched
@@ -142,7 +142,7 @@ async def test_status_as_body_field_with_combined_payload(
     assert object_patch_mock.call_count == 1
     assert not status_patch_mock.called
 
-    data = object_patch_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
+    data = object_patch_mock.call_args_list[0].args[0].data  # [callidx][args/kwargs][argidx]
     assert data == {'spec': {'x': 'y'}, 'status': {'s': 't'}}
 
     assert reconstructed == OBJECT_RESPONSE  # ignore the status response if status was not patched

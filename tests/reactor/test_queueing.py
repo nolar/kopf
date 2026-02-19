@@ -129,8 +129,8 @@ async def test_garbage_collection_of_streams(
     # Intercept and remember _any_ seen dict of streams for further checks.
     while worker_spy.call_count < unique:
         await asyncio.sleep(0)  # give control to the loop
-    streams = worker_spy.call_args_list[-1][1]['streams']
-    signaller: asyncio.Condition = worker_spy.call_args_list[0][1]['signaller']
+    streams = worker_spy.call_args_list[-1].kwargs['streams']
+    signaller: asyncio.Condition = worker_spy.call_args_list[0].kwargs['signaller']
 
     # The mutable(!) streams dict is now populated with the objects' streams.
     assert len(streams) != 0  # usually 1, but can be 2+ if it is fast enough.

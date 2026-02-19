@@ -24,7 +24,7 @@ async def test_simple_body_with_arguments(
     assert post_mock.called
     assert post_mock.call_count == 1
 
-    data = post_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
+    data = post_mock.call_args_list[0].args[0].data  # [callidx][args/kwargs][argidx]
     if resource.namespaced:
         assert data == {'x': 'y', 'metadata': {'name': 'name1', 'namespace': 'ns'}}
     else:
@@ -48,7 +48,7 @@ async def test_full_body_with_identifiers(
     assert post_mock.called
     assert post_mock.call_count == 1
 
-    data = post_mock.call_args_list[0][0][0].data  # [callidx][args/kwargs][argidx]
+    data = post_mock.call_args_list[0].args[0].data  # [callidx][args/kwargs][argidx]
     assert data == {'x': 'y', 'metadata': {'name': 'name1', 'namespace': namespace}}
 
 

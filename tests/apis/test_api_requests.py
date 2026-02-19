@@ -24,11 +24,11 @@ async def test_raw_requests_work(
     )
     assert isinstance(response, aiohttp.ClientResponse)  # unparsed!
     assert mock.call_count == 1
-    assert isinstance(mock.call_args[0][0], aiohttp.web.BaseRequest)
-    assert mock.call_args[0][0].method.lower() == method
-    assert mock.call_args[0][0].path == '/url'
-    assert mock.call_args[0][0].data == {'fake': 'payload'}
-    assert mock.call_args[0][0].headers['fake'] == 'headers'  # and other system headers
+    assert isinstance(mock.call_args.args[0], aiohttp.web.BaseRequest)
+    assert mock.call_args.args[0].method.lower() == method
+    assert mock.call_args.args[0].path == '/url'
+    assert mock.call_args.args[0].data == {'fake': 'payload'}
+    assert mock.call_args.args[0].headers['fake'] == 'headers'  # and other system headers
 
 
 @pytest.mark.parametrize('method', ['get', 'post', 'patch', 'delete'])
@@ -59,8 +59,8 @@ async def test_relative_urls_are_prepended_with_server(
     mock = resp_mocker(return_value=aiohttp.web.json_response({}))
     aresponses.add(hostname, '/url', method, mock)
     await request(method, '/url', settings=settings, logger=logger)
-    assert isinstance(mock.call_args[0][0], aiohttp.web.BaseRequest)
-    assert str(mock.call_args[0][0].url) == f'http://{hostname}/url'
+    assert isinstance(mock.call_args.args[0], aiohttp.web.BaseRequest)
+    assert str(mock.call_args.args[0].url) == f'http://{hostname}/url'
 
 
 @pytest.mark.parametrize('method', ['get', 'post', 'patch', 'delete'])
@@ -71,8 +71,8 @@ async def test_absolute_urls_are_passed_through(
     aresponses.add(hostname, '/url', method, mock)
     aresponses.add('fakehost.localdomain', '/url', method, mock)
     await request(method, 'http://fakehost.localdomain/url', settings=settings, logger=logger)
-    assert isinstance(mock.call_args[0][0], aiohttp.web.BaseRequest)
-    assert str(mock.call_args[0][0].url) == 'http://fakehost.localdomain/url'
+    assert isinstance(mock.call_args.args[0], aiohttp.web.BaseRequest)
+    assert str(mock.call_args.args[0].url) == 'http://fakehost.localdomain/url'
 
 
 @pytest.mark.parametrize('fn, method', [
@@ -95,11 +95,11 @@ async def test_parsing_in_requests(
     )
     assert response == {'fake': 'result'}  # parsed!
     assert mock.call_count == 1
-    assert isinstance(mock.call_args[0][0], aiohttp.web.BaseRequest)
-    assert mock.call_args[0][0].method.lower() == method
-    assert mock.call_args[0][0].path == '/url'
-    assert mock.call_args[0][0].data == {'fake': 'payload'}
-    assert mock.call_args[0][0].headers['fake'] == 'headers'  # and other system headers
+    assert isinstance(mock.call_args.args[0], aiohttp.web.BaseRequest)
+    assert mock.call_args.args[0].method.lower() == method
+    assert mock.call_args.args[0].path == '/url'
+    assert mock.call_args.args[0].data == {'fake': 'payload'}
+    assert mock.call_args.args[0].headers['fake'] == 'headers'  # and other system headers
 
 
 @pytest.mark.parametrize('method', ['get'])  # the only supported method at the moment
@@ -124,11 +124,11 @@ async def test_parsing_in_streams(
 
     assert items == [{'fake': 'result1'}, {'fake': 'result2'}]
     assert mock.call_count == 1
-    assert isinstance(mock.call_args[0][0], aiohttp.web.BaseRequest)
-    assert mock.call_args[0][0].method.lower() == method
-    assert mock.call_args[0][0].path == '/url'
-    assert mock.call_args[0][0].data == {'fake': 'payload'}
-    assert mock.call_args[0][0].headers['fake'] == 'headers'  # and other system headers
+    assert isinstance(mock.call_args.args[0], aiohttp.web.BaseRequest)
+    assert mock.call_args.args[0].method.lower() == method
+    assert mock.call_args.args[0].path == '/url'
+    assert mock.call_args.args[0].data == {'fake': 'payload'}
+    assert mock.call_args.args[0].headers['fake'] == 'headers'  # and other system headers
 
 
 @pytest.mark.parametrize('fn, method', [

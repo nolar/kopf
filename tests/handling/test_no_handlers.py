@@ -46,7 +46,7 @@ async def test_skipped_with_no_handlers(
     assert k8s_mocked.patch.called
 
     # The patch must contain ONLY the last-seen update, and nothing else.
-    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
+    patch = k8s_mocked.patch.call_args_list[0].kwargs['payload']
     assert set(patch.keys()) == {'metadata'}
     assert set(patch['metadata'].keys()) == {'annotations'}
     assert set(patch['metadata']['annotations'].keys()) == {LAST_SEEN_ANNOTATION}

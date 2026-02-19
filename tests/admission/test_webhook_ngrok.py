@@ -30,10 +30,10 @@ async def test_ngrok_tunnel(
     assert pyngrok_mock.conf.get_default.return_value.ngrok_path == '/bin/ngrok'
     assert pyngrok_mock.conf.get_default.return_value.region == 'xx'
     assert pyngrok_mock.ngrok.set_auth_token.called
-    assert pyngrok_mock.ngrok.set_auth_token.call_args_list[0][0][0] == 'xyz'
+    assert pyngrok_mock.ngrok.set_auth_token.call_args_list[0].args[0] == 'xyz'
     assert pyngrok_mock.ngrok.connect.called
-    assert pyngrok_mock.ngrok.connect.call_args_list[0][0][0] == '54321'
-    assert pyngrok_mock.ngrok.connect.call_args_list[0][1]['bind_tls'] == True
+    assert pyngrok_mock.ngrok.connect.call_args_list[0].args[0] == '54321'
+    assert pyngrok_mock.ngrok.connect.call_args_list[0].kwargs['bind_tls'] == True
     assert pyngrok_mock.ngrok.disconnect.called
 
     await asyncio.get_running_loop().shutdown_asyncgens()

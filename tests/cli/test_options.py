@@ -18,7 +18,7 @@ def test_options_passed_to_preload(invoke, options, envvars, kwarg, value, prelo
     result = invoke(['run'] + options, env=envvars)
     assert result.exit_code == 0
     assert preload.called
-    assert preload.call_args[1][kwarg] == value
+    assert preload.call_args.kwargs[kwarg] == value
 
 
 @pytest.mark.parametrize('kwarg, value, options, envvars', [
@@ -56,4 +56,4 @@ def test_options_passed_to_realrun(invoke, options, envvars, kwarg, value, prelo
     result = invoke(['run'] + options, env=envvars)
     assert result.exit_code == 0
     assert real_run.called
-    assert real_run.call_args[1][kwarg] == value
+    assert real_run.call_args.kwargs[kwarg] == value
