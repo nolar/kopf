@@ -27,7 +27,6 @@ class ActivityFn(Protocol):
         self,
         *,
         settings: configuration.OperatorSettings,
-        index: ephemera.Index[Any, Any],
         retry: int,
         started: datetime.datetime,
         runtime: datetime.timedelta,
@@ -165,7 +164,6 @@ class TimerFn(Protocol):
     def __call__(
         self,
         *,
-        index: ephemera.Index[Any, Any],
         annotations: bodies.Annotations,
         labels: bodies.Labels,
         body: bodies.Body,
