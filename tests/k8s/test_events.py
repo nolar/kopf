@@ -1,4 +1,3 @@
-import aiohttp.web
 import pytest
 
 from kopf._cogs.clients.events import post_event
@@ -8,11 +7,8 @@ from kopf._cogs.structs.references import Resource
 EVENTS = Resource('', 'v1', 'events', namespaced=True)
 
 
-async def test_posting(
-        resp_mocker, aresponses, hostname, settings, logger):
-
-    post_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
-    aresponses.add(hostname, '/api/v1/namespaces/ns/events', 'post', post_mock)
+async def test_posting(kmock, settings, logger):
+    kmock['post v1/events', kmock.namespace('ns')] << {}
 
     obj = {'apiVersion': 'group/version',
            'kind': 'kind',
@@ -30,13 +26,9 @@ async def test_posting(
         logger=logger,
     )
 
-    assert post_mock.called
-    assert post_mock.call_count == 1
-
-    req = post_mock.call_args_list[0].args[0]  # [callidx][args/kwargs][argidx]
-    assert req.method == 'POST'
-
-    data = req.data
+    assert len(kmock) == 1
+    assert kmock[-1].method == 'POST'
+    data = kmock[-1].data
     assert data['type'] == 'type'
     assert data['reason'] == 'reason'
     assert data['message'] == 'message'
@@ -48,11 +40,8 @@ async def test_posting(
     assert data['involvedObject']['uid'] == 'uid'
 
 
-async def test_no_events_for_events(
-        resp_mocker, aresponses, hostname, settings, logger):
-
-    post_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
-    aresponses.add(hostname, '/api/v1/namespaces/ns/events', 'post', post_mock)
+async def test_no_events_for_events(kmock, settings, logger):
+    post = kmock['post v1/events', kmock.namespace('ns')] << {}
 
     obj = {'apiVersion': 'v1',
            'kind': 'Event',
@@ -70,14 +59,11 @@ async def test_no_events_for_events(
         logger=logger,
     )
 
-    assert not post_mock.called
+    assert len(post) == 0
 
 
-async def test_api_errors_logged_but_suppressed(
-        resp_mocker, aresponses, hostname, settings, logger, assert_logs):
-
-    post_mock = resp_mocker(return_value=aresponses.Response(status=555, reason='oops'))
-    aresponses.add(hostname, '/api/v1/namespaces/ns/events', 'post', post_mock)
+async def test_api_errors_logged_but_suppressed(kmock, settings, logger, assert_logs):
+    post = kmock['post v1/events', kmock.namespace('ns')] << 555
 
     obj = {'apiVersion': 'group/version',
            'kind': 'kind',
@@ -95,13 +81,11 @@ async def test_api_errors_logged_but_suppressed(
         logger=logger,
     )
 
-    assert post_mock.called
+    assert len(post) == 1
     assert_logs(["Failed to post an event."])
 
 
-async def test_regular_errors_escalate(
-        resp_mocker, enforced_session, mocker, settings, logger):
-
+async def test_regular_errors_escalate(enforced_session, mocker, settings, logger):
     error = Exception('boo!')
     enforced_session.request = mocker.Mock(side_effect=error)
 
@@ -126,11 +110,8 @@ async def test_regular_errors_escalate(
     assert excinfo.value is error
 
 
-async def test_message_is_cut_to_max_length(
-        resp_mocker, aresponses, hostname, settings, logger):
-
-    post_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
-    aresponses.add(hostname, '/api/v1/namespaces/ns/events', 'post', post_mock)
+async def test_message_is_cut_to_max_length(kmock, settings, logger):
+    post = kmock['post v1/events', kmock.namespace('ns')] << {}
 
     obj = {'apiVersion': 'group/version',
            'kind': 'kind',
@@ -149,7 +130,7 @@ async def test_message_is_cut_to_max_length(
         logger=logger,
     )
 
-    data = post_mock.call_args_list[0].args[0].data  # [callidx][args/kwargs][argidx]
+    data = post[0].data
     assert len(data['message']) <= 1024  # max supported API message length
     assert '...' in data['message']
     assert data['message'].startswith('start')
@@ -158,11 +139,8 @@ async def test_message_is_cut_to_max_length(
 
 # 401 causes LoginError from the vault, and this is out of scope of API testing.
 @pytest.mark.parametrize('status', [555, 500, 404, 403])
-async def test_headers_are_not_leaked(
-        resp_mocker, aresponses, hostname, settings, logger, assert_logs, status):
-
-    post_mock = resp_mocker(return_value=aresponses.Response(status=status, reason='oops'))
-    aresponses.add(hostname, '/api/v1/namespaces/ns/events', 'post', post_mock)
+async def test_headers_are_not_leaked(kmock, settings, logger, assert_logs, status):
+    kmock['post v1/events', kmock.namespace('ns')] << status
 
     obj = {'apiVersion': 'group/version',
            'kind': 'kind',

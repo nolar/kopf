@@ -1,4 +1,3 @@
-import aiohttp.web
 import freezegun
 import pytest
 
@@ -11,74 +10,59 @@ from kopf._core.engines.peering import Peer, clean, touch
 ])
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
 async def test_cleaning_peers_purges_them(
-        hostname, aresponses, resp_mocker, settings, lastseen,
-        peering_resource, peering_namespace):
-
+        kmock, settings, lastseen, peering_resource, peering_namespace):
     settings.peering.name = 'name0'
-    patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
-    url = peering_resource.get_url(name='name0', namespace=peering_namespace)
-    aresponses.add(hostname, url, 'patch', patch_mock)
+    kmock.objects[peering_resource, peering_namespace, 'name0'] = {}
 
     peer = Peer(identity='id1', lastseen=lastseen)
     await clean(peers=[peer], resource=peering_resource, settings=settings,
                 namespace=peering_namespace)
 
-    assert patch_mock.called
-    patch = await patch_mock.call_args_list[0].args[0].json()
-    assert set(patch['status']) == {'id1'}
-    assert patch['status']['id1'] is None
+    assert len(kmock) == 1
+    assert set(kmock[0].data['status']) == {'id1'}
+    assert kmock[0].data['status']['id1'] is None
+    assert kmock.objects[peering_resource, peering_namespace, 'name0'] == {'status': {}}
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
-async def test_touching_a_peer_stores_it(
-        hostname, aresponses, resp_mocker, settings,
-        peering_resource, peering_namespace):
-
+async def test_touching_a_peer_stores_it(kmock, settings, peering_resource, peering_namespace):
     settings.peering.name = 'name0'
-    patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
-    url = peering_resource.get_url(name='name0', namespace=peering_namespace)
-    aresponses.add(hostname, url, 'patch', patch_mock)
+    kmock.objects[peering_resource, peering_namespace, 'name0'] = {}
 
     await touch(identity='id1', resource=peering_resource, settings=settings,
                 namespace=peering_namespace)
 
-    assert patch_mock.called
-    patch = await patch_mock.call_args_list[0].args[0].json()
+    assert len(kmock) > 0
+    patch = kmock[0].data
     assert set(patch['status']) == {'id1'}
     assert patch['status']['id1']['priority'] == 0
     assert patch['status']['id1']['lastseen'] == '2020-12-31T23:59:59.123456+00:00'
     assert patch['status']['id1']['lifetime'] == 60
+    assert kmock.objects[peering_resource, peering_namespace, 'name0'] == {'status': {'id1': {'lastseen': ..., 'lifetime': 60, 'priority': 0}}}
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
-async def test_expiring_a_peer_purges_it(
-        hostname, aresponses, resp_mocker, settings,
-        peering_resource, peering_namespace):
-
+async def test_expiring_a_peer_purges_it(kmock, settings, peering_resource, peering_namespace):
     settings.peering.name = 'name0'
-    patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
-    url = peering_resource.get_url(name='name0', namespace=peering_namespace)
-    aresponses.add(hostname, url, 'patch', patch_mock)
+    kmock.objects[peering_resource, peering_namespace, 'name0'] = {}
 
     await touch(identity='id1', resource=peering_resource, settings=settings,
                 namespace=peering_namespace, lifetime=0)
 
-    assert patch_mock.called
-    patch = await patch_mock.call_args_list[0].args[0].json()
+    assert len(kmock) > 0
+    patch = kmock[0].data
     assert set(patch['status']) == {'id1'}
     assert patch['status']['id1'] is None
+    assert kmock.objects[peering_resource, peering_namespace, 'name0'] == {'status': {}}
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
 async def test_logs_are_skipped_in_stealth_mode(
-        hostname, aresponses, resp_mocker, settings, assert_logs,
-        peering_resource, peering_namespace):
+        kmock, settings, assert_logs, peering_resource, peering_namespace):
 
     settings.peering.stealth = True
     settings.peering.name = 'name0'
-    patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
-    url = peering_resource.get_url(name='name0', namespace=peering_namespace)
-    aresponses.add(hostname, url, 'patch', patch_mock)
+    kmock.objects[peering_resource, peering_namespace, 'name0'] = {}
 
     await touch(identity='id1', resource=peering_resource, settings=settings,
                 namespace=peering_namespace)
@@ -89,14 +73,11 @@ async def test_logs_are_skipped_in_stealth_mode(
 
 
 async def test_logs_are_logged_in_exposed_mode(
-        hostname, aresponses, resp_mocker, settings, assert_logs,
-        peering_resource, peering_namespace):
+        kmock, settings, assert_logs, peering_resource, peering_namespace):
 
     settings.peering.stealth = False
     settings.peering.name = 'name0'
-    patch_mock = resp_mocker(return_value=aiohttp.web.json_response({}))
-    url = peering_resource.get_url(name='name0', namespace=peering_namespace)
-    aresponses.add(hostname, url, 'patch', patch_mock)
+    kmock.objects[peering_resource, peering_namespace, 'name0'] = {}
 
     await touch(identity='id1', resource=peering_resource, settings=settings,
                 namespace=peering_namespace)
@@ -108,14 +89,10 @@ async def test_logs_are_logged_in_exposed_mode(
 
 @pytest.mark.parametrize('stealth', [True, False], ids=['stealth', 'exposed'])
 async def test_logs_are_logged_when_absent(
-        hostname, aresponses, resp_mocker, stealth, settings, assert_logs,
-        peering_resource, peering_namespace):
+        stealth, settings, assert_logs, peering_resource, peering_namespace):
 
     settings.peering.stealth = stealth
     settings.peering.name = 'name0'
-    patch_mock = resp_mocker(return_value=aresponses.Response(status=404, reason='oops'))
-    url = peering_resource.get_url(name='name0', namespace=peering_namespace)
-    aresponses.add(hostname, url, 'patch', patch_mock)
 
     await touch(identity='id1', resource=peering_resource, settings=settings,
                 namespace=peering_namespace)

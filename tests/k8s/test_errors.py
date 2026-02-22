@@ -49,18 +49,10 @@ def test_exception_with_text_payload():
 
 
 @pytest.mark.parametrize('status', [200, 202, 300, 304])
-async def test_no_error_on_success(
-        resp_mocker, aresponses, hostname, status):
-
-    resp = aresponses.Response(
-        status=status,
-        reason='oops',
-        headers={'Content-Type': 'application/json'},
-        text='{"kind": "Status", "code": "xxx", "message": "msg"}',
-    )
-    aresponses.add(hostname, '/', 'get', resp_mocker(return_value=resp))
-
-    await get_it(f"http://{hostname}/")
+async def test_no_error_on_success(kmock, status):
+    headers = {'Content-Type': 'application/json'}
+    kmock['/'] << status << headers << {"kind": "Status", "code": "xxx", "message": "msg"}
+    await get_it(str(kmock.url))
 
 
 # Note: 401 is wrapped into a LoginError and is tested elsewhere.
@@ -78,19 +70,12 @@ async def test_no_error_on_success(
     (500, APIError),
     (666, APIError),
 ])
-async def test_error_with_dict_payload(
-        resp_mocker, aresponses, hostname, status, exctype):
-
-    resp = aresponses.Response(
-        status=status,
-        reason='oops',
-        headers={'Content-Type': 'application/json'},
-        text='{"kind": "Status", "code": 123, "message": "msg", "details": {"a": "b"}}',
-    )
-    aresponses.add(hostname, '/', 'get', resp_mocker(return_value=resp))
+async def test_error_with_dict_payload(kmock, status, exctype):
+    headers = {'Content-Type': 'application/json'}
+    kmock['/'] << status << headers << {"kind": "Status", "code": 123, "message": "msg", "details": {"a": "b"}}
 
     with pytest.raises(APIError) as err:
-        await get_it(f"http://{hostname}/")
+        await get_it(str(kmock.url))
 
     assert not isinstance(err.value, aiohttp.ClientResponseError)
     assert isinstance(err.value, exctype)
@@ -101,19 +86,12 @@ async def test_error_with_dict_payload(
 
 
 @pytest.mark.parametrize('status', [400, 429, 500, 666])
-async def test_error_with_text_payload(
-        resp_mocker, aresponses, hostname, status):
-
-    resp = aresponses.Response(
-        status=status,
-        reason='oops',
-        headers={'Content-Type': 'application/json'},
-        text='unparsable json',
-    )
-    aresponses.add(hostname, '/', 'get', resp_mocker(return_value=resp))
+async def test_error_with_text_payload(kmock, status):
+    headers = {'Content-Type': 'application/json'}
+    kmock['/'] << status << headers << b'unparsable json'
 
     with pytest.raises(APIError) as err:
-        await get_it(f"http://{hostname}/")
+        await get_it(str(kmock.url))
 
     assert err.value.status == status
     assert err.value.code is None
@@ -123,19 +101,12 @@ async def test_error_with_text_payload(
 
 
 @pytest.mark.parametrize('status', [400, 500, 666])
-async def test_error_with_parseable_nonk8s_payload(
-        resp_mocker, aresponses, hostname, status):
-
-    resp = aresponses.Response(
-        status=status,
-        reason='oops',
-        headers={'Content-Type': 'application/json'},
-        text='{"kind": "NonStatus", "code": "xxx", "message": "msg"}',
-    )
-    aresponses.add(hostname, '/', 'get', resp_mocker(return_value=resp))
+async def test_error_with_parseable_nonk8s_payload(kmock, status):
+    headers = {'Content-Type': 'application/json'}
+    kmock['/'] << status << headers << {"kind": "NonStatus", "code": "xxx", "message": "msg"}
 
     with pytest.raises(APIError) as err:
-        await get_it(f"http://{hostname}/")
+        await get_it(str(kmock.url))
 
     assert err.value.status == status
     assert err.value.code is None
@@ -144,17 +115,11 @@ async def test_error_with_parseable_nonk8s_payload(
     assert str(err.value) == ""
 
 
-async def test_cutting_the_text_response_overflow(resp_mocker, aresponses, hostname):
-    resp = aresponses.Response(
-        status=400,
-        reason='oops',
-        headers={'Content-Type': 'application/json'},
-        text='helloworld'*1000,
-    )
-    aresponses.add(hostname, '/', 'get', resp_mocker(return_value=resp))
+async def test_cutting_the_text_response_overflow(kmock):
+    kmock['get /'] << 400 << {'Content-Type': 'application/json'} << 'helloworld'*1000
 
     with pytest.raises(APIError) as err:
-        await get_it(f"http://{hostname}/")
+        await get_it(kmock.url)
 
     # 256 comes from TEXT_ERROR_MAX_SIZE, 10 is the length of "helloworld".
     assert str(err.value) == "helloworld" * (256//10) + "hel..."
