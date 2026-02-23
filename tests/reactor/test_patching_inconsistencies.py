@@ -56,7 +56,7 @@ async def test_patching_without_inconsistencies(
     assert_logs([
         "Merge-patching",
     ], prohibited=[
-        "Patching failed with inconsistencies:",
+        "inconsistencies",
     ])
 
 
@@ -113,7 +113,7 @@ async def test_patching_with_inconsistencies(
 
     assert_logs([
         "Merge-patching",
-        "Patching failed with inconsistencies:",
+        "Merge-patching finished with inconsistencies:",
     ])
 
 

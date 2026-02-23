@@ -142,6 +142,6 @@ async def patch_and_check(
             if old or new or field not in KNOWN_INCONSISTENCIES
         )
         if inconsistencies and resulting_body is not None:
-            logger.warning(f"Patching failed with inconsistencies: {inconsistencies}")
+            logger.warning(f"Merge-patching finished with inconsistencies: {inconsistencies}")
         return (resulting_body or {}).get('metadata', {}).get('resourceVersion')
     return None
