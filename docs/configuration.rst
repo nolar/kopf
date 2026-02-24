@@ -408,11 +408,11 @@ used when fetching, i.e. the first storage has precedence):
             kopf.StatusProgressStorage(field='status.my-operator'),
         ])
 
-The default storage is at both annotations and status, with annotations having
-precedence over the status (this is done as a transitioning solution
-from status-only storage in the past to annotations-only storage in the future).
-The annotations are ``kopf.zalando.org/{id}``,
-the status fields are ``status.kopf.progress.{id}``.
+The default storage is in annotations, plus read-only from the status stanza,
+with annotations having precedence over the status. That was a transitioning
+solution from the original status-only storage only (Mar'20–Mar'26; v0.27–1.44).
+The annotations are ``kopf.zalando.org/{id}`` (read-write),
+the status fields are ``status.kopf.progress.{id}`` (read-only).
 It is an equivalent of:
 
 .. code-block:: python
