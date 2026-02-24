@@ -139,7 +139,7 @@ async def test_daemon_exits_instantly_on_cancellation_with_backoff(
 
     assert looptime == 1.23  # i.e. the slept through the whole backoff time
     assert k8s_mocked.patch.call_count == 1
-    assert k8s_mocked.patch.call_args_list[0].kwargs['payload']['status']['kopf']['dummy']
+    assert k8s_mocked.patch.call_args_list[0].kwargs['payload']['metadata']['annotations']['kopf.zalando.org/touch-dummy']
 
     # 2nd cycle: cancelling after the backoff is reached. Wait for cancellation timeout.
     mocker.resetall()
@@ -186,7 +186,7 @@ async def test_daemon_exits_slowly_on_cancellation_with_backoff(
 
     assert looptime == 1.23
     assert k8s_mocked.patch.call_count == 1
-    assert k8s_mocked.patch.call_args_list[0].kwargs['payload']['status']['kopf']['dummy']
+    assert k8s_mocked.patch.call_args_list[0].kwargs['payload']['metadata']['annotations']['kopf.zalando.org/touch-dummy']
 
     # 2nd cycle: cancelling after the backoff is reached. Wait for cancellation timeout.
     mocker.resetall()
@@ -194,7 +194,7 @@ async def test_daemon_exits_slowly_on_cancellation_with_backoff(
 
     assert looptime == 1.23 + 4.56  # i.e. it really spent all the timeout
     assert k8s_mocked.patch.call_count == 1
-    assert k8s_mocked.patch.call_args_list[0].kwargs['payload']['status']['kopf']['dummy']
+    assert k8s_mocked.patch.call_args_list[0].kwargs['payload']['metadata']['annotations']['kopf.zalando.org/touch-dummy']
 
     # 3rd cycle: the daemon has exited, the resource should be unblocked from actual deletion.
     mocker.resetall()
@@ -243,7 +243,7 @@ async def test_daemon_is_abandoned_due_to_cancellation_timeout_reached(
 
     assert looptime == 4.56
     assert k8s_mocked.patch.call_count == 1
-    assert k8s_mocked.patch.call_args_list[0].kwargs['payload']['status']['kopf']['dummy']
+    assert k8s_mocked.patch.call_args_list[0].kwargs['payload']['metadata']['annotations']['kopf.zalando.org/touch-dummy']
 
     # 2rd cycle: the daemon has exited, the resource should be unblocked from actual deletion.
     mocker.resetall()
