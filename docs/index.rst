@@ -76,23 +76,23 @@ Kopf: Kubernetes Operators Framework
 
 .. toctree::
    :maxdepth: 2
+   :caption: About Kopf:
+
+   vision
+   naming
+   critiques
+   alternatives
+   status
+   impressum
+
+.. toctree::
+   :maxdepth: 2
    :caption: Developer Manual:
 
    minikube
    contributing
    architecture
    packages/kopf
-
-.. toctree::
-   :maxdepth: 2
-   :caption: About Kopf:
-
-   vision
-   naming
-   alternatives
-   status
-   impressum
-
 
 Indices and tables
 ==================
