@@ -50,7 +50,7 @@ async def test_full_body_with_identifiers(
 async def test_raises_api_errors(
         kmock, settings, status, resource, namespace, logger,
         cluster_resource, namespaced_resource):
-    kmock['post', resource, kmock.clusterwide()] << status
+    kmock['post', resource, kmock.namespace(None)] << status
     kmock['post', resource, kmock.namespace('ns')] << status
 
     body = {'x': 'y'}

@@ -21,7 +21,7 @@ async def test_listing_works(kmock, settings, logger, resource, namespace):
 async def test_raises_direct_api_errors(
         kmock, settings, logger, status, resource, namespace,
         cluster_resource, namespaced_resource):
-    kmock[cluster_resource, kmock.clusterwide()] << status
+    kmock[cluster_resource, kmock.namespace(None)] << status
     kmock[namespaced_resource, kmock.namespace('ns')] << status
 
     with pytest.raises(APIError) as e:
