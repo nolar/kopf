@@ -84,3 +84,59 @@ can be used to decide which way of reconciliation to use in which cases:
 
 * Only as the last resort, use the daemons with a ``while True`` cycle
   and explicit sleep.
+
+
+Level-based triggering
+======================
+
+In Kubernetes, level-based triggering is the core concept of reconciliation.
+It implies that there is an "actual state" and a "desired state".
+The latter usually sits in ``spec``, while the former is calculated ---
+it can come from inside the same Kubernetes cluster (children resources),
+other clusters, or other non-Kubernetes systems.
+
+As a generic pattern, Kopf recommends implementing such level-based triggering
+and reconciliation the following way:
+
+- Keep a timer or a daemon to regularly calculate the "actual state",
+  and store the result into the status stanza as one or several fields.
+- For local Kubernetes resources as the "actual state", use :doc:`indexing`
+  instead of talking to the cluster API, in order to reduce the API load.
+- Add on-field, or on-update/create handlers, or a low-level event handler
+  for both the "actual state" and the "desired state" fields
+  and react accordingly by bringing the actual state to the desired state.
+
+An example for the in-cluster calculated actual state --- this is not
+a full example (lacks wordy API calls for pods creation/termination),
+but you can get the overall idea:
+
+.. code-block:: python
+
+    import random
+    import kopf
+
+    @kopf.index('pods', labels={'parent-kex': kopf.PRESENT})
+    def kex_pods(body, name, **_):
+        parent_name = body.metadata.labels['parent-kex']
+        return {parent_name: name}
+
+    @kopf.timer('kopfexamples', interval=10)
+    def calculate_actual_state(name, kex_pods, patch, **_):
+        actual_pods = kex_pods.get(name, [])
+        patch.status['replicas'] = len(actual_pods)
+
+    @kopf.on.event('kopfexamples')
+    def react_on_state_changes(body, name, **_):
+        actual_replicas = body.status.get('replicas', 0)
+        desired_replicas = body.spec.get('replicas', 1)
+        delta = desired_replicas - actual_replicas
+        if delta > 0:
+            print(f"Spawn {delta} new pods with labels: {{'parent-kex': {name!r}}}.")
+        if delta < 0:
+            running_pods = kex_pods.get(name, [])
+            pods_to_terminate = random.sample(running_pods, k=min(-delta, len(running_pods))
+            print(f"Terminate {-delta} random pods: {pods_to_terminate}")
+
+Time-based polling is good both for in-cluster and external "actual states", and is in fact the only way for external "actual states" from third-party APIs.
+
+For immediate reaction instead of timing, turn this timer into a daemon, introduce a global operator-scoped condition (e.g., an :class:`asyncio.Condition`) stored in :doc:`memos` on operator startup, await for it in the daemon of the parent resource, notify it in the indexers of the children resources (mind the synchronisation: the index changes slightly after the exit from the indexer).
