@@ -451,6 +451,32 @@ To store the state only in the status or any other field:
     def configure(settings: kopf.OperatorSettings, **_):
         settings.persistence.progress_storage = kopf.StatusProgressStorage(field='status.my-operator')
 
+Storing progress in files
+-------------------------
+
+To store the progress in YAML files on a shared filesystem or pod volume,
+instead of on the Kubernetes object itself:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.persistence.progress_storage = kopf.FileProgressStorage(path='/var/kopf-storage')
+
+Each Kubernetes resource gets its own file, named
+``{namespace}-{name}-{uid}.progress.yaml`` (or ``{name}-{uid}.progress.yaml``
+for cluster-scoped resources). The file contains a YAML mapping of handler IDs
+to their progress records. A small touch annotation is still written to the
+Kubernetes object to trigger watch events for delayed handler retries.
+
+You must configure the operator's environment to persist the directory content
+between restarts and to share it with multiple operator instances.
+Usually, a mounted volume or a shared filesystem work fine,
+but exercise caution with locally running operators on developer machines
+with no access to the same directory/filesystem.
+
 Storing progress in multiple places
 -----------------------------------
 
@@ -589,6 +615,30 @@ The default is an equivalent of:
 
 The stored content is a JSON-serialised essence of the object (i.e., only
 the important fields, with system fields and status stanza removed).
+
+Storing diff base in files
+--------------------------
+
+To store the last-handled configuration in YAML files on a shared filesystem
+or pod volume, instead of on the Kubernetes object itself:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.persistence.diffbase_storage = kopf.FileDiffBaseStorage(path='/var/kopf-storage')
+
+Each Kubernetes resource gets its own file, named
+``{namespace}-{name}-{uid}.diffbase.yaml`` (or ``{name}-{uid}.diffbase.yaml``
+for cluster-scoped resources). The file contains the YAML-encoded body essence.
+
+You must configure the operator's environment to persist the directory content
+between restarts and to share it with multiple operator instances.
+Usually, a mounted volume or a shared filesystem work fine,
+but exercise caution with locally running operators on developer machines
+with no access to the same directory/filesystem.
 
 Storing diff base in multiple places
 ------------------------------------
