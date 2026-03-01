@@ -42,6 +42,7 @@ import abc
 import copy
 import json
 import pathlib
+import urllib.parse
 from collections.abc import Collection, Mapping
 from typing import Any, TypedDict, cast
 
@@ -412,14 +413,23 @@ class FileProgressStorage(ProgressStorage):
         self.prefix = prefix
         self.touch_key = touch_key
 
+    @staticmethod
+    def _escape(value: str) -> str:
+        """Percent-encode a value for safe use in filenames."""
+        # urllib.parse.quote never encodes dots (unreserved in RFC 3986),
+        # so we replace them manually to prevent '..' path traversal.
+        return urllib.parse.quote(value, safe='-_~').replace('.', '%2E')
+
     def _build_filename(self, body: bodies.Body) -> pathlib.Path | None:
         namespace = body.get('metadata', {}).get('namespace')
         name = body.get('metadata', {}).get('name')
         uid = body.get('metadata', {}).get('uid')
         if not name or not uid:
             return None
-        prefix = f'{namespace}-' if namespace else ''
-        return self._path / f'{prefix}{name}-{uid}.progress.yaml'
+        safe_name = self._escape(name)
+        safe_uid = self._escape(uid)
+        prefix = f'{self._escape(namespace)}-' if namespace else ''
+        return self._path / f'{prefix}{safe_name}-{safe_uid}.progress.yaml'
 
     def fetch(
             self,

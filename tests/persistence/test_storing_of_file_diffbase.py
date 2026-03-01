@@ -82,6 +82,31 @@ def test_filename_for_body_without_uid(tmp_path):
     assert filepath is None
 
 
+def test_filename_escapes_slashes(tmp_path):
+    storage = FileDiffBaseStorage(path=tmp_path)
+    body = Body({'metadata': {'namespace': 'ns', 'name': 'a/b', 'uid': 'uid1'}})
+    filepath = storage._build_filename(body)
+    assert '/' not in filepath.name
+    assert 'a%2Fb' in filepath.name
+
+
+def test_filename_escapes_double_dots(tmp_path):
+    storage = FileDiffBaseStorage(path=tmp_path)
+    body = Body({'metadata': {'namespace': '..', 'name': '..', 'uid': 'uid1'}})
+    filepath = storage._build_filename(body)
+    assert filepath.name == '%2E%2E-%2E%2E-uid1.diffbase.yaml'
+    assert filepath.parent == tmp_path
+
+
+def test_filename_escapes_special_characters(tmp_path):
+    storage = FileDiffBaseStorage(path=tmp_path)
+    body = Body({'metadata': {'namespace': 'ns', 'name': 'a:b@c', 'uid': 'uid1'}})
+    filepath = storage._build_filename(body)
+    assert '/' not in filepath.name
+    assert ':' not in filepath.name
+    assert '@' not in filepath.name
+
+
 #
 # Fetching.
 #

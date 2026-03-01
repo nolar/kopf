@@ -70,6 +70,13 @@ def test_filename_for_namespaced_resource(tmp_path):
     assert filepath == tmp_path / 'default-my-app-abc-123.progress.yaml'
 
 
+def test_filename_for_dotted_name(tmp_path):
+    storage = FileProgressStorage(path=tmp_path)
+    body = Body({'metadata': {'namespace': 'default', 'name': 'my.app.v1', 'uid': 'uid1'}})
+    filepath = storage._build_filename(body)
+    assert filepath == tmp_path / 'default-my%2Eapp%2Ev1-uid1.progress.yaml'
+
+
 def test_filename_for_cluster_resource(tmp_path):
     storage = FileProgressStorage(path=tmp_path)
     body = Body({'metadata': {'name': 'my-node', 'uid': 'abc-123'}})
@@ -96,6 +103,32 @@ def test_filename_for_body_without_uid(tmp_path):
     body = Body({'metadata': {'name': 'name1'}})
     filepath = storage._build_filename(body)
     assert filepath is None
+
+
+def test_filename_escapes_slashes(tmp_path):
+    storage = FileProgressStorage(path=tmp_path)
+    body = Body({'metadata': {'namespace': 'ns', 'name': 'a/b', 'uid': 'uid1'}})
+    filepath = storage._build_filename(body)
+    assert '/' not in filepath.name
+    assert 'a%2Fb' in filepath.name
+
+
+def test_filename_escapes_double_dots(tmp_path):
+    storage = FileProgressStorage(path=tmp_path)
+    body = Body({'metadata': {'namespace': '..', 'name': '..', 'uid': 'uid1'}})
+    filepath = storage._build_filename(body)
+    assert filepath.name == '%2E%2E-%2E%2E-uid1.progress.yaml'
+    # Must stay flat in the configured directory (no path traversal).
+    assert filepath.parent == tmp_path
+
+
+def test_filename_escapes_special_characters(tmp_path):
+    storage = FileProgressStorage(path=tmp_path)
+    body = Body({'metadata': {'namespace': 'ns', 'name': 'a:b@c', 'uid': 'uid1'}})
+    filepath = storage._build_filename(body)
+    assert '/' not in filepath.name
+    assert ':' not in filepath.name
+    assert '@' not in filepath.name
 
 
 #
