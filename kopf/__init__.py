@@ -24,6 +24,7 @@ from kopf._cogs.configs.diffbase import (
     DiffBaseStorage,
     AnnotationsDiffBaseStorage,
     StatusDiffBaseStorage,
+    FileDiffBaseStorage,
     MultiDiffBaseStorage,
 )
 from kopf._cogs.configs.progress import (
@@ -31,6 +32,7 @@ from kopf._cogs.configs.progress import (
     ProgressStorage,
     AnnotationsProgressStorage,
     StatusProgressStorage,
+    FileProgressStorage,
     MultiProgressStorage,
     SmartProgressStorage,
 )
@@ -233,11 +235,13 @@ __all__ = [
     'DiffBaseStorage',
     'AnnotationsDiffBaseStorage',
     'StatusDiffBaseStorage',
+    'FileDiffBaseStorage',
     'MultiDiffBaseStorage',
     'ProgressRecord',
     'ProgressStorage',
     'AnnotationsProgressStorage',
     'StatusProgressStorage',
+    'FileProgressStorage',
     'MultiProgressStorage',
     'SmartProgressStorage',
     'RawEventType',
