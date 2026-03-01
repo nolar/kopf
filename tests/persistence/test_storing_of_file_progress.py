@@ -74,7 +74,7 @@ def test_filename_for_dotted_name(tmp_path):
     storage = FileProgressStorage(path=tmp_path)
     body = Body({'metadata': {'namespace': 'default', 'name': 'my.app.v1', 'uid': 'uid1'}})
     filepath = storage._build_filename(body)
-    assert filepath == tmp_path / 'default-my%2Eapp%2Ev1-uid1.progress.yaml'
+    assert filepath == tmp_path / 'default-my.app.v1-uid1.progress.yaml'
 
 
 def test_filename_for_cluster_resource(tmp_path):

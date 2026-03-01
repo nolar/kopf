@@ -32,6 +32,8 @@ replaced; in some cases, they will be cut and hash-suffixed.
 """
 import base64
 import hashlib
+import pathlib
+import urllib.parse
 import warnings
 from collections.abc import Collection, Iterable
 from typing import Any
@@ -285,3 +287,47 @@ class StorageStanzaCleaner:
             del essence['metadata']
         if 'status' in essence and not essence['status']:
             del essence['status']
+
+
+class FileNamingConvention:
+    """
+    A mixin for file-based storages to build filenames from K8s resource metadata.
+
+    Each resource gets a file named after its namespace, name, and uid,
+    with special characters percent-encoded for safe use in file paths.
+    """
+
+    def __init__(
+            self,
+            *args: Any,
+            path: str | pathlib.Path,
+            file_suffix: str,
+            **kwargs: Any,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self._path = pathlib.Path(path)
+        self._file_suffix = file_suffix
+
+    @staticmethod
+    def _escape(value: str) -> str:
+        """Percent-encode a value for safe use in filenames."""
+        # Encode special characters that are unsafe in filenames (slashes, etc.).
+        # Dots are kept as-is since they are common in K8s resource names.
+        safe = urllib.parse.quote(value, safe='-._~')
+        # Protect against '..' path traversal when the entire value is '..'.
+        # Slashes are already encoded by quote(), so '..' can only cause
+        # traversal when it is the whole component.
+        if safe == '..':
+            safe = '%2E%2E'
+        return safe
+
+    def _build_filename(self, body: bodies.Body) -> pathlib.Path | None:
+        namespace = body.get('metadata', {}).get('namespace')
+        name = body.get('metadata', {}).get('name')
+        uid = body.get('metadata', {}).get('uid')
+        if not name or not uid:
+            return None
+        safe_name = self._escape(name)
+        safe_uid = self._escape(uid)
+        prefix = f'{self._escape(namespace)}-' if namespace else ''
+        return self._path / f'{prefix}{safe_name}-{safe_uid}.{self._file_suffix}.yaml'

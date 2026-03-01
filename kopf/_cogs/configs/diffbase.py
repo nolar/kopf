@@ -2,7 +2,6 @@ import abc
 import copy
 import json
 import pathlib
-import urllib.parse
 from collections.abc import Collection, Iterable
 from typing import Any, cast
 
@@ -229,7 +228,7 @@ class StatusDiffBaseStorage(DiffBaseStorage):
         dicts.ensure(patch, self.field, encoded)
 
 
-class FileDiffBaseStorage(DiffBaseStorage):
+class FileDiffBaseStorage(conventions.FileNamingConvention, DiffBaseStorage):
     """
     Diff-base storage in YAML files on a shared filesystem or pod volume.
 
@@ -258,26 +257,7 @@ class FileDiffBaseStorage(DiffBaseStorage):
             path: str | pathlib.Path,
             ignored_fields: Iterable[dicts.FieldSpec] | None = None,
     ) -> None:
-        super().__init__(ignored_fields=ignored_fields)
-        self._path = pathlib.Path(path)
-
-    @staticmethod
-    def _escape(value: str) -> str:
-        """Percent-encode a value for safe use in filenames."""
-        # urllib.parse.quote never encodes dots (unreserved in RFC 3986),
-        # so we replace them manually to prevent '..' path traversal.
-        return urllib.parse.quote(value, safe='-_~').replace('.', '%2E')
-
-    def _build_filename(self, body: bodies.Body) -> pathlib.Path | None:
-        namespace = body.get('metadata', {}).get('namespace')
-        name = body.get('metadata', {}).get('name')
-        uid = body.get('metadata', {}).get('uid')
-        if not name or not uid:
-            return None
-        safe_name = self._escape(name)
-        safe_uid = self._escape(uid)
-        prefix = f'{self._escape(namespace)}-' if namespace else ''
-        return self._path / f'{prefix}{safe_name}-{safe_uid}.diffbase.yaml'
+        super().__init__(path=path, file_suffix='diffbase', ignored_fields=ignored_fields)
 
     def fetch(
             self,
