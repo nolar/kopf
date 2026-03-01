@@ -119,11 +119,13 @@ class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
     ) -> None:
         raise NotImplementedError
 
-    @abc.abstractmethod
     def clear(self, *, essence: bodies.BodyEssence) -> bodies.BodyEssence:
         return copy.deepcopy(essence)
 
     def flush(self) -> None:
+        pass
+
+    def erase(self, *, body: bodies.Body) -> None:
         pass
 
 
@@ -437,6 +439,10 @@ class MultiProgressStorage(ProgressStorage):
         for storage in self.storages:
             essence = storage.clear(essence=essence)
         return essence
+
+    def erase(self, *, body: bodies.Body) -> None:
+        for storage in self.storages:
+            storage.erase(body=body)
 
 
 class SmartProgressStorage(MultiProgressStorage):
