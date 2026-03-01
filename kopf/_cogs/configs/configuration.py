@@ -72,7 +72,7 @@ class PostingSettings:
     (``kopf.info()``, ``kopf.warn()``, ``kopf.exception()``).
     """
 
-    loggers: bool = True
+    loggers: bool = False
     """
     Should the log messages from the loggers be posted as K8s Events.
 

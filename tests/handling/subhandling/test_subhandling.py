@@ -38,6 +38,7 @@ async def test_1st_level(registry, settings, resource, cause_mock, event_type,
         async def sub1b(**_):
             sub1b_mock(**kwargs)
 
+    settings.posting.loggers = True
     event_queue = asyncio.Queue()
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
@@ -113,6 +114,7 @@ async def test_2nd_level(registry, settings, resource, cause_mock, event_type,
             def sub1b2b(**kwargs):
                 sub1b2b_mock(**kwargs)
 
+    settings.posting.loggers = True
     event_queue = asyncio.Queue()
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,

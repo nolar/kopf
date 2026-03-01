@@ -17,8 +17,8 @@ def _settings_via_contextvar(settings_via_contextvar):
     pass
 
 
-async def test_loggers_setting_default_is_true(settings):
-    assert settings.posting.loggers  # for backwards compatibility
+async def test_loggers_setting_default_is_false(settings):
+    assert not settings.posting.loggers
 
 
 async def test_loggers_setting_true_posts_loggers(settings, event_queue, event_queue_loop, caplog):
