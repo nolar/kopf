@@ -82,6 +82,7 @@ from kopf._cogs.structs.ids import (
 )
 from kopf._cogs.structs.patches import (
     Patch,
+    PatchFn,
 )
 from kopf._cogs.structs.references import (
     Resource,
@@ -264,6 +265,7 @@ __all__ = [
     'HandlerId',
     'Reason',
     'Patch',
+    'PatchFn',
     'DaemonStopped',
     'DaemonStoppingReason',
     'SyncDaemonStopperChecker',  # deprecated

@@ -219,7 +219,7 @@ async def touch(
 
     patch = patches.Patch()
     patch |= {'status': {identity: None if peer.is_dead else peer.as_dict()}}
-    rsp = await patching.patch_obj(
+    rsp, remaining_patch = await patching.patch_obj(
         settings=settings,
         resource=resource,
         namespace=namespace,

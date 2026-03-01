@@ -64,7 +64,7 @@ async def process_resource_event(
     # 4. Same as where a patch object of a similar wrapping semantics is created.
     live_fresh_body = memory.daemons_memory.live_fresh_body
     body = live_fresh_body if live_fresh_body is not None else bodies.Body(raw_body)
-    patch = patches.Patch()
+    patch = patches.Patch(memory.remaining_patch, body=raw_body)
 
     # Different loggers for different cases with different verbosity and exposure.
     local_logger = loggers.LocalObjectLogger(body=body, settings=settings)
@@ -127,7 +127,7 @@ async def process_resource_event(
             # But only once, to reduce the number of API calls and the generated irrelevant events.
             # And only if the object is at least supposed to exist (not "GONE"), even if actually does not.
             if raw_event['type'] != 'DELETED':
-                applied, resource_version = await application.apply(
+                applied, resource_version, remaining_patch = await application.apply(
                     settings=settings,
                     resource=resource,
                     body=body,
@@ -138,6 +138,7 @@ async def process_resource_event(
                 )
                 if applied and matched:
                     local_logger.debug("Handling cycle is finished, waiting for new changes.")
+                memory.remaining_patch = remaining_patch
                 return resource_version
     return None
 
@@ -227,6 +228,8 @@ async def process_resource_causes(
         stream_pressure: asyncio.Event | None,  # None for tests
         consistency_time: float | None,
 ) -> tuple[Collection[float], bool]:
+    patch_initially_empty = not patch  # before we add new things in low-level handlers
+
     finalizer = settings.persistence.finalizer
     watching_cause, spawning_cause, changing_cause = _detect_causes(
         indexers=indexers,
@@ -305,6 +308,7 @@ async def process_resource_causes(
         loop = asyncio.get_running_loop()
         unslept = await aiotime.sleep(consistency_time - loop.time(), wakeup=stream_pressure)
         consistency_is_achieved = unslept is None  # "woke up" vs. "timed out"
+    consistency_is_achieved = consistency_is_achieved and patch_initially_empty
     if consistency_is_required and not consistency_is_achieved:
         return list(spawning_delays), False  # exit to PATCHing and/or re-iterating over new events.
 
