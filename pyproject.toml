@@ -141,6 +141,8 @@ ignore_missing_imports = true
 minversion = "9.0"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+log_format = "%(asctime)s %(levelname)s %(message)s"
+log_date_format = "%Y-%m-%d %H:%M:%S"
 addopts = ["--strict-markers", "--looptime"]
 
 [tool.isort]
