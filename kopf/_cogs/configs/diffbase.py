@@ -253,8 +253,8 @@ class FileDiffBaseStorage(conventions.FileNamingConvention, DiffBaseStorage):
 
     def __init__(
             self,
-            *,
             path: str | pathlib.Path,
+            *,
             ignored_fields: Iterable[dicts.FieldSpec] | None = None,
     ) -> None:
         super().__init__(path=path, file_suffix='diffbase', ignored_fields=ignored_fields)

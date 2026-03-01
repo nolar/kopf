@@ -402,8 +402,8 @@ class FileProgressStorage(conventions.FileNamingConvention, ProgressStorage):
 
     def __init__(
             self,
-            *,
             path: str | pathlib.Path,
+            *,
             prefix: str = 'kopf.dev',
             touch_key: str = 'touch-dummy',
     ) -> None:
