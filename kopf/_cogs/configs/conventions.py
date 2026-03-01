@@ -33,6 +33,7 @@ replaced; in some cases, they will be cut and hash-suffixed.
 import base64
 import hashlib
 import pathlib
+import sqlite3
 import urllib.parse
 import warnings
 from collections.abc import Collection, Iterable
@@ -332,3 +333,65 @@ class FileNamingConvention:
         safe_uid = self._escape(uid)
         prefix = f'{self._escape(namespace)}-' if namespace else ''
         return self._path / f'{prefix}{safe_name}-{safe_uid}.{self._file_suffix}.yaml'
+
+
+class SQLiteConvention:
+    """
+    A mixin for SQLite-based storages with optimistic table creation.
+
+    Operations are tried first; if the table does not exist, it is created
+    and the operation is retried. This avoids upfront schema management
+    and lets both storage types share the same database file when pointed
+    to the same path.
+    """
+
+    _create_sql: str  # to be defined by subclasses
+
+    def __init__(
+            self,
+            *args: Any,
+            path: str | pathlib.Path,
+            **kwargs: Any,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self._path = pathlib.Path(path)
+
+    @staticmethod
+    def _extract_keys(body: bodies.Body) -> tuple[str, str | None, str | None]:
+        namespace = body.get('metadata', {}).get('namespace') or ''
+        name = body.get('metadata', {}).get('name')
+        uid = body.get('metadata', {}).get('uid')
+        return namespace, name, uid
+
+    def _connect(self) -> sqlite3.Connection:
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        return sqlite3.connect(str(self._path))
+
+    def _execute(
+            self,
+            conn: sqlite3.Connection,
+            sql: str,
+            params: tuple[Any, ...] = (),
+    ) -> sqlite3.Cursor:
+        """Execute SQL, creating the table optimistically if absent."""
+        try:
+            return conn.execute(sql, params)
+        except sqlite3.OperationalError as e:
+            if 'no such table' not in str(e):
+                raise
+            conn.execute(self._create_sql)
+            return conn.execute(sql, params)
+
+    def _try_execute(
+            self,
+            conn: sqlite3.Connection,
+            sql: str,
+            params: tuple[Any, ...] = (),
+    ) -> sqlite3.Cursor | None:
+        """Execute SQL, returning None if the table does not exist."""
+        try:
+            return conn.execute(sql, params)
+        except sqlite3.OperationalError as e:
+            if 'no such table' not in str(e):
+                raise
+            return None

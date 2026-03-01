@@ -411,6 +411,22 @@ for cluster-scoped resources). The file contains a YAML mapping of handler IDs
 to their progress records. A small touch annotation is still written to the
 Kubernetes object to trigger watch events for delayed handler retries.
 
+To store the state in a SQLite database:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.persistence.progress_storage = kopf.SQLiteProgressStorage(path='/var/kopf/state.db')
+
+Each handler's progress record is stored as a separate row in a ``progress``
+table, keyed by the resource's namespace, name, uid, and handler id. The table
+is created automatically on first use. A small touch annotation is still written
+to the Kubernetes object to trigger watch events for delayed handler retries.
+Multiple storage types can share the same database file.
+
 To store in multiple places (stored in sync, but the first found state will be
 used when fetching, i.e. the first storage has precedence):
 
@@ -535,6 +551,21 @@ or pod volume, instead of on the Kubernetes object itself:
 Each Kubernetes resource gets its own file, named
 ``{namespace}-{name}-{uid}.diffbase.yaml`` (or ``{name}-{uid}.diffbase.yaml``
 for cluster-scoped resources). The file contains the YAML-encoded body essence.
+
+To store the last-handled configuration in a SQLite database:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.persistence.diffbase_storage = kopf.SQLiteDiffBaseStorage(path='/var/kopf/state.db')
+
+Each resource's body essence is stored as a single row in a ``diffbase`` table,
+keyed by the resource's namespace, name, and uid. The table is created
+automatically on first use. Multiple storage types can share the same
+database file.
 
 It is generally not a good idea to override this store unless multiple
 Kopf-based operators must handle the same resources, and they should not
