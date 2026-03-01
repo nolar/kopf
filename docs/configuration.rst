@@ -426,6 +426,25 @@ Usually, a mounted volume or a shared filesystem work fine,
 but exercise caution with locally running operators on developer machines
 with no access to the same directory/filesystem.
 
+Storing progress in sqlite
+--------------------------
+
+To store the state in a SQLite database:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.persistence.progress_storage = kopf.SQLiteProgressStorage(path='/var/kopf/state.db')
+
+Each handler's progress record is stored as a separate row in a ``progress``
+table, keyed by the resource's namespace, name, uid, and handler id. The table
+is created automatically on first use. A small touch annotation is still written
+to the Kubernetes object to trigger watch events for delayed handler retries.
+Multiple storage types can share the same database file.
+
 Storing progress in multiple places
 -----------------------------------
 
@@ -589,6 +608,25 @@ between restarts and to share it with multiple operator instances.
 Usually, a mounted volume or a shared filesystem work fine,
 but exercise caution with locally running operators on developer machines
 with no access to the same directory/filesystem.
+
+Storing diff base in sqlite
+---------------------------
+
+To store the last-handled configuration in a SQLite database:
+
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.persistence.diffbase_storage = kopf.SQLiteDiffBaseStorage(path='/var/kopf/state.db')
+
+Each resource's body essence is stored as a single row in a ``diffbase`` table,
+keyed by the resource's namespace, name, and uid. The table is created
+automatically on first use. Multiple storage types can share the same
+database file.
 
 Storing diff base in multiple places
 ------------------------------------
