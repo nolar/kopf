@@ -486,6 +486,137 @@ class FileProgressStorage(conventions.FileNamingConvention, ProgressStorage):
         return essence
 
 
+class SQLiteProgressStorage(conventions.SQLiteConvention, ProgressStorage):
+    """
+    State storage in a SQLite database file.
+
+    Each handler's progress record is stored as a separate row, keyed by
+    the resource's namespace, name, uid, and the handler id. The record
+    itself is stored as a JSON string.
+
+    An example of the ``progress`` table contents:
+
+    .. code-block:: text
+
+        namespace | name   | uid   | handler_id | record
+        ----------+--------+-------+------------+----------------------------------
+        default   | my-app | uid1  | my_handler | {"started":"...","retries":1,...}
+
+    The progress data itself is stored in SQLite, not on the Kubernetes object.
+    However, a touch annotation is still written to the object (via the patch)
+    to trigger Kubernetes watch events when the object needs to be re-evaluated
+    (e.g. for delayed handler retries).
+    """
+
+    _create_sql = (
+        'CREATE TABLE IF NOT EXISTS progress ('
+        'namespace TEXT NOT NULL, '
+        'name TEXT NOT NULL, '
+        'uid TEXT NOT NULL, '
+        'handler_id TEXT NOT NULL, '
+        'record TEXT NOT NULL, '
+        'PRIMARY KEY (namespace, name, uid, handler_id))'
+    )
+
+    def __init__(
+            self,
+            *,
+            path: str | pathlib.Path,
+            prefix: str = 'kopf.dev',
+            touch_key: str = 'touch-dummy',
+    ) -> None:
+        super().__init__(path=path)
+        self.prefix = prefix
+        self.touch_key = touch_key
+
+    def fetch(
+            self,
+            *,
+            key: ids.HandlerId,
+            body: bodies.Body,
+    ) -> ProgressRecord | None:
+        namespace, name, uid = self._extract_keys(body)
+        if not name or not uid:
+            return None
+        conn = self._connect()
+        try:
+            cursor = self._try_execute(conn,
+                'SELECT record FROM progress'
+                ' WHERE namespace=? AND name=? AND uid=? AND handler_id=?',
+                (namespace, name, uid, key))
+            if cursor is None:
+                return None
+            row = cursor.fetchone()
+        finally:
+            conn.close()
+        if row is None:
+            return None
+        return cast(ProgressRecord, json.loads(row[0]))
+
+    def store(
+            self,
+            *,
+            key: ids.HandlerId,
+            record: ProgressRecord,
+            body: bodies.Body,
+            patch: patches.Patch,
+    ) -> None:
+        namespace, name, uid = self._extract_keys(body)
+        if not name or not uid:
+            return
+        encoded = json.dumps({k: v for k, v in record.items() if v is not None})
+        conn = self._connect()
+        try:
+            self._execute(conn,
+                'INSERT OR REPLACE INTO progress'
+                ' (namespace, name, uid, handler_id, record) VALUES (?, ?, ?, ?, ?)',
+                (namespace, name, uid, key, encoded))
+            conn.commit()
+        finally:
+            conn.close()
+
+    def purge(
+            self,
+            *,
+            key: ids.HandlerId,
+            body: bodies.Body,
+            patch: patches.Patch,
+    ) -> None:
+        namespace, name, uid = self._extract_keys(body)
+        if not name or not uid:
+            return
+        conn = self._connect()
+        try:
+            self._try_execute(conn,
+                'DELETE FROM progress'
+                ' WHERE namespace=? AND name=? AND uid=? AND handler_id=?',
+                (namespace, name, uid, key))
+            conn.commit()
+        finally:
+            conn.close()
+
+    def touch(
+            self,
+            *,
+            body: bodies.Body,
+            patch: patches.Patch,
+            value: str | None,
+    ) -> None:
+        full_key = f'{self.prefix}/{self.touch_key}' if self.prefix else self.touch_key
+        key_field = ['metadata', 'annotations', full_key]
+        body_value = dicts.resolve(body, key_field, None)
+        if body_value != value:  # also covers absent-vs-None cases.
+            dicts.ensure(patch, key_field, value)
+
+    def clear(self, *, essence: bodies.BodyEssence) -> bodies.BodyEssence:
+        essence = super().clear(essence=essence)
+        annotations = essence.get('metadata', {}).get('annotations', {})
+        keys = {key for key in annotations if self.prefix and key.startswith(f'{self.prefix}/')}
+        self.remove_annotations(essence, keys)
+        self.remove_empty_stanzas(essence)
+        return essence
+
+
 class MultiProgressStorage(ProgressStorage):
 
     def __init__(
