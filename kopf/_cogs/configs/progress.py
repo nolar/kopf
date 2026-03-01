@@ -370,6 +370,17 @@ class StatusProgressStorage(ProgressStorage):
         return essence
 
 
+# Not very proper OOP-wise, but we use it only internally (not exported), so it is fine.
+# It should end the transitioning phase of Mar'20–Mar'26 by not writing to status anymore
+# because this increases the number of API PATCH requests "out of the box" with no need.
+class NoWriteStatusProgressStorage(StatusProgressStorage):
+    def store(self, **_: Any) -> None:
+        pass
+
+    def touch(self, **_: Any) -> None:
+        pass
+
+
 class MultiProgressStorage(ProgressStorage):
 
     def __init__(
@@ -443,5 +454,5 @@ class SmartProgressStorage(MultiProgressStorage):
     ) -> None:
         super().__init__([
             AnnotationsProgressStorage(v1=v1, prefix=prefix, verbose=verbose, touch_key=touch_key),
-            StatusProgressStorage(name=name, field=field, touch_field=touch_field),
+            NoWriteStatusProgressStorage(name=name, field=field, touch_field=touch_field),
         ])

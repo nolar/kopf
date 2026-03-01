@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import json
 
 import freezegun
 import pytest
@@ -53,7 +54,8 @@ async def test_delayed_handlers_progress(
 
     fname = f'{cause_reason}_fn'
     patch = k8s_mocked.patch.call_args_list[0].kwargs['payload']
-    assert patch['status']['kopf']['progress'][fname]['delayed'] == delayed_iso
+    progress = json.loads(patch['metadata']['annotations'][f"kopf.zalando.org/{fname}"])
+    assert progress['delayed'] == delayed_iso
 
     assert_logs([
         "Handler .+ is invoked",
@@ -109,7 +111,8 @@ async def test_delayed_handlers_sleep(
 
     # The dummy patch is needed to trigger the further changes. The value is irrelevant.
     assert k8s_mocked.patch.called
-    assert 'dummy' in k8s_mocked.patch.call_args_list[-1].kwargs['payload']['status']['kopf']
+    patch = k8s_mocked.patch.call_args_list[0].kwargs['payload']
+    assert 'kopf.zalando.org/touch-dummy' in patch['metadata']['annotations']
 
     # The duration of sleep should be as expected.
     assert looptime == delay
