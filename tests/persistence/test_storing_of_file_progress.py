@@ -122,6 +122,23 @@ def test_filename_escapes_double_dots(tmp_path):
     assert filepath.parent == tmp_path
 
 
+def test_filename_escapes_double_dots_with_slashes(tmp_path):
+    storage = FileProgressStorage(path=tmp_path)
+    body = Body({'metadata': {'namespace': 'ns', 'name': '../path', 'uid': 'uid1'}})
+    filepath = storage._build_filename(body)
+    assert '..' not in filepath.name
+    assert '%2E%2E%2Fpath' in filepath.name
+    assert filepath.parent == tmp_path
+
+
+def test_filename_escapes_double_dots_in_middle(tmp_path):
+    storage = FileProgressStorage(path=tmp_path)
+    body = Body({'metadata': {'namespace': 'ns', 'name': 'a/../b', 'uid': 'uid1'}})
+    filepath = storage._build_filename(body)
+    assert '..' not in filepath.name
+    assert filepath.parent == tmp_path
+
+
 def test_filename_escapes_special_characters(tmp_path):
     storage = FileProgressStorage(path=tmp_path)
     body = Body({'metadata': {'namespace': 'ns', 'name': 'a:b@c', 'uid': 'uid1'}})

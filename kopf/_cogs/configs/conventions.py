@@ -314,12 +314,13 @@ class FileNamingConvention:
         # Encode special characters that are unsafe in filenames (slashes, etc.).
         # Dots are kept as-is since they are common in K8s resource names.
         safe = urllib.parse.quote(value, safe='-._~')
-        # Protect against '..' path traversal when the entire value is '..'.
-        # Slashes are already encoded by quote(), so '..' can only cause
-        # traversal when it is the whole component.
-        if safe == '..':
-            safe = '%2E%2E'
-        return safe
+        # Protect against '..' path traversal: replace '..' when it appears
+        # as a path component (alone or between encoded slashes %2F).
+        # After quoting, real slashes become %2F, so splitting on %2F
+        # recovers the original path components.
+        parts = safe.split('%2F')
+        parts = ['%2E%2E' if part == '..' else part for part in parts]
+        return '%2F'.join(parts)
 
     def _build_filename(self, body: bodies.Body) -> pathlib.Path | None:
         namespace = body.get('metadata', {}).get('namespace')
