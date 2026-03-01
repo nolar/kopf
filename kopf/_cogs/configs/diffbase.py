@@ -116,6 +116,9 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
     ) -> None:
         raise NotImplementedError
 
+    def erase(self, *, body: bodies.Body) -> None:
+        pass
+
 
 class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBaseStorage):
 
@@ -267,3 +270,7 @@ class MultiDiffBaseStorage(DiffBaseStorage):
     ) -> None:
         for storage in self.storages:
             storage.store(body=body, patch=patch, essence=essence)
+
+    def erase(self, *, body: bodies.Body) -> None:
+        for storage in self.storages:
+            storage.erase(body=body)
