@@ -49,7 +49,7 @@ async def apply(
         delays: Collection[float],
         logger: loggers.ObjectLogger,
         stream_pressure: asyncio.Event | None = None,  # None for tests
-) -> tuple[bool, str | None]:
+) -> tuple[bool, str | None, patches.Patch | None]:
     delay = min(delays) if delays else None
 
     # Delete dummies on occasion, but don't trigger special patching for them [discussable].
@@ -57,7 +57,7 @@ async def apply(
         settings.persistence.progress_storage.touch(body=body, patch=patch, value=None)
 
     # Actually patch if it was not empty originally or after the dummies removal.
-    resource_version = await patch_and_check(
+    resource_version, remaining_patch = await patch_and_check(
         settings=settings,
         resource=resource,
         logger=logger,
@@ -92,16 +92,16 @@ async def apply(
             value = datetime.datetime.now(datetime.timezone.utc).isoformat()
             touch = patches.Patch()
             settings.persistence.progress_storage.touch(body=body, patch=touch, value=value)
-            resource_version = await patch_and_check(
+            resource_version, _ = await patch_and_check(
                 settings=settings,
                 resource=resource,
                 logger=logger,
-                patch=touch,
+                patch=touch,  # NB: a minimal structure, nothing to remain
                 body=body,
             )
     elif not patch:  # no patch/touch and no delay
         applied = True
-    return applied, resource_version
+    return applied, resource_version, remaining_patch
 
 
 async def patch_and_check(
@@ -111,11 +111,11 @@ async def patch_and_check(
         body: bodies.Body,
         patch: patches.Patch,
         logger: typedefs.Logger,
-) -> str | None:  # patched resource version
+) -> tuple[str | None, patches.Patch | None]:  # (patched resource version, remaining patch)
     """
     Apply a patch and verify that it is applied correctly.
 
-    The inconsistencies are checked only against what was in the patch.
+    The inconsistencies are checked only against what was in the merge-patch.
     Other unexpected changes in the body are ignored, including the system
     fields, such as generations, resource versions, and other unrelated fields,
     such as other statuses, spec, labels, annotations, etc.
@@ -125,10 +125,18 @@ async def patch_and_check(
     whenever an empty list/dict is stored, such fields are completely removed.
     For normal fields (e.g. in spec/status), an empty list/dict is still
     a value and is persisted in the object and matches with the patch.
+
+    The JSON-patch transformation functions are currently also ignored.
     """
+    # TODO: LATER: Get rid of inconsistency checking entirely?
+    #  WHY? -> It is difficult to calculate the desired state with JSON-patching in place.
+    #  It now checks only the merge-patch inconsistencies. In most cases, there are none.
+    #  As JSON-patching becomes the main patching mechanism, this will not work anymore.
+    #  Introduced in https://github.com/nolar/kopf/pull/527 to notice the loss of data
+    #  in the status sub-resource when K8s 1.16+ "structural schemas" were added.
+    #  NOW: -> Keep it for merge-patches "just in case", do not improve it further.
     if patch:
-        logger.debug(f"Patching with: {patch!r}")
-        resulting_body = await patching.patch_obj(
+        resulting_body, remaining_patch = await patching.patch_obj(
             settings=settings,
             resource=resource,
             namespace=body.metadata.namespace,
@@ -142,9 +150,17 @@ async def patch_and_check(
             for op, field, old, new in inconsistencies
             if old or new or field not in KNOWN_INCONSISTENCIES
         )
-        if resulting_body is None:
-            logger.debug(f"Patching was skipped: the object does not exist anymore.")
-        elif inconsistencies:
-            logger.warning(f"Patching failed with inconsistencies: {inconsistencies}")
-        return (resulting_body or {}).get('metadata', {}).get('resourceVersion')
-    return None
+        if inconsistencies and resulting_body is not None:
+            logger.warning(f"Merge-patching finished with inconsistencies: {inconsistencies}")
+        resource_version = (resulting_body or {}).get('metadata', {}).get('resourceVersion')
+
+        # A workaround for Kubernetes behaviour on the removal of the LAST finalizer on deletion:
+        # it does NOT increase the resourceVersion, and uses the last one from merge-patches.
+        # We should NEVER expect the consistent state — the object is gone in an instant.
+        deletion_ongoing = bool((resulting_body or {}).get('metadata', {}).get('deletionTimestamp'))
+        deletion_blocked = bool((resulting_body or {}).get('metadata', {}).get('finalizers'))
+        if deletion_ongoing and not deletion_blocked:
+            resource_version = f"{resource_version}~which~never~arrives"
+
+        return resource_version, remaining_patch
+    return None, None

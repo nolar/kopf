@@ -21,7 +21,7 @@ import copy
 import dataclasses
 from collections.abc import Iterator, MutableMapping
 
-from kopf._cogs.structs import bodies, ephemera
+from kopf._cogs.structs import bodies, ephemera, patches
 from kopf._core.actions import throttlers
 from kopf._core.engines import admission, daemons, indexing
 
@@ -37,6 +37,7 @@ class ResourceMemory:
     error_throttler: throttlers.Throttler = dataclasses.field(default_factory=throttlers.Throttler)
     indexing_memory: indexing.IndexingMemory = dataclasses.field(default_factory=indexing.IndexingMemory)
     daemons_memory: daemons.DaemonsMemory = dataclasses.field(default_factory=daemons.DaemonsMemory)
+    remaining_patch: patches.Patch | None = None  # None to save memory
 
     # For resuming handlers tracking and deciding on should they be called or not.
     noticed_by_listing: bool = False

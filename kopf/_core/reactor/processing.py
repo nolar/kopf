@@ -14,6 +14,8 @@ But these internal changes are filtered out from the cause detection
 and therefore do not trigger the user-defined handlers.
 """
 import asyncio
+import contextlib
+import functools
 from collections.abc import Collection
 from typing import NamedTuple
 
@@ -40,6 +42,7 @@ async def process_resource_event(
         resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
         operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
         consistency_time: float | None = None,  # None for tests
+        no_throttling: bool = False,  # for tests & simulations
 ) -> str | None:  # patched resource version, if patched
     """
     Handle a single custom object low-level watch-event.
@@ -64,7 +67,7 @@ async def process_resource_event(
     # 4. Same as where a patch object of a similar wrapping semantics is created.
     live_fresh_body = memory.daemons_memory.live_fresh_body
     body = live_fresh_body if live_fresh_body is not None else bodies.Body(raw_body)
-    patch = patches.Patch()
+    patch = patches.Patch(memory.remaining_patch, body=raw_body)
 
     # Different loggers for different cases with different verbosity and exposure.
     local_logger = loggers.LocalObjectLogger(body=body, settings=settings)
@@ -75,12 +78,13 @@ async def process_resource_event(
     # to prevent queue overfilling, but the processing is skipped (events are ignored).
     # Choice of place: late enough to have a per-resource memory for a throttler; also, a logger.
     # But early enough to catch environment errors from K8s API, and from most of the complex code.
-    async with throttlers.throttled(
+    throttled = contextlib.nullcontext(True) if no_throttling else throttlers.throttled(
         throttler=memory.error_throttler,
         logger=local_logger,
         delays=settings.queueing.error_delays,
         wakeup=stream_pressure,
-    ) as should_run:
+    )
+    async with throttled as should_run:
         if should_run:
 
             # Each object has its own prefixed logger, to distinguish parallel handling.
@@ -127,7 +131,7 @@ async def process_resource_event(
             # But only once, to reduce the number of API calls and the generated irrelevant events.
             # And only if the object is at least supposed to exist (not "GONE"), even if actually does not.
             if raw_event['type'] != 'DELETED':
-                applied, resource_version = await application.apply(
+                applied, resource_version, remaining_patch = await application.apply(
                     settings=settings,
                     resource=resource,
                     body=body,
@@ -138,6 +142,7 @@ async def process_resource_event(
                 )
                 if applied and matched:
                     local_logger.debug("Handling cycle is finished, waiting for new changes.")
+                memory.remaining_patch = remaining_patch
                 return resource_version
     return None
 
@@ -227,6 +232,8 @@ async def process_resource_causes(
         stream_pressure: asyncio.Event | None,  # None for tests
         consistency_time: float | None,
 ) -> tuple[Collection[float], bool]:
+    patch_initially_empty = not patch  # before we add new things in low-level handlers
+
     finalizer = settings.persistence.finalizer
     watching_cause, spawning_cause, changing_cause = _detect_causes(
         indexers=indexers,
@@ -286,12 +293,12 @@ async def process_resource_causes(
 
     if deletion_must_be_blocked and not deletion_is_blocked and not deletion_is_ongoing:
         local_logger.debug("Adding the finalizer, thus preventing the actual deletion.")
-        finalizers.block_deletion(body=body, patch=patch, finalizer=finalizer)
+        patch.fns.append(functools.partial(finalizers.block_deletion, finalizer=finalizer))
         changing_cause = None  # prevent further high-level processing this time
 
     if not deletion_must_be_blocked and deletion_is_blocked:
         local_logger.debug("Removing the finalizer, as there are no handlers requiring it.")
-        finalizers.allow_deletion(body=body, patch=patch, finalizer=finalizer)
+        patch.fns.append(functools.partial(finalizers.allow_deletion, finalizer=finalizer))
         changing_cause = None  # prevent further high-level processing this time
 
     # If the state is inconsistent (yet), wait for new events in a hope that they bring consistency.
@@ -301,10 +308,13 @@ async def process_resource_causes(
     # Never release the object (i.e., remove the finalizer) in the inconsistent state, always wait.
     consistency_is_required = changing_cause is not None
     consistency_is_achieved = consistency_time is None  # i.e. preexisting consistency
+    if changing_cause is not None and changing_cause.reason == causes.Reason.GONE:
+        consistency_is_achieved = True  # for the final goodbye log message
     if consistency_is_required and not consistency_is_achieved and not patch and consistency_time:
         loop = asyncio.get_running_loop()
         unslept = await aiotime.sleep(consistency_time - loop.time(), wakeup=stream_pressure)
         consistency_is_achieved = unslept is None  # "woke up" vs. "timed out"
+    consistency_is_achieved = consistency_is_achieved and patch_initially_empty
     if consistency_is_required and not consistency_is_achieved:
         return list(spawning_delays), False  # exit to PATCHing and/or re-iterating over new events.
 
@@ -322,12 +332,14 @@ async def process_resource_causes(
         )
 
     # Release the object if everything is done, and it is marked for deletion.
-    # But not when it has already gone.
-    if deletion_is_ongoing and deletion_is_blocked and not spawning_delays and not changing_delays:
-        local_logger.debug("Removing the finalizer, thus allowing the actual deletion.")
-        finalizers.allow_deletion(body=body, patch=patch, finalizer=finalizer)
-
+    # Caveat: events of type DELETED show the last finalizer as present (K8s internal logic),
+    # falsely suggesting that it is still blocked and requires unblocking. No, it is not, does not.
     delays = list(spawning_delays) + list(changing_delays)
+    deleted = raw_event['type'] == 'DELETED'
+    if not deleted and deletion_is_ongoing and deletion_is_blocked and not delays:
+        local_logger.debug("Removing the finalizer, thus allowing the actual deletion.")
+        patch.fns.append(functools.partial(finalizers.allow_deletion, finalizer=finalizer))
+
     return (delays, changing_cause is not None)
 
 

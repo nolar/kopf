@@ -1,7 +1,10 @@
+import functools
+
 import pytest
 
 from kopf._cogs.structs.finalizers import allow_deletion, block_deletion, \
                                           is_deletion_blocked, is_deletion_ongoing
+from kopf._cogs.structs.patches import Patch
 
 
 def test_finalizer_is_fqdn(settings):
@@ -33,45 +36,56 @@ def test_has_finalizers(expected, body):
 
 
 def test_append_finalizers_to_others():
-    body = {'metadata': {'finalizers': ['other1', 'other2']}}
-    patch = {}
-    block_deletion(body=body, patch=patch, finalizer='fin')
-    assert patch == {'metadata': {'finalizers': ['other1', 'other2', 'fin']}}
+    body = {'metadata': {'finalizers': ['other1', 'other2'], 'resourceVersion': '1234567890'}}
+    patch = Patch(fns=[functools.partial(block_deletion, finalizer='fin')])
+    ops = patch.as_json_patch(body)
+    assert ops == [{'op': 'add', 'path': '/metadata/finalizers/2', 'value': 'fin'}]
 
 
 def test_append_finalizers_to_empty():
     body = {}
-    patch = {}
-    block_deletion(body=body, patch=patch, finalizer='fin')
-    assert patch == {'metadata': {'finalizers': ['fin']}}
+    patch = Patch(fns=[functools.partial(block_deletion, finalizer='fin')])
+    ops = patch.as_json_patch(body)
+    assert ops == [{'op': 'add', 'path': '/metadata', 'value': {'finalizers': ['fin']}}]
 
 
 def test_append_finalizers_when_present():
     body = {'metadata': {'finalizers': ['other1', 'fin', 'other2']}}
-    patch = {}
-    block_deletion(body=body, patch=patch, finalizer='fin')
-    assert patch == {}
+    patch = Patch(fns=[functools.partial(block_deletion, finalizer='fin')])
+    ops = patch.as_json_patch(body)
+    assert ops == []
 
 
-@pytest.mark.parametrize('finalizer', [
-    pytest.param('fin', id='normal'),
-])
-def test_remove_finalizers_keeps_others(finalizer):
-    body = {'metadata': {'finalizers': ['other1', finalizer, 'other2']}}
-    patch = {}
-    allow_deletion(body=body, patch=patch, finalizer='fin')
-    assert patch == {'metadata': {'finalizers': ['other1', 'other2']}}
+def test_remove_finalizers_keeps_others():
+    body = {'metadata': {'finalizers': ['other1', 'fin', 'other2'], 'resourceVersion': '1234567890'}}
+    patch = Patch(fns=[functools.partial(allow_deletion, finalizer='fin')])
+    ops = patch.as_json_patch(body)
+    assert ops == [{'op': 'remove', 'path': '/metadata/finalizers/1'}]
+
+
+def test_remove_finalizers_cleans_keys():
+    body = {'metadata': {'finalizers': ['fin'], 'resourceVersion': '1234567890'}}
+    patch = Patch(fns=[functools.partial(allow_deletion, finalizer='fin')])
+    ops = patch.as_json_patch(body)
+    assert ops == [{'op': 'remove', 'path': '/metadata/finalizers'}]
+
+
+def test_remove_finalizers_cleans_metadata():
+    body = {'metadata': {'finalizers': ['fin']}}
+    patch = Patch(fns=[functools.partial(allow_deletion, finalizer='fin')])
+    ops = patch.as_json_patch(body)
+    assert ops == [{'op': 'remove', 'path': '/metadata'}]
 
 
 def test_remove_finalizers_when_absent():
     body = {'metadata': {'finalizers': ['other1', 'other2']}}
-    patch = {}
-    allow_deletion(body=body, patch=patch, finalizer='fin')
-    assert patch == {}
+    patch = Patch(fns=[functools.partial(allow_deletion, finalizer='fin')])
+    ops = patch.as_json_patch(body)
+    assert ops == []
 
 
 def test_remove_finalizers_when_empty():
     body = {}
-    patch = {}
-    allow_deletion(body=body, patch=patch, finalizer='fin')
-    assert patch == {}
+    patch = Patch(fns=[functools.partial(allow_deletion, finalizer='fin')])
+    ops = patch.as_json_patch(body)
+    assert ops == []
