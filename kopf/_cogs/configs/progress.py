@@ -40,10 +40,12 @@ All timestamps are strings in ISO8601 format in UTC (no explicit ``Z`` suffix).
 """
 import abc
 import copy
+import inspect
 import json
+import logging
 import pathlib
 from collections.abc import Collection, Mapping
-from typing import Any, TypedDict, cast
+from typing import Any, TypedDict, cast, override
 
 import yaml
 
@@ -82,8 +84,16 @@ class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
     for short time, and ``flush()`` can be overridden to actually store them.
     """
 
+    async def __aenter__(self) -> None:
+        logging.getLogger().info("🔥 entering the progress storage")
+        pass
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        logging.getLogger().info("🔥 leaving the progress storage")
+        pass
+
     @abc.abstractmethod
-    def fetch(
+    async def fetch(
             self,
             *,
             key: ids.HandlerId,
@@ -92,7 +102,7 @@ class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def store(
+    async def store(
             self,
             *,
             key: ids.HandlerId,
@@ -103,7 +113,7 @@ class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def purge(
+    async def purge(
             self,
             *,
             key: ids.HandlerId,
@@ -125,10 +135,10 @@ class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
     def clear(self, *, essence: bodies.BodyEssence) -> bodies.BodyEssence:
         return copy.deepcopy(essence)
 
-    def flush(self) -> None:
+    async def flush(self) -> None:
         pass
 
-    def erase(self, *, body: bodies.Body) -> None:
+    async def erase(self, *, body: bodies.Body) -> None:
         pass
 
 
@@ -178,7 +188,8 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
         self.verbose = verbose
         self.touch_key = touch_key
 
-    def fetch(
+    @override
+    async def fetch(
             self,
             *,
             key: ids.HandlerId,
@@ -192,7 +203,8 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
                 return cast(ProgressRecord, decoded)
         return None
 
-    def store(
+    @override
+    async def store(
             self,
             *,
             key: ids.HandlerId,
@@ -207,7 +219,8 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
             dicts.ensure(patch, key_field, encoded)
         self._store_marker(prefix=self.prefix, patch=patch, body=body)
 
-    def purge(
+    @override
+    async def purge(
             self,
             *,
             key: ids.HandlerId,
@@ -224,6 +237,7 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
             elif patch_value is not absent:
                 dicts.remove(patch, key_field)
 
+    @override
     def touch(
             self,
             *,
@@ -238,6 +252,7 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
                 dicts.ensure(patch, key_field, value)
                 self._store_marker(prefix=self.prefix, patch=patch, body=body)
 
+    @override
     def clear(self, *, essence: bodies.BodyEssence) -> bodies.BodyEssence:
         essence = super().clear(essence=essence)
         annotations = essence.get('metadata', {}).get('annotations', {})
@@ -315,7 +330,8 @@ class StatusProgressStorage(ProgressStorage):
         real_field = field.format(name=self._name) if isinstance(field, str) else field
         self._touch_field = dicts.parse_field(real_field)
 
-    def fetch(
+    @override
+    async def fetch(
             self,
             *,
             key: ids.HandlerId,
@@ -325,7 +341,8 @@ class StatusProgressStorage(ProgressStorage):
         container = dicts.resolve(body, self.field, {})
         return container.get(key, None)
 
-    def store(
+    @override
+    async def store(
             self,
             *,
             key: ids.HandlerId,
@@ -336,7 +353,8 @@ class StatusProgressStorage(ProgressStorage):
         # Nones are cleaned by K8s API itself.
         dicts.ensure(patch, self.field + (key,), record)
 
-    def purge(
+    @override
+    async def purge(
             self,
             *,
             key: ids.HandlerId,
@@ -352,6 +370,7 @@ class StatusProgressStorage(ProgressStorage):
         elif patch_value is not absent:
             dicts.remove(patch, key_field)
 
+    @override
     def touch(
             self,
             *,
@@ -364,6 +383,7 @@ class StatusProgressStorage(ProgressStorage):
         if body_value != value:  # also covers absent-vs-None cases.
             dicts.ensure(patch, key_field, value)
 
+    @override
     def clear(self, *, essence: bodies.BodyEssence) -> bodies.BodyEssence:
         essence = super().clear(essence=essence)
 
@@ -422,7 +442,8 @@ class FileProgressStorage(conventions.FileNamingConvention, ProgressStorage):
         super().__init__(path=path, file_suffix='progress')
         self.touch_field = touch_field
 
-    def fetch(
+    @override
+    async def fetch(
             self,
             *,
             key: ids.HandlerId,
@@ -437,7 +458,8 @@ class FileProgressStorage(conventions.FileNamingConvention, ProgressStorage):
         record = data.get(key)
         return cast(ProgressRecord, record) if record is not None else None
 
-    def store(
+    @override
+    async def store(
             self,
             *,
             key: ids.HandlerId,
@@ -457,7 +479,8 @@ class FileProgressStorage(conventions.FileNamingConvention, ProgressStorage):
         data[key] = {k: v for k, v in record.items() if v is not None}
         filepath.write_text(yaml.safe_dump(data, default_flow_style=False, sort_keys=False), encoding='utf-8')
 
-    def purge(
+    @override
+    async def purge(
             self,
             *,
             key: ids.HandlerId,
@@ -475,6 +498,7 @@ class FileProgressStorage(conventions.FileNamingConvention, ProgressStorage):
         else:
             filepath.unlink(missing_ok=True)
 
+    @override
     def touch(
             self,
             *,
@@ -486,7 +510,8 @@ class FileProgressStorage(conventions.FileNamingConvention, ProgressStorage):
         if body_value != value:  # also covers absent-vs-None cases.
             dicts.ensure(patch, self.touch_field, value)
 
-    def erase(self, *, body: bodies.Body) -> None:
+    @override
+    async def erase(self, *, body: bodies.Body) -> None:
         filepath = self._build_filename(body)
         if filepath is not None:
             filepath.unlink(missing_ok=True)
@@ -504,7 +529,7 @@ class SQLiteProgressStorage(conventions.SQLiteConvention, ProgressStorage):
 
     .. code-block:: text
 
-        namespace | name   | uid   | handler_id | record
+        namespace | name   | uid   | handler    | record
         ----------+--------+-------+------------+----------------------------------
         default   | my-app | uid1  | my_handler | {"started":"...","retries":1,...}
 
@@ -514,14 +539,16 @@ class SQLiteProgressStorage(conventions.SQLiteConvention, ProgressStorage):
     (e.g. for delayed handler retries).
     """
 
+    # We do not plan any migrations yet. We pray that this simple schema is sufficient forever.
+    # For this purpose, the record is stored as JSON, not as separate fields.
     _create_sql = (
         'CREATE TABLE IF NOT EXISTS progress ('
         'namespace TEXT NOT NULL, '
         'name TEXT NOT NULL, '
         'uid TEXT NOT NULL, '
-        'handler_id TEXT NOT NULL, '
+        'handler TEXT NOT NULL, '
         'record TEXT NOT NULL, '
-        'PRIMARY KEY (namespace, name, uid, handler_id))'
+        'PRIMARY KEY (namespace, name, uid, handler))'
     )
 
     def __init__(
@@ -533,17 +560,18 @@ class SQLiteProgressStorage(conventions.SQLiteConvention, ProgressStorage):
         super().__init__(path=path)
         self.touch_field = touch_field
 
-    def fetch(
+    @override
+    async def fetch(
             self,
             *,
             key: ids.HandlerId,
             body: bodies.Body,
     ) -> ProgressRecord | None:
         namespace, name, uid = self._extract_keys(body)
-        with self._connect() as conn:
-            cursor = self._try_execute(conn,
+        with self._conn:
+            cursor = self._try_execute(
                 'SELECT record FROM progress'
-                ' WHERE namespace=? AND name=? AND uid=? AND handler_id=?',
+                ' WHERE namespace=? AND name=? AND uid=? AND handler=?',
                 (namespace, name, uid, key))
             if cursor is None:
                 return None
@@ -552,7 +580,8 @@ class SQLiteProgressStorage(conventions.SQLiteConvention, ProgressStorage):
             return None
         return cast(ProgressRecord, json.loads(row[0]))
 
-    def store(
+    @override
+    async def store(
             self,
             *,
             key: ids.HandlerId,
@@ -562,13 +591,14 @@ class SQLiteProgressStorage(conventions.SQLiteConvention, ProgressStorage):
     ) -> None:
         namespace, name, uid = self._extract_keys(body)
         encoded = json.dumps({k: v for k, v in record.items() if v is not None})
-        with self._connect() as conn:
-            self._execute(conn,
+        with self._conn:
+            self._execute(
                 'INSERT OR REPLACE INTO progress'
-                ' (namespace, name, uid, handler_id, record) VALUES (?, ?, ?, ?, ?)',
+                ' (namespace, name, uid, handler, record) VALUES (?, ?, ?, ?, ?)',
                 (namespace, name, uid, key, encoded))
 
-    def purge(
+    @override
+    async def purge(
             self,
             *,
             key: ids.HandlerId,
@@ -576,12 +606,13 @@ class SQLiteProgressStorage(conventions.SQLiteConvention, ProgressStorage):
             patch: patches.Patch,
     ) -> None:
         namespace, name, uid = self._extract_keys(body)
-        with self._connect() as conn:
-            self._try_execute(conn,
+        with self._conn:
+            self._try_execute(
                 'DELETE FROM progress'
-                ' WHERE namespace=? AND name=? AND uid=? AND handler_id=?',
+                ' WHERE namespace=? AND name=? AND uid=? AND handler=?',
                 (namespace, name, uid, key))
 
+    @override
     def touch(
             self,
             *,
@@ -593,10 +624,11 @@ class SQLiteProgressStorage(conventions.SQLiteConvention, ProgressStorage):
         if body_value != value:  # also covers absent-vs-None cases.
             dicts.ensure(patch, self.touch_field, value)
 
-    def erase(self, *, body: bodies.Body) -> None:
+    @override
+    async def erase(self, *, body: bodies.Body) -> None:
         namespace, name, uid = self._extract_keys(body)
-        with self._connect() as conn:
-            self._try_execute(conn,
+        with self._conn:
+            self._try_execute(
                 'DELETE FROM progress'
                 ' WHERE namespace=? AND name=? AND uid=?',
                 (namespace, name, uid))
@@ -611,19 +643,22 @@ class MultiProgressStorage(ProgressStorage):
         super().__init__()
         self.storages = storages
 
-    def fetch(
+    @override
+    async def fetch(
             self,
             *,
             key: ids.HandlerId,
             body: bodies.Body,
     ) -> ProgressRecord | None:
         for storage in self.storages:
-            content = storage.fetch(key=key, body=body)
+            maybe_coro = storage.fetch(key=key, body=body)
+            content = await maybe_coro if inspect.isawaitable(maybe_coro) else maybe_coro
             if content is not None:
                 return content
         return None
 
-    def store(
+    @override
+    async def store(
             self,
             *,
             key: ids.HandlerId,
@@ -632,9 +667,12 @@ class MultiProgressStorage(ProgressStorage):
             patch: patches.Patch,
     ) -> None:
         for storage in self.storages:
-            storage.store(key=key, record=record, body=body, patch=patch)
+            maybe_coro = storage.store(key=key, record=record, body=body, patch=patch)
+            if inspect.isawaitable(maybe_coro):
+                await maybe_coro
 
-    def purge(
+    @override
+    async def purge(
             self,
             *,
             key: ids.HandlerId,
@@ -642,7 +680,9 @@ class MultiProgressStorage(ProgressStorage):
             patch: patches.Patch,
     ) -> None:
         for storage in self.storages:
-            storage.purge(key=key, body=body, patch=patch)
+            maybe_coro = storage.purge(key=key, body=body, patch=patch)
+            if inspect.isawaitable(maybe_coro):
+                await maybe_coro
 
     def touch(
             self,
@@ -659,9 +699,12 @@ class MultiProgressStorage(ProgressStorage):
             essence = storage.clear(essence=essence)
         return essence
 
-    def erase(self, *, body: bodies.Body) -> None:
+    @override
+    async def erase(self, *, body: bodies.Body) -> None:
         for storage in self.storages:
-            storage.erase(body=body)
+            maybe_coro = storage.erase(body=body)
+            if inspect.isawaitable(maybe_coro):
+                await maybe_coro
 
 
 class SmartProgressStorage(MultiProgressStorage):
