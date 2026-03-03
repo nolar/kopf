@@ -34,11 +34,10 @@ import base64
 import contextlib
 import hashlib
 import pathlib
-import sqlite3
 import urllib.parse
 import warnings
 from collections.abc import Collection, Iterable, Iterator
-from typing import Any
+from typing import Any, Protocol, override
 
 from kopf._cogs.structs import bodies, patches
 
@@ -336,6 +335,12 @@ class FileNamingConvention:
         return self._path / f'{prefix}{safe_name}-{safe_uid}.{self._file_suffix}.yaml'
 
 
+# Sqlite3 is sometimes broken, so we import only on demand, so we cannot use it in annotations.
+# Add more methods as needed. Only actually methods are listed here.
+class sqlite3_Cursor(Protocol):
+    def fetchone(self) -> list[Any]: ...
+
+
 class SQLiteConvention:
     """
     A mixin for SQLite-based storages with optimistic table creation.
@@ -356,6 +361,16 @@ class SQLiteConvention:
     ) -> None:
         super().__init__(*args, **kwargs)
         self._path = pathlib.Path(path)
+        self._conn = None
+
+    async def __aenter__(self) -> None:
+        import sqlite3  # sometimes broken, so import only on demand
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        self._conn = sqlite3.connect(str(self._path))
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        self._conn.close()
+        self._conn = None
 
     @staticmethod
     def _extract_keys(body: bodies.Body) -> tuple[str, str, str]:
@@ -366,40 +381,32 @@ class SQLiteConvention:
         uid = body.get('metadata', {}).get('uid', '')
         return namespace, name, uid
 
-    @contextlib.contextmanager
-    def _connect(self) -> Iterator[sqlite3.Connection]:
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(str(self._path))
-        try:
-            with conn:
-                yield conn
-        finally:
-            conn.close()
-
     def _execute(
             self,
-            conn: sqlite3.Connection,
             sql: str,
             params: tuple[Any, ...] = (),
-    ) -> sqlite3.Cursor:
+    ) -> sqlite3_Cursor:
         """Execute SQL, creating the table optimistically if absent."""
+        import sqlite3  # sometimes broken, so import only on demand
+
         try:
-            return conn.execute(sql, params)
+            return self._conn.execute(sql, params)
         except sqlite3.OperationalError as e:
             if 'no such table' not in str(e):
                 raise
-            conn.execute(self._create_sql)
-            return conn.execute(sql, params)
+            self._conn.execute(self._create_sql)
+            return self._conn.execute(sql, params)
 
     def _try_execute(
             self,
-            conn: sqlite3.Connection,
             sql: str,
             params: tuple[Any, ...] = (),
-    ) -> sqlite3.Cursor | None:
+    ) -> sqlite3_Cursor | None:
         """Execute SQL, returning None if the table does not exist."""
+        import sqlite3  # sometimes broken, so import only on demand
+
         try:
-            return conn.execute(sql, params)
+            return self._conn.execute(sql, params)
         except sqlite3.OperationalError as e:
             if 'no such table' not in str(e):
                 raise

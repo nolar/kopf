@@ -1,9 +1,11 @@
 import abc
 import copy
+import inspect
 import json
+import logging
 import pathlib
 from collections.abc import Collection, Iterable
-from typing import Any, cast
+from typing import Any, Self, cast, override
 
 import yaml
 
@@ -101,8 +103,16 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
 
         return cast(bodies.BodyEssence, essence)
 
+    async def __aenter__(self) -> None:
+        logging.getLogger().info("🔥 entering the diffbase storage")
+        pass
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        logging.getLogger().info("🔥 leaving the diffbase storage")
+        pass
+
     @abc.abstractmethod
-    def fetch(
+    async def fetch(
             self,
             *,
             body: bodies.Body,
@@ -110,7 +120,7 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
         raise NotImplementedError
 
     @abc.abstractmethod
-    def store(
+    async def store(
             self,
             *,
             body: bodies.Body,
@@ -119,7 +129,7 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
     ) -> None:
         raise NotImplementedError
 
-    def erase(self, *, body: bodies.Body) -> None:
+    async def erase(self, *, body: bodies.Body) -> None:
         pass
 
 
@@ -136,6 +146,7 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
         super().__init__(prefix=prefix, v1=v1, ignored_fields=ignored_fields)
         self.key = key
 
+    @override
     def build(
             self,
             *,
@@ -147,7 +158,8 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
         self.remove_empty_stanzas(essence)
         return essence
 
-    def fetch(
+    @override
+    async def fetch(
             self,
             *,
             body: bodies.Body,
@@ -159,7 +171,8 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
                 return cast(bodies.BodyEssence, decoded)
         return None
 
-    def store(
+    @override
+    async def store(
             self,
             *,
             body: bodies.Body,
@@ -196,6 +209,7 @@ class StatusDiffBaseStorage(DiffBaseStorage):
         real_field = field.format(name=self._name) if isinstance(field, str) else field
         self._field = dicts.parse_field(real_field)
 
+    @override
     def build(
             self,
             *,
@@ -210,7 +224,8 @@ class StatusDiffBaseStorage(DiffBaseStorage):
 
         return essence
 
-    def fetch(
+    @override
+    async def fetch(
             self,
             *,
             body: bodies.Body,
@@ -219,7 +234,8 @@ class StatusDiffBaseStorage(DiffBaseStorage):
         essence: bodies.BodyEssence | None = json.loads(encoded) if encoded is not None else None
         return essence
 
-    def store(
+    @override
+    async def store(
             self,
             *,
             body: bodies.Body,
@@ -262,7 +278,8 @@ class FileDiffBaseStorage(conventions.FileNamingConvention, DiffBaseStorage):
     ) -> None:
         super().__init__(path=path, file_suffix='diffbase', ignored_fields=ignored_fields)
 
-    def fetch(
+    @override
+    async def fetch(
             self,
             *,
             body: bodies.Body,
@@ -273,7 +290,8 @@ class FileDiffBaseStorage(conventions.FileNamingConvention, DiffBaseStorage):
         data = yaml.safe_load(filepath.read_text(encoding='utf-8'))
         return cast(bodies.BodyEssence, data) if isinstance(data, dict) else None
 
-    def store(
+    @override
+    async def store(
             self,
             *,
             body: bodies.Body,
@@ -286,7 +304,8 @@ class FileDiffBaseStorage(conventions.FileNamingConvention, DiffBaseStorage):
         filepath.parent.mkdir(parents=True, exist_ok=True)
         filepath.write_text(yaml.safe_dump(dict(essence), default_flow_style=False), encoding='utf-8')
 
-    def erase(self, *, body: bodies.Body) -> None:
+    @override
+    async def erase(self, *, body: bodies.Body) -> None:
         filepath = self._build_filename(body)
         if filepath is not None:
             filepath.unlink(missing_ok=True)
@@ -313,6 +332,7 @@ class SQLiteDiffBaseStorage(conventions.SQLiteConvention, DiffBaseStorage):
     file when pointed to the same path.
     """
 
+    # We do not plan any migrations yet. We pray that this simple schema is sufficient forever.
     _create_sql = (
         'CREATE TABLE IF NOT EXISTS diffbase ('
         'namespace TEXT NOT NULL, '
@@ -330,14 +350,15 @@ class SQLiteDiffBaseStorage(conventions.SQLiteConvention, DiffBaseStorage):
     ) -> None:
         super().__init__(path=path, ignored_fields=ignored_fields)
 
-    def fetch(
+    @override
+    async def fetch(
             self,
             *,
             body: bodies.Body,
     ) -> bodies.BodyEssence | None:
         namespace, name, uid = self._extract_keys(body)
-        with self._connect() as conn:
-            cursor = self._try_execute(conn,
+        with self._conn:
+            cursor = self._try_execute(
                 'SELECT essence FROM diffbase'
                 ' WHERE namespace=? AND name=? AND uid=?',
                 (namespace, name, uid))
@@ -348,7 +369,7 @@ class SQLiteDiffBaseStorage(conventions.SQLiteConvention, DiffBaseStorage):
             return None
         return cast(bodies.BodyEssence, json.loads(row[0]))
 
-    def store(
+    async def store(
             self,
             *,
             body: bodies.Body,
@@ -357,16 +378,17 @@ class SQLiteDiffBaseStorage(conventions.SQLiteConvention, DiffBaseStorage):
     ) -> None:
         namespace, name, uid = self._extract_keys(body)
         encoded = json.dumps(dict(essence), separators=(',', ':'))
-        with self._connect() as conn:
-            self._execute(conn,
+        with self._conn:
+            self._execute(
                 'INSERT OR REPLACE INTO diffbase'
                 ' (namespace, name, uid, essence) VALUES (?, ?, ?, ?)',
                 (namespace, name, uid, encoded))
 
-    def erase(self, *, body: bodies.Body) -> None:
+    @override
+    async def erase(self, *, body: bodies.Body) -> None:
         namespace, name, uid = self._extract_keys(body)
-        with self._connect() as conn:
-            self._try_execute(conn,
+        with self._conn:
+            self._try_execute(
                 'DELETE FROM diffbase'
                 ' WHERE namespace=? AND name=? AND uid=?',
                 (namespace, name, uid))
@@ -394,18 +416,21 @@ class MultiDiffBaseStorage(DiffBaseStorage):
             essence = storage.build(body=bodies.Body(essence), extra_fields=extra_fields)
         return essence
 
-    def fetch(
+    @override
+    async def fetch(
             self,
             *,
             body: bodies.Body,
     ) -> bodies.BodyEssence | None:
         for storage in self.storages:
-            content = storage.fetch(body=body)
+            maybe_coro = storage.fetch(body=body)
+            content = await maybe_coro if inspect.isawaitable(maybe_coro) else maybe_coro
             if content is not None:
                 return content
         return None
 
-    def store(
+    @override
+    async def store(
             self,
             *,
             body: bodies.Body,
@@ -413,8 +438,13 @@ class MultiDiffBaseStorage(DiffBaseStorage):
             essence: bodies.BodyEssence,
     ) -> None:
         for storage in self.storages:
-            storage.store(body=body, patch=patch, essence=essence)
+            maybe_coro = await storage.store(body=body, patch=patch, essence=essence)
+            if inspect.isawaitable(maybe_coro):
+                await maybe_coro
 
-    def erase(self, *, body: bodies.Body) -> None:
+    @override
+    async def erase(self, *, body: bodies.Body) -> None:
         for storage in self.storages:
-            storage.erase(body=body)
+            maybe_coro = storage.erase(body=body)
+            if inspect.isawaitable(maybe_coro):
+                await maybe_coro
