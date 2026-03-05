@@ -3,6 +3,8 @@ import asyncio
 import pytest
 
 import kopf
+from kopf._cogs.configs.diffbase import DiffBaseStorage
+from kopf._cogs.configs.progress import ProgressStorage
 from kopf._cogs.structs.ephemera import Memo
 from kopf._core.engines.indexing import OperatorIndexers
 from kopf._core.intents.causes import Reason
@@ -136,8 +138,10 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
 
 @pytest.mark.parametrize('event_type', EVENT_TYPES)
 async def test_gone(registry, settings, handlers, resource, cause_mock, event_type,
-                    assert_logs, k8s_mocked):
+                    assert_logs, k8s_mocked, mocker):
     cause_mock.reason = Reason.GONE
+    settings.persistence.diffbase_storage = mocker.Mock(spec=DiffBaseStorage)
+    settings.persistence.progress_storage = mocker.Mock(spec=ProgressStorage)
 
     event_queue = asyncio.Queue()
     await process_resource_event(
@@ -158,6 +162,9 @@ async def test_gone(registry, settings, handlers, resource, cause_mock, event_ty
 
     assert not k8s_mocked.patch.called
     assert event_queue.empty()
+
+    assert settings.persistence.diffbase_storage.erase.called
+    assert settings.persistence.progress_storage.erase.called
 
     assert_logs([
         "Deleted, really deleted",

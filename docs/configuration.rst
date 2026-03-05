@@ -374,6 +374,9 @@ To keep the handling state across multiple handling cycles, and to be resilient
 to errors and tolerable to restarts and downtimes, the operator keeps its state
 in a configured state storage. See more in :doc:`continuity`.
 
+Storing progress in annotations
+-------------------------------
+
 To store the state only in the annotations with a preferred prefix:
 
 .. code-block:: python
@@ -384,6 +387,9 @@ To store the state only in the annotations with a preferred prefix:
     def configure(settings: kopf.OperatorSettings, **_):
         settings.persistence.progress_storage = kopf.AnnotationsProgressStorage(prefix='my-op.example.com')
 
+Storing progress in status
+--------------------------
+
 To store the state only in the status or any other field:
 
 .. code-block:: python
@@ -393,6 +399,54 @@ To store the state only in the status or any other field:
     @kopf.on.startup()
     def configure(settings: kopf.OperatorSettings, **_):
         settings.persistence.progress_storage = kopf.StatusProgressStorage(field='status.my-operator')
+
+Storing progress in files
+-------------------------
+
+To store the progress in YAML files on a shared filesystem or pod volume,
+instead of on the Kubernetes object itself:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.persistence.progress_storage = kopf.FileProgressStorage(path='/var/kopf-storage')
+
+Each Kubernetes resource gets its own file, named
+``{namespace}-{name}-{uid}.progress.yaml`` (or ``{name}-{uid}.progress.yaml``
+for cluster-scoped resources). The file contains a YAML mapping of handler IDs
+to their progress records. A small touch annotation is still written to the
+Kubernetes object to trigger watch events for delayed handler retries.
+
+You must configure the operator's environment to persist the directory content
+between restarts and to share it with multiple operator instances.
+Usually, a mounted volume or a shared filesystem work fine,
+but exercise caution with locally running operators on developer machines
+with no access to the same directory/filesystem.
+
+Storing progress in sqlite
+--------------------------
+
+To store the state in a SQLite database:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.persistence.progress_storage = kopf.SQLiteProgressStorage(path='/var/kopf/state.db')
+
+Each handler's progress record is stored as a separate row in a ``progress``
+table, keyed by the resource's namespace, name, uid, and handler id. The table
+is created automatically on first use. A small touch annotation is still written
+to the Kubernetes object to trigger watch events for delayed handler retries.
+Multiple storage types can share the same database file.
+
+Storing progress in multiple places
+-----------------------------------
 
 To store in multiple places (stored in sync, but the first found state will be
 used when fetching, i.e. the first storage has precedence):
@@ -423,10 +477,27 @@ It is an equivalent of:
     def configure(settings: kopf.OperatorSettings, **_):
         settings.persistence.progress_storage = kopf.SmartProgressStorage()
 
-It is also possible to implement custom state storage instead of storing
-the state directly in the resource's fields -- e.g., in external databases.
-For this, inherit from :class:`kopf.ProgressStorage` and implement its abstract
-methods (``fetch()``, ``store()``, ``purge()``, optionally ``flush()``).
+
+Storing progress in custom storages
+-----------------------------------
+
+It is also possible to implement custom progress storages instead of storing
+the progress directly in the resource's fields -- e.g., in external databases.
+For this, inherit from :class:`kopf.ProgressStorage` and implement its methods
+(see the full signatures in the class definition):
+
+- ``fetch()`` to retrieve the handler progress by resource body and handler id;
+- ``store()`` to persist the handler progress by resource body and handler id;
+- ``purge()`` to remove the handler progress by resource body and handler id;
+- optionally ``flush()`` to save all accumulated records for several handlers;
+- optionally ``erase()`` to erase all records related to a specific resource.
+
+Use the resource body to get the required identifiers, usually the namespace,
+name, and/or uid. Use the provided :kwarg:`patch` object to store records
+in the resource in the cluster together with Kopf's own records (if applicable).
+
+Legacy progress storage
+-----------------------
 
 .. note::
 
@@ -486,6 +557,16 @@ against the last handled configuration, and a diff list is formed.
 The last-handled configuration is also used to detect if there were any
 essential changes at all -- i.e. not just the system or status fields.
 
+Kopf tracks only the essential fields, internally known as "the body essence",
+which by default include the full ``spec`` stanza and certain metadata:
+labels and annotations. Note that ``status`` is not considered the essence,
+unless there are handlers directly pointing to status fields, in which case
+those fields (and only those fields) are included into the essence, too.
+Custom storages can define which fields to exclude or include into the essence.
+
+Storing diff base in annotations
+--------------------------------
+
 The last-handled configuration storage can be configured
 with ``settings.persistence.diffbase_storage``.
 The default is an equivalent of:
@@ -504,9 +585,85 @@ The default is an equivalent of:
 The stored content is a JSON-serialised essence of the object (i.e., only
 the important fields, with system fields and status stanza removed).
 
-It is generally not a good idea to override this store unless multiple
-Kopf-based operators must handle the same resources, and they should not
-collide with each other. In that case, they must take different names.
+Storing diff base in files
+--------------------------
+
+To store the last-handled configuration in YAML files on a shared filesystem
+or pod volume, instead of on the Kubernetes object itself:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.persistence.diffbase_storage = kopf.FileDiffBaseStorage(path='/var/kopf-storage')
+
+Each Kubernetes resource gets its own file, named
+``{namespace}-{name}-{uid}.diffbase.yaml`` (or ``{name}-{uid}.diffbase.yaml``
+for cluster-scoped resources). The file contains the YAML-encoded body essence.
+
+You must configure the operator's environment to persist the directory content
+between restarts and to share it with multiple operator instances.
+Usually, a mounted volume or a shared filesystem work fine,
+but exercise caution with locally running operators on developer machines
+with no access to the same directory/filesystem.
+
+Storing diff base in sqlite
+---------------------------
+
+To store the last-handled configuration in a SQLite database:
+
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.persistence.diffbase_storage = kopf.SQLiteDiffBaseStorage(path='/var/kopf/state.db')
+
+Each resource's body essence is stored as a single row in a ``diffbase`` table,
+keyed by the resource's namespace, name, and uid. The table is created
+automatically on first use. Multiple storage types can share the same
+database file.
+
+Storing diff base in multiple places
+------------------------------------
+
+To store in multiple places (stored in sync, but the first found essence will be
+used when fetching, i.e. the first storage has precedence):
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.persistence.diffbase_storage = kopf.MultiDiffBaseStorage([
+            kopf.AnnotationsDiffBaseStorage(prefix='my-op.example.com'),
+            kopf.StatusDiffBaseStorage(field='status.my-operator'),
+        ])
+
+The default storage is in the annotation
+``kopf.zalando.org/last-handled-configuration`` only.
+
+Storing diff base in custom storages
+------------------------------------
+
+It is also possible to implement custom diff base storages instead of storing
+the diff base directly in the resource's fields -- e.g., in external databases.
+For this, inherit from :class:`kopf.DiffBaseStorage` and implement its methods
+(see the full signatures in the class definition):
+
+- ``fetch()`` to retrieve the essence of the resource by the current body;
+- ``store()`` to persist the essence of the resource by the current body;
+- optionally ``build()`` to extract the essence from the full resource body;
+- optionally ``erase()`` to erase all records related to a specific resource.
+
+Use the resource body to get the required identifiers, usually the namespace,
+name, and/or uid. Use the provided :kwarg:`patch` object to store records
+in the resource in the cluster together with Kopf's own records (if applicable).
 
 
 Storage transition
