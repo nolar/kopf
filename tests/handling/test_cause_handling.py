@@ -50,7 +50,7 @@ async def test_create(registry, settings, handlers, resource, cause_mock, event_
         "Handler 'create_fn' is invoked",
         "Handler 'create_fn' succeeded",
         "Creation is processed:",
-        "Patching with",
+        "Merge-patching",
     ])
 
 
@@ -89,7 +89,7 @@ async def test_update(registry, settings, handlers, resource, cause_mock, event_
         "Handler 'update_fn' is invoked",
         "Handler 'update_fn' succeeded",
         "Updating is processed:",
-        "Patching with",
+        "Merge-patching",
     ])
 
 
@@ -126,7 +126,7 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
         "Handler 'delete_fn' succeeded",
         "Deletion is processed:",
         "Removing the finalizer",
-        "Patching with",
+        "Merge-patching",
     ])
 
 
