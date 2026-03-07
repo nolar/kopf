@@ -31,12 +31,13 @@ in most cases, they will be used as the annotation names with special symbols
 replaced; in some cases, they will be cut and hash-suffixed.
 """
 import base64
+import functools
 import hashlib
 import warnings
 from collections.abc import Collection, Iterable
 from typing import Any
 
-from kopf._cogs.structs import bodies, patches
+from kopf._cogs.structs import bodies, dicts, patches
 
 
 class CollisionEvadingConvention:
@@ -254,8 +255,8 @@ class StorageKeyMarkingConvention:
         value = 'yes'
         if prefix and not prefix.startswith('kopf.'):
             marker = f'{prefix}/kopf-managed'
-            if marker not in body.metadata.annotations and marker not in patch.metadata.annotations:
-                patch.metadata.annotations[marker] = value
+            key_field = ['metadata', 'annotations', marker]
+            patch.fns.append(functools.partial(dicts.ensure, field=key_field, value=value))
 
 
 class StorageStanzaCleaner:

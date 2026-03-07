@@ -1,5 +1,6 @@
 import abc
 import copy
+import functools
 import json
 from collections.abc import Collection, Iterable
 from typing import Any, cast
@@ -163,7 +164,8 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
         encoded: str = json.dumps(essence, separators=(',', ':'))  # NB: no spaces
         encoded += '\n'  # for better kubectl presentation without wrapping (same as kubectl's one)
         for full_key in self.make_keys(self.key, body=body):
-            patch.metadata.annotations[full_key] = encoded
+            field = ['metadata', 'annotations', full_key]
+            patch.fns.append(functools.partial(dicts.ensure, field=field, value=encoded))
         self._store_marker(prefix=self.prefix, patch=patch, body=body)
 
 
@@ -222,7 +224,7 @@ class StatusDiffBaseStorage(DiffBaseStorage):
     ) -> None:
         # Store as a single string instead of full dict -- to avoid merges and unexpected data.
         encoded: str = json.dumps(essence, separators=(',', ':'))  # NB: no spaces
-        dicts.ensure(patch, self.field, encoded)
+        patch.fns.append(functools.partial(dicts.ensure, field=self.field, value=encoded))
 
 
 class MultiDiffBaseStorage(DiffBaseStorage):

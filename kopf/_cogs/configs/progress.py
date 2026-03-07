@@ -40,6 +40,7 @@ All timestamps are strings in ISO8601 format in UTC (no explicit ``Z`` suffix).
 """
 import abc
 import copy
+import functools
 import json
 from collections.abc import Collection
 from typing import Any, TypedDict, cast
@@ -199,7 +200,7 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
         encoded = json.dumps(decoded, separators=(',', ':'))  # NB: no spaces
         for full_key in self.make_keys(key, body=body):
             key_field = ['metadata', 'annotations', full_key]
-            dicts.ensure(patch, key_field, encoded)
+            patch.fns.append(functools.partial(dicts.ensure, field=key_field, value=encoded))
         self._store_marker(prefix=self.prefix, patch=patch, body=body)
 
     def purge(
@@ -209,15 +210,9 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
             body: bodies.Body,
             patch: patches.Patch,
     ) -> None:
-        absent = object()
         for full_key in self.make_keys(key, body=body):
             key_field = ['metadata', 'annotations', full_key]
-            body_value = dicts.resolve(body, key_field, absent)
-            patch_value = dicts.resolve(patch, key_field, absent)
-            if body_value is not absent:
-                dicts.ensure(patch, key_field, None)
-            elif patch_value is not absent:
-                dicts.remove(patch, key_field)
+            patch.fns.append(functools.partial(dicts.remove, field=key_field))
 
     def touch(
             self,
@@ -228,10 +223,8 @@ class AnnotationsProgressStorage(conventions.StorageKeyFormingConvention,
     ) -> None:
         for full_key in self.make_keys(self.touch_key, body=body):
             key_field = ['metadata', 'annotations', full_key]
-            body_value = dicts.resolve(body, key_field, None)
-            if body_value != value:  # also covers absent-vs-None cases.
-                dicts.ensure(patch, key_field, value)
-                self._store_marker(prefix=self.prefix, patch=patch, body=body)
+            patch.fns.append(functools.partial(dicts.ensure, field=key_field, value=value))
+        self._store_marker(prefix=self.prefix, patch=patch, body=body)
 
     def clear(self, *, essence: bodies.BodyEssence) -> bodies.BodyEssence:
         essence = super().clear(essence=essence)
@@ -329,7 +322,7 @@ class StatusProgressStorage(ProgressStorage):
             patch: patches.Patch,
     ) -> None:
         # Nones are cleaned by K8s API itself.
-        dicts.ensure(patch, self.field + (key,), record)
+        patch.fns.append(functools.partial(dicts.ensure, field=self.field + (key,), value=record))
 
     def purge(
             self,
@@ -338,14 +331,7 @@ class StatusProgressStorage(ProgressStorage):
             body: bodies.Body,
             patch: patches.Patch,
     ) -> None:
-        absent = object()
-        key_field = self.field + (key,)
-        body_value = dicts.resolve(body, key_field, absent)
-        patch_value = dicts.resolve(patch, key_field, absent)
-        if body_value is not absent:
-            dicts.ensure(patch, key_field, None)
-        elif patch_value is not absent:
-            dicts.remove(patch, key_field)
+        patch.fns.append(functools.partial(dicts.remove, field=self.field + (key,)))
 
     def touch(
             self,
@@ -354,10 +340,7 @@ class StatusProgressStorage(ProgressStorage):
             patch: patches.Patch,
             value: str | None,
     ) -> None:
-        key_field = self.touch_field
-        body_value = dicts.resolve(body, key_field, None)
-        if body_value != value:  # also covers absent-vs-None cases.
-            dicts.ensure(patch, key_field, value)
+        patch.fns.append(functools.partial(dicts.ensure, field=self.touch_field, value=value))
 
     def clear(self, *, essence: bodies.BodyEssence) -> bodies.BodyEssence:
         essence = super().clear(essence=essence)
