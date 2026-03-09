@@ -153,5 +153,14 @@ async def patch_and_check(
         # Which newer version to expect for consistency. If there was no patch or it has failed,
         # the patched body is None, so the version is None, meaning to wait for the last known one.
         resource_version = (resulting_body or {}).get('metadata', {}).get('resourceVersion')
+
+        # A workaround for Kubernetes behavior on the removal of the LAST finalizer on deletion:
+        # it does NOT increase the resourceVersion, and uses the last one from merge-patches.
+        # We should NEVER expect the consistent state — the object will be "gone" in an instant.
+        deletion_ongoing = bool((resulting_body or {}).get('metadata', {}).get('deletionTimestamp'))
+        deletion_blocked = bool((resulting_body or {}).get('metadata', {}).get('finalizers'))
+        if deletion_ongoing and not deletion_blocked:
+            resource_version = f"{resource_version}~which~never~arrives"
+
         return resource_version, remaining_patch
     return None, None
