@@ -60,8 +60,8 @@ Annotations: TypeAlias = Mapping[str, str]
 #
 
 # ``None`` is used for the listing, when the pseudo-watch-stream is simulated.
-RawInputType = Literal[None, 'ADDED', 'MODIFIED', 'DELETED', 'ERROR']
-RawEventType = Literal[None, 'ADDED', 'MODIFIED', 'DELETED']
+RawInputType = Literal[None, 'ADDED', 'MODIFIED', 'DELETED', 'BOOKMARK', 'ERROR']
+RawEventType = Literal[None, 'ADDED', 'MODIFIED', 'DELETED', 'BOOKMARK']
 
 
 class RawMeta(TypedDict, total=False):

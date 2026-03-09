@@ -192,6 +192,11 @@ async def watcher(
             if isinstance(raw_event, watching.Bookmark):
                 continue
 
+            # Skip BOOKMARK events from K8s: they carry no object identity (no uid/name/namespace),
+            # and are only useful for resource version tracking (already done in the watch stream).
+            if raw_event.get('type') == 'BOOKMARK':
+                continue
+
             # Multiplex the raw events to per-resource workers/queues. Start the new ones if needed.
             key: ObjectRef = (resource, get_uid(raw_event))
             try:

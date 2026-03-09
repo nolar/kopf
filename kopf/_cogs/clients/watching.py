@@ -209,7 +209,7 @@ async def continuous_watch(
                 raise WatchingError(f"Error in the watch-stream: {raw_object}")
 
             # Ensure that the event is something we understand and can handle.
-            if raw_type not in ['ADDED', 'MODIFIED', 'DELETED']:
+            if raw_type not in ['ADDED', 'MODIFIED', 'DELETED', 'BOOKMARK']:
                 logger.warning(f"Ignoring an unsupported event type: {raw_input!r}")
                 continue
 
@@ -243,6 +243,7 @@ async def watch_objs(
     """
     params: dict[str, str] = {}
     params['watch'] = 'true'
+    params['allowWatchBookmarks'] = 'true'
     if since is not None:
         params['resourceVersion'] = since
     if settings.watching.server_timeout is not None:
