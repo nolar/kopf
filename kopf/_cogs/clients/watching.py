@@ -21,6 +21,7 @@ import asyncio
 import contextlib
 import enum
 import logging
+import sys
 from collections.abc import AsyncIterator
 from typing import cast
 
@@ -257,30 +258,32 @@ async def watch_objs(
 
     # Stream the parsed events from the response until it is closed server-side,
     # or until it is closed client-side by the pause-waiting future's callbacks.
+    # The inactivity timeout is reset after each received event; if no event arrives
+    # within the window, asyncio.timeout() cancels the outer task and we log & return.
     try:
-        stream = api.stream(
-            url=resource.get_url(namespace=namespace, params=params),
-            logger=logger,
-            settings=settings,
-            stopper=operator_pause_waiter,
-            timeout=aiohttp.ClientTimeout(
-                total=settings.watching.client_timeout,
-                sock_connect=connect_timeout,
-            ),
-        ).__aiter__()
-        while True:
-            try:
-                raw_input = await asyncio.wait_for(
-                    anext(stream),
-                    timeout=settings.watching.inactivity_timeout,
-                )
-            except StopAsyncIteration:
-                break
-            except asyncio.TimeoutError:
-                where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
-                logger.debug(f"Watch-stream for {resource} {where} is inactive, reconnecting.")
-                return
-            yield raw_input
-
+        # Python 3.10 does not have asyncio.timeout(); fall back to the unprotected version.
+        # TODO: Remove when Python 3.10 is deprecated in Oct'26 (and the "if timeout_cm…" below).
+        if sys.version_info < (3, 11):  # 3.10 only
+            timeout = contextlib.nullcontext(None)
+        else:
+            timeout = asyncio.timeout(settings.watching.inactivity_timeout)
+        async with timeout as timeout_cm:
+            async for raw_input in api.stream(
+                url=resource.get_url(namespace=namespace, params=params),
+                logger=logger,
+                settings=settings,
+                stopper=operator_pause_waiter,
+                timeout=aiohttp.ClientTimeout(
+                    total=settings.watching.client_timeout,
+                    sock_connect=connect_timeout,
+                ),
+            ):
+                yield raw_input
+                if timeout_cm is not None:
+                    now = asyncio.get_running_loop().time()
+                    timeout_cm.reschedule(now + settings.watching.inactivity_timeout)
+    except TimeoutError:
+        where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
+        logger.debug(f"Watch-stream for {resource} {where} is inactive, reconnecting.")
     except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, asyncio.TimeoutError):
         pass
