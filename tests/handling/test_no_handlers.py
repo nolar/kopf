@@ -53,7 +53,7 @@ async def test_skipped_with_no_handlers(
 
     assert_logs([
         "(Creation|Updating|Resuming|Deletion) is in progress:",
-        "Patching with:",
+        "Merge-patching",
     ], prohibited=[
         "(Creation|Updating|Resuming|Deletion) is processed:",
     ])

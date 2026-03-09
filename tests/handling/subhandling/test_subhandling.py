@@ -69,7 +69,7 @@ async def test_1st_level(registry, settings, resource, cause_mock, event_type,
         "Handler 'fn/sub1b' succeeded",
         "Handler 'fn' succeeded",
         "Creation is processed",
-        "Patching with",
+        "Merge-patching",
     ])
 
 
@@ -157,5 +157,5 @@ async def test_2nd_level(registry, settings, resource, cause_mock, event_type,
         "Handler 'fn/sub1b' succeeded",
         "Handler 'fn' succeeded",
         "Creation is processed",
-        "Patching with",
+        "Merge-patching",
     ])
