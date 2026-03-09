@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from kopf._cogs.configs.progress import AnnotationsProgressStorage, ProgressRecord, \
-                                        ProgressStorage, SmartProgressStorage, \
+from kopf._cogs.configs.progress import AnnotationsProgressStorage, NoWriteStatusProgressStorage, \
+                                        ProgressRecord, ProgressStorage, SmartProgressStorage, \
                                         StatusProgressStorage
 from kopf._cogs.structs.bodies import Body
 from kopf._cogs.structs.ids import HandlerId
@@ -11,7 +11,9 @@ from kopf._cogs.structs.patches import Patch
 
 ALL_STORAGES = [AnnotationsProgressStorage, StatusProgressStorage, SmartProgressStorage]
 ANNOTATIONS_POPULATING_STORAGES = [AnnotationsProgressStorage, SmartProgressStorage]
-STATUS_POPULATING_STORAGES = [StatusProgressStorage, SmartProgressStorage]
+STATUS_POPULATING_STORAGES = [StatusProgressStorage]
+STATUS_SKIPPING_STORAGES = [SmartProgressStorage, NoWriteStatusProgressStorage]
+STATUS_READING_STORAGES = [StatusProgressStorage, SmartProgressStorage, NoWriteStatusProgressStorage]
 
 CONTENT_DATA_1 = ProgressRecord(
     started='2020-01-01T00:00:00',
@@ -255,11 +257,34 @@ def test_touching_via_annotations_storage_with_none_when_present(cls):
 
 
 #
+# Status-skipping.
+#
+
+
+@pytest.mark.parametrize('cls', STATUS_SKIPPING_STORAGES)
+def test_no_storing_to_status_storage(cls):
+    storage = cls(field='status.my-operator')
+    patch = Patch()
+    body = Body({})
+    storage.store(body=body, patch=patch, key=HandlerId('id1'), record=CONTENT_DATA_1)
+    assert 'status' not in patch
+
+
+@pytest.mark.parametrize('cls', STATUS_SKIPPING_STORAGES)
+def test_no_touching_to_status_storage(cls):
+    storage = cls(touch_field='status.my-dummy')
+    patch = Patch()
+    body = Body({})
+    storage.touch(body=body, patch=patch, value='hello')
+    assert 'status' not in patch
+
+
+#
 # Status-populating.
 #
 
 
-@pytest.mark.parametrize('cls', STATUS_POPULATING_STORAGES)
+@pytest.mark.parametrize('cls', STATUS_READING_STORAGES)
 def test_fetching_from_status_storage(cls):
     storage = cls(field='status.my-operator')
     body = Body({'status': {'my-operator': {'id1': CONTENT_DATA_1, 'id2': CONTENT_DATA_2}}})
@@ -304,7 +329,7 @@ def test_storing_to_status_storage_overwrites_old_content(cls):
     assert patch['status']['my-operator']['id1'] == CONTENT_DATA_2
 
 
-@pytest.mark.parametrize('cls', STATUS_POPULATING_STORAGES)
+@pytest.mark.parametrize('cls', STATUS_READING_STORAGES)
 def test_purging_of_status_storage_nullifies_content(cls):
     storage = cls(field='status.my-operator')
     patch = Patch()
