@@ -273,6 +273,13 @@ The server-side timeouts are unpredictable, they can be 10 seconds or
 watching requests -- to prevent API flooding in case of errors or disconnects.
 The default is 0.1 seconds (nearly instant, but not flooding).
 
+``settings.watching.inactivity_timeout`` (seconds) is how long the watch stream
+is allowed to stay completely silent — delivering no events, not even bookmarks —
+before it is considered dead and closed for reconnection.
+Kubernetes sends bookmark events roughly every 60 seconds as a heartbeat,
+so the default of 90 seconds allows for reasonable jitter while still detecting
+streams that are silently stalled at the TCP level.
+
 .. code-block:: python
 
     import kopf

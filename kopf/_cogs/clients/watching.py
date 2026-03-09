@@ -258,7 +258,7 @@ async def watch_objs(
     # Stream the parsed events from the response until it is closed server-side,
     # or until it is closed client-side by the pause-waiting future's callbacks.
     try:
-        async for raw_input in api.stream(
+        stream = api.stream(
             url=resource.get_url(namespace=namespace, params=params),
             logger=logger,
             settings=settings,
@@ -267,7 +267,19 @@ async def watch_objs(
                 total=settings.watching.client_timeout,
                 sock_connect=connect_timeout,
             ),
-        ):
+        ).__aiter__()
+        while True:
+            try:
+                raw_input = await asyncio.wait_for(
+                    anext(stream),
+                    timeout=settings.watching.inactivity_timeout,
+                )
+            except StopAsyncIteration:
+                break
+            except asyncio.TimeoutError:
+                where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
+                logger.debug(f"Watch-stream for {resource} {where} is inactive, reconnecting.")
+                return
             yield raw_input
 
     except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, asyncio.TimeoutError):

@@ -200,6 +200,14 @@ class WatchingSettings:
     How long should a pause be between watch requests (to prevent API flooding).
     """
 
+    inactivity_timeout: float = 90.0
+    """
+    How long to wait for any event (including bookmarks) from the watch stream
+    before considering the stream dead and reconnecting. Kubernetes sends
+    bookmark events every 60 seconds, so the default of 90 seconds allows
+    for reasonable jitter while still detecting dead streams.
+    """
+
 
 @dataclasses.dataclass
 class QueueingSettings:
