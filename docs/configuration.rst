@@ -276,9 +276,23 @@ The default is 0.1 seconds (nearly instant, but not flooding).
 ``settings.watching.inactivity_timeout`` (seconds) is how long the watch stream
 is allowed to stay completely silent — delivering no events, not even bookmarks —
 before it is considered dead and closed for reconnection.
-Kubernetes sends bookmark events roughly every 60 seconds as a heartbeat,
-so the default of 90 seconds allows for reasonable jitter while still detecting
-streams that are silently stalled at the TCP level.
+Kubernetes sends bookmark events every 60 seconds as a heartbeat and caches
+the recent events for 75 seconds (here__), so the default of 70 seconds allows
+for reasonable jitter while still detecting streams that are silently stalled
+at the TCP level, and then streaming the events from Kubernetes
+while they are still fresh. You can adjust the timeout if needed.
+Values lower than ≈62 will cause frequent reconnects on low-activity clusters.
+To effectively disable the inactivity tracking, set it to a huge number,
+e.g., ``999999999`` (≈30 years).
+
+__ https://github.com/kubernetes/kubernetes/blob/c20e0bc54189aef73a6a1498b4eab28b2457914f/staging/src/k8s.io/apiserver/pkg/storage/cacher/cacher.go#L62-L77
+
+.. note::
+    The inactivity tracking is NOT supported in Python 3.10. It works only
+    since Python 3.11 and higher. Python 3.10 behaves the old way ---
+    ignores the stalled connections and might freeze in no action indefinitely.
+    As a workaround, set ``settings.watching.client_timeout`` to 1-10 mins.
+    Python 3.10's end-of-life is October 2026, so the fix is not planned.
 
 .. code-block:: python
 
