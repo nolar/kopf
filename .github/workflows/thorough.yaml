@@ -124,6 +124,7 @@ jobs:
         with:
           version: ${{ matrix.k3s }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          k3s-args: --disable=metrics-server@server:*
       - run: uv sync --group test
       - run: uv pip install -r examples/requirements.txt
       - run: uv run pytest --color=yes --timeout=30 --only-e2e
