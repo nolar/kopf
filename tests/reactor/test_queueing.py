@@ -95,6 +95,39 @@ async def test_watchevent_demultiplexing(worker_mock, looptime, resource, proces
                    for queue_event in queue_events[:-1])
 
 
+@pytest.mark.usefixtures('watcher_limited')
+async def test_bookmarks_are_ignored(worker_mock, looptime, resource, processor,
+                                     settings, kmock):
+    """ Verify that BOOKMARK events are silently skipped and never reach the workers. """
+    kmock.resources[resource] = {}
+    kmock['watch', resource] << (
+        {'type': 'BOOKMARK', 'object': {'metadata': {'resourceVersion': '999'}}},
+        {'type': 'ADDED', 'object': {'metadata': {'uid': 'uid1'}}},
+        {'type': 'BOOKMARK', 'object': {'metadata': {'resourceVersion': '9999'}}},
+        {'type': 'ERROR', 'object': {'code': 410}},
+    )
+
+    settings.queueing.idle_timeout = 100
+    settings.queueing.exit_timeout = 110
+
+    await watcher(
+        namespace=None,
+        resource=resource,
+        settings=settings,
+        processor=processor,
+    )
+
+    assert looptime == 0
+    assert worker_mock.call_count == 1
+
+    streams = worker_mock.call_args_list[0].kwargs['streams']
+    key = worker_mock.call_args_list[0].kwargs['key']
+    queue_events = []
+    while not streams[key].backlog.empty():
+        queue_events.append(streams[key].backlog.get_nowait())
+    assert all(e is EOS.token or e['type'] != 'BOOKMARK' for e in queue_events)
+
+
 @pytest.mark.parametrize('unique, events', [
 
     pytest.param(1, (
