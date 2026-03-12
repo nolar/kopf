@@ -91,17 +91,33 @@ The following event-handler is available:
     import kopf
 
     @kopf.on.event('kopfexamples')
-    def my_handler(event, **_):
+    def my_handler(event: kopf.RawEvent, **_):
         pass
+
+The event has the following structure:
+
+.. code-block:: python
+
+    class RawBody(TypedDict, total=False):
+        apiVersion: str
+        kind: str
+        metadata: Mapping[str, Any]
+        spec: Mapping[str, Any]
+        status: Mapping[str, Any]
+
+    class RawEvent(TypedDict, total=True):
+        type: Literal[None, 'ADDED', 'MODIFIED', 'DELETED']
+        object: RawBody
+
+The event type ``None`` means the initial listing of the resources
+before the actual watch-stream begins.
 
 If the event handler fails, the error is logged to the operator's log,
 and then ignored.
 
-
 .. note::
-    Please note that the event handlers are invoked for *every* event received
-    from the watching stream. This also includes the first-time listing when
-    the operator starts or restarts.
+    Kopf invokes the event handlers for *every* event received from the stream.
+    This includes the first-time listing when the operator starts or restarts.
 
     It is the developer's responsibility to make the handlers idempotent
     (re-executable with no duplicate side effects).
