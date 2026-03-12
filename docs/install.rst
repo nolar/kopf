@@ -73,7 +73,7 @@ Cluster preparation
 
 Unless you use the standalone mode, create a few Kopf-specific custom resources
 in the cluster. These are used to coordinate several instances of Kopf-based
-operators so that they do not double-process the same resources — only one
+operators so that they do not double-process the same resources --- only one
 operator will be active at a time:
 
 .. code-block:: bash
@@ -115,16 +115,16 @@ Using ``uv``:
 Extras
 ======
 
-To minimize the disk size impact of Kopf projects, some heavy dependencies
-are omitted by default. You can add them as extras if you need or want them.
+To minimize the disk footprint of Kopf projects, some heavy dependencies
+are omitted by default. You can add them as extras if you need them.
 
 ``full-auth``
 -------------
 
-If you use some of the managed Kubernetes services which require a sophisticated
-authentication beyond the plain and simple username+password, fixed tokens,
-or client SSL certs, add the ``full-auth`` extra with Kubernetes clients,
-which in turn include those sophisticated authentication methods
+If you use a managed Kubernetes service that requires sophisticated
+authentication beyond plain username+password, fixed tokens,
+or client SSL certificates, add the ``full-auth`` extra with Kubernetes clients,
+which include those sophisticated authentication methods
 (also see :ref:`authentication piggy-backing <auth-piggybacking>`):
 
 .. code-block:: bash
@@ -136,9 +136,9 @@ which in turn include those sophisticated authentication methods
 ``uvloop``
 ----------
 
-If you want extra I/O performance under the hood, install the uvloop_ extra
+If you want extra I/O performance, install the uvloop_ extra
 (also see :ref:`custom-event-loops`). It will be activated automatically
-if installed, no extra flags or configuration is needed:
+when installed; no extra flags or configuration are needed:
 
 .. code-block:: bash
 
@@ -164,7 +164,7 @@ install with the ``dev`` extra:
 .. warning::
     Self-signed certificates are unsafe for production environments.
     Ngrok tunnelling is not needed in production environments.
-    This is supposed to be used in the development environments only.
+    This extra is intended for development environments only.
     Hence the name.
 
 .. note::

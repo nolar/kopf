@@ -2,11 +2,11 @@
 Helpers for orchestrating asyncio tasks.
 
 These utilities only support tasks, not more generic futures, coroutines,
-or other awaitables. In most case where we use it, we need specifically tasks,
+or other awaitables. In most cases where we use it, we need specifically tasks,
 as we not only wait for them, but also cancel them.
 
 Anyway, ``asyncio`` wraps all awaitables and coroutines into tasks on almost
-all function calls with multiple awaiables (e.g. :func:`asyncio.wait`),
+all function calls with multiple awaitables (e.g. :func:`asyncio.wait`),
 so there is no added overhead; instead, the implicit overhead is made explicit.
 """
 import asyncio
@@ -79,7 +79,7 @@ async def guard(
 
     It is used for background tasks that are started but never awaited/checked,
     so that the errors are not escalated properly; or if they are occasionally
-    awaited/checked with a significant delay after an error possibly happend,
+    awaited/checked with a significant delay after an error possibly happened,
     but needs to be logged as soon as it happens.
     """
     capname = name.capitalize()
@@ -139,7 +139,7 @@ async def wait(
         return_when: Any = asyncio.ALL_COMPLETED,
 ) -> tuple[set[Task], set[Task]]:
     """
-    A safer version of :func:`asyncio.wait` -- does not fail on an empty list.
+    A safer version of :func:`asyncio.wait` --- does not fail on an empty list.
     """
     if not tasks:
         return set(), set()
@@ -235,7 +235,7 @@ async def all_tasks(
     """
     Return all tasks in the current event loop.
 
-    Equivalent to :func:`asyncio.all_tasks`, but with an exlcusion list.
+    Equivalent to :func:`asyncio.all_tasks`, but with an exclusion list.
     The exclusion list is used to exclude the tasks that existed at a point
     in time in the past, to only get the tasks that appeared since then.
     """
@@ -251,7 +251,7 @@ class SchedulerJob(NamedTuple):
 
 class Scheduler:
     """
-    An scheduler/orchestrator/executor for "fire-and-forget" tasks.
+    A scheduler/orchestrator/executor for "fire-and-forget" tasks.
 
     Coroutines can be spawned via this scheduler and forgotten: no need to wait
     for them or to check their status --- the scheduler will take care of it.

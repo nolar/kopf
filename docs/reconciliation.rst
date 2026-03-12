@@ -4,7 +4,7 @@ Reconciliation
 
 Reconciliation is, in plain words, bringing the *actual state* of a system
 to a *desired state* as expressed by the Kubernetes resources.
-For example, starting as many pods, as it is declared in a deployment,
+For example, starting as many pods as declared in a deployment,
 especially when this declaration changes due to resource updates.
 
 Kopf is not an operator, it is a framework to make operators.
@@ -12,7 +12,7 @@ Therefore, it knows nothing about the *desired state* or *actual state*
 (or any *state* at all).
 
 Kopf-based operators must implement the checks and reactions to the changes,
-so that both states are synchronised according to the operator's concepts.
+so that both states are synchronized according to the operator's concepts.
 
 Kopf only provides a few ways and tools for achieving this easily.
 
@@ -53,7 +53,7 @@ of the *actual state*, and even bring the *actual state* to the *desired state*.
 The little downside is that timers produce logs on every triggering,
 which can be noisy, especially if triggered often. Also, such an operator
 will not be very responsive to the changes in the *actual/desired states*
-(only as resposive as the timer's interval defines it).
+(only as responsive as the timer's interval defines it).
 
 .. seealso::
     :doc:`timers`
@@ -134,6 +134,11 @@ but you can get the overall idea:
             pods_to_terminate = random.sample(running_pods, k=min(-delta, len(running_pods))
             print(f"Terminate {-delta} random pods: {pods_to_terminate}")
 
-Time-based polling is good both for in-cluster and external *actual states*, and is in fact the only way for external *actual states* from third-party APIs.
+Time-based polling works well for both in-cluster and external *actual states*,
+and is in fact the only option for external *actual states* from third-party APIs.
 
-For immediate reaction instead of timing, turn this timer into a daemon, introduce a global operator-scoped condition (e.g., an :class:`asyncio.Condition`) stored in :doc:`memos` on operator startup, await for it in the daemon of the parent resource, notify it in the indexers of the children resources (mind the synchronisation: the index changes slightly after the exit from the indexer).
+For immediate reaction instead of polling, turn this timer into a daemon,
+introduce a global operator-scoped condition (e.g., an :class:`asyncio.Condition`)
+stored in :doc:`memos` on operator startup, await it in the daemon of the parent resource,
+and notify it in the indexers of the children resources
+(mind the synchronisation: the index changes slightly after the indexer exits).

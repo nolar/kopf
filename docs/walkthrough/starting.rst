@@ -6,8 +6,8 @@ Previously, we have defined a :doc:`problem <problem>` that we are solving,
 and created the :doc:`custom resource definitions <resources>`
 for the ephemeral volume claims.
 
-Now, we are ready to write some logic for this kind of objects.
-Let's start with an operator skeleton that does nothing useful --
+Now, we are ready to write some logic for this kind of object.
+Let us start with an operator skeleton that does nothing useful ---
 just to see how it can be started.
 
 .. code-block:: python
@@ -22,11 +22,11 @@ just to see how it can be started.
         logging.info(f"A handler is called with body: {body}")
 
 .. note::
-    Despite an obvious desire, do not name the file as ``operator.py``,
+    Despite an obvious desire, do not name the file ``operator.py``,
     since there is a built-in module in Python 3 with this name,
     and there could be potential conflicts on the imports.
 
-Let's run the operator and see what will happen:
+Let us run the operator and see what happens:
 
 .. code-block:: bash
 
@@ -52,8 +52,8 @@ The output looks like this:
     [2019-05-31 10:42:12,343] kopf.reactor.handlin [INFO    ] [default/my-claim] All handlers succeeded for update.
     [2019-05-31 10:42:12,362] kopf.reactor.handlin [DEBUG   ] [default/my-claim] Patching with: {'status': {'kopf': {'progress': None}}, 'metadata': {'annotations': {'kopf.zalando.org/last-handled-configuration': '{"apiVersion": "kopf.dev/v1", "kind": "EphemeralVolumeClaim", "metadata": {"name": "my-claim", "namespace": "default"}, "spec": {}}'}}}
 
-Note that the operator has noticed an object created before the operator
-was even started, and handled the object because it was not handled before.
+Note that the operator detected an object that was created before the operator
+itself was started, and handled it because it had not been handled before.
 
 Now, you can stop the operator with Ctrl-C (twice), and start it again:
 
@@ -61,11 +61,11 @@ Now, you can stop the operator with Ctrl-C (twice), and start it again:
 
     kopf run ephemeral.py --verbose
 
-The operator will not handle the object, as now it is already successfully
-handled. This is important in case the operator is restarted if it runs
-in a normally deployed pod, or when you restart the operator for debugging.
+The operator will not handle the object again, as it has already been
+successfully handled. This is important when the operator is restarted ---
+whether running as a deployed pod or restarted manually for debugging.
 
-Let's delete and re-create the same object to see the operator reacting:
+Let us delete and re-create the same object to see the operator reacting:
 
 .. code-block:: bash
 

@@ -182,7 +182,7 @@ async def execute_handlers_once(
     Call the next handler(s) from the chain of the handlers.
 
     Keep the record on the progression of the handlers in the object's state,
-    and use it on the next invocation to determined which handler(s) to call.
+    and use it on the next invocation to determine which handler(s) to call.
 
     This routine is used both for the global handlers (via global registry),
     and for the sub-handlers (via a simple registry of the current handler).
@@ -223,9 +223,9 @@ async def execute_handler_once(
 
     *Execution* means not just *calling* the handler in properly set context
     (see ``_call_handler``), but also interpreting its result and errors, and
-    wrapping them into am :class:`Outcome` object -- to be stored in the state.
+    wrapping them into an :class:`Outcome` object --- to be stored in the state.
 
-    The *execution* can be long -- depending on how the handler is implemented.
+    The *execution* can be long --- depending on how the handler is implemented.
     For daemons, it is normal to run for hours and days if needed.
     This is different from the regular handlers, which are supposed
     to be finished as soon as possible.
@@ -380,7 +380,7 @@ async def invoke_handler(
     Specifically, calculate the handler-specific fields (e.g. field diffs).
 
     Ensure the global context for this asyncio task is set to the handler and
-    its cause -- for proper population of the sub-handlers via the decorators
+    its cause --- for proper population of the sub-handlers via the decorators
     (see ``@kopf.subhandler``).
     """
 

@@ -1,9 +1,9 @@
 Loading and importing
 =====================
 
-Kopf requires the source files with the handlers on the command line.
-It does not do any attempts to guess the user's intentions
-or to introduce any conventions (at least, now).
+Kopf requires the source files with the handlers to be specified on the command line.
+It does not attempt to guess the user's intentions
+or to introduce any conventions (at least, not yet).
 
 There are two ways to specify them (both mimicking the Python interpreter):
 

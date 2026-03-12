@@ -31,7 +31,7 @@ async def health_reporter(
     Simple HTTP(S)/TCP server to report the operator's health to K8s probes.
 
     Runs forever until cancelled (which happens if any other root task
-    is cancelled or failed). Once it will stop responding for any reason,
+    is cancelled or fails). Once it stops responding for any reason,
     Kubernetes will assume the pod is not alive anymore, and will restart it.
     """
     probing_container: MutableMapping[ids.HandlerId, execution.Result] = {}

@@ -5,10 +5,10 @@ Idempotence
 Kopf provides tools to make the handlers idempotent.
 
 The :func:`kopf.register` function and the :func:`kopf.subhandler` decorator
-allow to schedule arbitrary sub-handlers for the execution in the current cycle.
+allow scheduling arbitrary sub-handlers for execution in the current cycle.
 
 :func:`kopf.execute` coroutine executes arbitrary sub-handlers
-directly in the place of invocation, and returns when all they have succeeded.
+directly in the place of invocation, and returns when all of them have succeeded.
 
 Every one of the sub-handlers is tracked by Kopf, and will not be executed
 twice within one handling cycle.
@@ -37,17 +37,17 @@ twice within one handling cycle.
 
 In this example, both ``create_a`` & ``create_b`` are submitted to Kopf
 as the sub-handlers of ``create`` on every attempt to execute it.
-It means, every ~10 seconds until both of the sub-handlers succeed,
+This repeats every ~10 seconds until both sub-handlers succeed
 and the main handler succeeds too.
 
 The first one, ``create_a``, will succeed on the 3rd attempt after ~20s.
 The second one, ``create_b``, will succeed only on the 7th attempt after ~60s.
 
-However, despite ``create_a`` will be submitted whenever ``create``
+However, even though ``create_a`` will be submitted whenever ``create``
 and ``create_b`` are retried, it will not be executed in the 20s..60s range,
-as it has succeeded already, and the record about this is stored on the object.
+as it has already succeeded, and the record of this is stored on the object.
 
-This approach can be used to perform operations, which needs protection
+This approach can be used to perform operations that need protection
 from double-execution, such as the children object creation with randomly
 generated names (e.g. Pods, Jobs, PersistentVolumeClaims, etc).
 

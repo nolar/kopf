@@ -21,7 +21,7 @@ async def patch_obj(
     the whole cluster (i.e. is not namespace-restricted).
 
     Returns the patched body. The patched body can be partial (status-only,
-    no-status, or empty) -- depending on whether there were fields in the body
+    no-status, or empty) --- depending on whether there were fields in the body
     or in the status to patch; if neither had fields for patching, the result
     is an empty body. The result should only be used to check against the patch:
     if there was nothing to patch, it does not matter if the fields are absent.

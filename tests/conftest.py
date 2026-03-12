@@ -319,7 +319,7 @@ async def _fake_vault(mocker, kmock):
     Pytest runs every async setup and every async teardown in a separate task
     (a separate ``run_until_complete()``). The ``vault_var`` remains invisible
     to tests (with API calls) and even to the fixture's finalizing part.
-    Sync (global) context vars do work and propagate fine — hence 2 fixtures.
+    Sync (global) context vars do work and propagate fine --- hence 2 fixtures.
 
     Without the proper vault finalization, the cached TCP sessions/connections
     remain open, so the aresponses/aiohttp test server takes time before exiting

@@ -15,7 +15,7 @@ handlers, and are generally of these three intermixed kinds:
 * Sleeping for the duration of known absence of activity (or until interrupted).
 * Touching the object to trigger the next reaction cycle.
 
-It is used from in :mod:`processing`, :mod:`actitivies`, and :mod:`daemons` --
+It is used from :mod:`processing`, :mod:`activities`, and :mod:`daemons` --
 all the modules, of which the reactor's core consists.
 """
 import asyncio

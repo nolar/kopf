@@ -8,10 +8,11 @@ thus executing the decorators.
 The files/modules to be loaded are usually specified on the command-line.
 Currently, two loading modes are supported, both are equivalent to Python CLI:
 
-* Plain files files (`kopf run file.py`).
+* Plain files (`kopf run file.py`).
 * Importable modules (`kopf run -m pkg.mod`).
 
-Multiple files/modules can be specified. They will be loaded in the order.
+Multiple files/modules can be specified.
+They will be loaded in the specified order.
 """
 
 import importlib

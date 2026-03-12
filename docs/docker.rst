@@ -157,7 +157,7 @@ If not ``main.py``, add the CLI arguments to run the custom modules or files:
         ghcr.io/nolar/kopf run -m myoperator.main
 
 .. note::
-    Note the ``:rw`` (read-write) mode on the ``/app`` directory —
+    Note the ``:rw`` (read-write) mode on the ``/app`` directory ---
     ``pip`` needs it for building the package locally before installing it.
 
 

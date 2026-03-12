@@ -10,7 +10,7 @@ Resource memos
 ==============
 
 Every resource handler gets a :kwarg:`memo` kwarg of type :class:`kopf.Memo`.
-It is an in-memory container for arbitrary runtime-only keys-values.
+It is an in-memory container for arbitrary runtime-only key-value pairs.
 The values can be accessed as either object attributes or dictionary keys.
 
 The memo is shared by all handlers of the same individual resource
@@ -35,12 +35,12 @@ the memo is also re-created (technically, it is a new resource).
 Operator memos
 ==============
 
-In the operator handlers, such as the operator startup/cleanup, liveness probes,
+In operator handlers, such as startup/cleanup, liveness probes,
 credentials retrieval, and everything else not specific to resources,
 :kwarg:`memo` points to the operator's global container for arbitrary values.
 
-The per-operator container can be either populated in the startup handlers,
-or passed from outside of the operator when :doc:`embedding` is used, or both:
+The per-operator container can be populated in the startup handlers,
+passed from outside the operator when :doc:`embedding` is used, or both:
 
 .. code-block:: python
 
@@ -73,9 +73,9 @@ or passed from outside of the operator when :doc:`embedding` is used, or both:
     the same approach when accessing the stored values.
     The mixed style here is for demonstration purposes only.
 
-The operator's memo is later used to populate the per-resource memos.
-All keys & values are shallow-copied into each resource's memo,
-where they can be mixed with the per-resource values:
+The operator's memo is later used to populate per-resource memos.
+All keys and values are shallow-copied into each resource's memo,
+where they can be mixed with per-resource values:
 
 .. code-block:: python
 
@@ -86,21 +86,21 @@ where they can be mixed with the per-resource values:
             memo.my_queue.put(f"{namespace}/{name}")
             memo.is_seen = True
 
-Any changes to the operator's container since the first appearance
-of the resource are **not** replicated to the existing resources' containers,
-and are not guaranteed to be seen by the new resources (even if they are now).
+Any changes to the operator's container made after the first appearance
+of a resource are **not** replicated to existing resources' containers,
+and are not guaranteed to be seen by new resources (even if they currently are).
 
-However, due to shallow copying, the mutable objects (lists, dicts, and even
+However, due to shallow copying, mutable objects (lists, dicts, and even
 custom instances of :class:`kopf.Memo` itself) in the operator's container
-can be modified from outside, and these changes will be seen in all individual
-resource handlers & daemons which use their per-resource containers.
+can be modified from outside, and these changes will be visible in all individual
+resource handlers and daemons that use their per-resource containers.
 
 
 Custom memo classes
 ===================
 
 For embedded operators (:doc:`/embedding`), it is possible to use any class
-for memos. It is not even required to inherit from :class:`kopf.Memo`.
+for memos. It is not even necessary to inherit from :class:`kopf.Memo`.
 
 There are 2 strict requirements:
 
@@ -108,8 +108,8 @@ There are 2 strict requirements:
 * The class must support shallow copying via :func:`copy.copy` (``__copy__()``).
 
 The latter is used to create per-resource memos from the operator's memo.
-To have one global memo for all individual resources, redefine the class
-to return ``self`` when requested to make a copy, as shown below:
+To have one global memo shared by all individual resources, redefine the class
+to return ``self`` when asked to make a copy, as shown below:
 
 .. code-block:: python
 
@@ -142,8 +142,8 @@ to return ``self`` when requested to make a copy, as shown below:
             ),
         ))
 
-In all other regards, the framework does not use memos for its own needs
-and passes them through the call stack to the handlers and daemons "as is".
+In all other respects, the framework does not use memos for its own needs
+and passes them through the call stack to the handlers and daemons as-is.
 
 This advanced feature is not available for operators executed via ``kopf run``.
 
@@ -158,8 +158,8 @@ to the process lifetime, such as concurrency primitives: locks, tasks, threadsâ€
 For persistent values, use the status stanza or annotations of the resources.
 
 Essentially, the operator's memo is not much different from global variables
-(unless 2+ embedded operator tasks are running there) or asyncio contextvars,
-except that it provides the same interface as for the per-resource memos.
+(unless two or more embedded operator tasks are running) or asyncio contextvars,
+except that it provides the same interface as per-resource memos.
 
 .. seealso::
 

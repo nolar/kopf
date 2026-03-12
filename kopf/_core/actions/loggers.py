@@ -2,7 +2,7 @@
 A connection between object logger and background k8s-event poster.
 
 Everything logged to the object logger (except for debug information) is also
-posted as a k8s-event -- in the background by :mod:`kopf._core.engines.posting`.
+posted as a k8s-event --- in the background by :mod:`kopf._core.engines.posting`.
 
 This eliminates the need to log & post the same messages, which complicates
 the operators' code, and can lead to information loss or mismatch
@@ -163,7 +163,7 @@ class LocalObjectLogger(ObjectLogger):
 
 class TerseObjectLogger(LocalObjectLogger):
     """
-    The same as 'LocalObjectLogger`, but more terse (less wordy).
+    The same as :class:`LocalObjectLogger`, but more terse (less wordy).
 
     In the normal mode, only logs warnings & errors (but not infos).
     In the verbose mode, only logs warnings & errors & infos (but not debugs).
@@ -171,7 +171,7 @@ class TerseObjectLogger(LocalObjectLogger):
     Used for resource indexers: there can be hundreds or thousands of them,
     they are typically verbose, they are called often due to cluster changes
     (e.g. for pods). On the other hand, they are lightweight, so there is
-    no much need to know what is happening until warnings/errors happen.
+    not much need to know what is happening until warnings/errors happen.
     """
     def isEnabledFor(self, level: int) -> bool:
         return super().isEnabledFor(level if level >= logging.WARNING else level - 10)

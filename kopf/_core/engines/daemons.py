@@ -7,18 +7,18 @@ handlers by schedule. The wrapping tasks are always async; the sync functions
 are called in thread executors as part of a regular handler invocation.
 
 These tasks are remembered in the per-resources *memories* (arbitrary data
-containers) through the life-cycle of the operator.
+containers) throughout the lifecycle of the operator.
 
 Since the operators are event-driven conceptually, there are no background tasks
-running for every individual resources normally (i.e. without the daemons),
-so there are no connectors between the operator's root tasks and the daemons,
+running for every individual resource normally (i.e. without the daemons),
+and there are no connectors between the operator's root tasks and the daemons,
 so there is no way to stop/kill/cancel the daemons when the operator exits.
 
 For this, there is an artificial root task spawned to kill all the daemons
-when the operator exits, and all root tasks are gracefully/forcedly terminated.
-Otherwise, all the daemons would be considered as "hung" tasks and will be
-force-killed after some timeout -- which can be avoided, since we are aware
-of the daemons, and they are not actually "hung".
+when the operator exits, and all root tasks are terminated.
+Otherwise, all the daemons would be considered as "hung" tasks and would be
+forcefully killed after some timeout --- which can be avoided,
+since we are aware of the daemons, and they are not actually "hung".
 """
 import abc
 import asyncio
@@ -165,23 +165,23 @@ async def stop_daemons(
     other on-deletion handlers can be happening at the same time as the daemons
     are being terminated (it can take time due to backoffs and timeouts).
     In the end, the finalizer should be removed only once all deletion handlers
-    have succeeded and all daemons are terminated -- not earlier than that.
+    have succeeded and all daemons are terminated --- not earlier than that.
     None of this (handlers and finalizers) is needed for the operator exiting.
 
     To know "when" the next check of daemons should be performed:
 
     * EITHER the operator should block this resource's processing and wait until
-      the daemons are terminated -- thus leaking daemon's abstractions and logic
-      and tools (e.g. a task scheduler) to the upper level of processing;
+      the daemons are terminated --- thus leaking daemon's abstractions and
+      logic and tools (e.g. a task scheduler) to the upper level of processing;
 
     * OR the daemons termination should mimic the change-detection handlers
-      and simulate the delays with multiple handling cycles -- in order to
+      and simulate the delays with multiple handling cycles --- in order to
       re-check the daemon's status regularly until they are done.
 
-    Both of this approaches have the same complexity. But the latter one
-    keep the logic isolated into the daemons module/routines (a bit cleaner).
+    Both of these approaches have the same complexity. But the latter one
+    keeps the logic isolated in the daemons module/routines (a bit cleaner).
 
-    Hence, these duplicating methods of termination for different cases
+    Hence, these duplicate methods of termination for different cases
     (as by their surrounding circumstances: deletion handlers and finalizers).
     """
     delays: list[float] = []
@@ -272,7 +272,7 @@ async def daemon_killer(
         so the respawn can happen with a significant delay.
 
         This issue is considered low-priority & auxiliary, so as the peering
-        itself. It can be fixed later. Workaround: make daemons to exit fast.
+        itself. It can be fixed later. Workaround: make daemons exit fast.
     """
     # Unlimited job pool size —- the same as if we would be managing the tasks directly.
     # Unlimited timeout in `close()` -- since we have our own per-daemon timeout management.
@@ -370,9 +370,9 @@ async def _wait_for_instant_exit(
     """
     Wait for a kind-of-instant exit of a daemon/timer.
 
-    It might be so, that the daemon exits instantly (if written properly).
+    It may be that the daemon exits instantly (if written properly).
     Avoid resource patching and unnecessary handling cycles in this case:
-    just give the asyncio event loop an extra time & cycles to finish it.
+    just give the asyncio event loop extra time & cycles to finish it.
 
     There is nothing "instant", of course. Any code takes some time to execute.
     We just assume that the "instant" is something defined by a small timeout
@@ -403,7 +403,7 @@ async def _runner(
     """
     Guard a running daemon during its life cycle.
 
-    Note: synchronous daemons are awaited to the exit and postpone cancellation.
+    Synchronous daemons are awaited until they exit and postpone cancellation.
     The runner will not exit until the thread exits. See ``invoke`` for details.
     """
     stopper = cause.stopper
@@ -514,7 +514,7 @@ async def _timer(
     A long-running guarding task for resource timer handlers.
 
     Each individual handler for each individual k8s-object gets its own task.
-    Despite asyncio can schedule the delayed execution of the callbacks
+    Even though asyncio can schedule the delayed execution of the callbacks
     with ``loop.call_later()`` and ``loop.call_at()``, we do not use them:
 
     * First, the callbacks are synchronous, making it impossible to patch
@@ -525,7 +525,7 @@ async def _timer(
       deletion or on the operator exit.
 
     * Third, sharp timing would require an external timestamp storage anyway,
-      which is easier to keep as a local variable inside of a function.
+      which is easier to keep as a local variable inside a function.
 
     It is hard to implement all of this with native asyncio timers.
     It is much easier to have an extra task which mostly sleeps,

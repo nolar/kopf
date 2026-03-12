@@ -1,5 +1,5 @@
 """
-The main Kopf module for all the exported functions & classes.
+The main Kopf module for all the exported functions and classes.
 """
 # isort: skip_file
 

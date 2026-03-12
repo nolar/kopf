@@ -3,7 +3,7 @@ Supporting tasks for startup/cleanup and to keep the operator functional.
 
 Consumes a credentials vault, and monitors that it has enough credentials.
 When the credentials are invalidated (i.e. excluded), run the re-authentication
-activity and populates with the new credentials (fully or partially).
+activity and populate them with new credentials (fully or partially).
 
 The process is intentionally split into multiple packages:
 
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 class ActivityError(Exception):
-    """ An error in the activity, as caused by mandatory handlers' failures. """
+    """ An error in the activity, caused by mandatory handlers' failures. """
 
     def __init__(
             self,

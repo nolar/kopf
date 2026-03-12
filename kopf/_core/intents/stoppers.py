@@ -5,14 +5,14 @@ from kopf._cogs.aiokits import aioenums
 
 class DaemonStoppingReason(enum.Flag):
     """
-    A reason or reasons of daemon being terminated.
+    A reason or combination of reasons for a daemon being terminated.
 
     Daemons are signalled to exit usually for two reasons: the operator itself
     is exiting or restarting, so all daemons of all resources must stop;
     or the individual resource was deleted, but the operator continues running.
 
     No matter the reason, the daemons must exit, so one and only one stop-flag
-    is used. Some daemons can check the reason of exiting if it is important.
+    is used. Some daemons can check the reason for exiting if it is important.
 
     There can be multiple reasons combined (in rare cases, all of them).
     """

@@ -36,7 +36,7 @@ It is safe to kill the operator's pod (or process) and allow it to restart.
 
 The handlers that succeeded previously will not be re-executed.
 The handlers that did not execute yet, or were scheduled for retrying,
-will be retried by a new operators pod/process from the point where
+will be retried by a new operator's pod/process from the point where
 the old pod/process was terminated.
 
 Restarting an operator will only affect the handlers currently being
@@ -51,7 +51,7 @@ If the operator is down and not running, any changes to the objects
 are ignored and not handled. They will be handled when the operator starts:
 every time a Kopf-based operator starts, it lists all objects of the
 resource kind, and checks for their state; if the state has changed since
-the object was last handled (no matter how long time ago),
+the object was last handled (no matter how long ago),
 a new handling cycle starts.
 
 Only the last state is taken into account. All the intermediate changes

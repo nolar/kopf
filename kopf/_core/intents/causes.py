@@ -11,9 +11,9 @@ caused them, and they only notify that the object was changed somehow:
 The conversion of low-level *events* to high level *causes* is done by
 checking the object's state and comparing it to the saved last-seen state.
 
-This allows to track which specific fields were changed, and if are those
+This allows tracking which specific fields were changed, and whether those
 changes are important enough to call the handlers: e.g. the ``status`` changes
-are ignored, so as some selected system fields of the ``metadata``.
+are ignored, as are some selected system fields of the ``metadata``.
 
 For deletion, the cause is detected when the object is just marked for deletion,
 not when it is actually deleted (as the events notify): so that the handlers
@@ -93,7 +93,7 @@ class BaseCause(execution.Cause):
     IMPORTANT! Indices overwrite any other kwargs, even the existing ones.
 
     Why so? Here is why: for forwards & backwards compatibility.
-    If an handler uses an index named "children", and Kopf introduces
+    If a handler uses an index named "children", and Kopf introduces
     a new kwarg "children", the handler's code could break on the upgrade.
     To prevent this, Kopf overwrites the framework's kwarg "children"
     with the operator's index "children" and lets the developers rename it
@@ -168,9 +168,6 @@ class WebhookCause(ResourceCause):
 
 @dataclasses.dataclass
 class IndexingCause(ResourceCause):
-    """
-    The raw event received from the API.
-    """
     pass
 
 
@@ -236,7 +233,7 @@ class DaemonCause(ResourceCause):
     Regular causes are usually short-term, triggered by a watch-stream event,
     and disappear once the event is processed. The processing includes
     daemon spawning: the original cause and its temporary watch-event
-    should not be remembered though the whole life cycle of a daemon.
+    should not be remembered through the whole life cycle of a daemon.
 
     Instead, a new artificial daemon-cause is used (this class), which
     passes the kwarg values to the invocation routines. It only contains
