@@ -7,7 +7,7 @@ and created the :doc:`custom resource definitions <resources>`
 for the ephemeral volume claims.
 
 Now, we are ready to write some logic for this kind of objects.
-Let's start with an operator skeleton that does nothing useful --
+Let us start with an operator skeleton that does nothing useful --
 just to see how it can be started.
 
 .. code-block:: python
@@ -22,11 +22,11 @@ just to see how it can be started.
         logging.info(f"A handler is called with body: {body}")
 
 .. note::
-    Despite an obvious desire, do not name the file as ``operator.py``,
+    Despite an obvious desire, do not name the file ``operator.py``,
     since there is a built-in module in Python 3 with this name,
     and there could be potential conflicts on the imports.
 
-Let's run the operator and see what will happen:
+Let us run the operator and see what will happen:
 
 .. code-block:: bash
 
@@ -65,7 +65,7 @@ The operator will not handle the object, as now it is already successfully
 handled. This is important in case the operator is restarted if it runs
 in a normally deployed pod, or when you restart the operator for debugging.
 
-Let's delete and re-create the same object to see the operator reacting:
+Let us delete and re-create the same object to see the operator reacting:
 
 .. code-block:: bash
 

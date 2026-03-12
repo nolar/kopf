@@ -115,7 +115,7 @@ by using the keyword arguments:
 By-category resource selectors
 ==============================
 
-The whole categories of resources can be served, but they must be explicitly
+Whole categories of resources can be served, but they must be explicitly
 specified to avoid unintended consequences:
 
 .. code-block:: python
@@ -148,7 +148,7 @@ of the mandatory resource name:
         pass
 
 As a consequence of the above, to handle every resource in the cluster
--- which might be not the best idea per se, but is technically possible --
+-- which might not be the best idea per se, but is technically possible --
 omit the API group/version, and use the marker only:
 
 .. code-block:: python
@@ -274,13 +274,13 @@ Ambiguous resource selectors
 
     This only applies to resource specifications where it is intended to have
     a specific resource by its name; specifications with intentional
-    multi-resource mode are served as usually (e.g. by categories).
+    multi-resource mode are served as usual (e.g. by categories).
 
     However, ``v1`` resources have priority over all other resources. This
     resolves the conflict of ``pods.v1`` vs. ``pods.v1beta1.metrics.k8s.io``,
     so just ``"pods"`` can be specified and the intention will be understood.
 
-    This mimics the behaviour of ``kubectl``, where such API priorities
+    This mimics the behavior of ``kubectl``, where such API priorities
     are `hard-coded`__.
 
     __ https://github.com/kubernetes/kubernetes/blob/323f34858de18b862d43c40b2cced65ad8e24052/staging/src/k8s.io/client-go/restmapper/discovery.go#L47-L49

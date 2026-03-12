@@ -39,13 +39,13 @@ exit code and output are available to the test (for additional assertions).
 
 .. note::
     The operator runs against the cluster which is currently authenticated ---
-    same as if would be executed with ``kopf run``.
+    same as if it would be executed with ``kopf run``.
 
 
 Mock server
 ===========
 
-KMock is a supplimentary project to run a local mock server for any HTTP API, and for Kubernetes API in particular — with extended supported of Kubernetes API endpoints, resource discovery, and implicit in-memory object persistence.
+KMock is a supplementary project to run a local mock server for any HTTP API, and for Kubernetes API in particular — with extended support of Kubernetes API endpoints, resource discovery, and implicit in-memory object persistence.
 
 Use KMock when you need to run a very lightweight simulation of the Kubernetes API without deploying the heavy Kubernetes cluster nearby, for example when migrating to/from Kopf.
 

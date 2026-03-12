@@ -3,7 +3,7 @@ Peering
 =======
 
 All running operators communicate with each other via peering objects
-(additional kind of custom resources), so they know about each other.
+(an additional kind of custom resources), so they know about each other.
 
 
 Priorities
@@ -14,8 +14,8 @@ notices that other operators start with a higher priority, it pauses
 its operation until those operators stop working.
 
 This is done to prevent collisions of multiple operators handling
-the same objects. If two operators runs with the same priority  all operators
-issue a warning and freeze, so that the cluster becomes not served anymore.
+the same objects. If two operators run with the same priority, all operators
+issue a warning and freeze, so that the cluster is no longer served.
 
 To set the operator's priority, use :option:`--priority`:
 
@@ -144,7 +144,7 @@ Or:
         settings.peering.standalone = True
 
 In that case, the operator will not pause if other operators with
-the higher priority will start handling the objects, which may lead
+a higher priority start handling the objects, which may lead
 to the conflicting changes and reactions from multiple operators
 for the same events.
 
@@ -164,12 +164,12 @@ Multi-pod operators
 
 Usually, one and only one operator instance should be deployed for the resource.
 If that operator's pod dies, the handling of the resource of this type
-will stop until the operator's pod is restarted (and if restarted at all).
+will stop until the operator's pod is restarted (if it is restarted at all).
 
-To start multiple operator pods, they must be distinctly prioritised.
+To start multiple operator pods, they must be distinctly prioritized.
 In that case, only one operator will be active --- the one with the highest
 priority. All other operators will pause and wait until this operator exits.
-Once it dies, the second-highest priority operator will come into play.
+Once it exits, the second-highest priority operator will come into play.
 And so on.
 
 For this, assign a monotonically growing or random priority to each

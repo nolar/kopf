@@ -4,7 +4,7 @@ Handlers
 
 .. todo:: Multiple handlers per script.
 
-Handlers are Python functions with the actual behaviour
+Handlers are Python functions with the actual behavior
 of the custom resources.
 
 They are called when any custom resource (within the scope of the operator)
@@ -19,7 +19,7 @@ Events & Causes
 Kubernetes only notifies when something is changed in the object,
 but it does not clarify what was changed.
 
-More on that, since Kopf stores the state of the handlers on the object itself,
+Moreover, since Kopf stores the state of the handlers on the object itself,
 these state changes also cause the events, which are seen by the operators
 and any other watchers.
 
@@ -54,13 +54,13 @@ All available decorators are described below.
 Kopf only supports simple functions and static methods as handlers.
 Class and instance methods are not supported.
 For explanation and rationale, see the discussion in `#849`__ (briefly:
-the semantics of handlers is vague when multiple instances exist or
+the semantics of handlers is vague when multiple instances exist or when
 multiple sub-classes inherit from the class, thus inheriting the handlers).
 
 __ https://github.com/nolar/kopf/issues/849
 
-Would you still want to use classes for namespacing, register the handlers
-by using Kopf's decorators explicitly for specific instances/sub-classes thus
+If you still want to use classes for namespacing, register the handlers
+by using Kopf's decorators explicitly for specific instances/sub-classes, thus
 resolving the mentioned vagueness and giving the meaning to ``self``/``cls``:
 
 .. code-block:: python
@@ -119,7 +119,7 @@ i.e. what happened to the object:
   from which old values to which new values?
 
 .. note::
-    Worth noting that Kopf stores the status of the handlers, such as their
+    It is worth noting that Kopf stores the status of the handlers, such as their
     progress or errors or retries, in the object itself (``.status`` stanza),
     which triggers its low-level events, but these events are not detected
     as separate causes, as there is nothing changed *essentially*.
@@ -142,8 +142,8 @@ The following 3 core cause-handlers are available:
     def my_handler(spec, **_):
         pass
 
-Despite the handlers see the full body of the resource object, they react
-only to _essential_ changes, as implemented  by:class:`kopf.DiffBaseStorage`
+Despite the handlers seeing the full body of the resource object, they react
+only to _essential_ changes, as implemented by :class:`kopf.DiffBaseStorage`
 or its descendants (:ref:`diffbase-storing`).
 
 In particular, Kopf ignores the whole ``status`` stanza as non-essential,
@@ -197,8 +197,8 @@ handling cycles, and are executed in the order they are declared.
 
 It is a common pattern to declare both creation and resuming handler
 pointing to the same function, so that this function is called either
-when an object is created ("started) while the operator is alive ("exists"), or
-when the operator is started ("created") when the object is existent ("alive"):
+when an object is created ("started") while the operator is alive ("exists"), or
+when the operator is started ("created") while the object is existent ("alive"):
 
 .. code-block:: python
 
@@ -238,7 +238,7 @@ For example:
 
 In this example, if the operator starts and notices an object that is marked
 for deletion, the deletion handler will be called, but the resuming handler
-is not called at all, despite the object was noticed to exist out there.
+is not called at all, despite the object being noticed to exist out there.
 Otherwise, there would be a resource (e.g. memory) leak.
 
 If the resume handlers are still desired during the deletion handling, they
@@ -281,12 +281,12 @@ Sub-handlers
 ============
 
 .. warning::
-    Sub-handlers are an advanced topic. Please, make sure you understand
-    the regular handlers first, so as the handling cycle of the framework.
+    Sub-handlers are an advanced topic. Please make sure you understand
+    the regular handlers first, as well as the handling cycle of the framework.
 
 A common example for this feature are the lists defined in the spec,
 each of which should be handled with a handler-like approach
-rather than explicitly -- i.e. with the error tracking, retries, logging,
+rather than explicitly -- i.e., with the error tracking, retries, logging,
 progress and status reporting, etc.
 
 This can be used with dynamically created functions, such as lambdas,
@@ -338,7 +338,7 @@ Both of these ways are equivalent.
 It is a matter of taste and preference which one to use.
 
 The sub-handlers will be processed by all the standard rules and cycles
-of the Kopf's handling cycle, as if they were the regular handlers
+of Kopf's handling cycle, as if they were the regular handlers
 with the ids like ``create_fn/item1``, ``create_fn/item2``, etc.
 
 .. warning::

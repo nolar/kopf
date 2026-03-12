@@ -116,7 +116,7 @@ and will return a JSONPatch structure to Kubernetes.
 Handler options
 ===============
 
-Handlers have a limited capability to inform Kubernetes about its behaviour.
+Handlers have a limited capability to inform Kubernetes about their behavior.
 The following options are supported:
 
 ``persistent`` (``bool``) webhooks will not be removed from the managed
@@ -131,7 +131,7 @@ for a specific operation. For multiple operations, add several decorators.
 Possible values are ``"CREATE"``, ``"UPDATE"``, ``"DELETE"``, ``"CONNECT"``.
 The default is ``None``, i.e. all operations (equivalent to ``"*"``).
 
-``subresource`` (``str``) will only react when to the specified subresource.
+``subresource`` (``str``) will only react to the specified subresource.
 Usually it is ``"status"`` or ``"scale"``, but can be anything else.
 The value ``None`` means that only the main resource body will be checked.
 The value ``"*"`` means that both the main body and any subresource are checked.
@@ -144,7 +144,7 @@ The default is ``False``, i.e. the handler has no side effects.
 
 ``ignore_failures`` (``bool``) marks the webhook as tolerant to errors.
 This includes errors of the handler itself (disproved admissions),
-so as HTTP/TCP communication errors when apiservers talk to the webhook server.
+as well as HTTP/TCP communication errors when apiservers talk to the webhook server.
 By default, an inaccessible or rejecting webhook blocks the admission.
 
 The developers can use regular :doc:`/filters`. In particular, the ``labels``
@@ -165,7 +165,7 @@ The callbacks will be evaluated after the admission review request is received.
 
     Start the development in local clusters, validating/mutating the custom
     resources first, and enable ``ignore_errors`` initially.
-    Enable the strict mode of the handlers only when stabilised.
+    Enable the strict mode of the handlers only when stabilized.
 
 
 In-memory containers
@@ -239,9 +239,9 @@ the status code and the message of the admission review response.
 All other exceptions,
 including :class:`kopf.PermanentError` and :class:`kopf.TemporaryError`,
 equally fail the admission (be that validating or mutating admission).
-However, they return the general HTTP code 500 (non-customisable).
+However, they return the general HTTP code 500 (non-customizable).
 
-One and only one error is returned to the user who make an API request.
+One and only one error is returned to the user who makes an API request.
 In cases when Kubernetes makes several parallel requests to several webhooks
 (typically with managed webhook configurations, the fastest error is used).
 Within Kopf (usually with custom webhook servers/tunnels or self-made
@@ -254,7 +254,7 @@ are used to select the only error to report in the admission review response.
     @kopf.on.validate('kopfexamples')
     def validate1(spec, **_):
         if spec.get('field') == 'value':
-            raise kopf.AdmissionError("Meh! I don't like it. Change the field.", code=400)
+            raise kopf.AdmissionError("Meh! I do not like it. Change the field.", code=400)
 
 The admission errors look like this (manually indented for readability):
 
@@ -263,7 +263,7 @@ The admission errors look like this (manually indented for readability):
     $ kubectl create -f examples/obj.yaml
     Error from server: error when creating "examples/obj.yaml":
         admission webhook "validate1.auto.kopf.dev" denied the request:
-            Meh! I don't like it. Change the field.
+            Meh! I do not like it. Change the field.
 
 Note that Kubernetes executes multiple webhooks in parallel.
 The first one to return the result is the one and the only shown;
@@ -318,7 +318,7 @@ Servers and tunnels
 
 Kubernetes admission webhooks are designed to be passive rather than active
 (from the operator's point of view; vice versa from Kubernetes's point of view).
-It means, the webhooks must passively wait for requests via an HTTPS endpoint.
+This means the webhooks must passively wait for requests via an HTTPS endpoint.
 There is currently no official way how an operator can actively pull or poll
 the admission requests and send the responses back
 (as it is done for all other resource changes streamed via the Kubernetes API).
@@ -327,7 +327,7 @@ It is typically non-trivial to forward the requests from a remote or isolated
 cluster to a local host machine where the operator is running for development.
 
 However, one of Kopf's main promises is to work the same way both in-cluster
-and on the developers' machines. It cannot be made "the same way" for webhooks,
+and on the developers' machines. Kopf cannot make it "the same way" for webhooks,
 but Kopf attempts to make these modes similar to each other code-wise.
 
 To fulfil its promise, Kopf delegates this task to webhook servers and tunnels,
@@ -415,7 +415,7 @@ For simplicity, Kopf does not authenticate webhook clients.
 
 However, Kopf's built-in webhook servers & tunnels extract the very basic
 request information and pass it to the admission handlers
-for additional verification and possibly for authentification:
+for additional verification and possibly for authentication:
 
 * :kwarg:`headers` (``Mapping[str, str]``) contains all HTTPS headers,
   including ``Authorization: Basic ...``, ``Authorization: Bearer ...``.
@@ -448,7 +448,7 @@ An example of a self-signed peer certificate presented to ``sslpeer``:
 To reproduce these examples without configuring the Kubernetes apiservers
 but only Kopf & CLI tools, do the following:
 
-Step 1: Generate a self-signed ceritificate to be used as a client certificate:
+Step 1: Generate a self-signed certificate to be used as a client certificate:
 
 .. code-block:: bash
 
@@ -709,7 +709,7 @@ and request handling logic well-aligned with the rest of the framework:
 System resource cleanup
 =======================
 
-It is advised that custom servers/tunnels cleanup the system resources
+It is advised that custom servers/tunnels clean up the system resources
 they allocate at runtime. The easiest way is the ``try-finally`` block --
 the cleanup will happen on the garbage collection of the generator object
 (beware: it can be postponed in some environments, e.g. in PyPy).
@@ -742,7 +742,7 @@ That way, the context manager turns into a factory of webhook server(s).
 
 Keep in mind that the webhook server/tunnel is used only once per
 the operator's lifetime; once it exits, the whole operator stops.
-It makes no practical sense in making the webhook servers/tunnels reentrant.
+Making the webhook servers/tunnels reentrant has no practical benefit.
 
 .. note::
 

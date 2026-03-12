@@ -4,7 +4,7 @@ Deployment
 
 Kopf can be executed out of the cluster, as long as the environment is
 authenticated to access the Kubernetes API.
-But normally, the operators are usually deployed directly to the clusters.
+But normally, operators are deployed directly to the clusters.
 
 
 Docker image
@@ -71,7 +71,7 @@ Deploy it to the cluster:
 
 No services or ingresses are needed (unlike in the typical web-app examples),
 as the operator is not listening for any incoming connections,
-but only makes the outcoming calls to the Kubernetes API.
+but only makes outgoing calls to the Kubernetes API.
 
 
 .. _rbac:

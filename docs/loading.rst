@@ -2,7 +2,7 @@ Loading and importing
 =====================
 
 Kopf requires the source files with the handlers on the command line.
-It does not do any attempts to guess the user's intentions
+It does not make any attempts to guess the user's intentions
 or to introduce any conventions (at least, now).
 
 There are two ways to specify them (both mimicking the Python interpreter):

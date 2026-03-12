@@ -162,7 +162,7 @@ To set an owner to not be a controller or not block owner deletion:
 
     kopf.append_owner_reference(objs, controller=False, block_owner_deletion=False)
 
-Both of the above are True by default
+Both of the above are ``True`` by default.
 
 .. seealso::
     :doc:`walkthrough/deletion`.
@@ -186,7 +186,7 @@ It can be enforced with ``forced=True``:
 
 By default, the specified name is used as a prefix, and a random suffix
 is requested from Kubernetes (via ``metadata.generateName``). This is the
-most widely used mode with multiple children resource of the same kind.
+most widely used mode with multiple children resources of the same kind.
 To ensure the exact name for single-child cases, pass ``strict=True``:
 
 .. code-block:: python

@@ -120,10 +120,10 @@ The following log formats are supported on CLI:
 Logging events
 ==============
 
-``settings.posting`` allows to control which log messages should be posted as
+``settings.posting`` controls which log messages are posted as
 Kubernetes events. Use ``logging`` constants or integer values to set the level:
 e.g., ``logging.WARNING``, ``logging.ERROR``, etc.
-The default is ``logging`.INFO``.
+The default is ``logging.INFO``.
 
 .. code-block:: python
 
@@ -290,7 +290,7 @@ __ https://github.com/kubernetes/kubernetes/blob/c20e0bc54189aef73a6a1498b4eab28
 .. note::
     The inactivity tracking is NOT supported in Python 3.10. It works only
     since Python 3.11 and higher. Python 3.10 behaves the old way ---
-    ignores the stalled connections and might freeze in no action indefinitely.
+    ignores the stalled connections and might freeze with no action indefinitely.
     As a workaround, set ``settings.watching.client_timeout`` to 1-10 mins.
     Python 3.10's end-of-life is October 2026, so the fix is not planned.
 
@@ -537,7 +537,7 @@ Storage transition
 
     Changing a storage method for an existing operator with existing resources
     is dangerous: the operator will consider all those resources
-    as not handled yet (due to absence of a diff-base key) or will loose
+    as not handled yet (due to absence of a diff-base key) or will lose
     their progress state (if some handlers are retried or slow). The operator
     will start handling each of them again -- which can lead to duplicated
     children or other side-effects.
@@ -602,9 +602,9 @@ If you have very restrictive cluster permissions, disable the cluster discovery:
 Retrying of API errors
 ======================
 
-In some cases, the Kubernetes API servers might be not ready on startup
+In some cases, the Kubernetes API servers might not be ready on startup
 or occasionally at runtime; the network might have issues too. In most cases,
-these issues are of temporary nature and heal themselves withing seconds.
+these issues are of temporary nature and heal themselves within seconds.
 
 The framework retries the TCP/SSL networking errors and the HTTP 5xx errors
 ("the server is wrong") --- i.e. everything that is presumed to be temporary;
@@ -625,7 +625,7 @@ It is a sequence of back-offs between attempts (in seconds):
         settings.networking.error_backoffs = [10, 20, 30]
 
 Note that the number of attempts is one more than the number of back-off
-intervals (because the back-offs happen inbetween the attempts).
+intervals (because the back-offs happen in between the attempts).
 
 A single integer or float value means a single backoff, i.e. 2 attempts:
 ``(1.0)`` is equivalent to ``(1.0,)`` or ``[1.0]`` for convenience.
@@ -734,7 +734,7 @@ are required; but make sure that it is re-iterable for multiple uses.
 Log levels & filters
 ====================
 
-In case the logs of any component are too exessive, or contain secret data,
+In case the logs of any component are too excessive, or contain secret data,
 this can be controlled with the usual Python logging machinery.
 
 For example, to disable the access logs of the probing server:

@@ -7,7 +7,7 @@ Layered layout
 
 The framework is organized into several layers, and the layers are layered too.
 The higher-level layers and modules can import the lower-level ones,
-but not vice versa. The layering is checked and enforced by `import-linter`_.
+but not vice versa. `import-linter`_ checks and enforces the layering.
 
 .. _import-linter: https://github.com/seddonym/import-linter/
 
@@ -16,8 +16,8 @@ but not vice versa. The layering is checked and enforced by `import-linter`_.
    :width: 100%
    :alt: A layered module layout overview (described below).
 
-   Note: only the essential module dependencies are shown, not all of them.
-   All other numerous imports are represented by cross-layer dependencies.
+   The figure shows only the essential module dependencies, not all of them.
+   Cross-layer dependencies represent all other numerous imports.
 
 .. Drawn with https://diagrams.net/ (ex-draw.io; desktop version).
 .. The source is here nearby. Export as PNG, border width 0, scale 200%,
@@ -112,7 +112,7 @@ Kits
 
 ``hierarchies`` are helper functions to manage the hierarchies of Kubernetes
 objects, such as labelling them, adding/removing the owner references,
-name generation, so on. They support raw Python dicts so as some selected
+name generation, and so on. They support raw Python dicts as well as some selected
 libraries: pykube-ng and the official Kubernetes client for Python
 (see :doc:`/hierarchies`).
 

@@ -94,7 +94,7 @@ However, please include a "Signed-off-by" tag in every patch
 
 The sign-off can be either written manually or added with ``git commit -s``.
 If you contribute often, you can automate this in Kopf's repo with
-a [Git hook](https://stackoverflow.com/a/46536244/857383).
+a `Git hook <https://stackoverflow.com/a/46536244/857383>`_.
 
 
 Code style
@@ -106,9 +106,9 @@ Blend your code into the surrounding code style.
 Kopf does not use and will never use strict code formatters
 (at least until they acquire common sense and context awareness).
 In case of doubt, adhere to PEP-8 and
-[Google Python Style Guide](https://google.github.io/styleguide/pyguide.html).
+`Google Python Style Guide <https://google.github.io/styleguide/pyguide.html>`_.
 
-The line length is 100 characters for code, 80 for docstrings and RsT files.
+The line length is 100 characters for code, 80 for docstrings and RST files.
 Long URLs can exceed this length.
 
 For linting, minor code styling, import sorting, layered modules checks, run:

@@ -32,7 +32,7 @@ and can only see the stack traces up to the thread entry point.
 
     Calling a synchronous function (e.g. HTTP API calls or ``time.sleep()``)
     inside of an asynchronous function will block the whole operator process
-    until the synchronous call if finished, i.e. even other resources
+    until the synchronous call is finished, i.e. even other resources
     processed in parallel, and the Kubernetes event-watching/-queueing cycles.
 
     This can come unnoticed in the development environment

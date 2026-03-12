@@ -15,8 +15,8 @@ Nothing.
 The EVC update handler will be called, but it only uses the size field.
 Other fields are ignored.
 
-Let's re-label the PVC with the labels of its EVC, and keep them in sync.
-The sync is one-way: re-labelling the child PVC does not affect the parent EVC.
+Let us re-label the PVC with the labels of its EVC, and keep them in sync.
+The sync is one-way: relabeling the child PVC does not affect the parent EVC.
 
 
 Old & New
@@ -93,7 +93,7 @@ For example, if the field is ``metadata.labels``:
      ('change', ('label2',), 'old-value', 'new-value'),
      ('remove', ('label3',), 'old-value', None))
 
-Now, let's use this feature to explicitly react to the re-labelling of the EVCs.
+Now, let us use this feature to explicitly react to the relabeling of the EVCs.
 Note that the ``new`` value for the removed dict key is ``None``,
 exactly as needed for the patch object (i.e. the field is present there):
 

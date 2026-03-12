@@ -138,7 +138,7 @@ which in turn include those sophisticated authentication methods
 
 If you want extra I/O performance under the hood, install the uvloop_ extra
 (also see :ref:`custom-event-loops`). It will be activated automatically
-if installed, no extra flags or configuration is needed:
+if installed, no extra flags or configuration are needed:
 
 .. code-block:: bash
 

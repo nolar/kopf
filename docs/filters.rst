@@ -8,7 +8,7 @@ Multiple criteria are joined with AND, i.e. they all must be satisfied.
 
 Unless stated otherwise, the described filters are available for all handlers:
 resuming, creation, deletion, updating, event-watching, timers, daemons,
-or even to sub-handlers (thus eliminating some checks in its parent's code).
+or even to sub-handlers (thus eliminating some checks in their parent's code).
 
 There are only a few kinds of checks:
 
@@ -98,7 +98,7 @@ with any value (for update handlers: present before or after the change).
 Since the field name is part of the handler id (e.g., ``"fn/spec.field"``),
 multiple decorators can be defined to react to different fields with the same
 function and it will be invoked multiple times with different old & new values
-relevant to the specified fields, so as different values of :kwarg:`param`:
+relevant to the specified fields, as well as different values of :kwarg:`param`:
 
 .. code-block:: python
 
@@ -107,8 +107,8 @@ relevant to the specified fields, so as different values of :kwarg:`param`:
     def one_of_the_fields_is_affected(old, new, **_):
         pass
 
-However, different causes --mostly resuming + one of creation/update/deletion--
-will not be distinguished, so e.g. resume+create pair with the same field
+However, different causes -- mostly resuming + one of creation/update/deletion --
+will not be distinguished, so e.g. a resume+create pair with the same field
 will be called only once.
 
 Due to the special nature of update handlers (``@on.update``, ``@on.field``),
@@ -161,7 +161,7 @@ Change filters
 
 The update handlers (specifically, ``@kopf.on.update`` and ``@kopf.on.field``)
 check the ``value=`` filter against both old & new values,
-which might be not what is intended.
+which might not be what is intended.
 For more precision on filtering, the old/new values
 can be checked separately with the ``old=/new=`` filters
 with the same filtering methods/markers as all other filters.
@@ -209,7 +209,7 @@ but also a change in the field's presence or absence in the resource.
 
 If none of the ``old=/new=/value=`` filters is specified, the handler is invoked
 if the field is affected in any way, i.e. if it was modified, added, or removed.
-This is the same behaviour as with the unspecified ``value=`` filter.
+This is the same behavior as with the unspecified ``value=`` filter.
 
 .. note::
 
@@ -326,10 +326,10 @@ Stealth mode
     in sight with no diff-base, which means that it is a newly created object;
     so, the on-creation handlers will be called instead of the on-update ones.
 
-    This behaviour is correct and reasonable from the filtering logic side.
+    This behavior is correct and reasonable from the filtering logic perspective.
     If this is a problem, then create a dummy handler without filters
     (e.g. a field-handler for a non-existent field) --
-    this will make all the objects always being in the scope of the operator,
+    this will keep all the objects always in the scope of the operator,
     even if the operator did not react to their creation/update/deletion,
     and so the diff-base annotations ("last-handled-configuration", etc)
     will be always added on the actual object creation, not on scope changes.

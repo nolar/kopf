@@ -89,7 +89,7 @@ Operator configuration
 ``settings`` is passed to activity handlers (but not to resource handlers).
 
 It is an object with a predefined nested structure of containers with values,
-which defines the operator's behaviour. See: :class:`kopf.OperatorSettings`.
+which defines the operator's behavior. See: :class:`kopf.OperatorSettings`.
 
 It can be modified if needed (usually in the startup handlers). Every operator
 (if there are more than one in the same process) has its config.
@@ -116,7 +116,7 @@ Body parts
 
 ``resource`` (:class:`kopf.Resource`) is the actual resource being served
 as retrieved from the cluster during the initial discovery.
-Please note that it is not necessary the same selector as used in the decorator,
+Please note that it is not necessarily the same selector as used in the decorator,
 as one selector can match multiple actual resources.
 
 ``body`` is the handled object's body, a read-only mapping (dict).
@@ -173,8 +173,8 @@ Patching
 
 ``patch`` is a mutable mapping (dict) with the object changes to be applied
 after the handler. It is actively used internally by the framework itself,
-and is shared to the handlers for convenience _(since patching happens anyway
-in the framework, why make separate API calls for patching?)_.
+and is shared to the handlers for convenience (since patching happens anyway
+in the framework, why make separate API calls for patching?).
 
 ``patch`` also provides a ``fns`` property for appending transformation
 functions that operate on the raw resource body as a mutable dictionary.
@@ -339,7 +339,7 @@ See more: :doc:`admission`.
 Admission warnings
 ------------------
 
-``warnings`` (``list[str]``) is a **mutable** list of string used as warnings.
+``warnings`` (``list[str]``) is a **mutable** list of strings used as warnings.
 The admission webhook handlers can populate the list with warnings (strings),
 and the webhook servers/tunnels return them to Kubernetes, which shows them
 to ``kubectl``.
@@ -352,7 +352,7 @@ See more: :doc:`admission`.
 User information
 ----------------
 
-``userinfo`` (``Mapping[str, Any]``) is an information about a user that
+``userinfo`` (``Mapping[str, Any]``) is information about a user that
 sends the API request to Kubernetes.
 
 It usually contains the keys ``'username'``, ``'uid'``, ``'groups'``,

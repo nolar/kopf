@@ -27,7 +27,7 @@ built-in feature of Kubernetes: `the owner references`__.
 
 __ https://kubernetes.io/docs/concepts/workloads/controllers/garbage-collection/
 
-Let's extend the creation handler:
+Let us extend the creation handler:
 
 .. code-block:: python
     :name: adopting

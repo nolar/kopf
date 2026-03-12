@@ -190,7 +190,7 @@ Enumerating resources
 If the goal is not to store any payload but to only list the existing resources,
 then index the resources' identities (usually, their namespaces and names).
 
-One way is to only collect their identities in a flat collection -- in case
+One way is to only collect their identities in a flat collection --- in case
 you need mostly to iterate over all of them without key lookups:
 
 .. code-block:: python
@@ -557,7 +557,7 @@ Precautions for huge clusters
     Also, minimize the number of resources indexed with more precise filters.
 
 .. warning::
-    Similarly, in huge cluster with many resources, there will be heavy
+    Similarly, in huge clusters with many resources, there will be heavy
     CPU load if sync handlers are used for indexing.
 
     Sync handlers are executed in thread pools. If there are too many
@@ -567,7 +567,7 @@ Precautions for huge clusters
     But this will not help against the initial wave.
 
     Thread pools do not scale down automatically, so this number of threads
-    will remain throughout the life time of the operator.
+    will remain throughout the lifetime of the operator.
 
     To solve the thread explosion problem, use one of these two solutions:
 

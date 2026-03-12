@@ -17,7 +17,7 @@ can also be considered as a part of the solution.
 
 ----
 
-The **Kubernetes controller** is the logic (i.e. the behaviour) behind most
+The **Kubernetes controller** is the logic (i.e. the behavior) behind most
 objects, both built-in and added as extensions of Kubernetes.
 Examples of objects are ReplicaSet and Pods, created when a Deployment object
 is created, with the rolling version upgrades, and so on.
@@ -33,9 +33,9 @@ objects of a specific kind, with some domain logic implemented inside.
 
 The essential difference between operators and the controllers
 is that operators are domain-specific controllers,
-but not all controllers are necessary operators:
+but not all controllers are necessarily operators:
 for example, the built-in controllers for pods, deployments, services, etc,
-so as the extensions of the object's life-cycles based on the labels/annotations,
+as well as the extensions of the object's life-cycles based on the labels/annotations,
 are not operators, but just controllers.
 
 The essential similarity is that they both implement the same pattern:

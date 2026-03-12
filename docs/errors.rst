@@ -2,7 +2,7 @@
 Error handling
 ==============
 
-Kopf tracks the status of the handlers (except for the low-level event handlers)
+Kopf tracks the status of the handlers (except for the low-level event handlers),
 catches the exceptions, and processes them from each of the handlers.
 
 The last (or the final) exception is stored in the object's status,
@@ -74,7 +74,7 @@ Kopf assumes that any arbitrary errors
 (i.e. not :class:`kopf.TemporaryError` and not :class:`kopf.PermanentError`)
 are the environment's issues and can self-resolve after some time.
 
-As such, as default behaviour,
+As such, as the default behavior,
 Kopf retries the handlers with arbitrary errors
 infinitely until the handlers either succeed or fail permanently.
 
@@ -108,7 +108,7 @@ The overall runtime of the handler can be limited:
     def create_fn(spec, **_):
         raise kopf.TemporaryError(delay=60)
 
-If the handler is not succeeded within this time, it is considered
+If the handler has not succeeded within this time, it is considered
 as fatally failed.
 
 If the handler is an async coroutine and it is still running at the moment,
@@ -140,7 +140,7 @@ Backoff
 =======
 
 The interval between retries on arbitrary errors, when an external environment
-is supposed to recover and be able to succeed the handler execution,
+is supposed to recover and allow the handler execution to succeed,
 can be configured:
 
 .. code-block:: python

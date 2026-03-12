@@ -85,7 +85,7 @@ Once changed, the timer will stop and wait for the new idling time:
 Postponing
 ==========
 
-Normally, timers are invoked immediately once resource becomes visible
+Normally, timers are invoked immediately once the resource becomes visible
 to the operator (unless idling is declared).
 
 It is possible to postpone the invocations:
@@ -151,7 +151,7 @@ The timers follow the standard :doc:`error handling <errors>` protocol:
 the ``errors``, ``timeout``, ``retries``, ``backoff`` options of the handler.
 The kwargs :kwarg:`retry`, :kwarg:`started`, :kwarg:`runtime` are provided too.
 
-The default behaviour is to retry arbitrary error
+The default behavior is to retry an arbitrary error
 (similar to the regular resource handlers).
 
 When an error happens, its delay overrides the timer's schedule or life cycle:
@@ -213,7 +213,7 @@ as a key.
 
 .. note::
 
-    Whenever a resulting value is serialised and put on the resource's status,
+    Whenever a resulting value is serialized and put on the resource's status,
     it modifies the resource, which, in turn, resets the idle timer.
     Use carefully with both idling & returned results.
 
@@ -243,7 +243,7 @@ System resources
     Timers are implemented the same way as asynchronous daemons
     (see :doc:`daemons`) — via asyncio tasks for every resource & handler.
 
-    Despite OS threads are not involved until the synchronous functions
+    Although OS threads are not involved until the synchronous functions
     are invoked (through the asyncio executors), this can lead to significant
     OS resource usage on large clusters with thousands of resources.
 

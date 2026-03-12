@@ -36,7 +36,7 @@ It is safe to kill the operator's pod (or process) and allow it to restart.
 
 The handlers that succeeded previously will not be re-executed.
 The handlers that did not execute yet, or were scheduled for retrying,
-will be retried by a new operators pod/process from the point where
+will be retried by a new operator's pod/process from the point where
 the old pod/process was terminated.
 
 Restarting an operator will only affect the handlers currently being

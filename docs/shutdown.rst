@@ -15,10 +15,10 @@ or by raising the stop-flag, or by cancelling the operator's task
     async def cleanup_fn(logger, **kwargs):
         pass
 
-The cleanup handlers are not guaranteed to be fully executed if they take
+The cleanup handlers are not guaranteed to execute fully if they take
 too long -- due to a limited graceful period or non-graceful termination.
 
-Similarly, the clean up handlers are not executed if the operator
+Similarly, the cleanup handlers are not executed if the operator
 is force-killed with no possibility to react (e.g. by SIGKILL).
 
 .. note::
@@ -28,7 +28,7 @@ is force-killed with no possibility to react (e.g. by SIGKILL).
     (``terminationGracePeriodSeconds``, the default is 30 seconds).
 
     If the cleanup takes longer than that in total (e.g. due to retries),
-    the activity will not be finished in full,
+    the activity will not finish in full,
     as the pod will be SIGKILL'ed by Kubernetes.
 
     Either design the cleanup activities to be as fast as possible,

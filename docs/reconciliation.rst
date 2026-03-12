@@ -4,7 +4,7 @@ Reconciliation
 
 Reconciliation is, in plain words, bringing the *actual state* of a system
 to a *desired state* as expressed by the Kubernetes resources.
-For example, starting as many pods, as it is declared in a deployment,
+For example, starting as many pods as declared in a deployment,
 especially when this declaration changes due to resource updates.
 
 Kopf is not an operator, it is a framework to make operators.
@@ -12,7 +12,7 @@ Therefore, it knows nothing about the *desired state* or *actual state*
 (or any *state* at all).
 
 Kopf-based operators must implement the checks and reactions to the changes,
-so that both states are synchronised according to the operator's concepts.
+so that both states are synchronized according to the operator's concepts.
 
 Kopf only provides a few ways and tools for achieving this easily.
 
@@ -53,7 +53,7 @@ of the *actual state*, and even bring the *actual state* to the *desired state*.
 The little downside is that timers produce logs on every triggering,
 which can be noisy, especially if triggered often. Also, such an operator
 will not be very responsive to the changes in the *actual/desired states*
-(only as resposive as the timer's interval defines it).
+(only as responsive as the timer's interval defines it).
 
 .. seealso::
     :doc:`timers`

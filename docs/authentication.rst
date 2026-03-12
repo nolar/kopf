@@ -10,8 +10,8 @@ Kopf provides rudimentary authentication out of the box: it can authenticate
 with the Kubernetes API either via the service account or raw kubeconfig data
 (with no additional interpretation or parsing of those).
 
-But this can be not enough in some setups and environments.
-Kopf does not try to maintain all the authentication methods possible.
+But this may not be enough in some setups and environments.
+Kopf does not attempt to maintain all the authentication methods possible.
 Instead, it allows the operator developers to implement their custom
 authentication methods and "piggybacks" the existing Kubernetes clients.
 
@@ -86,7 +86,7 @@ for making the API calls, but not the ways of retrieving them. Specifically:
 .. note::
     Proxy support is limited to what ``aiohttp`` supports__. Specifically,
     it supports plain HTTP proxies, some limited HTTPS proxies, but not SOCKS5.
-    Would you need more sophisticated proxying or tunneling, implement it
+    If you need more sophisticated proxying or tunneling, implement it
     as a custom HTTP session with a custom connector, for example using
     `aiohttp_socks <https://github.com/romis2012/aiohttp-socks>`_
     (Kopf claims no responsibility for the quality if this library;
@@ -136,7 +136,7 @@ it to the typical components of the HTTP sessions:
 
 .. note::
     :meth:`kopf.ConnectionInfo.as_ssl_context` will store the certificate
-    and private key data blobs to the disk files temporaily for a brief time,
+    and private key data blobs to the disk files temporarily for a brief time,
     since Python's :mod:`ssl` can only load it from files, not from data blobs.
     It will delete the files as soon as the SSL context is constructed.
 
@@ -288,7 +288,7 @@ This internal logic is hidden from the operator developers, but it is worth
 knowing how it works internally. See :class:`Vault`.
 
 If the expiration is intended to be often (e.g. every few minutes),
-you might want to disable the logging of re-authenication (whether this is
+you might want to disable the logging of re-authentication (whether this is
 a good idea or not, you decide using the information about your system):
 
 .. code-block:: python

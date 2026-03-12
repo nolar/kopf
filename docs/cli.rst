@@ -28,7 +28,7 @@ Logging options
 
 .. option:: --debug
 
-    Extremely verbose: log all the asyncio internals too, so as the API traffic.
+    Extremely verbose: log all the asyncio internals too, as well as the API traffic.
 
 .. option:: --log-format (plain|full|json)
 
@@ -50,7 +50,7 @@ Scope options
 
 .. option:: -n, --namespace
 
-    Serve this namespace or all namespaces mathing the pattern
+    Serve this namespace or all namespaces matching the pattern
     (or excluded from patterns). The option can be repeated multiple times.
 
     .. seealso::
@@ -101,7 +101,7 @@ Peering options
 .. option:: --priority
 
     Which priority to use for the operator. An operator with the highest
-    priority wins the peering competitions and handlers the resources.
+    priority wins the peering competitions and handles the resources.
 
     The default priority is ``0``; :option:`--dev` sets it to ``666``.
 

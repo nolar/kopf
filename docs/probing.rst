@@ -100,7 +100,7 @@ The handler results will be reported as the content of the liveness response:
     do break, freeze, or become unresponsive, while the health-reporting task
     continues to run. The probability of such a case is low, but not zero.
 
-    There are no checks that the operator operates anything
-    (unless they are implemented explicitly with the probe-handlers),
+    There are no checks that the operator operates on anything
+    (unless explicitly implemented with the probe handlers),
     as there are no reliable criteria for that -- total absence of handled
     resources or events can be an expected state of the cluster.

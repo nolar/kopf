@@ -82,7 +82,7 @@ __ https://docs.python.org/3/library/asyncio-policy.html
 Custom event loops
 ==================
 
-Kopf can run in any AsyncIO-compatible event loop. For example, uvloop `claims to be 2x–2.5x times faster`__ than asyncio. To run Kopf in uvloop, call it this way:
+Kopf can run in any AsyncIO-compatible event loop. For example, uvloop `claims to be 2x--2.5x faster`__ than asyncio. To run Kopf in uvloop, call it this way:
 
 __ http://magic.io/blog/uvloop-blazing-fast-python-networking/
 
@@ -118,11 +118,11 @@ Or this way:
 
 Or any other way the event loop prescribes in its documentation.
 
-Kopf's CLI (i.e. :command:`kopf run`) will use uvloop by default if it is installed. To disable this implicit behaviour, either uninstall uvloop from Kopf's environment, or run Kopf explicitly from the code using the standard event loop.
+Kopf's CLI (i.e. :command:`kopf run`) uses uvloop by default if it is installed. To disable this implicit behavior, either uninstall uvloop from Kopf's environment, or run Kopf explicitly from the code using the standard event loop.
 
 For convenience, Kopf can be installed as ``pip install kopf[uvloop]`` to enable this mode automatically.
 
-Kopf will never implicitly activate the custom event loops if it is called from the code, not from the CLI.
+Kopf never implicitly activates custom event loops when called from the code, only from the CLI.
 
 
 Multiple operators
@@ -133,7 +133,7 @@ sufficient for most cases. However, it can be needed to run multiple isolated
 operators in the same process.
 
 It should be safe to run multiple operators in multiple isolated event-loops.
-Despite Kopf's routines use the global state, all such a global state is stored
+Despite Kopf's routines use the global state, all such global state is stored
 in :mod:`contextvars` containers with values isolated per-loop and per-task.
 
 .. code-block:: python

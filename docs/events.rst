@@ -76,8 +76,8 @@ Other objects
 
 .. todo:: kubernetes and pykube objects should be accepted natively, not only the dicts.
 
-Events can be also attached to other objects, not only those handled
-at the moment (and not event the children):
+Events can also be attached to other objects, not only those handled
+at the moment (and not even the children):
 
 .. code-block:: python
 
@@ -109,7 +109,7 @@ No error will be raised. The event creation will be silently skipped.
 
 As the primary purpose, this is done to prevent "event explosions"
 when handling the core v1 events, which creates new core v1 events,
-causing more handling, so on (similar to "fork-bombs").
+causing more handling, and so on (similar to "fork-bombs").
 Such cases are possible, for example, when using ``kopf.EVERYTHING``
 (globally or for the v1 API), or when explicitly handling the core v1 events.
 

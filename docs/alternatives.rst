@@ -28,7 +28,7 @@ keeping the whole operator's logic in one place, in one syntax (Python).
 
 .. admonition:: And, by the way...
 
-    Not only it is about "*explicit is better than implicit*",
+    Not only is it about "*explicit is better than implicit*",
     but also "*simple is better than complex*",
     "*flat is better than nested*", and "*readability counts*",
     which makes Kopf a *pythonic* framework in the first place,
@@ -39,7 +39,7 @@ which means at least the ease of debugging (e.g. with the breakpoints,
 running in a local IDE, not in the cloud), the readability of the logs,
 and other little pleasant things.
 
-And also Kopf allows to write *any* arbitrary domain logic of the resources,
+And also Kopf allows writing *any* arbitrary domain logic of the resources,
 especially if it spans over long periods (hours, days if needed),
 and is not limited to the timeout restrictions of the HTTP APIs with their
 expectation of nearly-immediate outcome (i.e. in seconds or milliseconds).
@@ -60,7 +60,7 @@ Side8's k8s-operator
 Side8's k8s-operator_ is another direct equivalent.
 It was the initial inspiration for writing Kopf.
 
-Side8's k8s-operator is written with Python3 and allows to write
+Side8's k8s-operator is written with Python 3 and allows writing
 the domain logic in the apply/delete scripts in any language.
 The scripts run locally on the same machine where the controller is running
 (usually the same pod, or a developer's computer).
@@ -98,7 +98,7 @@ No other languages are supported.
 .. _CoreOS Operator SDK: https://github.com/operator-framework/operator-sdk
 .. _CoreOS Operator Framework: https://coreos.com/operators/
 
-From the CoreOS'es point of view, an operator is a method of packaging
+From CoreOS's point of view, an operator is a method of packaging
 and managing a Kubernetes-native application (presumably of any purpose,
 such as MySQL, Postgres, Redis, ElasticSearch, etc) with Kubernetes APIs
 (e.g. the custom resources of ConfigMaps) and ``kubectl`` tooling.

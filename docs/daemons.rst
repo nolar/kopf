@@ -206,7 +206,7 @@ duration while the daemon remains terminable (leads to no OS resource leakage).
 Postponing
 ==========
 
-Normally, daemons are spawned immediately once resource becomes visible
+Normally, daemons are spawned immediately once a resource becomes visible
 to the operator: i.e. on resource creation or operator startup.
 
 It is possible to postpone the daemon spawning:

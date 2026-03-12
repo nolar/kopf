@@ -11,13 +11,13 @@ Updating the objects
 
 Previously (:doc:`creation`),
 we have implemented a handler for the creation of an ``EphemeralVolumeClaim`` (EVC),
-and created the corresponding ``PersistantVolumeClaim`` (PVC).
+and created the corresponding ``PersistentVolumeClaim`` (PVC).
 
 What will happen if we change the size of the EVC when it already exists?
 The PVC must be updated accordingly to match its parent EVC.
 
-First, we have to remember the name of the created PVC:
-Let's extend the creation handler we already have from the previous step
+First, we have to remember the name of the created PVC.
+Let us extend the creation handler we already have from the previous step
 with one additional line:
 
 .. code-block:: python
@@ -65,16 +65,16 @@ We can see that with kubectl:
 
 .. note::
     If the above change causes ``Patching failed with inconsistencies``
-    debug warnings and/or your EVC YAML doesn't show a ``.status`` field,
+    debug warnings and/or your EVC YAML does not show a ``.status`` field,
     make sure you have set the ``x-kubernetes-preserve-unknown-fields: true``
-    field in your CRD on either the entire object or just the ``.status`` field
+    field in your CRD on either the entire object or just the ``.status`` field,
     as detailed in :doc:`resources`.
     Without setting this field, Kubernetes will prune the ``.status`` field
-    when Kopf tries to update it. For more info on field pruning,
+    when Kopf tries to update it. For more information on field pruning,
     see `the Kubernetes docs
     <https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#field-pruning>`_.
 
-Let's add a yet another handler, but for the "update" cause.
+Let us add yet another handler, but for the "update" cause.
 This handler gets this stored PVC name from the creation handler,
 and patches the PVC with the new size from the EVC:
 
@@ -101,7 +101,7 @@ and patches the PVC with the new size from the EVC:
 
         logger.info(f"PVC child is updated: {obj}")
 
-Now, let's change the EVC's size:
+Now, let us change the EVC's size:
 
 .. code-block:: bash
 
@@ -130,6 +130,6 @@ Check the size of the actual PV behind the PVC, which is now increased:
 
 .. warning::
     Kubernetes & ``kubectl`` improperly show the capacity of PVCs:
-    it remains the same (1G) event after the change.
+    it remains the same (1G) even after the change.
     The size of the actual PV (Persistent Volume) of each PVC is important!
-    This issue is not related to Kopf, so we go around it.
+    This issue is not related to Kopf, so we work around it.
