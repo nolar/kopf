@@ -11,7 +11,7 @@ Scripting options
 
 .. option:: -m, --module
 
-    A semantical equivalent to ``python -m`` --- which importable modules
+    A semantic equivalent of ``python -m`` --- specifies which importable modules
     to import on startup.
 
 
@@ -28,7 +28,7 @@ Logging options
 
 .. option:: --debug
 
-    Extremely verbose: log all the asyncio internals too, as well as the API traffic.
+    Extremely verbose: logs all asyncio internals as well as the API traffic.
 
 .. option:: --log-format (plain|full|json)
 
@@ -41,7 +41,7 @@ Logging options
 
 .. option:: --log-refkey
 
-    For JSON logs, under which top-level key to put the object-identifying
+    For JSON logs, the top-level key under which to place the object-identifying
     information, such as its name, namespace, etc.
 
 
@@ -50,8 +50,8 @@ Scope options
 
 .. option:: -n, --namespace
 
-    Serve this namespace or all namespaces matching the pattern
-    (or excluded from patterns). The option can be repeated multiple times.
+    Serve this namespace, or all namespaces matching the pattern
+    (or excluded from patterns). This option can be repeated multiple times.
 
     .. seealso::
         :doc:`/scopes` for the pattern syntax.
@@ -70,7 +70,7 @@ Probing options
 
 .. option:: --liveness
 
-    The endpoint where to serve the probes and health-checks.
+    The endpoint on which to serve the probes and health checks.
     E.g. ``http://0.0.0.0:1234/``. Only ``http://`` is currently supported.
     By default, the probing endpoint is not served.
 
@@ -83,14 +83,14 @@ Peering options
 
 .. option:: --standalone
 
-    Disable any peering or auto-detection of peering. Run strictly as if
+    Disable peering and auto-detection of peering. Run strictly as if
     this is the only instance of the operator.
 
 .. option:: --peering
 
     The name of the peering object to use. Depending on the operator's scope
     (:option:`--all-namespaces` vs. :option:`--namespace`, see :doc:`/scopes`),
-    it is either ``kind: KopfPeering`` or ``kind: ClusterKopfPeering``.
+    this is either ``kind: KopfPeering`` or ``kind: ClusterKopfPeering``.
 
     If specified, the operator will not run until that peering exists
     (for the namespaced operators, until it exists in each served namespace).
@@ -100,8 +100,8 @@ Peering options
 
 .. option:: --priority
 
-    Which priority to use for the operator. An operator with the highest
-    priority wins the peering competitions and handles the resources.
+    The priority to use for the operator. The operator with the highest
+    priority wins the peering competition and handles the resources.
 
     The default priority is ``0``; :option:`--dev` sets it to ``666``.
 

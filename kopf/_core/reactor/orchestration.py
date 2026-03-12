@@ -2,7 +2,7 @@
 Orchestrating the tasks for served resources & namespaces.
 
 The resources & namespaces are observed in :mod:`.observation`, where they
-are stored in the "insights" -- a description of the current cluster setup.
+are stored in the "insights" --- a description of the current cluster setup.
 They are used as the input for the orchestration.
 
 For every combination of every actual resource & every actual namespace,
@@ -12,15 +12,15 @@ or stopped when some existing values are removed.
 
 There are several kinds of tasks:
 
-* Regular watchers (watch-streams) -- the main one.
+* Regular watchers (watch-streams) --- the main one.
 * Peering watchers (watch-streams).
 * Peering keep-alives (pingers).
 
 The peering tasks are started only when the peering is enabled at all.
 For peering, the resource is not used, only the namespace is of importance.
 
-Some special watchers for the meta-level resources -- i.e. for dimensions --
-are started and stopped separately, not as part of the the orchestration.
+Some special watchers for the meta-level resources --- i.e. for dimensions ---
+are started and stopped separately, not as part of the orchestration.
 """
 import asyncio
 import dataclasses

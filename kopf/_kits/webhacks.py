@@ -43,7 +43,7 @@ class WebhookContextManager(metaclass=WebhookContextManagerMeta):
     are running, and inject the exceptions into one of those unrelated tests
     (e.g. ``ResourceWarning: unclosed transport`` or alike).
 
-    The obvious solution — the context managers — would break the protocol,
+    The obvious solution ---the context managers--- would break the protocol,
     which is promised to be a single callable that yields the client configs.
 
     To keep the backwards compatibility while cleaning up the resources on time:
@@ -54,7 +54,7 @@ class WebhookContextManager(metaclass=WebhookContextManagerMeta):
 
     So, the servers/tunnels are left with the ``finally:`` block for cleanup.
     But the iterator-generator is remembered and force-closed on exit from
-    the context manager — the same way as the garbage collector would close it.
+    the context manager --- the same way as the garbage collector closes it.
 
     See more at :doc:`/admission`.
     """

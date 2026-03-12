@@ -4,7 +4,7 @@ from collections.abc import Callable, Collection, Iterable, Iterator
 
 class Toggle:
     """
-    An synchronisation primitive that can be awaited both until set or cleared.
+    A synchronisation primitive that can be awaited both until set or cleared.
 
     For one-directional toggles, ``asyncio.Event`` is sufficient.
     But these events cannot be awaited until cleared.

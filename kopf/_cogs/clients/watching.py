@@ -121,7 +121,7 @@ async def streaming_block(
 
     Note: this routine belongs to watching and does not belong to peering.
     The pause can be managed in any other ways: as an imaginary edge case,
-    imagine a operator with UI with a "pause" button that pauses the operator.
+    imagine an operator with UI with a "pause" button that pauses the operator.
     """
     where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
 

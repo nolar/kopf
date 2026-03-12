@@ -3,7 +3,7 @@ Timers
 ======
 
 Timers are schedules of regular handler execution as long as the object exists,
-no matter if there were any changes or not -- unlike the regular handlers,
+no matter if there were any changes or not --- unlike the regular handlers,
 which are event-driven and are triggered only when something changes.
 
 
@@ -241,7 +241,7 @@ System resources
 .. warning::
 
     Timers are implemented the same way as asynchronous daemons
-    (see :doc:`daemons`) — via asyncio tasks for every resource & handler.
+    (see :doc:`daemons`) --- via asyncio tasks for every resource & handler.
 
     Although OS threads are not involved until the synchronous functions
     are invoked (through the asyncio executors), this can lead to significant

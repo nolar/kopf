@@ -31,13 +31,13 @@ in 1/100th of a wall-clock second; or it can freeze and not move at all.
 PROBLEMATIC INACCURACY:
 
 Because of a highly unprecise and everchanging component in the formula
-of the "basetime" — the non-mockable UTC clock — the "basetime" calculation
+of the "basetime" ---the non-mockable UTC clock--- the "basetime" calculation
 can give different results at different times even if executed fast enough.
 
 To reduce the inaccuracy introduced by sequential UTC time measurements,
 we calculate the "basetime" once per every global state object created
 and push it down to owned state objects of the individual handlers
-in this halding cycle of this resource object in this unit-test.
+in this handling cycle of this resource object in this unit-test.
 
 That gives us sufficient accuracy while remaining simple enough, assuming that
 there are no multiple concurrent global state objects per single unit-test.
@@ -48,11 +48,11 @@ SUFFICIENT ACCURACY:
 
 With this approach and ``looptime``__, we can detach from the wall-clock time
 in tests and simulate the time's rapid movement into the future by "recovering"
-the "now" moment as ``basetime + timedelta(seconds=loop.time())`` (see above) —
+the "now" moment as ``basetime+timedelta(seconds=loop.time())`` (see above) ---
 without wall-clock delays or hitting the issues with code execution overhead.
 
-Note that there is no UTC clock involved now, only the controled loop clock,
-so multiple sequential calculation will lead to predictable abd precise results,
+Note that there is no UTC clock involved now, only the controlled loop clock,
+so multiple sequential calculations lead to predictable and precise results,
 especially when the loop clock is frozen (i.e. constant for a short duration).
 
 __ https://github.com/nolar/looptime
@@ -70,7 +70,7 @@ A: If we store floats in the fields, we need to do the math on every
 fetching/storing operation, which introduces minor divergence in supposedly
 constant data as stored in the external storages. Instead, we only calculate
 the "now" moment. As a result, the precision loss is seen only at runtime checks
-and is indistinguishanle from the loop clock sensitivity.
+and is indistinguishable from the loop clock sensitivity.
 """
 import asyncio
 import collections.abc

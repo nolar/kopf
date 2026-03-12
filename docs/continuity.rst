@@ -51,7 +51,7 @@ If the operator is down and not running, any changes to the objects
 are ignored and not handled. They will be handled when the operator starts:
 every time a Kopf-based operator starts, it lists all objects of the
 resource kind, and checks for their state; if the state has changed since
-the object was last handled (no matter how long time ago),
+the object was last handled (no matter how long ago),
 a new handling cycle starts.
 
 Only the last state is taken into account. All the intermediate changes

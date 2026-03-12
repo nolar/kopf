@@ -60,9 +60,9 @@ If you want to revert this operation (e.g., to try it again):
 Custom Resource Objects
 =======================
 
-Now, we can already create the objects of this kind, apply them to the cluster,
-modify and delete them. Nothing will happen, since there is no implemented
-logic behind the objects yet.
+We can already create objects of this kind, apply them to the cluster,
+and modify or delete them. Nothing will happen yet, since there is no logic
+implemented behind these objects.
 
 Let us make a sample object:
 
@@ -94,8 +94,7 @@ Get a list of the existing objects of this kind with one of the commands:
     kubectl get evcs
     kubectl get evc
 
-Please note that we can use the short names as specified
-on the custom resource definition.
+Note that the short names are those specified in the custom resource definition.
 
 .. seealso::
     * kubectl imperative style (create/edit/patch/delete)

@@ -134,6 +134,11 @@ but you can get the overall idea:
             pods_to_terminate = random.sample(running_pods, k=min(-delta, len(running_pods))
             print(f"Terminate {-delta} random pods: {pods_to_terminate}")
 
-Time-based polling is good both for in-cluster and external *actual states*, and is in fact the only way for external *actual states* from third-party APIs.
+Time-based polling works well for both in-cluster and external *actual states*,
+and is in fact the only option for external *actual states* from third-party APIs.
 
-For immediate reaction instead of timing, turn this timer into a daemon, introduce a global operator-scoped condition (e.g., an :class:`asyncio.Condition`) stored in :doc:`memos` on operator startup, await for it in the daemon of the parent resource, notify it in the indexers of the children resources (mind the synchronisation: the index changes slightly after the exit from the indexer).
+For immediate reaction instead of polling, turn this timer into a daemon,
+introduce a global operator-scoped condition (e.g., an :class:`asyncio.Condition`)
+stored in :doc:`memos` on operator startup, await it in the daemon of the parent resource,
+and notify it in the indexers of the children resources
+(mind the synchronisation: the index changes slightly after the indexer exits).

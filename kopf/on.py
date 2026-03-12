@@ -293,7 +293,7 @@ def resume(  # lgtm[py/similar-function]
         # Operator specification:
         registry: registries.OperatorRegistry | None = None,
 ) -> ChangingDecorator:
-    """ ``@kopf.on.resume()`` handler for the object resuming on operator (re)start. """
+    """ ``@kopf.on.resume()`` handler for resuming objects on operator (re)start. """
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ChangingFn,
     ) -> callbacks.ChangingFn:
@@ -634,7 +634,7 @@ def event(  # lgtm[py/similar-function]
         # Operator specification:
         registry: registries.OperatorRegistry | None = None,
 ) -> WatchingDecorator:
-    """ ``@kopf.on.event()`` handler for the silent spies on the events. """
+    """ ``@kopf.on.event()`` handler for silently observing all events. """
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.WatchingFn,
     ) -> callbacks.WatchingFn:
@@ -805,7 +805,7 @@ def subhandler(  # lgtm[py/similar-function]
     ``@kopf.subhandler()`` decorator for the dynamically generated sub-handlers.
 
     Can be used only inside of the handler function.
-    It is efficiently a syntax sugar to look like all other handlers:
+    It is effectively syntactic sugar to look like all other handlers:
 
     .. code-block:: python
 
@@ -831,7 +831,7 @@ def subhandler(  # lgtm[py/similar-function]
     In addition, keep its logic idempotent (not failing on the repeated calls).
 
     Note: ``task=task`` is needed to freeze the closure variable, so that every
-    create function will have its own value, not the latest in the for-cycle.
+    create function will have its own value, not the latest in the for-loop.
     """
     def decorator(  # lgtm[py/similar-function]
             fn: callbacks.ChangingFn,
@@ -893,7 +893,7 @@ def register(  # lgtm[py/similar-function]
 
                 kopf.register(id=task, fn=create_single_task)
 
-    This is efficiently an equivalent for:
+    This is effectively equivalent to:
 
     .. code-block:: python
 

@@ -1,8 +1,8 @@
 """
 Keeping track of the cluster setup: namespaces, resources (custom and builtin).
 
-The outcome of observation are "insights" -- a description of the cluster setup,
-including the "backbone" -- core resources to be used by the operator/framework.
+The outcome of observation are insights --- a description of the cluster setup,
+including the backbone --- core resources to be used by the operator/framework.
 
 The resource specifications can be partial or even fuzzy (e.g. by categories),
 with zero, one, or more actual resources matching the specification (selector).

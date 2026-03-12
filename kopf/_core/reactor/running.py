@@ -111,7 +111,7 @@ async def operator(
     This function should be used to run an operator in an asyncio event-loop
     if the operator is orchestrated explicitly and manually.
 
-    It is efficiently :func:`spawn_tasks` + :func:`run_tasks` with some safety.
+    It is effectively :func:`spawn_tasks` + :func:`run_tasks` with some safety.
     """
     existing_tasks = await aiotasks.all_tasks()
     operator_tasks = await spawn_tasks(
@@ -376,12 +376,12 @@ async def run_tasks(
 
     The hung tasks are those that were spawned during the operator runtime,
     and were not cancelled/exited on the root tasks termination. They are given
-    some extra time to finish, after which they are forcely terminated too.
+    some extra time to finish, after which they are forcibly terminated too.
 
     .. note::
         Due to implementation details, every task created after the operator's
         startup is assumed to be a task or a sub-task of the operator.
-        In the end, all tasks are forcely cancelled. Even if those tasks were
+        In the end, all tasks are forcibly cancelled. Even if those tasks were
         created by other means. There is no way to trace who spawned what.
         Only the tasks that existed before the operator startup are ignored
         (for example, those that spawned the operator itself).

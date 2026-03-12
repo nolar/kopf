@@ -28,7 +28,7 @@ Invokable = Callable[..., SyncOrAsync[object | None]]
 
 class Kwargable:
     """
-    Something that can provide kwargs to the function invocation rotuine.
+    Something that can provide kwargs to the function invocation routine.
 
     Technically, there is only one source of kwargs in the framework --
     :class:`Cause` and descendants across the source code (e.g. ``causes.py``).
@@ -103,7 +103,7 @@ async def invoke(
 
     A full set of the arguments is provided, expanding the cause to some easily
     usable aliases. The function is expected to accept ``**kwargs`` for the args
-    that it does not use -- for forward compatibility with the new features.
+    that it does not use --- for forward compatibility with the new features.
 
     The synchronous methods are executed in the executor (threads or processes),
     thus making it non-blocking for the main event loop of the operator.

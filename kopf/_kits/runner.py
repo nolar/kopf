@@ -55,7 +55,7 @@ class KopfRunner(_AbstractKopfRunner):
     from a child thread (Kopf's CLI) to the parent thread (pytest).
 
     Second, mocking works within one process (all threads),
-    but not across processes --- the mock's calls (counts, arrgs) are lost.
+    but not across processes --- the mock's calls (counts, args) are lost.
     """
     _future: ResultFuture
 

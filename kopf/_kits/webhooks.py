@@ -281,7 +281,7 @@ class WebhookServer(webhacks.WebhookContextManager):
 
     def _build_ssl(self) -> tuple[bytes | None, ssl.SSLContext | None]:
         """
-        A macros to construct an SSL context, possibly generating SSL certs.
+        A macro to construct an SSL context, possibly generating SSL certs.
 
         Returns a CA bundle to be passed to the "client configs",
         and a properly initialised SSL context to be used by the server.
@@ -355,7 +355,7 @@ class WebhookServer(webhacks.WebhookContextManager):
         Wake up every time the SSL cert files change. Sleep forever otherwise.
 
         The mounted secrets do not renew their metadata or send the filesystem
-        events, so only full re-read is the guarnateed way of file monitoring.
+        events, so only a full re-read is the guaranteed way of file monitoring.
         """
         paths = [self.certfile, self.pkeyfile, self.cafile]
         paths = [path for path in paths if path is not None]
@@ -493,13 +493,13 @@ class WebhookDockerDesktopServer(WebhookServer):
 
 class WebhookNgrokTunnel(webhacks.WebhookContextManager):
     """
-    Tunnel admission webhook request via an external tunnel: ngrok_.
+    Tunnel admission webhook requests via an external tunnel: ngrok_.
 
     .. _ngrok: https://ngrok.com/
 
     ``addr``, ``port``, and ``path`` have the same meaning as in
     :class:`kopf.WebhookServer`: where to listen for connections locally.
-    Ngrok then tunnels this endpoint remotely with.
+    Ngrok then tunnels this endpoint to a remote public URL.
 
     Mind that the ngrok webhook tunnel runs the local webhook server
     in an insecure (HTTP) mode. For secure (HTTPS) mode, a paid subscription
@@ -522,7 +522,7 @@ class WebhookNgrokTunnel(webhacks.WebhookContextManager):
         can send requests to a locally running operator. If the handlers
         only process the data and make no side effects, this should be fine.
 
-        Despite ngrok provides basic auth ("username:password"),
+        Despite ngrok providing basic auth ("username:password"),
         Kubernetes does not permit this information in the URLs.
 
         Ngrok partially "protects" the URLS by assigning them random hostnames.
@@ -599,7 +599,7 @@ class WebhookNgrokTunnel(webhacks.WebhookContextManager):
 
 class ClusterDetector:
     """
-    A mixing for auto-server/auto-tunnel to detect the cluster type.
+    A mixin for auto-server/auto-tunnel to detect the cluster type.
 
     The implementation of the server detection requires the least possible
     permissions or no permissions at all. In most cases, it will identify
@@ -678,7 +678,7 @@ class WebhookAutoTunnel(ClusterDetector, webhacks.WebhookContextManager):
     Generally, tunneling gives more possibilities to run in any environment,
     but it must not happen without a permission from the developers,
     and is not possible if running in a completely isolated/local/CI/CD cluster.
-    Therefore, developers should activated automatic setup explicitly.
+    Therefore, developers should activate automatic setup explicitly.
 
     If automatic tunneling is prohibited or impossible,
     use :class:`WebhookAutoServer`.
@@ -686,9 +686,9 @@ class WebhookAutoTunnel(ClusterDetector, webhacks.WebhookContextManager):
     .. note::
 
         Automatic server/tunnel detection is highly limited in configuration
-        and provides only the most common options of all servers & tunners:
+        and provides only the most common options of all servers & tunnels:
         specifically, listening ``addr:port/path``.
-        All other options are specific to their servers/tunnels
+        All other options are specific to their servers/tunnels,
         and the auto-guessing logic cannot use/accept/pass them.
     """
     addr: str | None  # None means "any interface"

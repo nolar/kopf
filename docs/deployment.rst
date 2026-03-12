@@ -2,15 +2,15 @@
 Deployment
 ==========
 
-Kopf can be executed out of the cluster, as long as the environment is
+Kopf can be run outside the cluster, as long as the environment is
 authenticated to access the Kubernetes API.
-But normally, operators are deployed directly to the clusters.
+Normally, however, operators are deployed directly into the cluster.
 
 
 Docker image
 ============
 
-First of all, the operator must be packaged as a docker image with Python 3.10 or newer:
+First, the operator must be packaged as a Docker image with Python 3.10 or newer:
 
 .. code-block:: dockerfile
     :caption: Dockerfile
@@ -21,10 +21,10 @@ First of all, the operator must be packaged as a docker image with Python 3.10 o
     ADD . /src
     CMD kopf run /src/handlers.py --verbose
 
-Build and push it to some repository of your choice.
-Here, we will use DockerHub_
-(with a personal account "nolar" -- replace it with your name or namespace;
-you may also want to add the versioning tags instead of the implied "latest"):
+Build and push it to a repository of your choice.
+Here, we use DockerHub_
+(with the personal account "nolar" --- replace it with your own name or namespace;
+you may also want to add version tags instead of the implied "latest"):
 
 .. code-block:: bash
 
@@ -34,16 +34,16 @@ you may also want to add the versioning tags instead of the implied "latest"):
 .. _DockerHub: https://hub.docker.com/
 
 .. seealso::
-    Read `DockerHub documentation <https://docs.docker.com/docker-hub/>`_
-    for how to use it to push & pull the docker images.
+    Read the `DockerHub documentation <https://docs.docker.com/docker-hub/>`_
+    for instructions on pushing and pulling Docker images.
 
 
 Cluster deployment
 ==================
 
 The best way to deploy the operator to the cluster is via the Deployment_
-object: in that case, it will be properly maintained alive and the versions
-will be properly upgraded on the re-deployments.
+object: it will be kept alive automatically, and upgrades will be applied
+properly on redeployment.
 
 .. _Deployment: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
 
@@ -55,10 +55,10 @@ For this, create the deployment file:
     :caption: deployment.yaml
     :name: deployment-yaml
 
-Please note that there is only one replica. Keep it so. If there will be
-two or more operators running in the cluster for the same objects,
-they will collide with each other and the consequences are unpredictable.
-In case of pod restarts, only one pod should be running at a time too:
+Note that there is only one replica. Keep it that way. If two or more operators
+run in the cluster for the same objects, they will collide with each other
+and the consequences are unpredictable.
+During pod restarts, only one pod should be running at a time as well:
 use ``.spec.strategy.type=Recreate`` (see the documentation_).
 
 .. _documentation: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#recreate-deployment
@@ -69,8 +69,8 @@ Deploy it to the cluster:
 
     kubectl apply -f deployment.yaml
 
-No services or ingresses are needed (unlike in the typical web-app examples),
-as the operator is not listening for any incoming connections,
+No services or ingresses are needed (unlike in typical web application examples),
+since the operator does not listen for incoming connections
 but only makes outgoing calls to the Kubernetes API.
 
 
@@ -79,8 +79,8 @@ but only makes outgoing calls to the Kubernetes API.
 RBAC
 ====
 
-The pod where the operator runs must have the permissions to access
-and to manipulate the objects, both domain-specific and the built-in ones.
+The pod where the operator runs must have permissions to access
+and manipulate objects, both domain-specific and built-in ones.
 For the example operator, those are:
 
 * ``kind: ClusterKopfPeering`` for the cross-operator awareness (cluster-wide).
@@ -89,14 +89,14 @@ For the example operator, those are:
 * ``kind: Pod/Job/PersistentVolumeClaim`` as the children objects.
 * And others as needed.
 
-For that, the RBAC__ (Role-Based Access Control) could be used
+For this, RBAC__ (Role-Based Access Control) can be used
 and attached to the operator's pod via a service account.
 
 __: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
 
 Here is an example of what an RBAC config should look like
-(remove the parts which are not needed: e.g. the cluster roles/bindings
-for the strictly namespace-bound operator):
+(remove the parts that are not needed: e.g. the cluster roles and bindings
+for a strictly namespace-bound operator):
 
 .. literalinclude:: deployment-rbac.yaml
     :caption: rbac.yaml
@@ -113,7 +113,7 @@ And the created service account is attached to the pods as follows:
     :name: deployment-service-account-yaml
 
 
-Please note that the service accounts are always namespace-scoped.
+Note that service accounts are always namespace-scoped.
 There are no cluster-wide service accounts.
-They must be created in the same namespace as the operator is going to run in
+They must be created in the same namespace where the operator will run
 (even if it is going to serve the whole cluster).

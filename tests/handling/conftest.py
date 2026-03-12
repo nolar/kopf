@@ -6,14 +6,14 @@ As input:
 * Mocked cause detection, with the cause artificially simulated for each test.
   The proper cause detection is tested elsewhere (see ``test_detection.py``).
 * Registered handlers in a global registry. Each handler is a normal function,
-  which calls a mock -- to ease the assertions.
+  which calls a mock --- to ease the assertions.
 
 As output, we check mocked calls on the following:
 
-* ``asyncio.sleep()`` -- for delays.
-* ``kopf.clients.patching.patch_obj()`` -- for patch content.
-* ``kopf.clients.events.post_event()`` -- for events posted.
-* Handler mocks -- whether they were or were not called with specific arguments.
+* ``asyncio.sleep()`` --- for delays.
+* ``kopf.clients.patching.patch_obj()`` --- for patch content.
+* ``kopf.clients.events.post_event()`` --- for events posted.
+* Handler mocks---whether they were or were not called with specific arguments.
 * Captured logs.
 
 The above inputs & outputs represent the expected user scenario
@@ -22,12 +22,12 @@ Therefore, we do not mock/spy/intercept anything within the handling routines
 (except for cause detection), leaving it as the implementation details.
 Specifically, this internal chain of calls happens on every event:
 
-* ``causation.detect_*_cause()`` -- tested separately in ``/tests/causation/``.
+* ``causation.detect_*_cause()`` --- tested separately in ``/tests/causation/``.
 * ``handle_cause()``
 * ``execute()``
 * ``_execute()``
 * ``_call_handler()``
-* ``invocation.invoke()`` -- tested separately in ``/tests/invocations/``.
+* ``invocation.invoke()`` --- tested separately in ``/tests/invocations/``.
 
 Some of these aspects are tested separately to be sure they indeed execute
 all possible cases properly. In the top-level event handling, we assume they do,

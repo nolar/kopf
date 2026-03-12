@@ -2,8 +2,8 @@
 Hierarchies
 ===========
 
-One of the most common patterns of the operators is to create
-children resources in the same Kubernetes cluster.
+One of the most common operator patterns is to create
+child resources in the same Kubernetes cluster.
 Kopf provides some tools to simplify connecting these resources
 by manipulating their content before it is sent to the Kubernetes API.
 
@@ -20,7 +20,7 @@ by manipulating their content before it is sent to the Kubernetes API.
 .. _pykube-ng: https://github.com/hjacobs/pykube
 
 In all examples below, ``obj`` and ``objs`` are either a supported object type
-(native or 3rd-party, see below) or a list/tuple/iterable with several objects.
+(native or 3rd-party, see below) or a list, tuple, or iterable containing several objects.
 
 
 Labels
@@ -42,8 +42,8 @@ To label the resources to be created, use :func:`kopf.label`:
 
 
 To label the specified resource(s) with the same labels as the resource being
-processed at the moment, omit the labels or set them to ``None`` (note, it is
-not the same as an empty dict ``{}`` -- which is equivalent to doing nothing):
+processed, omit the labels or set them to ``None`` (note that this is
+not the same as an empty dict ``{}`` --- which is equivalent to doing nothing):
 
 .. code-block:: python
 
@@ -58,7 +58,7 @@ not the same as an empty dict ``{}`` -- which is equivalent to doing nothing):
         #   'metadata': {'labels': {'somelabel': 'somevalue'}}}]
 
 
-By default, if some of the requested labels already exist, they will not
+By default, if any of the requested labels already exist, they will not
 be overwritten. To overwrite labels, use ``forced=True``:
 
 .. code-block:: python
@@ -78,14 +78,14 @@ be overwritten. To overwrite labels, use ``forced=True``:
 Nested labels
 =============
 
-For some resources, e.g. ``Job`` or ``Deployment``, additional fields have
-to be modified to affect the double-nested children (``Pod`` in this case).
+For some resources, such as ``Job`` or ``Deployment``, additional fields must
+be modified to affect the doubly-nested children (``Pod`` in this case).
 
-For this, their nested fields must be mentioned in a ``nested=[...]`` iterable.
-If this is only one nested field, it can be passed directly as ``nested='...'``.
+To do this, their nested fields must be listed in a ``nested=[...]`` iterable.
+If there is only one nested field, it can be passed directly as ``nested='...'``.
 
-If the nested structures are absent in the target resources, they are ignored
-and no labels are added. The labels are added only to pre-existing structures:
+If the nested structures are absent in the target resources, they are skipped
+and no labels are added. Labels are added only to pre-existing structures:
 
 .. code-block:: python
 
@@ -101,26 +101,26 @@ and no labels are added. The labels are added only to pre-existing structures:
         #   'metadata': {'labels': {'label1': 'value1', 'somelabel': 'somevalue'}},
         #   'spec': {'template': {'metadata': {'labels': {'label1': 'value1', 'somelabel': 'somevalue'}}}}}]
 
-The nested structures are treated as if they were the root-level resources, i.e.
-they are expected to have or automatically get the ``metadata`` structure added.
+The nested structures are treated as if they were root-level resources, i.e.
+they are expected to have the ``metadata`` structure already, or it will be added automatically.
 
-The nested resources are labelled *in addition* to the target resources.
+Nested resources are labelled *in addition* to the target resources.
 To label only the nested resources without the root resource, pass them
-to the function directly (e.g., ``kopf.label(obj['spec']['template'], ...)``).
+directly to the function (e.g., ``kopf.label(obj['spec']['template'], ...)``).
 
 
 Owner references
 ================
 
-Kubernetes natively supports the owner references: a child resource
+Kubernetes natively supports owner references: a child resource
 can be marked as "owned" by one or more other resources (owners or parents).
-If the owner is deleted, its children will be deleted too, automatically,
+If the owner is deleted, its children will be deleted automatically,
 and no additional handlers are needed.
 
-The ``owner`` is dict containing the fields ``apiVersion``, ``kind``,
-``metadata.name``, ``metadata.uid`` (other fields are ignored).
-Usually this can be the :kwarg:`body` from the handler keyword arguments,
-but you can construct your own dict or get it from a 3rd-party client library.
+The ``owner`` is a dict containing the fields ``apiVersion``, ``kind``,
+``metadata.name``, and ``metadata.uid`` (other fields are ignored).
+This is usually the :kwarg:`body` from the handler keyword arguments,
+but you can construct your own dict or obtain one from a 3rd-party client library.
 
 To set the ownership, use :func:`kopf.append_owner_reference`.
 To remove the ownership, use :func:`kopf.remove_owner_reference`:
@@ -131,8 +131,8 @@ To remove the ownership, use :func:`kopf.remove_owner_reference`:
     kopf.append_owner_reference(objs, owner)
     kopf.remove_owner_reference(objs, owner)
 
-To add/remove the ownership of the requested resource(s) by the resource being
-processed at the moment, omit the explicit owner argument or set it to ``None``:
+To add or remove ownership of the specified resource(s) by the resource currently
+being processed, omit the explicit owner argument or set it to ``None``:
 
 .. code-block:: python
 
@@ -156,7 +156,7 @@ processed at the moment, omit the explicit owner argument or set it to ``None``:
         #      'name': 'kopf-example-1',
         #      'uid': '6b931859-5d50-4b5c-956b-ea2fed0d1058'}]}}]
 
-To set an owner to not be a controller or not block owner deletion:
+To set an owner that is not a controller or does not block owner deletion:
 
 .. code-block:: python
 
@@ -171,13 +171,13 @@ Both of the above are ``True`` by default.
 Names
 =====
 
-It is common to name the children resources after the parent resource:
-either strictly as the parent, or with a random suffix.
+It is common to name child resources after the parent resource:
+either exactly as the parent, or with a random suffix.
 
-To give the resource(s) a name, use :func:`kopf.harmonize_naming`.
-If the resource has its ``metadata.name`` field set, that name will be used.
+To assign a name to resource(s), use :func:`kopf.harmonize_naming`.
+If the resource already has its ``metadata.name`` field set, that name will be used.
 If it does not, the specified name will be used.
-It can be enforced with ``forced=True``:
+This can be enforced with ``forced=True``:
 
 .. code-block:: python
 
@@ -186,8 +186,8 @@ It can be enforced with ``forced=True``:
 
 By default, the specified name is used as a prefix, and a random suffix
 is requested from Kubernetes (via ``metadata.generateName``). This is the
-most widely used mode with multiple children resources of the same kind.
-To ensure the exact name for single-child cases, pass ``strict=True``:
+most common mode when there are multiple child resources of the same kind.
+To ensure an exact name for single-child cases, pass ``strict=True``:
 
 .. code-block:: python
 
@@ -195,7 +195,7 @@ To ensure the exact name for single-child cases, pass ``strict=True``:
     kopf.harmonize_naming(objs, 'some-name', strict=True, forced=True)
 
 To align the name of the target resource(s) with the name of the resource
-being processed at the moment, omit the name or set it to ``None``
+currently being processed, omit the name or set it to ``None``
 (both ``strict=True`` and ``forced=True`` are supported in this form too):
 
 .. code-block:: python
@@ -210,7 +210,7 @@ being processed at the moment, omit the name or set it to ``None``
 
 Alternatively, the operator can request Kubernetes to generate a name
 with the specified prefix and a random suffix (via ``metadata.generateName``).
-The actual name will be known only after the resource is created:
+The actual name will only be known after the resource is created:
 
 .. code-block:: python
 
@@ -222,15 +222,15 @@ The actual name will be known only after the resource is created:
         # [{'kind': 'Job', 'metadata': {'generateName': 'kopf-example-1-'}},
         #  {'kind': 'Deployment', 'metadata': {'generateName': 'kopf-example-1-'}}]
 
-Both ways are commonly used for parent resources that orchestrate multiple
-children resources of the same kind (e.g., pods in the deployment).
+Both approaches are commonly used for parent resources that orchestrate multiple
+child resources of the same kind (e.g., pods in a deployment).
 
 
 Namespaces
 ==========
 
-Usually, it is expected that the children resources are created in the same
-namespace as their parent (unless there are strong reasons to do differently).
+Typically, child resources are expected to be created in the same
+namespace as their parent (unless there are strong reasons to do otherwise).
 
 To set the desired namespace, use :func:`kopf.adjust_namespace`:
 
@@ -246,7 +246,7 @@ To overwrite, pass ``forced=True``:
     kopf.adjust_namespace(objs, 'namespace', forced=True)
 
 To align the namespace of the specified resource(s) with the namespace
-of the resource being processed, omit the namespace or set it to ``None``:
+of the resource currently being processed, omit the namespace or set it to ``None``:
 
 .. code-block:: python
 
@@ -262,8 +262,8 @@ of the resource being processed, omit the namespace or set it to ``None``:
 Adopting
 ========
 
-All of the above can be done in one call with :func:`kopf.adopt`; ``forced``,
-``strict``, ``nested`` flags are passed to all functions that support them:
+All of the above can be done in a single call with :func:`kopf.adopt`; the ``forced``,
+``strict``, and ``nested`` flags are passed to all functions that support them:
 
 .. code-block:: python
 
@@ -297,9 +297,9 @@ All of the above can be done in one call with :func:`kopf.adopt`; ``forced``,
 3rd-party libraries
 ===================
 
-All described methods support resource-related classes of selected libraries
-the same way as the native Python dictionaries (or any mutable mappings).
-Currently, that is `pykube-ng`_ (classes based on ``pykube.objects.APIObject``)
+All described methods support resource-related classes from selected libraries
+in the same way as native Python dictionaries (or any mutable mappings).
+Currently, these are `pykube-ng`_ (classes based on ``pykube.objects.APIObject``)
 and `kubernetes client`_ (resource models from ``kubernetes.client.models``).
 
 .. code-block:: python

@@ -7,7 +7,7 @@ The test design notes:
 
 * For the existent keys, kwargs should not matter.
 * For the non-existent keys, the default is returned,
-  or a ``KeyError`` raised -- as with regular mappings.
+  or a ``KeyError`` raised --- as with regular mappings.
 
 * For special cases with "wrong" values (``"value"["z"]``, ``None["z"]``, etc),
   either a ``TypeError`` should be raised normally. If "wrong" values are said

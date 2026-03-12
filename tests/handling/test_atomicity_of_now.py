@@ -28,7 +28,7 @@ async def test_consistent_awakening(registry, settings, resource, k8s_mocked, mo
     After the fix, zero-sleep produces a dummy patch to trigger the reaction
     cycle after the sleep is over (as if it was an actual zero-time sleep).
 
-    In the test, the time granularity is intentionally that low -- 1 µs.
+    In the test, the time granularity is intentionally that low --- 1 µs.
     The time is anyway frozen and does not progress unless explicitly ticked.
 
     See also: #284

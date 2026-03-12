@@ -48,7 +48,7 @@ settings_var: ContextVar[configuration.OperatorSettings] = ContextVar('settings_
 
 class K8sEvent(NamedTuple):
     """
-    A single k8s-event to be posted, with all ref-information preserved.
+    A single k8s-event to be posted, with all reference information preserved.
     It can exist and be posted even after the object is garbage-collected.
     """
     ref: bodies.ObjectReference

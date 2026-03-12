@@ -19,7 +19,7 @@ def _enforced_api_server(fake_vault, enforced_session, resource):
 
 @pytest.fixture()
 def processor():
-    """ A mock for processor -- to be checked if the handler has been called. """
+    """ A mock for processor---to be checked if the handler has been called. """
     return AsyncMock(return_value=None)
 
 

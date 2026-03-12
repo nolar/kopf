@@ -33,9 +33,9 @@ These results are visible in the object's content:
         r2: 666
 
 The function results can be used to communicate between handlers through
-the resource itself, assuming that handlers do not know in which order they
-will be invoked (due to error handling and retrying), and to be able to
-restore in case of operator failures and restarts:
+the resource itself, given that handlers do not know in which order they
+will be invoked (due to error handling and retrying), and to enable
+recovery in case of operator failures and restarts:
 
 .. code-block:: python
 
@@ -65,7 +65,7 @@ restore in case of operator failures and restarts:
 
     In this example, the handlers are *intentionally* put in such an order
     that the first handler always fails on the first attempt. Having them
-    in the proper order (PVC first, Job afterwards) will make it work smoothly
-    for most of the cases, until PVC creation fails for any temporary reason
-    and has to be retried. The whole thing will eventually succeed anyway in
+    in the proper order (PVC first, Job second) would make it work smoothly
+    in most cases, until PVC creation fails for any temporary reason
+    and has to be retried. The whole thing will eventually succeed in
     1-2 additional retries, just with less friendly messages and stack traces.

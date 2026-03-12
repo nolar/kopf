@@ -2,7 +2,7 @@
 State stores are used to track the handlers' states across handling cycles.
 
 Specifically, they track which handlers are finished, which are not yet,
-and how many retries were there, and some other information.
+how many retries there were, and some other information.
 
 There could be more than one low-level k8s watch-events per one actual
 high-level kopf-event (a cause). The handlers are called at different times,
@@ -65,14 +65,14 @@ class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
     """
     Base class and an interface for all persistent states.
 
-    The state is persisted strict per-handler, not for all handlers at once:
+    The state is persisted strictly per-handler, not for all handlers at once:
     to support overlapping operators (assuming different handler ids) storing
     their state on the same fields of the resource (e.g. ``state.kopf``).
 
     This also ensures that no extra logic for state merges will be needed:
     the handler states are atomic (i.e. state fields are not used separately)
-    but independent: i.e. handlers should be persisted on their own, unrelated
-    to other handlers; i.e. never combined to other atomic structures.
+    but independent: handlers should be persisted on their own, unrelated
+    to other handlers, and never combined with other atomic structures.
 
     If combining is still needed with performance optimization in mind (e.g.
     for relational/transactional databases), the keys can be cached in memory

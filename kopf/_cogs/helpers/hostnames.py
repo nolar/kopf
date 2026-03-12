@@ -6,7 +6,7 @@ def get_descriptive_hostname() -> str:
     """
     Look for non-numeric hostnames of the machine where the operator runs.
 
-    The purpose is the host identification, not the actual host accessability.
+    The purpose is the host identification, not the actual host accessibility.
 
     Similar to :func:`socket.getfqdn`, but IPv6 pseudo-hostnames are excluded --
     they are not helpful in identifying the actual host running the operator:

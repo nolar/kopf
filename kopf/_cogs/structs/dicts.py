@@ -142,7 +142,7 @@ def ensure(
     Force-set a nested sub-field in a dict.
 
     If some levels of parents are missing, they are created as empty dicts
-    (this what makes it "ensuring", not just "setting").
+    (this is what makes it "ensuring", not just "setting").
     """
     result = d
     path = parse_field(field)
@@ -333,7 +333,7 @@ class ReplaceableMappingView(MappingView[_K, _V], Generic[_K, _V]):
     All derived mapping views that use this mapping view as their source will
     immediately notice the change.
 
-    The method names are intentionally long and multi-word -- to not have
+    The method names are intentionally long and multi-word --- to not have
     potential collisions with regular expected attributes/properties.
 
     >>> body = ReplaceableMappingView()

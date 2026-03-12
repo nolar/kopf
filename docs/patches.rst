@@ -14,11 +14,11 @@ modifications (such as progress storage, finalizer management,
 and handler result delivery) and applied together in the minimal number
 of API calls (depending on the resource definition).
 
-There can be from zero to four patches per one processing cycle,
+There can be anywhere from zero to four patches per processing cycle,
 depending on whether the status is a subresource, and whether the patch
 is a mix of dictionary changes and transformation functions with actual changes.
 
-Alternatively, the operator developers can use any third-party
+Alternatively, operator developers can use any third-party
 Kubernetes client library to patch their resources directly
 inside the handlers instead of using the provided :kwarg:`patch` facility.
 
@@ -58,18 +58,19 @@ Other values overwrite the existing ones:
 Transformation functions
 ========================
 
-Some changes cannot be expressed as a merge-patch.
+Some changes cannot be expressed as a merge patch.
 In particular, list operations (appending to or removing from a list)
 require knowing the current state of the list to calculate the correct indices.
 For example, adding a finalizer requires knowing how many finalizers
 are already present; removing one requires knowing its position in the list.
 
 For these cases, the :kwarg:`patch` object provides the ``patch.fns`` property.
-Any function of type :type:`kopf.PatchFn` can be appended to ``patch.fns``
-(or inserted into the beginning or the middle of the list, if that matters).
+You can append any function of type ``Callable[[dict], None]`` to ``patch.fns``
+(or insert into the beginning or the middle of the list, if that matters).
 Each function accepts the raw resource body as a positional argument
-(a regular mutable dictionary) and mutates it in place; the dictionary being
-mutated is already a deep copy of the original body, so no need to worry:
+(a regular mutable dictionary) and mutates it in place.
+The dictionary being mutated is already a deep copy of the original body,
+so there is no need to worry:
 
 .. code-block:: python
 
@@ -98,18 +99,18 @@ with an optimistic concurrency check on the ``metadata.resourceVersion``.
     in the same or previous processing cycles, so it is not necessarily
     the body from the event that triggered the handler.
 
-The transformation functions can be called more than once across
-the same or several processing cycles --
+The transformation functions may be called more than once across
+the same or several processing cycles ---
 for instance, if the API server rejects the patch due to a conflict.
 The functions should therefore be safe to call repeatedly:
 they should check the current state before making changes
-rather than assuming a particular starting state.
+rather than assuming a particular initial state.
 
 
 Arguments to transformation functions
 --------------------------------------
 
-The transformation function signature is a single positional argument
+The transformation function takes a single positional argument
 for the body. If additional positional or keyword arguments are needed,
 use ``functools.partial``:
 

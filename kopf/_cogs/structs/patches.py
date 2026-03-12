@@ -5,7 +5,7 @@ Currently, it is implemented via a JSON merge-patch (RFC 7386),
 i.e. a simple dictionary with field overrides, and ``None`` for field deletions.
 
 In the future, it can be extended to a standalone object, which exposes
-a dict-like behaviour, and remembers the changes in order of their execution,
+a dict-like behavior, and remembers the changes in order of their execution,
 and then generates the JSON patch (RFC 6902).
 """
 import collections.abc
@@ -115,7 +115,7 @@ class Patch(dict[str, Any]):
         Build a list of JSON-patch ops for the changes & transformations.
 
         As a reference resource body, either the argument is used (if provided),
-        or the original resource body. But the reference body is mandatory —
+        or the original resource body. But the reference body is mandatory ---
         the patch calculates the differences relative to the reference body.
 
         Some changes might disappear from the list if they are useless (no-op):

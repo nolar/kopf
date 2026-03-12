@@ -1,14 +1,14 @@
 """
 Conversion of low-level events to high-level causes, and handling them.
 
-These functions are invoked from :mod:`kopf._core.reactor.processing`,
+These functions are invoked from :mod:`kopf._core.reactor.queueing`,
 which are the actual event loop of the operator process.
 
 The conversion of the low-level events to the high-level causes is done by
 checking the object's state and comparing it to the preserved last-seen state.
 
-The framework itself makes the necessary changes to the object, -- such as the
-finalizers attachment, last-seen state updates, and handler status tracking, --
+The framework itself makes the necessary changes to the object, --- such as the
+finalizers attachment, last-seen state updates, and handler status tracking, ---
 thus provoking the low-level watch-events and additional queueing calls.
 But these internal changes are filtered out from the cause detection
 and therefore do not trigger the user-defined handlers.
@@ -434,7 +434,7 @@ async def process_changing_cause(
         cause: causes.ChangingCause,
 ) -> Collection[float]:
     """
-    Handle a detected cause, as part of the bigger handler routine.
+    Handle a detected cause as part of the broader handler routine.
     """
     logger = cause.logger
     patch = cause.patch  # TODO get rid of this alias

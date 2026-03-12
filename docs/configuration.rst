@@ -11,8 +11,8 @@ Startup configuration
 =====================
 
 Every operator has its settings (even if there is more than one operator
-in the same processes, e.g. due to :doc:`embedding`). The settings affect
-how the framework behaves in details.
+in the same process, e.g. due to :doc:`embedding`). The settings affect
+how the framework behaves in detail.
 
 The settings can be modified in the startup handlers (see :doc:`startup`):
 
@@ -38,7 +38,7 @@ Logging formats and levels
 
 The following log formats are supported on CLI:
 
-* Full logs (the default) -- with timestamps, log levels, and logger names:
+* Full logs (the default) --- with timestamps, log levels, and logger names:
 
     .. code-block:: bash
 
@@ -84,7 +84,7 @@ The following log formats are supported on CLI:
         {"message": "Resuming is in progress: ...", "object": {"apiVersion": "kopf.dev/v1", "kind": "KopfExample", "name": "kopf-example-1", "uid": "...", "namespace": "default"}, "severity": "debug", "timestamp": "2020-12-31T23:59:59.123456"}
 
   For JSON logs, the object reference key can be configured to match
-  the log parsers (if used) -- instead of the default ``"object"``:
+  the log parsers (if used) --- instead of the default ``"object"``:
 
     .. code-block:: bash
 
@@ -145,7 +145,7 @@ The event-posting can be disabled completely (the default is to be enabled):
         settings.posting.enabled = False
 
 These two settings also affect :func:`kopf.event` and related functions:
-:func:`kopf.info`, :func:`kopf.warn`, :func:`kopf.exception` --
+:func:`kopf.info`, :func:`kopf.warn`, :func:`kopf.exception` ---
 even if they are called explicitly in the code.
 
 By default, all log messages made by the handlers on their ``logger`` are also
@@ -183,9 +183,9 @@ with another one:
 It is possible to replace the whole asyncio executor used
 for synchronous handlers (see :doc:`async`).
 
-Please note that the handlers that started in a previous executor, will be
+Note that handlers that started in a previous executor will be
 continued and finished with their original executor. This includes the startup
-handler itself. To avoid it, make the on-startup handler asynchronous:
+handler itself. To avoid this, make the on-startup handler asynchronous:
 
 .. code-block:: python
 
@@ -216,8 +216,8 @@ Networking timeouts
 Timeouts can be controlled when communicating with Kubernetes API:
 
 ``settings.networking.request_timeout`` (seconds) is how long a regular
-request should take before failing. This applies to all atomic requests --
-cluster scanning, resource patching, etc. -- except the watch-streams.
+request should take before failing. This applies to all atomic requests ---
+cluster scanning, resource patching, etc. --- except the watch-streams.
 The default is 5 minutes (300 seconds).
 
 ``settings.networking.connect_timeout`` (seconds) is how long a TCP handshake
@@ -227,8 +227,8 @@ is limited by the overall time of the request.
 
 ``settings.watching.connect_timeout`` (seconds) is how long a TCP handshake
 can take for watch-streams before failing. There is no default (``None``),
-which means that ``settings.networking.connect_timeout`` is used if set.
-If not set, then ``settings.networking.request_timeout`` is used.
+which means ``settings.networking.connect_timeout`` is used if set.
+If not set, ``settings.networking.request_timeout`` is used.
 
 .. note::
 
@@ -249,32 +249,33 @@ This includes establishing the connection and event streaming.
 The default is forever (``None``).
 
 It makes no sense to set the client-side timeout shorter than the server-side
-timeout, but it is given to the developers' responsibility to decide.
+timeout, but it is left to the developers' responsibility to decide.
 
-The server-side timeouts are unpredictable, they can be 10 seconds or
+The server-side timeouts are unpredictable; they can be 10 seconds or
 10 minutes. Yet, it feels wrong to assume any "good" values in a framework
-(especially since it works without timeouts defined, just produces extra logs).
+(especially since it works without timeouts defined, and just produces extra logs).
 
 .. warning::
     Some setups that involve any kind of a load balancer (LB), such as
-    the cloud-hosted Kubernetes clusters, have a well-known problem
+    the cloud-hosted Kubernetes clusters, had a well-known problem
     of freezing and going silent for no reason if nothing happens
     in the cluster for some time. The best guess is that the connection
     operator<>LB remains alive, while the connection LB<>K8s closes.
     Kopf-based operators remain unaware of this disruption.
 
-    Setting either the client or the server timeout solves the problem
-    of waking up from such freezes, but at the cost of regular reconnections
-    in the normal flow of operations. There is no good default value either,
-    you should guess it experimentally based on your operational requirements,
-    cluster size and activity level, usually in the range 1-10 minutes.
+    This was fixed in Kopf 1.44.0 by using bookmark events. Prior to 1.44.0,
+    setting either the client or the server timeout solves the problem
+    of recovering from such freezes, but at the cost of regular reconnections
+    in the normal flow of operations. There is no good default value either;
+    you should determine it experimentally based on your operational requirements,
+    cluster size, and activity level, usually in the range of 1-10 minutes.
 
 ``settings.watching.reconnect_backoff`` (seconds) is a backoff interval between
-watching requests -- to prevent API flooding in case of errors or disconnects.
+watching requests --- to prevent API flooding in case of errors or disconnects.
 The default is 0.1 seconds (nearly instant, but not flooding).
 
 ``settings.watching.inactivity_timeout`` (seconds) is how long the watch stream
-is allowed to stay completely silent — delivering no events, not even bookmarks —
+is allowed to stay completely silent ---delivering no events, not even bookmarks---
 before it is considered dead and closed for reconnection.
 Kubernetes sends bookmark events every 60 seconds as a heartbeat and caches
 the recent events for 75 seconds (here__), so the default of 70 seconds allows
@@ -293,6 +294,8 @@ __ https://github.com/kubernetes/kubernetes/blob/c20e0bc54189aef73a6a1498b4eab28
     ignores the stalled connections and might freeze with no action indefinitely.
     As a workaround, set ``settings.watching.client_timeout`` to 1-10 mins.
     Python 3.10's end-of-life is October 2026, so the fix is not planned.
+    However, the mere flow of bookmark events every 60 seconds may
+    keep the connection alive and resolve the original issue of freezing.
 
 .. code-block:: python
 
@@ -324,16 +327,16 @@ an unrelated application or another operator patches the resources on their own.
 
 Handling the _inconsistent_ states could cause double-processing
 (i.e. double handler execution) and some other undesired side effects.
-To prevent handling the inconsistent states, all state-dependent handlers
-wait the _consistency_ is reached via one of the following two ways:
+To prevent handling inconsistent states, all state-dependent handlers
+wait until _consistency_ is reached via one of the following two ways:
 
 * The expected resource version from the PATCH API operation arrives
   via the watch-stream of the resource within the specified time window.
 * The expected resource version from the PATCH API operation does not arrive
   via the watch-stream within the specified time window, in which case
-  Kopf assumes the consistency after the time window ends,
-  and the processing continues as if the version has arrived,
-  possibly causing the mentioned side-effects.
+  Kopf assumes consistency after the time window ends,
+  and processing continues as if the version had arrived,
+  possibly causing the mentioned side effects.
 
 The time window is measured relative to the time of the latest ``PATCH`` call.
 The timeout should be long enough to assume that if the expected resource
@@ -347,16 +350,16 @@ version did not arrive within the specified time, it will never arrive.
     def configure(settings: kopf.OperatorSettings, **_):
         settings.persistence.consistency_timeout = 10
 
-The default value (5 seconds) aims to the safest scenario out of the box.
+The default value (5 seconds) aims for the safest scenario out of the box.
 
 The value of ``0`` will effectively disable the consistency tracking
-and declare all resource states as consistent -- even if they are not.
-Use this with care -- e.g., with self-made persistence storages instead of
+and declare all resource states as consistent --- even if they are not.
+Use this with care --- e.g., with self-made persistence storages instead of
 Kopf's annotations (see :ref:`progress-storing` and :ref:`diffbase-storing`).
 
 The consistency timeout does not affect low-level handlers with no persistence,
 such as ``@kopf.on.event``, ``@kopf.index``, ``@kopf.daemon``, ``@kopf.timer``
--- these handlers run for each and every watch-event with no delay
+--- these handlers run for each and every watch-event with no delay
 (if they match the :doc:`filters <filters>`, of course).
 
 
@@ -415,8 +418,8 @@ To store the state only in the status or any other field:
     def configure(settings: kopf.OperatorSettings, **_):
         settings.persistence.progress_storage = kopf.StatusProgressStorage(field='status.my-operator')
 
-To store in multiple places (stored in sync, but the first found state will be
-used when fetching, i.e. the first storage has precedence):
+To store in multiple places (all are written to in sync, but the first found
+state will be used when reading, i.e. the first storage has precedence):
 
 .. code-block:: python
 
@@ -430,8 +433,8 @@ used when fetching, i.e. the first storage has precedence):
         ])
 
 The default storage is in annotations, plus read-only from the status stanza,
-with annotations having precedence over the status. That was a transitioning
-solution from the original status-only storage only (Mar'20–Mar'26; v0.27–1.44).
+with annotations taking precedence over the status. This was a transitional
+solution from the original status-only storage (Mar'20–Mar'26; v0.27–1.44).
 The annotations are ``kopf.zalando.org/{id}`` (read-write),
 the status fields are ``status.kopf.progress.{id}`` (read-only).
 It is an equivalent of:
@@ -445,7 +448,7 @@ It is an equivalent of:
         settings.persistence.progress_storage = kopf.SmartProgressStorage()
 
 It is also possible to implement custom state storage instead of storing
-the state directly in the resource's fields -- e.g., in external databases.
+the state directly in the resource's fields --- e.g., in external databases.
 For this, inherit from :class:`kopf.ProgressStorage` and implement its abstract
 methods (``fetch()``, ``store()``, ``purge()``, optionally ``flush()``).
 
@@ -490,9 +493,9 @@ methods (``fetch()``, ``store()``, ``purge()``, optionally ``flush()``).
     For built-in resources, such as pods, namespaces, etc, the schemas cannot
     be modified, so a full switch to annotations storage is advised.
 
-    The new default "smart" storage is supposed to ensure a smooth upgrade
-    of Kopf-based operators to the new state location without special upgrade
-    actions or conversions needed.
+    The new default "smart" storage is designed to ensure a smooth upgrade
+    of Kopf-based operators to the new state location without any special
+    upgrade actions or conversions.
 
 
 .. _diffbase-storing:
@@ -500,12 +503,12 @@ methods (``fetch()``, ``store()``, ``purge()``, optionally ``flush()``).
 Change detection
 ================
 
-For change-detecting handlers, Kopf keeps the last handled configuration --
+For change-detecting handlers, Kopf keeps the last handled configuration ---
 i.e. the last state that has been successfully handled. New changes are compared
 against the last handled configuration, and a diff list is formed.
 
 The last-handled configuration is also used to detect if there were any
-essential changes at all -- i.e. not just the system or status fields.
+essential changes at all --- i.e. not just the system or status fields.
 
 The last-handled configuration storage can be configured
 with ``settings.persistence.diffbase_storage``.
@@ -525,9 +528,9 @@ The default is an equivalent of:
 The stored content is a JSON-serialised essence of the object (i.e., only
 the important fields, with system fields and status stanza removed).
 
-It is generally not a good idea to override this store unless multiple
-Kopf-based operators must handle the same resources, and they should not
-collide with each other. In that case, they must take different names.
+It is generally not a good idea to override this storage unless multiple
+Kopf-based operators must handle the same resources and must not
+collide with each other. In that case, they must use different names.
 
 
 Storage transition
@@ -537,14 +540,14 @@ Storage transition
 
     Changing a storage method for an existing operator with existing resources
     is dangerous: the operator will consider all those resources
-    as not handled yet (due to absence of a diff-base key) or will lose
+    as not yet handled (due to the absence of a diff-base key), or will lose
     their progress state (if some handlers are retried or slow). The operator
-    will start handling each of them again -- which can lead to duplicated
-    children or other side-effects.
+    will start handling each of them again, which can lead to duplicated
+    children or other side effects.
 
-To ensure a smooth transition, use a composite multi-storage, with the
-new storage as a first child, and the old storage as the second child
-(both are used for writing, the first found value is used for reading).
+To ensure a smooth transition, use a composite multi-storage with the
+new storage as the first child and the old storage as the second child
+(both are used for writing; the first found value is used for reading).
 
 For example, to eventually switch from Kopf's annotations to a status field
 for diff-base storage, apply this configuration:
@@ -560,8 +563,8 @@ for diff-base storage, apply this configuration:
             kopf.AnnotationsDiffBaseStorage(prefix='kopf.zalando.org', key='last-handled-configuration'),
         ])
 
-Run the operator for some time. Let all resources change or force this:
-e.g. by arbitrarily labelling them, so that a new diff-base is generated:
+Run the operator for some time. Let all resources change, or force this,
+e.g. by arbitrarily labelling them so that a new diff-base is generated:
 
 .. code-block:: shell
 
@@ -575,18 +578,18 @@ Cluster discovery
 
 ``settings.scanning.disabled`` controls the cluster discovery at runtime.
 
-If enabled (the default), then the operator will try to observe
-the namespaces and custom resources, and will gracefully start/stop
-the watch streams for them (also the peering activities, if applicable).
-This requires the RBAC permissions to list/watch the V1 namespaces and CRDs.
+If enabled (the default), the operator will try to observe
+namespaces and custom resources, and will gracefully start/stop
+the watch streams for them (as well as peering activities, if applicable).
+This requires RBAC permissions to list/watch V1 namespaces and CRDs.
 
-If disabled or if enabled but the permission is not granted, then only
+If disabled, or if enabled but the permission is not granted, then only
 the specific namespaces will be served, with namespace patterns ignored;
 and only the resources detected at startup will be served, with added CRDs
-or CRD versions being ignored, and the deleted CRDs causing failures.
+or CRD versions being ignored and deleted CRDs causing failures.
 
-The default mode is good enough for most cases, unless the strict
-(non-dynamic) mode is intended -- to prevent the warnings in the logs.
+The default mode is sufficient for most cases, unless the strict
+(non-dynamic) mode is intended, for example to suppress the warnings in the logs.
 
 If you have very restrictive cluster permissions, disable the cluster discovery:
 
@@ -602,17 +605,17 @@ If you have very restrictive cluster permissions, disable the cluster discovery:
 Retrying of API errors
 ======================
 
-In some cases, the Kubernetes API servers might not be ready on startup
+In some cases, the Kubernetes API servers might not be ready on startup,
 or occasionally at runtime; the network might have issues too. In most cases,
-these issues are of temporary nature and heal themselves within seconds.
+these issues are temporary and resolve themselves within seconds.
 
-The framework retries the TCP/SSL networking errors and the HTTP 5xx errors
-("the server is wrong") --- i.e. everything that is presumed to be temporary;
-other errors -- those presumed to be permanent, including HTTP 4xx errors
-("the client is wrong") -- escalate immediately without retrying.
+The framework retries TCP/SSL networking errors and HTTP 5xx errors
+("the server is wrong") --- i.e. everything presumed to be temporary;
+other errors presumed to be permanent, including HTTP 4xx errors
+("the client is wrong"), escalate immediately without retrying.
 
-The setting ``settings.networking.error_backoffs`` controls for how many times
-and with which backoff interval (in seconds) the retries are performed.
+The setting ``settings.networking.error_backoffs`` controls how many times
+and with what backoff interval (in seconds) the retries are performed.
 
 It is a sequence of back-offs between attempts (in seconds):
 
@@ -624,22 +627,22 @@ It is a sequence of back-offs between attempts (in seconds):
     def configure(settings: kopf.OperatorSettings, **_):
         settings.networking.error_backoffs = [10, 20, 30]
 
-Note that the number of attempts is one more than the number of back-off
-intervals (because the back-offs happen in between the attempts).
+Note that the number of attempts is one more than the number of backoff
+intervals (because the backoffs happen between the attempts).
 
-A single integer or float value means a single backoff, i.e. 2 attempts:
+A single integer or float value means a single backoff, i.e. 2 attempts total:
 ``(1.0)`` is equivalent to ``(1.0,)`` or ``[1.0]`` for convenience.
 
 To have a uniform back-off delay D with N+1 attempts, set to ``[D] * N``.
 
-To disable retrying (on your own risk), set it to ``[]`` or ``()``.
+To disable retrying (at your own risk), set it to ``[]`` or ``()``.
 
 The default value covers roughly a minute of attempts before giving up.
 
 Once the retries are over (if disabled, immediately on error), the API errors
 escalate and are then handled according to :ref:`error-throttling`.
 
-This value can be an arbitrary collection or an iterable object (even infinite):
+This value can be an arbitrary collection or iterable object (even infinite):
 only ``iter()`` is called on every new retrying cycle, no other protocols
 are required; however, make sure that it is re-iterable for multiple uses:
 
@@ -659,19 +662,19 @@ are required; however, make sure that it is re-iterable for multiple uses:
 
 
 Retrying an API error blocks the task or the object's worker in which
-the API error happens. However, other objects and tasks run normally
-in parallel (unless they hit the same error in the same cluster).
+the API error occurs. However, other objects and tasks run normally
+in parallel (unless they encounter the same error in the same cluster).
 
-Every further consecutive error leads to the next, typically bigger backoff.
-Every success resets the backoff intervals, and it goes from the beginning
+Each consecutive error leads to the next, typically larger backoff.
+Each success resets the backoff intervals, and they restart from the beginning
 on the next error.
 
 .. note::
 
     The format is the same as for ``settings.queueing.error_delays``.
-    The only difference: if the API operation does not succeed by the end
+    The only difference is that if the API operation does not succeed by the end
     of the sequence, the error of the last attempt escalates instead of blocking
-    and retrying forever with the last delay in the sequence.
+    and retrying indefinitely with the last delay in the sequence.
 
 .. seealso::
     These back-offs cover only the server-side and networking errors.
@@ -693,15 +696,14 @@ If ``True``, the server-provided interval will be used. If ``False`` (default),
 Kopf's longer backoff interval will be used. Either way, the backoff interval
 will never be shorter than what the server requested.
 
-
 .. _error-throttling:
 
 Throttling of unexpected errors
 ===============================
 
-To prevent an uncontrollable flood of activities in case of errors that prevent
-the resources being marked as handled, which could lead to the Kubernetes API
-flooding, it is possible to throttle the activities on a per-resource basis:
+To prevent an uncontrollable flood of activity in case of errors that prevent
+resources from being marked as handled, which could lead to Kubernetes API
+flooding, it is possible to throttle activity on a per-resource basis:
 
 .. code-block:: python
 
@@ -712,19 +714,19 @@ flooding, it is possible to throttle the activities on a per-resource basis:
         settings.queueing.error_delays = [10, 20, 30]
 
 In that case, all unhandled errors in the framework or in the Kubernetes API
-would be backed-off by 10s after the 1st error, then by 20s after the 2nd one,
+will be backed off by 10s after the 1st error, then by 20s after the 2nd,
 and then by 30s after the 3rd, 4th, 5th errors and so on. On the first success,
-the backoff intervals will be reset and re-used again on the next error.
+the backoff intervals will be reset and reused on the next error.
 
 The default is a sequence of Fibonacci numbers from 1 second to 10 minutes.
 
-The back-offs are not persisted, so they are lost on the operator restarts.
+The backoffs are not persisted, so they are lost on operator restarts.
 
-These back-offs do not cover errors in the handlers -- the handlers have their
-own per-handler back-off intervals. These back-offs are for Kopf's own errors.
+These backoffs do not cover errors in the handlers --- the handlers have their
+own per-handler backoff intervals. These backoffs are for Kopf's own errors.
 
-To disable throttling (on your own risk), set it to ``[]`` or ``()``.
-Interpret it as: no throttling delays set --- no throttling sleeps done.
+To disable throttling (at your own risk), set it to ``[]`` or ``()``.
+This means: no throttling delays set, no throttling sleeps performed.
 
 If needed, this value can be an arbitrary collection/iterator/object:
 only ``iter()`` is called on every new throttling cycle, no other protocols
@@ -734,7 +736,7 @@ are required; but make sure that it is re-iterable for multiple uses.
 Log levels & filters
 ====================
 
-In case the logs of any component are too excessive, or contain secret data,
+If the logs of any component are too verbose or contain sensitive data,
 this can be controlled with the usual Python logging machinery.
 
 For example, to disable the access logs of the probing server:
@@ -766,7 +768,7 @@ For more information on the logging configuration, see:
 `logging <https://docs.python.org/3/library/logging.html>`_.
 
 In particular, you can use the special logger ``kopf.objects`` to filter
-the object-related log messages coming from the :kwarg:`logger` and from
+object-related log messages coming from the :kwarg:`logger` and from
 Kopf's internals, which are then posted as Kubernetes events (``v1/events``):
 
 .. code-block:: python
@@ -783,7 +785,7 @@ Kopf's internals, which are then posted as Kubernetes events (``v1/events``):
         logging.getLogger('kopf.objects').addFilter(ExcludeKopfInternals())
 
 .. warning::
-    Beware: the path names and module names of internal modules,
-    so as the extra fields of ``logging.LogRecord`` added by Kopf,
-    can change without warning, do not rely on their stability.
+    The path names and module names of internal modules,
+    as well as the extra fields of ``logging.LogRecord`` added by Kopf,
+    can change without notice. Do not rely on their stability.
     They are not a public interface of Kopf.

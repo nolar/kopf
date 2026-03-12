@@ -54,7 +54,7 @@ def threader():
     Call a sync function after a delay. Finalize the thread afterwards.
 
     Always put the threader setup **under** the chronometer or timer.
-    Otherwise, the code can seem to be executed faster than the sleep —
+    Otherwise, the code can seem to be executed faster than the sleep ---
     because there will be time spent on sleeping between the thread has started
     and the chronometer/timer made its initial measurement of time: 0.01s or so.
     """

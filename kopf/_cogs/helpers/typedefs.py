@@ -6,7 +6,7 @@ defined as generics, while the old Python runtime (down to 3.9 & 3.10)
 does not support the usual syntax.
 Examples: asyncio.Task, asyncio.Future, logging.LoggerAdapter, and others.
 
-This modules defines them in a most suitable and reusable way. Plus it adds
+This module defines them in a most suitable and reusable way. Plus it adds
 some common plain type definitions used across the codebase (for convenience).
 """
 import logging

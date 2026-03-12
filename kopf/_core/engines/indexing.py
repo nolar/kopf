@@ -16,7 +16,7 @@ _V = TypeVar('_V')
 
 class Store(ephemera.Store[_V], Generic[_V]):
     """
-    A specific implementation of ``.ephemera.Store`` usable by inxeders.
+    A specific implementation of ``.ephemera.Store`` usable by indexers.
 
     The resources-to-values association is internal and is not exposed
     to handlers or operators. Currently, it is a dictionary

@@ -13,7 +13,7 @@ Previously (:doc:`creation`),
 we have implemented a handler for the creation of an ``EphemeralVolumeClaim`` (EVC),
 and created the corresponding ``PersistentVolumeClaim`` (PVC).
 
-What will happen if we change the size of the EVC when it already exists?
+What happens if we change the size of the EVC after it already exists?
 The PVC must be updated accordingly to match its parent EVC.
 
 First, we have to remember the name of the created PVC.
@@ -46,8 +46,8 @@ with one additional line:
 
         return {'pvc-name': obj.metadata.name}
 
-Whatever is returned from any handler, is stored in the object's status
-under that handler id (which is the function name by default).
+Whatever is returned from any handler is stored in the object's status
+under that handler ID (which is the function name by default).
 We can see that with kubectl:
 
 .. code-block:: bash
@@ -129,7 +129,7 @@ Check the size of the actual PV behind the PVC, which is now increased:
     pvc-a37b65bd-8384-11e9-b857-42010a800265   2Gi        RWO            ...
 
 .. warning::
-    Kubernetes & ``kubectl`` improperly show the capacity of PVCs:
+    Kubernetes & ``kubectl`` incorrectly show the capacity of PVCs:
     it remains the same (1G) even after the change.
-    The size of the actual PV (Persistent Volume) of each PVC is important!
-    This issue is not related to Kopf, so we work around it.
+    What matters is the size of the actual PV (Persistent Volume) behind each PVC.
+    This is a Kubernetes issue unrelated to Kopf, so we work around it.

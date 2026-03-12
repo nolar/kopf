@@ -2,17 +2,17 @@
 Sample Problem
 ==============
 
-Throughout this user documentation, we try to solve
-a little real-world problem with Kopf, step by step,
-presenting and explaining all the Kopf features one by one.
+Throughout this user documentation, we solve
+a small real-world problem with Kopf step by step,
+presenting and explaining Kopf features one by one.
 
 
 Problem Statement
 =================
 
-In Kubernetes, there are no ephemeral volumes of big sizes, e.g. 500 GB.
+In Kubernetes, there are no ephemeral volumes of large sizes, e.g. 500 GB.
 By ephemeral, we mean that the volume does not persist after it is used.
-Such volumes can be used as a workspace for large data-crunching jobs.
+Such volumes can serve as a workspace for large data-crunching jobs.
 
 There is `Local Ephemeral Storage`__, which allocates some space on a node's
 root partition shared with the docker images and other containers,
@@ -32,14 +32,14 @@ __ https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-co
             limits:
               ephemeral-storage: 1G
 
-There is a `PersistentVolumeClaim`__ resource kind, but it is persistent,
-i.e. not deleted after it is created (only manually deletable).
+There is a `PersistentVolumeClaim`__ resource kind, but it is persistent ---
+meaning it is not deleted after use and can only be removed manually.
 
 __ https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims
 
-There is `StatefulSet`__, which has the volume claim template,
+There is `StatefulSet`__, which has a volume claim template,
 but the volume claim is again persistent,
-and the set does not follow the same flow as Jobs do, more like Deployments.
+and StatefulSets follow the same flow as Deployments, not Jobs.
 
 __ https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/
 
@@ -51,13 +51,13 @@ We will implement the ``EphemeralVolumeClaim`` object kind,
 which will be directly equivalent to ``PersistentVolumeClaim``
 (and will use it internally), but with a little extension:
 
-It will be *designated* for a pod or pods with specific selection criteria.
+It will be *designated* for one or more pods with specific selection criteria.
 
 Once used, and all those pods are gone and are not going to be restarted,
 the ephemeral volume claim will be deleted after a *grace period*.
 
-For safety, there will be an *expiry period* for the cases when the claim
-was not used: e.g. if the pod could not start for some reason
+For safety, there will be an *expiry period* for cases when the claim
+was never used --- e.g. if the pod could not start for some reason ---
 so that the claim does not remain stale forever.
 
 The lifecycle of an ``EphemeralVolumeClaim`` is this:
@@ -67,10 +67,10 @@ The lifecycle of an ``EphemeralVolumeClaim`` is this:
 
 * Waits until the claim is used at least once.
 
-  * At least for N seconds of the safe time to allow the pods to start.
+  * For at least N seconds to allow the pods to start safely.
 
-  * At most for M seconds for the case when the pod has failed to start,
-    but the claim was created.
+  * For at most M seconds in case the pod failed to start
+    but the claim was already created.
 
 * Deletes the ``PersistentVolumeClaim`` after either the pod is finished,
   or the wait time has elapsed.

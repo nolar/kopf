@@ -106,7 +106,7 @@ To mutate the object, modify the :kwarg:`patch`. Changes to :kwarg:`body`,
         except ValueError:
             return v
 
-The semantics is the same or as close as possible to the Kubernetes API's one.
+The semantics are the same as, or as close as possible to, the Kubernetes API's.
 ``None`` values will remove the relevant keys.
 
 Under the hood, the patch object will remember each change
@@ -119,31 +119,31 @@ Handler options
 Handlers have a limited capability to inform Kubernetes about their behavior.
 The following options are supported:
 
-``persistent`` (``bool``) webhooks will not be removed from the managed
-configurations on exit; non-persisted webhooks will be removed if possible.
-Such webhooks will prevent all admissions even when the operator is down.
+``persistent`` (``bool``) --- persistent webhooks will not be removed from the managed
+configurations on exit; non-persistent webhooks will be removed if possible.
+Such webhooks will block all admissions even when the operator is down.
 This option has no effect if there is no managed configuration.
 The webhook cleanup only happens on graceful exits; on forced exits, even
-non-persisted webhooks might be persisted and block the admissions.
+non-persistent webhooks might be persisted and block the admissions.
 
-``operation`` (``str``) will configure this handler/webhook to be called only
+``operation`` (``str``) --- configures this handler/webhook to be called only
 for a specific operation. For multiple operations, add several decorators.
 Possible values are ``"CREATE"``, ``"UPDATE"``, ``"DELETE"``, ``"CONNECT"``.
 The default is ``None``, i.e. all operations (equivalent to ``"*"``).
 
-``subresource`` (``str``) will only react to the specified subresource.
+``subresource`` (``str``) --- reacts only to the specified subresource.
 Usually it is ``"status"`` or ``"scale"``, but can be anything else.
 The value ``None`` means that only the main resource body will be checked.
 The value ``"*"`` means that both the main body and any subresource are checked.
-The default is ``None``, i.e. only the main body to be checked.
+The default is ``None``, i.e. only the main body is checked.
 
-``side_effects`` (``bool``) tells Kubernetes that the handler can have side
+``side_effects`` (``bool``) --- tells Kubernetes that the handler can have side
 effects in non-dry-run mode. In dry-run mode, it must have no side effects.
 The dry-run mode is passed to the handler as a :kwarg:`dryrun` kwarg.
 The default is ``False``, i.e. the handler has no side effects.
 
-``ignore_failures`` (``bool``) marks the webhook as tolerant to errors.
-This includes errors of the handler itself (disproved admissions),
+``ignore_failures`` (``bool``) --- marks the webhook as tolerant to errors.
+This includes errors from the handler itself (rejected admissions),
 as well as HTTP/TCP communication errors when apiservers talk to the webhook server.
 By default, an inaccessible or rejecting webhook blocks the admission.
 
@@ -176,13 +176,13 @@ before a resource is created. This affects how the memos work.
 
 For update and deletion requests, the actual memos of the resources are used.
 
-For the admission requests on resource creation, a memo is created and discarded
-immediately. It means that the creation's memos are useless at the moment.
+For admission requests on resource creation, a memo is created and discarded
+immediately. This means that creation memos are currently useless.
 
-This can change in the future: the memos of resource creation attempts
+This may change in the future: the memos of resource creation attempts
 will be preserved for a limited but short time (configurable),
-so that the values could be shared between the admission and the handling, but
-so that there are no memory leaks if the resource never succeeds in admission.
+so that values can be shared between the admission and the handling,
+without causing memory leaks if the resource never succeeds in admission.
 
 
 Admission warnings
@@ -215,13 +215,13 @@ The admission warnings look like this (requires kubectl 1.19+):
 
     Despite Kopf's intention to utilise Python's native features that
     semantically map to Kubernetes's or operators' features,
-    Python StdLib's :mod:`warnings` is not used for admission warnings
+    Python's StdLib :mod:`warnings` module is not used for admission warnings
     (the initial idea was to catch ``UserWarning`` and ``warnings.warn("...")``
     calls and return them as admission warnings).
 
-    The StdLib's module is documented as thread-unsafe (therefore, task-unsafe)
-    and requires hacking the global state which might affect other threads
-    and/or tasks -- there is no clear way to do this consistently.
+    The StdLib module is documented as thread-unsafe (and therefore task-unsafe)
+    and requires hacking global state, which might affect other threads
+    and/or tasks --- there is no clear way to do this consistently.
 
     This may be revised in the future and provided as an additional feature.
 
@@ -229,9 +229,9 @@ The admission warnings look like this (requires kubectl 1.19+):
 Admission errors
 ================
 
-Unlike with regular handlers and their error handling logic (:doc:`/errors`),
-the webhooks cannot do retries or backoffs. So, the ``backoff=``, ``errors=``,
-``retries=``, ``timeout=`` options are not accepted on the admission handlers.
+Unlike regular handlers and their error-handling logic (:doc:`/errors`),
+webhooks cannot do retries or backoffs. Therefore, the ``backoff=``, ``errors=``,
+``retries=``, and ``timeout=`` options are not accepted on admission handlers.
 
 A special exception :class:`kopf.AdmissionError` is provided to customize
 the status code and the message of the admission review response.
@@ -241,13 +241,13 @@ including :class:`kopf.PermanentError` and :class:`kopf.TemporaryError`,
 equally fail the admission (be that validating or mutating admission).
 However, they return the general HTTP code 500 (non-customizable).
 
-One and only one error is returned to the user who makes an API request.
-In cases when Kubernetes makes several parallel requests to several webhooks
-(typically with managed webhook configurations, the fastest error is used).
+One and only one error is returned to the user making an API request.
+When Kubernetes makes several parallel requests to several webhooks
+(typically with managed webhook configurations), the fastest error is used.
 Within Kopf (usually with custom webhook servers/tunnels or self-made
-non-managed webhook configurations), errors are prioritised: first, admission
-errors, then permanent errors, then temporary errors, then arbitrary errors
-are used to select the only error to report in the admission review response.
+non-managed webhook configurations), errors are prioritised: admission
+errors first, then permanent errors, then temporary errors, then arbitrary errors ---
+to select the single error to report in the admission review response.
 
 .. code-block:: python
 
@@ -266,9 +266,9 @@ The admission errors look like this (manually indented for readability):
             Meh! I do not like it. Change the field.
 
 Note that Kubernetes executes multiple webhooks in parallel.
-The first one to return the result is the one and the only shown;
+The first one to return a result is the only one shown;
 other webhooks are not shown even if they fail with useful messages.
-With multiple failing admissions, the message will be varying on each attempt.
+With multiple failing admissions, the message will vary on each attempt.
 
 
 Webhook management
@@ -334,7 +334,7 @@ To fulfil its promise, Kopf delegates this task to webhook servers and tunnels,
 which are capable of receiving the webhook requests, marshalling them
 to the handler callbacks, and then returning the results to Kubernetes.
 
-Due to numerous ways of how the development and production environments can be
+Due to the numerous ways in which development and production environments can be
 configured, Kopf does not provide a default configuration for a webhook server,
 so it must be set by the developer:
 
@@ -372,7 +372,7 @@ each with its configuration parameters (see their descriptions):
 *Webhook tunnels* forward the webhook requests through external endpoints
 usually to a locally running *webhook server*.
 
-* :class:`kopf.WebhookNgrokTunnel` established a tunnel through ngrok_.
+* :class:`kopf.WebhookNgrokTunnel` establishes a tunnel through ngrok_.
 
 .. _ngrok: https://ngrok.com/
 
@@ -401,11 +401,11 @@ For ease of use, the cluster type can be recognised automatically in some cases:
 Authenticate apiservers
 =======================
 
-There are many ways how webhook clients (Kubernetes's apiservers)
-can authenticate against webhook servers (the operator's webhooks),
+There are many ways for webhook clients (Kubernetes's apiservers)
+to authenticate against webhook servers (the operator's webhooks),
 and even more ways to validate the supplied credentials.
 
-More on that, apiservers cannot be configured to authenticate against
+Furthermore, apiservers cannot be configured to authenticate against
 webhooks dynamically at runtime, as `this requires control-plane configs`__,
 which are out of reach of Kopf.
 
@@ -545,7 +545,7 @@ That endpoint can be accessed directly with ``curl``:
 
     curl --insecure https://localhost:54321 -d @review.json
 
-It is possible to store the generated certificate itself and use as a CA:
+It is possible to store the generated certificate and use it as a CA:
 
 .. code-block:: python
 
@@ -587,7 +587,7 @@ automated renewal, the webhook server will restart with the new certificate
 As a last resort, if SSL is still a problem, it can be disabled and an insecure
 HTTP server can be used. This does not work with Kubernetes but can be used
 for direct access during development; it is also used by some tunnels that
-do not support HTTPS tunnelling (or require paid subscriptions):
+do not support HTTPS tunnelling (or that require paid subscriptions):
 
 .. code-block:: python
 
@@ -603,7 +603,7 @@ Operator developers can provide their custom servers and tunnels by implementing
 an async iterator over client configs (`kopf.WebhookClientConfig`).
 There are two ways to implement servers/tunnels.
 
-One is a simple but non-configurable coroutine:
+One is a simple but non-configurable coroutine function:
 
 .. code-block:: python
 
@@ -641,15 +641,15 @@ then, it MUST ``await`` the result and JSON-serialize it as a review response:
 Optionally (though highly recommended), several keyword arguments can be passed
 to extend the request data (if not passed, they all use ``None`` by default):
 
-* ``webhook`` (``str``) -- to execute only one specific handler/webhook.
+* ``webhook`` (``str``) --- to execute only one specific handler/webhook.
   The id usually comes from the URL, which the framework injects automatically.
   It is highly recommended to provide at least this hint:
   otherwise, all admission handlers are executed, with mutating and validating
   handlers mixed, which can lead to mutating patches returned for validation
   requests, which in turn will fail the admission on the Kubernetes side.
-* ``headers`` (``Mapping[str, str]``) -- the HTTPS headers of the request
+* ``headers`` (``Mapping[str, str]``) --- the HTTPS headers of the request
   are passed to handlers as :kwarg:`headers` and can be used for authentication.
-* ``sslpeer`` (``Mapping[str, Any]``) -- the SSL peer information taken from
+* ``sslpeer`` (``Mapping[str, Any]``) --- the SSL peer information taken from
   the client certificate (if provided and if verified); it is passed
   to handlers as :kwarg:`sslpeer` and can be used for authentication.
 
@@ -657,10 +657,10 @@ to extend the request data (if not passed, they all use ``None`` by default):
 
     response = await fn(request, webhook=handler_id, headers=headers, sslpeer=sslpeer)
 
-There is no guarantee on what is happening in the callback and how it works.
-The exact implementation can be changed in the future without warning: e.g.,
-the framework can either invoke the admission handlers directly in the callback
-or queue the request for a background execution and return an awaitable future.
+There is no guarantee on what happens inside the callback or how it works.
+The exact implementation may change in the future without warning: for example,
+the framework may either invoke the admission handlers directly in the callback
+or queue the request for background execution and return an awaitable future.
 
 The iterator must yield one or more client configs. Configs are dictionaries
 that go to the managed webhook configurations as ``.webhooks.*.clientConfig``.
@@ -668,19 +668,19 @@ that go to the managed webhook configurations as ``.webhooks.*.clientConfig``.
 Regardless of how the client config is created, the framework extends the URLs
 in the ``url`` and ``service.path`` fields with the handler/webhook ids,
 so that a URL ``https://myhost/path`` becomes ``https://myhost/path/handler1``,
-``https://myhost/path/handler2``, so on.
+``https://myhost/path/handler2``, and so on.
 
 Remember: Kubernetes prohibits using query parameters and fragments in the URLs.
 
-In most cases, only one yielded config is enough if the server is going
-to serve the requests at the same endpoint.
-In rare cases when the endpoint changes over time (e.g. for dynamic tunnels),
+In most cases, only one yielded config is enough if the server serves
+requests at the same endpoint.
+In rare cases where the endpoint changes over time (e.g. for dynamic tunnels),
 the server/tunnel should yield a new config every time the endpoint changes,
 and the webhook manager will reconfigure all managed webhooks accordingly.
 
-The server/tunnel must hold control by running the server or by sleeping.
+The server/tunnel must retain control by running the server or by sleeping.
 To sleep forever, use ``await asyncio.Event().wait()``. If the server/tunnel
-exits unexpectedly, this causes the whole operator to exit.
+exits unexpectedly, the whole operator will exit as well.
 
 If the goal is to implement a tunnel only, but not a custom webhook server,
 it is highly advised to inherit from or directly use :class:`kopf.WebhookServer`
@@ -709,10 +709,10 @@ and request handling logic well-aligned with the rest of the framework:
 System resource cleanup
 =======================
 
-It is advised that custom servers/tunnels clean up the system resources
-they allocate at runtime. The easiest way is the ``try-finally`` block --
-the cleanup will happen on the garbage collection of the generator object
-(beware: it can be postponed in some environments, e.g. in PyPy).
+It is recommended that custom servers/tunnels clean up the system resources
+they allocate at runtime. The easiest way is the ``try-finally`` block ---
+the cleanup will happen on garbage collection of the generator object
+(beware: this can be postponed in some environments, e.g. in PyPy).
 
 For explicit cleanup of system resources, the servers/tunnels can implement
 the asynchronous context manager protocol:
@@ -737,22 +737,22 @@ the asynchronous context manager protocol:
                 yield client_config
 
 The context manager should usually return ``self``, but it can return
-a substitute webhook server/tunnel object, which will actually be used.
-That way, the context manager turns into a factory of webhook server(s).
+a substitute webhook server/tunnel object that will actually be used.
+That way, the context manager acts as a factory of webhook server(s).
 
 Keep in mind that the webhook server/tunnel is used only once per
 the operator's lifetime; once it exits, the whole operator stops.
-Making the webhook servers/tunnels reentrant has no practical benefit.
+Making webhook servers/tunnels reentrant has no practical benefit.
 
 .. note::
 
     **An implementation note:** webhook servers and tunnels provided by Kopf
-    use a little hack to keep them usable with the simple protocol
+    use a small hack to keep them usable with the simple protocol
     (a callable that yields the client configs) while also supporting
     the optional context manager protocol for system resource safety:
     when the context manager is exited, it force-closes the generators
     that yield the client configs as if they were garbage-collected.
-    Users' final webhook servers/tunnels do not need this level of complication.
+    Users' own webhook servers/tunnels do not need this level of complication.
 
 .. seealso::
     For reference implementations of servers and tunnels,

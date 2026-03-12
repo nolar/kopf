@@ -77,7 +77,7 @@ We will use the official Kubernetes client library (``pip install kubernetes``):
 
         logger.info(f"PVC child is created: {obj}")
 
-And let us try it in action (assuming the operator is running in the background):
+Let us try it in action (assuming the operator is running in the background):
 
 .. code-block:: bash
 

@@ -4,7 +4,7 @@ Environment Setup
 
 We need a running Kubernetes cluster and some tools for our experiments.
 If you have a cluster already preconfigured, you can skip this section.
-Otherwise, let us install minikube locally (e.g. for MacOS):
+Otherwise, install the following tools locally (e.g. on macOS):
 
 * Python >= 3.10 (running in a venv is recommended, though it is not necessary).
 * `Install kubectl <https://kubernetes.io/docs/tasks/tools/install-kubectl/>`_

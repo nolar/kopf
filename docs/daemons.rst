@@ -8,7 +8,7 @@ the Kubernetes resources during their life cycle.
 Unlike event-driven short-running handlers declared with ``@kopf.on``,
 daemons are started for every individual object when it is created
 (or when an operator is started/restarted while the object exists),
-and are capable of running indefinitely (or infinitely) long.
+and are capable of running indefinitely.
 
 The object's daemons are stopped when the object is deleted
 or the whole operator is exiting/restarting.
@@ -39,7 +39,7 @@ with ``@kopf.daemon`` and make it run for a long time or forever:
             time.sleep(10)
 
 Synchronous functions are executed in threads, asynchronous functions are
-executed directly in the asyncio event loop of the operator -- same as with
+executed directly in the asyncio event loop of the operator --- same as with
 regular handlers. See :doc:`async`.
 
 The same executor is used both for regular sync handlers and for sync daemons.
@@ -87,7 +87,7 @@ to be raised at any point of their code (specifically, at any ``await`` clause):
             print("We are done. Bye.")
 
 With no cancellation timeout set, cancellation is not performed at all,
-as it is unclear for how long should the coroutine be awaited. However,
+as it is unclear how long the coroutine should be awaited. However,
 it is cancelled when the operator exits and stops all "hung" left-over tasks
 (not specifically daemons).
 
@@ -123,13 +123,13 @@ There are three stages of how the daemon is terminated:
 * 1. Graceful termination:
   * ``stopped`` is set immediately (unconditionally).
   * ``cancellation_backoff`` is awaited (if set).
-* 2. Forced termination -- only if ``cancellation_timeout`` is set:
+* 2. Forced termination --- only if ``cancellation_timeout`` is set:
   * :class:`asyncio.CancelledError` is raised (for async daemons only).
   * ``cancellation_timeout`` is awaited (if set).
-* 3a. Giving up and abandoning -- only if ``cancellation_timeout`` is set:
+* 3a. Giving up and abandoning --- only if ``cancellation_timeout`` is set:
   * A :class:`ResourceWarning` is issued for potential OS resource leaks.
   * The finalizer is removed, and the object is released for potential deletion.
-* 3b. Forever polling -- only if ``cancellation_timeout`` is not set:
+* 3b. Forever polling --- only if ``cancellation_timeout`` is not set:
   * The daemon awaiting continues forever, logging from time to time.
   * The finalizer is not removed and the object remains blocked from deletion.
 
@@ -283,14 +283,14 @@ Deletion prevention
 ===================
 
 Normally, a finalizer is put on the resource if there are daemons running
-for it -- to prevent its actual deletion until all the daemons are terminated.
+for it --- to prevent its actual deletion until all the daemons are terminated.
 
 Only after the daemons are terminated, the finalizer is removed to release
 the object for actual deletion.
 
 However, it is possible to have daemons that disobey the exiting signals
 and continue running after the timeouts. In that case, the finalizer is
-anyway removed, and the orphaned daemons are left to themselves.
+removed anyway, and the orphaned daemons are left to themselves.
 
 
 Resource fields access

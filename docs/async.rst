@@ -15,26 +15,26 @@ Kopf supports asynchronous handler functions:
     async def create_fn(spec, **_):
         await asyncio.sleep(1.0)
 
-Async functions have an additional benefit over the non-async ones
-to make the full stack trace available when exceptions occur
-or IDE breakpoints are used since the async functions are executed
-directly inside of Kopf's event loop in the main thread.
+Async functions have an additional benefit over non-async ones:
+the full stack trace is available when exceptions occur
+or IDE breakpoints are used, since async functions are executed
+directly inside Kopf's event loop in the main thread.
 
-Regular synchronous handlers, despite supported for convenience,
+Regular synchronous handlers, although supported for convenience,
 are executed in parallel threads (via the default executor of the loop),
-and can only see the stack traces up to the thread entry point.
+and can only show stack traces up to the thread entry point.
 
 .. warning::
     As with any async coroutines, it is the developer's responsibility
-    to make sure that all the internal function calls are either
+    to ensure that all internal function calls are either
     ``await``\s of other async coroutines (e.g. ``await asyncio.sleep()``),
-    or the regular non-blocking functions calls.
+    or regular non-blocking function calls.
 
     Calling a synchronous function (e.g. HTTP API calls or ``time.sleep()``)
-    inside of an asynchronous function will block the whole operator process
-    until the synchronous call is finished, i.e. even other resources
+    inside an asynchronous function will block the entire operator process
+    until the synchronous call finishes --- including other resources
     processed in parallel, and the Kubernetes event-watching/-queueing cycles.
 
-    This can come unnoticed in the development environment
+    This can go unnoticed in a development environment
     with only a few resources and no external timeouts,
-    but can hit hard in the production environments with high load.
+    but can cause serious problems in production environments under high load.

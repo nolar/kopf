@@ -15,7 +15,7 @@ its operation until those operators stop working.
 
 This is done to prevent collisions of multiple operators handling
 the same objects. If two operators run with the same priority, all operators
-issue a warning and freeze, so that the cluster is no longer served.
+issue a warning and freeze, leaving the cluster unserved.
 
 To set the operator's priority, use :option:`--priority`:
 
@@ -112,15 +112,15 @@ either ``ClusterKopfPeering`` or ``KopfPeering`` will be used automatically.
 If the peering object does not exist, the operator will pause at the start.
 Using :option:`--peering` assumes that the peering is mandatory.
 
-Please note that in the startup handler, this is not the same:
+Note that in the startup handler, this is not the same:
 the mandatory mode must be set explicitly. Otherwise, the operator will try
 to auto-detect the presence of the custom peering object, but will not pause
-if it is absent -- unlike with the ``--peering=`` CLI option.
+if it is absent --- unlike with the ``--peering=`` CLI option.
 
 The operators from different peering objects do not see each other.
 
-This is especially useful for the cluster-scoped operators for different
-resource kinds, which should not worry about other operators for other kinds.
+This is especially useful for cluster-scoped operators handling different
+resource kinds, which should not be concerned with operators for other kinds.
 
 
 Standalone mode
@@ -145,7 +145,7 @@ Or:
 
 In that case, the operator will not pause if other operators with
 a higher priority start handling the objects, which may lead
-to the conflicting changes and reactions from multiple operators
+to conflicting changes and reactions from multiple operators
 for the same events.
 
 
@@ -162,8 +162,8 @@ Otherwise, Kopf will run the operator in the standalone mode.
 Multi-pod operators
 ===================
 
-Usually, one and only one operator instance should be deployed for the resource.
-If that operator's pod dies, the handling of the resource of this type
+Usually, one and only one operator instance should be deployed per resource type.
+If that operator's pod dies, handling of resources of that type
 will stop until the operator's pod is restarted (if it is restarted at all).
 
 To start multiple operator pods, they must be distinctly prioritized.
@@ -172,7 +172,7 @@ priority. All other operators will pause and wait until this operator exits.
 Once it exits, the second-highest priority operator will come into play.
 And so on.
 
-For this, assign a monotonically growing or random priority to each
+To achieve this, assign a monotonically increasing or random priority to each
 operator in the deployment or replicaset:
 
 .. code-block:: bash
@@ -190,10 +190,10 @@ Or:
     def configure(settings: kopf.OperatorSettings, **_):
         settings.peering.priority = random.randint(0, 32767)
 
-``$RANDOM`` is a feature of bash
+``$RANDOM`` is a bash feature
 (if you use another shell, see its man page for an equivalent).
 It returns a random integer in the range 0..32767.
-With high probability, 2-3 pods will get their unique priorities.
+With high probability, 2–3 pods will get unique priorities.
 
 You can also use the pod's IP address in its numeric form as the priority,
 or any other source of integers.
@@ -202,12 +202,11 @@ or any other source of integers.
 Stealth keep-alive
 ==================
 
-Every few seconds (60 by default), the operator will send a keep-alive update
-to the chosen peering, showing that it is still functioning. Other operators
-will notice that and make decisions on their pausing or resuming.
+Every few seconds (60 by default), the operator sends a keep-alive update
+to the chosen peering object, showing that it is still functioning. Other operators
+will notice this and decide whether to pause or resume.
 
-The operator also logs a keep-alive activity to its logs. This can be
-distracting. To disable:
+The operator also logs keep-alive activity. This can be distracting. To disable it:
 
 .. code-block:: python
 
@@ -220,4 +219,4 @@ distracting. To disable:
 
 There is no equivalent CLI option for that.
 
-Please note that it only affects logging. The keep-alive is sent anyway.
+Note that this only affects logging. The keep-alive is still sent regardless.

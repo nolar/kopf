@@ -7,10 +7,10 @@ Concepts
 It provides some basic primitives to orchestrate application deployments
 on a low level ---such as the pods, jobs, deployments, services, ingresses,
 persistent volumes and volume claims, secrets---
-and allows a Kubernetes cluster to be extended with the arbitrary
+and allows a Kubernetes cluster to be extended with arbitrary
 custom resources and custom controllers.
 
-On the top level, it consists of the Kubernetes API, through which the users
+At the top level, it consists of the Kubernetes API, through which users
 talk to Kubernetes, internal storage of the state of the objects (etcd),
 and a collection of controllers. The command-line tooling (``kubectl``)
 can also be considered as a part of the solution.
@@ -28,10 +28,10 @@ specifications.
 
 ----
 
-The **Kubernetes operator** is one kind of the controllers, which orchestrates
+The **Kubernetes operator** is one kind of controller, which orchestrates
 objects of a specific kind, with some domain logic implemented inside.
 
-The essential difference between operators and the controllers
+The essential difference between operators and controllers
 is that operators are domain-specific controllers,
 but not all controllers are necessarily operators:
 for example, the built-in controllers for pods, deployments, services, etc,
@@ -55,7 +55,7 @@ of manipulating the Kubernetes objects
 .. seealso::
 
     See :doc:`/architecture`
-    to understand how Kopf works in detail, and what it does exactly.
+    to understand how Kopf works in detail, and exactly what it does.
 
     See :doc:`/vision` and :doc:`/alternatives`
     to understand Kopf's self-positioning in the world of Kubernetes.
