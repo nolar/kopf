@@ -138,6 +138,46 @@ async def match_daemons(
     return delays
 
 
+async def pause_daemons(
+        *,
+        settings: configuration.OperatorSettings,
+        daemons: MutableMapping[ids.HandlerId, Daemon],
+        operator_paused: aiotoggles.ToggleSet | None,  # None for tests
+) -> Collection[float]:
+    """
+    Re-check the desired state of daemons according to the operator's state.
+
+    There is a glitch in the daemon orchestration (e.g., with 3+ pods in #1266):
+
+    If the operator is paused, the watcher() can still produce some events
+    before being stopped. The watcher() spawns a worker(). The worker() calls
+    the processor(). The process_resource_event() calls the spawn_daemons().
+    The spawn_daemons() creates new daemons with the `stopper` set to "off"
+    and registers them in memories. It all takes time.
+
+    Meanwhile, once the operator is paused, the daemon_killer()
+    kills the daemons it knows to the moment, which excludes the daemons
+    that will be spawned a few moments later in the flow described above.
+
+    There is no good synchronization primitive to protect against this case
+    without syncing all resources, breaking the async nature of the operator.
+
+    The only remedy is to let such daemons spawn, but trigger their stop flags
+    after (strictly after!) they register themselves to the memories
+    in spawn_daemons() and become exposed to the daemon killer.
+
+    This routine does exactly that: stops newly spawned daemons.
+    """
+    delays: Collection[float] = []
+    if operator_paused is not None and operator_paused.is_on():
+        delays = await stop_daemons(
+            settings=settings,
+            daemons=daemons,
+            reason=stoppers.DaemonStoppingReason.OPERATOR_PAUSING,
+        )
+    return delays
+
+
 async def stop_daemons(
         *,
         settings: configuration.OperatorSettings,

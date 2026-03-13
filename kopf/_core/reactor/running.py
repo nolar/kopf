@@ -340,6 +340,7 @@ async def spawn_tasks(
                                             indexers=indexers,
                                             memories=memories,
                                             memobase=memo,
+                                            operator_paused=operator_paused,
                                             event_queue=event_queue))))
 
     # Ensure that all guarded tasks got control for a moment to enter the guard.

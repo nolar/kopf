@@ -22,6 +22,8 @@ class DaemonDummy:
         self.mock = MagicMock()
 
     async def wait_for_daemon_done(self) -> None:
+        if not self.mock.called:
+            return
         stopped = self.mock.call_args.kwargs['stopped']
         await stopped.wait()
         while stopped.reason is None or not stopped.reason & stopped.reason.DONE:
@@ -57,6 +59,7 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
             event_object: RawBody,
             *,
             stream_pressure: asyncio.Event | None = None,
+            operator_paused: ToggleSet | None = None,
     ) -> None:
         mocker.resetall()
 
@@ -71,6 +74,7 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
             raw_event={'type': 'irrelevant', 'object': event_object},
             event_queue=asyncio.Queue(),
             stream_pressure=stream_pressure,
+            operator_paused=operator_paused,
             no_throttling=True,
         )
 
