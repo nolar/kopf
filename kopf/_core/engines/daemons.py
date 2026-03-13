@@ -23,6 +23,7 @@ since we are aware of the daemons, and they are not actually "hung".
 import abc
 import asyncio
 import dataclasses
+import sys
 import warnings
 from collections.abc import Collection, Iterable, Mapping, MutableMapping, Sequence
 
@@ -325,18 +326,29 @@ async def daemon_killer(
 
             # The stopping tasks are "fire-and-forget" -- we do not get (or care of) the result.
             # The daemons remain resumable, since they exit not on their own accord.
-            for memory in memories.iter_all_daemon_memories():
-                for daemon in memory.running_daemons.values():
-                    await scheduler.spawn(
-                        name=f"pausing stopper of {daemon}",
-                        coro=stop_daemon(
-                            settings=settings,
-                            daemon=daemon,
-                            reason=stoppers.DaemonStoppingReason.OPERATOR_PAUSING))
+            # From time to time, continue killing the daemons that sneak into processing queues.
+            # This is a secondary safeguard against #1266: events sneaked into workers on pausing.
+            # The primary safeguard is in pause_daemons(): stop daemons immediately on spawning.
+            while operator_paused.is_on():
+                for memory in memories.iter_all_daemon_memories():
+                    for daemon in memory.running_daemons.values():
+                        await scheduler.spawn(
+                            name=f"pausing stopper of {daemon}",
+                            coro=stop_daemon(
+                                settings=settings,
+                                daemon=daemon,
+                                reason=stoppers.DaemonStoppingReason.OPERATOR_PAUSING))
 
-            # Stay here while the operator is paused, until it is resumed.
-            # The fresh stream of watch-events will spawn new daemons naturally.
-            await operator_paused.wait_for(False)
+                # Stay here while the operator is paused, until it is resumed.
+                # The fresh stream of watch-events will spawn new daemons naturally.
+                if sys.version_info < (3, 11):  # python 3.10 only, TODO remove in Oct'26
+                    await operator_paused.wait_for(False)
+                else:
+                    try:
+                        async with asyncio.timeout(1.0):
+                            await operator_paused.wait_for(False)
+                    except TimeoutError:
+                        pass
 
     # Terminate all running daemons when the operator exits (and this task is cancelled).
     finally:
