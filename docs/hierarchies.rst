@@ -13,9 +13,10 @@ by manipulating their content before it is sent to the Kubernetes API.
     It does not provide any means to manipulate the Kubernetes resources
     in the cluster or to directly talk to the Kubernetes API in any other way.
     Use any of the existing libraries for that purpose,
-    such as the official `kubernetes client`_, pykorm_, or pykube-ng_.
+    such as the official `kubernetes client`_, `kubernetes asyncio client`_, pykorm_, or pykube-ng_.
 
 .. _kubernetes client: https://github.com/kubernetes-client/python
+.. _kubernetes asyncio client: https://github.com/tomplus/kubernetes_asyncio
 .. _pykorm: https://github.com/Frankkkkk/pykorm
 .. _pykube-ng: https://github.com/hjacobs/pykube
 
