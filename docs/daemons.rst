@@ -52,9 +52,9 @@ Termination
 ===========
 
 The daemons are terminated when either their resource is marked for deletion,
-or the operator itself is exiting.
+or the operator itself is exiting or pausing (see :doc:`peering`).
 
-In both cases, the daemons are requested to terminate gracefully by setting
+In both cases, Kopf requests all daemons to terminate gracefully by setting
 the :kwarg:`stopped` kwarg. The synchronous daemons MUST_, and asynchronous
 daemons SHOULD_ check for the value of this flag as often as possible:
 
@@ -71,7 +71,7 @@ daemons SHOULD_ check for the value of this flag as often as possible:
 
 The asynchronous daemons can skip these checks if they define the cancellation
 timeout. In that case, they can expect an :class:`asyncio.CancelledError`
-to be raised at any point of their code (specifically, at any ``await`` clause):
+raised at any point of their code (specifically, at any ``await`` clause):
 
 .. code-block:: python
 
@@ -121,15 +121,22 @@ The termination sequence parameters can be controlled when declaring a daemon:
 There are three stages of how the daemon is terminated:
 
 * 1. Graceful termination:
+
   * ``stopped`` is set immediately (unconditionally).
   * ``cancellation_backoff`` is awaited (if set).
+
 * 2. Forced termination --- only if ``cancellation_timeout`` is set:
+
   * :class:`asyncio.CancelledError` is raised (for async daemons only).
   * ``cancellation_timeout`` is awaited (if set).
+
 * 3a. Giving up and abandoning --- only if ``cancellation_timeout`` is set:
+
   * A :class:`ResourceWarning` is issued for potential OS resource leaks.
   * The finalizer is removed, and the object is released for potential deletion.
+
 * 3b. Forever polling --- only if ``cancellation_timeout`` is not set:
+
   * The daemon awaiting continues forever, logging from time to time.
   * The finalizer is not removed and the object remains blocked from deletion.
 

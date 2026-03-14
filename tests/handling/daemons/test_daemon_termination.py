@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import sys
 
 import pytest
 
@@ -79,7 +80,7 @@ async def test_daemon_exits_gracefully_and_instantly_on_operator_exiting(
 
 
 @pytest.mark.usefixtures('background_daemon_killer')
-async def test_daemon_exits_gracefully_and_instantly_on_operator_pausing(
+async def test_daemon_exits_gracefully_and_instantly_on_operator_pausing_via_early_daemon_killer(
         settings, memories, resource, dummy, simulate_cycle, conflicts_found,
         looptime, assert_logs, k8s_mocked, mocker):
     called = asyncio.Condition()
@@ -102,6 +103,7 @@ async def test_daemon_exits_gracefully_and_instantly_on_operator_pausing(
     # 1st stage: trigger termination due to the operator's pause.
     mocker.resetall()
     await conflicts_found.turn_to(True)
+    await asyncio.sleep(0)  # give control to the daemon killer for the 1st round
 
     # Check that the daemon has exited near-instantly, with no delays.
     await dummy.wait_for_daemon_done()
@@ -112,6 +114,81 @@ async def test_daemon_exits_gracefully_and_instantly_on_operator_pausing(
     # We only test that it is capable for respawning (not forever-stopped):
     memory = await memories.recall(event_object)
     assert not memory.daemons_memory.forever_stopped
+    assert not memory.daemons_memory.running_daemons
+
+
+@pytest.mark.skipif(sys.version_info < (3, 11), reason="asyncio.timeout() requires Python 3.11+")
+@pytest.mark.usefixtures('background_daemon_killer')
+async def test_daemon_exits_gracefully_and_instantly_on_operator_pausing_via_late_daemon_killer(
+        settings, memories, resource, dummy, simulate_cycle, conflicts_found,
+        looptime, assert_logs, k8s_mocked):
+    called = asyncio.Condition()
+
+    # Send the daemon killer to waiting for False.
+    # It kills the non-existent daemons instantly, then waits.
+    await conflicts_found.turn_to(True)
+    await asyncio.sleep(0)  # give control to the daemon killer for the 1st round
+
+    # A daemon-under-test.
+    @kopf.daemon(*resource, id='fn')
+    async def fn(**kwargs):
+        dummy.mock(**kwargs)
+        async with called:
+            called.notify_all()
+        await kwargs['stopped'].wait()
+
+    # 0th cycle: trigger spawning and wait until ready. Assume the finalizers are already added.
+    finalizer = settings.persistence.finalizer
+    event_object = {'metadata': {'finalizers': [finalizer]}}
+    await simulate_cycle(event_object)
+    async with called:
+        await called.wait()
+
+    # Check that the daemon has exited on the next daemon killing cycle (hard-coded timing).
+    await dummy.wait_for_daemon_done()
+    assert looptime == 1
+
+    # There is no way to test for re-spawning here: it is done by watch-events,
+    # which are tested by the paused operators elsewhere (test_daemon_spawning.py).
+    # We only test that it is capable for respawning (not forever-stopped):
+    memory = await memories.recall(event_object)
+    assert not memory.daemons_memory.forever_stopped
+    assert not memory.daemons_memory.running_daemons
+
+
+# NB: no `background_daemon_killer` fixture!
+async def test_daemon_exits_gracefully_and_instantly_on_operator_pausing_via_paused_flag(
+        settings, memories, resource, dummy, simulate_cycle, operator_paused, conflicts_found,
+        looptime, assert_logs, k8s_mocked, mocker):
+    """Test that daemons are stopped inline by pause_daemons() without the daemon killer."""
+    called = asyncio.Condition()
+
+    # A daemon-under-test.
+    @kopf.daemon(*resource, id='fn')
+    async def fn(**kwargs):
+        dummy.mock(**kwargs)
+        async with called:
+            called.notify_all()
+        await kwargs['stopped'].wait()
+
+    # Pause the operator (no daemon killer is running to react to this).
+    finalizer = settings.persistence.finalizer
+    event_object = {'metadata': {'finalizers': [finalizer]}}
+    await conflicts_found.turn_to(True)
+    await asyncio.sleep(0)  # give control to the daemon killer for the 1st round
+
+    # The event arrives while paused; pause_daemons() signals the daemon to stop.
+    await simulate_cycle(event_object, operator_paused=operator_paused)
+
+    # Check that the daemon has exited near-instantly, with no delays.
+    assert not dummy.mock.called
+    await dummy.wait_for_daemon_done()
+    assert looptime == 0
+
+    # The daemon should be stoppable but respawnable after unpausing.
+    memory = await memories.recall(event_object)
+    assert not memory.daemons_memory.forever_stopped
+    assert not memory.daemons_memory.running_daemons
 
 
 async def test_daemon_exits_instantly_on_cancellation_with_backoff(
