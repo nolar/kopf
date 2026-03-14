@@ -9,7 +9,7 @@ from kopf._core.engines.peering import process_peering_event
 
 
 async def test_other_peering_objects_are_ignored(
-        mocker, k8s_mocked, settings, looptime,
+        mocker, k8s_mocked, assert_logs, settings, looptime,
         peering_resource, peering_namespace):
 
     status = mocker.Mock()
@@ -33,6 +33,7 @@ async def test_other_peering_objects_are_ignored(
     assert not status.items.called
     assert not k8s_mocked.patch.called
     assert looptime == 0
+    assert_logs(prohibited=["patching"])
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
@@ -78,6 +79,7 @@ async def test_toggled_on_for_higher_priority_peer_when_initially_off(
         "Possibly conflicting operators",
         "Pausing all operators, including self",
         "Resuming operations after the pause",
+        "patching",
     ])
 
 
@@ -125,6 +127,7 @@ async def test_ignored_for_higher_priority_peer_when_already_on(
         "Pausing all operators, including self",
         "Pausing operations in favour of",
         "Resuming operations after the pause",
+        "patching",
     ])
 
 
@@ -171,6 +174,7 @@ async def test_toggled_off_for_lower_priority_peer_when_initially_on(
         "Possibly conflicting operators",
         "Pausing all operators, including self",
         "Pausing operations in favour of",
+        "patching",
     ])
 
 
@@ -218,6 +222,7 @@ async def test_ignored_for_lower_priority_peer_when_already_off(
         "Pausing all operators, including self",
         "Pausing operations in favour of",
         "Resuming operations after the pause",
+        "patching",
     ])
 
 
@@ -266,6 +271,7 @@ async def test_toggled_on_for_same_priority_peer_when_initially_off(
     ], prohibited=[
         "Pausing operations in favour of",
         "Resuming operations after the pause",
+        "patching",
     ])
 
 
@@ -314,6 +320,7 @@ async def test_ignored_for_same_priority_peer_when_already_on(
         "Pausing all operators, including self",
         "Pausing operations in favour of",
         "Resuming operations after the pause",
+        "patching",
     ])
 
 
@@ -355,3 +362,4 @@ async def test_resumes_immediately_on_expiration_of_blocking_peers(
     assert conflicts_found.is_on()
     assert looptime == 9.876544
     assert k8s_mocked.patch.called
+    assert_logs(prohibited=["patching"])
