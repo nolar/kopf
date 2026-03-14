@@ -12,6 +12,7 @@ async def patch_obj(
         name: str | None,
         patch: patches.Patch,
         logger: typedefs.Logger,
+        silent: bool = False,
 ) -> tuple[bodies.RawBody | None, patches.Patch | None]:
     """
     Patch a resource of specific kind.
@@ -43,7 +44,8 @@ async def patch_obj(
         patched_body: bodies.RawBody | None = None
 
         if body_patch:
-            logger.debug(f"Merge-patching the resource with: {body_patch!r}")
+            if not silent:
+                logger.debug(f"Merge-patching the resource with: {body_patch!r}")
             patched_body = await api.patch(
                 url=resource.get_url(namespace=namespace, name=name),
                 headers={'Content-Type': 'application/merge-patch+json'},
@@ -54,7 +56,8 @@ async def patch_obj(
 
         if status_patch:
             # NB: we need the new resourceVersion, so we take the whole new patched body.
-            logger.debug(f"Merge-patching the status with: {status_patch!r}")
+            if not silent:
+                logger.debug(f"Merge-patching the status with: {status_patch!r}")
             patched_body = await api.patch(
                 url=resource.get_url(namespace=namespace, name=name, subresource='status'),
                 headers={'Content-Type': 'application/merge-patch+json'},
@@ -93,7 +96,8 @@ async def patch_obj(
             resource_version = (fresh_body or {}).get('metadata', {}).get('resourceVersion')
             test = patches.JSONPatchItem(op='test', path='/metadata/resourceVersion', value=resource_version)
             ops = [test] + body_ops
-            logger.debug(f"JSON-patching the resource with: {ops!r}")
+            if not silent:
+                logger.debug(f"JSON-patching the resource with: {ops!r}")
             try:
                 patched_body = await api.patch(
                     url=resource.get_url(namespace=namespace, name=name),
@@ -104,10 +108,11 @@ async def patch_obj(
                 )
             except errors.APIUnprocessableEntityError:
                 # NB: also detach from the current freshest body, persist only the patch fns.
-                logger.debug(
-                    "Could not apply the patch in full due to conflicts with newer changes. "
-                    f"Will try on the next cycle soon. Remaining: {remaining_patch!r}"
-                )
+                if not silent:
+                    logger.debug(
+                        "Could not apply the patch in full due to conflicts with newer changes. "
+                        f"Will try on the next cycle soon. Remaining: {remaining_patch!r}"
+                    )
                 return patched_body, remaining_patch
             else:
                 fresh_body = patched_body
@@ -120,7 +125,8 @@ async def patch_obj(
             resource_version = (fresh_body or {}).get('metadata', {}).get('resourceVersion')
             test = patches.JSONPatchItem(op='test', path='/metadata/resourceVersion', value=resource_version)
             ops = [test] + status_ops
-            logger.debug(f"JSON-patching the status with: {ops!r}")
+            if not silent:
+                logger.debug(f"JSON-patching the status with: {ops!r}")
             try:
                 patched_body = await api.patch(
                     url=resource.get_url(namespace=namespace, name=name, subresource='status'),
@@ -131,10 +137,11 @@ async def patch_obj(
                 )
             except errors.APIUnprocessableEntityError:
                 # NB: also detach from the current freshest body, persist only the patch fns.
-                logger.debug(
-                    "Could not apply the patch in full due to conflicts with newer changes. "
-                    f"Will try on the next cycle soon. Remaining: {remaining_patch!r}"
-                )
+                if not silent:
+                    logger.debug(
+                        "Could not apply the patch in full due to conflicts with newer changes. "
+                        f"Will try on the next cycle soon. Remaining: {remaining_patch!r}"
+                    )
                 return patched_body, remaining_patch
 
         return patched_body, None
