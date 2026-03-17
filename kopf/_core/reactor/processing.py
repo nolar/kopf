@@ -39,6 +39,7 @@ async def process_resource_event(
         raw_event: bodies.RawEvent,
         event_queue: posting.K8sEventQueue,
         stream_pressure: asyncio.Event | None = None,  # None for tests
+        operator_paused: aiotoggles.ToggleSet | None = None,  # None for tests & observation
         resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
         operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
         consistency_time: float | None = None,  # None for tests
@@ -124,6 +125,7 @@ async def process_resource_event(
                 local_logger=local_logger,
                 event_logger=event_logger,
                 stream_pressure=stream_pressure,
+                operator_paused=operator_paused,
                 consistency_time=consistency_time,
             )
 
@@ -230,6 +232,7 @@ async def process_resource_causes(
         local_logger: loggers.ObjectLogger,
         event_logger: loggers.ObjectLogger,
         stream_pressure: asyncio.Event | None,  # None for tests
+        operator_paused: aiotoggles.ToggleSet | None,  # None for tests
         consistency_time: float | None,
 ) -> tuple[Collection[float], bool]:
     patch_initially_empty = not patch  # before we add new things in low-level handlers
@@ -266,6 +269,7 @@ async def process_resource_causes(
             settings=settings,
             memory=memory,
             cause=spawning_cause,
+            operator_paused=operator_paused,
         )
 
     # If there are any handlers for this resource kind in general, but not for this specific object
@@ -378,6 +382,7 @@ async def process_spawning_cause(
         settings: configuration.OperatorSettings,
         memory: inventory.ResourceMemory,
         cause: causes.SpawningCause,
+        operator_paused: aiotoggles.ToggleSet | None,  # None for tests
 ) -> Collection[float]:
     """
     Spawn/kill all the background tasks of a resource.
@@ -423,7 +428,13 @@ async def process_spawning_cause(
             daemons=memory.daemons_memory.running_daemons,
             handlers=handlers,
         )
-        return list(spawning_delays) + list(matching_delays)
+        # Critical: strictly after spawning; see the docstring why.
+        pausing_delays = await daemons.pause_daemons(
+            settings=settings,
+            daemons=memory.daemons_memory.running_daemons,
+            operator_paused=operator_paused,
+        )
+        return list(spawning_delays) + list(matching_delays) + list(pausing_delays)
 
 
 async def process_changing_cause(

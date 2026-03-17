@@ -23,6 +23,7 @@ since we are aware of the daemons, and they are not actually "hung".
 import abc
 import asyncio
 import dataclasses
+import sys
 import warnings
 from collections.abc import Collection, Iterable, Mapping, MutableMapping, Sequence
 
@@ -135,6 +136,46 @@ async def match_daemons(
         daemons=mismatching_daemons,
         reason=stoppers.DaemonStoppingReason.FILTERS_MISMATCH,
     )
+    return delays
+
+
+async def pause_daemons(
+        *,
+        settings: configuration.OperatorSettings,
+        daemons: MutableMapping[ids.HandlerId, Daemon],
+        operator_paused: aiotoggles.ToggleSet | None,  # None for tests
+) -> Collection[float]:
+    """
+    Re-check the desired state of daemons according to the operator's state.
+
+    There is a glitch in the daemon orchestration (e.g., with 3+ pods in #1266):
+
+    If the operator is paused, the watcher() can still produce some events
+    before being stopped. The watcher() spawns a worker(). The worker() calls
+    the processor(). The process_resource_event() calls the spawn_daemons().
+    The spawn_daemons() creates new daemons with the `stopper` set to "off"
+    and registers them in memories. It all takes time.
+
+    Meanwhile, once the operator is paused, the daemon_killer()
+    kills the daemons it knows to the moment, which excludes the daemons
+    that will be spawned a few moments later in the flow described above.
+
+    There is no good synchronization primitive to protect against this case
+    without syncing all resources, breaking the async nature of the operator.
+
+    The only remedy is to let such daemons spawn, but trigger their stop flags
+    after (strictly after!) they register themselves to the memories
+    in spawn_daemons() and become exposed to the daemon killer.
+
+    This routine does exactly that: stops newly spawned daemons.
+    """
+    delays: Collection[float] = []
+    if operator_paused is not None and operator_paused.is_on():
+        delays = await stop_daemons(
+            settings=settings,
+            daemons=daemons,
+            reason=stoppers.DaemonStoppingReason.OPERATOR_PAUSING,
+        )
     return delays
 
 
@@ -285,18 +326,29 @@ async def daemon_killer(
 
             # The stopping tasks are "fire-and-forget" -- we do not get (or care of) the result.
             # The daemons remain resumable, since they exit not on their own accord.
-            for memory in memories.iter_all_daemon_memories():
-                for daemon in memory.running_daemons.values():
-                    await scheduler.spawn(
-                        name=f"pausing stopper of {daemon}",
-                        coro=stop_daemon(
-                            settings=settings,
-                            daemon=daemon,
-                            reason=stoppers.DaemonStoppingReason.OPERATOR_PAUSING))
+            # From time to time, continue killing the daemons that sneak into processing queues.
+            # This is a secondary safeguard against #1266: events sneaked into workers on pausing.
+            # The primary safeguard is in pause_daemons(): stop daemons immediately on spawning.
+            while operator_paused.is_on():
+                for memory in memories.iter_all_daemon_memories():
+                    for daemon in memory.running_daemons.values():
+                        await scheduler.spawn(
+                            name=f"pausing stopper of {daemon}",
+                            coro=stop_daemon(
+                                settings=settings,
+                                daemon=daemon,
+                                reason=stoppers.DaemonStoppingReason.OPERATOR_PAUSING))
 
-            # Stay here while the operator is paused, until it is resumed.
-            # The fresh stream of watch-events will spawn new daemons naturally.
-            await operator_paused.wait_for(False)
+                # Stay here while the operator is paused, until it is resumed.
+                # The fresh stream of watch-events will spawn new daemons naturally.
+                if sys.version_info < (3, 11):  # python 3.10 only, TODO remove in Oct'26
+                    await operator_paused.wait_for(False)
+                else:
+                    try:
+                        async with asyncio.timeout(1.0):
+                            await operator_paused.wait_for(False)
+                    except TimeoutError:
+                        pass
 
     # Terminate all running daemons when the operator exits (and this task is cancelled).
     finally:
