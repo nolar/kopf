@@ -100,6 +100,7 @@ class APIContext:
                     headers=info.as_http_headers(),
                     auth=info.as_aiohttp_basic_auth(),
                     proxy=info.proxy_url,
+                    trust_env=info.trust_env,
                 )
             case credentials.AiohttpSession():
                 self.session = info.aiohttp_session

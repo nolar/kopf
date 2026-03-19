@@ -308,6 +308,33 @@ __ https://github.com/kubernetes/kubernetes/blob/c20e0bc54189aef73a6a1498b4eab28
         settings.watching.server_timeout = 10 * 60
 
 
+Proxy and environment trust
+---------------------------
+
+``settings.networking.trust_env`` (boolean) controls whether the HTTP client
+session respects the proxy-related environment variables (``HTTP_PROXY``,
+``HTTPS_PROXY``, ``NO_PROXY``) and the ``~/.netrc`` file for credentials.
+The default is ``False``.
+
+When set to ``True``, all built-in login handlers propagate this flag
+to :class:`kopf.ConnectionInfo`, which in turn passes it to the HTTP client
+session. The session will then use the environment variables and ``~/.netrc``
+to configure proxies and credentials automatically.
+This is useful in environments where the operator must route traffic
+through a corporate proxy or where the credentials are managed externally.
+
+For more details on authentication and custom login handlers,
+see :doc:`authentication`.
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_):
+        settings.networking.trust_env = True
+
+
 .. _consistency:
 
 Consistency

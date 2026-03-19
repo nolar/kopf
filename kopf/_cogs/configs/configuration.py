@@ -398,6 +398,17 @@ class NetworkingSettings:
     (the request attempt never awaits shorter than what the server asked for).
     """
 
+    trust_env: bool = False
+    """
+    Whether to respect the proxy-related environment variables and ``~/.netrc``.
+
+    If ``True``, the ``HTTP_PROXY``, ``HTTPS_PROXY``, ``NO_PROXY`` environment
+    variables and the ``~/.netrc`` file are used by the HTTP client session.
+
+    If ``False`` (default), the environment variables and the ``~/.netrc`` file
+    are ignored, and the HTTP client session connects directly to the server.
+    """
+
 
 @dataclasses.dataclass
 class PersistenceSettings:

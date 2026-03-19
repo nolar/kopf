@@ -54,6 +54,7 @@ or an instance of :class:`kopf.ConnectionInfo`:
             private_key_path='~/.minikube/client.key',
             certificate_data=b'...',
             private_key_data=b'...',
+            trust_env=True,
             expiration=datetime.datetime(2099, 12, 31, 23, 59, 59),
         )
 
@@ -107,8 +108,16 @@ or the same credentials via different libraries. All of the retrieved
 credentials will be used in random order with no specific priority.
 
 The connection info does **not** respect environment variables by default,
-such as ``HTTP_PROXY``, ``HTTPS_PROXY``, or ``NO_PROXY``. For this,
-use ``trust_env=True`` with the custom aiohttp session (see examples below).
+such as ``HTTP_PROXY``, ``HTTPS_PROXY``, ``NO_PROXY``, or ``~/.netrc``.
+The easiest way to enable this is to set ``settings.networking.trust_env = True``
+in a startup handler (see :doc:`configuration`).
+The built-in login handlers will propagate this setting
+to :class:`kopf.ConnectionInfo` automatically.
+
+Custom login handlers can set ``trust_env=True`` directly
+on the returned :class:`kopf.ConnectionInfo` (see example above).
+As a last resort, advanced users can provide a custom ``aiohttp`` session
+with ``trust_env=True`` (see examples below).
 
 
 .. _custom-http-sessions:

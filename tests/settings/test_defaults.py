@@ -31,6 +31,7 @@ async def test_declared_public_interface_and_promised_defaults():
     assert settings.execution.max_workers is None
     assert settings.networking.request_timeout == 5 * 60
     assert settings.networking.connect_timeout is None
+    assert settings.networking.trust_env == False
     assert settings.persistence.consistency_timeout == 5.0
 
 
