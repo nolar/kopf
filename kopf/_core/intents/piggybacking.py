@@ -17,6 +17,7 @@ from typing import Any
 
 import yaml
 
+from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import typedefs
 from kopf._cogs.structs import credentials
 
@@ -66,6 +67,7 @@ def has_pykube() -> bool:
 def login_via_client(
         *,
         logger: typedefs.Logger,
+        settings: configuration.OperatorSettings,
         **_: Any,
 ) -> credentials.ConnectionInfo | None:
 
@@ -114,6 +116,7 @@ def login_via_client(
         token=token,
         certificate_path=config.cert_file,  # can be a temporary file
         private_key_path=config.key_file,  # can be a temporary file
+        trust_env=settings.networking.trust_env,
         priority=PRIORITY_OF_CLIENT,
         # NB: no proxy_url: not parsed by the client, it only uses the env vars,
         # and we cannot respect the $NO_PROXY properly without trust_env=True.
@@ -125,6 +128,7 @@ def login_via_client(
 async def login_via_async_client(
         *,
         logger: typedefs.Logger,
+        settings: configuration.OperatorSettings,
         **_: Any,
 ) -> credentials.ConnectionInfo | None:
 
@@ -182,6 +186,7 @@ async def login_via_async_client(
         certificate_path=config.cert_file,  # can be a temporary file
         private_key_path=config.key_file,  # can be a temporary file
         proxy_url=config.proxy,
+        trust_env=settings.networking.trust_env,
         priority=PRIORITY_OF_ASYNC_CLIENT,
     )
 
@@ -189,6 +194,7 @@ async def login_via_async_client(
 def login_via_pykube(
         *,
         logger: typedefs.Logger,
+        settings: configuration.OperatorSettings,
         **_: Any,
 ) -> credentials.ConnectionInfo | None:
 
@@ -233,6 +239,7 @@ def login_via_pykube(
         private_key_path=pkey.filename() if pkey else None,  # can be a temporary file
         default_namespace=config.namespace,
         proxy_url=config.cluster.get('proxy-url'),
+        trust_env=settings.networking.trust_env,
         priority=PRIORITY_OF_PYKUBE,
     )
 
@@ -241,7 +248,11 @@ def has_service_account() -> bool:
     return os.path.exists('/var/run/secrets/kubernetes.io/serviceaccount/token')
 
 
-def login_with_service_account(**_: Any) -> credentials.ConnectionInfo | None:
+def login_with_service_account(
+        *,
+        settings: configuration.OperatorSettings,
+        **_: Any,
+) -> credentials.ConnectionInfo | None:
     """
     A minimalistic login handler that can get raw data from a service account.
 
@@ -271,6 +282,7 @@ def login_with_service_account(**_: Any) -> credentials.ConnectionInfo | None:
             ca_path=ca_path if os.path.exists(ca_path) else None,
             token=token or None,
             default_namespace=namespace or None,
+            trust_env=settings.networking.trust_env,
             priority=PRIORITY_OF_SERVICE_ACCOUNT,
         )
     else:
@@ -283,7 +295,11 @@ def has_kubeconfig() -> bool:
     return env_var_set or file_exists
 
 
-def login_with_kubeconfig(**_: Any) -> credentials.ConnectionInfo | None:
+def login_with_kubeconfig(
+        *,
+        settings: configuration.OperatorSettings,
+        **_: Any,
+) -> credentials.ConnectionInfo | None:
     """
     A minimalistic login handler that can get raw data from a kubeconfig file.
 
@@ -351,5 +367,6 @@ def login_with_kubeconfig(**_: Any) -> credentials.ConnectionInfo | None:
         token=user.get('token') or provider_token,
         default_namespace=context.get('namespace'),
         proxy_url=cluster.get('proxy-url'),
+        trust_env=settings.networking.trust_env,
         priority=PRIORITY_OF_KUBECONFIG,
     )

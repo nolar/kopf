@@ -236,6 +236,29 @@ async def test_custom_user_agent_preserved(vault):
         assert session.headers['User-Agent'] == 'myoperator/1.2.3'
 
 
+async def test_trust_env_is_disabled_by_default(vault):
+    await vault.populate({
+        'id': ConnectionInfo(
+            server='http://localhost',
+        ),
+    })
+    session = await fn()
+    async with session:
+        assert session.trust_env is False
+
+
+async def test_trust_env_is_enabled_via_connection_info(vault):
+    await vault.populate({
+        'id': ConnectionInfo(
+            server='http://localhost',
+            trust_env=True,
+        ),
+    })
+    session = await fn()
+    async with session:
+        assert session.trust_env is True
+
+
 @pytest_asyncio.fixture()
 async def proxy():
     server = ProxyServer()

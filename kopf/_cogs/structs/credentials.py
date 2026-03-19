@@ -82,6 +82,7 @@ class ConnectionInfo(KubeContext):
     private_key_data: str | bytes | None = None
     default_namespace: str | None = None  # used for cluster objects' k8s-events.
     proxy_url: str | None = None
+    trust_env: bool = False
     priority: int = 0
     expiration: datetime.datetime | None = None  # TZ-aware or TZ-naive (implies UTC)
 
