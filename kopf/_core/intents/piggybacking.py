@@ -114,8 +114,9 @@ def login_via_client(
         token=token,
         certificate_path=config.cert_file,  # can be a temporary file
         private_key_path=config.key_file,  # can be a temporary file
-        proxy_url=config.proxy,
         priority=PRIORITY_OF_CLIENT,
+        # NB: no proxy_url: not parsed by the client, it only uses the env vars,
+        # and we cannot respect the $NO_PROXY properly without trust_env=True.
     )
 
 

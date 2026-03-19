@@ -106,6 +106,10 @@ Multiple handlers can be declared to retrieve different credentials
 or the same credentials via different libraries. All of the retrieved
 credentials will be used in random order with no specific priority.
 
+The connection info does **not** respect environment variables by default,
+such as ``HTTP_PROXY``, ``HTTPS_PROXY``, or ``NO_PROXY``. For this,
+use ``trust_env=True`` with the custom aiohttp session (see examples below).
+
 
 .. _custom-http-sessions:
 
@@ -164,7 +168,7 @@ Kopf will own and manage the provided session and will close it when needed.
             ),
             headers=credentials.as_http_headers() | headers,
             auth=credentials.as_aiohttp_basic_auth(),
-            trust_env=True,  # to use HTTP_PROXY and ~/.netrc
+            trust_env=True,  # respect HTTP_PROXY, HTTPS_PROXY, NO_PROXY, and ~/.netrc
         )
         return kopf.AiohttpSession(
             aiohttp_session=session,
@@ -177,7 +181,7 @@ Kopf will own and manage the provided session and will close it when needed.
     and is normally not exposed to users except for very advanced use-cases.
     Kopf reserves the right to change its internal HTTP library
     without warning or backwards compatibility. In that case, Kopf will
-    fail running if this field is set (will raise an exception) --- to prevent
+    fail if this class is returned (will raise an exception) --- to prevent
     the unnoticed accidental damage during such upgrades. Use at your own risk.
 
 
