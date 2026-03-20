@@ -4,7 +4,7 @@ Creating the objects
 
 Previously (:doc:`starting`),
 we have created a skeleton operator and learned to start it and see the logs.
-Now, let's add a few meaningful reactions to solve our problem (:doc:`problem`).
+Now, let us add a few meaningful reactions to solve our problem (:doc:`problem`).
 
 We want to create a real ``PersistentVolumeClaim`` object
 immediately when an ``EphemeralVolumeClaim`` is created this way:
@@ -24,7 +24,7 @@ immediately when an ``EphemeralVolumeClaim`` is created this way:
 
     kubectl apply -f evc.yaml
 
-First, let's define a template of the persistent volume claim
+First, let us define a template of the persistent volume claim
 (with the Python template string, so that no extra template engines are needed):
 
 .. code-block:: yaml
@@ -45,7 +45,7 @@ First, let's define a template of the persistent volume claim
           storage: "{size}"
 
 
-Let's extend our only handler.
+Let us extend our only handler.
 We will use the official Kubernetes client library (``pip install kubernetes``):
 
 .. code-block:: python
@@ -77,7 +77,7 @@ We will use the official Kubernetes client library (``pip install kubernetes``):
 
         logger.info(f"PVC child is created: {obj}")
 
-And let us try it in action (assuming the operator is running in the background):
+Let us try it in action (assuming the operator is running in the background):
 
 .. code-block:: bash
 
@@ -89,7 +89,7 @@ Wait 1-2 seconds, and take a look:
 
     kubectl get pvc
 
-Now, the PVC can be attached to the pods by the same name, as EVC is named.
+Now, the PVC can be attached to the pods by the same name as the EVC.
 
 .. note::
     If you have to re-run the operator and hit an HTTP 409 error saying

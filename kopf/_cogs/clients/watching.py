@@ -21,6 +21,7 @@ import asyncio
 import contextlib
 import enum
 import logging
+import sys
 from collections.abc import AsyncIterator
 from typing import cast
 
@@ -120,7 +121,7 @@ async def streaming_block(
 
     Note: this routine belongs to watching and does not belong to peering.
     The pause can be managed in any other ways: as an imaginary edge case,
-    imagine a operator with UI with a "pause" button that pauses the operator.
+    imagine an operator with UI with a "pause" button that pauses the operator.
     """
     where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
 
@@ -209,7 +210,7 @@ async def continuous_watch(
                 raise WatchingError(f"Error in the watch-stream: {raw_object}")
 
             # Ensure that the event is something we understand and can handle.
-            if raw_type not in ['ADDED', 'MODIFIED', 'DELETED']:
+            if raw_type not in ['ADDED', 'MODIFIED', 'DELETED', 'BOOKMARK']:
                 logger.warning(f"Ignoring an unsupported event type: {raw_input!r}")
                 continue
 
@@ -243,6 +244,7 @@ async def watch_objs(
     """
     params: dict[str, str] = {}
     params['watch'] = 'true'
+    params['allowWatchBookmarks'] = 'true'
     if since is not None:
         params['resourceVersion'] = since
     if settings.watching.server_timeout is not None:
@@ -256,18 +258,32 @@ async def watch_objs(
 
     # Stream the parsed events from the response until it is closed server-side,
     # or until it is closed client-side by the pause-waiting future's callbacks.
+    # The inactivity timeout is reset after each received event; if no event arrives
+    # within the window, asyncio.timeout() cancels the outer task and we log & return.
     try:
-        async for raw_input in api.stream(
-            url=resource.get_url(namespace=namespace, params=params),
-            logger=logger,
-            settings=settings,
-            stopper=operator_pause_waiter,
-            timeout=aiohttp.ClientTimeout(
-                total=settings.watching.client_timeout,
-                sock_connect=connect_timeout,
-            ),
-        ):
-            yield raw_input
-
+        # Python 3.10 does not have asyncio.timeout(); fall back to the unprotected version.
+        # TODO: Remove when Python 3.10 is deprecated in Oct'26 (and the "if timeout_cm…" below).
+        if sys.version_info < (3, 11):  # 3.10 only
+            timeout = contextlib.nullcontext(None)
+        else:
+            timeout = asyncio.timeout(settings.watching.inactivity_timeout)
+        async with timeout as timeout_cm:
+            async for raw_input in api.stream(
+                url=resource.get_url(namespace=namespace, params=params),
+                logger=logger,
+                settings=settings,
+                stopper=operator_pause_waiter,
+                timeout=aiohttp.ClientTimeout(
+                    total=settings.watching.client_timeout,
+                    sock_connect=connect_timeout,
+                ),
+            ):
+                yield raw_input
+                if timeout_cm is not None:
+                    now = asyncio.get_running_loop().time()
+                    timeout_cm.reschedule(now + settings.watching.inactivity_timeout)
+    except TimeoutError:
+        where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
+        logger.debug(f"Watch-stream for {resource} {where} is inactive, reconnecting.")
     except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, asyncio.TimeoutError):
         pass

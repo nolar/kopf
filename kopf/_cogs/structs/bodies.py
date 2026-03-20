@@ -31,12 +31,12 @@ In case the operators are also type-checked, type casting can be used
     and from (but not to) the users:
 
     The Kubernetes-originated objects are dicts or dict-like custom classes.
-    The framework internally expect them to be such. Arbitrary 3rd-party
+    The framework internally expects them to be such. Arbitrary 3rd-party
     classes are not supported and are not delivered to the handlers.
 
     The user-originated objects can be either one of the Kubernetes-originated
     framework-supported types (dicts/dict-like), or a 3rd-party class,
-    such as from ``pykube-ng``, ``kubernetes`` client, etc -- as long as it is
+    such as from ``pykube-ng``, ``kubernetes`` client, etc --- as long as it is
     supported by the framework's object-processing functions.
 
     In the future, extra classes can be added for the user-originated objects
@@ -60,8 +60,8 @@ Annotations: TypeAlias = Mapping[str, str]
 #
 
 # ``None`` is used for the listing, when the pseudo-watch-stream is simulated.
-RawInputType = Literal[None, 'ADDED', 'MODIFIED', 'DELETED', 'ERROR']
-RawEventType = Literal[None, 'ADDED', 'MODIFIED', 'DELETED']
+RawInputType = Literal[None, 'ADDED', 'MODIFIED', 'DELETED', 'BOOKMARK', 'ERROR']
+RawEventType = Literal[None, 'ADDED', 'MODIFIED', 'DELETED', 'BOOKMARK']
 
 
 class RawMeta(TypedDict, total=False):

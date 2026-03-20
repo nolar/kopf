@@ -34,6 +34,7 @@ Kopf: Kubernetes Operators Framework
    loading
    resources
    filters
+   patches
    results
    errors
    scopes
@@ -66,6 +67,7 @@ Kopf: Kubernetes Operators Framework
    :maxdepth: 2
    :caption: Recipes:
 
+   docker
    deployment
    continuity
    idempotence
@@ -75,22 +77,23 @@ Kopf: Kubernetes Operators Framework
 
 .. toctree::
    :maxdepth: 2
+   :caption: About Kopf:
+
+   vision
+   naming
+   critiques
+   alternatives
+   status
+   impressum
+
+.. toctree::
+   :maxdepth: 2
    :caption: Developer Manual:
 
    minikube
    contributing
    architecture
    packages/kopf
-
-.. toctree::
-   :maxdepth: 2
-   :caption: About Kopf:
-
-   vision
-   naming
-   alternatives
-   status
-
 
 Indices and tables
 ==================

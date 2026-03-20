@@ -18,7 +18,7 @@ async def list_objs(
 
     The cluster-scoped call is used in two cases:
 
-    * The resource itself is cluster-scoped, and namespacing makes not sense.
+    * The resource itself is cluster-scoped, and namespacing makes no sense.
     * The operator serves all namespaces for the namespaced custom resource.
 
     Otherwise, the namespace-scoped call is used:

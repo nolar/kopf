@@ -43,9 +43,9 @@ def match_namespace(name: NamespaceName, pattern: NamespacePattern) -> bool:
 
     * the pattern consists of comma-separated parts (spaces are ignored);
     * each part is either an inclusive or an exclusive (negating) glob;
-    * each glob can have ``*`` and ``?`` placeholders for any or one symbols;
+    * each glob can have ``*`` and ``?`` placeholders for any or one characters;
     * the exclusive globs start with ``!``;
-    * if the the first glob is exclusive, then a preceding catch-all is implied.
+    * if the first glob is exclusive, then a preceding catch-all is implied.
 
     A check of whether a namespace matches the individual pattern, is done by
     iterating the pattern's globs left-to-right: the exclusive patterns exclude
@@ -62,7 +62,7 @@ def match_namespace(name: NamespaceName, pattern: NamespacePattern) -> bool:
     On the other hand, the pattern ``"!*-pr-*, *pr-123"``
     (equivalent to ``"*, !*-pr-*, *pr-123"``) will match ``myapp-test``,
     ``myapp-live``, ``myapp-pr-123``, ``anyapp-anything``,
-    and even ``otherapp-pr-123`` -- though not ``myapp-pr-456``.
+    and even ``otherapp-pr-123`` --- though not ``myapp-pr-456``.
     Unlike in the first example, the otherapp's namespace was included initially
     by the first glob (the implied ``*``), and therefore could be re-matched
     by the last glob ``*pr-123`` after being excluded by ``!*-pr-*``.
@@ -430,7 +430,7 @@ class Backbone(Mapping[Selector, Resource]):
     during the operator startup in :func:`resource_scanner`.
 
     The backbone resources cannot be changed at runtime after they are found
-    for the first time -- since the core tasks are already started with those
+    for the first time --- since the core tasks are already started with those
     resource definitions, and cannot be easily restarted.
 
     This does not apply to the resources of the operator (not the framework!),
@@ -479,7 +479,7 @@ class Backbone(Mapping[Selector, Resource]):
 
         The resources can be cached in-memory. Once the resource is retrieved,
         it never changes in memory even if it changes in the cluster. This is
-        intentional -- to match with the nature of the cluster scanning,
+        intentional --- to match with the nature of the cluster scanning,
         which waits for the resources and then starts background jobs,
         which are not easy to terminate without terminating the whole operator.
         """

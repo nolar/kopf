@@ -28,7 +28,7 @@ async def test_consistent_awakening(registry, settings, resource, k8s_mocked, mo
     After the fix, zero-sleep produces a dummy patch to trigger the reaction
     cycle after the sleep is over (as if it was an actual zero-time sleep).
 
-    In the test, the time granularity is intentionally that low -- 1 µs.
+    In the test, the time granularity is intentionally that low --- 1 µs.
     The time is anyway frozen and does not progress unless explicitly ticked.
 
     See also: #284
@@ -76,4 +76,4 @@ async def test_consistent_awakening(registry, settings, resource, k8s_mocked, mo
     # Without "now"-time consistency, neither sleep() would be called, nor a patch applied.
     # Verify that the patch was actually applied, so that the reaction cycle continues.
     assert k8s_mocked.patch.called
-    assert 'dummy' in k8s_mocked.patch.call_args_list[-1][1]['payload']['status']['kopf']
+    assert 'kopf.zalando.org/touch-dummy' in k8s_mocked.patch.call_args_list[-1].kwargs['payload']['metadata']['annotations']

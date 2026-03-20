@@ -31,7 +31,7 @@ async def test_parameter_is_passed_when_specified(resource, cause_mock, registry
     )
 
     assert mock.called
-    assert mock.call_args_list[0][1]['param'] == 123
+    assert mock.call_args_list[0].kwargs['param'] == 123
 
 
 async def test_parameter_is_passed_even_if_not_specified(resource, cause_mock, registry, settings):
@@ -57,4 +57,4 @@ async def test_parameter_is_passed_even_if_not_specified(resource, cause_mock, r
     )
 
     assert mock.called
-    assert mock.call_args_list[0][1]['param'] is None
+    assert mock.call_args_list[0].kwargs['param'] is None

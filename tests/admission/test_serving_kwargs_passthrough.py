@@ -22,7 +22,7 @@ async def test_dryrun_passed(
         memories=memories, memobase=object(), indices=indices,
     )
     assert mock.call_count == 1
-    assert mock.call_args[1]['dryrun'] == dryrun
+    assert mock.call_args.kwargs['dryrun'] == dryrun
 
 
 async def test_headers_passed(
@@ -40,7 +40,7 @@ async def test_headers_passed(
         memories=memories, memobase=object(), indices=indices,
     )
     assert mock.call_count == 1
-    assert mock.call_args[1]['headers'] == headers
+    assert mock.call_args.kwargs['headers'] == headers
 
 
 async def test_headers_not_passed_but_injected(
@@ -57,7 +57,7 @@ async def test_headers_not_passed_but_injected(
         memories=memories, memobase=object(), indices=indices,
     )
     assert mock.call_count == 1
-    assert mock.call_args[1]['headers'] == {}
+    assert mock.call_args.kwargs['headers'] == {}
 
 
 async def test_sslpeer_passed(
@@ -75,7 +75,7 @@ async def test_sslpeer_passed(
         memories=memories, memobase=object(), indices=indices,
     )
     assert mock.call_count == 1
-    assert mock.call_args[1]['sslpeer'] == sslpeer
+    assert mock.call_args.kwargs['sslpeer'] == sslpeer
 
 
 async def test_sslpeer_not_passed_but_injected(
@@ -92,7 +92,7 @@ async def test_sslpeer_not_passed_but_injected(
         memories=memories, memobase=object(), indices=indices,
     )
     assert mock.call_count == 1
-    assert mock.call_args[1]['sslpeer'] == {}
+    assert mock.call_args.kwargs['sslpeer'] == {}
 
 
 async def test_userinfo_passed(
@@ -111,7 +111,7 @@ async def test_userinfo_passed(
         memories=memories, memobase=object(), indices=indices,
     )
     assert mock.call_count == 1
-    assert mock.call_args[1]['userinfo'] == userinfo
+    assert mock.call_args.kwargs['userinfo'] == userinfo
 
 
 async def test_subresource_passed(
@@ -129,4 +129,4 @@ async def test_subresource_passed(
         memories=memories, memobase=object(), indices=indices,
     )
     assert mock.call_count == 1
-    assert mock.call_args[1]['subresource'] == 'xyz'
+    assert mock.call_args.kwargs['subresource'] == 'xyz'

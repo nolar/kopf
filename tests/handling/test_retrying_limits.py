@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 import freezegun
 import pytest
@@ -55,9 +56,10 @@ async def test_timed_out_handler_fails(
     assert looptime == 0
     assert k8s_mocked.patch.called
 
-    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
-    assert patch['status']['kopf']['progress'] is not None
-    assert patch['status']['kopf']['progress'][name1]['failure'] is True
+    patch = k8s_mocked.patch.call_args_list[0].kwargs['payload']
+    assert patch['metadata']['annotations']  # not empty at least
+    progress = json.loads(patch['metadata']['annotations'][f"kopf.zalando.org/{name1}"])
+    assert progress['failure'] is True
 
     assert_logs([
         "Handler .+ has timed out after",
@@ -104,9 +106,10 @@ async def test_retries_limited_handler_fails(
     assert looptime == 0
     assert k8s_mocked.patch.called
 
-    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
-    assert patch['status']['kopf']['progress'] is not None
-    assert patch['status']['kopf']['progress'][name1]['failure'] is True
+    patch = k8s_mocked.patch.call_args_list[0].kwargs['payload']
+    assert patch['metadata']['annotations']  # not empty at least
+    progress = json.loads(patch['metadata']['annotations'][f"kopf.zalando.org/{name1}"])
+    assert progress['failure'] is True
 
     assert_logs([
         r"Handler .+ has exceeded \d+ retries",

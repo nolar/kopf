@@ -1,0 +1,108 @@
+# Build and publish Kopf Docker images to ghcr.io.
+# On PRs: build only (no push). On release tags: build and push with full tag matrix.
+name: Docker
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    tags:
+      - "[0-9]+.[0-9]+*"
+  workflow_dispatch: {}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  DEFAULT_PYTHON: "3.14"
+  DEFAULT_VARIANT: slim
+
+jobs:
+  docker:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.14"]  # all versions starting with 3.14 as the first one
+        variant: [slim, alpine]
+    name: Python ${{ matrix.python-version }} ${{ matrix.variant }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute version
+        id: version
+        run: |
+          pip install setuptools-scm
+          VERSION=$(python -m setuptools_scm)
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f1-2)
+          PATCH=$(echo "$VERSION" | cut -d. -f1-3 | cut -d+ -f1 | cut -da -f1 | cut -db -f1 | cut -dr -f1 | cut -dd -f1)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
+          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
+          echo "patch=$PATCH" >> "$GITHUB_OUTPUT"
+
+      - name: Compute tags
+        id: tags
+        run: |
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          IMAGE=$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')
+          PYTHON="${{ matrix.python-version }}"
+          VARIANT="${{ matrix.variant }}"
+          MAJOR="${{ steps.version.outputs.major }}"
+          MINOR="${{ steps.version.outputs.minor }}"
+          PATCH="${{ steps.version.outputs.patch }}"
+          IS_DEFAULT_PYTHON=${{ matrix.python-version == env.DEFAULT_PYTHON }}
+          IS_DEFAULT_VARIANT=${{ matrix.variant == env.DEFAULT_VARIANT }}
+
+          TAGS=""
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            PR="${{ github.event.pull_request.number }}"
+            TAGS="${IMAGE}:pr-${PR}-python${PYTHON}-${VARIANT}"
+          else
+            # Always: full version + python + variant
+            TAGS="${TAGS}${IMAGE}:${PATCH}-python${PYTHON}-${VARIANT}"
+            TAGS="${TAGS},${IMAGE}:${MINOR}-python${PYTHON}-${VARIANT}"
+            TAGS="${TAGS},${IMAGE}:v${MAJOR}-python${PYTHON}-${VARIANT}"
+
+            # Default variant: version + python (no variant suffix)
+            if [ "$IS_DEFAULT_VARIANT" = "true" ]; then
+              TAGS="${TAGS},${IMAGE}:${PATCH}-python${PYTHON}"
+              TAGS="${TAGS},${IMAGE}:${MINOR}-python${PYTHON}"
+              TAGS="${TAGS},${IMAGE}:v${MAJOR}-python${PYTHON}"
+            fi
+
+            # Default python + default variant: bare version tags + latest
+            if [ "$IS_DEFAULT_PYTHON" = "true" ] && [ "$IS_DEFAULT_VARIANT" = "true" ]; then
+              TAGS="${TAGS},${IMAGE}:${PATCH}"
+              TAGS="${TAGS},${IMAGE}:${MINOR}"
+              TAGS="${TAGS},${IMAGE}:v${MAJOR}"
+              TAGS="${TAGS},${IMAGE}:latest"
+            fi
+          fi
+
+          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.tags.outputs.tags }}
+          build-args: |
+            PYTHON_VERSION=${{ matrix.python-version }}
+            VARIANT=${{ matrix.variant }}

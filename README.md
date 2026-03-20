@@ -6,20 +6,20 @@
 [![codecov](https://codecov.io/gh/nolar/kopf/branch/main/graph/badge.svg)](https://codecov.io/gh/nolar/kopf)
 [![coverage](https://coveralls.io/repos/github/nolar/kopf/badge.svg?branch=main)](https://coveralls.io/github/nolar/kopf?branch=main)
 
-**Kopf** —Kubernetes Operator Pythonic Framework— is a framework and a library
-to make Kubernetes operators development easier, just in a few lines of Python code.
+**Kopf** — Kubernetes Operator Pythonic Framework — is a framework and a library
+to make Kubernetes operator development easier, in just a few lines of Python code.
 
 The main goal is to bring the Domain-Driven Design to the infrastructure level,
 with Kubernetes being an orchestrator/database of the domain objects (custom resources),
 and the operators containing the domain logic (with no or minimal infrastructure logic).
 
 The project was originally started as `zalando-incubator/kopf` in March 2019,
-and then forked as `nolar/kopf` in August 2020: but it is the same codebase,
+and then forked as `nolar/kopf` in August 2020 — but it is the same codebase,
 the same packages, the same developer(s).
 
 ## Documentation
 
-* https://kopf.readthedocs.io/
+* https://docs.kopf.dev/
 
 ## Status
 
@@ -38,16 +38,16 @@ Some internal optimizations are planned, such as minimizing the memory footprint
 * Simple, but powerful:
   * A full-featured operator in just 2 files: a `Dockerfile` + a Python file (*).
   * Handling functions registered via decorators with a declarative approach.
-  * No infrastructure boilerplate code with K8s API communication.
+  * No infrastructure boilerplate code for K8s API communication.
   * Both sync and async handlers, with sync ones being threaded under the hood.
   * Detailed documentation with examples.
 * Intuitive mapping of Python concepts to Kubernetes concepts and back:
   * Marshalling of resources' data to the handlers' kwargs.
   * Marshalling of handlers' results to the resources' statuses.
   * Publishing of logging messages as Kubernetes events linked to the resources.
-* Support anything that exists in K8s:
+* Support for anything that exists in K8s:
   * Custom K8s resources.
-  * Builtin K8s resources (pods, namespaces, etc).
+  * Built-in K8s resources (pods, namespaces, etc).
   * Multiple resource types in one operator.
   * Both cluster and namespaced operators.
 * All the ways of handling that a developer can wish for:
@@ -65,7 +65,7 @@ Some internal optimizations are planned, such as minimizing the memory footprint
 * Eventual consistency of handling:
   * Retrying the handlers in case of arbitrary errors until they succeed.
   * Special exceptions to request a special retry or to never retry again.
-  * Custom limits for the number of attempts or the time.
+  * Custom limits for the number of attempts or the time allowed.
   * Implicit persistence of the progress that survives the operator restarts.
   * Tolerance to restarts and lengthy downtimes: handles the changes afterwards.
 * Awareness of other Kopf-based operators:
@@ -89,7 +89,7 @@ deployment files like RBAC roles, bindings, service accounts, network policies
 ## Examples
 
 See [examples](https://github.com/nolar/kopf/tree/main/examples)
-for the examples of the typical use-cases.
+for examples of typical use cases.
 
 A minimalistic operator can look like this:
 
@@ -103,7 +103,7 @@ def create_fn(spec, name, meta, status, **kwargs):
 
 Numerous kwargs are available, such as `body`, `meta`, `spec`, `status`,
 `name`, `namespace`, `retry`, `diff`, `old`, `new`, `logger`, etc:
-see [Arguments](https://kopf.readthedocs.io/en/latest/kwargs/)
+see [Arguments](https://docs.kopf.dev/en/latest/kwargs/)
 
 To run a never-exiting function for every resource as long as it exists:
 
@@ -128,7 +128,7 @@ def my_timer(spec, **kwargs):
     print(f"Object's spec: {spec}")
 ```
 
-That easy! For more features, see the [documentation](https://kopf.readthedocs.io/).
+That's easy! For more features, see the [documentation](https://docs.kopf.dev/).
 
 
 ## Usage
@@ -148,7 +148,24 @@ CMD kopf run /src/handlers.py --verbose
 ```
 
 Where `handlers.py` is your Python script with the handlers
-(see `examples/*/example.py` for the examples).
+(see `examples/*/example.py` for examples).
+
+For quick experimentation, a pre-built image with all extras is available
+on GHCR — just mount your operator file and go:
+
+```bash
+# Minimize the credentials exposure.
+kubectl config view --minify --flatten > dev.kubeconfig
+
+# Run the operator locally, target a local cluster (host networking).
+docker run --rm -it --network=host \
+    -v ./handlers.py:/app/main.py:ro \
+    -v ./dev.kubeconfig:/root/.kube/config:ro \
+    ghcr.io/nolar/kopf
+```
+
+See the [Docker image documentation](https://docs.kopf.dev/en/latest/docker/)
+for more details.
 
 See `kopf run --help` for other ways of attaching the handlers.
 

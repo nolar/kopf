@@ -1,6 +1,6 @@
 import asyncio
 
-import aiohttp.web
+import kmock
 import pytest
 
 import kopf
@@ -13,30 +13,32 @@ from kopf._core.reactor.observation import process_discovered_resource_event
 # The actual data is taken from the API. It is tested elsewhere, so we rely on its correctness here.
 GROUP1_EVENT = RawBody(spec={'group': 'group1'})
 
+# Since we are affecting the K8s API discovery, implicit URL handling is a problem. Disable it.
+pytestmark = [
+    pytest.mark.kmock(cls=kmock.RawHandler),
+    pytest.mark.usefixtures('fake_vault'),
+]
+
 
 @pytest.fixture()
-def core_mock(resp_mocker, aresponses, hostname):
-    mock = resp_mocker(return_value=aiohttp.web.json_response({'versions': ['v1']}))
-    aresponses.add(hostname, '/api', 'get', mock)
-    return mock
+def core_mock(kmock):
+    return kmock['get /api'] << {'versions': ['v1']}
 
 
 @pytest.fixture()
-def apis_mock(resp_mocker, aresponses, hostname):
-    mock = resp_mocker(return_value=aiohttp.web.json_response({'groups': [
+def apis_mock(kmock):
+    return kmock['get /apis'] << {'groups': [
         {
             'name': 'group1',
             'preferredVersion': {'version': 'version1'},
             'versions': [{'version': 'version1'}],
         },
-    ]}))
-    aresponses.add(hostname, '/apis', 'get', mock)
-    return mock
+    ]}
 
 
 @pytest.fixture()
-def corev1_mock(resp_mocker, aresponses, hostname, core_mock):
-    mock = resp_mocker(return_value=aiohttp.web.json_response({'resources': [
+def corev1_mock(kmock, core_mock):
+    return kmock['get /api/v1'] << {'resources': [
         {
             'kind': 'Namespace',
             'name': 'namespaces',
@@ -46,14 +48,12 @@ def corev1_mock(resp_mocker, aresponses, hostname, core_mock):
             'shortNames': [],
             'verbs': ['list', 'watch', 'patch'],
         },
-    ]}))
-    aresponses.add(hostname, '/api/v1', 'get', mock)
-    return mock
+    ]}
 
 
 @pytest.fixture()
-def group1_mock(resp_mocker, aresponses, hostname, apis_mock):
-    mock = resp_mocker(return_value=aiohttp.web.json_response({'resources': [
+def group1_mock(kmock, apis_mock):
+    return kmock['get /apis/group1/version1'] << {'resources': [
         {
             'kind': 'kind1',
             'name': 'plural1',
@@ -63,23 +63,17 @@ def group1_mock(resp_mocker, aresponses, hostname, apis_mock):
             'shortNames': ['shortname1a', 'shortname1b'],
             'verbs': ['list', 'watch', 'patch'],
         },
-    ]}))
-    aresponses.add(hostname, '/apis/group1/version1', 'get', mock)
-    return mock
+    ]}
 
 
 @pytest.fixture()
-def group1_empty_mock(resp_mocker, aresponses, hostname, apis_mock):
-    mock = resp_mocker(return_value=aiohttp.web.json_response({'resources': []}))
-    aresponses.add(hostname, '/apis/group1/version1', 'get', mock)
-    return mock
+def group1_empty_mock(kmock, apis_mock):
+    return kmock['get /apis/group1/version1'] << {'resources': []}
 
 
 @pytest.fixture()
-def group1_404mock(resp_mocker, aresponses, hostname, apis_mock):
-    mock = resp_mocker(return_value=aresponses.Response(status=404, reason='oops'))
-    aresponses.add(hostname, '/apis/group1/version1', 'get', mock)
-    return mock
+def group1_404mock(kmock, apis_mock):
+    return kmock['get /apis/group1/version1'] << 404
 
 
 @pytest.fixture()
@@ -130,8 +124,8 @@ async def test_nonwatchable_resources_are_ignored(
     await task
     assert looptime == 1.23
     assert not insights.watched_resources
-    assert apis_mock.called
-    assert group1_mock.called
+    assert len(apis_mock) > 0
+    assert len(group1_mock) > 0
 
 
 async def test_initial_listing_is_ignored(
@@ -154,8 +148,8 @@ async def test_initial_listing_is_ignored(
     assert not insights.indexed_resources
     assert not insights.watched_resources
     assert not insights.webhook_resources
-    assert not apis_mock.called
-    assert not group1_mock.called
+    assert not len(apis_mock) > 0
+    assert not len(group1_mock) > 0
 
 
 @pytest.mark.parametrize('etype', ['ADDED', 'MODIFIED'])
@@ -177,8 +171,8 @@ async def test_followups_for_addition(
 
     assert looptime == 1.23
     assert insights_resources == {r1}
-    assert apis_mock.called
-    assert group1_mock.called
+    assert len(apis_mock) > 0
+    assert len(group1_mock) > 0
 
 
 @pytest.mark.parametrize('etype', ['ADDED', 'MODIFIED', 'DELETED'])
@@ -202,8 +196,8 @@ async def test_followups_for_deletion_of_resource(
 
     assert looptime == 1.23
     assert not insights_resources
-    assert apis_mock.called
-    assert group1_empty_mock.called
+    assert len(apis_mock) > 0
+    assert len(group1_empty_mock) > 0
 
 
 @pytest.mark.parametrize('etype', ['ADDED', 'MODIFIED', 'DELETED'])
@@ -226,8 +220,8 @@ async def test_followups_for_deletion_of_group(
 
     assert looptime == 1.23
     assert not insights_resources
-    assert apis_mock.called
-    assert group1_404mock.called
+    assert len(apis_mock) > 0
+    assert len(group1_404mock) > 0
 
 
 @pytest.mark.parametrize('etype', ['DELETED'])
@@ -247,5 +241,5 @@ async def test_backbone_is_filled(
 
     assert looptime == 1.23
     assert NAMESPACES in insights.backbone
-    assert core_mock.called
-    assert corev1_mock.called
+    assert len(core_mock) > 0
+    assert len(corev1_mock) > 0

@@ -4,7 +4,7 @@ Authentication-related structures.
 Kopf handles some rudimentary authentication directly, and exposes the ways
 to implement custom authentication methods (via ``on.login`` handlers).
 
-For that, a minimally sufficient data structure is introduced -- both
+For that, a minimally sufficient data structure is introduced --- both
 to bring all the credentials together in a structured and type-annotated way,
 and to receive them from the operators' login-handlers with custom auth methods.
 
@@ -82,6 +82,7 @@ class ConnectionInfo(KubeContext):
     private_key_data: str | bytes | None = None
     default_namespace: str | None = None  # used for cluster objects' k8s-events.
     proxy_url: str | None = None
+    trust_env: bool = False
     priority: int = 0
     expiration: datetime.datetime | None = None  # TZ-aware or TZ-naive (implies UTC)
 
@@ -214,7 +215,7 @@ class Vault(AsyncIterable[tuple[VaultKey, KubeContext]]):
     """
     A store for currently valid authentication methods.
 
-    *Through we call it a vault to add a sense of security.*
+    *Though we call it a vault to add a sense of security.*
 
     Normally, only one authentication method is used at a time in multiple
     methods and tasks (e.g. resource watching/patching, peering, etc.).
@@ -342,7 +343,7 @@ class Vault(AsyncIterable[tuple[VaultKey, KubeContext]]):
         if not self._current:
             raise LoginError("Ran out of valid credentials. Consider installing "
                              "an API client library or adding a login handler. See more: "
-                             "https://kopf.readthedocs.io/en/stable/authentication/")
+                             "https://docs.kopf.dev/en/stable/authentication/")
         prioritised: dict[int, list[tuple[VaultKey, VaultItem]]]
         prioritised = collections.defaultdict(list)
         for key, item in self._current.items():
@@ -411,7 +412,7 @@ class Vault(AsyncIterable[tuple[VaultKey, KubeContext]]):
 
         If the re-authentication fails in the background task, this method
         re-raises the original exception (most likely a HTTP 401 error),
-        and lets the client tasks to fail in their own stack.
+        and lets the client tasks fail in their own stack.
         The background task continues to run and tries to re-authenticate
         on the next API calls until cancelled due to the operator exit.
         """
@@ -441,7 +442,7 @@ class Vault(AsyncIterable[tuple[VaultKey, KubeContext]]):
                 if exc is not None:
                     raise LoginError("Ran out of valid credentials. Consider installing "
                                      "an API client library or adding a login handler. See more: "
-                                     "https://kopf.readthedocs.io/en/stable/authentication/") from exc
+                                     "https://docs.kopf.dev/en/stable/authentication/") from exc
 
     async def populate(
             self,
@@ -452,7 +453,7 @@ class Vault(AsyncIterable[tuple[VaultKey, KubeContext]]):
 
         Used by :func:`authentication` to add newly retrieved credentials
         from the authentication activity handlers. Some of the credentials
-        can be duplicates of the existing ones -- only one of them is used then.
+        can be duplicates of the existing ones --- only one of them is used then.
         """
         async with self._guard:
 
@@ -498,8 +499,8 @@ class Vault(AsyncIterable[tuple[VaultKey, KubeContext]]):
         Call the finalizers and garbage-collect the cached objects.
 
         Mainly used to garbage-collect aiohttp sessions and its derivatives
-        when the connection info items are removed from the vault -- so that
-        the sessions/connectors would not complain that they were not close.
+        when the connection info items are removed from the vault --- so that
+        the sessions/connectors would not complain that they were not closed.
 
         Built-in garbage-collection is not sufficient, as it is synchronous, and
         cannot call the async coroutines like ``aiohttp.ClientSession.close()``.

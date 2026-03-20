@@ -1,20 +1,24 @@
 """
-Peer monitoring: knowing which other operators do run, and exchanging the basic signals with them.
+Peer monitoring: knowing which other operators are running,
+and exchanging the basic signals with them.
 
-The main use-case is to suppress all deployed operators when a developer starts a dev-/debug-mode
-operator for the same cluster on their workstation -- to avoid any double-processing.
+The main use-case is to suppress all deployed operators when a developer starts
+a dev-/debug-mode operator for the same cluster on their workstation ---
+to avoid any double-processing.
 
 See also: ``kopf freeze`` & ``kopf resume`` CLI commands for the same purpose.
 
-WARNING: There are **NO** per-object locks between the operators, so only one operator
-should be functional for the cluster, i.e. only one with the highest priority running.
-If the operator sees the violations of this constraint, it will print the warnings
+WARNING: There are **NO** per-object locks between the operators,
+so only one operator should be functional for the cluster,
+i.e. only one with the highest priority running.
+If the operator sees the violations of this constraint, it will print a warning
 pointing to another same-priority operator, but will continue to function.
 
-The "signals" exchanged are only the keep-alive notifications from the operator being alive,
-and detection of other operators hard termination (by timeout rather than by clear exit).
+The "signals" exchanged are only the keep-alives from the operator being alive,
+and detection of other operators hard termination
+(by timeout rather than by clear exit).
 
-The peers monitoring covers both the in-cluster operators running,
+Peer monitoring covers both the in-cluster operators running,
 and the dev-mode operators running in the dev workstations.
 
 For this, special CRDs ``kind: ClusterKopfPeering`` & ``kind: KopfPeering``
@@ -25,7 +29,7 @@ The namespace-bound operators (e.g. ``--namespace=…``) report their individual
 namespaces are part of the payload, can see all other cluster and namespaced
 operators (even from the different namespaces), and behave accordingly.
 
-The CRD is not applied automatically, so you have to deploy it yourself explicitly.
+The CRD is not applied automatically, so you have to deploy it explicitly.
 To disable the peers monitoring, use the ``--standalone`` CLI option.
 """
 
@@ -219,13 +223,14 @@ async def touch(
 
     patch = patches.Patch()
     patch |= {'status': {identity: None if peer.is_dead else peer.as_dict()}}
-    rsp = await patching.patch_obj(
+    rsp, remaining_patch = await patching.patch_obj(
         settings=settings,
         resource=resource,
         namespace=namespace,
         name=name,
         patch=patch,
         logger=logger,
+        silent=True,
     )
 
     if not settings.peering.stealth or rsp is None:
@@ -251,12 +256,13 @@ async def clean(
         name=name,
         patch=patch,
         logger=logger,
+        silent=True,
     )
 
 
 def detect_own_id(*, manual: bool) -> Identity:
     """
-    Detect or generate the id for ourselves, i.e. the execute operator.
+    Detect or generate the id for ourselves, i.e. the executing operator.
 
     It is constructed easy to detect in which pod it is running
     (if in the cluster), or who runs the operator (if not in the cluster,

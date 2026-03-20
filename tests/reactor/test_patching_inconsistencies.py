@@ -1,4 +1,3 @@
-import aiohttp.web
 import pytest
 
 from kopf._cogs.structs.bodies import Body
@@ -40,13 +39,9 @@ from kopf._core.actions.loggers import LocalObjectLogger
 
 ])
 async def test_patching_without_inconsistencies(
-        resource, namespace, settings, assert_logs, version_api,
-        aresponses, hostname, resp_mocker,
-        patch, response):
-
-    url = resource.get_url(namespace=namespace, name='name1')
-    patch_mock = resp_mocker(return_value=aiohttp.web.json_response(response))
-    aresponses.add(hostname, url, 'patch', patch_mock)
+        kmock, resource, namespace, settings, assert_logs, patch, response):
+    kmock.objects[resource, namespace, 'name1'] = {}  # suppress 404s
+    kmock['patch', resource, kmock.namespace(namespace), kmock.name('name1')] << response
 
     body = Body({'metadata': {'namespace': namespace, 'name': 'name1'}})
     logger = LocalObjectLogger(body=body, settings=settings)
@@ -59,9 +54,9 @@ async def test_patching_without_inconsistencies(
     )
 
     assert_logs([
-        "Patching with:",
+        "Merge-patching",
     ], prohibited=[
-        "Patching failed with inconsistencies:",
+        "inconsistencies",
     ])
 
 
@@ -102,13 +97,9 @@ async def test_patching_without_inconsistencies(
 
 ])
 async def test_patching_with_inconsistencies(
-        resource, namespace, settings, assert_logs, version_api,
-        aresponses, hostname, resp_mocker,
-        patch, response):
-
-    url = resource.get_url(namespace=namespace, name='name1')
-    patch_mock = resp_mocker(return_value=aiohttp.web.json_response(response))
-    aresponses.add(hostname, url, 'patch', patch_mock)
+        kmock, resource, namespace, settings, assert_logs, patch, response):
+    kmock.objects[resource, namespace, 'name1'] = {}  # suppress 404s
+    kmock['patch', resource, kmock.namespace(namespace), kmock.name('name1')] << response
 
     body = Body({'metadata': {'namespace': namespace, 'name': 'name1'}})
     logger = LocalObjectLogger(body=body, settings=settings)
@@ -121,20 +112,54 @@ async def test_patching_with_inconsistencies(
     )
 
     assert_logs([
-        "Patching with:",
-        "Patching failed with inconsistencies:",
+        "Merge-patching",
+        "Merge-patching finished with inconsistencies:",
     ])
 
 
+@pytest.mark.parametrize('expect_mangled, response_metadata', [
+    pytest.param(False, {},
+                 id='alive-without-finalizers'),
+    pytest.param(False, {'finalizers': ['x']},
+                 id='alive-with-finalizers'),
+    pytest.param(False, {'deletionTimestamp': '2024-01-01T00:00:00Z', 'finalizers': ['x']},
+                 id='deleting-with-finalizers'),
+    pytest.param(True, {'deletionTimestamp': '2024-01-01T00:00:00Z'},
+                 id='deleting-without-finalizers'),
+    pytest.param(True, {'deletionTimestamp': '2024-01-01T00:00:00Z', 'finalizers': []},
+                 id='deleting-with-empty-finalizers'),
+])
+async def test_resource_version_on_deletion_workaround(
+        kmock, resource, namespace, settings, response_metadata, expect_mangled):
+    kmock.objects[resource, namespace, 'name1'] = {}  # suppress 404s
+    kmock['patch', resource, kmock.namespace(namespace), kmock.name('name1')] << {
+        'metadata': {'resourceVersion': '123', **response_metadata},
+        'spec': {'x': 'y'},
+    }
+
+    body = Body({'metadata': {'namespace': namespace, 'name': 'name1'}})
+    logger = LocalObjectLogger(body=body, settings=settings)
+    rv, _ = await patch_and_check(
+        settings=settings,
+        resource=resource,
+        body=body,
+        patch=Patch({'spec': {'x': 'y'}}),
+        logger=logger,
+    )
+
+    if expect_mangled:
+        assert rv is not None
+        assert rv != '123'
+        assert '~which~never~arrives' in rv
+    else:
+        assert rv == '123'
+
+
 async def test_patching_with_disappearance(
-        resource, namespace, settings, assert_logs, version_api,
-        aresponses, hostname, resp_mocker):
+        kmock, resource, namespace, settings, assert_logs):
+    kmock['patch', resource, kmock.namespace(namespace), kmock.name('name1')] << 404
 
     patch = {'spec': {'x': 'y'}, 'status': {'s': 't'}}  # irrelevant
-    url = resource.get_url(namespace=namespace, name='name1')
-    patch_mock = resp_mocker(return_value=aresponses.Response(status=404, reason='oops'))
-    aresponses.add(hostname, url, 'patch', patch_mock)
-
     body = Body({'metadata': {'namespace': namespace, 'name': 'name1'}})
     logger = LocalObjectLogger(body=body, settings=settings)
     await patch_and_check(
@@ -146,7 +171,7 @@ async def test_patching_with_disappearance(
     )
 
     assert_logs([
-        "Patching with:",
+        "Merge-patching",
         "Patching was skipped: the object does not exist anymore",
     ], prohibited=[
         "inconsistencies"

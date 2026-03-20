@@ -9,4 +9,4 @@ To clean up the cluster after all the experiments are finished:
     kubectl delete -f obj.yaml
     kubectl delete -f crd.yaml
 
-Alternatively, Minikube can be reset for the full cluster cleanup.
+Alternatively, Minikube can be reset to fully clean up the cluster.

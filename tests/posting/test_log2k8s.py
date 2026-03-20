@@ -22,6 +22,7 @@ async def test_posting_normal_levels(settings, caplog, logstream, logfn, event_t
     logger = ObjectLogger(body=OBJ1, settings=settings)
     logger_fn = getattr(logger, logfn)
 
+    settings.posting.loggers = True
     logger_fn("hello %s", "world")
 
     assert event_queue.qsize() == 1
@@ -45,6 +46,7 @@ async def test_posting_above_config(settings, caplog, logstream, logfn, event_ty
     logger = ObjectLogger(body=OBJ1, settings=settings)
     logger_fn = getattr(logger, logfn)
 
+    settings.posting.loggers = True
     settings.posting.level = min_levelno
     logger_fn("hello %s", "world")
     settings.posting.level = min_levelno + 1
@@ -68,6 +70,7 @@ async def test_skipping_hidden_levels(settings, caplog, logstream, logfn,
     logger = ObjectLogger(body=OBJ1, settings=settings)
     logger_fn = getattr(logger, logfn)
 
+    settings.posting.loggers = True
     logger_fn("hello %s", "world")
     logger.info("must be here")
 
@@ -88,6 +91,7 @@ async def test_skipping_below_config(settings, caplog, logstream, logfn,
     logger = ObjectLogger(body=OBJ1, settings=settings)
     logger_fn = getattr(logger, logfn)
 
+    settings.posting.loggers = True
     settings.posting.level = 666
     logger_fn("hello %s", "world")
     settings.posting.level = 0
@@ -104,12 +108,14 @@ async def test_skipping_below_config(settings, caplog, logstream, logfn,
     'error',
     'critical',
 ])
+@pytest.mark.parametrize('flag', [True, False])
 async def test_skipping_when_disabled(settings, caplog, logstream, logfn,
-                                      event_queue, event_queue_loop):
+                                      event_queue, event_queue_loop, flag):
 
     logger = LocalObjectLogger(body=OBJ1, settings=settings)
     logger_fn = getattr(logger, logfn)
 
+    settings.posting.loggers = flag
     settings.posting.enabled = False
     settings.posting.level = 0
     logger_fn("hello %s", "world")
@@ -125,12 +131,14 @@ async def test_skipping_when_disabled(settings, caplog, logstream, logfn,
     'error',
     'critical',
 ])
+@pytest.mark.parametrize('flag', [True, False])
 async def test_skipping_when_local_with_all_levels(settings, caplog, logstream, logfn,
-                                                   event_queue, event_queue_loop):
+                                                   event_queue, event_queue_loop, flag):
 
     logger = LocalObjectLogger(body=OBJ1, settings=settings)
     logger_fn = getattr(logger, logfn)
 
+    settings.posting.loggers = flag
     logger_fn("hello %s", "world")
 
     assert event_queue.qsize() == 0

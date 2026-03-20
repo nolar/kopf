@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 from unittest.mock import MagicMock
 
+import jsonpatch
 import looptime
 import pytest
 
@@ -21,7 +22,9 @@ class DaemonDummy:
         self.mock = MagicMock()
 
     async def wait_for_daemon_done(self) -> None:
-        stopped = self.mock.call_args[1]['stopped']
+        if not self.mock.called:
+            return
+        stopped = self.mock.call_args.kwargs['stopped']
         await stopped.wait()
         while stopped.reason is None or not stopped.reason & stopped.reason.DONE:
             await asyncio.sleep(0)  # give control back to asyncio event loop
@@ -56,6 +59,7 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
             event_object: RawBody,
             *,
             stream_pressure: asyncio.Event | None = None,
+            operator_paused: ToggleSet | None = None,
     ) -> None:
         mocker.resetall()
 
@@ -70,11 +74,21 @@ def simulate_cycle(k8s_mocked, registry, settings, resource, memories, mocker):
             raw_event={'type': 'irrelevant', 'object': event_object},
             event_queue=asyncio.Queue(),
             stream_pressure=stream_pressure,
+            operator_paused=operator_paused,
+            no_throttling=True,
         )
 
         # Do the same as k8s does: merge the patches into the object.
         for call in k8s_mocked.patch.call_args_list:
-            _merge_dicts(call[1]['payload'], event_object)
+            payload = call.kwargs['payload']
+            headers = call.kwargs['headers']
+            if headers.get('Content-Type') == 'application/merge-patch+json':
+                _merge_dicts(payload, event_object)
+            if headers.get('Content-Type') == 'application/json-patch+json':
+                # For tests, we do not care about resourceVersion checks.
+                # Even the json-patch application is optional, but we do it nevertheless.
+                payload = [item for item in payload if item['op'] != 'test']
+                jsonpatch.JsonPatch(payload).apply(event_object, in_place=True)
 
     return _simulate_cycle
 

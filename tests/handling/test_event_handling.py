@@ -31,7 +31,7 @@ async def test_handlers_called_always(
     assert handlers.event_mock.call_count == 1
     assert extrahandlers.event_mock.call_count == 1
 
-    event = handlers.event_mock.call_args_list[0][1]['event']
+    event = handlers.event_mock.call_args_list[0].kwargs['event']
     assert 'field' in event['object']
     assert event['object']['field'] == 'value'
     assert event['type'] == 'ev-type'

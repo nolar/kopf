@@ -28,18 +28,19 @@ classifiers = [
 requires-python = ">=3.10"
 dependencies = [
     "python-json-logger",   # 0.05 MB
+    "jsonpatch",
     "iso8601",              # 0.07 MB
     "pyyaml",               # 0.90 MB
     "click>=8.2.0",         # 0.60 MB
-    "aiohttp>=3.0.0",       # 7.80 MB
+    "aiohttp>=3.11.0",      # 7.80 MB
     "aiohttp>=3.9.0; python_version >= '3.12'",
 ]
 dynamic = ["version"]  # taken from git tags
 
 [project.urls]
-homepage = "https://github.com/nolar/kopf"
+homepage = "https://kopf.dev/"
 repository = "https://github.com/nolar/kopf"
-documentation = "https://kopf.readthedocs.io"
+documentation = "https://docs.kopf.dev/"
 
 [project.scripts]
 kopf = "kopf.cli:main"
@@ -63,20 +64,22 @@ dev = [
 
 [dependency-groups]
 docs = [
-    "sphinx>=9.0.0",
+    "sphinx>=9.0.0; python_version>='3.11'",  # TODO: remove when 3.10 is dropped (≈Oct'26)
     "sphinx-autobuild",
     "sphinx-autodoc-typehints",
+    "sphinx-copybutton",
+    "sphinxcontrib-googleanalytics",
     "sphinx-llm>=0.1.4",
     "furo",
 ]
 test = [
-    "aresponses",
     "astpath[xpath]",
     "certbuilder",
     "certvalidator",
     "codecov",
     "coverage>=7.12.0",
     "freezegun",
+    "kmock>=0.5",
     "looptime>=0.7",
     "lxml",
     "pyngrok",
@@ -114,6 +117,15 @@ lint = [
     "pyngrok",
     "uvloop",
 ]
+dev = [
+    {include-group = "docs"},
+    {include-group = "lint"},
+    {include-group = "test"},
+]
+
+[tool.setuptools.packages.find]
+# The star is for the versions.py, which is gitignored in docker builds (somewhy).
+include = ["kopf", "kopf.*"]
 
 [tool.setuptools_scm]
 version_file = "kopf/_cogs/helpers/versions.py"
@@ -121,6 +133,7 @@ version_file = "kopf/_cogs/helpers/versions.py"
 [tool.mypy]
 strict = true
 packages = ["kopf"]
+exclude = ['(^|/)test_.*\.py$']
 python_version = "3.10"
 exclude_gitignore = true
 warn_unused_configs = true
@@ -130,6 +143,8 @@ ignore_missing_imports = true
 minversion = "9.0"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+log_format = "%(asctime)s %(levelname)s %(message)s"
+log_date_format = "%Y-%m-%d %H:%M:%S"
 addopts = ["--strict-markers", "--looptime"]
 
 [tool.isort]

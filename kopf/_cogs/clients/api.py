@@ -310,7 +310,7 @@ async def iter_jsonlines(
     Kubernetes secrets and other fields can be much longer, up to MBs in length.
 
     The chunk size of 1MB is an empirical guess for keeping the memory footprint
-    reasonably low on huge amount of small lines (limited to 1 MB in total),
+    reasonably low on a huge number of small lines (limited to 1 MB in total),
     while ensuring the near-instant reads of the huge lines (can be a problem
     with a small chunk size due to too many iterations).
 

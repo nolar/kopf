@@ -34,7 +34,7 @@ that you would like work on and discuss your ideas and use cases.
 It is always best to discuss your plans beforehand,
 to ensure that your contribution is in line with our goals.
 
-Read https://kopf.readthedocs.io/en/stable/contributing/
+Read https://docs.kopf.dev/en/stable/contributing/
 for detailed information, conventions and guidelines.
 
 Thanks for your contributions!

@@ -68,7 +68,7 @@ def remove_owner_reference(
         owner: bodies.Body | None = None,
 ) -> None:
     """
-    Remove an owner reference to the resource(s), if it is there.
+    Remove an owner reference from the resource(s), if it is there.
 
     Note: the owned objects are usually not the one being processed,
     so the whole body can be modified, no patches are needed.

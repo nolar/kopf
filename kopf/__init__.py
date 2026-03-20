@@ -1,5 +1,5 @@
 """
-The main Kopf module for all the exported functions & classes.
+The main Kopf module for all the exported functions and classes.
 """
 # isort: skip_file
 
@@ -82,6 +82,7 @@ from kopf._cogs.structs.ids import (
 )
 from kopf._cogs.structs.patches import (
     Patch,
+    PatchFn,
 )
 from kopf._cogs.structs.references import (
     Resource,
@@ -185,7 +186,7 @@ from kopf._kits.webhooks import (
 )
 
 __all__ = [
-    'on', 'lifecycles', 'register', 'execute', 'daemon', 'timer', 'index',
+    'on', 'lifecycles', 'subhandler', 'register', 'execute', 'daemon', 'timer', 'index',
     'configure', 'LogFormat',
     'login_via_pykube',
     'login_via_client',
@@ -218,6 +219,7 @@ __all__ = [
     'WebhookServer',
     'WebhookK3dServer',
     'WebhookMinikubeServer',
+    'WebhookDockerDesktopServer',
     'WebhookNgrokTunnel',
     'WebhookAutoServer',
     'WebhookAutoTunnel',
@@ -264,6 +266,7 @@ __all__ = [
     'HandlerId',
     'Reason',
     'Patch',
+    'PatchFn',
     'DaemonStopped',
     'DaemonStoppingReason',
     'SyncDaemonStopperChecker',  # deprecated

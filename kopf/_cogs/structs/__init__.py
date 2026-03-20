@@ -8,5 +8,5 @@ Used in the handling routines to check if there were significant changes at all
 and to get the exact per-field diffs for the specific handler functions.
 
 All the functions are purely data-manipulative and computational.
-No external calls or any i/o activities are done here.
+No external calls or any I/O activities are done here.
 """

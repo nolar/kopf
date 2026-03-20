@@ -14,7 +14,7 @@ import docutils.nodes
 # sys.path.insert(0, os.path.abspath('.'))
 
 project = 'Kopf'
-copyright = '2020 Sergey Vasilyev; 2019-2020 Zalando SE'
+copyright = '2020-2026 Sergey Vasilyev; 2019-2020 Zalando SE'
 author = 'Sergey Vasilyev'
 
 extensions = [
@@ -24,6 +24,8 @@ extensions = [
     'sphinx.ext.extlinks',
     'sphinx.ext.linkcode',
     'sphinx.ext.intersphinx',
+    'sphinx_copybutton',
+    'sphinxcontrib.googleanalytics',
     'sphinx_llm.txt',
 ]
 
@@ -33,6 +35,9 @@ html_static_path = ['_static']
 html_theme = 'furo'
 
 default_role = 'py:obj'
+
+html_baseurl = os.environ.get('READTHEDOCS_CANONICAL_URL', '')
+googleanalytics_id = 'G-42ZMK1ERG1'
 
 autodoc_typehints = 'description'
 autodoc_member_order = 'bysource'

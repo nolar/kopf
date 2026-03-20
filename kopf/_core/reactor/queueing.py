@@ -82,7 +82,7 @@ def get_uid(raw_event: bodies.RawEvent) -> ObjectUid:
     The keys are only persistent during a lifetime of a single process.
     They can be safely changed across different versions.
 
-    In most cases, UIDs are sufficient -- as populated by K8s itself.
+    In most cases, UIDs are sufficient --- as populated by K8s itself.
     However, some resources have no UIDs: e.g. ``v1/ComponentStatus``:
 
     .. code-block:: yaml
@@ -138,16 +138,18 @@ async def watcher(
         resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & non-indexable
 ) -> None:
     """
-    The watchers watches for the resource events via the API, and spawns the workers for every object.
+    Watch for the resource events via the API, and spawn the workers per object.
 
-    All resources and objects are done in parallel, but one single object is handled sequentially
-    (otherwise, concurrent handling of multiple events of the same object could cause data damage).
+    All resources and objects are done in parallel, but one single object
+    is handled sequentially (otherwise, concurrent handling of multiple events
+    of the same object could cause data damage).
 
-    The watcher is as non-blocking and async, as possible. It does neither call any external routines,
-    nor it makes the API calls via the sync libraries.
+    The watcher is as non-blocking and async as possible. It does not call any
+    external routines, nor does it make the API calls via the sync libraries.
 
-    The watcher is generally a never-ending task (unless an error happens or it is cancelled).
-    The workers, on the other hand, are limited approximately to the life-time of an object's event.
+    The watcher is generally a never-ending task (unless an error happens or
+    it is cancelled). The workers, on the other hand, are limited approximately
+     to the life-time of an object's event.
 
     Watchers spend their time in the infinite watch stream, not in task waiting.
     The only valid way for a worker to wake up the watcher is to cancel it:
@@ -190,6 +192,11 @@ async def watcher(
 
             # Whatever is bookmarked there, don't let it go to the multiplexer. Handle it above.
             if isinstance(raw_event, watching.Bookmark):
+                continue
+
+            # Skip BOOKMARK events from K8s: they carry no object identity (no uid/name/namespace),
+            # and are only useful for resource version tracking (already done in the watch stream).
+            if raw_event.get('type') == 'BOOKMARK':
                 continue
 
             # Multiplex the raw events to per-resource workers/queues. Start the new ones if needed.
@@ -279,7 +286,7 @@ async def worker(
 
     The worker is time-limited: it exits as soon as all the object's events
     have been processed and there are no new events for some time of idling
-    (a few seconds -- to prevent exiting and recreating the workers too often).
+    (a few seconds --- to prevent exiting and recreating the workers too often).
     The watcher will spawn a new worker when (and if) new events arrive.
     Such early exiting saves system resources (RAM) on large clusters with low
     activity, since we do not keep a running worker for every dormant object.

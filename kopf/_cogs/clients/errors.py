@@ -10,15 +10,15 @@ etc, are escalated from the client library as is, since they are related not
 to the domain of K8s API, but rather to the networking and encryption.
 
 The original errors of the client library are chained as the causes of our own
-specialised errors -- for better explainability of errors in the stack traces.
+specialised errors --- for better explainability of errors in the stack traces.
 
 Some selected reasons of K8s API errors are made into their own classes,
-so that they could be intercepted and handled in other places of the framework.
+so that they can be intercepted and handled in other parts of the framework.
 All other reasons are raised as the base error class and are indistinguishable
 from each other (except via the exception's fields).
 
 Unlike the underlying client library's errors, the K8s API errors contain more
-information about the reasons -- as provided by K8s API in its response bodies,
+information about the reasons --- as provided by K8s API in its response bodies,
 not guessed only by HTTP statuses alone.
 
 These errors are not exposed to the users, and the users cannot catch them
@@ -133,6 +133,10 @@ class APIConflictError(APIClientError):
     pass
 
 
+class APIUnprocessableEntityError(APIClientError):
+    pass
+
+
 class APITooManyRequestsError(APIClientError):
     pass
 
@@ -179,6 +183,7 @@ async def check_response(
             APIForbiddenError if response.status == 403 else
             APINotFoundError if response.status == 404 else
             APIConflictError if response.status == 409 else
+            APIUnprocessableEntityError if response.status == 422 else
             APITooManyRequestsError if response.status == 429 else
             APIClientError if 400 <= response.status < 500 else
             APIServerError if 500 <= response.status < 600 else

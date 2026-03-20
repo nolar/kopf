@@ -16,11 +16,11 @@ jobs:
       id-token: write  # for trusted publishing
     steps:
       - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.14"
-      - run: pip install --upgrade pip build
-      - run: python -m build  # includes sdist & wheel by default
+      - run: uv build
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           skip_existing: true

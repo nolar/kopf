@@ -1,11 +1,13 @@
 """
 Send the custom events for the handled or other objects.
 """
+from typing import Any
+
 import kopf
 
 
 @kopf.on.create('kopfexamples')
-def create_fn(body, **kwargs):
+def create_fn(body: kopf.Body, **_: Any) -> None:
 
     # The all-purpose function for the event creation.
     kopf.event(body, type="SomeType", reason="SomeReason", message="Some message")

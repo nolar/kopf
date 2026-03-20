@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import random
+from typing import Any
 
 import kopf
 import pykube
@@ -10,14 +11,14 @@ STOPPERS: dict[str, dict[str, asyncio.Event]] = {}  # [namespace][name]
 
 
 @kopf.on.startup()
-async def startup_fn_simple(logger, **kwargs):
+async def startup_fn_simple(logger: kopf.Logger, **_: Any) -> None:
     logger.info("Initialising the task-lock...")
     global LOCK
     LOCK = asyncio.Lock()  # in the current asyncio loop
 
 
 @kopf.on.startup()
-async def startup_fn_retried(retry, logger, **kwargs):
+async def startup_fn_retried(retry: int, logger: kopf.Logger, **_: Any) -> None:
     if retry < 3:
         raise kopf.TemporaryError(f"Going to succeed in {3-retry}s", delay=1)
     else:
@@ -26,7 +27,7 @@ async def startup_fn_retried(retry, logger, **kwargs):
 
 
 @kopf.on.cleanup()
-async def cleanup_fn(logger, **kwargs):
+async def cleanup_fn(logger: kopf.Logger, **_: Any) -> None:
     logger.info("Cleaning up...")
     for namespace in STOPPERS.keys():
         for name, flag in STOPPERS[namespace].items():
@@ -35,7 +36,7 @@ async def cleanup_fn(logger, **kwargs):
 
 
 @kopf.on.login(errors=kopf.ErrorsMode.PERMANENT)
-async def login_fn(**kwargs):
+async def login_fn(**_: Any) -> kopf.ConnectionInfo:
     print('Logging in in 2s...')
     await asyncio.sleep(2.0)
 
@@ -59,17 +60,18 @@ async def login_fn(**kwargs):
 
 
 @kopf.on.probe()
-async def tasks_count(**kwargs):
+async def tasks_count(**_: Any) -> int:
     return sum(len(flags) for flags in STOPPERS.values())
 
 
 @kopf.on.probe()
-async def monitored_objects(**kwargs):
+async def monitored_objects(**_: Any) -> dict[str, list[str]]:
     return {namespace: sorted(name for name in STOPPERS[namespace]) for namespace in STOPPERS}
 
 
 @kopf.on.event('pods')
-async def pod_task(namespace, name, logger, **_):
+async def pod_task(namespace: str | None, name: str | None, logger: kopf.Logger, **_: Any) -> None:
+    assert namespace is not None and name is not None  # for type-checkers
     async with LOCK:
         if namespace not in STOPPERS or name not in STOPPERS[namespace]:
             flag = asyncio.Event()
@@ -77,7 +79,7 @@ async def pod_task(namespace, name, logger, **_):
             asyncio.create_task(_task_fn(logger, shouldstop=flag))
 
 
-async def _task_fn(logger, shouldstop: asyncio.Event):
+async def _task_fn(logger: kopf.Logger, shouldstop: asyncio.Event) -> None:
     while not shouldstop.is_set():
         await asyncio.sleep(random.randint(1, 10))
         logger.info("Served by the background task.")

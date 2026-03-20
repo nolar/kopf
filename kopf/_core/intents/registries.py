@@ -335,7 +335,7 @@ def generate_id(
 
 
 def get_callable_id(c: Callable[..., Any]) -> str:
-    """ Get an reasonably good id of any commonly used callable. """
+    """ Get a reasonably good id of any commonly used callable. """
     match c:
         case None:
             raise ValueError("Cannot build a persistent id of None.")
@@ -379,7 +379,7 @@ def _deduplicated(
     or on operator restart for the pre-existing (already handled) resources.
     When a resource is created during the operator downtime, it is
     both creation and resuming at the same time: the object is new (not yet
-    handled) **AND** it is detected as per-existing before operator start.
+    handled) **AND** it is detected as pre-existing before operator start.
     But ``fn()`` should be called only once for this cause.
     """
     seen_ids: set[tuple[int, ids.HandlerId]] = set()

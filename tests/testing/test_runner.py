@@ -33,8 +33,8 @@ def test_registry_and_settings_are_propagated(mocker):
     assert runner.exit_code == 0
     assert runner.exception is None
     assert operator_mock.called
-    assert operator_mock.call_args[1]['registry'] is registry
-    assert operator_mock.call_args[1]['settings'] is settings
+    assert operator_mock.call_args.kwargs['registry'] is registry
+    assert operator_mock.call_args.kwargs['settings'] is settings
 
 
 def test_exception_from_runner_suppressed_with_no_reraise():

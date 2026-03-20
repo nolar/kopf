@@ -28,7 +28,7 @@ class AdmissionError(execution.PermanentError):
     a message and a numeric code.
 
     This error type is preferred when selecting only one error to report back
-    to apiservers as the admission review result -- in case multiple handlers
+    to apiservers as the admission review result --- in case multiple handlers
     are called in one admission request, i.e. when the webhook endpoints
     are not mapped to the handler ids (e.g. when configured manually).
     """
@@ -48,20 +48,26 @@ class WebhookError(Exception):
 
 
 class MissingDataError(WebhookError):
-    """ An admission is requested but some expected data are missing. """
+    """
+    An admission is requested but some expected data are missing.
+    """
 
 
 class UnknownResourceError(WebhookError):
-    """ An admission is made for a resource that the operator does not have. """
+    """
+    An admission is requested for a resource that the operator does not handle.
+    """
 
 
 class AmbiguousResourceError(WebhookError):
-    """ An admission is made for one resource, but we (somehow) found a few. """
+    """
+    An admission is requested for one resource, but multiple matches were found.
+    """
 
 
 class MemoGetter(metaclass=abc.ABCMeta):
     """
-    An interface as a way to break the reversed dependency of modules:
+    An interface as a way to break the reverse dependency of modules:
 
     * The lower-level admission engine needs :class:`Memories` for memos.
     * The memories are implemented in the higher-level ``reactor.inventory``.
@@ -253,7 +259,7 @@ async def admission_webhook_server(
         raise Exception(
             "Admission handlers exist, but no admission server/tunnel is configured "
             "in `settings.admission.server`. "
-            "More: https://kopf.readthedocs.io/en/stable/admission/")
+            "More: https://docs.kopf.dev/en/stable/admission/")
 
     # Do not start the endpoints until resources are scanned.
     # Otherwise, we generate 404 "Not Found" for requests that arrive too early.
@@ -325,7 +331,7 @@ async def configuration_manager(
     On either of these occasion, the manager rebuilds the webhook configuration
     and applies it to the specified configuration resources in the cluster
     (for which it needs some RBAC permissions).
-    Besides, it also creates an webhook configuration resource if it is absent.
+    Besides, it also creates a webhook configuration resource if it is absent.
     """
 
     # Do nothing if not managed. The root task cannot be skipped from creation,

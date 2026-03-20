@@ -25,7 +25,7 @@ def authenticated(fn: _F) -> _F:
     If a wrapped function fails on the authentication, this will be reported
     back to the credentials vault, which will trigger the re-authentication
     activity. Meanwhile, the request-performing function will be awaiting
-    for the new credentials, and re-executed once they are available.
+    new credentials, and re-executed once they are available.
     """
     @functools.wraps(fn)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -100,6 +100,7 @@ class APIContext:
                     headers=info.as_http_headers(),
                     auth=info.as_aiohttp_basic_auth(),
                     proxy=info.proxy_url,
+                    trust_env=info.trust_env,
                 )
             case credentials.AiohttpSession():
                 self.session = info.aiohttp_session

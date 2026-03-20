@@ -59,9 +59,9 @@ async def test_preexisting_consistency(
         handlers.resume_mock if cause_reason == Reason.RESUME else
         None  # and fail
     )
-    assert handlers.event_mock.call_args_list[0][1]['_time'] == 0  # called instantly
-    assert handlers.index_mock.call_args_list[0][1]['_time'] == 0  # called instantly
-    assert changing_mock.call_args_list[0][1]['_time'] == 0  # called instantly
+    assert handlers.event_mock.call_args_list[0].kwargs['_time'] == 0  # called instantly
+    assert handlers.index_mock.call_args_list[0].kwargs['_time'] == 0  # called instantly
+    assert changing_mock.call_args_list[0].kwargs['_time'] == 0  # called instantly
 
 
 @pytest.mark.parametrize('cause_reason', HANDLER_REASONS)
@@ -102,9 +102,9 @@ async def test_past_consistency(
         handlers.resume_mock if cause_reason == Reason.RESUME else
         None  # and fail
     )
-    assert handlers.event_mock.call_args_list[0][1]['_time'] == 100  # called instantly
-    assert handlers.index_mock.call_args_list[0][1]['_time'] == 100  # called instantly
-    assert changing_mock.call_args_list[0][1]['_time'] == 100  # called instantly
+    assert handlers.event_mock.call_args_list[0].kwargs['_time'] == 100  # called instantly
+    assert handlers.index_mock.call_args_list[0].kwargs['_time'] == 100  # called instantly
+    assert changing_mock.call_args_list[0].kwargs['_time'] == 100  # called instantly
 
 
 @pytest.mark.parametrize('cause_reason', HANDLER_REASONS)
@@ -144,9 +144,9 @@ async def test_future_consistency(
         handlers.resume_mock if cause_reason == Reason.RESUME else
         None  # and fail
     )
-    assert handlers.event_mock.call_args_list[0][1]['_time'] == 0  # called instantly
-    assert handlers.index_mock.call_args_list[0][1]['_time'] == 0  # called instantly
-    assert changing_mock.call_args_list[0][1]['_time'] == 123  # called after the deemed consistency
+    assert handlers.event_mock.call_args_list[0].kwargs['_time'] == 0  # called instantly
+    assert handlers.index_mock.call_args_list[0].kwargs['_time'] == 0  # called instantly
+    assert changing_mock.call_args_list[0].kwargs['_time'] == 123  # called after the deemed consistency
 
 
 @pytest.mark.parametrize('cause_reason', HANDLER_REASONS)
@@ -172,8 +172,37 @@ async def test_no_consistency_wait_without_changing_handlers(
     assert looptime == 0  # zero means it did not sleep, as expected
     assert watching_handlers.event_mock.call_count == 1
     assert watching_handlers.index_mock.call_count == 1
-    assert watching_handlers.event_mock.call_args_list[0][1]['_time'] == 0  # called instantly
-    assert watching_handlers.index_mock.call_args_list[0][1]['_time'] == 0  # called instantly
+    assert watching_handlers.event_mock.call_args_list[0].kwargs['_time'] == 0  # called instantly
+    assert watching_handlers.index_mock.call_args_list[0].kwargs['_time'] == 0  # called instantly
+
+
+async def test_no_consistency_wait_on_deletion_event_and_gone_cause(
+        resource, registry, settings, handlers, cause_mock, assert_logs,
+        k8s_mocked, looptime):
+    cause_mock.reason = Reason.GONE
+
+    event_queue = asyncio.Queue()
+    await process_resource_event(
+        lifecycle=kopf.lifecycles.all_at_once,
+        registry=registry,
+        settings=settings,
+        resource=resource,
+        indexers=OperatorIndexers(),
+        memories=ResourceMemories(),
+        memobase=Memo(),
+        raw_event={'type': 'DELETED', 'object': {}},
+        event_queue=event_queue,
+        consistency_time=456,  # expect the consistency in the future
+    )
+
+    assert looptime == 0  # zero means it did not sleep: GONE bypasses consistency wait
+    assert handlers.event_mock.call_count == 1
+    assert handlers.index_mock.call_count == 0
+    assert handlers.create_mock.call_count == 0
+    assert handlers.update_mock.call_count == 0
+    assert handlers.delete_mock.call_count == 0
+    assert handlers.resume_mock.call_count == 0
+    assert_logs(["Deleted, really deleted"])
 
 
 @pytest.mark.parametrize('cause_reason', HANDLER_REASONS)
@@ -203,8 +232,8 @@ async def test_stream_pressure_awakening_prevents_change_handlers(
     assert looptime == 123  # means: it has slept until awakened, but not until consistency
     assert handlers.event_mock.call_count == 1
     assert handlers.index_mock.call_count == 1
-    assert handlers.event_mock.call_args_list[0][1]['_time'] == 0  # called instantly
-    assert handlers.index_mock.call_args_list[0][1]['_time'] == 0  # called instantly
+    assert handlers.event_mock.call_args_list[0].kwargs['_time'] == 0  # called instantly
+    assert handlers.index_mock.call_args_list[0].kwargs['_time'] == 0  # called instantly
 
     changing_mock = (
         handlers.create_mock if cause_reason == Reason.CREATE else

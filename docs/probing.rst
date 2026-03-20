@@ -48,18 +48,18 @@ __ https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-r
 
 .. seealso::
 
-    Please be aware of the readiness vs. liveness probing.
-    In the case of operators, readiness probing makes no practical sense,
-    as operators do not serve traffic under the load balancing or with services.
-    Liveness probing can help in disastrous cases (e.g. the operator is stuck),
-    but will not help in case of partial failures (one of the API calls stuck).
+    Please be aware of the difference between readiness and liveness probing.
+    For operators, readiness probing makes no practical sense,
+    as operators do not serve traffic through load balancing or services.
+    Liveness probing can help in catastrophic cases (e.g. the operator is stuck),
+    but will not help with partial failures (e.g. one API call is stuck).
     You can read more here:
     https://srcco.de/posts/kubernetes-liveness-probes-are-dangerous.html
 
 .. warning::
 
-    Make sure that one and only one pod of an operator is running at a time,
-    especially during the restarts --- see :doc:`deployment`.
+    Make sure that exactly one pod of an operator is running at a time,
+    especially during restarts --- see :doc:`deployment`.
 
 
 Probe handlers
@@ -82,9 +82,9 @@ probing handlers:
     def get_random_value(**kwargs):
         return random.randint(0, 1_000_000)
 
-The probe handlers will be executed on the requests to the liveness URL,
-and cached for a reasonable time to prevent overloading
-by mass-requesting the status.
+The probe handlers will be executed on requests to the liveness URL,
+and the results will be cached for a reasonable time to prevent overloading
+from mass-requesting the status.
 
 The handler results will be reported as the content of the liveness response:
 
@@ -95,12 +95,12 @@ The handler results will be reported as the content of the liveness response:
 
 .. note::
     The liveness status report is simplistic and minimalistic at the moment.
-    It only reports success if the health-reporting task runs at all.
-    It can happen so that some of the operator's tasks, threads, or streams
-    do break, freeze, or become unresponsive, while the health-reporting task
-    continues to run. The probability of such a case is low, but not zero.
+    It only reports success if the health-reporting task is running at all.
+    It can happen that some of the operator's tasks, threads, or streams
+    break, freeze, or become unresponsive while the health-reporting task
+    continues to run. The probability of this is low, but not zero.
 
-    There are no checks that the operator operates anything
-    (unless they are implemented explicitly with the probe-handlers),
-    as there are no reliable criteria for that -- total absence of handled
+    There are no checks that the operator is actually processing anything
+    (unless explicitly implemented with probe handlers),
+    as there are no reliable criteria for that --- a total absence of handled
     resources or events can be an expected state of the cluster.

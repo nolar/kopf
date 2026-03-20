@@ -8,7 +8,7 @@ the Kubernetes resources during their life cycle.
 Unlike event-driven short-running handlers declared with ``@kopf.on``,
 daemons are started for every individual object when it is created
 (or when an operator is started/restarted while the object exists),
-and are capable of running indefinitely (or infinitely) long.
+and are capable of running indefinitely.
 
 The object's daemons are stopped when the object is deleted
 or the whole operator is exiting/restarting.
@@ -39,7 +39,7 @@ with ``@kopf.daemon`` and make it run for a long time or forever:
             time.sleep(10)
 
 Synchronous functions are executed in threads, asynchronous functions are
-executed directly in the asyncio event loop of the operator -- same as with
+executed directly in the asyncio event loop of the operator --- same as with
 regular handlers. See :doc:`async`.
 
 The same executor is used both for regular sync handlers and for sync daemons.
@@ -52,9 +52,9 @@ Termination
 ===========
 
 The daemons are terminated when either their resource is marked for deletion,
-or the operator itself is exiting.
+or the operator itself is exiting or pausing (see :doc:`peering`).
 
-In both cases, the daemons are requested to terminate gracefully by setting
+In both cases, Kopf requests all daemons to terminate gracefully by setting
 the :kwarg:`stopped` kwarg. The synchronous daemons MUST_, and asynchronous
 daemons SHOULD_ check for the value of this flag as often as possible:
 
@@ -71,7 +71,7 @@ daemons SHOULD_ check for the value of this flag as often as possible:
 
 The asynchronous daemons can skip these checks if they define the cancellation
 timeout. In that case, they can expect an :class:`asyncio.CancelledError`
-to be raised at any point of their code (specifically, at any ``await`` clause):
+raised at any point of their code (specifically, at any ``await`` clause):
 
 .. code-block:: python
 
@@ -87,7 +87,7 @@ to be raised at any point of their code (specifically, at any ``await`` clause):
             print("We are done. Bye.")
 
 With no cancellation timeout set, cancellation is not performed at all,
-as it is unclear for how long should the coroutine be awaited. However,
+as it is unclear how long the coroutine should be awaited. However,
 it is cancelled when the operator exits and stops all "hung" left-over tasks
 (not specifically daemons).
 
@@ -121,15 +121,22 @@ The termination sequence parameters can be controlled when declaring a daemon:
 There are three stages of how the daemon is terminated:
 
 * 1. Graceful termination:
+
   * ``stopped`` is set immediately (unconditionally).
   * ``cancellation_backoff`` is awaited (if set).
-* 2. Forced termination -- only if ``cancellation_timeout`` is set:
+
+* 2. Forced termination --- only if ``cancellation_timeout`` is set:
+
   * :class:`asyncio.CancelledError` is raised (for async daemons only).
   * ``cancellation_timeout`` is awaited (if set).
-* 3a. Giving up and abandoning -- only if ``cancellation_timeout`` is set:
+
+* 3a. Giving up and abandoning --- only if ``cancellation_timeout`` is set:
+
   * A :class:`ResourceWarning` is issued for potential OS resource leaks.
   * The finalizer is removed, and the object is released for potential deletion.
-* 3b. Forever polling -- only if ``cancellation_timeout`` is not set:
+
+* 3b. Forever polling --- only if ``cancellation_timeout`` is not set:
+
   * The daemon awaiting continues forever, logging from time to time.
   * The finalizer is not removed and the object remains blocked from deletion.
 
@@ -206,7 +213,7 @@ duration while the daemon remains terminable (leads to no OS resource leakage).
 Postponing
 ==========
 
-Normally, daemons are spawned immediately once resource becomes visible
+Normally, daemons are spawned immediately once a resource becomes visible
 to the operator: i.e. on resource creation or operator startup.
 
 It is possible to postpone the daemon spawning:
@@ -283,14 +290,14 @@ Deletion prevention
 ===================
 
 Normally, a finalizer is put on the resource if there are daemons running
-for it -- to prevent its actual deletion until all the daemons are terminated.
+for it --- to prevent its actual deletion until all the daemons are terminated.
 
 Only after the daemons are terminated, the finalizer is removed to release
 the object for actual deletion.
 
 However, it is possible to have daemons that disobey the exiting signals
 and continue running after the timeouts. In that case, the finalizer is
-anyway removed, and the orphaned daemons are left to themselves.
+removed anyway, and the orphaned daemons are left to themselves.
 
 
 Resource fields access

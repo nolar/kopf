@@ -10,8 +10,8 @@ Kopf provides rudimentary authentication out of the box: it can authenticate
 with the Kubernetes API either via the service account or raw kubeconfig data
 (with no additional interpretation or parsing of those).
 
-But this can be not enough in some setups and environments.
-Kopf does not try to maintain all the authentication methods possible.
+But this may not be enough in some setups and environments.
+Kopf does not attempt to maintain all the authentication methods possible.
 Instead, it allows the operator developers to implement their custom
 authentication methods and "piggybacks" the existing Kubernetes clients.
 
@@ -54,10 +54,11 @@ or an instance of :class:`kopf.ConnectionInfo`:
             private_key_path='~/.minikube/client.key',
             certificate_data=b'...',
             private_key_data=b'...',
+            trust_env=True,
             expiration=datetime.datetime(2099, 12, 31, 23, 59, 59),
         )
 
-Both TZ-naive & TZ-aware expiration times are supported.
+Both TZ-naive and TZ-aware expiration times are supported.
 The TZ-naive timestamps are always treated as UTC.
 
 As with any other handlers, the login handler can be async if the network
@@ -80,16 +81,16 @@ for making the API calls, but not the ways of retrieving them. Specifically:
 * SSL client certificate and its private key.
 * HTTP ``Authorization: Basic username:password``.
 * HTTP ``Authorization: Bearer token`` (or other schemes: Bearer, Digest, etc).
-* URL's default namespace for the cases when this is implied.
+* URL's default namespace for cases where this is implied.
 * HTTP/HTTPS proxy url, possibly with credentials.
 
 .. note::
     Proxy support is limited to what ``aiohttp`` supports__. Specifically,
     it supports plain HTTP proxies, some limited HTTPS proxies, but not SOCKS5.
-    Would you need more sophisticated proxying or tunneling, implement it
+    If you need more sophisticated proxying or tunneling, implement it
     as a custom HTTP session with a custom connector, for example using
     `aiohttp_socks <https://github.com/romis2012/aiohttp-socks>`_
-    (Kopf claims no responsibility for the quality if this library;
+    (Kopf claims no responsibility for the quality of this library;
     do your own due diligence).
 
 __ https://docs.aiohttp.org/en/stable/client_advanced.html#proxy-support
@@ -97,14 +98,26 @@ __ https://docs.aiohttp.org/en/stable/client_advanced.html#proxy-support
 No matter how the endpoints or credentials are retrieved, they are directly
 mapped to TCP/SSL/HTTPS protocols in the API clients. It is the responsibility
 of the authentication handlers to ensure that the values are consistent
-and valid (e.g. via internal verification calls). It is in theory possible
-to mix all authentication methods at once or to have none of them at all.
-If the credentials are inconsistent or invalid, there will be permanent
-re-authentication happening.
+and valid (e.g. via internal verification calls). It is theoretically possible
+to mix all authentication methods at once or to have none at all.
+If the credentials are inconsistent or invalid, permanent re-authentication
+will occur.
 
 Multiple handlers can be declared to retrieve different credentials
 or the same credentials via different libraries. All of the retrieved
 credentials will be used in random order with no specific priority.
+
+The connection info does **not** respect environment variables by default,
+such as ``HTTP_PROXY``, ``HTTPS_PROXY``, ``NO_PROXY``, or ``~/.netrc``.
+The easiest way to enable this is to set ``settings.networking.trust_env = True``
+in a startup handler (see :doc:`configuration`).
+The built-in login handlers will propagate this setting
+to :class:`kopf.ConnectionInfo` automatically.
+
+Custom login handlers can set ``trust_env=True`` directly
+on the returned :class:`kopf.ConnectionInfo` (see example above).
+As a last resort, advanced users can provide a custom ``aiohttp`` session
+with ``trust_env=True`` (see examples below).
 
 
 .. _custom-http-sessions:
@@ -127,7 +140,7 @@ and cannot do so: most of these fields are either hidden by ``aiohttp``,
 or are read-only, so they can only be set at the session creation.
 
 For your convenience, :class:`kopf.ConnectionInfo` from the existing login
-functions —see :ref:`auth-piggybacking`— provides the methods to convert
+functions ---see :ref:`auth-piggybacking`--- provides the methods to convert
 it to the typical components of the HTTP sessions:
 
 - :meth:`kopf.ConnectionInfo.as_aiohttp_basic_auth` for username/password.
@@ -136,11 +149,11 @@ it to the typical components of the HTTP sessions:
 
 .. note::
     :meth:`kopf.ConnectionInfo.as_ssl_context` will store the certificate
-    and private key data blobs to the disk files temporaily for a brief time,
+    and private key data blobs to the disk files temporarily for a brief time,
     since Python's :mod:`ssl` can only load it from files, not from data blobs.
     It will delete the files as soon as the SSL context is constructed.
 
-You do not need to worry about the session termination or closing —
+You do not need to worry about the session termination or closing ---
 Kopf will own and manage the provided session and will close it when needed.
 
 .. code-block:: python
@@ -164,7 +177,7 @@ Kopf will own and manage the provided session and will close it when needed.
             ),
             headers=credentials.as_http_headers() | headers,
             auth=credentials.as_aiohttp_basic_auth(),
-            trust_env=True,  # to use HTTP_PROXY and ~/.netrc
+            trust_env=True,  # respect HTTP_PROXY, HTTPS_PROXY, NO_PROXY, and ~/.netrc
         )
         return kopf.AiohttpSession(
             aiohttp_session=session,
@@ -177,7 +190,7 @@ Kopf will own and manage the provided session and will close it when needed.
     and is normally not exposed to users except for very advanced use-cases.
     Kopf reserves the right to change its internal HTTP library
     without warning or backwards compatibility. In that case, Kopf will
-    fail running if this field is set (will raise an exception) — to prevent
+    fail if this class is returned (will raise an exception) --- to prevent
     the unnoticed accidental damage during such upgrades. Use at your own risk.
 
 
@@ -231,7 +244,7 @@ Or:
 
 The same trick is also useful to limit the authentication attempts
 by time or by number of retries (by default, it tries forever
-until succeeded, returned nothing, or explicitly failed):
+until it succeeds, returns nothing, or explicitly fails):
 
 .. code-block:: python
 
@@ -287,9 +300,9 @@ by the login handlers, the API calls fail, and so does the operator.
 This internal logic is hidden from the operator developers, but it is worth
 knowing how it works internally. See :class:`Vault`.
 
-If the expiration is intended to be often (e.g. every few minutes),
-you might want to disable the logging of re-authenication (whether this is
-a good idea or not, you decide using the information about your system):
+If re-authentication is expected to happen frequently (e.g. every few minutes),
+you might want to disable the logging of re-authentication (whether this is
+a good idea or not is for you to decide based on the specifics of your system):
 
 .. code-block:: python
 

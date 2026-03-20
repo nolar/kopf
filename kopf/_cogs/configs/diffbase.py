@@ -18,7 +18,7 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
     to identify the actual changes on the object (or absence of such).
 
     Used in the handling routines to check if there were significant changes
-    (i.e. not the internal and system changes, like the uids, links, etc),
+    (i.e. not the internal and system changes, like the uids, links, etc.),
     and to get the exact per-field diffs for the specific handler functions.
 
     Conceptually similar to how ``kubectl apply`` stores the applied state
@@ -40,7 +40,7 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
         Extract only the relevant fields for the state comparisons.
 
         The framework ignores all the system fields (mostly from metadata)
-        and the status senza completely. Except for some well-known and useful
+        and the status stanza completely. Except for some well-known and useful
         metadata, such as labels and annotations (except for sure garbage).
 
         A special set of fields can be provided even if they are supposed

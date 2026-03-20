@@ -20,6 +20,7 @@ async def test_create(registry, settings, handlers, resource, cause_mock, event_
                       assert_logs, k8s_mocked):
     cause_mock.reason = Reason.CREATE
 
+    settings.posting.loggers = True
     event_queue = asyncio.Queue()
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
@@ -40,7 +41,7 @@ async def test_create(registry, settings, handlers, resource, cause_mock, event_
     assert k8s_mocked.patch.call_count == 1
     assert not event_queue.empty()
 
-    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
+    patch = k8s_mocked.patch.call_args_list[0].kwargs['payload']
     assert 'metadata' in patch
     assert 'annotations' in patch['metadata']
     assert LAST_SEEN_ANNOTATION in patch['metadata']['annotations']
@@ -50,7 +51,7 @@ async def test_create(registry, settings, handlers, resource, cause_mock, event_
         "Handler 'create_fn' is invoked",
         "Handler 'create_fn' succeeded",
         "Creation is processed:",
-        "Patching with",
+        "Merge-patching",
     ])
 
 
@@ -59,6 +60,7 @@ async def test_update(registry, settings, handlers, resource, cause_mock, event_
                       assert_logs, k8s_mocked):
     cause_mock.reason = Reason.UPDATE
 
+    settings.posting.loggers = True
     event_queue = asyncio.Queue()
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
@@ -79,7 +81,7 @@ async def test_update(registry, settings, handlers, resource, cause_mock, event_
     assert k8s_mocked.patch.call_count == 1
     assert not event_queue.empty()
 
-    patch = k8s_mocked.patch.call_args_list[0][1]['payload']
+    patch = k8s_mocked.patch.call_args_list[0].kwargs['payload']
     assert 'metadata' in patch
     assert 'annotations' in patch['metadata']
     assert LAST_SEEN_ANNOTATION in patch['metadata']['annotations']
@@ -89,7 +91,7 @@ async def test_update(registry, settings, handlers, resource, cause_mock, event_
         "Handler 'update_fn' is invoked",
         "Handler 'update_fn' succeeded",
         "Updating is processed:",
-        "Patching with",
+        "Merge-patching",
     ])
 
 
@@ -100,6 +102,7 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
     finalizer = settings.persistence.finalizer
     event_body = {'metadata': {'deletionTimestamp': '...', 'finalizers': [finalizer]}}
 
+    settings.posting.loggers = True
     event_queue = asyncio.Queue()
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
@@ -117,7 +120,7 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
     assert not handlers.update_mock.called
     assert handlers.delete_mock.call_count == 1
 
-    assert k8s_mocked.patch.call_count == 1
+    assert k8s_mocked.patch.call_count == 2  # (1) annotations, (2) finalizers.
     assert not event_queue.empty()
 
     assert_logs([
@@ -126,7 +129,7 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
         "Handler 'delete_fn' succeeded",
         "Deletion is processed:",
         "Removing the finalizer",
-        "Patching with",
+        "Merge-patching",
     ])
 
 
@@ -134,11 +137,13 @@ async def test_delete(registry, settings, handlers, resource, cause_mock, event_
 # Informational causes: just log, and do nothing else.
 #
 
+@pytest.mark.parametrize('consistency_time', [0, 100], ids=['now', 'future'])
 @pytest.mark.parametrize('event_type', EVENT_TYPES)
 async def test_gone(registry, settings, handlers, resource, cause_mock, event_type,
-                    assert_logs, k8s_mocked):
+                    assert_logs, k8s_mocked, consistency_time, looptime):
     cause_mock.reason = Reason.GONE
 
+    settings.posting.loggers = True
     event_queue = asyncio.Queue()
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
@@ -149,6 +154,41 @@ async def test_gone(registry, settings, handlers, resource, cause_mock, event_ty
         memories=ResourceMemories(),
         memobase=Memo(),
         raw_event={'type': event_type, 'object': {}},
+        event_queue=event_queue,
+        consistency_time=consistency_time,
+    )
+
+    assert not handlers.create_mock.called
+    assert not handlers.update_mock.called
+    assert not handlers.delete_mock.called
+
+    assert not k8s_mocked.patch.called
+    assert event_queue.empty()
+
+    assert looptime == 0
+    assert_logs([
+        "Deleted, really deleted",
+    ])
+
+
+# Happens on the removal of the very last finalizer on DELETED events (it arrives as not removed).
+async def test_gone_with_finalizer_not_removed_on_deleted_event(
+        registry, settings, handlers, resource, cause_mock,
+        assert_logs, k8s_mocked):
+    cause_mock.reason = Reason.GONE
+    finalizer = settings.persistence.finalizer
+    event_body = {'metadata': {'deletionTimestamp': '...', 'finalizers': [finalizer]}}
+
+    event_queue = asyncio.Queue()
+    await process_resource_event(
+        lifecycle=kopf.lifecycles.all_at_once,
+        registry=registry,
+        settings=settings,
+        resource=resource,
+        indexers=OperatorIndexers(),
+        memories=ResourceMemories(),
+        memobase=Memo(),
+        raw_event={'type': 'DELETED', 'object': event_body},
         event_queue=event_queue,
     )
 
@@ -161,6 +201,8 @@ async def test_gone(registry, settings, handlers, resource, cause_mock, event_ty
 
     assert_logs([
         "Deleted, really deleted",
+    ], prohibited=[
+        "Removing the finalizer",
     ])
 
 
@@ -169,6 +211,7 @@ async def test_free(registry, settings, handlers, resource, cause_mock, event_ty
                     assert_logs, k8s_mocked):
     cause_mock.reason = Reason.FREE
 
+    settings.posting.loggers = True
     event_queue = asyncio.Queue()
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,
@@ -198,6 +241,7 @@ async def test_noop(registry, settings, handlers, resource, cause_mock, event_ty
                     assert_logs, k8s_mocked):
     cause_mock.reason = Reason.NOOP
 
+    settings.posting.loggers = True
     event_queue = asyncio.Queue()
     await process_resource_event(
         lifecycle=kopf.lifecycles.all_at_once,

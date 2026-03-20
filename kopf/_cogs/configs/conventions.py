@@ -53,7 +53,7 @@ class CollisionEvadingConvention:
     mismatches the resource's schema or the handlers' progress is miscalculated.
 
     To evade this, Kopf adds special marks to all annotations of all resources
-    known to be overwritten by Kubernetes -- in order to preserve the state
+    known to be overwritten by Kubernetes --- in order to preserve the state
     regardless of whether the parent's annotations are already propagated:
     this can happen much later when the owning resource is started to be served
     hours, days, months after the owned resource has stored its state.
@@ -82,7 +82,7 @@ class StorageKeyFormingConvention(CollisionEvadingConvention):
     Used both in the diff-base storages and the progress storages where
     applicable. It provides a few optional methods to manage annotation
     prefixes, keys, and names (in this context, a name is a prefix + a key).
-    Specifically, the annotations keys are split to V1 & V2 (would be V3, etc).
+    Specifically, the annotation keys are split into V1 & V2 (would be V3, etc).
 
     **V1** keys were implemented overly restrictive: the length of 63 chars
     was applied to the whole annotation key, including the prefix.
@@ -102,7 +102,7 @@ class StorageKeyFormingConvention(CollisionEvadingConvention):
     will be cut the same way as V1 keys.
 
     If the prefix is longer than 189 chars (253-63-1), the full key could
-    be longer than the limit of 253 chars -- e.g. with lengthy handler ids,
+    be longer than the limit of 253 chars --- e.g. with lengthy handler ids,
     more often for field-handlers or sub-handlers. In that case,
     the annotation keys are not shortened, and the patching would fail.
 
@@ -206,7 +206,7 @@ class StorageKeyMarkingConvention:
 
     As an extra safety measure, all names of the whole ``domain.tld/`` prefix,
     both V1 & V2, are detected as marked if there is at least one marked V2 name
-    under that prefix -- assuming that the prefix is for a Kopf-based operator.
+    under that prefix --- assuming that the prefix is for a Kopf-based operator.
     For non-prefixed storages, the V1 names are detected by their V2
     counterparts with some additional treatment (marker & hashes removed).
 

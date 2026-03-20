@@ -46,16 +46,16 @@ async def test_poster_polls_and_posts(mocker, settings):
         await poster(event_queue=event_queue, backbone=backbone, settings=settings)
 
     assert post.call_count == 2
-    assert post.call_args_list[0][1]['url'] == '/api/v1/namespaces/ns1/events'
-    assert post.call_args_list[0][1]['payload']['type'] == 'type1'
-    assert post.call_args_list[0][1]['payload']['reason'] == 'reason1'
-    assert post.call_args_list[0][1]['payload']['message'] == 'message1'
-    assert post.call_args_list[0][1]['payload']['involvedObject'] == REF1
-    assert post.call_args_list[1][1]['url'] == '/api/v1/namespaces/ns2/events'
-    assert post.call_args_list[1][1]['payload']['type'] == 'type2'
-    assert post.call_args_list[1][1]['payload']['reason'] == 'reason2'
-    assert post.call_args_list[1][1]['payload']['message'] == 'message2'
-    assert post.call_args_list[1][1]['payload']['involvedObject'] == REF2
+    assert post.call_args_list[0].kwargs['url'] == '/api/v1/namespaces/ns1/events'
+    assert post.call_args_list[0].kwargs['payload']['type'] == 'type1'
+    assert post.call_args_list[0].kwargs['payload']['reason'] == 'reason1'
+    assert post.call_args_list[0].kwargs['payload']['message'] == 'message1'
+    assert post.call_args_list[0].kwargs['payload']['involvedObject'] == REF1
+    assert post.call_args_list[1].kwargs['url'] == '/api/v1/namespaces/ns2/events'
+    assert post.call_args_list[1].kwargs['payload']['type'] == 'type2'
+    assert post.call_args_list[1].kwargs['payload']['reason'] == 'reason2'
+    assert post.call_args_list[1].kwargs['payload']['message'] == 'message2'
+    assert post.call_args_list[1].kwargs['payload']['involvedObject'] == REF2
 
 
 def test_queueing_fails_with_no_queue(event_queue_loop):

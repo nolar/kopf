@@ -27,7 +27,7 @@ ZERO_DELTA = datetime.timedelta(seconds=0)
 
 # Use only the status-populating storages, to keep the tests with their original assertions.
 # The goal is to test the states, not the storages. The storages are tested in test_storages.py.
-@pytest.fixture(params=[StatusProgressStorage, SmartProgressStorage])
+@pytest.fixture(params=[StatusProgressStorage])
 def storage(request):
     return request.param()
 

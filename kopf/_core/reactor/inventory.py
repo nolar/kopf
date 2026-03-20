@@ -21,7 +21,7 @@ import copy
 import dataclasses
 from collections.abc import Iterator, MutableMapping
 
-from kopf._cogs.structs import bodies, ephemera
+from kopf._cogs.structs import bodies, ephemera, patches
 from kopf._core.actions import throttlers
 from kopf._core.engines import admission, daemons, indexing
 
@@ -37,6 +37,7 @@ class ResourceMemory:
     error_throttler: throttlers.Throttler = dataclasses.field(default_factory=throttlers.Throttler)
     indexing_memory: indexing.IndexingMemory = dataclasses.field(default_factory=indexing.IndexingMemory)
     daemons_memory: daemons.DaemonsMemory = dataclasses.field(default_factory=daemons.DaemonsMemory)
+    remaining_patch: patches.Patch | None = None  # None to save memory
 
     # For resuming handlers tracking and deciding on should they be called or not.
     noticed_by_listing: bool = False
@@ -48,7 +49,7 @@ class ResourceMemories(admission.MemoGetter, daemons.DaemonsMemoriesIterator):
     A container of all memos about every existing resource in a single operator.
 
     Distinct operator tasks have their own memory containers, which
-    do not overlap. This solves the problem if storing the per-resource
+    do not overlap. This solves the problem of storing the per-resource
     entries in the global or context variables.
 
     The memos can store anything the resource handlers need to persist within
@@ -58,7 +59,7 @@ class ResourceMemories(admission.MemoGetter, daemons.DaemonsMemoriesIterator):
 
     The container is relatively async-safe: one individual resource is always
     handled sequentially, never in parallel with itself (different resources
-    are handled in parallel through), so the same key will not be added/deleted
+    are handled in parallel though), so the same key will not be added/deleted
     in the background during the operation, so the locking is not needed.
     """
     _items: MutableMapping[str, ResourceMemory]

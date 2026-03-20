@@ -2,8 +2,8 @@
 Error handling
 ==============
 
-Kopf tracks the status of the handlers (except for the low-level event handlers)
-catches the exceptions, and processes them from each of the handlers.
+Kopf tracks the status of the handlers (except for the low-level event handlers),
+catches exceptions, and processes them for each handler.
 
 The last (or the final) exception is stored in the object's status,
 and reported via the object's events.
@@ -17,7 +17,7 @@ and reported via the object's events.
 Temporary errors
 ================
 
-If an exception raised inherits from :class:`kopf.TemporaryError`,
+If a raised exception inherits from :class:`kopf.TemporaryError`,
 it will postpone the current handler for the next iteration,
 which can happen either immediately, or after some delay:
 
@@ -48,7 +48,7 @@ Permanent errors
 ================
 
 If a raised exception inherits from :class:`kopf.PermanentError`, the handler
-is considered as non-retriable and non-recoverable and completely failed.
+is considered non-retriable, non-recoverable, and permanently failed.
 
 Use this when the domain logic of the application means that there
 is no need to retry over time, as it will not become better:
@@ -74,7 +74,7 @@ Kopf assumes that any arbitrary errors
 (i.e. not :class:`kopf.TemporaryError` and not :class:`kopf.PermanentError`)
 are the environment's issues and can self-resolve after some time.
 
-As such, as default behaviour,
+As such, as the default behavior,
 Kopf retries the handlers with arbitrary errors
 infinitely until the handlers either succeed or fail permanently.
 
@@ -108,8 +108,8 @@ The overall runtime of the handler can be limited:
     def create_fn(spec, **_):
         raise kopf.TemporaryError(delay=60)
 
-If the handler is not succeeded within this time, it is considered
-as fatally failed.
+If the handler has not succeeded within this time, it is considered
+to have fatally failed.
 
 If the handler is an async coroutine and it is still running at the moment,
 an :class:`asyncio.TimeoutError` is raised;
@@ -140,7 +140,7 @@ Backoff
 =======
 
 The interval between retries on arbitrary errors, when an external environment
-is supposed to recover and be able to succeed the handler execution,
+is supposed to recover and allow the handler execution to succeed,
 can be configured:
 
 .. code-block:: python

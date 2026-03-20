@@ -28,7 +28,7 @@ def test_has_no_kubeconfig_when_nothing_is_provided(mocker, envs):
     result = has_kubeconfig()
     assert result is False
     assert exists_mock.call_count == 1
-    assert exists_mock.call_args_list[0][0][0].endswith('/.kube/config')
+    assert exists_mock.call_args_list[0].args[0].endswith('/.kube/config')
 
 
 @pytest.mark.parametrize('envs', [{'KUBECONFIG': 'x'}], ids=['set'])
@@ -38,7 +38,7 @@ def test_has_kubeconfig_when_envvar_is_set_but_no_homedir(mocker, envs):
     result = has_kubeconfig()
     assert result is True
     assert exists_mock.call_count == 1
-    assert exists_mock.call_args_list[0][0][0].endswith('/.kube/config')
+    assert exists_mock.call_args_list[0].args[0].endswith('/.kube/config')
 
 
 @pytest.mark.parametrize('envs', [{}, {'KUBECONFIG': ''}], ids=['absent', 'empty'])
@@ -48,66 +48,66 @@ def test_has_kubeconfig_when_homedir_exists_but_no_envvar(mocker, envs):
     result = has_kubeconfig()
     assert result is True
     assert exists_mock.call_count == 1
-    assert exists_mock.call_args_list[0][0][0].endswith('/.kube/config')
+    assert exists_mock.call_args_list[0].args[0].endswith('/.kube/config')
 
 
 @pytest.mark.parametrize('envs', [{}, {'KUBECONFIG': ''}], ids=['absent', 'empty'])
-def test_homedir_is_used_if_it_exists(tmpdir, mocker, envs):
+def test_homedir_is_used_if_it_exists(tmpdir, mocker, settings, envs):
     exists_mock = mocker.patch('os.path.exists', return_value=True)
     open_mock = mocker.patch('kopf._core.intents.piggybacking.open')
     open_mock.return_value.__enter__.return_value.read.return_value = MINICONFIG
     mocker.patch.dict(os.environ, envs, clear=True)
-    credentials = login_with_kubeconfig()
+    credentials = login_with_kubeconfig(settings=settings)
     assert exists_mock.call_count == 1
-    assert exists_mock.call_args_list[0][0][0].endswith('/.kube/config')
+    assert exists_mock.call_args_list[0].args[0].endswith('/.kube/config')
     assert open_mock.call_count == 1
-    assert open_mock.call_args_list[0][0][0].endswith('/.kube/config')
+    assert open_mock.call_args_list[0].args[0].endswith('/.kube/config')
     assert credentials is not None
 
 
 @pytest.mark.parametrize('envs', [{}, {'KUBECONFIG': ''}], ids=['absent', 'empty'])
-def test_homedir_is_ignored_if_it_is_absent(tmpdir, mocker, envs):
+def test_homedir_is_ignored_if_it_is_absent(tmpdir, mocker, settings, envs):
     exists_mock = mocker.patch('os.path.exists', return_value=False)
     open_mock = mocker.patch('kopf._core.intents.piggybacking.open')
     open_mock.return_value.__enter__.return_value.read.return_value = ''
     mocker.patch.dict(os.environ, envs, clear=True)
-    credentials = login_with_kubeconfig()
+    credentials = login_with_kubeconfig(settings=settings)
     assert exists_mock.call_count == 1
-    assert exists_mock.call_args_list[0][0][0].endswith('/.kube/config')
+    assert exists_mock.call_args_list[0].args[0].endswith('/.kube/config')
     assert open_mock.call_count == 0
     assert credentials is None
 
 
-def test_absent_kubeconfig_fails(tmpdir, mocker):
+def test_absent_kubeconfig_fails(tmpdir, mocker, settings):
     kubeconfig = tmpdir.join('config')
     mocker.patch.dict(os.environ, clear=True, KUBECONFIG=str(kubeconfig))
     with pytest.raises(IOError):
-        login_with_kubeconfig()
+        login_with_kubeconfig(settings=settings)
 
 
-def test_corrupted_kubeconfig_fails(tmpdir, mocker):
+def test_corrupted_kubeconfig_fails(tmpdir, mocker, settings):
     kubeconfig = tmpdir.join('config')
     kubeconfig.write("""!!acb!.-//:""")  # invalid yaml
     mocker.patch.dict(os.environ, clear=True, KUBECONFIG=str(kubeconfig))
     with pytest.raises(yaml.YAMLError):
-        login_with_kubeconfig()
+        login_with_kubeconfig(settings=settings)
 
 
-def test_empty_kubeconfig_fails(tmpdir, mocker):
+def test_empty_kubeconfig_fails(tmpdir, mocker, settings):
     kubeconfig = tmpdir.join('config')
     kubeconfig.write('')
     mocker.patch.dict(os.environ, clear=True, KUBECONFIG=str(kubeconfig))
     with pytest.raises(LoginError) as err:
-        login_with_kubeconfig()
+        login_with_kubeconfig(settings=settings)
     assert "context is not set" in str(err.value)
 
 
-def test_mini_kubeconfig_reading(tmpdir, mocker):
+def test_mini_kubeconfig_reading(tmpdir, mocker, settings):
     kubeconfig = tmpdir.join('config')
     kubeconfig.write(MINICONFIG)
 
     mocker.patch.dict(os.environ, clear=True, KUBECONFIG=str(kubeconfig))
-    credentials = login_with_kubeconfig()
+    credentials = login_with_kubeconfig(settings=settings)
 
     assert credentials is not None
     assert credentials.server is None
@@ -123,9 +123,10 @@ def test_mini_kubeconfig_reading(tmpdir, mocker):
     assert credentials.password is None
     assert credentials.username is None
     assert credentials.default_namespace is None
+    assert credentials.trust_env is False
 
 
-def test_full_kubeconfig_reading_with_ssl_files(tmpdir, mocker):
+def test_full_kubeconfig_reading_with_ssl_files(tmpdir, mocker, settings):
     kubeconfig = tmpdir.join('config')
     kubeconfig.write('''
         kind: Config
@@ -157,7 +158,7 @@ def test_full_kubeconfig_reading_with_ssl_files(tmpdir, mocker):
     ''')
 
     mocker.patch.dict(os.environ, clear=True, KUBECONFIG=str(kubeconfig))
-    credentials = login_with_kubeconfig()
+    credentials = login_with_kubeconfig(settings=settings)
 
     assert credentials is not None
     assert credentials.server == 'https://hostname:1234/'
@@ -176,7 +177,7 @@ def test_full_kubeconfig_reading_with_ssl_files(tmpdir, mocker):
     assert credentials.default_namespace == 'ns'
 
 
-def test_full_kubeconfig_reading_with_ssl_data(tmpdir, mocker):
+def test_full_kubeconfig_reading_with_ssl_data(tmpdir, mocker, settings):
     kubeconfig = tmpdir.join('config')
     kubeconfig.write('''
         kind: Config
@@ -208,7 +209,7 @@ def test_full_kubeconfig_reading_with_ssl_data(tmpdir, mocker):
     ''')
 
     mocker.patch.dict(os.environ, clear=True, KUBECONFIG=str(kubeconfig))
-    credentials = login_with_kubeconfig()
+    credentials = login_with_kubeconfig(settings=settings)
 
     assert credentials is not None
     assert credentials.server == 'https://hostname:1234/'
@@ -227,7 +228,7 @@ def test_full_kubeconfig_reading_with_ssl_data(tmpdir, mocker):
     assert credentials.default_namespace == 'ns'
 
 
-def test_kubeconfig_with_provider_token(tmpdir, mocker):
+def test_kubeconfig_with_provider_token(tmpdir, mocker, settings):
     kubeconfig = tmpdir.join('config')
     kubeconfig.write('''
         kind: Config
@@ -248,13 +249,13 @@ def test_kubeconfig_with_provider_token(tmpdir, mocker):
     ''')
 
     mocker.patch.dict(os.environ, clear=True, KUBECONFIG=str(kubeconfig))
-    credentials = login_with_kubeconfig()
+    credentials = login_with_kubeconfig(settings=settings)
 
     assert credentials is not None
     assert credentials.token == 'provtkn'
 
 
-def test_merged_kubeconfigs_across_currentcontext(tmpdir, mocker):
+def test_merged_kubeconfigs_across_currentcontext(tmpdir, mocker, settings):
     kubeconfig1 = tmpdir.join('config1')
     kubeconfig1.write('''
         kind: Config
@@ -280,7 +281,7 @@ def test_merged_kubeconfigs_across_currentcontext(tmpdir, mocker):
     ''')
 
     mocker.patch.dict(os.environ, clear=True, KUBECONFIG=f'{kubeconfig1}{os.pathsep}{kubeconfig2}')
-    credentials = login_with_kubeconfig()
+    credentials = login_with_kubeconfig(settings=settings)
 
     assert credentials is not None
     assert credentials.default_namespace == 'ns'
@@ -288,7 +289,7 @@ def test_merged_kubeconfigs_across_currentcontext(tmpdir, mocker):
     assert credentials.token == 'tkn'
 
 
-def test_merged_kubeconfigs_across_contexts(tmpdir, mocker):
+def test_merged_kubeconfigs_across_contexts(tmpdir, mocker, settings):
     kubeconfig1 = tmpdir.join('config1')
     kubeconfig1.write('''
         kind: Config
@@ -314,7 +315,7 @@ def test_merged_kubeconfigs_across_contexts(tmpdir, mocker):
     ''')
 
     mocker.patch.dict(os.environ, clear=True, KUBECONFIG=f'{kubeconfig1}{os.pathsep}{kubeconfig2}')
-    credentials = login_with_kubeconfig()
+    credentials = login_with_kubeconfig(settings=settings)
 
     assert credentials is not None
     assert credentials.default_namespace == 'ns'
@@ -322,7 +323,7 @@ def test_merged_kubeconfigs_across_contexts(tmpdir, mocker):
     assert credentials.token == 'tkn'
 
 
-def test_merged_kubeconfigs_first_wins(tmpdir, mocker):
+def test_merged_kubeconfigs_first_wins(tmpdir, mocker, settings):
     kubeconfig1 = tmpdir.join('config1')
     kubeconfig1.write('''
         kind: Config
@@ -363,9 +364,21 @@ def test_merged_kubeconfigs_first_wins(tmpdir, mocker):
     ''')
 
     mocker.patch.dict(os.environ, clear=True, KUBECONFIG=f'{kubeconfig1}{os.pathsep}{kubeconfig2}')
-    credentials = login_with_kubeconfig()
+    credentials = login_with_kubeconfig(settings=settings)
 
     assert credentials is not None
     assert credentials.default_namespace == 'ns1'
     assert credentials.server == 'srv1'
     assert credentials.token == 'tkn1'
+
+
+def test_trust_env_is_propagated_from_settings(tmpdir, mocker, settings):
+    kubeconfig = tmpdir.join('config')
+    kubeconfig.write(MINICONFIG)
+
+    mocker.patch.dict(os.environ, clear=True, KUBECONFIG=str(kubeconfig))
+    settings.networking.trust_env = True
+    credentials = login_with_kubeconfig(settings=settings)
+
+    assert credentials is not None
+    assert credentials.trust_env is True

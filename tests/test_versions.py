@@ -1,4 +1,3 @@
-import json
 from typing import Any
 
 import pytest
@@ -17,22 +16,15 @@ def test_package_version():
     ('1.2rc', 'kopf/1.2rc'),
     (None, 'kopf/unknown'),
 ])
-async def test_http_user_agent_version(
-        aresponses, hostname, fake_vault, mocker, version, useragent):
-
+async def test_http_user_agent_version(kmock, fake_vault, mocker, version, useragent):
     mocker.patch('kopf._cogs.helpers.versions.version', version)
+    kmock['/'] << (lambda req: dict(req.headers))
 
     @authenticated
     async def get_it(url: str, *, context: APIContext) -> dict[str, Any]:
         response = await context.session.get(url)
         return await response.json()
 
-    async def responder(request):
-        return aresponses.Response(
-            content_type='application/json',
-            text=json.dumps(dict(request.headers)))
-
-    aresponses.add(hostname, '/', 'get', responder)
-    returned_headers = await get_it(f"http://{hostname}/")
+    returned_headers = await get_it(str(kmock.url))
     assert returned_headers['User-Agent'] == useragent
     await fake_vault.close()  # to prevent ResourceWarnings for unclosed connectors

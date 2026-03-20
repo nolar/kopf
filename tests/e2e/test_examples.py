@@ -106,7 +106,7 @@ def _sleep_till_stopword(
         interval: float | None = None,
 ) -> bool:
     patterns = list(patterns or [])
-    delay = delay or (10.0 if patterns else 1.0)
+    delay = delay or (10.0 if patterns else 3.0)
     interval = interval or min(1.0, max(0.1, delay / 10.))
     started = time.perf_counter()
     found = False
