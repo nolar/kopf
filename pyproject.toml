@@ -133,6 +133,7 @@ version_file = "kopf/_cogs/helpers/versions.py"
 [tool.mypy]
 strict = true
 packages = ["kopf"]
+exclude = ['(^|/)test_.*\.py$']
 python_version = "3.10"
 exclude_gitignore = true
 warn_unused_configs = true

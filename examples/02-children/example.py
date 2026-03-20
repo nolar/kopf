@@ -1,10 +1,12 @@
+from typing import Any
+
 import kopf
 import pykube
 import yaml
 
 
 @kopf.on.create('kopfexamples')
-def create_fn(spec, **kwargs):
+def create_fn(spec: kopf.Spec, **_: Any) -> Any:
 
     # Render the pod yaml with some spec fields used in the template.
     doc = yaml.safe_load(f"""

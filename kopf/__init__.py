@@ -186,7 +186,7 @@ from kopf._kits.webhooks import (
 )
 
 __all__ = [
-    'on', 'lifecycles', 'register', 'execute', 'daemon', 'timer', 'index',
+    'on', 'lifecycles', 'subhandler', 'register', 'execute', 'daemon', 'timer', 'index',
     'configure', 'LogFormat',
     'login_via_pykube',
     'login_via_client',
@@ -219,6 +219,7 @@ __all__ = [
     'WebhookServer',
     'WebhookK3dServer',
     'WebhookMinikubeServer',
+    'WebhookDockerDesktopServer',
     'WebhookNgrokTunnel',
     'WebhookAutoServer',
     'WebhookAutoTunnel',

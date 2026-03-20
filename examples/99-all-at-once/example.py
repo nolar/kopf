@@ -1,6 +1,7 @@
 import asyncio
 import pprint
 import time
+from typing import Any
 
 import kopf
 import pykube
@@ -8,13 +9,13 @@ import yaml
 
 
 @kopf.on.startup()
-async def startup_fn_simple(logger, **kwargs):
+async def startup_fn_simple(logger: kopf.Logger, **_: Any) -> None:
     logger.info('Starting in 1s...')
     await asyncio.sleep(1)
 
 
 @kopf.on.startup()
-async def startup_fn_retried(retry, logger, **kwargs):
+async def startup_fn_retried(retry: int, logger: kopf.Logger, **_: Any) -> None:
     if retry < 3:
         raise kopf.TemporaryError(f"Going to succeed in {3-retry}s", delay=1)
     else:
@@ -23,13 +24,13 @@ async def startup_fn_retried(retry, logger, **kwargs):
 
 
 @kopf.on.cleanup()
-async def cleanup_fn(logger, **kwargs):
+async def cleanup_fn(logger: kopf.Logger, **_: Any) -> None:
     logger.info('Cleaning up in 3s...')
     await asyncio.sleep(3)
 
 
 @kopf.on.create('kopfexamples')
-def create_1(body, meta, spec, status, **kwargs):
+def create_1(body: kopf.Body, **_: Any) -> Any:
     children = _create_children(owner=body)
 
     kopf.info(body, reason='AnyReason')
@@ -40,7 +41,7 @@ def create_1(body, meta, spec, status, **kwargs):
 
 
 @kopf.on.create('kopfexamples')
-def create_2(body, meta, spec, status, retry=None, **kwargs):
+def create_2(retry: int, **_: Any) -> Any:
     wait_for_something()  # specific for job2, e.g. an external API poller
 
     if not retry:
@@ -51,32 +52,32 @@ def create_2(body, meta, spec, status, retry=None, **kwargs):
 
 
 @kopf.on.update('kopfexamples')
-def update(body, meta, spec, status, old, new, diff, **kwargs):
+def update(diff: kopf.Diff, **_: Any) -> None:
     print('Handling the diff')
     pprint.pprint(list(diff))
 
 
 @kopf.on.field('kopfexamples', field='spec.lst')
-def update_lst(body, meta, spec, status, old, new, **kwargs):
+def update_lst(old: Any, new: Any, **_: Any) -> None:
     print(f'Handling the FIELD = {old} -> {new}')
 
 
 @kopf.on.delete('kopfexamples')
-def delete(body, meta, spec, status, **kwargs):
+def delete(**_: Any) -> None:
     pass
 
 
-def _create_children(owner):
+def _create_children(owner: kopf.Body) -> list[kopf.Body]:
     return []
 
 
-def wait_for_something():
+def wait_for_something() -> None:
     # Note: intentionally blocking from the asyncio point of view.
     time.sleep(1)
 
 
 @kopf.on.create('kopfexamples')
-def create_pod(**kwargs):
+def create_pod(**_: Any) -> None:
 
     # Render the pod yaml with some spec fields used in the template.
     pod_data = yaml.safe_load(f"""
@@ -101,7 +102,7 @@ def create_pod(**kwargs):
 
 
 @kopf.on.event('pods', labels={'application': 'kopf-example-10'})
-def example_pod_change(logger, **kwargs):
+def example_pod_change(logger: kopf.Logger, **_: Any) -> None:
     logger.info("This pod is special for us.")
 
 

@@ -1,3 +1,5 @@
+from typing import Any
+
 import kopf
 
 
@@ -6,23 +8,23 @@ class MyException(Exception):
 
 
 @kopf.on.create('kopfexamples')
-def instant_failure_with_only_a_message(**kwargs):
+def instant_failure_with_only_a_message(**_: Any) -> None:
     raise kopf.PermanentError("Fail once and for all.")
 
 
 @kopf.on.create('kopfexamples')
-def eventual_success_with_a_few_messages(retry, **kwargs):
+def eventual_success_with_a_few_messages(retry: int, **_: Any) -> None:
     if retry < 3:  # 0, 1, 2, 3
         raise kopf.TemporaryError("Expected recoverable error.", delay=1.0)
 
 
 @kopf.on.create('kopfexamples', retries=3, backoff=1.0)
-def eventual_failure_with_tracebacks(**kwargs):
+def eventual_failure_with_tracebacks(**_: Any) -> None:
     raise MyException("An error that is supposed to be recoverable.")
 
 
 @kopf.on.create('kopfexamples', errors=kopf.ErrorsMode.PERMANENT, backoff=1.0)
-def instant_failure_with_traceback(**kwargs):
+def instant_failure_with_traceback(**_: Any) -> None:
     raise MyException("An error that is supposed to be recoverable.")
 
 

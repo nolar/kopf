@@ -91,5 +91,5 @@ class Index(Mapping[_K, Store[_V]], Generic[_K, _V]):
     """
 
 
-# Only an abstract interface. Implementated in `~indexing.Indices`.
+# Only an abstract interface. Implemented in `~indexing.Indices`.
 Indices = Mapping[str, Index[Any, Any]]

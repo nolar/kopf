@@ -1,4 +1,5 @@
 import pathlib
+from typing import Any
 
 import kopf
 
@@ -6,7 +7,7 @@ ROOT = (pathlib.Path.cwd() / pathlib.Path(__file__)).parent.parent.parent
 
 
 @kopf.on.startup()
-def config(settings: kopf.OperatorSettings, **_):
+def config(settings: kopf.OperatorSettings, **_: Any) -> None:
 
     # Plain and simple local endpoint with an auto-generated certificate:
     settings.admission.server = kopf.WebhookServer()
@@ -47,7 +48,7 @@ def config(settings: kopf.OperatorSettings, **_):
 
 
 @kopf.on.validate('kex')
-def authhook(headers: kopf.Headers, sslpeer: kopf.SSLPeer, warnings: list[str], **_):
+def authhook(headers: kopf.Headers, sslpeer: kopf.SSLPeer, warnings: list[str], **_: Any) -> None:
     user_agent = headers.get('User-Agent', '(unidentified)')
     warnings.append(f"Accessing as user-agent: {user_agent}")
     if not sslpeer.get('subject'):
@@ -61,18 +62,18 @@ def authhook(headers: kopf.Headers, sslpeer: kopf.SSLPeer, warnings: list[str], 
 
 
 @kopf.on.validate('kex')
-def validate1(spec, dryrun, **_):
+def validate1(spec: kopf.Spec, dryrun: bool, **_: Any) -> None:
     if not dryrun and spec.get('field') == 'wrong':
         raise kopf.AdmissionError("Meh! I don't like it. Change the field.")
 
 
 @kopf.on.validate('kex', field='spec.field', value='not-allowed')
-def validate2(**_):
+def validate2(**_: Any) -> None:
     raise kopf.AdmissionError("I'm too lazy anyway. Go away!", code=555)
 
 
 @kopf.on.validate('kex', subresource='*')
-def validate_subresources(spec, subresource, status, warnings: list[str], **_):
+def validate_subresources(spec: kopf.Spec, subresource: str | None, status: kopf.Status, warnings: list[str], **_: Any) -> None:
     if subresource == 'status' and status.get('field') != spec.get('field'):
         raise kopf.AdmissionError("status.field MUST be equal to spec.field!")
     elif subresource is None and status.get('field') != spec.get('field'):
@@ -81,7 +82,7 @@ def validate_subresources(spec, subresource, status, warnings: list[str], **_):
 
 
 @kopf.on.mutate('kex', labels={'somelabel': 'somevalue'})
-def mutate1(patch: kopf.Patch, **_):
+def mutate1(patch: kopf.Patch, **_: Any) -> None:
     patch.spec['injected'] = 123
 
 
