@@ -14,14 +14,12 @@ from typing import Any, Protocol, TypeVar
 
 from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import typedefs
-from kopf._cogs.structs import bodies, diffs, ephemera, patches, references, reviews
+from kopf._cogs.structs import bodies, diffs, patches, references, reviews
 from kopf._core.actions import invocation
 from kopf._core.intents import stoppers
 
 
-# TODO:1: Split to specialised LoginFn, ProbeFn, StartupFn, etc. -- with different result types.
-# TODO:2: Try using ParamSpec to support index type checking in callbacks
-#         when PEP 612 is released (https://www.python.org/dev/peps/pep-0612/)
+# TODO: Split to specialised LoginFn, ProbeFn, StartupFn, etc. -- with different result types.
 class ActivityFn(Protocol):
     def __call__(
         self,
@@ -35,6 +33,7 @@ class ActivityFn(Protocol):
         param: Any = ...,
         **kwargs: Any,
     ) -> invocation.SyncOrAsync[object | None]: ...
+
 
 class IndexingFn(Protocol):
     def __call__(
@@ -56,6 +55,7 @@ class IndexingFn(Protocol):
         param: Any = ...,
         **kwargs: Any,
     ) -> invocation.SyncOrAsync[object | None]: ...
+
 
 class WatchingFn(Protocol):
     def __call__(
@@ -79,6 +79,7 @@ class WatchingFn(Protocol):
         param: Any = ...,
         **kwargs: Any,
     ) -> invocation.SyncOrAsync[object | None]: ...
+
 
 class ChangingFn(Protocol):
     def __call__(
@@ -108,6 +109,7 @@ class ChangingFn(Protocol):
         **kwargs: Any,
     ) -> invocation.SyncOrAsync[object | None]: ...
 
+
 class WebhookFn(Protocol):
     def __call__(
         self,
@@ -135,6 +137,7 @@ class WebhookFn(Protocol):
         **kwargs: Any,
     ) -> invocation.SyncOrAsync[object | None]: ...
 
+
 class DaemonFn(Protocol):
     def __call__(
         self,
@@ -160,6 +163,7 @@ class DaemonFn(Protocol):
         **kwargs: Any,
     ) -> invocation.SyncOrAsync[object | None]: ...
 
+
 class TimerFn(Protocol):
     def __call__(
         self,
@@ -180,6 +184,29 @@ class TimerFn(Protocol):
         param: Any = ...,
         **kwargs: Any,
     ) -> invocation.SyncOrAsync[object | None]: ...
+
+
+class DelayFn(Protocol):
+    def __call__(
+        self,
+        *,
+        annotations: bodies.Annotations,
+        labels: bodies.Labels,
+        body: bodies.Body,
+        meta: bodies.Meta,
+        spec: bodies.Spec,
+        status: bodies.Status,
+        resource: references.Resource,
+        uid: str | None,
+        name: str | None,
+        namespace: str | None,
+        patch: patches.Patch,
+        logger: typedefs.Logger,
+        memo: Any,
+        param: Any = ...,
+        **kwargs: Any,
+    ) -> float: ...  # strictly sync, no async!
+
 
 class WhenFilterFn(Protocol):
     def __call__(
@@ -205,7 +232,8 @@ class WhenFilterFn(Protocol):
         memo: Any,
         param: Any = ...,
         **kwargs: Any,
-    ) -> bool: ...
+    ) -> bool: ...  # strictly sync, no async!
+
 
 class MetaFilterFn(Protocol):
     def __call__(
@@ -228,7 +256,8 @@ class MetaFilterFn(Protocol):
         memo: Any,
         param: Any = ...,
         **kwargs: Any,
-    ) -> bool: ...
+    ) -> bool: ...  # strictly sync, no async!
+
 
 SpawningFn = DaemonFn | TimerFn
 _FnT = TypeVar('_FnT', WhenFilterFn, MetaFilterFn)
