@@ -1,5 +1,6 @@
 import asyncio
 import time
+from typing import Any
 
 import kopf
 
@@ -7,7 +8,8 @@ import kopf
 # Sync daemons in threads are non-interruptable, they must check for the `stopped` flag.
 # This daemon exits after 3 attempts and then 30 seconds of running (unless stopped).
 @kopf.daemon('kopfexamples', backoff=3)
-def background_sync(stopped: kopf.DaemonStopped, spec, logger, retry, patch, **_):
+def background_sync(stopped: kopf.DaemonStopped, spec: kopf.Spec, logger: kopf.Logger,
+                    retry: int, patch: kopf.Patch, **_: Any) -> None:
     if retry < 3:
         patch.status['message'] = f"Failed {retry+1} times."
         raise kopf.TemporaryError("Simulated failure.", delay=1)
@@ -24,7 +26,7 @@ def background_sync(stopped: kopf.DaemonStopped, spec, logger, retry, patch, **_
 # This daemon runs forever (until stopped, i.e. cancelled). Yet fails to start for 3 first times.
 @kopf.daemon('kopfexamples', backoff=3, cancellation_backoff=1.0, cancellation_timeout=0.5,
              annotations={'someannotation': 'somevalue'})
-async def background_async(spec, logger, retry, **_):
+async def background_async(spec: kopf.Spec, logger: kopf.Logger, retry: int, **_: Any) -> None:
     if retry < 3:
         raise kopf.TemporaryError("Simulated failure.", delay=1)
 

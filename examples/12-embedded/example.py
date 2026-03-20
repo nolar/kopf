@@ -2,25 +2,26 @@ import asyncio
 import contextlib
 import threading
 import time
+from typing import Any
 
 import kopf
-import pykube
+import pykube.objects
 
 
 @kopf.on.create('kopfexamples')
-def create_fn(memo: kopf.Memo, **kwargs):
-    print(memo.create_tpl.format(**kwargs))  # type: ignore
+def create_fn(memo: kopf.Memo, **kwargs: Any) -> None:
+    print(memo.create_tpl.format(**kwargs))
 
 
 @kopf.on.delete('kopfexamples')
-def delete_fn(memo: kopf.Memo, **kwargs):
-    print(memo.delete_tpl.format(**kwargs))  # type: ignore
+def delete_fn(memo: kopf.Memo, **kwargs: Any) -> None:
+    print(memo.delete_tpl.format(**kwargs))
 
 
 def kopf_thread(
         ready_flag: threading.Event,
         stop_flag: threading.Event,
-):
+) -> None:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     with contextlib.closing(loop):
@@ -37,7 +38,7 @@ def kopf_thread(
         ))
 
 
-def main(steps=3):
+def main(steps: int = 3) -> None:
 
     # Start the operator and let it initialise.
     print(f"Starting the main app.")
@@ -64,13 +65,13 @@ def main(steps=3):
     thread.join()
 
 
-class KopfExample(pykube.objects.NamespacedAPIObject):
+class KopfExample(pykube.objects.NamespacedAPIObject):  # type: ignore[misc]
     version = "kopf.dev/v1"
     endpoint = "kopfexamples"
     kind = "KopfExample"
 
 
-def _create_object(step):
+def _create_object(step: int) -> None:
     try:
         api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         kex = KopfExample(api, dict(
@@ -89,7 +90,7 @@ def _create_object(step):
             raise
 
 
-def _delete_object(step):
+def _delete_object(step: int) -> None:
     try:
         api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         kex = KopfExample.objects(api, namespace='default').get_by_name(f'kopf-example-{step}')
