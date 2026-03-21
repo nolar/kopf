@@ -17,7 +17,6 @@ The process is intentionally split into multiple packages:
   belong to neither the reactor, nor the engines, nor the client wrappers.
 """
 import logging
-from collections.abc import Mapping, MutableMapping
 from typing import NoReturn
 
 from kopf._cogs.aiokits import aiotime
@@ -36,7 +35,7 @@ class ActivityError(Exception):
             self,
             msg: str,
             *,
-            outcomes: Mapping[ids.HandlerId, execution.Outcome],
+            outcomes: dict[ids.HandlerId, execution.Outcome],
     ) -> None:
         super().__init__(msg)
         self.outcomes = outcomes
@@ -111,7 +110,7 @@ async def run_activity(
         activity: causes.Activity,
         indices: ephemera.Indices,
         memo: ephemera.AnyMemo,
-) -> Mapping[ids.HandlerId, execution.Result]:
+) -> dict[ids.HandlerId, execution.Result]:
     logger = logging.getLogger(f'kopf.activities.{activity.value}')
 
     # For the activity handlers, we have neither bodies, nor patches, just the state.
@@ -124,7 +123,7 @@ async def run_activity(
     )
     handlers = registry._activities.get_handlers(activity=activity)
     state = progression.State.from_scratch().with_handlers(handlers)
-    outcomes: MutableMapping[ids.HandlerId, execution.Outcome] = {}
+    outcomes: dict[ids.HandlerId, execution.Outcome] = {}
     while not state.done:
         current_outcomes = await execution.execute_handlers_once(
             lifecycle=lifecycle,
@@ -133,7 +132,7 @@ async def run_activity(
             cause=cause,
             state=state,
         )
-        outcomes.update(current_outcomes)
+        outcomes |= current_outcomes
         state = state.with_outcomes(current_outcomes)
         await aiotime.sleep(state.delay)
 
