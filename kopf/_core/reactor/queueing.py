@@ -26,7 +26,6 @@ import asyncio
 import contextlib
 import enum
 import logging
-from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, NamedTuple, NewType, Protocol
 
 from kopf._cogs.aiokits import aiotasks, aiotoggles
@@ -70,7 +69,6 @@ class Stream(NamedTuple):
 
 ObjectUid = NewType('ObjectUid', str)
 ObjectRef = tuple[references.Resource, ObjectUid]
-Streams = MutableMapping[ObjectRef, Stream]
 
 
 def get_uid(raw_event: bodies.RawEvent) -> ObjectUid:
@@ -172,7 +170,7 @@ async def watcher(
     signaller = asyncio.Condition()
     scheduler = aiotasks.Scheduler(limit=settings.queueing.worker_limit,
                                    exception_handler=exception_handler)
-    streams: Streams = {}
+    streams: dict[ObjectRef, Stream] = {}
 
     try:
         # Either use the existing object's queue, or create a new one together with the per-object job.
@@ -267,7 +265,7 @@ async def worker(
         processor: WatchStreamProcessor,
         resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
         operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
-        streams: Streams,
+        streams: dict[ObjectRef, Stream],
         key: ObjectRef,
 ) -> None:
     """
@@ -376,7 +374,7 @@ async def _wait_for_depletion(
         signaller: asyncio.Condition,
         scheduler: aiotasks.Scheduler,
         settings: configuration.OperatorSettings,
-        streams: Streams,
+        streams: dict[ObjectRef, Stream],
 ) -> None:
 
     # Notify all the workers to finish now. Wake them up if they are waiting in the queue-getting.
