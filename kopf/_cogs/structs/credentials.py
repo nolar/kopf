@@ -34,7 +34,7 @@ import os
 import random
 import ssl
 import tempfile
-from collections.abc import AsyncIterable, AsyncIterator, Callable, Mapping
+from collections.abc import AsyncIterable, AsyncIterator, Callable
 from typing import NewType, TypeVar, cast
 
 import aiohttp
@@ -239,7 +239,7 @@ class Vault(AsyncIterable[tuple[VaultKey, KubeContext]]):
 
     def __init__(
             self,
-            __src: Mapping[str, object] | None = None,
+            __src: dict[str, object] | None = None,
     ) -> None:
         super().__init__()
         self._current = {}
@@ -446,7 +446,7 @@ class Vault(AsyncIterable[tuple[VaultKey, KubeContext]]):
 
     async def populate(
             self,
-            __src: Mapping[str, object],
+            __src: dict[str, object],
     ) -> None:
         """
         Add newly retrieved credentials.
@@ -525,7 +525,7 @@ class Vault(AsyncIterable[tuple[VaultKey, KubeContext]]):
 
     def _update_converted(
             self,
-            __src: Mapping[str, object],
+            __src: dict[str, object],
     ) -> None:
         for key, info in __src.items():
             key = VaultKey(str(key))

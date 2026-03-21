@@ -10,7 +10,7 @@ import contextlib
 import contextvars
 import functools
 import inspect
-from collections.abc import Callable, Coroutine, Iterable, Iterator, Mapping
+from collections.abc import Callable, Coroutine, Iterable, Iterator
 from typing import Any, TypeAlias, TypeVar, final
 
 from kopf._cogs.configs import configuration
@@ -38,35 +38,35 @@ class Kwargable:
     """
 
     @property
-    def _kwargs(self) -> Mapping[str, Any]:
+    def _kwargs(self) -> dict[str, Any]:
         return {}
 
     @property
-    def _sync_kwargs(self) -> Mapping[str, Any]:
+    def _sync_kwargs(self) -> dict[str, Any]:
         return self._kwargs
 
     @property
-    def _async_kwargs(self) -> Mapping[str, Any]:
+    def _async_kwargs(self) -> dict[str, Any]:
         return self._kwargs
 
     @property
-    def _super_kwargs(self) -> Mapping[str, Any]:
+    def _super_kwargs(self) -> dict[str, Any]:
         return {}
 
     @final
     @property
-    def kwargs(self) -> Mapping[str, Any]:
-        return dict(self._kwargs) | dict(self._super_kwargs)
+    def kwargs(self) -> dict[str, Any]:
+        return self._kwargs | self._super_kwargs
 
     @final
     @property
-    def sync_kwargs(self) -> Mapping[str, Any]:
-        return dict(self._sync_kwargs) | dict(self._super_kwargs)
+    def sync_kwargs(self) -> dict[str, Any]:
+        return self._sync_kwargs | self._super_kwargs
 
     @final
     @property
-    def async_kwargs(self) -> Mapping[str, Any]:
-        return dict(self._async_kwargs) | dict(self._super_kwargs)
+    def async_kwargs(self) -> dict[str, Any]:
+        return self._async_kwargs | self._super_kwargs
 
 
 @contextlib.contextmanager
@@ -92,7 +92,7 @@ async def invoke(
         *,
         settings: configuration.OperatorSettings | None = None,
         kwargsrc: Kwargable | None = None,
-        kwargs: Mapping[str, Any] | None = None,  # includes param, retry, started, runtime, etc.
+        kwargs: dict[str, Any] | None = None,  # includes param, retry, started, runtime, etc.
 ) -> Any:
     """
     Invoke a single function, but safely for the main asyncio process.

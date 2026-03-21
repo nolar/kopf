@@ -4,7 +4,7 @@ import itertools
 import json
 import ssl
 import urllib.parse
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator
 from typing import Any
 
 import aiohttp
@@ -48,7 +48,7 @@ async def request(
         *,
         settings: configuration.OperatorSettings,
         payload: object | None = None,
-        headers: Mapping[str, str] | None = None,
+        headers: dict[str, str] | None = None,
         timeout: aiohttp.ClientTimeout | None = None,
         context: auth.APIContext | None = None,  # injected by the decorator
         logger: typedefs.Logger,
@@ -136,7 +136,7 @@ async def get(
         *,
         settings: configuration.OperatorSettings,
         payload: object | None = None,
-        headers: Mapping[str, str] | None = None,
+        headers: dict[str, str] | None = None,
         timeout: aiohttp.ClientTimeout | None = None,
         logger: typedefs.Logger,
 ) -> Any:
@@ -158,7 +158,7 @@ async def post(
         *,
         settings: configuration.OperatorSettings,
         payload: object | None = None,
-        headers: Mapping[str, str] | None = None,
+        headers: dict[str, str] | None = None,
         timeout: aiohttp.ClientTimeout | None = None,
         logger: typedefs.Logger,
 ) -> Any:
@@ -180,7 +180,7 @@ async def patch(
         *,
         settings: configuration.OperatorSettings,
         payload: object | None = None,
-        headers: Mapping[str, str] | None = None,
+        headers: dict[str, str] | None = None,
         timeout: aiohttp.ClientTimeout | None = None,
         logger: typedefs.Logger,
 ) -> Any:
@@ -202,7 +202,7 @@ async def delete(
         *,
         settings: configuration.OperatorSettings,
         payload: object | None = None,
-        headers: Mapping[str, str] | None = None,
+        headers: dict[str, str] | None = None,
         timeout: aiohttp.ClientTimeout | None = None,
         logger: typedefs.Logger,
 ) -> Any:
@@ -224,7 +224,7 @@ async def stream(
         *,
         settings: configuration.OperatorSettings,
         payload: object | None = None,
-        headers: Mapping[str, str] | None = None,
+        headers: dict[str, str] | None = None,
         timeout: aiohttp.ClientTimeout | None = None,
         stopper: aiotasks.Future | None = None,
         logger: typedefs.Logger,

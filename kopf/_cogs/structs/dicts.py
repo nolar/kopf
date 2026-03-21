@@ -64,7 +64,7 @@ def resolve_obj(
                 case collections.abc.Mapping():
                     result = result[key]
                 case thirdparty.KubernetesModel():
-                    attrmap: Mapping[str, str] = getattr(result, 'attribute_map', {})
+                    attrmap: dict[str, str] = getattr(result, 'attribute_map', {})
                     attrs = [attr for attr, schema_key in attrmap.items() if schema_key == key]
                     key = attrs[0] if attrs else key
                     result = getattr(result, key)

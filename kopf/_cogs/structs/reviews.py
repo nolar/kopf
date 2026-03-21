@@ -1,13 +1,13 @@
 """
 Admission reviews: requests & responses, also the webhook server protocols.
 """
-from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
+from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any, Literal, Protocol, TypedDict
 
 from kopf._cogs.structs import bodies
 
-Headers = Mapping[str, str]
-SSLPeer = Mapping[str, Any]
+Headers = dict[str, str]
+SSLPeer = dict[str, Any]
 
 Operation = Literal['CREATE', 'UPDATE', 'DELETE', 'CONNECT']
 
@@ -126,8 +126,8 @@ class WebhookFn(Protocol):
             request: Request,
             *,
             webhook: str | None = None,
-            headers: Mapping[str, str] | None = None,
-            sslpeer: Mapping[str, Any] | None = None,
+            headers: Headers | None = None,
+            sslpeer: SSLPeer | None = None,
     ) -> Awaitable[Response]:
         ...
 

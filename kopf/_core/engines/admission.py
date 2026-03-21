@@ -6,7 +6,7 @@ import json
 import logging
 import re
 import urllib.parse
-from collections.abc import Collection, Iterable, Mapping
+from collections.abc import Collection, Iterable
 from typing import Any, AsyncContextManager, Literal, TypedDict
 
 from kopf._cogs.aiokits import aiovalues
@@ -94,8 +94,8 @@ async def serve_admission_request(
         request: reviews.Request,
         *,
         # Optional for webhook servers that can recognise this information:
-        headers: Mapping[str, str] | None = None,
-        sslpeer: Mapping[str, Any] | None = None,
+        headers: reviews.Headers | None = None,
+        sslpeer: reviews.SSLPeer | None = None,
         webhook: ids.HandlerId | None = None,
         reason: causes.WebhookType | None = None,  # TODO: undocumented: requires typing clarity!
         # Injected by partial() from spawn_tasks():
@@ -207,7 +207,7 @@ def find_resource(
 def build_response(
         *,
         request: reviews.Request,
-        outcomes: Mapping[ids.HandlerId, execution.Outcome],
+        outcomes: dict[ids.HandlerId, execution.Outcome],
         warnings: Collection[str],
         jsonpatch: patches.JSONPatch,
 ) -> reviews.Response:
@@ -451,7 +451,7 @@ class MatchExpression(TypedDict, total=False):
     values: Collection[str] | None
 
 
-def _build_labels_selector(labels: filters.MetaFilter | None) -> Mapping[str, Any] | None:
+def _build_labels_selector(labels: filters.MetaFilter | None) -> dict[str, Any] | None:
     # https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#resources-that-support-set-based-requirements
     exprs: Collection[MatchExpression] = [
         {'key': key, 'operator': 'Exists'} if val is filters.MetaFilterToken.PRESENT else

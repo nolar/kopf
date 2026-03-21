@@ -19,7 +19,7 @@ must be kept together with their owning modules rather than mirrored in structs.
 """
 import copy
 import dataclasses
-from collections.abc import Iterator, MutableMapping
+from collections.abc import Iterator
 
 from kopf._cogs.structs import bodies, ephemera, patches
 from kopf._core.actions import throttlers
@@ -62,7 +62,7 @@ class ResourceMemories(admission.MemoGetter, daemons.DaemonsMemoriesIterator):
     are handled in parallel though), so the same key will not be added/deleted
     in the background during the operation, so the locking is not needed.
     """
-    _items: MutableMapping[str, ResourceMemory]
+    _items: dict[str, ResourceMemory]
 
     def __init__(self) -> None:
         super().__init__()
