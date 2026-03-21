@@ -4,7 +4,7 @@ import enum
 import fnmatch
 import re
 import urllib.parse
-from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, MutableMapping
+from collections.abc import Callable, Collection, Iterable, Iterator, Mapping
 from typing import NewType
 
 # A namespace specification with globs, negations, and some minimal syntax; see `match_namespace()`.
@@ -439,7 +439,7 @@ class Backbone(Mapping[Selector, Resource]):
 
     def __init__(self) -> None:
         super().__init__()
-        self._items: MutableMapping[Selector, Resource] = {}
+        self._items: dict[Selector, Resource] = {}
         self._revised = asyncio.Condition()
         self.selectors = [
             NAMESPACES, EVENTS, CRDS,

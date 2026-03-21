@@ -230,7 +230,7 @@ class State(execution.State):
     reflect the changes in the object's status. A new state is created every
     time some changes/outcomes are merged into the current state.
     """
-    _states: Mapping[ids.HandlerId, HandlerState]
+    _states: dict[ids.HandlerId, HandlerState]
 
     # Eliminate even the smallest microsecond-scale deviations by using the shared base time.
     # The deviations can come from UTC wall-clock time slowly moving during the run (CPU overhead).
@@ -238,7 +238,7 @@ class State(execution.State):
 
     def __init__(
             self,
-            __src: Mapping[ids.HandlerId, HandlerState],
+            __src: dict[ids.HandlerId, HandlerState],
             *,
             basetime: datetime.datetime,
             purpose: str | None = None,
