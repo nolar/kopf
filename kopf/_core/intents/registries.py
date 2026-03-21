@@ -14,8 +14,7 @@ of the handlers to be executed on each reaction cycle.
 import abc
 import enum
 import functools
-from collections.abc import Callable, Collection, Container, Iterable, \
-                            Iterator, Mapping, MutableMapping, Sequence
+from collections.abc import Callable, Collection, Container, Iterable, Iterator, Mapping, Sequence
 from types import FunctionType, MethodType
 from typing import Any, Generic, TypeVar, cast
 
@@ -397,7 +396,7 @@ def prematch(
         cause: causes.ResourceCause,
 ) -> bool:
     # Kwargs are lazily evaluated on the first _actual_ use, and shared for all filters since then.
-    kwargs: MutableMapping[str, Any] = {}
+    kwargs: dict[str, Any] = {}
     return (
         _matches_resource(handler, cause.resource) and
         _matches_subresource(handler, cause) and
@@ -413,7 +412,7 @@ def match(
         cause: causes.ResourceCause,
 ) -> bool:
     # Kwargs are lazily evaluated on the first _actual_ use, and shared for all filters since then.
-    kwargs: MutableMapping[str, Any] = {}
+    kwargs: dict[str, Any] = {}
     return (
         _matches_resource(handler, cause.resource) and
         _matches_subresource(handler, cause) and
@@ -448,7 +447,7 @@ def _matches_subresource(
 def _matches_labels(
         handler: handlers.ResourceHandler,
         cause: causes.ResourceCause,
-        kwargs: MutableMapping[str, Any],
+        kwargs: dict[str, Any],
 ) -> bool:
     return (not handler.labels or
             _matches_metadata(pattern=handler.labels,
@@ -459,7 +458,7 @@ def _matches_labels(
 def _matches_annotations(
         handler: handlers.ResourceHandler,
         cause: causes.ResourceCause,
-        kwargs: MutableMapping[str, Any],
+        kwargs: dict[str, Any],
 ) -> bool:
     return (not handler.annotations or
             _matches_metadata(pattern=handler.annotations,
@@ -471,7 +470,7 @@ def _matches_metadata(
         *,
         pattern: filters.MetaFilter,  # from the handler
         content: Mapping[str, str],  # from the body
-        kwargs: MutableMapping[str, Any],
+        kwargs: dict[str, Any],
         cause: causes.ResourceCause,
 ) -> bool:
     for key, value in pattern.items():
@@ -481,7 +480,7 @@ def _matches_metadata(
             continue
         elif callable(value):
             if not kwargs:
-                kwargs.update(cause.kwargs)
+                kwargs |= cause.kwargs
             if value(content.get(key, None), **kwargs):
                 continue
             else:
@@ -498,13 +497,13 @@ def _matches_metadata(
 def _matches_field_values(
         handler: handlers.ResourceHandler,
         cause: causes.ResourceCause,
-        kwargs: MutableMapping[str, Any],
+        kwargs: dict[str, Any],
 ) -> bool:
     if not handler.field:
         return True
 
     if not kwargs:
-        kwargs.update(cause.kwargs)
+        kwargs |= cause.kwargs
 
     absent = _UNSET.token  # or any other identifyable object
     if isinstance(cause, causes.ChangingCause):
@@ -528,7 +527,7 @@ def _matches_field_values(
 def _matches_field_changes(
         handler: handlers.ResourceHandler,
         cause: causes.ResourceCause,
-        kwargs: MutableMapping[str, Any],
+        kwargs: dict[str, Any],
 ) -> bool:
     if not isinstance(handler, handlers.ChangingHandler):
         return True
@@ -538,7 +537,7 @@ def _matches_field_changes(
         return True
 
     if not kwargs:
-        kwargs.update(cause.kwargs)
+        kwargs |= cause.kwargs
 
     absent = _UNSET.token  # or any other identifyable object
     old = dicts.resolve(cause.old, handler.field, absent)
@@ -564,12 +563,12 @@ def _matches_field_changes(
 def _matches_filter_callback(
         handler: handlers.ResourceHandler,
         cause: causes.ResourceCause,
-        kwargs: MutableMapping[str, Any],
+        kwargs: dict[str, Any],
 ) -> bool:
     if handler.when is None:
         return True
     if not kwargs:
-        kwargs.update(cause.kwargs)
+        kwargs |= cause.kwargs
     return handler.when(**kwargs)
 
 
