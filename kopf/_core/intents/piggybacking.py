@@ -89,11 +89,7 @@ def login_via_client(
                                          "neither in-cluster, nor via kubeconfig.")
 
     # We do not even try to understand how it works and why. Just load it, and extract the results.
-    # For kubernetes client >= 12.0.0 use the new 'get_default_copy' method
-    if callable(getattr(kubernetes.client.Configuration, 'get_default_copy', None)):
-        config = kubernetes.client.Configuration.get_default_copy()
-    else:
-        config = kubernetes.client.Configuration()
+    config = kubernetes.client.Configuration.get_default_copy()
 
     # For auth-providers, this method is monkey-patched with the auth-provider's one.
     # We need the actual auth-provider's token, so we call it instead of accessing api_key.
@@ -152,11 +148,7 @@ async def login_via_async_client(
                                          "neither in-cluster, nor via kubeconfig.")
 
     # We do not even try to understand how it works and why. Just load it, and extract the results.
-    # For kubernetes client >= 12.0.0 use the new 'get_default_copy' method
-    if callable(getattr(kubernetes_asyncio.client.Configuration, 'get_default_copy', None)):
-        config = kubernetes_asyncio.client.Configuration.get_default_copy()
-    else:
-        config = kubernetes_asyncio.client.Configuration()
+    config = kubernetes_asyncio.client.Configuration.get_default_copy()
 
     # For auth-providers, this method is monkey-patched with the auth-provider's one.
     # We need the actual auth-provider's token, so we call it instead of accessing api_key.

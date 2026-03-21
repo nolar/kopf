@@ -48,7 +48,7 @@ kopf = "kopf.cli:main"
 [project.optional-dependencies]
 full-auth = [
     "pykube-ng",            # 4.90 MB
-    "kubernetes",           # 40.0 MB (!)
+    "kubernetes>=12.0.0",   # 40.0 MB (!)
 ]
 uvloop = [
     "uvloop",               # 9.00 MB
@@ -108,8 +108,8 @@ lint = [
     "isort",
     "pre-commit",
     # All extras — for proper type-checks of imports (only for linting, not for testing!).
-    "kubernetes",
-    "kubernetes-asyncio",
+    "kubernetes>=12.0.0",
+    "kubernetes-asyncio>=12.0.0",
     "pykube-ng",
     "oscrypto",
     "certbuilder",
