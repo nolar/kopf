@@ -12,7 +12,7 @@ from kopf._cogs.structs import bodies, dicts
 from kopf._core.actions import execution
 from kopf._core.intents import causes
 
-K8sObject: TypeAlias = MutableMapping[Any, Any] | thirdparty.PykubeObject | thirdparty.KubernetesModel
+K8sObject: TypeAlias = MutableMapping[Any, Any] | thirdparty.PykubeObject | thirdparty.KubernetesModelSync | thirdparty.KubernetesModelAsync
 K8sObjects: TypeAlias = K8sObject | Iterable[K8sObject]
 
 
@@ -44,14 +44,29 @@ def append_owner_reference(
                 refs = obj.setdefault('metadata', {}).setdefault('ownerReferences', [])
                 if not any(ref.get('uid') == owner_ref['uid'] for ref in refs):
                     refs.append(owner_ref)
-            case thirdparty.KubernetesModel():
+            case thirdparty.KubernetesModelSync():
                 if obj.metadata is None:
-                    obj.metadata = thirdparty.V1ObjectMeta()
+                    obj.metadata = thirdparty.V1ObjectMetaSync()
                 if obj.metadata.owner_references is None:
                     obj.metadata.owner_references = []
                 refs = obj.metadata.owner_references
                 if not any(ref.uid == owner_ref['uid'] for ref in refs):
-                    refs.append(thirdparty.V1OwnerReference(
+                    refs.append(thirdparty.V1OwnerReferenceSync(
+                        api_version=owner_ref['apiVersion'],
+                        kind=owner_ref['kind'],
+                        name=owner_ref['name'],
+                        uid=owner_ref['uid'],
+                        controller=owner_ref['controller'],
+                        block_owner_deletion=owner_ref['blockOwnerDeletion'],
+                    ))
+            case thirdparty.KubernetesModelAsync():
+                if obj.metadata is None:
+                    obj.metadata = thirdparty.V1ObjectMetaAsync()
+                if obj.metadata.owner_references is None:
+                    obj.metadata.owner_references = []
+                refs = obj.metadata.owner_references
+                if not any(ref.uid == owner_ref['uid'] for ref in refs):
+                    refs.append(thirdparty.V1OwnerReferenceAsync(
                         api_version=owner_ref['apiVersion'],
                         kind=owner_ref['kind'],
                         name=owner_ref['name'],
@@ -82,9 +97,17 @@ def remove_owner_reference(
                 refs = obj.setdefault('metadata', {}).setdefault('ownerReferences', [])
                 if any(ref.get('uid') == owner_ref['uid'] for ref in refs):
                     refs[:] = [ref for ref in refs if ref.get('uid') != owner_ref['uid']]
-            case thirdparty.KubernetesModel():
+            case thirdparty.KubernetesModelSync():
                 if obj.metadata is None:
-                    obj.metadata = thirdparty.V1ObjectMeta()
+                    obj.metadata = thirdparty.V1ObjectMetaSync()
+                if obj.metadata.owner_references is None:
+                    obj.metadata.owner_references = []
+                refs = obj.metadata.owner_references
+                if any(ref.uid == owner_ref['uid'] for ref in refs):
+                    refs[:] = [ref for ref in refs if ref.uid != owner_ref['uid']]
+            case thirdparty.KubernetesModelAsync():
+                if obj.metadata is None:
+                    obj.metadata = thirdparty.V1ObjectMetaAsync()
                 if obj.metadata.owner_references is None:
                     obj.metadata.owner_references = []
                 refs = obj.metadata.owner_references
@@ -123,9 +146,15 @@ def label(
         match obj:
             case collections.abc.MutableMapping():
                 obj_labels = obj.setdefault('metadata', {}).setdefault('labels', {})
-            case thirdparty.KubernetesModel():
+            case thirdparty.KubernetesModelSync():
                 if obj.metadata is None:
-                    obj.metadata = thirdparty.V1ObjectMeta()
+                    obj.metadata = thirdparty.V1ObjectMetaSync()
+                if obj.metadata.labels is None:
+                    obj.metadata.labels = {}
+                obj_labels = obj.metadata.labels
+            case thirdparty.KubernetesModelAsync():
+                if obj.metadata is None:
+                    obj.metadata = thirdparty.V1ObjectMetaAsync()
                 if obj.metadata.labels is None:
                     obj.metadata.labels = {}
                 obj_labels = obj.metadata.labels
@@ -185,9 +214,9 @@ def harmonize_naming(
                         obj.setdefault('metadata', {})['generateName'] = f'{name}-'
                         if 'name' in obj['metadata']:
                             del obj['metadata']['name']
-            case thirdparty.KubernetesModel():
+            case thirdparty.KubernetesModelSync():
                 if obj.metadata is None:
-                    obj.metadata = thirdparty.V1ObjectMeta()
+                    obj.metadata = thirdparty.V1ObjectMetaSync()
                 noname = obj.metadata.name is None and obj.metadata.generate_name is None
                 if forced or noname:
                     if strict:
@@ -198,6 +227,21 @@ def harmonize_naming(
                         obj.metadata.generate_name = f'{name}-'
                         if obj.metadata.name is not None:
                             obj.metadata.name = None
+            case thirdparty.KubernetesModelAsync():
+                if obj.metadata is None:
+                    obj.metadata = thirdparty.V1ObjectMetaAsync()
+                noname = obj.metadata.name is None and obj.metadata.generate_name is None
+                if forced or noname:
+                    # Types: we are right, kubernetes_asyncio is wrong: it declares names as str,
+                    # while the initial values are None, and there is no way to reset the names.
+                    if strict:
+                        obj.metadata.name = name
+                        if obj.metadata.generate_name is not None:
+                            obj.metadata.generate_name = None  # type: ignore[assignment]
+                    else:
+                        obj.metadata.generate_name = f'{name}-'
+                        if obj.metadata.name is not None:
+                            obj.metadata.name = None  # type: ignore[assignment]
             case _:
                 raise TypeError(f"K8s object class is not supported: {type(obj)}")
 
@@ -231,11 +275,18 @@ def adjust_namespace(
             case collections.abc.MutableMapping():
                 if forced or obj.get('metadata', {}).get('namespace') is None:
                     obj.setdefault('metadata', {})['namespace'] = namespace
-            case thirdparty.KubernetesModel():
+            case thirdparty.KubernetesModelSync():
                 if obj.metadata is None:
-                    obj.metadata = thirdparty.V1ObjectMeta()
+                    obj.metadata = thirdparty.V1ObjectMetaSync()
                 if forced or obj.metadata.namespace is None:
                     obj.metadata.namespace = namespace
+            case thirdparty.KubernetesModelAsync():
+                if obj.metadata is None:
+                    obj.metadata = thirdparty.V1ObjectMetaAsync()
+                if forced or obj.metadata.namespace is None:
+                    # Types: we are right, kubernetes_asyncio is wrong: it declares names as str,
+                    # while the initial values are None, and there is no way to reset the names.
+                    obj.metadata.namespace = namespace  # type: ignore[assignment]
             case _:
                 raise TypeError(f"K8s object class is not supported: {type(obj)}")
 

@@ -93,6 +93,19 @@ def test_appending_to_kubernetes_model(kubernetes_model):
     assert kubernetes_model.metadata.owner_references[0].uid == OWNER_UID
 
 
+def test_appending_to_kubernetes_asyncio_model(kubernetes_asyncio_model):
+    kubernetes_asyncio_model.metadata = None
+    kopf.append_owner_reference(kubernetes_asyncio_model, owner=Body(OWNER))
+    assert kubernetes_asyncio_model.metadata is not None
+    assert kubernetes_asyncio_model.metadata.owner_references is not None
+    assert isinstance(kubernetes_asyncio_model.metadata.owner_references, list)
+    assert len(kubernetes_asyncio_model.metadata.owner_references) == 1
+    assert kubernetes_asyncio_model.metadata.owner_references[0].api_version == OWNER_API_VERSION
+    assert kubernetes_asyncio_model.metadata.owner_references[0].kind == OWNER_KIND
+    assert kubernetes_asyncio_model.metadata.owner_references[0].name == OWNER_NAME
+    assert kubernetes_asyncio_model.metadata.owner_references[0].uid == OWNER_UID
+
+
 def test_appending_deduplicates_by_uid():
     """
     The uid is the only necessary criterion to identify same objects.
@@ -187,6 +200,16 @@ def test_removal_from_kubernetes_model(kubernetes_model):
     assert kubernetes_model.metadata.owner_references is not None
     assert isinstance(kubernetes_model.metadata.owner_references, list)
     assert len(kubernetes_model.metadata.owner_references) == 0
+
+
+def test_removal_from_kubernetes_asyncio_model(kubernetes_asyncio_model):
+    kubernetes_asyncio_model.metadata = None
+    kopf.append_owner_reference(kubernetes_asyncio_model, owner=Body(OWNER))
+    kopf.remove_owner_reference(kubernetes_asyncio_model, owner=Body(OWNER))
+    assert kubernetes_asyncio_model.metadata is not None
+    assert kubernetes_asyncio_model.metadata.owner_references is not None
+    assert isinstance(kubernetes_asyncio_model.metadata.owner_references, list)
+    assert len(kubernetes_asyncio_model.metadata.owner_references) == 0
 
 
 def test_removal_identifies_by_uid():

@@ -5,6 +5,12 @@ Otherwise, the tests are useless or can show false-positives.
 import pytest
 
 
+@pytest.mark.usefixtures('no_kubernetes_asyncio')
+def test_client_asyncio_uninstalled_has_effect():
+    with pytest.raises(ImportError):
+        import kubernetes_asyncio
+
+
 @pytest.mark.usefixtures('no_kubernetes')
 def test_client_uninstalled_has_effect():
     with pytest.raises(ImportError):

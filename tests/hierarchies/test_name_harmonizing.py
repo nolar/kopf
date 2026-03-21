@@ -97,6 +97,17 @@ def test_preserved_names_of_kubernetes_model(forcedness, strictness, kubernetes_
     assert kubernetes_model.metadata.generate_name != 'provided-name'
 
 
+@obj1_with_names
+@any_strict_mode
+@non_forced_mode
+def test_preserved_names_of_kubernetes_asyncio_model(forcedness, strictness, kubernetes_asyncio_model, obj1):
+    kubernetes_asyncio_model.metadata.name = obj1.get('metadata', {}).get('name')
+    kubernetes_asyncio_model.metadata.generate_name = obj1.get('metadata', {}).get('generateName')
+    kopf.harmonize_naming(kubernetes_asyncio_model, name='provided-name', **forcedness, **strictness)
+    assert kubernetes_asyncio_model.metadata.name != 'provided-name'
+    assert kubernetes_asyncio_model.metadata.generate_name != 'provided-name'
+
+
 # In the FORCED mode, the EXISTING names are overwritten.
 # It only depends which of the names -- regular or generated -- is left.
 @obj1_with_names
@@ -148,6 +159,17 @@ def test_overwriting_of_strict_name_of_kubernetes_model(forcedness, strictness, 
 
 
 @obj1_with_names
+@strict_mode
+@forced_mode
+def test_overwriting_of_strict_name_of_kubernetes_asyncio_model(forcedness, strictness, kubernetes_asyncio_model, obj1):
+    kubernetes_asyncio_model.metadata.name = obj1.get('metadata', {}).get('name')
+    kubernetes_asyncio_model.metadata.generate_name = obj1.get('metadata', {}).get('generateName')
+    kopf.harmonize_naming(kubernetes_asyncio_model, name='provided-name', **forcedness, **strictness)
+    assert kubernetes_asyncio_model.metadata.name == 'provided-name'
+    assert kubernetes_asyncio_model.metadata.generate_name is None
+
+
+@obj1_with_names
 @non_strict_mode
 @forced_mode
 def test_overwriting_of_relaxed_name_of_dict(forcedness, strictness, obj1):
@@ -193,6 +215,17 @@ def test_overwriting_of_relaxed_name_of_kubernetes_model(forcedness, strictness,
     kopf.harmonize_naming(kubernetes_model, name='provided-name', **forcedness, **strictness)
     assert kubernetes_model.metadata.name is None
     assert kubernetes_model.metadata.generate_name == 'provided-name-'
+
+
+@obj1_with_names
+@non_strict_mode
+@forced_mode
+def test_overwriting_of_relaxed_name_of_kubernetes_asyncio_model(forcedness, strictness, kubernetes_asyncio_model, obj1):
+    kubernetes_asyncio_model.metadata.name = obj1.get('metadata', {}).get('name')
+    kubernetes_asyncio_model.metadata.generate_name = obj1.get('metadata', {}).get('generateName')
+    kopf.harmonize_naming(kubernetes_asyncio_model, name='provided-name', **forcedness, **strictness)
+    assert kubernetes_asyncio_model.metadata.name is None
+    assert kubernetes_asyncio_model.metadata.generate_name == 'provided-name-'
 
 
 # When names are ABSENT, they are added regardless of the forced mode.
@@ -243,6 +276,15 @@ def test_assignment_of_strict_name_of_kubernetes_model(forcedness, strictness, k
     assert kubernetes_model.metadata.generate_name is None
 
 
+@strict_mode
+@any_forced_mode
+def test_assignment_of_strict_name_of_kubernetes_asyncio_model(forcedness, strictness, kubernetes_asyncio_model):
+    kubernetes_asyncio_model.metadata = None
+    kopf.harmonize_naming(kubernetes_asyncio_model, name='provided-name', **forcedness, **strictness)
+    assert kubernetes_asyncio_model.metadata.name == 'provided-name'
+    assert kubernetes_asyncio_model.metadata.generate_name is None
+
+
 @obj1_without_names
 @non_strict_mode
 @any_forced_mode
@@ -287,3 +329,12 @@ def test_assignment_of_nonstrict_name_of_kubernetes_model(forcedness, strictness
     kopf.harmonize_naming(kubernetes_model, name='provided-name', **forcedness, **strictness)
     assert kubernetes_model.metadata.name is None
     assert kubernetes_model.metadata.generate_name == 'provided-name-'
+
+
+@non_strict_mode
+@any_forced_mode
+def test_assignment_of_nonstrict_name_of_kubernetes_asyncio_model(forcedness, strictness, kubernetes_asyncio_model):
+    kubernetes_asyncio_model.metadata = None
+    kopf.harmonize_naming(kubernetes_asyncio_model, name='provided-name', **forcedness, **strictness)
+    assert kubernetes_asyncio_model.metadata.name is None
+    assert kubernetes_asyncio_model.metadata.generate_name == 'provided-name-'

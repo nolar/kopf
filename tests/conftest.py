@@ -399,6 +399,16 @@ def _with_module_absent(name: str):
         assert mod_after is mod_before
 
 
+@pytest.fixture(params=[True], ids=['with-async-client'])  # for hinting suffixes
+def kubernetes_asyncio():
+    yield from _with_module_present('kubernetes_asyncio')
+
+
+@pytest.fixture(params=[True], ids=['no-async-client'])  # for hinting suffixes
+def no_kubernetes_asyncio():
+    yield from _with_module_absent('kubernetes_asyncio')
+
+
 @pytest.fixture(params=[True], ids=['with-client'])  # for hinting suffixes
 def kubernetes():
     yield from _with_module_present('kubernetes')

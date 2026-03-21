@@ -72,6 +72,14 @@ def test_preserved_namespace_of_kubernetes_model(forcedness, kubernetes_model, o
     assert kubernetes_model.metadata.namespace != 'provided-namespace'
 
 
+@obj1_with_namespace
+@non_forced_mode
+def test_preserved_namespace_of_kubernetes_asyncio_model(forcedness, kubernetes_asyncio_model, obj1):
+    kubernetes_asyncio_model.metadata.namespace = obj1.get('metadata', {}).get('namespace')
+    kopf.adjust_namespace(kubernetes_asyncio_model, namespace='provided-namespace', **forcedness)
+    assert kubernetes_asyncio_model.metadata.namespace != 'provided-namespace'
+
+
 #
 # In the FORCED mode, the EXISTING namespaces are overwritten.
 #
@@ -113,6 +121,14 @@ def test_overwriting_namespace_of_kubernetes_model(forcedness, kubernetes_model,
     assert kubernetes_model.metadata.namespace == 'provided-namespace'
 
 
+@obj1_with_namespace
+@forced_mode
+def test_overwriting_namespace_of_kubernetes_asyncio_model(forcedness, kubernetes_asyncio_model, obj1):
+    kubernetes_asyncio_model.metadata.namespace = obj1.get('metadata', {}).get('namespace')
+    kopf.adjust_namespace(kubernetes_asyncio_model, namespace='provided-namespace', **forcedness)
+    assert kubernetes_asyncio_model.metadata.namespace == 'provided-namespace'
+
+
 #
 # When namespaces are ABSENT, they are added regardless of the forced mode.
 #
@@ -151,3 +167,10 @@ def test_assignment_namespace_of_kubernetes_model(forcedness, kubernetes_model):
     kubernetes_model.metadata = None
     kopf.adjust_namespace(kubernetes_model, namespace='provided-namespace', **forcedness)
     assert kubernetes_model.metadata.namespace == 'provided-namespace'
+
+
+@any_forced_mode
+def test_assignment_namespace_of_kubernetes_asyncio_model(forcedness, kubernetes_asyncio_model):
+    kubernetes_asyncio_model.metadata = None
+    kopf.adjust_namespace(kubernetes_asyncio_model, namespace='provided-namespace', **forcedness)
+    assert kubernetes_asyncio_model.metadata.namespace == 'provided-namespace'

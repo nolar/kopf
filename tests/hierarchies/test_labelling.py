@@ -56,6 +56,16 @@ def test_adding_to_kubernetes_model(kubernetes_model):
     assert kubernetes_model.metadata.labels['label-2'] == 'value-2'
 
 
+def test_adding_to_kubernetes_asyncio_model(kubernetes_asyncio_model):
+    kubernetes_asyncio_model.metadata = None
+    kopf.label(kubernetes_asyncio_model, {'label-1': 'value-1', 'label-2': 'value-2'})
+    assert len(kubernetes_asyncio_model.metadata.labels) == 2
+    assert 'label-1' in kubernetes_asyncio_model.metadata.labels
+    assert 'label-2' in kubernetes_asyncio_model.metadata.labels
+    assert kubernetes_asyncio_model.metadata.labels['label-1'] == 'value-1'
+    assert kubernetes_asyncio_model.metadata.labels['label-2'] == 'value-2'
+
+
 def test_forcing_true_warns_on_deprecated_option():
     obj = {'metadata': {'labels': {'label': 'old-value'}}}
     with pytest.deprecated_call(match=r"use forced="):
@@ -124,6 +134,24 @@ def test_forcing_default_to_kubernetes_model(kubernetes_model):
     assert kubernetes_model.metadata.labels['label'] == 'old-value'
 
 
+def test_forcing_true_to_kubernetes_asyncio_model(kubernetes_asyncio_model):
+    kubernetes_asyncio_model.metadata.labels = {'label': 'old-value'}
+    kopf.label(kubernetes_asyncio_model, {'label': 'new-value'}, forced=True)
+    assert kubernetes_asyncio_model.metadata.labels['label'] == 'new-value'
+
+
+def test_forcing_false_to_kubernetes_asyncio_model(kubernetes_asyncio_model):
+    kubernetes_asyncio_model.metadata.labels = {'label': 'old-value'}
+    kopf.label(kubernetes_asyncio_model, {'label': 'new-value'}, forced=False)
+    assert kubernetes_asyncio_model.metadata.labels['label'] == 'old-value'
+
+
+def test_forcing_default_to_kubernetes_asyncio_model(kubernetes_asyncio_model):
+    kubernetes_asyncio_model.metadata.labels = {'label': 'old-value'}
+    kopf.label(kubernetes_asyncio_model, {'label': 'new-value'})
+    assert kubernetes_asyncio_model.metadata.labels['label'] == 'old-value'
+
+
 @pytest.mark.parametrize('nested', [
     pytest.param(('spec.jobTemplate', 'spec.unexistent'), id='tuple'),
     pytest.param(['spec.jobTemplate', 'spec.unexistent'], id='list'),
@@ -168,6 +196,21 @@ def test_nested_with_forced_true_to_kubernetes_model(nested, kubernetes_model):
     assert not hasattr(kubernetes_model.spec, 'unexistent')
 
 
+
+@pytest.mark.parametrize('nested', [
+    pytest.param(('spec.jobTemplate', 'spec.unexistent'), id='tuple'),
+    pytest.param(['spec.jobTemplate', 'spec.unexistent'], id='list'),
+    pytest.param({'spec.jobTemplate', 'spec.unexistent'}, id='set'),
+    pytest.param('spec.jobTemplate', id='string'),
+])
+def test_nested_with_forced_true_to_kubernetes_asyncio_model(nested, kubernetes_asyncio_model):
+    kubernetes_asyncio_model.metadata.labels = {'label': 'old-value'}
+    kopf.label(kubernetes_asyncio_model, {'label': 'new-value'}, nested=nested, forced=True)
+    assert kubernetes_asyncio_model.metadata.labels['label'] == 'new-value'
+    assert kubernetes_asyncio_model.spec.job_template.metadata.labels['label'] == 'new-value'
+    assert not hasattr(kubernetes_asyncio_model.spec, 'unexistent')
+
+
 @pytest.mark.parametrize('nested', [
     pytest.param(('spec.jobTemplate', 'spec.unexistent'), id='tuple'),
     pytest.param(['spec.jobTemplate', 'spec.unexistent'], id='list'),
@@ -210,3 +253,17 @@ def test_nested_with_forced_false_to_kubernetes_model(nested, kubernetes_model):
     assert kubernetes_model.metadata.labels['label'] == 'old-value'
     assert kubernetes_model.spec.job_template.metadata.labels['label'] == 'new-value'
     assert not hasattr(kubernetes_model.spec, 'unexistent')
+
+
+@pytest.mark.parametrize('nested', [
+    pytest.param(('spec.jobTemplate', 'spec.unexistent'), id='tuple'),
+    pytest.param(['spec.jobTemplate', 'spec.unexistent'], id='list'),
+    pytest.param({'spec.jobTemplate', 'spec.unexistent'}, id='set'),
+    pytest.param('spec.jobTemplate', id='string'),
+])
+def test_nested_with_forced_false_to_kubernetes_asyncio_model(nested, kubernetes_asyncio_model):
+    kubernetes_asyncio_model.metadata.labels = {'label': 'old-value'}
+    kopf.label(kubernetes_asyncio_model, {'label': 'new-value'}, nested=nested, forced=False)
+    assert kubernetes_asyncio_model.metadata.labels['label'] == 'old-value'
+    assert kubernetes_asyncio_model.spec.job_template.metadata.labels['label'] == 'new-value'
+    assert not hasattr(kubernetes_asyncio_model.spec, 'unexistent')

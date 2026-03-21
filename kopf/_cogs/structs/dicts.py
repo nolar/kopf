@@ -45,7 +45,7 @@ def parse_field(
 
 
 def resolve_obj(
-        d: thirdparty.KubernetesModel | Mapping[Any, Any] | None,
+        d: thirdparty.KubernetesModelSync | thirdparty.KubernetesModelAsync | Mapping[Any, Any] | None,
         field: FieldSpec,
         default: _T | _UNSET = _UNSET.token,
 ) -> Any | _T:
@@ -63,7 +63,7 @@ def resolve_obj(
             match result:
                 case collections.abc.Mapping():
                     result = result[key]
-                case thirdparty.KubernetesModel():
+                case thirdparty.KubernetesModelSync() | thirdparty.KubernetesModelAsync():
                     attrmap: dict[str, str] = getattr(result, 'attribute_map', {})
                     attrs = [attr for attr, schema_key in attrmap.items() if schema_key == key]
                     key = attrs[0] if attrs else key
@@ -242,7 +242,7 @@ def walk(
         case thirdparty.PykubeObject():
             # Pykube is yielded as an underlying dict, never as its own class.
             yield from walk(objs.obj, nested=nested)
-        case thirdparty.KubernetesModel():
+        case thirdparty.KubernetesModelSync() | thirdparty.KubernetesModelAsync():
             yield objs
             for subfield in (nested if nested is not None else []):
                 try:
