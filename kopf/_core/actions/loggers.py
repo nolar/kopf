@@ -135,6 +135,7 @@ class ObjectLogger(typedefs.LoggerAdapter):
             ),
         ))
 
+    # Typed with MutableMapping[] to match the parent's signature.
     def process(
             self,
             msg: str,
