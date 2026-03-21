@@ -39,3 +39,16 @@ def kubernetes_model(kubernetes):
         ),
     )
     return obj
+
+
+@pytest.fixture()
+def kubernetes_asyncio_model(kubernetes_asyncio):
+    # The most tricky class -- with attribute-to-key mapping (jobTemplate).
+    obj = kubernetes_asyncio.client.V1CronJob(
+        metadata=kubernetes_asyncio.client.V1ObjectMeta(),
+        spec=kubernetes_asyncio.client.V1CronJobSpec(
+            schedule='* * * * *',
+            job_template=kubernetes_asyncio.client.V1JobTemplateSpec(),
+        ),
+    )
+    return obj
