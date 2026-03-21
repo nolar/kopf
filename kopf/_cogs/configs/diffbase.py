@@ -1,8 +1,13 @@
 import abc
 import copy
+import inspect
 import json
+import logging
+import pathlib
 from collections.abc import Collection, Iterable
-from typing import Any, cast
+from typing import Any, Self, cast, override
+
+import yaml
 
 from kopf._cogs.configs import conventions
 from kopf._cogs.structs import bodies, dicts, patches
@@ -98,8 +103,16 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
 
         return cast(bodies.BodyEssence, essence)
 
+    async def __aenter__(self) -> None:
+        logging.getLogger().info("🔥 entering the diffbase storage")
+        pass
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        logging.getLogger().info("🔥 leaving the diffbase storage")
+        pass
+
     @abc.abstractmethod
-    def fetch(
+    async def fetch(
             self,
             *,
             body: bodies.Body,
@@ -107,7 +120,7 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
         raise NotImplementedError
 
     @abc.abstractmethod
-    def store(
+    async def store(
             self,
             *,
             body: bodies.Body,
@@ -115,6 +128,9 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
             essence: bodies.BodyEssence,
     ) -> None:
         raise NotImplementedError
+
+    async def erase(self, *, body: bodies.Body) -> None:
+        pass
 
 
 class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBaseStorage):
@@ -130,6 +146,7 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
         super().__init__(prefix=prefix, v1=v1, ignored_fields=ignored_fields)
         self.key = key
 
+    @override
     def build(
             self,
             *,
@@ -141,7 +158,8 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
         self.remove_empty_stanzas(essence)
         return essence
 
-    def fetch(
+    @override
+    async def fetch(
             self,
             *,
             body: bodies.Body,
@@ -153,7 +171,8 @@ class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBa
                 return cast(bodies.BodyEssence, decoded)
         return None
 
-    def store(
+    @override
+    async def store(
             self,
             *,
             body: bodies.Body,
@@ -190,6 +209,7 @@ class StatusDiffBaseStorage(DiffBaseStorage):
         real_field = field.format(name=self._name) if isinstance(field, str) else field
         self._field = dicts.parse_field(real_field)
 
+    @override
     def build(
             self,
             *,
@@ -204,7 +224,8 @@ class StatusDiffBaseStorage(DiffBaseStorage):
 
         return essence
 
-    def fetch(
+    @override
+    async def fetch(
             self,
             *,
             body: bodies.Body,
@@ -213,7 +234,8 @@ class StatusDiffBaseStorage(DiffBaseStorage):
         essence: bodies.BodyEssence | None = json.loads(encoded) if encoded is not None else None
         return essence
 
-    def store(
+    @override
+    async def store(
             self,
             *,
             body: bodies.Body,
@@ -223,6 +245,153 @@ class StatusDiffBaseStorage(DiffBaseStorage):
         # Store as a single string instead of full dict -- to avoid merges and unexpected data.
         encoded: str = json.dumps(essence, separators=(',', ':'))  # NB: no spaces
         dicts.ensure(patch, self.field, encoded)
+
+
+class FileDiffBaseStorage(conventions.FileNamingConvention, DiffBaseStorage):
+    """
+    Diff-base storage in YAML files on a shared filesystem or pod volume.
+
+    Each Kubernetes resource gets its own file, named after its namespace,
+    name, and uid. The file contains the YAML-encoded body essence used for
+    change detection.
+
+    An example file at ``/var/kopf/default-my-app-12345678-abcd.diffbase.yaml``:
+
+    .. code-block:: yaml
+
+        spec:
+          replicas: 3
+          template:
+            spec:
+              containers:
+              - name: my-app
+                image: my-app:latest
+
+    This storage does not write anything to the Kubernetes object itself.
+    """
+
+    def __init__(
+            self,
+            path: str | pathlib.Path,
+            *,
+            ignored_fields: Iterable[dicts.FieldSpec] | None = None,
+    ) -> None:
+        super().__init__(path=path, file_suffix='diffbase', ignored_fields=ignored_fields)
+
+    @override
+    async def fetch(
+            self,
+            *,
+            body: bodies.Body,
+    ) -> bodies.BodyEssence | None:
+        filepath = self._build_filename(body)
+        if filepath is None or not filepath.exists():
+            return None
+        data = yaml.safe_load(filepath.read_text(encoding='utf-8'))
+        return cast(bodies.BodyEssence, data) if isinstance(data, dict) else None
+
+    @override
+    async def store(
+            self,
+            *,
+            body: bodies.Body,
+            patch: patches.Patch,
+            essence: bodies.BodyEssence,
+    ) -> None:
+        filepath = self._build_filename(body)
+        if filepath is None:
+            return
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        filepath.write_text(yaml.safe_dump(dict(essence), default_flow_style=False), encoding='utf-8')
+
+    @override
+    async def erase(self, *, body: bodies.Body) -> None:
+        filepath = self._build_filename(body)
+        if filepath is not None:
+            filepath.unlink(missing_ok=True)
+
+
+class SQLiteDiffBaseStorage(conventions.SQLiteConvention, DiffBaseStorage):
+    """
+    Diff-base storage in a SQLite database file.
+
+    Each resource's body essence is stored as a single row, keyed by the
+    resource's namespace, name, and uid. The essence is stored as a JSON
+    string.
+
+    An example of the ``diffbase`` table contents:
+
+    .. code-block:: text
+
+        namespace | name   | uid   | essence
+        ----------+--------+-------+---------------------------------------
+        default   | my-app | uid1  | {"spec":{"replicas":3,"image":"..."}}
+
+    This storage does not write anything to the Kubernetes object itself.
+    Both the file and SQLite diff-base storages can share the same database
+    file when pointed to the same path.
+    """
+
+    # We do not plan any migrations yet. We pray that this simple schema is sufficient forever.
+    _create_sql = (
+        'CREATE TABLE IF NOT EXISTS diffbase ('
+        'namespace TEXT NOT NULL, '
+        'name TEXT NOT NULL, '
+        'uid TEXT NOT NULL, '
+        'essence TEXT NOT NULL, '
+        'PRIMARY KEY (namespace, name, uid))'
+    )
+
+    def __init__(
+            self,
+            path: str | pathlib.Path,
+            *,
+            ignored_fields: Iterable[dicts.FieldSpec] | None = None,
+    ) -> None:
+        super().__init__(path=path, ignored_fields=ignored_fields)
+
+    @override
+    async def fetch(
+            self,
+            *,
+            body: bodies.Body,
+    ) -> bodies.BodyEssence | None:
+        namespace, name, uid = self._extract_keys(body)
+        with self._conn:
+            cursor = self._try_execute(
+                'SELECT essence FROM diffbase'
+                ' WHERE namespace=? AND name=? AND uid=?',
+                (namespace, name, uid))
+            if cursor is None:
+                return None
+            row = cursor.fetchone()
+        if row is None:
+            return None
+        return cast(bodies.BodyEssence, json.loads(row[0]))
+
+    async def store(
+            self,
+            *,
+            body: bodies.Body,
+            patch: patches.Patch,
+            essence: bodies.BodyEssence,
+    ) -> None:
+        namespace, name, uid = self._extract_keys(body)
+        encoded = json.dumps(dict(essence), separators=(',', ':'))
+        with self._conn:
+            self._execute(
+                'INSERT OR REPLACE INTO diffbase'
+                ' (namespace, name, uid, essence) VALUES (?, ?, ?, ?)',
+                (namespace, name, uid, encoded))
+
+    @override
+    async def erase(self, *, body: bodies.Body) -> None:
+        namespace, name, uid = self._extract_keys(body)
+        with self._conn:
+            self._try_execute(
+                'DELETE FROM diffbase'
+                ' WHERE namespace=? AND name=? AND uid=?',
+                (namespace, name, uid))
 
 
 class MultiDiffBaseStorage(DiffBaseStorage):
@@ -247,18 +416,21 @@ class MultiDiffBaseStorage(DiffBaseStorage):
             essence = storage.build(body=bodies.Body(essence), extra_fields=extra_fields)
         return essence
 
-    def fetch(
+    @override
+    async def fetch(
             self,
             *,
             body: bodies.Body,
     ) -> bodies.BodyEssence | None:
         for storage in self.storages:
-            content = storage.fetch(body=body)
+            maybe_coro = storage.fetch(body=body)
+            content = await maybe_coro if inspect.isawaitable(maybe_coro) else maybe_coro
             if content is not None:
                 return content
         return None
 
-    def store(
+    @override
+    async def store(
             self,
             *,
             body: bodies.Body,
@@ -266,4 +438,13 @@ class MultiDiffBaseStorage(DiffBaseStorage):
             essence: bodies.BodyEssence,
     ) -> None:
         for storage in self.storages:
-            storage.store(body=body, patch=patch, essence=essence)
+            maybe_coro = await storage.store(body=body, patch=patch, essence=essence)
+            if inspect.isawaitable(maybe_coro):
+                await maybe_coro
+
+    @override
+    async def erase(self, *, body: bodies.Body) -> None:
+        for storage in self.storages:
+            maybe_coro = storage.erase(body=body)
+            if inspect.isawaitable(maybe_coro):
+                await maybe_coro

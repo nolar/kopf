@@ -1,10 +1,12 @@
 import asyncio
+import contextlib
 import functools
 import logging
 import signal
 import threading
 import warnings
 from collections.abc import Collection, Coroutine, MutableSequence, Sequence
+from typing import AsyncContextManager, ContextManager
 
 from kopf._cogs.aiokits import aioadapters, aiobindings, aiotasks, aiotoggles, aiovalues
 from kopf._cogs.clients import auth
@@ -515,25 +517,30 @@ async def _startup_cleanup_activities(
         logger.warning("Startup activity is only partially executed due to cancellation.")
         raise
 
-    # Notify the caller that we are ready to be executed. This unfreezes all the root tasks.
-    started_flag.set()
-    await aioadapters.raise_flag(ready_flag)
+    # NB: after the configuration, where storages are set, but before the task unblocking via flags.
+    # TODO: sync or async? fetchers/storers are sync.
+    #       can we convert them all to async but keep backwards compatible?
+    async with settings.persistence.progress_storage, settings.persistence.diffbase_storage:
 
-    # Sleep forever, or until cancelled, which happens when the operator begins its shutdown.
-    try:
-        await asyncio.Event().wait()
-    except asyncio.CancelledError:
-        pass
+        # Notify the caller that we are ready to be executed. This unfreezes all the root tasks.
+        started_flag.set()
+        await aioadapters.raise_flag(ready_flag)
 
-    # Wait for all other root tasks to exit before cleaning up.
-    # Beware: on explicit operator cancellation, there is no graceful period at all.
-    try:
-        current_task = asyncio.current_task()
-        awaited_tasks = {task for task in root_tasks if task is not current_task}
-        await aiotasks.wait(awaited_tasks)
-    except asyncio.CancelledError:
-        logger.warning("Cleanup activity is not executed at all due to cancellation.")
-        raise
+        # Sleep forever, or until cancelled, which happens when the operator begins its shutdown.
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            pass
+
+        # Wait for all other root tasks to exit before cleaning up.
+        # Beware: on explicit operator cancellation, there is no graceful period at all.
+        try:
+            current_task = asyncio.current_task()
+            awaited_tasks = {task for task in root_tasks if task is not current_task}
+            await aiotasks.wait(awaited_tasks)
+        except asyncio.CancelledError:
+            logger.warning("Cleanup activity is not executed at all due to cancellation.")
+            raise
 
     # Execute the cleanup activity after all other root tasks are presumably done.
     try:
