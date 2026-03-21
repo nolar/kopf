@@ -66,7 +66,7 @@ class Patch(dict[str, Any]):
 
     def __init__(
         self,
-        src: collections.abc.MutableMapping[str, Any] | None = None,
+        src: dict[str, Any] | None = None,
         /,
         body: bodies.RawBody | None = None,
         fns: Iterable[PatchFn] = (),
