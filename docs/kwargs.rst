@@ -352,7 +352,7 @@ See more: :doc:`admission`.
 User information
 ----------------
 
-``userinfo`` (``Mapping[str, Any]``) is information about the user that
+``userinfo`` (``dict[str, Any]``) is information about the user that
 sends the API request to Kubernetes.
 
 It usually contains the keys ``'username'``, ``'uid'``, ``'groups'``,
@@ -372,10 +372,10 @@ For rudimentary authentication and authorization, Kopf passes the information
 from the admission requests to the admission handlers as-is,
 without any additional interpretation.
 
-``headers`` (``Mapping[str, str]``) contains all HTTPS request headers,
+``headers`` (``dict[str, str]``) contains all HTTPS request headers,
 including ``Authorization: Basic ...``, ``Authorization: Bearer ...``.
 
-``sslpeer`` (``Mapping[str, Any]``) contains the SSL peer information
+``sslpeer`` (``dict[str, Any]``) contains the SSL peer information
 as returned by :func:`ssl.SSLSocket.getpeercert`. It is ``None`` if no valid
 SSL client certificate was provided (e.g. by apiservers talking to webhooks),
 or if the SSL protocol could not verify the provided certificate against its CA.

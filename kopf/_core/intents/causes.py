@@ -21,7 +21,6 @@ could execute on the yet-existing object (and its children, if created).
 """
 import dataclasses
 import enum
-from collections.abc import Mapping
 from typing import Any
 
 from kopf._cogs.configs import configuration
@@ -148,8 +147,8 @@ class WebhookCause(ResourceCause):
     dryrun: bool
     reason: WebhookType | None  # None means "all" or expects the webhook id
     webhook: ids.HandlerId | None  # None means "all"
-    headers: Mapping[str, str]
-    sslpeer: Mapping[str, Any]
+    headers: reviews.Headers
+    sslpeer: reviews.SSLPeer
     userinfo: reviews.UserInfo
     warnings: list[str]  # mutable!
     operation: reviews.Operation | None  # None if not provided for some reason
