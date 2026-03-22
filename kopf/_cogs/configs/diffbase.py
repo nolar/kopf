@@ -2,6 +2,7 @@ import abc
 import copy
 import json
 from collections.abc import Collection, Iterable
+from contextlib import AbstractAsyncContextManager
 from typing import Any, cast
 
 from kopf._cogs.configs import conventions
@@ -10,6 +11,7 @@ from kopf._cogs.structs import bodies, dicts, patches
 
 class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
                       conventions.StorageStanzaCleaner,
+                      AbstractAsyncContextManager[None],
                       metaclass=abc.ABCMeta):
     """
     Store the base essence for diff calculations, i.e. last handled state.
@@ -29,6 +31,12 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
     def __init__(self, ignored_fields: Iterable[dicts.FieldSpec] | None = None) -> None:
         super().__init__()
         self.ignored_fields = list(ignored_fields or [])  # materialize the iterable
+
+    async def __aenter__(self) -> None:
+        pass
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        pass
 
     def build(
             self,
