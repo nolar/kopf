@@ -150,6 +150,10 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
     ) -> None | Awaitable[None]:
         raise NotImplementedError
 
+    # It was always async from addition, sync was never declared and supported.
+    async def erase(self, *, body: bodies.Body) -> None:
+        pass
+
 
 class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBaseStorage):
 
@@ -308,3 +312,7 @@ class MultiDiffBaseStorage(DiffBaseStorage):
             maybe_coro = storage.store(body=body, patch=patch, essence=essence)
             if inspect.isawaitable(maybe_coro):
                 await maybe_coro
+
+    async def erase(self, *, body: bodies.Body) -> None:
+        for storage in self.storages:
+            await storage.erase(body=body)
