@@ -1,7 +1,8 @@
 import abc
 import copy
+import inspect
 import json
-from collections.abc import Collection, Iterable
+from collections.abc import Awaitable, Collection, Iterable
 from contextlib import AbstractAsyncContextManager
 from typing import Any, cast
 
@@ -106,14 +107,16 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
 
         return cast(bodies.BodyEssence, essence)
 
+    # Return types makes it mixed sync or async, both are supported.
     @abc.abstractmethod
     def fetch(
             self,
             *,
             body: bodies.Body,
-    ) -> bodies.BodyEssence | None:
+    ) -> bodies.BodyEssence | None | Awaitable[bodies.BodyEssence | None]:
         raise NotImplementedError
 
+    # Return types makes it mixed sync or async, both are supported.
     @abc.abstractmethod
     def store(
             self,
@@ -121,7 +124,7 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
             body: bodies.Body,
             patch: patches.Patch,
             essence: bodies.BodyEssence,
-    ) -> None:
+    ) -> None | Awaitable[None]:
         raise NotImplementedError
 
 
@@ -255,23 +258,30 @@ class MultiDiffBaseStorage(DiffBaseStorage):
             essence = storage.build(body=bodies.Body(essence), extra_fields=extra_fields)
         return essence
 
-    def fetch(
+    async def fetch(
             self,
             *,
             body: bodies.Body,
     ) -> bodies.BodyEssence | None:
+        # Storage methods were sync originally. Support both sync overrides and newer async methods
+        # without breaking the backwards compatibility and requiring a major semver release.
         for storage in self.storages:
-            content = storage.fetch(body=body)
+            maybe_coro = storage.fetch(body=body)
+            content = await maybe_coro if inspect.isawaitable(maybe_coro) else maybe_coro
             if content is not None:
                 return content
         return None
 
-    def store(
+    async def store(
             self,
             *,
             body: bodies.Body,
             patch: patches.Patch,
             essence: bodies.BodyEssence,
     ) -> None:
+        # Storage methods were sync originally. Support both sync overrides and newer async methods
+        # without breaking the backwards compatibility and requiring a major semver release.
         for storage in self.storages:
-            storage.store(body=body, patch=patch, essence=essence)
+            maybe_coro = storage.store(body=body, patch=patch, essence=essence)
+            if inspect.isawaitable(maybe_coro):
+                await maybe_coro
