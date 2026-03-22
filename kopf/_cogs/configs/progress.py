@@ -155,12 +155,15 @@ class ProgressStorage(conventions.StorageStanzaCleaner,
     ) -> None:
         raise NotImplementedError
 
-    @abc.abstractmethod
     def clear(self, *, essence: bodies.BodyEssence) -> bodies.BodyEssence:
         return copy.deepcopy(essence)
 
     # Return types makes it mixed sync or async, both are supported.
     def flush(self) -> None | Awaitable[None]:
+        pass
+
+    # It was always async from addition, sync was never declared and supported.
+    async def erase(self, *, body: bodies.Body) -> None:
         pass
 
 
@@ -484,6 +487,10 @@ class MultiProgressStorage(ProgressStorage):
         for storage in self.storages:
             essence = storage.clear(essence=essence)
         return essence
+
+    async def erase(self, *, body: bodies.Body) -> None:
+        for storage in self.storages:
+            await storage.erase(body=body)
 
 
 class SmartProgressStorage(MultiProgressStorage):

@@ -533,6 +533,12 @@ async def process_changing_cause(
         # prevent further resume-handlers (which otherwise happens on each watch-stream re-listing).
         memory.fully_handled_once = True
 
+    # The last and the only chance to do garbage collection of the stored data.
+    # DiffBase first - it is more likely to have data, so the progress storage must not block it.
+    if cause.reason == causes.Reason.GONE:
+        await settings.persistence.diffbase_storage.erase(body=body)
+        await settings.persistence.progress_storage.erase(body=body)
+
     # Informational causes just print the log lines.
     if cause.reason == causes.Reason.GONE:
         logger.debug("Deleted, really deleted, and we are notified.")
