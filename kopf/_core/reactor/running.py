@@ -197,6 +197,7 @@ async def spawn_tasks(
     started_flag: asyncio.Event = asyncio.Event()
     operator_paused = aiotoggles.ToggleSet(any)
     tasks: MutableSequence[aiotasks.Task] = []
+    core_tasks: MutableSequence[aiotasks.Task] = []
 
     # Map kwargs into the settings object.
     settings.peering.clusterwide = clusterwide
@@ -233,6 +234,7 @@ async def spawn_tasks(
         name="startup/cleanup activities",
         coro=startup_cleanup_activities(
             root_tasks=tasks,  # used as a "live" view, populated later.
+            core_tasks=core_tasks,
             ready_flag=ready_flag,
             started_flag=started_flag,
             registry=registry,
@@ -250,7 +252,7 @@ async def spawn_tasks(
             operator_paused=operator_paused)))
 
     # Keeping the credentials fresh and valid via the authentication handlers on demand.
-    tasks.append(aiotasks.create_guarded_task(
+    core_tasks.append(aiotasks.create_guarded_task(
         name="credentials retriever", flag=started_flag, logger=logger,
         coro=activities.authenticator(
             registry=registry,
@@ -479,6 +481,7 @@ async def ultimate_termination(
 
 async def startup_cleanup_activities(
         root_tasks: Sequence[aiotasks.Task],  # mutated externally!
+        core_tasks: Sequence[aiotasks.Task],  # mutated externally!
         ready_flag: aioadapters.Flag | None,
         started_flag: asyncio.Event,
         registry: registries.OperatorRegistry,
@@ -501,39 +504,51 @@ async def startup_cleanup_activities(
     """
     logger.debug(f"Starting Kopf {versions.version or '(unknown version)'}.")
 
-    # Execute the startup activity before any root task starts running (due to readiness flag).
     try:
-        await activities.run_activity(
-            lifecycle=lifecycles.all_at_once,
-            registry=registry,
-            settings=settings,
-            activity=causes.Activity.STARTUP,
-            indices=indices,
-            memo=memo,
-        )
-    except asyncio.CancelledError:
-        logger.warning("Startup activity is only partially executed due to cancellation.")
-        raise
+        # Execute the startup activity before any root task starts running (due to readiness flag).
+        try:
+            await activities.run_activity(
+                lifecycle=lifecycles.all_at_once,
+                registry=registry,
+                settings=settings,
+                activity=causes.Activity.STARTUP,
+                indices=indices,
+                memo=memo,
+            )
+        except asyncio.CancelledError:
+            logger.warning("Startup activity is only partially executed due to cancellation.")
+            raise
 
-    # Notify the caller that we are ready to be executed. This unfreezes all the root tasks.
-    started_flag.set()
-    await aioadapters.raise_flag(ready_flag)
+        # Notify the caller that we are ready to be executed. This unfreezes all the root tasks.
+        started_flag.set()
+        await aioadapters.raise_flag(ready_flag)
 
-    # Sleep forever, or until cancelled, which happens when the operator begins its shutdown.
-    try:
-        await asyncio.Event().wait()
-    except asyncio.CancelledError:
-        pass
+        # Sleep forever, or until cancelled, which happens when the operator begins its shutdown.
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            pass
 
-    # Wait for all other root tasks to exit before cleaning up.
-    # Beware: on explicit operator cancellation, there is no graceful period at all.
-    try:
-        current_task = asyncio.current_task()
-        awaited_tasks = {task for task in root_tasks if task is not current_task}
-        await aiotasks.wait(awaited_tasks)
-    except asyncio.CancelledError:
-        logger.warning("Cleanup activity is not executed at all due to cancellation.")
-        raise
+        # Wait for all other root tasks to exit before cleaning up.
+        # Beware: on explicit operator cancellation, there is no graceful period at all.
+        try:
+            current_task = asyncio.current_task()
+            awaited_tasks = {task for task in root_tasks if task is not current_task}
+            await aiotasks.wait(awaited_tasks)
+        except asyncio.CancelledError:
+            logger.warning("Cleanup activity is not executed at all due to cancellation.")
+            raise
+    finally:
+        # Cancel the special "core" tasks after all "root" tasks are gone (happy path)
+        # or when the startup/cleanup activities are cancelled (operator termination case).
+        # The "core" tasks are excluded from "root" tasks, so not canceled with them.
+        # We own and manage "core" tasks, we cannot let them remain unattended or orphaned.
+        try:
+            core_done, _ = await aiotasks.stop(core_tasks, title="Core", logger=logger, interval=10)
+            await aiotasks.reraise(core_done)
+        except asyncio.CancelledError:
+            logger.warning("Cleanup activity is not executed at all due to cancellation.")
+            raise
 
     # Execute the cleanup activity after all other root tasks are presumably done.
     try:
