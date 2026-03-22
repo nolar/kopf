@@ -2,10 +2,13 @@ import abc
 import copy
 import inspect
 import json
+import pathlib
 import warnings
 from collections.abc import Awaitable, Collection, Iterable
 from contextlib import AbstractAsyncContextManager
 from typing import Any, cast
+
+import yaml
 
 from kopf._cogs.configs import conventions
 from kopf._cogs.structs import bodies, dicts, patches
@@ -261,6 +264,69 @@ class StatusDiffBaseStorage(DiffBaseStorage):
         # Store as a single string instead of full dict -- to avoid merges and unexpected data.
         encoded: str = json.dumps(essence, separators=(',', ':'))  # NB: no spaces
         dicts.ensure(patch, self.field, encoded)
+
+
+class FileDiffBaseStorage(conventions.FileNamingConvention, DiffBaseStorage):
+    """
+    Diff-base storage in YAML files on a shared filesystem or pod volume.
+
+    Each Kubernetes resource gets its own file, named after its namespace,
+    name, and uid. The file contains the YAML-encoded body essence used for
+    change detection.
+
+    An example file at ``/var/kopf/default-my-app-12345678-abcd.diffbase.yaml``:
+
+    .. code-block:: yaml
+
+        spec:
+          replicas: 3
+          template:
+            spec:
+              containers:
+              - name: my-app
+                image: my-app:latest
+
+    This storage does not write anything to the Kubernetes object itself.
+    """
+
+    def __init__(
+            self,
+            path: str | pathlib.Path,
+            *,
+            ignored_fields: Iterable[dicts.FieldSpec] | None = None,
+    ) -> None:
+        super().__init__(path=path, file_suffix='diffbase', ignored_fields=ignored_fields)
+
+    async def fetch(
+            self,
+            *,
+            body: bodies.Body,
+    ) -> bodies.BodyEssence | None:
+        filepath = self._build_filename(body)
+        if filepath is None or not filepath.exists():
+            return None
+        data = yaml.safe_load(filepath.read_text(encoding='utf-8'))
+        return cast(bodies.BodyEssence, data) if isinstance(data, dict) else None
+
+    async def store(
+            self,
+            *,
+            body: bodies.Body,
+            patch: patches.Patch,
+            essence: bodies.BodyEssence,
+    ) -> None:
+        filepath = self._build_filename(body)
+        if filepath is None:
+            return
+        content = yaml.safe_dump(dict(essence), default_flow_style=False)
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        with self._temp_filename(filepath) as temppath:
+            temppath.write_text(content, encoding='utf-8')
+
+    async def erase(self, *, body: bodies.Body) -> None:
+        filepath = self._build_filename(body)
+        if filepath is not None:
+            filepath.unlink(missing_ok=True)
 
 
 class MultiDiffBaseStorage(DiffBaseStorage):
