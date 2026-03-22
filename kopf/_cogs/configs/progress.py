@@ -42,6 +42,7 @@ import abc
 import copy
 import json
 from collections.abc import Collection
+from contextlib import AbstractAsyncContextManager
 from typing import Any, TypedDict, cast
 
 from kopf._cogs.configs import conventions
@@ -61,7 +62,9 @@ class ProgressRecord(TypedDict, total=False):
     subrefs: Collection[ids.HandlerId] | None
 
 
-class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
+class ProgressStorage(conventions.StorageStanzaCleaner,
+                      AbstractAsyncContextManager[None],
+                      metaclass=abc.ABCMeta):
     """
     Base class and an interface for all persistent states.
 
@@ -78,6 +81,12 @@ class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
     for relational/transactional databases), the keys can be cached in memory
     for short time, and ``flush()`` can be overridden to actually store them.
     """
+
+    async def __aenter__(self) -> None:
+        pass
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        pass
 
     @abc.abstractmethod
     def fetch(
