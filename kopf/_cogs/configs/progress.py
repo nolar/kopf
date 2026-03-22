@@ -42,10 +42,13 @@ import abc
 import copy
 import inspect
 import json
+import pathlib
 import warnings
 from collections.abc import Awaitable, Collection
 from contextlib import AbstractAsyncContextManager
 from typing import Any, TypedDict, cast
+
+import yaml
 
 from kopf._cogs.configs import conventions
 from kopf._cogs.structs import bodies, dicts, ids, patches
@@ -419,6 +422,116 @@ class NoWriteStatusProgressStorage(StatusProgressStorage):
 
     def touch(self, **_: Any) -> None:
         pass
+
+
+class FileProgressStorage(conventions.FileNamingConvention, ProgressStorage):
+    """
+    State storage in YAML files on a shared filesystem or pod volume.
+
+    Each Kubernetes resource gets its own file, named after its namespace,
+    name, and uid. The file contains a YAML mapping of handler IDs to their
+    progress records.
+
+    An example file at ``/var/kopf/default-my-app-12345678-abcd.progress.yaml``:
+
+    .. code-block:: yaml
+
+        my_handler:
+          started: '2020-02-14T16:58:25.396364'
+          stopped: '2020-02-14T16:58:25.401844'
+          retries: 1
+          success: true
+        my_other_handler:
+          started: '2020-02-14T16:58:25.396421'
+          retries: 0
+
+    The progress data itself is stored in files, not on the Kubernetes object.
+    However, a touch annotation is still written to the object (via the patch)
+    to trigger Kubernetes watch events when the object needs to be re-evaluated
+    (e.g. for delayed handler retries).
+    """
+
+    def __init__(
+            self,
+            path: str | pathlib.Path,
+            *,
+            touch_field: dicts.FieldSpec = ('metadata', 'annotations', 'kopf.dev/touch-dummy'),
+    ) -> None:
+        super().__init__(path=path, file_suffix='progress')
+        self.touch_field = touch_field
+
+    async def fetch(
+            self,
+            *,
+            key: ids.HandlerId,
+            body: bodies.Body,
+    ) -> ProgressRecord | None:
+        filepath = self._build_filename(body)
+        if filepath is None or not filepath.exists():
+            return None
+        data = yaml.safe_load(filepath.read_text(encoding='utf-8'))
+        if not isinstance(data, dict):
+            return None
+        record = data.get(key)
+        return cast(ProgressRecord, record) if record is not None else None
+
+    async def store(
+            self,
+            *,
+            key: ids.HandlerId,
+            record: ProgressRecord,
+            body: bodies.Body,
+            patch: patches.Patch,
+    ) -> None:
+        filepath = self._build_filename(body)
+        if filepath is None:
+            return
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        data: dict[str, Any] = {}
+        if filepath.exists():
+            loaded = yaml.safe_load(filepath.read_text(encoding='utf-8'))
+            if isinstance(loaded, dict):
+                data = loaded
+        data[key] = {k: v for k, v in record.items() if v is not None}
+        content = yaml.safe_dump(data, default_flow_style=False, sort_keys=False)
+        with self._temp_filename(filepath) as temppath:
+            temppath.write_text(content, encoding='utf-8')
+
+    async def purge(
+            self,
+            *,
+            key: ids.HandlerId,
+            body: bodies.Body,
+            patch: patches.Patch,
+    ) -> None:
+        filepath = self._build_filename(body)
+        if filepath is None or not filepath.exists():
+            return
+        loaded = yaml.safe_load(filepath.read_text(encoding='utf-8'))
+        data: dict[str, Any] = loaded if isinstance(loaded, dict) else {}
+        data.pop(key, None)
+        if data:
+            content = yaml.safe_dump(data, default_flow_style=False)
+            with self._temp_filename(filepath) as temppath:
+                temppath.write_text(content, encoding='utf-8')
+        else:
+            filepath.unlink(missing_ok=True)
+
+    def touch(
+            self,
+            *,
+            body: bodies.Body,
+            patch: patches.Patch,
+            value: str | None,
+    ) -> None:
+        body_value = dicts.resolve(body, self.touch_field, None)
+        if body_value != value:  # also covers absent-vs-None cases.
+            dicts.ensure(patch, self.touch_field, value)
+
+    async def erase(self, *, body: bodies.Body) -> None:
+        filepath = self._build_filename(body)
+        if filepath is not None:
+            filepath.unlink(missing_ok=True)
 
 
 class MultiProgressStorage(ProgressStorage):
