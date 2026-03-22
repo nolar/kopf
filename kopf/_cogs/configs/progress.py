@@ -40,8 +40,9 @@ All timestamps are strings in ISO8601 format in UTC (no explicit ``Z`` suffix).
 """
 import abc
 import copy
+import inspect
 import json
-from collections.abc import Collection
+from collections.abc import Awaitable, Collection
 from contextlib import AbstractAsyncContextManager
 from typing import Any, TypedDict, cast
 
@@ -88,15 +89,17 @@ class ProgressStorage(conventions.StorageStanzaCleaner,
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         pass
 
+    # Return types makes it mixed sync or async, both are supported.
     @abc.abstractmethod
     def fetch(
             self,
             *,
             key: ids.HandlerId,
             body: bodies.Body,
-    ) -> ProgressRecord | None:
+    ) -> ProgressRecord | None | Awaitable[ProgressRecord | None]:
         raise NotImplementedError
 
+    # Return types makes it mixed sync or async, both are supported.
     @abc.abstractmethod
     def store(
             self,
@@ -105,9 +108,10 @@ class ProgressStorage(conventions.StorageStanzaCleaner,
             record: ProgressRecord,
             body: bodies.Body,
             patch: patches.Patch,
-    ) -> None:
+    ) -> None | Awaitable[None]:
         raise NotImplementedError
 
+    # Return types makes it mixed sync or async, both are supported.
     @abc.abstractmethod
     def purge(
             self,
@@ -115,7 +119,7 @@ class ProgressStorage(conventions.StorageStanzaCleaner,
             key: ids.HandlerId,
             body: bodies.Body,
             patch: patches.Patch,
-    ) -> None:
+    ) -> None | Awaitable[None]:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -132,7 +136,8 @@ class ProgressStorage(conventions.StorageStanzaCleaner,
     def clear(self, *, essence: bodies.BodyEssence) -> bodies.BodyEssence:
         return copy.deepcopy(essence)
 
-    def flush(self) -> None:
+    # Return types makes it mixed sync or async, both are supported.
+    def flush(self) -> None | Awaitable[None]:
         pass
 
 
@@ -399,19 +404,24 @@ class MultiProgressStorage(ProgressStorage):
         super().__init__()
         self.storages = storages
 
-    def fetch(
+    # Cannot be sync for backwards compatibility, since it has to use `await` inside.
+    async def fetch(
             self,
             *,
             key: ids.HandlerId,
             body: bodies.Body,
     ) -> ProgressRecord | None:
+        # Storage methods were sync originally. Support both sync overrides and newer async methods
+        # without breaking the backwards compatibility and requiring a major semver release.
         for storage in self.storages:
-            content = storage.fetch(key=key, body=body)
+            maybe_coro = storage.fetch(key=key, body=body)
+            content = await maybe_coro if inspect.isawaitable(maybe_coro) else maybe_coro
             if content is not None:
                 return content
         return None
 
-    def store(
+    # Cannot be sync for backwards compatibility, since it has to use `await` inside.
+    async def store(
             self,
             *,
             key: ids.HandlerId,
@@ -420,9 +430,12 @@ class MultiProgressStorage(ProgressStorage):
             patch: patches.Patch,
     ) -> None:
         for storage in self.storages:
-            storage.store(key=key, record=record, body=body, patch=patch)
+            maybe_coro = storage.store(key=key, record=record, body=body, patch=patch)
+            if inspect.isawaitable(maybe_coro):
+                await maybe_coro
 
-    def purge(
+    # Cannot be sync for backwards compatibility, since it has to use `await` inside.
+    async def purge(
             self,
             *,
             key: ids.HandlerId,
@@ -430,7 +443,9 @@ class MultiProgressStorage(ProgressStorage):
             patch: patches.Patch,
     ) -> None:
         for storage in self.storages:
-            storage.purge(key=key, body=body, patch=patch)
+            maybe_coro = storage.purge(key=key, body=body, patch=patch)
+            if inspect.isawaitable(maybe_coro):
+                await maybe_coro
 
     def touch(
             self,

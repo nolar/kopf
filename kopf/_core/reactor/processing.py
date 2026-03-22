@@ -16,6 +16,7 @@ and therefore do not trigger the user-defined handlers.
 import asyncio
 import contextlib
 import functools
+import inspect
 from collections.abc import Collection
 from typing import NamedTuple
 
@@ -155,7 +156,7 @@ class _Causes(NamedTuple):
     changing_cause: causes.ChangingCause | None
 
 
-def _detect_causes(
+async def _detect_causes(
         indexers: indexing.OperatorIndexers,
         registry: registries.OperatorRegistry,
         settings: configuration.OperatorSettings,
@@ -175,7 +176,11 @@ def _detect_causes(
         registry._watching.get_extra_fields(resource=resource) |
         registry._changing.get_extra_fields(resource=resource) |
         registry._spawning.get_extra_fields(resource=resource))
-    old = settings.persistence.diffbase_storage.fetch(body=body)
+
+    # These methods were sync originally. Support both sync overrides and newer async methods
+    # without breaking the backwards compatibility and requiring a major semver release.
+    maybe_coro = settings.persistence.diffbase_storage.fetch(body=body)
+    old = await maybe_coro if inspect.isawaitable(maybe_coro) else maybe_coro
     new = settings.persistence.diffbase_storage.build(body=body, extra_fields=extra_fields)
     old = settings.persistence.progress_storage.clear(essence=old) if old is not None else None
     new = settings.persistence.progress_storage.clear(essence=new) if new is not None else None
@@ -238,7 +243,7 @@ async def process_resource_causes(
     patch_initially_empty = not patch  # before we add new things in low-level handlers
 
     finalizer = settings.persistence.finalizer
-    watching_cause, spawning_cause, changing_cause = _detect_causes(
+    watching_cause, spawning_cause, changing_cause = await _detect_causes(
         indexers=indexers,
         registry=registry,
         settings=settings,
@@ -462,7 +467,7 @@ async def process_changing_cause(
         owned_handlers = resource_registry.get_resource_handlers(resource=cause.resource)
         cause_handlers = resource_registry.get_handlers(cause=cause)
         storage = settings.persistence.progress_storage
-        state = progression.State.from_storage(body=cause.body, storage=storage, handlers=owned_handlers)
+        state = await progression.State.from_storage(body=cause.body, storage=storage, handlers=owned_handlers)
         state = state.with_purpose(cause.reason).with_handlers(cause_handlers)
 
         # Report the causes that have been superseded (intercepted, overridden) by the current one.
@@ -480,8 +485,8 @@ async def process_changing_cause(
         # The current cause continues afterwards, and overrides its own pre-purged handler states.
         # TODO: purge only the handlers that fell out of current purpose; but it is not critical
         if state.extras:
-            state.purge(body=cause.body, patch=cause.patch,
-                        storage=storage, handlers=owned_handlers)
+            await state.purge(body=cause.body, patch=cause.patch,
+                              storage=storage, handlers=owned_handlers)
 
         # Inform on the current cause/event on every processing cycle. Even if there are
         # no handlers -- to show what has happened and why the diff-base is patched.
@@ -499,7 +504,7 @@ async def process_changing_cause(
                 extra_context=subhandling.subhandling_context,
             )
             state = state.with_outcomes(outcomes)
-            state.store(body=cause.body, patch=cause.patch, storage=storage)
+            await state.store(body=cause.body, patch=cause.patch, storage=storage)
             progression.deliver_results(outcomes=outcomes, patch=cause.patch)
 
             if state.done:
@@ -507,8 +512,8 @@ async def process_changing_cause(
                 logger.info(f"{title.capitalize()} is processed: "
                             f"{counters.success} succeeded; "
                             f"{counters.failure} failed.")
-                state.purge(body=cause.body, patch=cause.patch,
-                            storage=storage, handlers=owned_handlers)
+                await state.purge(body=cause.body, patch=cause.patch,
+                                  storage=storage, handlers=owned_handlers)
 
             done = state.done
             delays = state.delays
@@ -518,7 +523,11 @@ async def process_changing_cause(
     # Regular causes also do some implicit post-handling when all handlers are done.
     if done or skip:
         if cause.new is not None and cause.old != cause.new:
-            settings.persistence.diffbase_storage.store(body=body, patch=patch, essence=cause.new)
+            # This method was sync originally. Support both sync overrides and newer async methods
+            # without breaking the backwards compatibility and requiring a major semver release.
+            maybe_coro = settings.persistence.diffbase_storage.store(body=body, patch=patch, essence=cause.new)
+            if inspect.isawaitable(maybe_coro):
+                await maybe_coro
 
         # Once all handlers have succeeded at least once for any reason, or if there were none,
         # prevent further resume-handlers (which otherwise happens on each watch-stream re-listing).
