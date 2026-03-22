@@ -329,6 +329,91 @@ class FileDiffBaseStorage(conventions.FileNamingConvention, DiffBaseStorage):
             filepath.unlink(missing_ok=True)
 
 
+class SQLiteDiffBaseStorage(conventions.SQLiteConvention, DiffBaseStorage):
+    """
+    Diff-base storage in a SQLite database file.
+
+    Each resource's body essence is stored as a single row, keyed by the
+    resource's namespace, name, and uid. The essence is stored as a JSON
+    string.
+
+    An example of the ``diffbase`` table contents:
+
+    .. code-block:: text
+
+        namespace | name   | uid   | essence
+        ----------+--------+-------+---------------------------------------
+        default   | my-app | uid1  | {"spec":{"replicas":3,"image":"..."}}
+
+    This storage does not write anything to the Kubernetes object itself.
+    Both the file and SQLite diff-base storages can share the same database
+    file when pointed to the same path.
+    """
+
+    # We do not plan any migrations yet. We pray that this simple schema is sufficient forever.
+    _create_sql = (
+        'CREATE TABLE IF NOT EXISTS diffbase ('
+        'namespace TEXT NOT NULL, '
+        'name TEXT NOT NULL, '
+        'uid TEXT NOT NULL, '
+        'essence TEXT NOT NULL, '
+        'PRIMARY KEY (namespace, name, uid))'
+    )
+
+    def __init__(
+            self,
+            path_or_conn: conventions.sqlite3_Connection | str | pathlib.Path,
+            /,
+            *,
+            ignored_fields: Iterable[dicts.FieldSpec] | None = None,
+    ) -> None:
+        super().__init__(path_or_conn, ignored_fields=ignored_fields)
+
+    async def fetch(
+            self,
+            *,
+            body: bodies.Body,
+    ) -> bodies.BodyEssence | None:
+        namespace, name, uid = self._extract_keys(body)
+        assert self._conn is not None
+        with self._conn:
+            cursor = self._try_execute(
+                'SELECT essence FROM diffbase'
+                ' WHERE namespace=? AND name=? AND uid=?',
+                (namespace, name, uid))
+            if cursor is None:
+                return None
+            row = cursor.fetchone()
+        if row is None:
+            return None
+        return cast(bodies.BodyEssence, json.loads(row[0]))
+
+    async def store(
+            self,
+            *,
+            body: bodies.Body,
+            patch: patches.Patch,
+            essence: bodies.BodyEssence,
+    ) -> None:
+        namespace, name, uid = self._extract_keys(body)
+        encoded = json.dumps(dict(essence), separators=(',', ':'))
+        assert self._conn is not None
+        with self._conn:
+            self._execute(
+                'INSERT OR REPLACE INTO diffbase'
+                ' (namespace, name, uid, essence) VALUES (?, ?, ?, ?)',
+                (namespace, name, uid, encoded))
+
+    async def erase(self, *, body: bodies.Body) -> None:
+        namespace, name, uid = self._extract_keys(body)
+        assert self._conn is not None
+        with self._conn:
+            self._try_execute(
+                'DELETE FROM diffbase'
+                ' WHERE namespace=? AND name=? AND uid=?',
+                (namespace, name, uid))
+
+
 class MultiDiffBaseStorage(DiffBaseStorage):
 
     def __init__(

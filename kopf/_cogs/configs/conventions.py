@@ -38,7 +38,7 @@ import urllib.parse
 import uuid
 import warnings
 from collections.abc import Collection, Iterable, Iterator
-from typing import Any
+from typing import Any, Protocol, cast, runtime_checkable
 
 from kopf._cogs.structs import bodies, patches
 
@@ -347,3 +347,104 @@ class FileNamingConvention:
             raise
         else:
             temp.rename(path)  # atomic overwrite
+
+
+# Sqlite3 is sometimes broken, so we import only on demand, so we cannot use it in annotations.
+# Add more methods as needed. Only actually used methods are listed here. There can be more.
+class sqlite3_Cursor(Protocol):
+    def fetchone(self) -> list[Any]: ...
+
+
+@runtime_checkable
+class sqlite3_Connection(Protocol):
+    def execute(self, sql: str, parameters: tuple[Any, ...] = ()) -> sqlite3_Cursor: ...
+    def close(self) -> None: ...
+    def __enter__(self) -> Any: ...
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None: ...
+
+
+class SQLiteConvention:
+    """
+    A mixin for SQLite-based storages with optimistic table creation.
+
+    Operations are tried first; if the table does not exist, it is created
+    and the operation is retried. This avoids upfront schema management
+    and lets both storage types share the same database file when pointed
+    to the same path.
+    """
+
+    _create_sql: str  # to be defined by subclasses
+
+    # If path is None, we do not own the connection, someone else does, we just use it.
+    # If path is set, we own the connection, create and close it as needed.
+    _path: pathlib.Path | None
+    _conn: sqlite3_Connection | None
+
+    def __init__(
+            self,
+            path_or_conn: sqlite3_Connection | str | pathlib.Path,
+            /,
+            **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        import sqlite3  # sometimes broken, so import only on demand
+        if isinstance(path_or_conn, (sqlite3_Connection, sqlite3.Connection)):
+            self._conn = path_or_conn
+            self._path = None
+        else:
+            self._conn = None
+            self._path = pathlib.Path(path_or_conn)
+
+    async def __aenter__(self) -> None:
+        if self._path is None:
+            return
+        import sqlite3  # sometimes broken, so import only on demand
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        self._conn = cast(sqlite3_Connection, sqlite3.connect(str(self._path)))
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        if self._path is not None and self._conn is not None:
+            self._conn.close()
+            self._conn = None
+
+    @staticmethod
+    def _extract_keys(body: bodies.Body) -> tuple[str, str, str]:
+        # Primary keys cannot store nulls, so we use empty strings as markers.
+        # K8s does not allow empty names/uids, so we are safe from collisions.
+        namespace = body.get('metadata', {}).get('namespace', '')
+        name = body.get('metadata', {}).get('name', '')
+        uid = body.get('metadata', {}).get('uid', '')
+        return namespace, name, uid
+
+    def _execute(
+            self,
+            sql: str,
+            params: tuple[Any, ...] = (),
+    ) -> sqlite3_Cursor:
+        """Execute SQL, creating the table optimistically if absent."""
+        import sqlite3  # sometimes broken, so import only on demand
+
+        assert self._conn is not None
+        try:
+            return self._conn.execute(sql, params)
+        except sqlite3.OperationalError as e:
+            if 'no such table' not in str(e):
+                raise
+            self._conn.execute(self._create_sql)
+            return self._conn.execute(sql, params)
+
+    def _try_execute(
+            self,
+            sql: str,
+            params: tuple[Any, ...] = (),
+    ) -> sqlite3_Cursor | None:
+        """Execute SQL, returning None if the table does not exist."""
+        import sqlite3  # sometimes broken, so import only on demand
+
+        assert self._conn is not None
+        try:
+            return self._conn.execute(sql, params)
+        except sqlite3.OperationalError as e:
+            if 'no such table' not in str(e):
+                raise
+            return None
