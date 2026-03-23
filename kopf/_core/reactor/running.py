@@ -221,17 +221,17 @@ async def spawn_tasks(
     # A few common background forever-running infrastructural tasks (irregular root tasks).
     tasks.append(asyncio.create_task(
         name="stop-flag checker",
-        coro=_stop_flag_checker(
+        coro=stop_flag_checker(
             signal_flag=signal_flag,
             stop_flag=stop_flag)))
     tasks.append(asyncio.create_task(
         name="ultimate termination",
-        coro=_ultimate_termination(
+        coro=ultimate_termination(
             settings=settings,
             stop_flag=stop_flag)))
     tasks.append(asyncio.create_task(
         name="startup/cleanup activities",
-        coro=_startup_cleanup_activities(
+        coro=startup_cleanup_activities(
             root_tasks=tasks,  # used as a "live" view, populated later.
             ready_flag=ready_flag,
             started_flag=started_flag,
@@ -420,7 +420,7 @@ async def run_tasks(
     await aiotasks.reraise(root_done | root_cancelled | hung_done | hung_cancelled)
 
 
-async def _stop_flag_checker(
+async def stop_flag_checker(
         signal_flag: aiotasks.Future,
         stop_flag: aioadapters.Flag | None,
 ) -> None:
@@ -452,7 +452,7 @@ async def _stop_flag_checker(
             logger.info(f"Stop-flag is set to {result!r}. Operator is stopping.")
 
 
-async def _ultimate_termination(
+async def ultimate_termination(
         *,
         settings: configuration.OperatorSettings,
         stop_flag: aioadapters.Flag | None,
@@ -477,7 +477,7 @@ async def _ultimate_termination(
                                 signal.pthread_kill, threading.get_ident(), signal.SIGKILL)
 
 
-async def _startup_cleanup_activities(
+async def startup_cleanup_activities(
         root_tasks: Sequence[aiotasks.Task],  # mutated externally!
         ready_flag: aioadapters.Flag | None,
         started_flag: asyncio.Event,
