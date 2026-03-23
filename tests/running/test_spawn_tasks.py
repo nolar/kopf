@@ -127,19 +127,20 @@ async def test_always_present_tasks(registry, settings):
     )
     task_names = {t.get_name() for t in tasks}
 
-    assert "stop-flag checker" in task_names
-    assert "ultimate termination" in task_names
-    assert "startup/cleanup activities" in task_names
-    assert "daemon killer" in task_names
-    assert "credentials retriever" in task_names
-    assert "poster of events" in task_names
-    assert "admission insights chain" in task_names
-    assert "admission validating configuration manager" in task_names
-    assert "admission mutating configuration manager" in task_names
-    assert "admission webhook server" in task_names
-    assert "resource observer" in task_names
-    assert "namespace observer" in task_names
-    assert "multidimensional multitasker" in task_names
+    assert task_names == {
+        "stop-flag checker",
+        "ultimate termination",
+        "startup/cleanup activities",
+        "daemon killer",
+        "poster of events",
+        "admission insights chain",
+        "admission validating configuration manager",
+        "admission mutating configuration manager",
+        "admission webhook server",
+        "resource observer",
+        "namespace observer",
+        "multidimensional multitasker",
+    }
     assert "health reporter" not in task_names
 
     await _cancel_all(tasks)
@@ -155,6 +156,21 @@ async def test_liveness_endpoint_adds_health_reporter(registry, settings):
     task_names = {t.get_name() for t in tasks}
     assert "health reporter" in task_names
     await _cancel_all(tasks)
+
+
+# The cancellation of "core" tasks is tested elsewhere. We just test that it is passed, not lost.
+async def test_core_tasks_passed_to_activities(registry, settings, mocker):
+    mock = mocker.patch('kopf._core.reactor.running.startup_cleanup_activities')
+    tasks = await spawn_tasks(
+        registry=registry,
+        settings=settings,
+        clusterwide=True,
+    )
+    core_tasks = mock.call_args.kwargs['core_tasks']
+    core_task_names = {t.get_name() for t in core_tasks}
+    assert core_task_names == {"credentials retriever"}
+    await _cancel_all(tasks)
+    await _cancel_all(core_tasks)  # because not awaited and not stopped in the mock
 
 
 async def test_command_replaces_orchestrator(registry, settings):
