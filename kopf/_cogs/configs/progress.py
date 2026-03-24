@@ -42,6 +42,7 @@ import abc
 import copy
 import inspect
 import json
+import warnings
 from collections.abc import Awaitable, Collection
 from contextlib import AbstractAsyncContextManager
 from typing import Any, TypedDict, cast
@@ -82,6 +83,28 @@ class ProgressStorage(conventions.StorageStanzaCleaner,
     for relational/transactional databases), the keys can be cached in memory
     for short time, and ``flush()`` can be overridden to actually store them.
     """
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        # Kopf's own storages remain sync for backwards compatibility, in case
+        # developers inherit these classes and call `super().method(…)` without `await`.
+        # But their protocol now allows returning awaitable coroutines.
+        for method_name in ('fetch', 'store', 'purge', 'flush'):
+            method = cls.__dict__.get(method_name)
+            deprecated = (
+                method is not None and
+                not cls.__module__.startswith('kopf.') and
+                not inspect.iscoroutinefunction(method)
+            )
+            if deprecated:
+                warnings.warn(
+                    f"{cls.__qualname__}.{method_name}() is not async; "
+                    f"sync storage methods are deprecated and will stop working "
+                    f"in the future v2 release; they will continue working in v1. "
+                    "Declare it as 'async def' instead (supported since Kopf 1.45).",
+                    FutureWarning,
+                    stacklevel=3,
+                )
 
     async def __aenter__(self) -> None:
         pass

@@ -2,6 +2,7 @@ import abc
 import copy
 import inspect
 import json
+import warnings
 from collections.abc import Awaitable, Collection, Iterable
 from contextlib import AbstractAsyncContextManager
 from typing import Any, cast
@@ -28,6 +29,28 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
     on any object, and then uses that for the patch calculation:
     https://kubernetes.io/docs/concepts/overview/object-management-kubectl/declarative-config/
     """
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        # Kopf's own storages remain sync for backwards compatibility, in case
+        # developers inherit these classes and call `super().method(…)` without `await`.
+        # But their protocol now allows returning awaitable coroutines.
+        for method_name in ('fetch', 'store'):
+            method = cls.__dict__.get(method_name)
+            deprecated = (
+                method is not None and
+                not cls.__module__.startswith('kopf.') and
+                not inspect.iscoroutinefunction(method)
+            )
+            if deprecated:
+                warnings.warn(
+                    f"{cls.__qualname__}.{method_name}() is not async; "
+                    f"sync storage methods are deprecated and will stop working "
+                    f"in the future v2 release; they will continue working in v1. "
+                    "Declare it as 'async def' instead (supported since Kopf 1.45).",
+                    FutureWarning,
+                    stacklevel=3,
+                )
 
     def __init__(self, ignored_fields: Iterable[dicts.FieldSpec] | None = None) -> None:
         super().__init__()
