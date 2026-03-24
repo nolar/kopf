@@ -6,8 +6,8 @@ Kopf provides some tools for testing Kopf-based operators
 via the :mod:`kopf.testing` module (requires explicit importing).
 
 
-Background runner
-=================
+Command-line runner
+===================
 
 :class:`kopf.testing.KopfRunner` runs an arbitrary operator in the background
 while the original testing thread performs object manipulation and assertions:
@@ -68,6 +68,89 @@ the caller's default registry explicitly from :func:`kopf.get_default_registry`
         registry=kopf.get_default_registry(),
     ) as runner:
         ...
+
+
+Programmatic runners
+====================
+
+:class:`kopf.testing.KopfRunner` enters the operator through the CLI,
+which requires module paths and Click invocation.
+For cases where the handlers are already registered in the process
+(e.g. imported directly in the test module),
+there are two programmatic runners that enter via :func:`kopf.operator` directly.
+
+Unlike the CLI runner, programmatic runners do not import any files or modules.
+Instead, they inherit the caller's environment (i.e., the handlers),
+unless a custom registry is passed as an argument.
+
+
+Background thread
+-----------------
+
+:class:`kopf.testing.KopfThread` is a sync context manager
+that runs the operator in a background thread:
+
+.. code-block:: python
+
+    import kopf
+    import time
+    from kopf.testing import KopfThread
+
+    @kopf.on.create('kopfexamples')
+    def create_fn(**_):
+        pass
+
+    def test_operator():
+        settings = kopf.OperatorSettings()
+        settings.scanning.disabled = True
+        with KopfThread(namespaces=['ns1'], settings=settings):
+            # do something while the operator is running.
+            time.sleep(3)
+        # operator has been stopped and cleaned up
+
+
+Background task
+---------------
+
+:class:`kopf.testing.KopfTask` is an async context manager
+that runs the operator as a background asyncio task:
+
+.. code-block:: python
+
+    import kopf
+    from kopf.testing import KopfTask
+
+    @kopf.on.create('kopfexamples')
+    def create_fn(**_):
+        pass
+
+    async def test_operator():
+        settings = kopf.OperatorSettings()
+        settings.scanning.disabled = True
+        async with KopfTask(namespaces=['ns1'], settings=settings):
+            # do something while the operator is running.
+            pass
+        # operator has been stopped and cleaned up
+
+
+Common options
+--------------
+
+Both :class:`kopf.testing.KopfThread` and :class:`kopf.testing.KopfTask`
+accept all the same keyword arguments as :func:`kopf.operator`,
+plus two additional ones:
+
+* :kwarg:`timeout` --- how long to wait for the operator to stop on exit
+  (in seconds). If the operator does not stop in time, an exception is raised.
+  ``None`` means wait indefinitely (the default).
+* :kwarg:`reraise` --- whether to propagate exceptions from the operator
+  (default ``True``). If the ``with`` block also raised,
+  the operator exception is chained.
+
+If :kwarg:`stop_flag` is not provided, one is injected automatically
+and set when the context manager exits.
+If :kwarg:`ready_flag` is provided, it is passed through to the operator
+and can be awaited inside the ``with`` block.
 
 
 Mock server

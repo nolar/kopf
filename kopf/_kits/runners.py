@@ -3,14 +3,20 @@ import concurrent.futures
 import contextlib
 import threading
 import types
+from collections.abc import Collection
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import click.testing
 
 from kopf import cli
+from kopf._cogs.aiokits import aioadapters
 from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import aiohttpcaps
+from kopf._cogs.structs import credentials, references
+from kopf._core.actions import execution
+from kopf._core.engines import indexing, peering
 from kopf._core.intents import registries
+from kopf._core.reactor import inventory, running
 
 _ExcType = BaseException
 _ExcInfo = tuple[type[_ExcType], _ExcType, types.TracebackType]
@@ -195,3 +201,297 @@ class KopfRunner(_AbstractKopfRunner):
     @property
     def exc_info(self) -> _ExcInfo:
         return cast(_ExcInfo, self.future.result().exc_info)
+
+
+class KopfThread:
+    """
+    A context manager to run a Kopf operator in a background thread.
+
+    Unlike :class:`KopfRunner`, this enters the operator programmatically
+    via :func:`kopf.operator` rather than through the CLI.
+
+    Usage:
+
+    .. code-block:: python
+
+        import kopf
+        from kopf.testing import KopfThread
+
+        def test_operator():
+            settings = kopf.OperatorSettings()
+            settings.scanning.disabled = True
+            with KopfThread(namespaces=['ns1'], settings=settings):
+                # do something while the operator is running.
+                time.sleep(3)
+    """
+    _future: concurrent.futures.Future[None]
+
+    def __init__(
+            self,
+            *,
+            # All operator() kwargs, explicitly enumerated with types.
+            # TODO: Switch to Unpack[OperatorParams] when Python 3.10 is dropped (Oct 2026).
+            lifecycle: execution.LifeCycleFn | None = None,
+            indexers: indexing.OperatorIndexers | None = None,
+            registry: registries.OperatorRegistry | None = None,
+            settings: configuration.OperatorSettings | None = None,
+            memories: inventory.ResourceMemories | None = None,
+            insights: references.Insights | None = None,
+            identity: peering.Identity | None = None,
+            standalone: bool | None = None,
+            priority: int | None = None,
+            peering_name: str | None = None,
+            liveness_endpoint: str | None = None,
+            clusterwide: bool = False,
+            namespaces: Collection[references.NamespacePattern] = (),
+            namespace: references.NamespacePattern | None = None,
+            stop_flag: aioadapters.Flag | None = None,
+            ready_flag: aioadapters.Flag | None = None,
+            vault: credentials.Vault | None = None,
+            memo: object | None = None,
+            # KopfThread's own kwargs:
+            timeout: float | None = None,
+            reraise: bool = True,
+    ) -> None:
+        super().__init__()
+        self._lifecycle = lifecycle
+        self._indexers = indexers
+        self._registry = registry
+        self._settings = settings
+        self._memories = memories
+        self._insights = insights
+        self._identity = identity
+        self._standalone = standalone
+        self._priority = priority
+        self._peering_name = peering_name
+        self._liveness_endpoint = liveness_endpoint
+        self._clusterwide = clusterwide
+        self._namespaces = namespaces
+        self._namespace = namespace
+        self._stop_flag: aioadapters.Flag = stop_flag if stop_flag is not None else threading.Event()
+        self._ready_flag = ready_flag
+        self._vault = vault
+        self._memo = memo
+        self.timeout = timeout
+        self.reraise = reraise
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._thread = threading.Thread(target=self._target)
+        self._future: concurrent.futures.Future[None] = concurrent.futures.Future()
+
+        # Internal sync of the caller's thread and the operator thread.
+        self._init_flag = threading.Event()
+        self._exit_flag = threading.Event()
+        self._exit_lock = threading.Lock()
+
+    def __enter__(self) -> "KopfThread":
+        self._thread.start()
+        self._init_flag.wait()
+        return self
+
+    def __exit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc_val: BaseException | None,
+            exc_tb: types.TracebackType | None,
+    ) -> Literal[False]:
+        assert self._loop is not None
+
+        # Check if our coroutine will run at all — in case the operator failed/exited much earlier.
+        # Otherwise, we get `RuntimeWarning: coroutine 'raise_flag' was never awaited` in CI.
+        # The lock protects against the flag externally set between our check and coro injection.
+        future: concurrent.futures.Future[None] | None = None
+        with self._exit_lock:
+            if not self._exit_flag.is_set():
+                coro = aioadapters.raise_flag(self._stop_flag)
+                future = asyncio.run_coroutine_threadsafe(coro, self._loop)
+
+        # Not really needed, but for extra code safety: wait that the instant coroutine is finished.
+        # The wait is outside the lock; otherwise, it blocks the `finally` block in the thread
+        # when the loop surely does not run, so the future will never be set.
+        if future is not None:
+            future.result()  # usually instant
+
+        # Regardless of the exiting reason (success or failure), let the thread finish properly.
+        self._thread.join(timeout=self.timeout)
+
+        # If the thread is not finished, it is a bigger problem than exceptions.
+        if self._thread.is_alive():
+            raise Exception("The operator didn't stop, still running.")
+
+        # Re-raise the exceptions of the underlying operator.
+        e = self._future.exception()
+        if e is not None:
+            if self.reraise:
+                if exc_val is None:
+                    raise e
+                else:
+                    raise e from exc_val
+        return False
+
+    def _target(self) -> None:
+        # TODO: Switch to asyncio.Runner when Python 3.10 is dropped (Oct 2026).
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        self._loop = loop
+        self._init_flag.set()
+        try:
+            loop.run_until_complete(running.operator(
+                lifecycle=self._lifecycle,
+                indexers=self._indexers,
+                registry=self._registry,
+                settings=self._settings,
+                memories=self._memories,
+                insights=self._insights,
+                identity=self._identity,
+                standalone=self._standalone,
+                priority=self._priority,
+                peering_name=self._peering_name,
+                liveness_endpoint=self._liveness_endpoint,
+                clusterwide=self._clusterwide,
+                namespaces=self._namespaces,
+                namespace=self._namespace,
+                stop_flag=self._stop_flag,
+                ready_flag=self._ready_flag,
+                vault=self._vault,
+                memo=self._memo,
+            ))
+        except BaseException as e:
+            self._future.set_exception(e)
+        else:
+            self._future.set_result(None)
+        finally:
+            # The caller's thread injects a coroutine that we want to surely await.
+            # But only if the caller injected it before us here. If after, skip the injection there.
+            with self._exit_lock:
+                self._exit_flag.set()
+                loop.run_until_complete(asyncio.sleep(0))
+
+            # The usual event loop cleanup routines.
+            loop.run_until_complete(loop.shutdown_asyncgens())
+
+            # Shut down the transports and prevent ResourceWarning: unclosed transport.
+            # See: https://docs.aiohttp.org/en/stable/client_advanced.html#graceful-shutdown
+            # Fixed in aiohttp 3.12.4; the sleep is only needed for older versions.
+            if not aiohttpcaps.AIOHTTP_HAS_GRACEFUL_SHUTDOWN:
+                loop.run_until_complete(asyncio.sleep(1.0))
+            loop.close()
+
+
+class KopfTask:
+    """
+    An async context manager to run a Kopf operator as a background asyncio task.
+
+    Unlike :class:`KopfRunner`, this enters the operator programmatically
+    via :func:`kopf.operator` rather than through the CLI.
+
+    Usage:
+
+    .. code-block:: python
+
+        import kopf
+        from kopf.testing import KopfTask
+
+        async def test_operator():
+            settings = kopf.OperatorSettings()
+            settings.scanning.disabled = True
+            async with KopfTask(namespaces=['ns1'], settings=settings):
+                # do something while the operator is running.
+                pass
+    """
+
+    def __init__(
+            self,
+            *,
+            # All operator() kwargs, explicitly enumerated with types.
+            # TODO: Switch to Unpack[OperatorParams] when Python 3.10 is dropped (Oct 2026).
+            lifecycle: execution.LifeCycleFn | None = None,
+            indexers: indexing.OperatorIndexers | None = None,
+            registry: registries.OperatorRegistry | None = None,
+            settings: configuration.OperatorSettings | None = None,
+            memories: inventory.ResourceMemories | None = None,
+            insights: references.Insights | None = None,
+            identity: peering.Identity | None = None,
+            standalone: bool | None = None,
+            priority: int | None = None,
+            peering_name: str | None = None,
+            liveness_endpoint: str | None = None,
+            clusterwide: bool = False,
+            namespaces: Collection[references.NamespacePattern] = (),
+            namespace: references.NamespacePattern | None = None,
+            stop_flag: aioadapters.Flag | None = None,
+            ready_flag: aioadapters.Flag | None = None,
+            vault: credentials.Vault | None = None,
+            memo: object | None = None,
+            # KopfTask's own kwargs:
+            timeout: float | None = None,
+            reraise: bool = True,
+    ) -> None:
+        super().__init__()
+        self._lifecycle = lifecycle
+        self._indexers = indexers
+        self._registry = registry
+        self._settings = settings
+        self._memories = memories
+        self._insights = insights
+        self._identity = identity
+        self._standalone = standalone
+        self._priority = priority
+        self._peering_name = peering_name
+        self._liveness_endpoint = liveness_endpoint
+        self._clusterwide = clusterwide
+        self._namespaces = namespaces
+        self._namespace = namespace
+        self._stop_flag: aioadapters.Flag = stop_flag if stop_flag is not None else asyncio.Event()
+        self._ready_flag = ready_flag
+        self._vault = vault
+        self._memo = memo
+        self.timeout = timeout
+        self.reraise = reraise
+        self._task: asyncio.Task[None] | None = None
+
+    async def __aenter__(self) -> "KopfTask":
+        self._task = asyncio.create_task(running.operator(
+            lifecycle=self._lifecycle,
+            indexers=self._indexers,
+            registry=self._registry,
+            settings=self._settings,
+            memories=self._memories,
+            insights=self._insights,
+            identity=self._identity,
+            standalone=self._standalone,
+            priority=self._priority,
+            peering_name=self._peering_name,
+            liveness_endpoint=self._liveness_endpoint,
+            clusterwide=self._clusterwide,
+            namespaces=self._namespaces,
+            namespace=self._namespace,
+            stop_flag=self._stop_flag,
+            ready_flag=self._ready_flag,
+            vault=self._vault,
+            memo=self._memo,
+        ))
+        return self
+
+    async def __aexit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc_val: BaseException | None,
+            exc_tb: types.TracebackType | None,
+    ) -> Literal[False]:
+        assert self._task is not None
+        await aioadapters.raise_flag(self._stop_flag)
+        _, pending = await asyncio.wait({self._task}, timeout=self.timeout)
+
+        # If the thread is not finished, it is a bigger problem than exceptions.
+        if pending:
+            raise Exception("The operator didn't stop, still running.")
+
+        # Re-raise the exceptions of the underlying operator.
+        e = self._task.exception() if not self._task.cancelled() else None
+        if e is not None:
+            if self.reraise:
+                if exc_val is None:
+                    raise e
+                else:
+                    raise e from exc_val
+        return False
