@@ -4,6 +4,8 @@ Type definitions from optional 3rd-party libraries, e.g. pykube-ng & kubernetes.
 This utility does all the trickery needed to import the libraries if possible,
 or to skip them and make typing/runtime dummies for the rest of the codebase.
 """
+from __future__ import annotations
+
 import abc
 from typing import Any, Protocol
 
