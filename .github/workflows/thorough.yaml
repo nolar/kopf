@@ -24,16 +24,16 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.14"
-      - run: uv sync --group lint
-      - run: uv run pre-commit run --all-files
-      - run: uv run mypy
+      - run: uv sync --no-dev --group lint
+      - run: uv run --no-sync pre-commit run --all-files
+      - run: uv run --no-sync mypy
       - run: |
           # Separately, because the shared module name "example.py" causes naming conflicts.
           exit_codes=0
           for d in $(find examples -maxdepth 1 -mindepth 1 -type d)
           do
             echo "Checking ${d}"
-            uv run mypy $d
+            uv run --no-sync mypy $d
             exit_codes=$[${exit_codes} + $?]
           done
           exit ${exit_codes}
@@ -57,10 +57,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - run: uv sync --group test
-      - run: uv sync --group test --extra ${{ matrix.install-extras }}
+      - run: uv sync --no-dev --group test
+      - run: uv sync --no-dev --group test --extra ${{ matrix.install-extras }}
         if: ${{ matrix.install-extras }}
-      - run: uv run coverage run --branch --source=kopf -m pytest --color=yes --timeout=2
+      - run: uv run --no-sync coverage run --branch --source=kopf -m pytest --color=yes --timeout=2
 
       - name: Publish coverage to Coveralls.io
         uses: coverallsapp/github-action@v2
@@ -101,10 +101,10 @@ jobs:
 
       - run: sudo apt-get update && sudo apt-get install libxml2-dev libxslt-dev
 
-      - run: uv sync --group test
-      - run: uv sync --group test --extra ${{ matrix.install-extras }}
+      - run: uv sync --no-dev --group test
+      - run: uv sync --no-dev --group test --extra ${{ matrix.install-extras }}
         if: ${{ matrix.install-extras }}
-      - run: uv run pytest --color=yes --timeout=2 --no-cov
+      - run: uv run --no-sync pytest --color=yes --timeout=2 --no-cov
 
   functional:
     strategy:
@@ -125,9 +125,10 @@ jobs:
           version: ${{ matrix.k3s }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           k3s-args: --disable=metrics-server@server:*
-      - run: uv sync --group test
+
+      - run: uv sync --no-dev --group test
       - run: uv pip install -r examples/requirements.txt
-      - run: uv run pytest --color=yes --timeout=30 --only-e2e
+      - run: uv run --no-sync pytest --color=yes --timeout=30 --only-e2e
 
   full-scale:
     strategy:
@@ -146,9 +147,10 @@ jobs:
         with:
           python-version: "3.14"
       - run: tools/install-minikube.sh
-      - run: uv sync --group test
+
+      - run: uv sync --no-dev --group test
       - run: uv pip install -r examples/requirements.txt
-      - run: uv run pytest --color=yes --timeout=30 --only-e2e
+      - run: uv run --no-sync pytest --color=yes --timeout=30 --only-e2e
 
   coveralls-finish:
     name: Finalize coveralls.io
