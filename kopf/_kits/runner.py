@@ -1,39 +1,16 @@
 import asyncio
 import concurrent.futures
 import contextlib
-import re
 import threading
 import types
 from typing import TYPE_CHECKING, Any, Literal, cast
 
-import aiohttp
 import click.testing
 
 from kopf import cli
 from kopf._cogs.configs import configuration
+from kopf._cogs.helpers import aiohttpcaps
 from kopf._core.intents import registries
-
-
-def _parse_version(version_string: str) -> tuple[int, ...]:
-    parts: list[int] = []
-    for part in version_string.split('.')[:3]:
-        m = re.match(r'\d+', part)
-        if m is None:
-            raise ValueError(f"Cannot parse version part: {part!r}")
-        parts.append(int(m.group()))
-    return tuple(parts)
-
-
-try:
-    _aiohttp_version = _parse_version(aiohttp.__version__)
-    _AIOHTTP_HAS_GRACEFUL_SHUTDOWN = _aiohttp_version >= (3, 12, 4)
-except (AttributeError, ValueError):  # if aiohttp.__version__ is gone
-    try:
-        import importlib.metadata
-        _aiohttp_version = _parse_version(importlib.metadata.version('aiohttp'))
-        _AIOHTTP_HAS_GRACEFUL_SHUTDOWN = _aiohttp_version >= (3, 12, 4)
-    except (AttributeError, ValueError):
-        _AIOHTTP_HAS_GRACEFUL_SHUTDOWN = True  # optimistically assume it works
 
 _ExcType = BaseException
 _ExcInfo = tuple[type[_ExcType], _ExcType, types.TracebackType]
@@ -172,7 +149,7 @@ class KopfRunner(_AbstractKopfRunner):
             # Shut down the transports and prevent ResourceWarning: unclosed transport.
             # See: https://docs.aiohttp.org/en/stable/client_advanced.html#graceful-shutdown
             # Fixed in aiohttp 3.12.4; the sleep is only needed for older versions.
-            if not _AIOHTTP_HAS_GRACEFUL_SHUTDOWN:
+            if not aiohttpcaps.AIOHTTP_HAS_GRACEFUL_SHUTDOWN:
                 loop.run_until_complete(asyncio.sleep(1.0))
 
             loop.close()
