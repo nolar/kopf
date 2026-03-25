@@ -44,6 +44,13 @@ def pytest_configure(config):
     config.addinivalue_line('filterwarnings', 'ignore:datetime*:DeprecationWarning:freezegun')
     config.addinivalue_line('filterwarnings', 'ignore:.*:DeprecationWarning:_pydevd_.*')
 
+    # In addition to skipping the e2e tests (some are in ./tests/, some are in ./examples/),
+    # skip traversing the ./examples/ entirely --- unless needed for e2e tests.
+    # The tests and operators there may contain imports that are not available in unit-test mode.
+    # Quick-check with `pytest --collect-only [ --with-e2e | --only-e2e ]`.
+    if not config.getoption('--with-e2e') and not config.getoption('--only-e2e'):
+        config.option.ignore = ['examples']
+
 
 def pytest_addoption(parser):
     parser.addoption("--only-e2e", action="store_true", help="Execute end-to-end tests only.")

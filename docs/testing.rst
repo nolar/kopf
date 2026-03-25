@@ -152,12 +152,22 @@ If :kwarg:`ready_flag` is provided, it is passed through to the operator
 and can be awaited inside the ``with`` block.
 
 
-Mock server
-===========
+KMock server
+============
 
 KMock is a supplementary project for running a local mock server for any HTTP API, and for the Kubernetes API in particular --- with extended support for Kubernetes API endpoints, resource discovery, and implicit in-memory object persistence.
 
+* https://kmock.readthedocs.io/
+* https://github.com/nolar/kmock
+* https://pypi.org/project/kmock/
+
 Use KMock when you need a very lightweight simulation of the Kubernetes API without deploying a full Kubernetes cluster, for example when migrating to/from Kopf.
+
+See an example operator and its tests in:
+
+* `examples/09-testing-kmock/ <https://github.com/nolar/kopf/tree/main/examples/09-testing-kmock>`_
+
+A quick preview example:
 
 .. code-block:: python
 
@@ -171,8 +181,19 @@ Use KMock when you need a very lightweight simulation of the Kubernetes API with
         assert kmock.requests[0].method == 'patch'
         assert kmock.objects['kopf.dev/v1/kopfexamples', 'ns1', 'name1'] == {'spec': 456}
 
-KMock's detailed documentation is outside the scope of Kopf's documentation. The project and its documentation can be found at:
 
-* https://kmock.readthedocs.io/
-* https://github.com/nolar/kmock
-* https://pypi.org/project/kmock/
+Tests speedup
+=============
+
+To speed up tests written fully async (i.e., ``async def`` tests using :class:`kopf.testing.KopfTask` runner), another library by the same author as Kopf and KMock can be of use: ``looptime``, which compacts the event loop's time into near-zero wall-clock time. With this, you can time your tests freely without fears that it will slow down the test suite execution --- it will not.
+
+* https://looptime.readthedocs.io/
+* https://github.com/nolar/looptime
+* https://pypi.org/project/looptime/
+
+To quickly try it:
+
+.. code-block:: bash
+
+    pip install looptime
+    pytest --looptime
