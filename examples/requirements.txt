@@ -1,3 +1,4 @@
+kmock
 kopf
 pykube-ng
 pyyaml
