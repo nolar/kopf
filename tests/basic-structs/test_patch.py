@@ -121,3 +121,15 @@ def test_patch_inherits_dict_and_fns():
     p2 = Patch(p1)
     assert p2['x'] == 'y'
     assert list(p2.fns) == [fn1]
+
+
+# === Patch.clear ===
+
+
+def test_patch_clear_clears_dict_and_fns():
+    fn = lambda body: None
+    patch = Patch({'a': 'b'}, fns=[fn])
+    patch.clear()
+    assert dict(patch) == {}
+    assert list(patch.fns) == []
+    assert not patch
