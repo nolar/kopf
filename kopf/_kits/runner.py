@@ -74,8 +74,14 @@ class KopfRunner(_AbstractKopfRunner):
         self.kwargs = kwargs
         self.reraise = reraise
         self.timeout = timeout
-        self.registry = registry
+
+        # Separate the CLI-based runner from the environment. The CLI runner accepts files/modules
+        # and imports handlers from there, it should not inherit the caller's handlers.
+        # This pollutes the operator with unintended behaviour.
+        self.registry = registry if registry is not None else registries.SmartOperatorRegistry()
         self.settings = settings
+
+        # Internal synchronization of the runner (not the operator).
         self._stop = threading.Event()
         self._ready = threading.Event()  # NB: not asyncio.Event!
         self._thread = threading.Thread(target=self._target)

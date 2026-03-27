@@ -42,6 +42,33 @@ exit code and output are available to the test (for additional assertions).
     the same as if it were executed with ``kopf run``.
 
 
+Handler isolation
+-----------------
+
+:class:`kopf.testing.KopfRunner` is isolated from the caller's environment
+by default: it creates its own registry and settings, so only the handlers
+from the specified files and modules are loaded --- the same as ``kopf run``
+would behave on the command line.
+
+This means that any ``@kopf.on.*`` handlers defined in the test file
+or elsewhere in the caller's code are not visible to the runner
+and do not affect the operator being tested.
+
+If the old behaviour is needed (not recommended), pass the caller's
+default registry explicitly:
+
+.. code-block:: python
+
+    import kopf
+    from kopf.testing import KopfRunner
+
+    with KopfRunner(
+        ['run', '--verbose', 'example.py'],
+        registry=kopf.get_default_registry(),
+    ) as runner:
+        ...
+
+
 Mock server
 ===========
 
