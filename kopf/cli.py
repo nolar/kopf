@@ -89,12 +89,18 @@ def run(
         namespaces = tuple(namespaces) + (os.environ.get('KOPF_RUN_NAMESPACE', ''),)
     if namespaces and clusterwide:
         raise click.UsageError("Either --namespace or --all-namespaces can be used, not both.")
+
+    # Keep the default registry set only for the loading time (when we register handlers).
+    # This is for KopfRunner in tests, which needs isolation from the caller's environment.
+    # For the real CLI, this is a one-shot run and this trick makes no difference.
+    original_registry = registries.get_default_registry()
     if __controls.registry is not None:
         registries.set_default_registry(__controls.registry)
-    loaders.preload(
-        paths=paths,
-        modules=modules,
-    )
+    try:
+        loaders.preload(paths=paths, modules=modules)
+    finally:
+        registries.set_default_registry(original_registry)
+
     with loops.proper_loop(suggested_loop=__controls.loop) as actual_loop:
         return running.run(
             standalone=standalone,
