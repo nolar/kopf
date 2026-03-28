@@ -130,6 +130,9 @@ include = ["kopf", "kopf.*"]
 [tool.setuptools_scm]
 version_file = "kopf/_cogs/helpers/versions.py"
 
+[tool.uv]
+exclude-newer = "7 days"
+
 [tool.mypy]
 strict = true
 packages = ["kopf"]
