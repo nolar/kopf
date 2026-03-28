@@ -1,5 +1,8 @@
+import textwrap
+
 import pytest
 
+import kopf
 from kopf._cogs.configs.configuration import OperatorSettings
 from kopf._core.intents.registries import OperatorRegistry
 from kopf.testing import KopfRunner
@@ -35,6 +38,39 @@ def test_registry_and_settings_are_propagated(mocker):
     assert operator_mock.called
     assert operator_mock.call_args.kwargs['registry'] is registry
     assert operator_mock.call_args.kwargs['settings'] is settings
+
+
+def test_runner_is_isolated_from_caller(registry, mocker, tmp_path):
+    operator_mock = mocker.patch('kopf._core.reactor.running.operator')
+
+    @kopf.on.startup(registry=registry)
+    def caller_handler(**_):
+        pass
+
+    handler_file = tmp_path / "handlers.py"
+    handler_file.write_text(textwrap.dedent("""
+        import kopf
+
+        @kopf.on.startup()
+        def file_handler(**_):
+            pass
+    """))
+
+    with KopfRunner(['run', str(handler_file), '--standalone']) as runner:
+        pass
+    assert runner.exit_code == 0
+    assert runner.exception is None
+
+    # The operator must be called with a fresh registry, not the caller's.
+    used_registry = operator_mock.call_args.kwargs['registry']
+    assert used_registry is not registry
+
+    # The file's handler must be in the operator's registry.
+    handler_ids = [h.id for h in used_registry._activities.get_all_handlers()]
+    assert 'file_handler' in handler_ids
+
+    # The caller's handler must NOT be in the operator's registry.
+    assert 'caller_handler' not in handler_ids
 
 
 def test_exception_from_runner_suppressed_with_no_reraise():
