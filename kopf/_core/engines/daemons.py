@@ -89,13 +89,14 @@ async def spawn_daemons(
     for handler in handlers:
         if handler.id not in daemons:
             stopper = stoppers.DaemonStopper()
+            live_body = memory.live_fresh_body
             daemon_cause = causes.DaemonCause(
                 resource=cause.resource,
                 indices=cause.indices,
                 logger=cause.logger,
                 memo=cause.memo,
-                body=memory.live_fresh_body,
-                patch=patches.Patch(),  # not the same as the one-shot spawning patch!
+                body=live_body,
+                patch=patches.Patch(body=live_body),  # not the same as the one-shot spawning patch!
                 stopper=stopper,  # for checking (passed to kwargs)
             )
             daemon = Daemon(
