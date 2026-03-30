@@ -68,7 +68,7 @@ class Patch(dict[str, Any]):
         self,
         src: dict[str, Any] | None = None,
         /,
-        body: bodies.RawBody | None = None,
+        body: bodies.Body | None = None,
         fns: Iterable[PatchFn] = (),
     ) -> None:
         super().__init__(src or {})
@@ -110,7 +110,7 @@ class Patch(dict[str, Any]):
     def status(self) -> StatusPatch:
         return self._status
 
-    def as_json_patch(self, body: bodies.RawBody | None = None) -> JSONPatch:
+    def as_json_patch(self, body: bodies.Body | bodies.RawBody | None = None) -> JSONPatch:
         """
         Build a list of JSON-patch ops for the changes & transformations.
 
@@ -123,8 +123,9 @@ class Patch(dict[str, Any]):
         or setting the key to a value which is already in the resource body.
         """
         # Clone the original body to be mutated in memory before diffing.
-        body_as_is = body if body is not None else self._original
-        body_to_be = copy.deepcopy(body_as_is)
+        base: bodies.Body | bodies.RawBody | None = body if body is not None else self._original
+        body_as_is: bodies.RawBody | None = None if base is None else cast(bodies.RawBody, dict(base))
+        body_to_be: bodies.RawBody | None = copy.deepcopy(body_as_is)
         if not self:
             return []
         if body_as_is is None or body_to_be is None:

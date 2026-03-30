@@ -75,7 +75,7 @@ async def patch_obj(
         # Use the latest known body for reference when calculating the item indexes in lists.
         # Note: we apply transformations for the whole body atomically, and in the future (not yet)
         # we want to get the ops from the functions, so we can only filter by path here.
-        fresh_body: bodies.RawBody | None = patched_body if patched_body else patch._original
+        fresh_body: bodies.Body | bodies.RawBody | None = patched_body or patch._original
         ops: patches.JSONPatch = remaining_patch.as_json_patch(fresh_body)
         body_ops: patches.JSONPatch
         status_ops: patches.JSONPatch

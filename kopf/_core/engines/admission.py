@@ -135,7 +135,7 @@ async def serve_admission_request(
     old = bodies.Body(old_body) if old_body is not None else None
     new = bodies.Body(new_body) if new_body is not None else None
     diff = diffs.diff(old, new)
-    patch = patches.Patch(body=raw_body)
+    patch = patches.Patch(body=body)
     warnings: list[str] = []
     cause = causes.WebhookCause(
         resource=resource,

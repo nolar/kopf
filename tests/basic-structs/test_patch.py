@@ -1,3 +1,4 @@
+from kopf._cogs.structs.bodies import Body
 from kopf._cogs.structs.patches import Patch
 
 # === Patch.__init__ ===
@@ -16,14 +17,14 @@ def test_patch_init_none_src():
 
 
 def test_patch_init_body_only():
-    body = {'metadata': {'name': 'obj'}}
+    body = Body({'metadata': {'name': 'obj'}})
     patch = Patch(body=body)
     assert dict(patch) == {}
     assert len(patch.fns) == 0
 
 
 def test_patch_init_body_stored_for_json_patch():
-    body = {'abc': 456}
+    body = Body({'abc': 456})
     patch = Patch(body=body)
     patch['abc'] = 789
     ops = patch.as_json_patch()
