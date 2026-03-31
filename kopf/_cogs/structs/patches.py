@@ -90,6 +90,10 @@ class Patch(dict[str, Any]):
     def __bool__(self) -> bool:
         return len(self) > 0 or bool(self.fns)
 
+    def clear(self) -> None:
+        super().clear()
+        self._fns.clear()
+
     @property
     def fns(self) -> list[PatchFn]:
         return self._fns
