@@ -1,6 +1,7 @@
 import asyncio
 
 import kopf
+from kopf._cogs.clients.errors import APIUnprocessableEntityError
 
 
 async def test_timer_patching_with_fns_only(
@@ -92,4 +93,47 @@ async def test_timer_fns_cleared_between_iterations(
         {'op': 'test', 'path': '/metadata/resourceVersion', 'value': '123'},
         {'op': 'add', 'path': '/status', 'value': {f'iter2': True}},
         # important: no "iter1" field here (as if when the fn would be preserved)!
+    ]
+
+
+async def test_timer_fns_carried_forward_on_conflict(
+        resource, settings, dummy, assert_logs, k8s_mocked, simulate_cycle, looptime):
+    """Patch fns must be retried on the next iteration after a 422 conflict."""
+    trigger = asyncio.Condition()
+
+    @kopf.timer(*resource, id='fn', interval=1.0)
+    async def fn(patch: kopf.Patch, **kwargs):
+        dummy.mock(**kwargs, patch=patch)
+        n = dummy.mock.call_count
+        patch.fns.append(lambda body, n=n: body.setdefault('status', {}).update({f'iter{n}': True}))
+        async with trigger:
+            trigger.notify_all()
+
+    # Fail the first JSON-patch call with 422 (version conflict), succeed on 2nd and so on.
+    k8s_mocked.patch.side_effect = [
+        APIUnprocessableEntityError(status=422, headers={}),  # 1st json-patch
+        {'metadata': {'resourceVersion': '123'}},  # 2nd json-patch
+    ]
+
+    finalizer = settings.persistence.finalizer
+    event_object = {'metadata': {'resourceVersion': '123', 'finalizers': [finalizer]}}
+    await simulate_cycle(event_object)
+    async with trigger:
+        await trigger.wait()
+        await trigger.wait()
+    await asyncio.sleep(0.5)  # give it a half-cycle to patch after the last line of the handler
+
+    assert dummy.mock.call_count == 2
+
+    # The fn was added on iteration 1, JSON-patch failed with 422, fn was carried forward.
+    payloads = [call.kwargs['payload'] for call in k8s_mocked.patch.call_args_list]
+    assert len(payloads) == 2
+    assert payloads[0] == [
+        {'op': 'test', 'path': '/metadata/resourceVersion', 'value': '123'},
+        {'op': 'add', 'path': '/status', 'value': {'iter1': True}},
+    ]
+    assert payloads[1] == [
+        {'op': 'test', 'path': '/metadata/resourceVersion', 'value': '123'},
+        {'op': 'add', 'path': '/status', 'value': {'iter1': True, 'iter2': True}},
+        # important: "iter1" is carried forward, despite only "iter2" is added normally.
     ]
