@@ -106,10 +106,6 @@ The functions should therefore be safe to call repeatedly:
 they should check the current state before making changes
 rather than assuming a particular initial state.
 
-
-Arguments to transformation functions
---------------------------------------
-
 The transformation function takes a single positional argument
 for the body. If additional positional or keyword arguments are needed,
 use ``functools.partial``:
@@ -125,3 +121,27 @@ use ``functools.partial``:
     @kopf.on.create('kopfexamples')
     def create_fn(patch, **_):
         patch.fns.append(functools.partial(set_label, name='my-label', value='my-value'))
+
+
+Patch timing in daemons and timers
+==================================
+
+For :doc:`daemons <daemons>` and :doc:`timers <timers>`, the patch
+is applied after the handler exits on each iteration of the run loop ---
+including when the handler raises :class:`kopf.TemporaryError` for retrying.
+After the patch is applied, it is cleared for the next iteration.
+
+This means any changes accumulated in the patch dictionary
+and any transformation functions appended to ``patch.fns``
+during the handler's execution are sent to the Kubernetes API
+before the next invocation of the handler starts.
+
+If a transformation function's JSON Patch is rejected by the API server
+due to an optimistic concurrency conflict (HTTP 422), the transformation
+functions are carried forward to the next iteration, where they are
+retried against the newer state of the resource. The retry does not happen
+in the background --- it waits until the handler is invoked again on the next
+timer interval or daemon retry. Handlers can detect carried-forward
+transformation functions by checking ``bool(patch)`` at the start of the
+handler: if it is true before the handler has made any changes, it means
+there are pending transformation functions from a previous iteration.
