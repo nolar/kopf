@@ -21,9 +21,10 @@ Indices are declared with a ``@kopf.index`` decorator on an indexing function
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.index('pods')
-    async def my_idx(**_):
+    async def my_idx(**_: Any) -> Any:
         ...
 
 The name of the function or its ``id=`` option is the index's name.
@@ -34,14 +35,15 @@ as direct kwargs named the same as the index (type hints are optional):
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     # ... continued from previous examples:
     @kopf.timer('KopfExample', interval=5)
-    def tick(my_idx: kopf.Index, **_):
+    def tick(my_idx: kopf.Index, **_: Any) -> None:
         ...
 
     @kopf.on.probe()
-    def metric(my_idx: kopf.Index, **_):
+    def metric(my_idx: kopf.Index, **_: Any) -> Any:
         ...
 
 When a resource is created or starts matching the filters, it is processed
@@ -98,9 +100,10 @@ it is merged into the index under the key taken from the result:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.index('pods')
-    async def string_keys(namespace, name, **_):
+    async def string_keys(namespace: str | None, name: str, **_: Any) -> Any:
         return {namespace: name}
         # {'namespace1': ['pod1a', 'pod1b', ...],
         #  'namespace2': ['pod2a', 'pod2b', ...],
@@ -111,9 +114,10 @@ Multi-value keys are possible using tuples or other hashable types:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.index('pods')
-    async def tuple_keys(namespace, name, **_):
+    async def tuple_keys(namespace: str | None, name: str, **_: Any) -> Any:
         return {(namespace, name): 'hello'}
         # {('namespace1', 'pod1a'): ['hello'],
         #  ('namespace1', 'pod1b'): ['hello'],
@@ -127,9 +131,10 @@ and they are all merged into their respective places in the index:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.index('pods')
-    async def by_label(labels, name, **_):
+    async def by_label(labels: kopf.Labels, name: str, **_: Any) -> Any:
         return {(label, value): name for label, value in labels.items()}
         # {('label1', 'value1a'): ['pod1', 'pod2', ...],
         #  ('label1', 'value1b'): ['pod3', 'pod4', ...],
@@ -138,7 +143,7 @@ and they are all merged into their respective places in the index:
         #   ...}
 
     @kopf.timer('kex', interval=5)
-    def tick(by_label: kopf.Index, **_):
+    def tick(by_label: kopf.Index, **_: Any) -> None:
         print(list(by_label.get(('label2', 'value2b'), [])))
         # ['pod1', 'pod3']
         for podname in by_label.get(('label2', 'value2b'), []):
@@ -165,9 +170,10 @@ The resources are not indexed by key, but rather collected under the same key
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.index('pods')
-    async def pod_names(name: str, **_):
+    async def pod_names(name: str, **_: Any) -> Any:
         return name
         # {None: ['pod1', 'pod2', ...]}
 
@@ -177,9 +183,10 @@ as-is (i.e. with no special treatment):
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.index('pods')
-    async def container_names(spec: kopf.Spec, **_):
+    async def container_names(spec: kopf.Spec, **_: Any) -> Any:
         return {container['name'] for container in spec.get('containers', [])}
         # {None: [{'main1', 'sidecar2'}, {'main2'}, ...]}
 
@@ -196,9 +203,10 @@ you mostly need to iterate over all of them without key lookups:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.index('pods')
-    async def pods_list(namespace, name, **_):
+    async def pods_list(namespace: str | None, name: str, **_: Any) -> Any:
         return namespace, name
         # {None: [('namespace1', 'pod1a'),
         #         ('namespace1', 'pod1b'),
@@ -207,7 +215,7 @@ you mostly need to iterate over all of them without key lookups:
         #           ...]}
 
     @kopf.timer('kopfexamples', interval=5)
-    def tick_list(pods_list: kopf.Index, **_):
+    def tick_list(pods_list: kopf.Index, **_: Any) -> None:
         for ns, name in pods_list.get(None, []):
             print(f"{ns}::{name}")
 
@@ -217,9 +225,10 @@ more often than full iterations:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.index('pods')
-    async def pods_dict(namespace, name, **_):
+    async def pods_dict(namespace: str | None, name: str, **_: Any) -> Any:
         return {(namespace, name): None}
         # {('namespace1', 'pod1a'): [None],
         #  ('namespace1', 'pod1b'): [None],
@@ -228,7 +237,7 @@ more often than full iterations:
         #   ...}
 
     @kopf.timer('kopfexamples', interval=5)
-    def tick_dict(pods_dict: kopf.Index, spec: kopf.Spec, namespace: str, **_):
+    def tick_dict(pods_dict: kopf.Index, spec: kopf.Spec, namespace: str | None, **_: Any) -> None:
         monitored_namespace = spec.get('monitoredNamespace', namespace)
         for ns, name in pods_dict:
             if ns == monitored_namespace:
@@ -243,13 +252,14 @@ To store the entire resource or its essential parts, return them explicitly:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.index('deployments')
-    async def whole_deployments(name: str, namespace: str, body: kopf.Body, **_):
+    async def whole_deployments(name: str, namespace: str | None, body: kopf.Body, **_: Any) -> Any:
         return {(namespace, name): body}
 
     @kopf.timer('kopfexamples', interval=5)
-    def tick(whole_deployments: kopf.Index, **_):
+    def tick(whole_deployments: kopf.Index, **_: Any) -> None:
         deployment, *_ = whole_deployments[('kube-system', 'coredns')]
         actual = deployment.status.get('replicas')
         desired = deployment.spec.get('replicas')
@@ -284,9 +294,10 @@ while the secondary index indexes pod names by namespace only:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.index('pods')
-    async def primary(namespace, name, spec, **_):
+    async def primary(namespace: str | None, name: str, spec: kopf.Spec, **_: Any) -> Any:
         container_names = {container['name'] for container in spec['containers']}
         return {(namespace, name): container_names}
         # {('namespace1', 'pod1a'): [{'main'}],
@@ -296,15 +307,15 @@ while the secondary index indexes pod names by namespace only:
         #   ...}
 
     @kopf.index('pods')
-    async def secondary(namespace, name, **_):
+    async def secondary(namespace: str | None, name: str, **_: Any) -> Any:
         return {namespace: name}
         # {'namespace1': ['pod1a', 'pod1b'],
         #  'namespace2': ['pod2a', 'pod2b'],
         #   ...}
 
     @kopf.timer('kopfexamples', interval=5)
-    def tick(primary: kopf.Index, secondary: kopf.Index, spec: kopf.Spec, **_):
-        namespace_containers = set()
+    def tick(primary: kopf.Index, secondary: kopf.Index, spec: kopf.Spec, **_: Any) -> None:
+        namespace_containers: set[str] = set()
         monitored_namespace = spec.get('monitoredNamespace', 'default')
         for pod_name in secondary.get(monitored_namespace, []):
             reconstructed_key = (monitored_namespace, pod_name)
@@ -333,9 +344,10 @@ occur in the indexing function with the errors mode set to ``IGNORED``):
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.index('pods')
-    async def empty_index(**_):
+    async def empty_index(**_: Any) -> Any:
         pass
         # {}
 
@@ -347,9 +359,10 @@ indices and collections that have no values left in them are removed from the in
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.index('pods')
-    async def index_of_nones(**_):
+    async def index_of_nones(**_: Any) -> Any:
         return {'key': None}
         # {'key': [None, None, ...]}
 
@@ -370,9 +383,10 @@ as returning ``None``, except that the exception's stack trace is also logged:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.index('pods', errors=kopf.ErrorsMode.IGNORED)  # the default
-    async def fn1(**_):
+    async def fn1(**_: Any) -> Any:
         raise Exception("Keep the stale values, if any.")
 
 :class:`kopf.PermanentError` and arbitrary exceptions with ``errors=PERMANENT``
@@ -383,13 +397,14 @@ and exclude the failed resource from future indexing by this index
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.index('pods', errors=kopf.ErrorsMode.PERMANENT)
-    async def fn1(**_):
+    async def fn1(**_: Any) -> Any:
         raise Exception("Excluded forever.")
 
     @kopf.index('pods')
-    async def fn2(**_):
+    async def fn2(**_: Any) -> Any:
         raise kopf.PermamentError("Excluded forever.")
 
 :class:`kopf.TemporaryError` and arbitrary exceptions with ``errors=TEMPORARY``
@@ -402,13 +417,14 @@ but current problems are preventing that from happening:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.index('pods', errors=kopf.ErrorsMode.TEMPORARY)
-    async def fn1(**_):
+    async def fn1(**_: Any) -> Any:
         raise Exception("Excluded for 60s.")
 
     @kopf.index('pods')
-    async def fn2(**_):
+    async def fn2(**_: Any) -> Any:
         raise kopf.TemporaryError("Excluded for 30s.", delay=30)
 
 In the "temporary" mode, the decorator's error-handling options are used:

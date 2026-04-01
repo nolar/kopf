@@ -24,9 +24,10 @@ which can happen either immediately, or after some delay:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.create('kopfexamples')
-    def create_fn(spec, **_):
+    def create_fn(spec: kopf.Spec, **_: Any) -> None:
         if not is_data_ready():
             raise kopf.TemporaryError("The data is not yet ready.", delay=60)
 
@@ -56,9 +57,10 @@ is no need to retry over time, as it will not become better:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.create('kopfexamples')
-    def create_fn(spec, **_):
+    def create_fn(spec: kopf.Spec, **_: Any) -> None:
         valid_until = datetime.datetime.fromisoformat(spec['validUntil'])
         if valid_until <= datetime.datetime.now(datetime.timezone.utc):
             raise kopf.PermanentError("The object is not valid anymore.")
@@ -83,9 +85,10 @@ The reaction to the arbitrary errors can be configured:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.create('kopfexamples', errors=kopf.ErrorsMode.PERMANENT)
-    def create_fn(spec, **_):
+    def create_fn(spec: kopf.Spec, **_: Any) -> None:
         raise Exception()
 
 Possible values of ``errors`` are:
@@ -103,9 +106,10 @@ The overall runtime of the handler can be limited:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.create('kopfexamples', timeout=60*60)
-    def create_fn(spec, **_):
+    def create_fn(spec: kopf.Spec, **_: Any) -> None:
         raise kopf.TemporaryError(delay=60)
 
 If the handler has not succeeded within this time, it is considered
@@ -126,9 +130,10 @@ The number of retries can be limited too:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.create('kopfexamples', retries=3)
-    def create_fn(spec, **_):
+    def create_fn(spec: kopf.Spec, **_: Any) -> None:
         raise Exception()
 
 Once the number of retries is reached, the handler fails permanently.
@@ -146,9 +151,10 @@ can be configured:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.create('kopfexamples', backoff=30)
-    def create_fn(spec, **_):
+    def create_fn(spec: kopf.Spec, **_: Any) -> None:
         raise Exception()
 
 The default is 60 seconds.

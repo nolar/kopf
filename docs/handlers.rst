@@ -44,9 +44,10 @@ To register a handler for an event, use the ``@kopf.on`` decorator:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.create('kopfexamples')
-    def my_handler(spec, **_):
+    def my_handler(spec: kopf.Spec, **_: Any) -> None:
         pass
 
 All available decorators are described below.
@@ -66,9 +67,10 @@ thus resolving the mentioned ambiguity and giving meaning to ``self``/``cls``:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     class MyCls:
-        def my_handler(self, spec, **kwargs):
+        def my_handler(self, spec: kopf.Spec, **_: Any) -> None:
             print(repr(self))
 
     instance = MyCls()
@@ -89,9 +91,10 @@ The following event-handler is available:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.event('kopfexamples')
-    def my_handler(event: kopf.RawEvent, **_):
+    def my_handler(event: kopf.RawEvent, **_: Any) -> None:
         pass
 
 The event has the following structure:
@@ -145,17 +148,18 @@ The following three core cause-handlers are available:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.create('kopfexamples')
-    def my_handler(spec, **_):
+    def my_handler(spec: kopf.Spec, **_: Any) -> None:
         pass
 
     @kopf.on.update('kopfexamples')
-    def my_handler(spec, old, new, diff, **_):
+    def my_handler(spec: kopf.Spec, old: Any, new: Any, diff: kopf.Diff, **_: Any) -> None:
         pass
 
     @kopf.on.delete('kopfexamples')
-    def my_handler(spec, **_):
+    def my_handler(spec: kopf.Spec, **_: Any) -> None:
         pass
 
 Despite the handlers seeing the full body of the resource object, they react
@@ -170,9 +174,10 @@ For example, to react to changes in the status of ``kind: Job``:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.update('batch/v1', 'jobs', field='status')
-    def job_status_changes(**_):
+    def job_status_changes(**_: Any) -> None:
         pass
 
 .. note::
@@ -194,9 +199,10 @@ and detects an object that existed before:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.resume('kopfexamples')
-    def my_handler(spec, **_):
+    def my_handler(spec: kopf.Spec, **_: Any) -> None:
         pass
 
 This handler can be used to start threads or asyncio tasks or to update
@@ -218,10 +224,11 @@ when the operator starts while the object already exists:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.resume('kopfexamples')
     @kopf.on.create('kopfexamples')
-    def my_handler(spec, **_):
+    def my_handler(spec: kopf.Spec, **_: Any) -> None:
         pass
 
 However, the resuming handlers are **not** called if the object has been deleted
@@ -236,19 +243,21 @@ For example:
 
 .. code-block:: python
 
+    import asyncio
     import kopf
+    from typing import Any
 
-    TASKS = {}
+    TASKS: dict[str, asyncio.Task[None]] = {}
 
     @kopf.on.delete('kopfexamples')
-    async def my_handler(spec, name, **_):
-        if name in TASKS:
+    async def my_handler(spec: kopf.Spec, name: str, **_: Any) -> None:
+        if name and name in TASKS:
             TASKS[name].cancel()
 
     @kopf.on.resume('kopfexamples')
     @kopf.on.create('kopfexamples')
-    def my_handler(spec, **_):
-        if name not in TASKS:
+    def my_handler(spec: kopf.Spec, **_: Any) -> None:
+        if name and name not in TASKS:
             TASKS[name] = asyncio.create_task(some_coroutine(spec))
 
 In this example, if the operator starts and notices an object that has been
@@ -263,9 +272,10 @@ with ``deleted=True`` option:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.resume('kopfexamples', deleted=True)
-    def my_handler(spec, **_):
+    def my_handler(spec: kopf.Spec, **_: Any) -> None:
         pass
 
 In that case, both the deletion and resuming handlers will be invoked. It is
@@ -280,9 +290,10 @@ Specific fields can be handled instead of the whole object:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.field('kopfexamples', field='spec.somefield')
-    def somefield_changed(old, new, **_):
+    def somefield_changed(old: Any, new: Any, **_: Any) -> None:
         pass
 
 There is no special detection of the causes for the fields,
@@ -321,9 +332,10 @@ Sub-handlers can be implemented either imperatively
 
     import functools
     import kopf
+    from typing import Any
 
     @kopf.on.create('kopfexamples')
-    async def create_fn(spec, **_):
+    async def create_fn(spec: kopf.Spec, **_: Any) -> None:
         fns = {}
 
         for item in spec.get('items', []):
@@ -331,7 +343,7 @@ Sub-handlers can be implemented either imperatively
 
        await kopf.execute(fns=fns)
 
-    def handle_item(item, *, spec, **_):
+    def handle_item(item: Any, *, spec: kopf.Spec, **_: Any) -> None:
         pass
 
 Or declaratively with decorators:
@@ -339,14 +351,15 @@ Or declaratively with decorators:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.create('kopfexamples')
-    def create_fn(spec, **_):
+    def create_fn(spec: kopf.Spec, **_: Any) -> None:
 
         for item in spec.get('items', []):
 
             @kopf.subhandler(id=item)
-            def handle_item(item=item, **_):
+            def handle_item(item: Any = item, **_: Any) -> None:
                 pass
 
 Both of these ways are equivalent.

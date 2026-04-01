@@ -28,9 +28,10 @@ Or:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.peering.priority = 100
 
 As a shortcut, there is a :option:`--dev` option, which sets
@@ -100,9 +101,10 @@ Or:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.peering.name = "example"
         settings.peering.mandatory = True
 
@@ -138,9 +140,10 @@ Or:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.peering.standalone = True
 
 In that case, the operator will not pause if other operators with
@@ -183,11 +186,12 @@ Or:
 
 .. code-block:: python
 
-    import random
     import kopf
+    import random
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.peering.priority = random.randint(0, 32767)
 
 ``$RANDOM`` is a bash feature
@@ -210,11 +214,12 @@ The operator also logs keep-alive activity. This can be distracting. To disable 
 
 .. code-block:: python
 
-    import random
     import kopf
+    import random
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.peering.stealth = True
 
 There is no equivalent CLI option for that.

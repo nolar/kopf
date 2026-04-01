@@ -8,13 +8,14 @@ Kopf then stores these values in the resource status under the name of the handl
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.create('kopfexamples')
-    def create_kex_1(**_):
+    def create_kex_1(**_: Any) -> int:
         return 100
 
     @kopf.on.create('kopfexamples')
-    def create_kex_2(uid, **_):
+    def create_kex_2(uid: str, **_: Any) -> dict[str, int]:
         return {'r1': random.randint(0, 100), 'r2': random.randint(100, 999)}
 
 These results are visible in the object's content:
@@ -41,9 +42,10 @@ recovery in case of operator failures and restarts:
 
     import kopf
     import pykube
+    from typing import Any
 
     @kopf.on.create('kopfexamples')
-    def create_job(status, **_):
+    def create_job(status: kopf.Status, **_: Any) -> dict[str, str]:
         if not status.get('create_pvc', {}):
             raise kopf.TemporaryError("PVC is not created yet.", delay=10)
 
@@ -55,7 +57,7 @@ recovery in case of operator failures and restarts:
         return {'name': obj.name}
 
     @kopf.on.create('kopfexamples')
-    def create_pvc(**_):
+    def create_pvc(**_: Any) -> dict[str, str]:
         api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         obj = pykube.PersistentVolumeClaim(api, {...})
         obj.create()

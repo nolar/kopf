@@ -17,13 +17,14 @@ separated by a slash:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.event('kopf.dev', 'v1', 'kopfexamples')
     @kopf.on.event('kopf.dev/v1', 'kopfexamples')
     @kopf.on.event('apps', 'v1', 'deployments')
     @kopf.on.event('apps/v1', 'deployments')
     @kopf.on.event('', 'v1', 'pods')
-    def fn(**_):
+    def fn(**_: Any) -> None:
         pass
 
 If only one API specification is given (except for ``v1``), it is treated
@@ -32,10 +33,11 @@ as an API group, and the preferred API version of that API group is used:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.event('kopf.dev', 'kopfexamples')
     @kopf.on.event('apps', 'deployments')
-    def fn(**_):
+    def fn(**_: Any) -> None:
         pass
 
 It is also possible to specify the resources with ``kubectl``'s semantics:
@@ -43,10 +45,11 @@ It is also possible to specify the resources with ``kubectl``'s semantics:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.event('kopfexamples.kopf.dev')
     @kopf.on.event('deployments.apps')
-    def fn(**_):
+    def fn(**_: Any) -> None:
         pass
 
 One exceptional case is ``v1`` as the API specification: it corresponds
@@ -56,10 +59,11 @@ to an empty API group name. The following specifications are equivalent:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.event('v1', 'pods')
     @kopf.on.event('', 'v1', 'pods')
-    def fn(**_):
+    def fn(**_: Any) -> None:
         pass
 
 If neither the API group nor the API version is specified,
@@ -69,11 +73,12 @@ However, it is reasonable to expect only one:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.event('kopfexamples')
     @kopf.on.event('deployments')
     @kopf.on.event('pods')
-    def fn(**_):
+    def fn(**_: Any) -> None:
         pass
 
 In all examples above, where a resource identifier is expected, it can be
@@ -84,6 +89,7 @@ possible names of the specific resource once it is discovered:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.event('kopfexamples')
     @kopf.on.event('kopfexample')
@@ -92,7 +98,7 @@ possible names of the specific resource once it is discovered:
     @kopf.on.event('StatefulSet')
     @kopf.on.event('deployments')
     @kopf.on.event('pod')
-    def fn(**_):
+    def fn(**_: Any) -> None:
         pass
 
 The resource specification can be more specific on which name to match
@@ -101,6 +107,7 @@ by using the keyword arguments:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.event(kind='KopfExample')
     @kopf.on.event(plural='kopfexamples')
@@ -108,7 +115,7 @@ by using the keyword arguments:
     @kopf.on.event(shortcut='kex')
     @kopf.on.event(group='kopf.dev', plural='kopfexamples')
     @kopf.on.event(group='kopf.dev', version='v1', plural='kopfexamples')
-    def fn(**_):
+    def fn(**_: Any) -> None:
         pass
 
 
@@ -121,9 +128,10 @@ specified to avoid unintended consequences:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.event(category='all')
-    def fn(**_):
+    def fn(**_: Any) -> None:
         pass
 
 Note that the conventional category ``all`` does not actually mean all resources,
@@ -140,11 +148,12 @@ of the mandatory resource name:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.event('kopf.dev', 'v1', kopf.EVERYTHING)
     @kopf.on.event('kopf.dev/v1', kopf.EVERYTHING)
     @kopf.on.event('kopf.dev', kopf.EVERYTHING)
-    def fn(**_):
+    def fn(**_: Any) -> None:
         pass
 
 As a consequence of the above, to handle every resource in the cluster
@@ -154,9 +163,10 @@ omit the API group/version and use the marker only:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.event(kopf.EVERYTHING)
-    def fn(**_):
+    def fn(**_: Any) -> None:
         pass
 
 Serving everything is better when it is used with filters:
@@ -164,9 +174,10 @@ Serving everything is better when it is used with filters:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.event(kopf.EVERYTHING, labels={'only-this': kopf.PRESENT})
-    def fn(**_):
+    def fn(**_: Any) -> None:
         pass
 
 
@@ -181,12 +192,13 @@ and return a boolean indicating whether to handle the resource:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     def kex_selector(resource: kopf.Resource) -> bool:
         return resource.plural == 'kopfexamples' and resource.preferred
 
     @kopf.on.event(kex_selector)
-    def fn(**_):
+    def fn(**_: Any) -> None:
         pass
 
 You can combine the callable resource selectors with other keyword selectors
@@ -195,12 +207,13 @@ You can combine the callable resource selectors with other keyword selectors
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     def kex_selector(resource: kopf.Resource) -> bool:
         return resource.plural == 'kopfexamples' and resource.preferred
 
     @kopf.on.event(kex_selector, group='kopf.dev')
-    def fn(**_):
+    def fn(**_: Any) -> None:
         pass
 
 There is a subtle difference between callable resource selectors and filters
@@ -230,13 +243,14 @@ To handle core v1 events, name them directly and explicitly:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     def all_core_v1(resource: kopf.Resource) -> bool:
         return resource.group == '' and resource.preferred
 
     @kopf.on.event(all_core_v1)
     @kopf.on.event('v1', 'events')
-    def fn(**_):
+    def fn(**_: Any) -> None:
         pass
 
 
@@ -254,10 +268,11 @@ even if there are accidental overlaps in the specifications.
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.event('kopfexamples')
     @kopf.on.event('v1', 'pods')
-    def fn(**_):
+    def fn(**_: Any) -> None:
         pass
 
 
@@ -291,13 +306,14 @@ Ambiguous resource selectors
     .. code-block:: python
 
         import kopf
+        from typing import Any
 
         @kopf.on.event('pods')  # NOT SO GOOD, ambiguous, though works
         @kopf.on.event('pods.v1')  # GOOD, specific
         @kopf.on.event('v1', 'pods')  # GOOD, specific
         @kopf.on.event('pods.metrics.k8s.io')  # GOOD, specific
         @kopf.on.event('metrics.k8s.io', 'pods')  # GOOD, specific
-        def fn(**_):
+        def fn(**_: Any) -> None:
             pass
 
     Reserve short forms for prototyping and experimentation,

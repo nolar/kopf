@@ -31,7 +31,7 @@ but we will use another feature of Kopf to track one specific field only:
     :emphasize-lines: 1, 5
 
     @kopf.on.field('ephemeralvolumeclaims', field='metadata.labels')
-    def relabel(old, new, status, namespace, **kwargs):
+    def relabel(old: Any, new: Any, status: kopf.Status, namespace: str | None, **_: Any) -> None:
 
         pvc_name = status['create_fn']['pvc-name']
         pvc_patch = {'metadata': {'labels': new}}
@@ -103,7 +103,7 @@ which is exactly what the patch object needs to delete that field:
     :emphasize-lines: 4
 
     @kopf.on.field('ephemeralvolumeclaims', field='metadata.labels')
-    def relabel(diff, status, namespace, **kwargs):
+    def relabel(diff: kopf.Diff, status: kopf.Status, namespace: str | None, **_: Any) -> None:
 
         labels_patch = {field[0]: new for op, field, old, new in diff}
         pvc_name = status['create_fn']['pvc-name']

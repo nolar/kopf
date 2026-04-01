@@ -73,13 +73,14 @@ probing handlers:
     import datetime
     import kopf
     import random
+    from typing import Any
 
     @kopf.on.probe(id='now')
-    def get_current_timestamp(**kwargs):
+    def get_current_timestamp(**_: Any) -> str:
         return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     @kopf.on.probe(id='random')
-    def get_random_value(**kwargs):
+    def get_random_value(**_: Any) -> int:
         return random.randint(0, 1_000_000)
 
 The probe handlers will be executed on requests to the liveness URL,

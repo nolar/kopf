@@ -19,18 +19,18 @@ while running the main application in the main thread:
 .. code-block:: python
 
     import asyncio
-    import threading
-
     import kopf
+    import threading
+    from typing import Any
 
     @kopf.on.create('kopfexamples')
-    def create_fn(**_):
+    def create_fn(**_: Any) -> None:
         pass
 
-    def kopf_thread():
+    def kopf_thread() -> None:
         asyncio.run(kopf.operator())
 
-    def main():
+    def main() -> None:
         thread = threading.Thread(target=kopf_thread)
         thread.start()
         # ...
@@ -53,7 +53,7 @@ themselves. The example above is equivalent to the following:
 
 .. code-block:: python
 
-    def kopf_thread():
+    def kopf_thread() -> None:
         loop = asyncio.get_event_loop_policy().get_event_loop()
         tasks = loop.run_until_complete(kopf.spawn_tasks())
         loop.run_until_complete(kopf.run_tasks(tasks, return_when=asyncio.FIRST_COMPLETED))
@@ -62,7 +62,7 @@ Or, if proper cancellation and termination are not required, of the following:
 
 .. code-block:: python
 
-    def kopf_thread():
+    def kopf_thread() -> None:
         loop = asyncio.get_event_loop_policy().get_event_loop()
         tasks = loop.run_until_complete(kopf.spawn_tasks())
         loop.run_until_complete(asyncio.wait(tasks))
@@ -91,7 +91,7 @@ __ http://magic.io/blog/uvloop-blazing-fast-python-networking/
     import kopf
     import uvloop
 
-    def main():
+    def main() -> None:
         loop = uvloop.EventLoopPolicy().get_event_loop()
         loop.run(kopf.operator())
 
@@ -102,7 +102,7 @@ Or this way:
     import kopf
     import uvloop
 
-    def main():
+    def main() -> None:
         kopf.run(loop=uvloop.EventLoopPolicy().new_event_loop())
 
 Or this way:
@@ -112,7 +112,7 @@ Or this way:
     import kopf
     import uvloop
 
-    def main():
+    def main() -> None:
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         kopf.run()
 
@@ -139,22 +139,22 @@ in :mod:`contextvars` containers with values isolated per-loop and per-task.
 .. code-block:: python
 
     import asyncio
-    import threading
-
     import kopf
+    import threading
+    from typing import Any
 
     registry = kopf.OperatorRegistry()
 
     @kopf.on.create('kopfexamples', registry=registry)
-    def create_fn(**_):
+    def create_fn(**_: Any) -> None:
         pass
 
-    def kopf_thread():
+    def kopf_thread() -> None:
         asyncio.run(kopf.operator(
             registry=registry,
         ))
 
-    def main():
+    def main() -> None:
         thread = threading.Thread(target=kopf_thread)
         thread.start()
         # ...

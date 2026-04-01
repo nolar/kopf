@@ -15,11 +15,12 @@ The interval defines how often to trigger the handler (in seconds):
 .. code-block:: python
 
     import asyncio
-    import time
     import kopf
+    import time
+    from typing import Any
 
     @kopf.timer('kopfexamples', interval=1.0)
-    def ping_kex(spec, **kwargs):
+    def ping_kex(spec: kopf.Spec, **_: Any) -> None:
         pass
 
 
@@ -34,11 +35,12 @@ every number of seconds sharp, no matter how long it takes to execute it:
 .. code-block:: python
 
     import asyncio
-    import time
     import kopf
+    import time
+    from typing import Any
 
     @kopf.timer('kopfexamples', interval=1.0, sharp=True)
-    def ping_kex(spec, **kwargs):
+    def ping_kex(spec: kopf.Spec, **_: Any) -> None:
         time.sleep(0.3)
 
 In this example, the timer takes 0.3 seconds to execute. The actual interval
@@ -56,9 +58,10 @@ be invoked when it is stable for some time:
 
     import asyncio
     import kopf
+    from typing import Any
 
     @kopf.timer('kopfexamples', idle=10)
-    def ping_kex(spec, **kwargs):
+    def ping_kex(spec: kopf.Spec, **_: Any) -> None:
         print(f"FIELD={spec['field']}")
 
 The creation of a resource is considered as a change, so idling also shifts
@@ -76,9 +79,10 @@ Once changed, the timer will stop and wait for the new idling time:
 
     import asyncio
     import kopf
+    from typing import Any
 
     @kopf.timer('kopfexamples', idle=10, interval=1)
-    def ping_kex(spec, **kwargs):
+    def ping_kex(spec: kopf.Spec, **_: Any) -> None:
         print(f"FIELD={spec['field']}")
 
 
@@ -93,11 +97,12 @@ It is possible to postpone the invocations:
 .. code-block:: python
 
     import asyncio
-    import time
     import kopf
+    import time
+    from typing import Any
 
     @kopf.timer('kopfexamples', interval=1, initial_delay=5)
-    def ping_kex(spec, **kwargs):
+    def ping_kex(spec: kopf.Spec, **_: Any) -> None:
         print(f"FIELD={spec['field']}")
 
 This is similar to idling, except that it is applied only once per
@@ -108,17 +113,18 @@ as the handler itself, and returns the delay in seconds:
 
 .. code-block:: python
 
-    import random
     import kopf
+    import random
+    from typing import Any
 
-    def get_delay(body, **kwargs):
+    def get_delay(body: kopf.Body, **_: Any) -> int:
         return random.randint(
             body.get('spec', {}).get('minDelay', 0),
             body.get('spec', {}).get('maxDelay', 60),
         )
 
     @kopf.timer('kopfexamples', interval=1, initial_delay=get_delay)
-    def ping_kex(spec, **kwargs):
+    def ping_kex(spec: kopf.Spec, **_: Any) -> None:
         ...
 
 This is primarily intended for load balancing during operator restarts (e.g. by
@@ -136,10 +142,11 @@ the resources every 10 seconds if they are unmodified for 10 minutes:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.timer('kopfexamples',
                 initial_delay=60, interval=10, idle=600)
-    def ping_kex(spec, **kwargs):
+    def ping_kex(spec: kopf.Spec, **_: Any) -> None:
         pass
 
 
@@ -169,10 +176,11 @@ from the first execution to the end of the retrying cycle:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.timer('kopfexamples',
                 errors=kopf.ErrorsMode.TEMPORARY, interval=10, backoff=5)
-    def monitor_kex_by_time(name, retry, **kwargs):
+    def monitor_kex_by_time(name: str, retry: int, **_: Any) -> None:
         if retry < 3:
             raise Exception()
 
@@ -204,11 +212,12 @@ as a key.
 
 .. code-block:: python
 
-    import random
     import kopf
+    import random
+    from typing import Any
 
     @kopf.timer('kopfexamples', interval=10)
-    def ping_kex(spec, **kwargs):
+    def ping_kex(spec: kopf.Spec, **_: Any) -> int:
         return random.randint(0, 100)
 
 .. note::
@@ -228,8 +237,9 @@ including both the merge-patch dictionary and the transformation functions
 .. code-block:: python
 
     import asyncio
-    import random
     import kopf
+    import random
+    from typing import Any
 
     # Transformation functions and JSON-patches are useful specifically for the lists.
     def set_conditions(body: kopf.RawBody) -> None:
@@ -238,7 +248,7 @@ including both the merge-patch dictionary and the transformation functions
         conditions.append({'type': 'Whatever', 'status': 'True', 'reason': 'SomeReason', 'message': 'Some message'})
 
     @kopf.timer('kopfexamples', interval=60)
-    async def update_status(patch, **kwargs):
+    async def update_status(patch: kopf.Patch, **_: Any) -> None:
         # This goes to the merge-patch.
         patch.status['replicas'] = random.randint(1, 10)
 
@@ -267,12 +277,13 @@ It is also possible to use the existing :doc:`filters`:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.timer('kopfexamples', interval=10,
                 annotations={'some-annotation': 'some-value'},
                 labels={'some-label': 'some-value'},
                 when=lambda name, **_: 'some' in name)
-    def ping_kex(spec, **kwargs):
+    def ping_kex(spec: kopf.Spec, **_: Any) -> None:
         pass
 
 

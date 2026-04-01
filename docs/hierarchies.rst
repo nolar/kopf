@@ -31,7 +31,7 @@ To label the resources to be created, use :func:`kopf.label`:
 .. code-block:: python
 
     @kopf.on.create('KopfExample')
-    def create_fn(**_):
+    def create_fn(**_: Any) -> None:
         objs = [{'kind': 'Job'}, {'kind': 'Deployment'}]
         kopf.label(objs, {'label1': 'value1', 'label2': 'value2'})
         print(objs)
@@ -48,7 +48,7 @@ not the same as an empty dict ``{}`` --- which is equivalent to doing nothing):
 .. code-block:: python
 
     @kopf.on.create('KopfExample')
-    def create_fn(**_):
+    def create_fn(**_: Any) -> None:
         objs = [{'kind': 'Job'}, {'kind': 'Deployment'}]
         kopf.label(objs)
         print(objs)
@@ -64,7 +64,7 @@ be overwritten. To overwrite labels, use ``forced=True``:
 .. code-block:: python
 
     @kopf.on.create('KopfExample')
-    def create_fn(**_):
+    def create_fn(**_: Any) -> None:
         objs = [{'kind': 'Job'}, {'kind': 'Deployment'}]
         kopf.label(objs, {'label1': 'value1', 'somelabel': 'not-this'}, forced=True)
         kopf.label(objs, forced=True)
@@ -90,7 +90,7 @@ and no labels are added. Labels are added only to pre-existing structures:
 .. code-block:: python
 
     @kopf.on.create('KopfExample')
-    def create_fn(**_):
+    def create_fn(**_: Any) -> None:
         objs = [{'kind': 'Job'}, {'kind': 'Deployment', 'spec': {'template': {}}}]
         kopf.label(objs, {'label1': 'value1'}, nested='spec.template')
         kopf.label(objs, nested='spec.template')
@@ -137,7 +137,7 @@ being processed, omit the explicit owner argument or set it to ``None``:
 .. code-block:: python
 
     @kopf.on.create('KopfExample')
-    def create_fn(**_):
+    def create_fn(**_: Any) -> None:
         objs = [{'kind': 'Job'}, {'kind': 'Deployment'}]
         kopf.append_owner_reference(objs)
         print(objs)
@@ -201,7 +201,7 @@ currently being processed, omit the name or set it to ``None``
 .. code-block:: python
 
     @kopf.on.create('KopfExample')
-    def create_fn(**_):
+    def create_fn(**_: Any) -> None:
         objs = [{'kind': 'Job'}, {'kind': 'Deployment'}]
         kopf.harmonize_naming(objs, forced=True, strict=True)
         print(objs)
@@ -215,7 +215,7 @@ The actual name will only be known after the resource is created:
 .. code-block:: python
 
     @kopf.on.create('KopfExample')
-    def create_fn(**_):
+    def create_fn(**_: Any) -> None:
         objs = [{'kind': 'Job'}, {'kind': 'Deployment'}]
         kopf.harmonize_naming(objs)
         print(objs)
@@ -251,7 +251,7 @@ of the resource currently being processed, omit the namespace or set it to ``Non
 .. code-block:: python
 
     @kopf.on.create('KopfExample')
-    def create_fn(**_):
+    def create_fn(**_: Any) -> None:
         objs = [{'kind': 'Job'}, {'kind': 'Deployment'}]
         kopf.adjust_namespace(objs, forced=True)
         print(objs)
@@ -268,7 +268,7 @@ All of the above can be done in a single call with :func:`kopf.adopt`; the ``for
 .. code-block:: python
 
     @kopf.on.create('KopfExample')
-    def create_fn(**_):
+    def create_fn(**_: Any) -> None:
         objs = [{'kind': 'Job'}, {'kind': 'Deployment'}]
         kopf.adopt(objs, strict=True, forced=True, nested='spec.template')
         print(objs)
@@ -306,9 +306,10 @@ and `kubernetes client`_ (resource models from ``kubernetes.client.models``).
 
     import kopf
     import pykube
+    from typing import Any
 
     @kopf.on.create('KopfExample')
-    def create_fn(**_):
+    def create_fn(**_: Any) -> None:
         api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         pod = pykube.objects.Pod(api, {})
         kopf.adopt(pod)
@@ -317,9 +318,10 @@ and `kubernetes client`_ (resource models from ``kubernetes.client.models``).
 
     import kopf
     import kubernetes.client
+    from typing import Any
 
     @kopf.on.create('KopfExample')
-    def create_fn(**_):
+    def create_fn(**_: Any) -> None:
         pod = kubernetes.client.V1Pod()
         kopf.adopt(pod)
         print(pod)

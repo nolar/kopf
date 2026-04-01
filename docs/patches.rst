@@ -34,9 +34,10 @@ after the handler finishes:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.create('kopfexamples')
-    def ensure_defaults(spec, patch, **_):
+    def ensure_defaults(spec: kopf.Spec, patch: kopf.Patch, **_: Any) -> None:
         if 'greeting' not in spec:
             patch.spec['greeting'] = 'hello'
         patch.status['state'] = 'initialized'
@@ -48,9 +49,10 @@ Other values overwrite the existing ones:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.update('kopfexamples')
-    def cleanup_obsolete_fields(patch, **_):
+    def cleanup_obsolete_fields(patch: kopf.Patch, **_: Any) -> None:
         patch.spec['obsoleteField'] = None  # deletes the field
         patch.status['phase'] = 'updated'   # overwrites the value
 
@@ -75,14 +77,15 @@ so there is no need to worry:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
-    def add_finalizer(body):
+    def add_finalizer(body: kopf.RawBody, /) -> None:
         finalizers = body.setdefault('metadata', {}).setdefault('finalizers', [])
         if 'my-operator/cleanup' not in finalizers:
             finalizers.append('my-operator/cleanup')
 
     @kopf.on.create('kopfexamples')
-    def create_fn(patch, **_):
+    def create_fn(patch: kopf.Patch, **_: Any) -> None:
         patch.fns.append(add_finalizer)
 
 The framework calls the transformation functions against the freshest seen
@@ -114,12 +117,13 @@ use ``functools.partial``:
 
     import functools
     import kopf
+    from typing import Any
 
-    def set_label(body, name, value):
+    def set_label(body: kopf.RawBody, /, name: str, value: str) -> None:
         body.setdefault('metadata', {}).setdefault('labels', {})[name] = value
 
     @kopf.on.create('kopfexamples')
-    def create_fn(patch, **_):
+    def create_fn(patch: kopf.Patch, **_: Any) -> None:
         patch.fns.append(functools.partial(set_label, name='my-label', value='my-value'))
 
 

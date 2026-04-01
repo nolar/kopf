@@ -17,9 +17,10 @@ twice within one handling cycle.
 
     import functools
     import kopf
+    from typing import Any
 
     @kopf.on.create('kopfexamples')
-    async def create(spec, namespace, **kwargs):
+    async def create(spec: kopf.Spec, namespace: str | None, **_: Any) -> None:
         print("Entering create()!")  # executed ~7 times.
         await kopf.execute(fns={
             'a': create_a,
@@ -27,11 +28,11 @@ twice within one handling cycle.
         })
         print("Leaving create()!")  # executed 1 time only.
 
-    async def create_a(retry, **kwargs):
+    async def create_a(retry: int, **_: Any) -> None:
         if retry < 2:
             raise kopf.TemporaryError("Not ready yet.", delay=10)
 
-    async def create_b(retry, **kwargs):
+    async def create_b(retry: int, **_: Any) -> None:
         if retry < 6:
             raise kopf.TemporaryError("Not ready yet.", delay=10)
 

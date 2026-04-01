@@ -52,13 +52,14 @@ We will use the official Kubernetes client library (``pip install kubernetes``):
     :name: creation
     :caption: ephemeral.py
 
-    import os
     import kopf
     import kubernetes
+    import os
     import yaml
+    from typing import Any
 
     @kopf.on.create('ephemeralvolumeclaims')
-    def create_fn(spec, name, namespace, logger, **kwargs):
+    def create_fn(spec: kopf.Spec, name: str, namespace: str | None, logger: kopf.Logger, **_: Any) -> None:
 
         size = spec.get('size')
         if not size:

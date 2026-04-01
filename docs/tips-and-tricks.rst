@@ -24,14 +24,15 @@ ever again, even after the operator restarts, use annotation filters
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.update('kopfexamples', annotations={'update-fn-never-again': kopf.ABSENT})
-    def update_fn(patch, **_):
+    def update_fn(patch: kopf.Patch, **_: Any) -> None:
         patch.metadata.annotations['update-fn-never-again'] = 'yes'
         raise kopf.PermanentError("Never call update-fn again.")
 
     @kopf.daemon('kopfexamples', annotations={'monitor-never-again': kopf.ABSENT})
-    async def monitor_kex(patch, **kwargs):
+    async def monitor_kex(patch: kopf.Patch, **_: Any) -> None:
         patch.metadata.annotations['monitor-never-again'] = 'yes'
 
 Such a never-again exclusion may be implemented as a built-in Kopf feature one day,

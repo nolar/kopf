@@ -37,9 +37,10 @@ or an instance of :class:`kopf.ConnectionInfo`:
 
     import datetime
     import kopf
+    from typing import Any
 
     @kopf.on.login()
-    def login_fn(**kwargs):
+    def login_fn(**_: Any) -> kopf.ConnectionInfo | None:
         return kopf.ConnectionInfo(
             server='https://localhost',
             proxy_url='http://localhost:8080',
@@ -67,9 +68,10 @@ communication is needed and async mode is supported:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.login()
-    async def login_fn(**kwargs):
+    async def login_fn(**_: Any) -> kopf.ConnectionInfo | None:
         pass
 
 A :class:`kopf.ConnectionInfo` is a container to bring the parameters necessary
@@ -160,9 +162,10 @@ Kopf will own and manage the provided session and will close it when needed.
 
     import aiohttp
     import kopf
+    from typing import Any
 
     @kopf.on.login()
-    async def login_fn(**kwargs) -> kopf.AiohttpSession:
+    async def login_fn(**_: Any) -> kopf.AiohttpSession:
         credentials = kopf.login_with_kubeconfig()  # or any other available method
         headers = {
             'X-Custom-Header': 'helloworld',
@@ -227,9 +230,10 @@ by calling one of the piggybacking functions:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.login()
-    def login_fn(**kwargs):
+    def login_fn(**kwargs: Any) -> kopf.ConnectionInfo | None:
         return kopf.login_via_pykube(**kwargs)
 
 Or:
@@ -237,9 +241,10 @@ Or:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.login()
-    def login_fn(**kwargs):
+    def login_fn(**kwargs: Any) -> kopf.ConnectionInfo | None:
         return kopf.login_via_client(**kwargs)
 
 The same trick is also useful to limit the authentication attempts
@@ -249,9 +254,10 @@ until it succeeds, returns nothing, or explicitly fails):
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.login(retries=3)
-    def login_fn(**kwargs):
+    def login_fn(**kwargs: Any) -> kopf.ConnectionInfo | None:
         return kopf.login_via_pykube(**kwargs)
 
 Similarly, if the libraries are installed and needed, but their credentials
@@ -260,9 +266,10 @@ are not desired, the rudimentary login functions can be used directly:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.login()
-    def login_fn(**kwargs):
+    def login_fn(**kwargs: Any) -> kopf.ConnectionInfo | None:
         return kopf.login_with_service_account(**kwargs) or kopf.login_with_kubeconfig(**kwargs)
 
 .. seealso::
@@ -306,10 +313,11 @@ a good idea or not is for you to decide based on the specifics of your system):
 
 .. code-block:: python
 
-    import logging
     import kopf
+    import logging
+    from typing import Any
 
     @kopf.on.startup()
-    def disable_auth_logs(**_):
+    def disable_auth_logs(**_: Any) -> None:
         logging.getLogger('kopf.activities.authentication').disabled = True
         logging.getLogger('kopf._core.engines.activities').disabled = True
