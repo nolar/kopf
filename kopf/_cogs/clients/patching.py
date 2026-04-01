@@ -9,7 +9,7 @@ async def patch_obj(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         namespace: references.Namespace,
-        name: str | None,
+        name: str,
         patch: patches.Patch,
         logger: typedefs.Logger,
         silent: bool = False,

@@ -105,25 +105,26 @@ but you can get the overall idea:
 
 .. code-block:: python
 
-    import random
     import kopf
+    import random
+    from typing import Any
 
     # Keep in-memory index of children resources, so that we avoid API calls doing the same.
     @kopf.index('pods', labels={'parent-kex': kopf.PRESENT})
-    def kex_pods(body, name, **_):
+    def kex_pods(body: kopf.Body, name: str, **_: Any) -> Any:
         parent_name = body.metadata.labels['parent-kex']
         return {parent_name: name}
 
     # Regularly calculate and save the *actual state* from an in-memory index.
     # If an in-memory index is absent, redesign this to make API calls to get the same data.
     @kopf.timer('kopfexamples', interval=10)
-    def calculate_actual_state(name, kex_pods, patch, **_):
+    def calculate_actual_state(name: str, kex_pods: kopf.Index, patch: kopf.Patch, **_: Any) -> None:
         actual_pods = kex_pods.get(name, [])
         patch.status['replicas'] = len(actual_pods)
 
     # React to changes in either the *desired* or *actual* states, and reconcile them.
     @kopf.on.event('kopfexamples')
-    def react_on_state_changes(body, name, **_):
+    def react_on_state_changes(body: kopf.Body, name: str, **_: Any) -> None:
         actual_replicas = body.status.get('replicas', 0)
         desired_replicas = body.spec.get('replicas', 1)
         delta = desired_replicas - actual_replicas

@@ -46,18 +46,19 @@ Validation handlers
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.validate('kopfexamples')
-    def say_hello(warnings: list[str], **_):
+    def say_hello(warnings: list[str], **_: Any) -> None:
         warnings.append("Verified with the operator's hook.")
 
     @kopf.on.validate('kopfexamples')
-    def check_numbers(spec, **_):
+    def check_numbers(spec: kopf.Spec, **_: Any) -> None:
         if not isinstance(spec.get('numbers', []), list):
             raise kopf.AdmissionError("Numbers must be a list if present.")
 
     @kopf.on.validate('kopfexamples')
-    def convertible_numbers(spec, warnings, **_):
+    def convertible_numbers(spec: kopf.Spec, warnings: list[str], **_: Any) -> None:
         if isinstance(spec.get('numbers', []), list):
             for val in spec.get('numbers', []):
                 if not isinstance(val, float):
@@ -69,7 +70,7 @@ Validation handlers
                         warnings.append(f"{val!r} is not a number but can be converted.")
 
     @kopf.on.validate('kopfexamples')
-    def numbers_range(spec, **_):
+    def numbers_range(spec: kopf.Spec, **_: Any) -> None:
         if isinstance(spec.get('numbers', []), list):
             if not all(0 <= float(val) <= 100 for val in spec.get('numbers', [])):
                 raise kopf.AdmissionError("Numbers must be below 0..100.", code=499)
@@ -89,18 +90,19 @@ To mutate the object, modify the :kwarg:`patch`. Changes to :kwarg:`body`,
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.mutate('kopfexamples')
-    def ensure_default_numbers(spec, patch, **_):
+    def ensure_default_numbers(spec: kopf.Spec, patch: kopf.Patch, **_: Any) -> None:
         if 'numbers' not in spec:
             patch.spec['numbers'] = [1, 2, 3]
 
     @kopf.on.mutate('kopfexamples')
-    def convert_numbers_if_possible(spec, patch, **_):
+    def convert_numbers_if_possible(spec: kopf.Spec, patch: kopf.Patch, **_: Any) -> None:
         if 'numbers' in spec and isinstance(spec.get('numbers'), list):
             patch.spec['numbers'] = [_maybe_number(v) for v in spec['numbers']]
 
-    def _maybe_number(v):
+    def _maybe_number(v: Any) -> Any:
         try:
             return float(v)
         except ValueError:
@@ -197,9 +199,10 @@ and add strings to it:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.validate('kopfexamples')
-    def ensure_default_numbers(spec, warnings: list[str], **_):
+    def ensure_default_numbers(spec: kopf.Spec, warnings: list[str], **_: Any) -> None:
         if spec.get('field') == 'value':
             warnings.append("The default value is used. It is okay but worth changing.")
 
@@ -252,7 +255,7 @@ to select the single error to report in the admission review response.
 .. code-block:: python
 
     @kopf.on.validate('kopfexamples')
-    def validate1(spec, **_):
+    def validate1(spec: kopf.Spec, **_: Any) -> None:
         if spec.get('field') == 'value':
             raise kopf.AdmissionError("Meh! I do not like it. Change the field.", code=400)
 
@@ -298,7 +301,7 @@ To enable, set the name of the managed configuration objects:
 .. code-block:: python
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.admission.managed = 'auto.kopf.dev'
 
 Multiple records for webhooks will be added or removed for multiple resources
@@ -341,7 +344,7 @@ so it must be set by the developer:
 .. code-block:: python
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         if os.environ.get('ENVIRONMENT') is None:
             # Only as an example:
             settings.admission.server = kopf.WebhookK3dServer(port=54321)
@@ -468,14 +471,15 @@ explaining this topic is beyond the scope of this framework's documentation):
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    def config(settings: kopf.OperatorSettings, **_):
+    def config(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.admission.managed = 'auto.kopf.dev'
         settings.admission.server = kopf.WebhookServer(cafile='client-cert.pem')
 
     @kopf.on.validate('kex')
-    def show_auth(headers, sslpeer, **_):
+    def show_auth(headers: kopf.Headers, sslpeer: kopf.SSLPeer, **_: Any) -> None:
         print(f'{headers=}')
         print(f'{sslpeer=}')
 
@@ -536,7 +540,7 @@ a self-signed certificate is generated at startup, and only HTTPS is served.
 .. code-block:: python
 
     @kopf.on.startup()
-    def config(settings: kopf.OperatorSettings, **_):
+    def config(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.admission.server = kopf.WebhookServer()
 
 That endpoint can be accessed directly with ``curl``:
@@ -550,7 +554,7 @@ It is possible to store the generated certificate and use it as a CA:
 .. code-block:: python
 
     @kopf.on.startup()
-    def config(settings: kopf.OperatorSettings, **_):
+    def config(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.admission.server = kopf.WebhookServer(cadump='selfsigned.pem')
 
 .. code-block:: bash
@@ -565,7 +569,7 @@ This applies to all servers:
 .. code-block:: python
 
     @kopf.on.startup()
-    def config(settings: kopf.OperatorSettings, **_):
+    def config(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.admission.server = kopf.WebhookServer(
             cafile='/secrets/ca.pem',       # or cadata, or capath.
             certfile='/secrets/cert.pem',
@@ -592,7 +596,7 @@ do not support HTTPS tunnelling (or that require paid subscriptions):
 .. code-block:: python
 
     @kopf.on.startup()
-    def config(settings: kopf.OperatorSettings, **_):
+    def config(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.admission.server = kopf.WebhookServer(insecure=True)
 
 
@@ -613,7 +617,7 @@ One is a simple but non-configurable coroutine function:
         await asyncio.Event().wait()
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.admission.server = mytunnel  # no arguments!
 
 Another one is a slightly more complex but configurable class:
@@ -627,7 +631,7 @@ Another one is a slightly more complex but configurable class:
             await asyncio.Event().wait()
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.admission.server = MyTunnel()  # arguments are possible.
 
 The iterator MUST accept a positional argument of type :class:`kopf.WebhookFn`
@@ -720,7 +724,7 @@ the asynchronous context manager protocol:
 .. code-block:: python
 
     class MyServer:
-        def __init__(self):
+        def __init__(self) -> None:
             super().__init__()
             self._resource = None
 
@@ -728,7 +732,7 @@ the asynchronous context manager protocol:
             self._resource = PotentiallyLeakableResource()
             return self
 
-        async def __aexit__(self, exc_type, exc_val, exc_tb) -> bool:
+        async def __aexit__(self, exc_type: type | None, exc_val: BaseException | None, exc_tb: object) -> bool:
             self._resource.cleanup()
             self._resource = None
 

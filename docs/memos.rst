@@ -21,13 +21,14 @@ the memo is also re-created (technically, it is a new resource).
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.event('KopfExample')
-    def pinged(memo: kopf.Memo, **_):
+    def pinged(memo: kopf.Memo, **_: Any) -> None:
         memo.counter = memo.get('counter', 0) + 1
 
     @kopf.timer('KopfExample', interval=10)
-    def tick(memo: kopf.Memo, logger, **_):
+    def tick(memo: kopf.Memo, logger: kopf.Logger, **_: Any) -> None:
         logger.info(f"{memo.counter} events have been received in 10 seconds.")
         memo.counter = 0
 
@@ -47,19 +48,20 @@ passed from outside the operator when :doc:`embedding` is used, or both:
     import kopf
     import queue
     import threading
+    from typing import Any
 
     @kopf.on.startup()
-    def start_background_worker(memo: kopf.Memo, **_):
+    def start_background_worker(memo: kopf.Memo, **_: Any) -> None:
         memo.my_queue = queue.Queue()
         memo.my_thread = threading.Thread(target=background, args=(memo.my_queue,))
         memo.my_thread.start()
 
     @kopf.on.cleanup()
-    def stop_background_worker(memo: kopf.Memo, **_):
+    def stop_background_worker(memo: kopf.Memo, **_: Any) -> None:
         memo['my_queue'].put(None)
         memo['my_thread'].join()
 
-    def background(queue: queue.Queue):
+    def background(queue: queue.Queue) -> None:
         while True:
             item = queue.get()
             if item is None:
@@ -81,7 +83,7 @@ where they can be mixed with per-resource values:
 
     # ... continued from the previous example.
     @kopf.on.event('KopfExample')
-    def pinged(memo: kopf.Memo, namespace: str, name: str, **_):
+    def pinged(memo: kopf.Memo, namespace: str | None, name: str, **_: Any) -> None:
         if not memo.get('is_seen'):
             memo.my_queue.put(f"{namespace}/{name}")
             memo.is_seen = True
@@ -116,6 +118,7 @@ to return ``self`` when asked to make a copy, as shown below:
     import asyncio
     import dataclasses
     import kopf
+    from typing import Any
 
     @dataclasses.dataclass()
     class CustomContext:
@@ -126,11 +129,11 @@ to return ``self`` when asked to make a copy, as shown below:
             return self
 
     @kopf.on.create('kopfexamples')
-    def create_fn(memo: CustomContext, **kwargs):
+    def create_fn(memo: CustomContext, **kwargs: Any) -> None:
         print(memo.create_tpl.format(**kwargs))
 
     @kopf.on.delete('kopfexamples')
-    def delete_fn(memo: CustomContext, **kwargs):
+    def delete_fn(memo: CustomContext, **kwargs: Any) -> None:
         print(memo.delete_tpl.format(**kwargs))
 
     if __name__ == '__main__':

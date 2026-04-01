@@ -50,17 +50,18 @@ possibly with different selectors and filters, for one handler function:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.create('KopfExample', param=1000)
     @kopf.on.resume('KopfExample', param=100)
     @kopf.on.update('KopfExample', param=10, field='spec.field')
     @kopf.on.update('KopfExample', param=1, field='spec.items')
-    def count_updates(param, patch, **_):
+    def count_updates(param: Any, patch: kopf.Patch, **_: Any) -> None:
         patch.status['counter'] = body.status.get('counter', 0) + param
 
     @kopf.on.update('Child1', param='first', field='status.done', new=True)
     @kopf.on.update('Child2', param='second', field='status.done', new=True)
-    def child_updated(param, patch, **_):
+    def child_updated(param: Any, patch: kopf.Patch, **_: Any) -> None:
         patch_parent({'status': {param: {'done': True}}})
 
 Note that Kopf deduplicates the handlers to execute on a single occasion by
@@ -74,10 +75,11 @@ each time with the appropriate values of old/new/diff/param kwargs for those fie
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.update('KopfExample', param=10, field='spec.field')
     @kopf.on.update('KopfExample', param=1, field='spec')
-    def fn(param, **_):
+    def fn(param: Any, **_: Any) -> None:
         pass
 
 

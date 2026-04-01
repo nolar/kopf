@@ -13,11 +13,12 @@ the loop-bound variables --- which is impossible in the module-level code:
 
     import asyncio
     import kopf
+    from typing import Any
 
     LOCK: asyncio.Lock
 
     @kopf.on.startup()
-    async def startup_fn(logger, **kwargs):
+    async def startup_fn(logger: kopf.Logger, **_: Any) -> None:
         global LOCK
         LOCK = asyncio.Lock()  # uses the running asyncio loop by default
 

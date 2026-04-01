@@ -34,13 +34,14 @@ Let us extend the creation handler:
     :caption: ephemeral.py
     :emphasize-lines: 18
 
-    import os
     import kopf
     import kubernetes
+    import os
     import yaml
+    from typing import Any
 
     @kopf.on.create('ephemeralvolumeclaims')
-    def create_fn(spec, name, namespace, logger, body, **kwargs):
+    def create_fn(spec: kopf.Spec, name: str, namespace: str | None, logger: kopf.Logger, body: kopf.Body, **_: Any) -> dict[str, str]:
 
         size = spec.get('size')
         if not size:

@@ -25,7 +25,7 @@ with one additional line:
     :emphasize-lines: 21
 
     @kopf.on.create('ephemeralvolumeclaims')
-    def create_fn(spec, name, namespace, logger, **kwargs):
+    def create_fn(spec: kopf.Spec, name: str, namespace: str | None, logger: kopf.Logger, **_: Any) -> dict[str, str]:
 
         size = spec.get('size')
         if not size:
@@ -81,9 +81,10 @@ and patches the PVC with the new size from the EVC:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.update('ephemeralvolumeclaims')
-    def update_fn(spec, status, namespace, logger, **kwargs):
+    def update_fn(spec: kopf.Spec, status: kopf.Status, namespace: str | None, logger: kopf.Logger, **_: Any) -> None:
 
         size = spec.get('size', None)
         if not size:

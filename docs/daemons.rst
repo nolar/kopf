@@ -23,17 +23,18 @@ with ``@kopf.daemon`` and make it run for a long time or forever:
 .. code-block:: python
 
     import asyncio
-    import time
     import kopf
+    import time
+    from typing import Any
 
     @kopf.daemon('kopfexamples')
-    async def monitor_kex_async(**kwargs):
+    async def monitor_kex_async(**_: Any) -> None:
         while True:
             ...  # check something
             await asyncio.sleep(10)
 
     @kopf.daemon('kopfexamples')
-    def monitor_kex_sync(stopped, **kwargs):
+    def monitor_kex_sync(stopped: kopf.DaemonStopped, **_: Any) -> None:
         while not stopped:
             ...  # check something
             time.sleep(10)
@@ -62,9 +63,10 @@ daemons SHOULD_ check for the value of this flag as often as possible:
 
     import asyncio
     import kopf
+    from typing import Any
 
     @kopf.daemon('kopfexamples')
-    def monitor_kex(stopped, **kwargs):
+    def monitor_kex(stopped: kopf.DaemonStopped, **_: Any) -> None:
         while not stopped:
             time.sleep(1.0)
         print("We are done. Bye.")
@@ -77,9 +79,10 @@ raised at any point of their code (specifically, at any ``await`` clause):
 
     import asyncio
     import kopf
+    from typing import Any
 
     @kopf.daemon('kopfexamples', cancellation_timeout=1.0)
-    async def monitor_kex(**kwargs):
+    async def monitor_kex(**_: Any) -> None:
         try:
             while True:
                 await asyncio.sleep(10)
@@ -111,10 +114,11 @@ The termination sequence parameters can be controlled when declaring a daemon:
 
     import asyncio
     import kopf
+    from typing import Any
 
     @kopf.daemon('kopfexamples',
                  cancellation_backoff=1.0, cancellation_timeout=3.0)
-    async def monitor_kex(stopped, **kwargs):
+    async def monitor_kex(stopped: kopf.DaemonStopped, **_: Any) -> None:
         while not stopped:
             await asyncio.sleep(1)
 
@@ -179,9 +183,10 @@ instead of ``time.sleep()``: the wait will end when either the time is reached
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.daemon('kopfexamples')
-    def monitor_kex(stopped, **kwargs):
+    def monitor_kex(stopped: kopf.DaemonStopped, **_: Any) -> None:
         while not stopped:
             stopped.wait(10)
 
@@ -193,9 +198,10 @@ is neither configured nor desired, ``stopped.wait()`` can be used too
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.daemon('kopfexamples')
-    async def monitor_kex(stopped, **kwargs):
+    async def monitor_kex(stopped: kopf.DaemonStopped, **_: Any) -> None:
         while not stopped:
             await stopped.wait(10)
 
@@ -222,9 +228,10 @@ It is possible to postpone the daemon spawning:
 
     import asyncio
     import kopf
+    from typing import Any
 
     @kopf.daemon('kopfexamples', initial_delay=30)
-    async def monitor_kex(stopped, **kwargs):
+    async def monitor_kex(stopped: kopf.DaemonStopped, **_: Any) -> None:
         while True:
             await asyncio.sleep(1.0)
 
@@ -238,17 +245,18 @@ as the handler itself, and returns the delay in seconds:
 
 .. code-block:: python
 
-    import random
     import kopf
+    import random
+    from typing import Any
 
-    def get_delay(body, **kwargs):
+    def get_delay(body: kopf.Body, **_: Any) -> int:
         return random.randint(
             body.get('spec', {}).get('minDelay', 0),
             body.get('spec', {}).get('maxDelay', 60),
         )
 
     @kopf.daemon('kopfexamples', initial_delay=get_delay)
-    async def monitor_kex(stopped, **kwargs):
+    async def monitor_kex(stopped: kopf.DaemonStopped, **_: Any) -> None:
         ...
 
 This is primarily intended for load balancing during operator restarts (e.g. by
@@ -274,9 +282,10 @@ To simulate restarting, raise :class:`kopf.TemporaryError` with a delay set.
 
     import asyncio
     import kopf
+    from typing import Any
 
     @kopf.daemon('kopfexamples')
-    async def monitor_kex(stopped, **kwargs):
+    async def monitor_kex(stopped: kopf.DaemonStopped, **_: Any) -> None:
         await asyncio.sleep(10.0)
         raise kopf.TemporaryError("Need to restart.", delay=10)
 
@@ -312,18 +321,19 @@ modified during its lifecycle (not frozen as in the event-driven handlers):
 
 .. code-block:: python
 
+    import kopf
     import random
     import time
-    import kopf
+    from typing import Any
 
     @kopf.daemon('kopfexamples')
-    def monitor_kex(stopped, logger, body, spec, **kwargs):
+    def monitor_kex(stopped: kopf.DaemonStopped, logger: kopf.Logger, body: kopf.Body, spec: kopf.Spec, **_: Any) -> None:
         while not stopped:
             logger.info(f"FIELD={spec['field']}")
             time.sleep(1)
 
     @kopf.timer('kopfexamples', interval=2.5)
-    def modify_kex_sometimes(patch, **kwargs):
+    def modify_kex_sometimes(patch: kopf.Patch, **_: Any) -> None:
         patch.spec['field'] = random.randint(0, 100)
 
 Always access the fields through the provided kwargs, and do not store
@@ -342,7 +352,7 @@ The error handling is the same as for all other handlers: see :doc:`errors`:
 
     @kopf.daemon('kopfexamples',
                  errors=kopf.ErrorsMode.TEMPORARY, backoff=1, retries=10)
-    def monitor_kex(retry, **_):
+    def monitor_kex(retry: int, **_: Any) -> None:
         if retry < 3:
             raise kopf.TemporaryError("I'll be back!", delay=1)
         elif retry < 5:
@@ -365,9 +375,10 @@ values to be put on the resource's status:
 
     import asyncio
     import kopf
+    from typing import Any
 
     @kopf.daemon('kopfexamples')
-    async def monitor_kex(stopped, **kwargs):
+    async def monitor_kex(stopped: kopf.DaemonStopped, **_: Any) -> dict[str, bool]:
         await asyncio.sleep(10.0)
         return {'finished': True}
 
@@ -382,8 +393,9 @@ including both the merge-patch dictionary and the transformation functions
 .. code-block:: python
 
     import asyncio
-    import random
     import kopf
+    import random
+    from typing import Any
 
     # Transformation functions and JSON-patches are useful specifically for the lists.
     def set_conditions(body: kopf.RawBody) -> None:
@@ -392,7 +404,7 @@ including both the merge-patch dictionary and the transformation functions
         conditions.append({'type': 'Whatever', 'status': 'True', 'reason': 'SomeReason', 'message': 'Some message'})
 
     @kopf.daemon('kopfexamples')
-    async def update_status(stopped, patch, **kwargs):
+    async def update_status(stopped: kopf.DaemonStopped, patch: kopf.Patch, **_: Any) -> None:
         # This goes to the merge-patch.
         patch.status['replicas'] = random.randint(1, 10)
 
@@ -424,14 +436,15 @@ to only spawn daemons for specific resources:
 
 .. code-block:: python
 
-    import time
     import kopf
+    import time
+    from typing import Any
 
     @kopf.daemon('kopfexamples',
                  annotations={'some-annotation': 'some-value'},
                  labels={'some-label': 'some-value'},
                  when=lambda name, **_: 'some' in name)
-    def monitor_selected_kexes(stopped, **kwargs):
+    def monitor_selected_kexes(stopped: kopf.DaemonStopped, **_: Any) -> None:
         while not stopped:
             time.sleep(1)
 

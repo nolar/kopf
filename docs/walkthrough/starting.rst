@@ -16,9 +16,10 @@ just to see how it can be started.
 
     import kopf
     import logging
+    from typing import Any
 
     @kopf.on.create('ephemeralvolumeclaims')
-    def create_fn(body, **kwargs):
+    def create_fn(body: kopf.Body, **_: Any) -> None:
         logging.info(f"A handler is called with body: {body}")
 
 .. note::

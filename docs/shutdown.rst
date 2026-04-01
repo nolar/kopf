@@ -10,9 +10,10 @@ by raising the stop-flag, or by cancelling the operator's task
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.cleanup()
-    async def cleanup_fn(logger, **kwargs):
+    async def cleanup_fn(logger: kopf.Logger, **_: Any) -> None:
         pass
 
 The cleanup handlers are not guaranteed to execute fully if they take

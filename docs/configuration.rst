@@ -20,9 +20,10 @@ The settings can be modified in the startup handlers (see :doc:`startup`):
 
     import kopf
     import logging
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.posting.level = logging.WARNING
         settings.watching.connect_timeout = 1 * 60
         settings.watching.server_timeout = 10 * 60
@@ -127,11 +128,12 @@ The default is ``logging.INFO``.
 
 .. code-block:: python
 
-    import logging
     import kopf
+    import logging
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.posting.level = logging.ERROR
 
 The event-posting can be disabled completely (the default is to be enabled):
@@ -139,9 +141,10 @@ The event-posting can be disabled completely (the default is to be enabled):
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.posting.enabled = False
 
 These two settings also affect :func:`kopf.event` and related functions:
@@ -156,9 +159,10 @@ calls are posted:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.posting.loggers = False
 
 
@@ -174,9 +178,10 @@ with another one:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.execution.max_workers = 20
 
 
@@ -191,9 +196,10 @@ handler itself. To avoid this, make the on-startup handler asynchronous:
 
     import concurrent.futures
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    async def configure(settings: kopf.OperatorSettings, **_):
+    async def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.execution.executor = concurrent.futures.ThreadPoolExecutor()
 
 The same executor is used both for regular sync handlers and for sync daemons.
@@ -204,9 +210,10 @@ make sure to pre-scale the executor accordingly
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    async def configure(settings: kopf.OperatorSettings, **kwargs):
+    async def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.execution.max_workers = 1000
 
 
@@ -300,9 +307,10 @@ __ https://github.com/kubernetes/kubernetes/blob/c20e0bc54189aef73a6a1498b4eab28
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.networking.connect_timeout = 10
         settings.networking.request_timeout = 60
         settings.watching.server_timeout = 10 * 60
@@ -329,9 +337,10 @@ see :doc:`authentication`.
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.networking.trust_env = True
 
 
@@ -372,9 +381,10 @@ version did not arrive within the specified time, it will never arrive.
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.persistence.consistency_timeout = 10
 
 The default value (5 seconds) aims for the safest scenario out of the box.
@@ -407,9 +417,10 @@ The name of the finalizer can be configured:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.persistence.finalizer = 'my-operator.example.com/kopf-finalizer'
 
 The default is the one that was hard-coded before:
@@ -430,9 +441,10 @@ To store the state only in the annotations with a preferred prefix:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.persistence.progress_storage = kopf.AnnotationsProgressStorage(prefix='my-op.example.com')
 
 To store the state only in the status or any other field:
@@ -440,9 +452,10 @@ To store the state only in the status or any other field:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.persistence.progress_storage = kopf.StatusProgressStorage(field='status.my-operator')
 
 To store in multiple places (all are written to in sync, but the first found
@@ -451,9 +464,10 @@ state will be used when reading, i.e. the first storage has precedence):
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.persistence.progress_storage = kopf.MultiProgressStorage([
             kopf.AnnotationsProgressStorage(prefix='my-op.example.com'),
             kopf.StatusProgressStorage(field='status.my-operator'),
@@ -469,9 +483,10 @@ It is an equivalent of:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.persistence.progress_storage = kopf.SmartProgressStorage()
 
 It is also possible to implement custom state storage instead of storing
@@ -544,9 +559,10 @@ The default is an equivalent of:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.persistence.diffbase_storage = kopf.AnnotationsDiffBaseStorage(
             prefix='kopf.zalando.org',
             key='last-handled-configuration',
@@ -582,9 +598,10 @@ for diff-base storage, apply this configuration:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.persistence.diffbase_storage = kopf.MultiDiffBaseStorage([
             kopf.StatusDiffBaseStorage(field='status.diff-base'),
             kopf.AnnotationsDiffBaseStorage(prefix='kopf.zalando.org', key='last-handled-configuration'),
@@ -623,7 +640,7 @@ If you have very restrictive cluster permissions, disable the cluster discovery:
 .. code-block:: python
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.scanning.disabled = True
 
 
@@ -649,9 +666,10 @@ It is a sequence of back-offs between attempts (in seconds):
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.networking.error_backoffs = [10, 20, 30]
 
 Note that the number of attempts is one more than the number of backoff
@@ -677,14 +695,16 @@ are required; however, make sure that it is re-iterable for multiple uses:
 
     import kopf
     import random
+    from collections.abc import Iterator
+    from typing import Any
 
     class InfiniteBackoffsWithJitter:
-        def __iter__(self):
+        def __iter__(self) -> Iterator[int]:
             while True:
                 yield 10 + random.randint(-5, +5)
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.networking.error_backoffs = InfiniteBackoffsWithJitter()
 
 
@@ -735,9 +755,10 @@ flooding, it is possible to throttle activity on a per-resource basis:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_):
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.queueing.error_delays = [10, 20, 30]
 
 In that case, all unhandled errors in the framework or in the Kubernetes API
@@ -771,24 +792,26 @@ For example, to disable the access logs of the probing server:
 .. code-block:: python
 
     import logging
+    from typing import Any
 
     @kopf.on.startup()
-    async def configure(**_):
+    async def configure(**_: Any) -> None:
         logging.getLogger('aiohttp.access').propagate = False
 
 To selectively filter only some log messages but not the others:
 
 .. code-block:: python
 
-    import logging
     import kopf
+    import logging
+    from typing import Any
 
     class ExcludeProbesFilter(logging.Filter):
         def filter(self, record: logging.LogRecord) -> bool:
             return 'GET /healthz ' not in record.getMessage()
 
     @kopf.on.startup()
-    async def configure_access_logs(**_):
+    async def configure_access_logs(**_: Any) -> None:
         logging.getLogger('aiohttp.access').addFilter(ExcludeProbesFilter())
 
 For more information on the logging configuration, see:
@@ -800,15 +823,16 @@ Kopf's internals, which are then posted as Kubernetes events (``v1/events``):
 
 .. code-block:: python
 
-    import logging
     import kopf
+    import logging
+    from typing import Any
 
     class ExcludeKopfInternals(logging.Filter):
         def filter(self, record: logging.LogRecord) -> bool:
             return '/kopf/' not in record.pathname
 
     @kopf.on.startup()
-    async def configure_kopf_logs(**_):
+    async def configure_kopf_logs(**_: Any) -> None:
         logging.getLogger('kopf.objects').addFilter(ExcludeKopfInternals())
 
 .. warning::

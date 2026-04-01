@@ -10,9 +10,10 @@ Kopf supports asynchronous handler functions:
 
     import asyncio
     import kopf
+    from typing import Any
 
     @kopf.on.create('kopfexamples')
-    async def create_fn(spec, **_):
+    async def create_fn(spec: kopf.Spec, **_: Any) -> None:
         await asyncio.sleep(1.0)
 
 Async functions have an additional benefit over non-async ones:

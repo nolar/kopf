@@ -33,7 +33,7 @@ Match only when the resource's label or annotation has a specific value:
     @kopf.on.create('kopfexamples',
                     labels={'some-label': 'somevalue'},
                     annotations={'some-annotation': 'somevalue'})
-    def my_handler(spec, **_):
+    def my_handler(spec: kopf.Spec, **_: Any) -> None:
         pass
 
 Match only when the resource has a label or an annotation with any value:
@@ -43,7 +43,7 @@ Match only when the resource has a label or an annotation with any value:
     @kopf.on.create('kopfexamples',
                     labels={'some-label': kopf.PRESENT},
                     annotations={'some-annotation': kopf.PRESENT})
-    def my_handler(spec, **_):
+    def my_handler(spec: kopf.Spec, **_: Any) -> None:
         pass
 
 Match only when the resource has no label or annotation with that name:
@@ -53,7 +53,7 @@ Match only when the resource has no label or annotation with that name:
     @kopf.on.create('kopfexamples',
                     labels={'some-label': kopf.ABSENT},
                     annotations={'some-annotation': kopf.ABSENT})
-    def my_handler(spec, **_):
+    def my_handler(spec: kopf.Spec, **_: Any) -> None:
         pass
 
 Note that empty strings in labels and annotations are treated as regular values,
@@ -69,15 +69,15 @@ similar to the metadata filters:
 .. code-block:: python
 
     @kopf.on.create('kopfexamples', field='spec.field', value='world')
-    def created_with_world_in_field(**_):
+    def created_with_world_in_field(**_: Any) -> None:
         pass
 
     @kopf.on.create('kopfexamples', field='spec.field', value=kopf.PRESENT)
-    def created_with_field(**_):
+    def created_with_field(**_: Any) -> None:
         pass
 
     @kopf.on.create('kopfexamples', field='spec.no-field', value=kopf.ABSENT)
-    def created_without_field(**_):
+    def created_without_field(**_: Any) -> None:
         pass
 
 When the ``value=`` filter is not specified, but the ``field=`` filter is,
@@ -87,11 +87,11 @@ with any value (for update handlers: present before or after the change).
 .. code-block:: python
 
     @kopf.on.create('kopfexamples', field='spec.field')
-    def created_with_field(**_):
+    def created_with_field(**_: Any) -> None:
         pass
 
     @kopf.on.update('kopfexamples', field='spec.field')
-    def field_is_affected(old, new, **_):
+    def field_is_affected(old: Any, new: Any, **_: Any) -> None:
         pass
 
 
@@ -104,7 +104,7 @@ relevant to the specified fields, as well as different values of :kwarg:`param`:
 
     @kopf.on.update('kopfexamples', field='spec.field', param='fld')
     @kopf.on.update('kopfexamples', field='spec.items', param='itm')
-    def one_of_the_fields_is_affected(old, new, **_):
+    def one_of_the_fields_is_affected(old: Any, new: Any, **_: Any) -> None:
         pass
 
 However, different causes ---mostly resuming combined with one of creation/update/deletion---
@@ -169,15 +169,15 @@ using the same filtering methods/markers as all other filters.
 .. code-block:: python
 
     @kopf.on.update('kopfexamples', field='spec.field', old='x', new='y')
-    def field_is_edited(**_):
+    def field_is_edited(**_: Any) -> None:
         pass
 
     @kopf.on.update('kopfexamples', field='spec.field', old=kopf.ABSENT, new=kopf.PRESENT)
-    def field_is_added(**_):
+    def field_is_added(**_: Any) -> None:
         pass
 
     @kopf.on.update('kopfexamples', field='spec.field', old=kopf.PRESENT, new=kopf.ABSENT)
-    def field_is_removed(**_):
+    def field_is_removed(**_: Any) -> None:
         pass
 
 If one of ``old=`` or ``new=`` is not specified (or set to ``None``),
@@ -189,7 +189,7 @@ to it or by adding it to the resource (i.e. regardless of the old value):*
 .. code-block:: python
 
     @kopf.on.update('kopfexamples', field='spec.field', new='world')
-    def hello_world(**_):
+    def hello_world(**_: Any) -> None:
         pass
 
 *Match when the field loses a specific value either by being edited/patched
@@ -198,7 +198,7 @@ to something else, or by removing the field from the resource:*
 .. code-block:: python
 
     @kopf.on.update('kopfexamples', field='spec.field', old='world')
-    def goodbye_world(**_):
+    def goodbye_world(**_: Any) -> None:
         pass
 
 Generally, the update handlers with ``old=/new=`` filters are invoked only when
@@ -231,13 +231,13 @@ The passed value will be ``None`` if the value is absent in the resource.
 
 .. code-block:: python
 
-    def check_value(value, spec, **_):
+    def check_value(value: str | None, /, spec: kopf.Spec, **_: Any) -> bool:
         return value == 'some-value' and spec.get('field') is not None
 
     @kopf.on.create('kopfexamples',
                     labels={'some-label': check_value},
                     annotations={'some-annotation': check_value})
-    def my_handler(spec, **_):
+    def my_handler(spec: kopf.Spec, **_: Any) -> None:
         pass
 
 
@@ -249,15 +249,15 @@ as the respective handlers (with ``**kwargs/**_`` for forward compatibility).
 
 .. code-block:: python
 
-    def is_good_enough(spec, **_):
+    def is_good_enough(spec: kopf.Spec, **_: Any) -> bool:
         return spec.get('field') in spec.get('items', [])
 
     @kopf.on.create('kopfexamples', when=is_good_enough)
-    def my_handler(spec, **_):
+    def my_handler(spec: kopf.Spec, **_: Any) -> None:
         pass
 
     @kopf.on.create('kopfexamples', when=lambda spec, **_: spec.get('field') in spec.get('items', []))
-    def my_handler(spec, **_):
+    def my_handler(spec: kopf.Spec, **_: Any) -> None:
         pass
 
 Callback filters are not limited to checking the resource's content.
@@ -282,22 +282,23 @@ Kopf provides several helpers to combine multiple callbacks into one
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
-    def whole_fn1(name, **_): return name.startswith('kopf-')
-    def whole_fn2(spec, **_): return spec.get('field') == 'value'
-    def value_fn1(value, **_): return value.startswith('some')
-    def value_fn2(value, **_): return value.endswith('label')
+    def whole_fn1(name: str, **_: Any) -> bool: return name.startswith('kopf-')
+    def whole_fn2(spec: kopf.Spec, **_: Any) -> bool: return spec.get('field') == 'value'
+    def value_fn1(value: str | None, **_: Any) -> bool: return value and value.startswith('some')
+    def value_fn2(value: str | None, **_: Any) -> bool: return value and value.endswith('label')
 
     @kopf.on.create('kopfexamples',
                     when=kopf.all_([whole_fn1, whole_fn2]),
                     labels={'somelabel': kopf.all_([value_fn1, value_fn2])})
-    def create_fn1(**_):
+    def create_fn1(**_: Any) -> None:
         pass
 
     @kopf.on.create('kopfexamples',
                     when=kopf.any_([whole_fn1, whole_fn2]),
                     labels={'somelabel': kopf.any_([value_fn1, value_fn2])})
-    def create_fn2(**_):
+    def create_fn2(**_: Any) -> None:
         pass
 
 The following wrappers are available:

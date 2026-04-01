@@ -22,9 +22,10 @@ for the handled objects as Kubernetes events:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.create('kopfexamples')
-    def create_fn(body, **_):
+    def create_fn(body: kopf.Body, **_: Any) -> None:
         kopf.event(body,
                    type='SomeType',
                    reason='SomeReason',
@@ -41,9 +42,10 @@ For convenience, a few shortcuts are provided to mimic Python's ``logging``:
 .. code-block:: python
 
     import kopf
+    from typing import Any
 
     @kopf.on.create('kopfexamples')
-    def create_fn(body, **_):
+    def create_fn(body: kopf.Body, **_: Any) -> None:
         kopf.warn(body, reason='SomeReason', message='Some message')
         kopf.info(body, reason='SomeReason', message='Some message')
         try:
@@ -83,9 +85,10 @@ handled (and not necessarily even their children):
 
     import kopf
     import kubernetes
+    from typing import Any
 
     @kopf.on.create('kopfexamples')
-    def create_fn(name, namespace, uid, **_):
+    def create_fn(name: str, namespace: str | None, uid: str, **_: Any) -> None:
 
         pod = kubernetes.client.V1Pod()
         api = kubernetes.client.CoreV1Api()
