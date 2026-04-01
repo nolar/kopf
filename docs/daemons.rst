@@ -333,23 +333,6 @@ will remember their value as it was at that moment in time,
 and will not be updated as the object changes.
 
 
-Results delivery
-================
-
-As with any other handlers, the daemons can return arbitrary JSON-serializable
-values to be put on the resource's status:
-
-.. code-block:: python
-
-    import asyncio
-    import kopf
-
-    @kopf.daemon('kopfexamples')
-    async def monitor_kex(stopped, **kwargs):
-        await asyncio.sleep(10.0)
-        return {'finished': True}
-
-
 Error handling
 ==============
 
@@ -370,6 +353,67 @@ The error handling is the same as for all other handlers: see :doc:`errors`:
 If a permanent error is raised, the daemon will never be restarted again.
 Same as when the daemon exits on its own (but this could be reconsidered
 in the future).
+
+
+Results delivery
+================
+
+As with any other handlers, the daemons can return arbitrary JSON-serializable
+values to be put on the resource's status:
+
+.. code-block:: python
+
+    import asyncio
+    import kopf
+
+    @kopf.daemon('kopfexamples')
+    async def monitor_kex(stopped, **kwargs):
+        await asyncio.sleep(10.0)
+        return {'finished': True}
+
+
+Patching
+========
+
+Daemons can modify the resource via the :kwarg:`patch` keyword argument,
+including both the merge-patch dictionary and the transformation functions
+(see :doc:`patches` for details).
+
+.. code-block:: python
+
+    import asyncio
+    import random
+    import kopf
+
+    # Transformation functions and JSON-patches are useful specifically for the lists.
+    def set_conditions(body: kopf.RawBody) -> None:
+        conditions = body.setdefault('status', {}).setdefault('conditions', [])
+        conditions[:] = [cond for cond in conditions if cond.get('type') != 'Whatever']
+        conditions.append({'type': 'Whatever', 'status': 'True', 'reason': 'SomeReason', 'message': 'Some message'})
+
+    @kopf.daemon('kopfexamples')
+    async def update_status(stopped, patch, **kwargs):
+        # This goes to the merge-patch.
+        patch.status['replicas'] = random.randint(1, 10)
+
+        # This goes to the JSON-patch.
+        patch.fns.append(set_conditions)
+
+        # Exit the daemon so that it restarts again (otherwise exits forever).
+        raise kopf.TemporaryError("retry a bit later", delay=5)
+
+The patch is applied after the handler exits on each iteration of the run loop.
+This includes when the handler raises :class:`kopf.TemporaryError` for retrying:
+all changes accumulated in the patch during that attempt are sent to
+the Kubernetes API before the next retry begins.
+After the patch is applied, it is cleared for the next iteration.
+
+If a transformation function's JSON Patch hits a ``resourceVersion`` mismatch
+(HTTP 422), the transformation functions are carried forward and retried
+on the next iteration --- not in the background. The handler can detect this
+by checking ``bool(patch)`` at the start: if it is true before the handler
+has made any changes, there are pending transformation functions from
+a previous iteration.
 
 
 Filtering

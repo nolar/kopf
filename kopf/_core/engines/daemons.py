@@ -89,13 +89,14 @@ async def spawn_daemons(
     for handler in handlers:
         if handler.id not in daemons:
             stopper = stoppers.DaemonStopper()
+            live_body = memory.live_fresh_body
             daemon_cause = causes.DaemonCause(
                 resource=cause.resource,
                 indices=cause.indices,
                 logger=cause.logger,
                 memo=cause.memo,
-                body=memory.live_fresh_body,
-                patch=patches.Patch(),  # not the same as the one-shot spawning patch!
+                body=live_body,
+                patch=patches.Patch(body=live_body),  # not the same as the one-shot spawning patch!
                 stopper=stopper,  # for checking (passed to kwargs)
             )
             daemon = Daemon(
@@ -536,14 +537,14 @@ async def _daemon(
         )
         state = state.with_outcomes(outcomes)
         progression.deliver_results(outcomes=outcomes, patch=patch)
-        await application.patch_and_check(
+        _, remaining_patch = await application.patch_and_check(
             settings=settings,
             resource=resource,
             logger=logger,
             patch=patch,
             body=body,
         )
-        patch.clear()
+        patch = cause.patch = patches.Patch(remaining_patch, body=body)
 
         # The in-memory sleep does not react to resource changes, but only to stopping.
         if state.delay:
@@ -625,14 +626,14 @@ async def _timer(
         )
         state = state.with_outcomes(outcomes)
         progression.deliver_results(outcomes=outcomes, patch=patch)
-        await application.patch_and_check(
+        _, remaining_patch = await application.patch_and_check(
             settings=settings,
             resource=resource,
             logger=logger,
             patch=patch,
             body=body,
         )
-        patch.clear()
+        patch = cause.patch = patches.Patch(remaining_patch, body=body)
 
         # For temporary errors, override the schedule by the one provided by errors themselves.
         # It can be either a delay from TemporaryError, or a backoff for an arbitrary exception.

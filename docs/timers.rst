@@ -218,6 +218,47 @@ as a key.
     Use carefully with both idling & returned results.
 
 
+Patching
+========
+
+Timers can modify the resource via the :kwarg:`patch` keyword argument,
+including both the merge-patch dictionary and the transformation functions
+(see :doc:`patches` for details).
+
+.. code-block:: python
+
+    import asyncio
+    import random
+    import kopf
+
+    # Transformation functions and JSON-patches are useful specifically for the lists.
+    def set_conditions(body: kopf.RawBody) -> None:
+        conditions = body.setdefault('status', {}).setdefault('conditions', [])
+        conditions[:] = [cond for cond in conditions if cond.get('type') != 'Whatever']
+        conditions.append({'type': 'Whatever', 'status': 'True', 'reason': 'SomeReason', 'message': 'Some message'})
+
+    @kopf.timer('kopfexamples', interval=60)
+    async def update_status(patch, **kwargs):
+        # This goes to the merge-patch.
+        patch.status['replicas'] = random.randint(1, 10)
+
+        # This goes to the JSON-patch.
+        patch.fns.append(set_conditions)
+
+The patch is applied after the handler exits on each timer iteration.
+This includes when the handler raises :class:`kopf.TemporaryError` for retrying:
+all changes accumulated in the patch during that attempt are sent to
+the Kubernetes API before the next retry begins.
+After the patch is applied, it is cleared for the next iteration.
+
+If a transformation function's JSON Patch hits a ``resourceVersion`` mismatch
+(HTTP 422), the transformation functions are carried forward and retried
+on the next iteration --- not in the background. The handler can detect this
+by checking ``bool(patch)`` at the start: if it is true before the handler
+has made any changes, there are pending transformation functions from
+a previous iteration.
+
+
 Filtering
 =========
 

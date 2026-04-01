@@ -40,6 +40,7 @@ import pytest
 
 from kopf._cogs.clients.errors import APIError
 from kopf._cogs.clients.patching import patch_obj
+from kopf._cogs.structs.bodies import Body
 from kopf._cogs.structs.patches import Patch
 from kopf._cogs.structs.references import Resource
 
@@ -96,7 +97,7 @@ def _add_status_field(body):
 async def test_empty_or_noop_patch_makes_no_api_calls(
         kmock, settings, resource, namespace, logger, assert_logs):
     original_body = {'metadata': {'resourceVersion': 'rv0'}, 'status': {}}
-    patch = Patch({}, body=original_body, fns=[_noop])
+    patch = Patch({}, body=Body(original_body), fns=[_noop])
     result, remaining = await patch_obj(
         logger=logger, settings=settings, resource=resource,
         namespace=namespace, name='name1', patch=patch,
@@ -119,7 +120,7 @@ async def test_object_merge_alone(caplog,
         kmock, settings, resource, namespace, logger, assert_logs):
     original_body = {'metadata': {'resourceVersion': 'rv0'}, 'status': {}}
     kmock.objects[resource, namespace, 'name1'] = original_body
-    patch = Patch({'spec': {'x': 'y'}}, body=original_body, fns=[])
+    patch = Patch({'spec': {'x': 'y'}}, body=Body(original_body), fns=[])
     result, remaining = await patch_obj(
         logger=logger, settings=settings, resource=resource,
         namespace=namespace, name='name1', patch=patch,
@@ -142,7 +143,7 @@ async def test_status_merge_alone(
         kmock, settings, resource, namespace, logger, assert_logs):
     original_body = {'metadata': {'resourceVersion': 'rv0'}, 'status': {}}
     kmock.objects[resource, namespace, 'name1'] = original_body
-    patch = Patch({'status': {'x': 'y'}}, body=original_body, fns=[])
+    patch = Patch({'status': {'x': 'y'}}, body=Body(original_body), fns=[])
     result, remaining = await patch_obj(
         logger=logger, settings=settings, resource=resource,
         namespace=namespace, name='name1', patch=patch,
@@ -165,7 +166,7 @@ async def test_status_merge_after_object_merge(
         kmock, settings, resource, namespace, logger, assert_logs):
     original_body = {'metadata': {'resourceVersion': 'rv0'}, 'status': {}}
     kmock.objects[resource, namespace, 'name1'] = original_body
-    patch = Patch({'spec': {'x': 'y'}, 'status': {'x': 'y'}}, body=original_body, fns=[])
+    patch = Patch({'spec': {'x': 'y'}, 'status': {'x': 'y'}}, body=Body(original_body), fns=[])
     result, remaining = await patch_obj(
         logger=logger, settings=settings, resource=resource,
         namespace=namespace, name='name1', patch=patch,
@@ -190,7 +191,7 @@ async def test_object_jsonp_alone(
         kmock, settings, resource, namespace, logger, assert_logs):
     original_body = {'metadata': {'resourceVersion': 'rv0'}, 'status': {}}
     kmock.objects[resource, namespace, 'name1'] = original_body
-    patch = Patch({}, body=original_body, fns=[_add_finalizer])
+    patch = Patch({}, body=Body(original_body), fns=[_add_finalizer])
     result, remaining = await patch_obj(
         logger=logger, settings=settings, resource=resource,
         namespace=namespace, name='name1', patch=patch,
@@ -216,7 +217,7 @@ async def test_object_jsonp_after_object_merge(
         kmock, settings, resource, namespace, logger, assert_logs):
     original_body = {'metadata': {'resourceVersion': 'rv0'}, 'status': {}}
     kmock.objects[resource, namespace, 'name1'] = original_body
-    patch = Patch({'spec': {'x': 'y'}}, body=original_body, fns=[_add_finalizer])
+    patch = Patch({'spec': {'x': 'y'}}, body=Body(original_body), fns=[_add_finalizer])
     result, remaining = await patch_obj(
         logger=logger, settings=settings, resource=resource,
         namespace=namespace, name='name1', patch=patch,
@@ -244,7 +245,7 @@ async def test_object_jsonp_after_status_merge(
         kmock, settings, resource, namespace, logger, assert_logs):
     original_body = {'metadata': {'resourceVersion': 'rv0'}, 'status': {}}
     kmock.objects[resource, namespace, 'name1'] = original_body
-    patch = Patch({'status': {'x': 'y'}}, body=original_body, fns=[_add_finalizer])
+    patch = Patch({'status': {'x': 'y'}}, body=Body(original_body), fns=[_add_finalizer])
     result, remaining = await patch_obj(
         logger=logger, settings=settings, resource=resource,
         namespace=namespace, name='name1', patch=patch,
@@ -272,7 +273,7 @@ async def test_status_jsonp_alone(
         kmock, settings, resource, namespace, logger, assert_logs):
     original_body = {'metadata': {'resourceVersion': 'rv0'}, 'status': {}}
     kmock.objects[resource, namespace, 'name1'] = original_body
-    patch = Patch({}, body=original_body, fns=[_add_status_field])
+    patch = Patch({}, body=Body(original_body), fns=[_add_status_field])
     result, remaining = await patch_obj(
         logger=logger, settings=settings, resource=resource,
         namespace=namespace, name='name1', patch=patch,
@@ -298,7 +299,7 @@ async def test_status_jsonp_after_object_merge(
         kmock, settings, resource, namespace, logger, assert_logs):
     original_body = {'metadata': {'resourceVersion': 'rv0'}, 'status': {}}
     kmock.objects[resource, namespace, 'name1'] = original_body
-    patch = Patch({'spec': {'x': 'y'}}, body=original_body, fns=[_add_status_field])
+    patch = Patch({'spec': {'x': 'y'}}, body=Body(original_body), fns=[_add_status_field])
     result, remaining = await patch_obj(
         logger=logger, settings=settings, resource=resource,
         namespace=namespace, name='name1', patch=patch,
@@ -326,7 +327,7 @@ async def test_status_jsonp_after_status_merge(
         kmock, settings, resource, namespace, logger, assert_logs):
     original_body = {'metadata': {'resourceVersion': 'rv0'}, 'status': {}}
     kmock.objects[resource, namespace, 'name1'] = original_body
-    patch = Patch({'status': {'x': 'y'}}, body=original_body, fns=[_add_status_field])
+    patch = Patch({'status': {'x': 'y'}}, body=Body(original_body), fns=[_add_status_field])
     result, remaining = await patch_obj(
         logger=logger, settings=settings, resource=resource,
         namespace=namespace, name='name1', patch=patch,
@@ -354,7 +355,7 @@ async def test_status_jsonp_after_object_jsonp(
         kmock, settings, resource, namespace, logger, assert_logs):
     original_body = {'metadata': {'resourceVersion': 'rv0'}, 'status': {}}
     kmock.objects[resource, namespace, 'name1'] = original_body
-    patch = Patch(body=original_body, fns=[_add_finalizer, _add_status_field])
+    patch = Patch(body=Body(original_body), fns=[_add_finalizer, _add_status_field])
     result, remaining = await patch_obj(
         logger=logger, settings=settings, resource=resource,
         namespace=namespace, name='name1', patch=patch,
@@ -386,7 +387,7 @@ async def test_all_four_patches(
         kmock, settings, resource, namespace, logger, assert_logs):
     original_body = {'metadata': {'resourceVersion': 'rv0'}, 'status': {}}
     kmock.objects[resource, namespace, 'name1'] = original_body
-    patch = Patch({'spec': {'x': 'y'}, 'status': {'x': 'y'}}, body=original_body, fns=[_add_finalizer, _add_status_field])
+    patch = Patch({'spec': {'x': 'y'}, 'status': {'x': 'y'}}, body=Body(original_body), fns=[_add_finalizer, _add_status_field])
     result, remaining = await patch_obj(
         logger=logger, settings=settings, resource=resource,
         namespace=namespace, name='name1', patch=patch,
@@ -424,7 +425,7 @@ async def test_no_subresource_skips_status_merge(
     resource = dataclasses.replace(resource, subresources=frozenset())
     original_body = {'metadata': {'resourceVersion': 'rv0'}, 'status': {}}
     kmock.objects[resource, namespace, 'name1'] = original_body
-    patch = Patch({'spec': {'x': 'y'}, 'status': {'x': 'y'}}, body=original_body)
+    patch = Patch({'spec': {'x': 'y'}, 'status': {'x': 'y'}}, body=Body(original_body))
     result, remaining = await patch_obj(
         logger=logger, settings=settings, resource=resource,
         namespace=namespace, name='name1', patch=patch,
@@ -448,7 +449,7 @@ async def test_no_subresource_skips_status_jsonp(
     resource = dataclasses.replace(resource, subresources=frozenset())
     original_body = {'metadata': {'resourceVersion': 'rv0'}, 'status': {}}
     kmock.objects[resource, namespace, 'name1'] = original_body
-    patch = Patch(body=original_body, fns=[_add_finalizer, _add_status_field])
+    patch = Patch(body=Body(original_body), fns=[_add_finalizer, _add_status_field])
     result, remaining = await patch_obj(
         logger=logger, settings=settings, resource=resource,
         namespace=namespace, name='name1', patch=patch,
@@ -479,7 +480,7 @@ async def test_422_in_object_jsonp_returns_the_remaining_patch(
         kmock, settings, resource, namespace, logger, assert_logs):
     kmock[kmock.subresource(None), {'Content-Type': 'application/json-patch+json'}] ** 1 << 422
     original_body = {'metadata': {'resourceVersion': 'rv0'}, 'status': {}}
-    patch = Patch({'spec': {'x': 'y'}, 'status': {'x': 'y'}}, body=original_body, fns=[_add_finalizer, _add_status_field])
+    patch = Patch({'spec': {'x': 'y'}, 'status': {'x': 'y'}}, body=Body(original_body), fns=[_add_finalizer, _add_status_field])
     result, remaining = await patch_obj(
         logger=logger, settings=settings, resource=resource,
         namespace=namespace, name='name1', patch=patch,
@@ -507,7 +508,7 @@ async def test_422_in_status_jsonp_returns_the_remaining_patch(
         kmock, settings, resource, namespace, logger, assert_logs):
     kmock[kmock.subresource('status'), {'Content-Type': 'application/json-patch+json'}] ** 1 << 422
     original_body = {'metadata': {'resourceVersion': 'rv0'}, 'status': {}}
-    patch = Patch({'spec': {'x': 'y'}, 'status': {'x': 'y'}}, body=original_body, fns=[_add_finalizer, _add_status_field])
+    patch = Patch({'spec': {'x': 'y'}, 'status': {'x': 'y'}}, body=Body(original_body), fns=[_add_finalizer, _add_status_field])
     result, remaining = await patch_obj(
         logger=logger, settings=settings, resource=resource,
         namespace=namespace, name='name1', patch=patch,
@@ -544,7 +545,7 @@ async def test_404_ignores_absent_objects(
         kmock, settings, resource, namespace, logger, content_type, subresource,
         cluster_resource, namespaced_resource, assert_logs, exp_api_count):
     kmock[kmock.subresource(subresource), {'Content-Type': content_type}] ** 1 << 404
-    patch = Patch({'spec': {'x': 'y'}, 'status': {'x': 'y'}}, body={}, fns=[_add_finalizer, _add_status_field])
+    patch = Patch({'spec': {'x': 'y'}, 'status': {'x': 'y'}}, body=Body({}), fns=[_add_finalizer, _add_status_field])
     result, remaining = await patch_obj(
         logger=logger, settings=settings, resource=resource,
         namespace=namespace, name='name1', patch=patch,
@@ -569,7 +570,7 @@ async def test_api_errors_raised(
         kmock, settings, status, resource, namespace, logger, content_type, subresource,
         cluster_resource, namespaced_resource, exp_api_count):
     kmock[kmock.subresource(subresource), {'Content-Type': content_type}] ** 1 << status
-    patch = Patch({'spec': {'x': 'y'}, 'status': {'x': 'y'}}, body={}, fns=[_add_finalizer, _add_status_field])
+    patch = Patch({'spec': {'x': 'y'}, 'status': {'x': 'y'}}, body=Body({}), fns=[_add_finalizer, _add_status_field])
     with pytest.raises(APIError) as e:
         await patch_obj(
             logger=logger, settings=settings, resource=resource,

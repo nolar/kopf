@@ -68,7 +68,7 @@ async def process_resource_event(
     # 4. Same as where a patch object of a similar wrapping semantics is created.
     live_fresh_body = memory.daemons_memory.live_fresh_body
     body = live_fresh_body if live_fresh_body is not None else bodies.Body(raw_body)
-    patch = patches.Patch(memory.remaining_patch, body=raw_body)
+    patch = patches.Patch(memory.remaining_patch, body=body)
 
     # Different loggers for different cases with different verbosity and exposure.
     local_logger = loggers.LocalObjectLogger(body=body, settings=settings)
