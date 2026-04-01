@@ -151,15 +151,22 @@ class Meta(dicts.MappingView[str, Any]):
         return self._annotations
 
     @property
-    def uid(self) -> str | None:
-        return cast(str | None, self.get('uid'))
+    def uid(self) -> str:
+        # Intentionally mismatching types: None is impossible in real workloads, only in tests.
+        # For tests, return None if absent —in violation of the declared type— not our problem.
+        # In most such cases, the omitted field is irrelevant for the test and unit-under-test.
+        return cast(str, self.get('uid'))
 
     @property
-    def name(self) -> str | None:
-        return cast(str | None, self.get('name'))
+    def name(self) -> str:
+        # Intentionally mismatching types: None is impossible in real workloads, only in tests.
+        # For tests, return None if absent —in violation of the declared type— not our problem.
+        # In most such cases, the omitted field is irrelevant for the test and unit-under-test.
+        return cast(str, self.get('name'))
 
     @property
     def namespace(self) -> references.Namespace:
+        # Namespace is absent and None for cluster-wide resources (and also in mocks/tests).
         return cast(references.Namespace, self.get('namespace'))
 
     @property

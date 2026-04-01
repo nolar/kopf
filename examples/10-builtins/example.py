@@ -9,8 +9,8 @@ tasks: dict[str, dict[str, asyncio.Task[None]]] = {}  # dict{namespace: dict{nam
 
 @kopf.on.resume('pods')
 @kopf.on.create('pods')
-async def pod_in_sight(namespace: str | None, name: str | None, logger: kopf.Logger, **_: Any) -> None:
-    assert namespace is not None and name is not None  # for type-checkers
+async def pod_in_sight(namespace: str | None, name: str, logger: kopf.Logger, **_: Any) -> None:
+    assert namespace is not None  # for type-checkers
     if namespace.startswith('kube-'):
         return
     else:
@@ -20,13 +20,13 @@ async def pod_in_sight(namespace: str | None, name: str | None, logger: kopf.Log
 
 
 @kopf.on.delete('pods')
-async def pod_deleted(namespace: str | None, name: str | None, **_: Any) -> None:
+async def pod_deleted(namespace: str | None, name: str, **_: Any) -> None:
     if namespace in tasks and name in tasks[namespace]:
         task = tasks[namespace][name]
         task.cancel()  # it will also remove from `tasks`
 
 
-async def pod_killer(namespace: str | None, name: str | None, logger: kopf.Logger, timeout: float = 30) -> None:
+async def pod_killer(namespace: str | None, name: str, logger: kopf.Logger, timeout: float = 30) -> None:
     try:
         logger.info(f"=== Pod killing happens in {timeout}s.")
         await asyncio.sleep(timeout)

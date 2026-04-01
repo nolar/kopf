@@ -70,8 +70,8 @@ async def monitored_objects(**_: Any) -> dict[str, list[str]]:
 
 
 @kopf.on.event('pods')
-async def pod_task(namespace: str | None, name: str | None, logger: kopf.Logger, **_: Any) -> None:
-    assert namespace is not None and name is not None  # for type-checkers
+async def pod_task(namespace: str | None, name: str, logger: kopf.Logger, **_: Any) -> None:
+    assert namespace is not None  # for type-checkers
     async with LOCK:
         if namespace not in STOPPERS or name not in STOPPERS[namespace]:
             flag = asyncio.Event()
