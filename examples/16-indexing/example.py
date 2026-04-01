@@ -5,7 +5,7 @@ import kopf
 
 
 @kopf.index('pods')
-def is_running(*, namespace: str | None, name: str | None, status: kopf.Status, **_: Any) -> Any:
+def is_running(*, namespace: str | None, name: str, status: kopf.Status, **_: Any) -> Any:
     return {(namespace, name): status.get('phase') == 'Running'}
     # {('kube-system', 'traefik-...-...'): [True],
     #  ('kube-system', 'helm-install-traefik-...'): [False],
@@ -13,7 +13,7 @@ def is_running(*, namespace: str | None, name: str | None, status: kopf.Status, 
 
 
 @kopf.index('pods')
-def by_label(labels: kopf.Labels, name: str | None, **_: Any) -> Any:
+def by_label(labels: kopf.Labels, name: str, **_: Any) -> Any:
     return {(label, value): name for label, value in labels.items()}
     # {('app', 'traefik'): ['traefik-...-...'],
     #  ('job-name', 'helm-install-traefik'): ['helm-install-traefik-...'],
