@@ -209,8 +209,10 @@ This way, the daemon will exit as soon as possible when the :kwarg:`stopped`
 is set, not when the next sleep is over. Therefore, the sleeps can be of any
 duration while the daemon remains terminable (leads to no OS resource leakage).
 
-.. note::
+.. seealso::
+    `kopf.DaemonStopped`, `kopf.DaemonStoppingReason`.
 
+.. note::
     Synchronous and asynchronous daemons get different types of stop-checker:
     with synchronous and asynchronous interfaces respectively.
     Therefore, they should be used accordingly: without or with ``await``.
@@ -231,10 +233,9 @@ It is possible to postpone the daemon spawning:
     from typing import Any
 
     @kopf.daemon('kopfexamples', initial_delay=30)
-    async def monitor_kex(stopped: kopf.DaemonStopped, **_: Any) -> None:
+    async def monitor_kex(**_: Any) -> None:
         while True:
             await asyncio.sleep(1.0)
-
 
 The start of the daemon will be delayed by 30 seconds after the resource
 creation (or operator startup). For example, this can be used to give some time
