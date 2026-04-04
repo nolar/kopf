@@ -79,7 +79,7 @@ test = [
     "codecov",
     "coverage>=7.12.0",
     "freezegun",
-    "kmock>=0.5",
+    "kmock>=0.7",
     "looptime>=0.7",
     "lxml",
     "pyngrok",
@@ -132,6 +132,8 @@ version_file = "kopf/_cogs/helpers/versions.py"
 
 [tool.uv]
 exclude-newer = "7 days"
+# These packages are my own, if they are hacked, all my github is hacked anyway.
+exclude-newer-package = { kmock=false, looptime=false }
 
 [tool.mypy]
 strict = true
