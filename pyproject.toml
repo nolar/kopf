@@ -103,7 +103,7 @@ test = [
 ]
 lint = [
     {include-group = "test"},
-    "mypy==1.19.1",
+    "mypy==1.20.0",
     "import-linter",
     "isort",
     "pre-commit",
@@ -132,6 +132,9 @@ version_file = "kopf/_cogs/helpers/versions.py"
 
 [tool.uv]
 exclude-newer = "7 days"
+# These packages are my own, if they are hacked, all my github is hacked anyway.
+# MyPy is pinned, so the intent is explicit, no need for time constraints.
+exclude-newer-package = { kmock=false, looptime=false, mypy=false }
 
 [tool.mypy]
 strict = true
