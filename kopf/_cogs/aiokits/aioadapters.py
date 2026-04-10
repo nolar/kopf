@@ -1,11 +1,12 @@
 import asyncio
 import concurrent.futures
+import multiprocessing.synchronize
 import threading
 from typing import Any
 
 from kopf._cogs.aiokits import aiotasks
 
-Flag = aiotasks.Future | asyncio.Event | concurrent.futures.Future[Any] | threading.Event
+Flag = aiotasks.Future | asyncio.Event | concurrent.futures.Future[Any] | threading.Event | multiprocessing.synchronize.Event
 
 
 async def wait_flag(
@@ -28,6 +29,9 @@ async def wait_flag(
             loop = asyncio.get_running_loop()
             return await loop.run_in_executor(None, flag.result)
         case threading.Event():
+            loop = asyncio.get_running_loop()
+            return await loop.run_in_executor(None, flag.wait)
+        case multiprocessing.synchronize.Event():
             loop = asyncio.get_running_loop()
             return await loop.run_in_executor(None, flag.wait)
         case _:
@@ -54,6 +58,8 @@ async def raise_flag(
             flag.set_result(None)
         case threading.Event():
             flag.set()
+        case multiprocessing.synchronize.Event():
+            flag.set()
         case _:
             raise TypeError(f"Unsupported type of a flag: {flag!r}")
 
@@ -74,6 +80,8 @@ def check_flag(
         case concurrent.futures.Future():
             return flag.done()
         case threading.Event():
+            return flag.is_set()
+        case multiprocessing.synchronize.Event():
             return flag.is_set()
         case _:
             raise TypeError(f"Unsupported type of a flag: {flag!r}")
