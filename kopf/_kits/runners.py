@@ -12,6 +12,7 @@ import signal
 import sys
 import threading
 import types
+import warnings
 from collections.abc import Callable, Collection
 from typing import TYPE_CHECKING, Any, Literal, cast
 
@@ -46,19 +47,7 @@ class KopfRunner(_AbstractKopfRunner):
 
     .. deprecated:: 1.45.0
 
-        ``KopfRunner`` is deprecated and discouraged due to a design flaw:
-        it inherits the handlers from the caller, mixes them with handlers
-        from the command-line files and modules, and does not un-register
-        the latter ones on exit. This breaks the runner isolation
-        and does not behave exactly as ``kopf run`` does, which it mimicks.
-        This issue shows itself when there are multiple tests with supposedly
-        different sets of handlers; irrelevant otherwise.
-
-        This runner will be removed in Kopf v2 (not currently in plans).
-        Until then, it remains in v1 as is (maintained within reason).
-        Use the subprocess-based :class:`KopfCLI` if isolation is important,
-        or more lightweight :class:`KopfTask` or :class:`KopfThread`
-        if the caller's imported handlers are under test.
+        ``KopfRunner`` is deprecated and discouraged: see :doc:`/testing`.
 
     Usage:
 
@@ -101,6 +90,13 @@ class KopfRunner(_AbstractKopfRunner):
             **kwargs: Any,
     ):
         super().__init__()
+        warnings.warn(
+            "KopfRunner is deprecated due to a design flaw (lack of import isolation). "
+            "Use KopfCLI, KopfTask, or KopfThread as appropriate. "
+            "See https://docs.kopf.dev/en/stable/testing/#legacy-runner for details.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.args = args
         self.kwargs = kwargs
         self.reraise = reraise

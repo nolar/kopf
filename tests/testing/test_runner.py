@@ -1,3 +1,5 @@
+import warnings
+
 import pytest
 
 from kopf._cogs.configs.configuration import OperatorSettings
@@ -8,6 +10,18 @@ from kopf.testing import KopfRunner
 @pytest.fixture(autouse=True)
 def no_config_needed(login_mocks):
     pass
+
+
+@pytest.fixture(autouse=True)
+def suppress_deprecation():
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', message="KopfRunner is deprecated", category=DeprecationWarning)
+        yield
+
+
+def test_deprecation_warning():
+    with pytest.warns(DeprecationWarning, match="KopfRunner is deprecated"):
+        KopfRunner(['--help'])
 
 
 def test_command_invocation_works():

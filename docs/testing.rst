@@ -295,8 +295,23 @@ If ``ready_flag`` is provided, it is passed through to the operator
 and can be awaited inside the ``with`` block.
 
 
-Command-line runner
-===================
+Legacy runner
+=============
+
+.. deprecated:: 1.45.0
+
+    :class:`~kopf.testing.KopfRunner` is deprecated due to a design flaw:
+    it runs the CLI in a background thread and leaks handler registrations
+    both from the caller into the operator and from the operator's modules
+    into the caller's default registry, breaking isolation between tests.
+    This issue shows itself when there are multiple tests with supposedly
+    different sets of handlers; irrelevant otherwise.
+
+    Kopf v2 (not currently in plans) will remove this legacy runner.
+    Until then, it remains in v1 as is (maintained within reason).
+    Use :class:`~kopf.testing.KopfCLI` for true CLI-equivalent isolation,
+    or :class:`~kopf.testing.KopfTask` / :class:`~kopf.testing.KopfThread`
+    for lightweight in-process handler testing if isolation is not needed.
 
 :class:`kopf.testing.KopfRunner` runs an arbitrary operator in the background
 while the original testing thread performs object manipulation and assertions:
@@ -311,7 +326,7 @@ exit code and output are available to the test (for additional assertions).
     import subprocess
     from kopf.testing import KopfRunner
 
-    def test_operator():
+    def test_operator_in_legacy_runner():
         with KopfRunner(['run', '-A', '--verbose', 'examples/01-minimal/example.py']) as runner:
             # do something while the operator is running.
 
