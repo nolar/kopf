@@ -1,6 +1,13 @@
 import asyncio
 import concurrent.futures
 import contextlib
+import io
+import multiprocessing.connection
+import multiprocessing.synchronize
+import os
+import shlex
+import signal
+import sys
 import threading
 import types
 from collections.abc import Collection
@@ -34,6 +41,22 @@ else:
 class KopfRunner(_AbstractKopfRunner):
     """
     A context manager to run a Kopf-based operator in parallel with the tests.
+
+    .. deprecated:: 1.45.0
+
+        ``KopfRunner`` is deprecated and discouraged due to a design flaw:
+        it inherits the handlers from the caller, mixes them with handlers
+        from the command-line files and modules, and does not un-register
+        the latter ones on exit. This breaks the runner isolation
+        and does not behave exactly as ``kopf run`` does, which it mimicks.
+        This issue shows itself when there are multiple tests with supposedly
+        different sets of handlers; irrelevant otherwise.
+
+        This runner will be removed in Kopf v2 (not currently in plans).
+        Until then, it remains in v1 as is (maintained within reason).
+        Use the subprocess-based :class:`KopfCLI` if isolation is important,
+        or more lightweight :class:`KopfTask` or :class:`KopfThread`
+        if the caller's imported handlers are under test.
 
     Usage:
 
@@ -195,6 +218,238 @@ class KopfRunner(_AbstractKopfRunner):
     @property
     def exc_info(self) -> _ExcInfo:
         return cast(_ExcInfo, self.future.result().exc_info)
+
+
+class KopfCLI:
+    """
+    A context manager to run a Kopf-based operator in a subprocess.
+
+    Unlike :class:`KopfRunner` (which uses a thread + Click's CliRunner),
+    this spawns a real child process, providing true import isolation.
+    Modules are imported fresh, decorators fire, handlers register from scratch.
+    This tests the operator exactly as it runs in production via ``kopf run``.
+
+    Usage:
+
+    .. code-block:: python
+
+        from kopf.testing import KopfCLI
+
+        def test_operator():
+            with KopfCLI(['run', '-m', 'myoperator', '-A', '--verbose']) as runner:
+                time.sleep(3)
+
+            assert runner.exit_code == 0
+            assert 'Operator started.' in runner.output
+    """
+
+    def __init__(
+            self,
+            args: str | list[str],
+            /, *,
+            signal: signal.Signals | int | None = None,
+            reraise: bool = True,
+            timeout: float = 10,
+            spawn_timeout: float = 10,
+    ) -> None:
+        super().__init__()
+        cli_args = shlex.split(args) if isinstance(args, str) else list(args)
+
+        ctx = multiprocessing.get_context('spawn')
+        self._signal = signal
+        self._timeout = timeout
+        self._reraise = reraise
+        self._spawn_timeout = spawn_timeout
+        self._stop_flag = ctx.Event()
+        self._spawned_flag = ctx.Event()
+        self._buffer = b''
+        self._buffer_cond = threading.Condition()
+
+        # Pipe for output capture. duplex=False: parent reads, child writes.
+        self._parent_conn, self._child_conn = ctx.Pipe(duplex=False)
+
+        # Pass stop_flag only in default mode; signal mode doesn't use it.
+        stop_flag = self._stop_flag if self._signal is None else None
+        self._process = ctx.Process(
+            target=self._run_operator,
+            args=(cli_args, stop_flag, self._spawned_flag, self._child_conn),
+        )
+        self._reader_thread = threading.Thread(target=self._read_output)
+
+    def __enter__(self) -> "KopfCLI":
+        self._process.start()
+
+        # The parent must close the write-end so the reader sees EOF when the child exits.
+        self._child_conn.close()
+        self._reader_thread.start()
+
+        # Spawning is costly (~1s): wait until the child has booted and is about to call main(),
+        # so that subsequent tests' timing is not polluted by Python interpreter spawning.
+        # If the child crashes or hangs before signalling, clean up and raise rather than
+        # block the caller forever.
+        if not self._spawned_flag.wait(timeout=self._spawn_timeout):
+            if self._process.is_alive():
+                self._process.kill()
+                self._process.join()
+            self._reader_thread.join()
+            self._parent_conn.close()
+            raise RuntimeError(
+                f"The operator subprocess did not finish spawning within "
+                f"{self._spawn_timeout}s. "
+                f"Check runner.output for details."
+            )
+
+        return self
+
+    def __exit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc_val: BaseException | None,
+            exc_tb: types.TracebackType | None,
+    ) -> Literal[False]:
+
+        # Request shutdown: always set the stop flag for parent-side consistency.
+        self._stop_flag.set()
+        signalled = False
+        if self._process.pid is not None and self._signal is not None:
+            if self._process.is_alive():
+                os.kill(self._process.pid, self._signal)
+                signalled = True
+
+        # Wait for the process to exit gracefully.
+        self._process.join(timeout=self._timeout)
+
+        # Force-kill if still alive after timeout.
+        killed = False
+        if self._process.is_alive():
+            self._process.kill()
+            self._process.join()
+            killed = True
+
+        # Wait for the reader thread to drain remaining output.
+        self._reader_thread.join()
+
+        # Clean up the read-end fd.
+        self._parent_conn.close()
+
+        # An exit by signal only counts as normal if we are the ones who sent it.
+        # An externally-delivered signal (OOM killer, shell kill, self-signal from
+        # the operator, etc.) that matches self._signal by coincidence is abnormal.
+        exit_code = self._process.exitcode
+        is_normal_exit = exit_code == 0 or (
+            signalled and self._signal is not None and exit_code == -self._signal
+        )
+
+        # Reraise if the process had to be force-killed or exited abnormally.
+        if self._reraise and killed:
+            raise RuntimeError(
+                f"The operator did not exit gracefully within "
+                f"{self._timeout}s and was force-killed. "
+                f"Check runner.output for details."
+            ) from exc_val
+        if self._reraise and not is_normal_exit:
+            raise RuntimeError(
+                f"The operator process exited with code {exit_code}. "
+                f"Check runner.output for details."
+            ) from exc_val
+
+        return False
+
+    # NB: keep static, since it needs to be pickled and unpickled.
+    @staticmethod
+    def _run_operator(
+            cli_args: list[str],
+            stop_flag: multiprocessing.synchronize.Event | None,
+            spawned_flag: multiprocessing.synchronize.Event,
+            child_conn: multiprocessing.connection.Connection,
+    ) -> None:
+        # Redirect stdout and stderr to the pipe at the fd level.
+        fd = child_conn.fileno()
+        os.dup2(fd, sys.stdout.fileno())
+        os.dup2(fd, sys.stderr.fileno())
+        child_conn.close()
+
+        # Signal the parent that spawning (interpreter boot) is done and the CLI is about to start.
+        spawned_flag.set()
+
+        # Invoke the CLI as if from the command line.
+        # stop_flag is a multiprocessing.Event (default mode) or None (signal mode).
+        ctxobj = cli.CLIControls(stop_flag=stop_flag)
+        cli.main(args=cli_args, obj=ctxobj, standalone_mode=True)
+
+    def _read_output(self) -> None:
+        fd = self._parent_conn.fileno()
+        while True:
+            data: bytes = os.read(fd, 4096)
+
+            # Even with EOF (empty data), notify the waiters for their final check on process exit.
+            with self._buffer_cond:
+                self._buffer += data
+                self._buffer_cond.notify_all()
+
+            # On EOF, stop the channeling thread.
+            if not data:
+                break
+
+            # Save memory at runtime: reset before the next blocking read in case the chunk is huge.
+            del data
+
+    @property
+    def exit_code(self) -> int | None:
+        """
+        The final exit code of the operator subprocess; ``None`` while running.
+        """
+        return self._process.exitcode
+
+    @property
+    def buffer(self) -> bytes:
+        """
+        The currently accumulated output buffer of the operator subprocess.
+
+        Both streams (stdout + stderr) are mixed into one to avoid chronological
+        discrepancies, i.e. when lines are consumed not in the order the happen.
+
+        Unlike :prop:`~KopfCLI.output`, the buffer can contain partial lines
+        as it consumes them from the stream in fixed-size chunks.
+
+        The subprocess runs with unbuffered stdio, so every write from the
+        operator is visible here immediately, without any explicit flush.
+        """
+        with self._buffer_cond:
+            return self._buffer
+
+    @property
+    def output(self) -> str:
+        """
+        The currently or finally accumulated output of the operator subprocess.
+
+        Both streams (stdout + stderr) are mixed into one to avoid chronological
+        discrepancies, i.e. when lines are consumed not in the order the happen.
+
+        Unlike :prop:`~KopfCLI.buffer`, there is a guarantee that the output
+        contains only the whole lines (ends with a newline or the process exit).
+
+        The subprocess runs with unbuffered stdio, so every write from the
+        operator is visible here immediately, without any explicit flush.
+        """
+        with self._buffer_cond:
+            return self._output
+
+    @property
+    def _output(self) -> str:
+        # If exited or not started, return all output regardless of newlines (even partial lines).
+        if not self._process.is_alive():
+            return self._buffer.decode()
+
+        # If still running, return only the whole lines, keep the partial lines for self.
+        parts = self._buffer.rsplit(b'\n', maxsplit=1)
+        if len(parts) == 2:
+            whole, tail = parts
+            whole += b'\n'
+            return whole.decode()
+
+        # If started but got no output yet (at least one line), return as if no whole lines yet.
+        return ''
 
 
 class KopfThread:

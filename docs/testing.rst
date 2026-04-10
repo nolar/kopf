@@ -6,18 +6,172 @@ Kopf provides some tools for testing Kopf-based operators
 via the :mod:`kopf.testing` module (requires explicit importing).
 
 
-Programmatic runners
-====================
+Subprocess runner
+=================
 
-:class:`kopf.testing.KopfRunner` enters the operator through the CLI,
-which requires module paths and Click invocation.
+:class:`kopf.testing.KopfCLI` is a sync context manager that runs a Kopf
+operator in a child process. Its main purpose is **true import isolation**
+equivalent to running ``kopf run`` on the command line: the child
+is a fresh Python interpreter that imports the operator modules from scratch,
+re-runs the decorators, and registers the handlers into its own registry.
+
+Startup modes
+-------------
+
+The CLI tokens can be passed either as a list of strings:
+
+.. code-block:: python
+
+    import time
+    from kopf.testing import KopfCLI
+
+    def test_operator_as_parsed_arguments():
+        with KopfCLI(['run', '-m', 'myoperator', '-A', '--verbose']) as runner:
+            # do something while the operator is running.
+            time.sleep(3)
+        assert runner.exit_code == 0
+        assert 'And here we are!' in runner.output
+
+Or as a single shell-quoted string (split via :func:`shlex.split`)
+
+.. code-block:: python
+
+    import time
+    from kopf.testing import KopfCLI
+
+    def test_operator_as_a_shell_command():
+        with KopfCLI('run -m "myoperator" -A --verbose') as runner:
+            # do something while the operator is running.
+            time.sleep(3)
+        assert runner.exit_code == 0
+        assert 'And here we are!' in runner.output
+
+
+Shutdown modes
+--------------
+
+By default, :class:`kopf.testing.KopfCLI` requests graceful shutdown
+via an internal cross-process stop flag:
+the parent sets the flag on exit, the operator detects it and stops
+cleanly with an exit code of ``0``. Any non-zero exit code is abnormal
+and --- with ``reraise=True`` (the default) --- raises
+a :class:`RuntimeError` on ``__exit__``.
+
+To test the production shutdown path (e.g. ``SIGTERM`` from a container
+runtime, or Ctrl+C), pass ``signal``:
+
+.. code-block:: python
+
+    import signal
+    import time
+    from kopf.testing import KopfCLI
+
+    def test_operator_graceful_exiting():
+        with KopfCLI(['run', '-m', 'myoperator'], signal=signal.SIGTERM) as runner:
+            time.sleep(3)
+        assert runner.exit_code in (0, -signal.SIGTERM)
+
+When ``signal`` is set, the stop flag is not passed to the
+child; the operator relies on the signal handlers it installs on its
+event loop, the same as under ``kopf run`` in production.
+An exit code of ``0`` (signal caught, clean exit)
+or ``-N`` (killed before finishing) both count as normal.
+Here, ``-N`` is the signal code (e.g., ``-15`` for ``SIGTERM``).
+
+If the process does not exit within ``timeout`` (default
+``10`` seconds) after the stop request, it is force-killed via
+``SIGKILL``, and a :class:`RuntimeError` is raised stating that the
+operator did not exit gracefully within the timeout. This is distinct
+from the generic abnormal-exit error and indicates that the operator
+itself failed to honour the shutdown request --- whereas a ``-9``
+exit code *without* a preceding timeout (e.g. ``SIGKILL`` from the OS
+OOM killer or another actor) is reported as a generic abnormal exit.
+
+
+Execution flow
+--------------
+
+The operator runs in the background, while the ``with`` block keeps full
+control of the main thread. This lets the test simulate external events
+against the cluster --- creating, modifying, or deleting objects through
+the Kubernetes API (or a mock such as KMock) --- and observe the
+operator's reaction through the object state and ``output``.
+
+When the ``with`` block exits, the operator stops, and its exit code
+and output are available to the test (for additional assertions).
+
+.. code-block:: python
+    :caption: test_example_operator.py
+
+    import time
+    import subprocess
+    from kopf.testing import KopfCLI
+
+    def test_operator_activity():
+        with KopfCLI(['run', '-A', '--verbose', 'examples/01-minimal/example.py']) as runner:
+            time.sleep(1)  # give it some time to connect to the API
+
+            subprocess.run("kubectl apply -f examples/obj.yaml", shell=True, check=True)
+            time.sleep(1)  # give it some time to react
+            assert 'And here we are!' in runner.output
+
+            subprocess.run("kubectl delete -f examples/obj.yaml", shell=True, check=True)
+            time.sleep(1)  # give it some time to react
+            assert 'Deleted, really deleted' in runner.output
+
+        assert runner.exit_code == 0
+
+.. note::
+    The operator runs against the currently authenticated cluster ---
+    the same as if it were executed with ``kopf run``.
+
+
+Limitations
+-----------
+
+* **No in-process patching or mocking.** The operator runs in a separate
+  Python interpreter that imports everything anew, so in-process tools
+  such as :mod:`unittest.mock`, ``mocker``, ``monkeypatch``, or
+  ``caplog`` do not reach into the child. For tests that need patched
+  mocks, shared handler state, or direct access to log records, use
+  :class:`kopf.testing.KopfTask` or :class:`kopf.testing.KopfThread`
+  instead.
+
+* **No detailed error propagation.** Exceptions raised by the operator
+  or its handlers are not pickled back to the parent. The only signal
+  is a generic non-zero ``exit_code``; the full tracebacks are
+  printed by the child's logging and available via ``output``
+  (stdout and stderr are merged into one stream to preserve
+  chronological order).
+
+* **No registry or settings injection.** They would defeat the isolation
+  purpose and are not inheritable across a subprocess boundary anyway.
+
+
+Properties
+----------
+
+* ``exit_code`` --- the child's exit code, or ``None`` while still
+  running.
+* ``output`` --- the accumulated stdout+stderr snapshot, readable
+  both during the run (for live debugging or mid-test assertions) and
+  after exit.
+
+
+In-process runners
+==================
+
+:class:`kopf.testing.KopfCLI` enters the operator through the CLI
+in a subprocess, which gives full isolation but makes in-process
+patching and mocking impossible.
 For cases where the handlers are already registered in the process
 (e.g. imported directly in the test module),
-there are two programmatic runners that enter via :func:`kopf.operator` directly.
+there are two in-process runners that enter via :func:`kopf.operator` directly.
 
-Unlike the CLI runner, programmatic runners do not import any files or modules.
-Instead, they inherit the caller's environment (i.e., the handlers),
-unless a custom registry is passed as an argument.
+Unlike the subprocess runner, in-process runners do not import any
+files or modules. Instead, they inherit the caller's environment
+(i.e., the handlers), unless a custom registry is passed as an argument.
+This also makes them compatible with in-process patching and mocking.
 
 
 Background thread
@@ -76,16 +230,16 @@ Both :class:`kopf.testing.KopfThread` and :class:`kopf.testing.KopfTask`
 accept all the same keyword arguments as :func:`kopf.operator`,
 plus two additional ones:
 
-* :kwarg:`timeout` --- how long to wait for the operator to stop on exit
+* ``timeout`` --- how long to wait for the operator to stop on exit
   (in seconds). If the operator does not stop in time, an exception is raised.
   ``None`` means wait indefinitely (the default).
-* :kwarg:`reraise` --- whether to propagate exceptions from the operator
+* ``reraise`` --- whether to propagate exceptions from the operator
   (default ``True``). If the ``with`` block also raised,
   the operator exception is chained.
 
-If :kwarg:`stop_flag` is not provided, one is injected automatically
+If ``stop_flag`` is not provided, one is injected automatically
 and set when the context manager exits.
-If :kwarg:`ready_flag` is provided, it is passed through to the operator
+If ``ready_flag`` is provided, it is passed through to the operator
 and can be awaited inside the ``with`` block.
 
 
