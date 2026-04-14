@@ -2,7 +2,7 @@ import ast
 import collections
 import re
 import subprocess
-import time
+import textwrap
 from collections.abc import Sequence
 from typing import Any
 
@@ -10,10 +10,10 @@ import astpath
 import pytest
 from lxml import etree
 
-from kopf.testing import KopfRunner
+from kopf.testing import KopfCLI
 
 
-def test_all_examples_are_runnable(mocker, settings, with_crd, exampledir, caplog):
+def test_all_examples_are_runnable(tmp_path, with_crd, exampledir, caplog):
 
     # If the example has its own opinion on the timing, try to respect it.
     # See e.g. /examples/99-all-at-once/example.py.
@@ -24,44 +24,41 @@ def test_all_examples_are_runnable(mocker, settings, with_crd, exampledir, caplo
     if e2e.imports_kubernetes:
         pytest.importorskip('kubernetes')
 
-    # To prevent lengthy sleeps on the simulated retries.
-    settings.execution.default_backoff = 1
+    # Prevent lengthy sleeps on the simulated retries.
+    # Prevent lengthy threads in the loop executor when the process exits.
+    injected_py = tmp_path / 'injected.py'
+    injected_py.write_text(textwrap.dedent("""
+        import kopf
 
-    # To prevent lengthy threads in the loop executor when the process exits.
-    settings.watching.server_timeout = 10
+        @kopf.on.startup()
+        def test_config(settings: kopf.OperatorSettings, **_: Any) -> None:
+            settings.watching.server_timeout = 10
+            settings.execution.default_backoff = 1
+    """))
 
     # Run an operator and simulate some activity with the operated resource.
-    with KopfRunner(
-        ['run', '--all-namespaces', '--standalone', '--verbose', str(example_py)],
-        timeout=60, settings=settings,
+    # NB: not cluster-wide, since we do not want to block unrelated system pods from deletion.
+    with KopfCLI(
+        ['run', '--verbose', '--standalone', '--namespace', 'default', str(example_py), str(injected_py)],
     ) as runner:
 
         # Give it some time to start.
-        _sleep_till_stopword(caplog=caplog,
-                             delay=e2e.startup_time_limit,
-                             patterns=e2e.startup_stop_words or ['Client is configured'])
+        runner.wait_for(e2e.startup_stop_words or ['Starting the watch-stream'], timeout=10)
 
         # Trigger the reaction. Give it some time to react and to sleep and to retry.
         subprocess.run("kubectl apply -f examples/obj.yaml",
                        shell=True, check=True, timeout=10, capture_output=True)
-        _sleep_till_stopword(caplog=caplog,
-                             delay=e2e.creation_time_limit,
-                             patterns=e2e.creation_stop_words)
+        runner.wait_for(e2e.creation_stop_words or [], timeout=e2e.creation_time_limit or 1)
 
         # Trigger the reaction. Give it some time to react.
         subprocess.run("kubectl delete -f examples/obj.yaml",
                        shell=True, check=True, timeout=10, capture_output=True)
-        _sleep_till_stopword(caplog=caplog,
-                             delay=e2e.deletion_time_limit,
-                             patterns=e2e.deletion_stop_words)
+        runner.wait_for(e2e.deletion_stop_words or ['Deleted, really deleted'], timeout=e2e.deletion_time_limit or 3)
 
-    # Give it some time to finish.
-    _sleep_till_stopword(caplog=caplog,
-                         delay=e2e.cleanup_time_limit,
-                         patterns=e2e.cleanup_stop_words or ['Hung tasks', 'Root tasks'])
+        # Give it some time to finish.
+        runner.wait_for(e2e.cleanup_stop_words or ['Hung tasks', 'Root tasks'], timeout=e2e.cleanup_time_limit or 3)
 
     # Verify that the operator did not die on start, or during the operation.
-    assert runner.exception is None
     assert runner.exit_code == 0
 
     # There are usually more than these messages, but we only check for the certain ones.
@@ -96,28 +93,6 @@ def test_all_examples_are_runnable(mocker, settings, with_crd, exampledir, caplo
     else:
         name_counts = collections.Counter(handler_names)
         assert not name_counts
-
-
-def _sleep_till_stopword(
-        caplog,
-        delay: float | None = None,
-        patterns: Sequence[str] | None = None,
-        *,
-        interval: float | None = None,
-) -> bool:
-    patterns = list(patterns or [])
-    delay = delay or (10.0 if patterns else 3.0)
-    interval = interval or min(1.0, max(0.1, delay / 10.))
-    started = time.perf_counter()
-    found = False
-    while not found and time.perf_counter() - started < delay:
-        for message in list(caplog.messages):
-            if any(re.search(pattern, message) for pattern in patterns or []):
-                found = True
-                break
-        else:
-            time.sleep(interval)
-    return found
 
 
 class E2EParser:

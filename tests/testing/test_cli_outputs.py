@@ -200,7 +200,7 @@ def test_wait_for_callable_predicate(tmp_path, chronometer):
     with KopfCLI(['run', str(path)], signal=signal.SIGKILL) as runner, chronometer:
         matched = runner.wait_for(lambda: runner.buffer.count(b'COMPLETE') >= 3, timeout=5)
     assert matched is True
-    assert chronometer.seconds <= 0.6 + CODE_OVERHEAD
+    assert 0.6 <= chronometer.seconds <= 0.6 + CODE_OVERHEAD
 
 
 def test_wait_for_unsupported_type_raises(tmp_path, chronometer):
