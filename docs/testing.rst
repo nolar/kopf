@@ -153,9 +153,61 @@ Properties
 
 * ``exit_code`` --- the child's exit code, or ``None`` while still
   running.
-* ``output`` --- the accumulated stdout+stderr snapshot, readable
-  both during the run (for live debugging or mid-test assertions) and
-  after exit.
+
+* ``output`` --- the accumulated stdout+stderr snapshot as :class:`str`,
+  readable both during the run (for live debugging or mid-test assertions)
+  and after exit. While the subprocess is running, only complete lines
+  (up to the last newline) are returned; a partial trailing line is withheld
+  until either the next newline arrives or the subprocess exits. After exit,
+  the full decoded output is returned, including any unterminated tail.
+
+* ``buffer`` --- the same accumulated output as :class:`bytes`, without
+  the whole-lines filter: partial lines are visible immediately.
+  Useful for inspecting raw or non-textual output, or for matching against
+  fragments that have not been line-terminated yet.
+
+The subprocess runs with unbuffered stdio, so every write by the operator
+(including partial ``print`` fragments with ``end=''``) is visible in both
+``output`` and ``buffer`` without an explicit flush.
+
+
+Waiting for output
+------------------
+
+:meth:`kopf.testing.KopfCLI.wait_for` blocks until a pattern appears in
+the output, returning ``True`` on match. It returns ``False`` if the wait
+times out *or* the subprocess exits before the pattern ever appears ---
+in which case no more data can arrive, and waiting further would be pointless.
+
+The pattern can be:
+
+* a :class:`str` --- a regular expression matched against ``output``
+  (whole lines only);
+* a :class:`bytes` object --- a regular expression matched against
+  ``buffer`` (including partial lines);
+* a collection of strings and/or bytes --- **all** patterns must match,
+  each with its own scope as above;
+* a zero-argument callable returning :class:`bool` --- a custom predicate,
+  called with the internal lock held (may safely read ``output``
+  and ``buffer`` without deadlocking).
+
+This replaces the ``time.sleep(N)`` anti-pattern with a deterministic wait
+synchronised to the operator's own output:
+
+.. code-block:: python
+
+    import subprocess
+    from kopf.testing import KopfCLI
+
+    def test_operator_output_tracking():
+        with KopfCLI(['run', '-A', '--verbose', 'examples/01-minimal/example.py']) as runner:
+            assert runner.wait_for('Client is configured', timeout=5)
+
+            subprocess.run("kubectl apply -f examples/obj.yaml", shell=True, check=True)
+            assert runner.wait_for('And here we are!', timeout=5)
+
+            subprocess.run("kubectl delete -f examples/obj.yaml", shell=True, check=True)
+            assert runner.wait_for('Deleted, really deleted', timeout=5)
 
 
 In-process runners

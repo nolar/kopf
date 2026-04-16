@@ -169,11 +169,13 @@ def test_external_signal_before_exit_is_abnormal(tmp_path, chronometer):
     path = tmp_path / 'handlers.py'
     path.write_text(textwrap.dedent("""
         import os, signal, time
+        print("STARTED")
         os.kill(os.getpid(), signal.SIGTERM)
         time.sleep(10)  # never reached
     """))
     with pytest.raises(RuntimeError, match="exited with code"):
         with chronometer, KopfCLI(['run', str(path)], signal=signal.SIGTERM) as runner:
-            time.sleep(0.5)  # let the child self-signal before we send our own
+            runner.wait_for(b"STARTED", timeout=CODE_OVERHEAD)
+            time.sleep(0.1)  # let the child self-signal before we send our own
     assert runner.exit_code == -signal.SIGTERM
-    assert 0.5 <= chronometer.seconds <= 0.5 + SPAWN_OVERHEAD
+    assert 0.1 <= chronometer.seconds <= 0.5 + SPAWN_OVERHEAD

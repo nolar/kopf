@@ -1,16 +1,18 @@
 import asyncio
+import collections.abc
 import concurrent.futures
 import contextlib
 import io
 import multiprocessing.connection
 import multiprocessing.synchronize
 import os
+import re
 import shlex
 import signal
 import sys
 import threading
 import types
-from collections.abc import Collection
+from collections.abc import Callable, Collection
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import click.testing
@@ -369,6 +371,28 @@ class KopfCLI:
         os.dup2(fd, sys.stderr.fileno())
         child_conn.close()
 
+        # Hold explicit references to the original wrappers for the whole
+        # subprocess lifetime: their underlying FileIO has closefd=True, so
+        # garbage-collecting them would close fd 1/2 out from under our
+        # replacements. We deliberately do not rely on sys.__stdout__ pinning,
+        # which is CPython-specific and not guaranteed on other interpreters.
+        _original_stdout = sys.stdout  # noqa: F841
+        _original_stderr = sys.stderr  # noqa: F841
+
+        # Rebuild sys.stdout and sys.stderr as fully-unbuffered text wrappers over
+        # their now-redirected fds. The default BufferedWriter under sys.stdout
+        # would otherwise hold writes until its buffer fills or the process exits,
+        # reordering stdout relative to the (by default) unbuffered sys.stderr on
+        # the shared pipe. With buffering=0 on the binary layer and write_through
+        # on the text layer, every write — including partial ones — hits the pipe
+        # immediately and in chronological order.
+        sys.stdout = io.TextIOWrapper(
+            open(sys.stdout.fileno(), 'wb', buffering=0, closefd=False),
+            encoding='utf-8', write_through=True)
+        sys.stderr = io.TextIOWrapper(
+            open(sys.stderr.fileno(), 'wb', buffering=0, closefd=False),
+            encoding='utf-8', write_through=True)
+
         # Signal the parent that spawning (interpreter boot) is done and the CLI is about to start.
         spawned_flag.set()
 
@@ -378,9 +402,12 @@ class KopfCLI:
         cli.main(args=cli_args, obj=ctxobj, standalone_mode=True)
 
     def _read_output(self) -> None:
+        # No need to be thrifty: we keep the whole output in memory anyway, not streaming it.
+        # But beware of full-size duplicates in memory: one in `data`, another in the buffer.
+        chunk_size: int = 10240
         fd = self._parent_conn.fileno()
         while True:
-            data: bytes = os.read(fd, 4096)
+            data: bytes = os.read(fd, chunk_size)
 
             # Even with EOF (empty data), notify the waiters for their final check on process exit.
             with self._buffer_cond:
@@ -450,6 +477,62 @@ class KopfCLI:
 
         # If started but got no output yet (at least one line), return as if no whole lines yet.
         return ''
+
+    def wait_for(
+            self,
+            v: Callable[[], bool] | str | bytes | Collection[str | bytes],
+            /, *,
+            timeout: float | None = None,
+    ) -> bool:
+        """
+        Wait until a pattern appears or a condition is met in the output.
+
+        Returns ``True`` if the condition was satisfied, ``False`` if the wait
+        timed out **or** the subprocess exited without the condition becoming
+        satisfied (in which case no new data can ever arrive).
+
+        If a callable (no arguments), then it must return true when satisfied.
+        It can safely use :prop:`~KopfCLI.output` and :prop:`~KopfCLI.buffer`.
+
+        If a ``str`` or ``bytes``, then this is a regular expression matching
+        the expected string (the wait compiles it internally for speed).
+        Note the subtle difference: strings match against a whole-line output,
+        while bytes match against the full buffer, including the partial lines.
+        It is a rough shortcut for ``lambda: re.search(pattern, runner.output)``
+        for ``str`` or the same with ``runner.buffer`` for ``bytes``.
+
+        If a collection (tuple, list, set), then **all** of the patterns
+        must match to wake up from the wait. Items may be a mix of strings
+        and bytes; each item is matched with its own scope as above.
+        An empty collection is considered matched immediately (vacuous truth).
+        """
+        matches: Callable[[], bool]
+        match v:
+            case str():
+                pattern_s: re.Pattern[str] = re.compile(v)
+                matches = lambda: bool(pattern_s.search(self._output))
+            case bytes():
+                pattern_b: re.Pattern[bytes] = re.compile(v)
+                matches = lambda: bool(pattern_b.search(self._buffer))
+            case collections.abc.Collection():
+                patterns_s: set[re.Pattern[str]] = {re.compile(p) for p in v if isinstance(p, str)}
+                patterns_b: set[re.Pattern[bytes]] = {re.compile(p) for p in v if isinstance(p, bytes)}
+                matches = lambda: (
+                    all(p.search(self._buffer) for p in patterns_b) and
+                    all(p.search(self._output) for p in patterns_s)
+                )
+            case _ if callable(v):
+                matches = v
+            case _:
+                raise ValueError(f"Unsupported pattern type: {v!r}")
+
+        # Also wake up when the process is no longer alive — no more data can arrive,
+        # so a predicate that has not matched by now will never match. After the wait
+        # unblocks, we return whether the pattern actually matched (matches == True)
+        # or we were released for another reason: timeout or process exit.
+        with self._buffer_cond:
+            self._buffer_cond.wait_for(lambda: matches() or not self._process.is_alive(), timeout=timeout)
+            return matches()
 
 
 class KopfThread:
