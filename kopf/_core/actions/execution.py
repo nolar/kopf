@@ -21,9 +21,6 @@ from kopf._cogs.helpers import typedefs
 from kopf._cogs.structs import ids
 from kopf._core.actions import invocation
 
-# The default delay duration for the regular exception in retry-mode.
-DEFAULT_RETRY_DELAY = 1 * 60
-
 
 class PermanentError(Exception):
     """ A fatal handler error, the retries are useless. """
@@ -34,7 +31,7 @@ class TemporaryError(Exception):
     def __init__(
             self,
             __msg: str | None = None,
-            delay: float | None = DEFAULT_RETRY_DELAY,
+            delay: float | None = 60,
     ) -> None:
         super().__init__(__msg)
         self.delay = delay
@@ -233,7 +230,7 @@ async def execute_handler_once(
     exceptions mean the failure of execution itself.
     """
     errors_mode = handler.errors if handler.errors is not None else default_errors
-    backoff = handler.backoff if handler.backoff is not None else DEFAULT_RETRY_DELAY
+    backoff = handler.backoff if handler.backoff is not None else settings.execution.default_backoff
     logger = cause.logger
 
     # Mutable accumulator for all the sub-handlers of any level deep; populated in `kopf.execute`.

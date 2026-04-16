@@ -27,6 +27,7 @@ async def test_declared_public_interface_and_promised_defaults():
     assert settings.scanning.disabled == False
     assert settings.admission.server is None
     assert settings.admission.managed is None
+    assert settings.execution.default_backoff == 60
     assert settings.execution.executor is not None
     assert settings.execution.max_workers is None
     assert settings.networking.request_timeout == 5 * 60

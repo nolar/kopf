@@ -329,6 +329,16 @@ class ExecutionSettings:
     Settings for synchronous handlers execution (e.g. thread-/process-pools).
     """
 
+    default_backoff: float = 60
+    """
+    The duration to postpone the retry of arbitrary errors (except Kopf's ones).
+
+    Each handler can set its own backoff with the ``backoff`` parameter.
+
+    :class:`kopf.TemporaryError` has its own hard-coded default of 60 seconds,
+    which can be overridden explicitly with ``kopf.TemporaryError(…, delay=…)``.
+    """
+
     executor: concurrent.futures.Executor = dataclasses.field(
         default_factory=concurrent.futures.ThreadPoolExecutor)
     """

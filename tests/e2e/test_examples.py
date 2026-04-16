@@ -25,7 +25,7 @@ def test_all_examples_are_runnable(mocker, settings, with_crd, exampledir, caplo
         pytest.importorskip('kubernetes')
 
     # To prevent lengthy sleeps on the simulated retries.
-    mocker.patch('kopf._core.actions.execution.DEFAULT_RETRY_DELAY', 1)
+    settings.execution.default_backoff = 1
 
     # To prevent lengthy threads in the loop executor when the process exits.
     settings.watching.server_timeout = 10
@@ -33,7 +33,7 @@ def test_all_examples_are_runnable(mocker, settings, with_crd, exampledir, caplo
     # Run an operator and simulate some activity with the operated resource.
     with KopfRunner(
         ['run', '--all-namespaces', '--standalone', '--verbose', str(example_py)],
-        timeout=60,
+        timeout=60, settings=settings,
     ) as runner:
 
         # Give it some time to start.
