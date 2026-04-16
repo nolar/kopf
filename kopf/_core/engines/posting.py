@@ -85,13 +85,7 @@ def enqueue(
         # No event-loop or another event-loop - assume another thread.
         # Use the cross-thread thread-safe methods. Do not block or wait.
         # Beware of #1212: `run_coroutine_threadsafe(queue.put(…), loop=loop)` is flawed.
-        queue.put_nowait(event)
-        loop.call_soon_threadsafe(_no_op_event_loop_awakener)
-
-
-# The same as `lambda: None`, but with no closure data attached & better for JIT in PyPy.
-def _no_op_event_loop_awakener() -> None:
-    pass
+        loop.call_soon_threadsafe(queue.put_nowait, event)
 
 
 def event(

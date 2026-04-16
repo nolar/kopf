@@ -95,6 +95,7 @@ async def test_nonthreadsafe_indeed_fails(chronometer, threader, event_queue):
         threader(0.2, thread_fn)
         await event_queue.get()
 
+    # We wake up on the wakeup call (0.5) instead of the proper queue.put (0.2).
     assert 0.5 <= chronometer.seconds < 0.6
     assert 0.5 <= loopometer.seconds < 0.6
     assert thread_was_called.is_set()
@@ -114,6 +115,7 @@ async def test_threadsafe_indeed_works(chronometer, threader, event_queue):
         threader(0.2, thread_fn)
         await event_queue.get()
 
+    # We wake up on time of the queue.put (0.2), not on the wakeup call (0.5).
     assert 0.2 <= chronometer.seconds < 0.3
     assert 0.2 <= loopometer.seconds < 0.3
     assert thread_was_called.is_set()
@@ -121,9 +123,15 @@ async def test_threadsafe_indeed_works(chronometer, threader, event_queue):
 
 @pytest.mark.looptime(False)
 @pytest.mark.usefixtures('event_queue_loop', 'settings_via_contextvar')
-async def test_queueing_is_threadsafe(chronometer, threader, event_queue):
+@pytest.mark.parametrize('debug', [False, True], ids=['regular', 'paranoid'])
+async def test_queueing_is_threadsafe(chronometer, threader, event_queue, debug):
     loop = asyncio.get_running_loop()
     thread_was_called = threading.Event()
+
+    # Setup the worst case to catch inconsistencies in cross-thread coordination.
+    # Debug mode makes event loops extra paranoid about thread safety, like this:
+    # RuntimeError("Non-thread-safe operation invoked on an event loop other than the current one")
+    loop.set_debug(debug)
 
     def thread_fn():
         thread_was_called.set()
@@ -134,6 +142,7 @@ async def test_queueing_is_threadsafe(chronometer, threader, event_queue):
         threader(0.2, thread_fn)
         await event_queue.get()
 
+    # We wake up on time of the queue.put (0.2), not on the wakeup call (0.5).
     assert 0.2 <= chronometer.seconds < 0.3
     assert 0.2 <= loopometer.seconds < 0.3
     assert thread_was_called.is_set()
