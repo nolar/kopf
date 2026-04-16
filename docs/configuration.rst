@@ -151,10 +151,9 @@ These two settings also affect :func:`kopf.event` and related functions:
 :func:`kopf.info`, :func:`kopf.warn`, :func:`kopf.exception` ---
 even if they are called explicitly in the code.
 
-By default, all log messages made by the handlers on their ``logger`` are also
-posted as Kubernetes events. This can be disabled if it is not desired,
-e.g. to keep the events list clean, so that only the explicit event-posting
-calls are posted:
+By default, log messages made by the handlers on their ``logger`` are not
+posted as Kubernetes events in order to keep the events list clean.
+This can be enabled to improve observability if desired:
 
 .. code-block:: python
 
@@ -163,7 +162,7 @@ calls are posted:
 
     @kopf.on.startup()
     def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
-        settings.posting.loggers = False
+        settings.posting.loggers = True
 
 
 .. _configure-sync-handlers:
