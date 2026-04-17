@@ -29,11 +29,15 @@ which can happen either immediately, or after some delay:
     @kopf.on.create('kopfexamples')
     def create_fn(spec: kopf.Spec, **_: Any) -> None:
         if not is_data_ready():
-            raise kopf.TemporaryError("The data is not yet ready.", delay=60)
+            raise kopf.TemporaryError("The data is not yet ready.", delay=30)
 
 In that case, there is no need to sleep in the handler explicitly, thus blocking
 any other events, causes, and generally any other handlers on the same object
 from being handled (such as deletion or parallel handlers/sub-handlers).
+
+The default delay for temporary errors is hard-coded to 60 seconds and cannot
+be configured globally for the operator (unlike ``settings.execution.default_backoff``
+for arbitrary errors). Override the default explicitly in code if needed.
 
 .. note::
     The multiple handlers and the sub-handlers are implemented via this
@@ -157,7 +161,17 @@ can be configured:
     def create_fn(spec: kopf.Spec, **_: Any) -> None:
         raise Exception()
 
-The default is 60 seconds.
+The default is 60 seconds, which you can configure globally for the operator
+with ``settings.execution.default_backoff``:
+
+.. code-block:: python
+
+    import kopf
+    from typing import Any
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
+        settings.execution.default_backoff = 30
 
 .. note::
 

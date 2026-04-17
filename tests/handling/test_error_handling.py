@@ -1,6 +1,7 @@
 import asyncio
 import json
 
+import freezegun
 import pytest
 
 import kopf
@@ -104,12 +105,20 @@ async def test_retry_error_delays_handler(
 
 
 # The extrahandlers are needed to prevent the cycle ending and status purging.
+@freezegun.freeze_time('2020-12-31T00:00:00')
+@pytest.mark.parametrize('backoff_setting, expected_delayed, expected_log_seconds', [
+    (0, '2020-12-31T00:00:00.000000+00:00', 0),
+    (30, '2020-12-31T00:00:30.000000+00:00', 30),
+    (60, '2020-12-31T00:01:00.000000+00:00', 60),
+])
 @pytest.mark.parametrize('cause_type', HANDLER_REASONS)
 async def test_arbitrary_error_delays_handler(
         registry, settings, handlers, extrahandlers, resource, cause_mock, cause_type,
-        assert_logs, k8s_mocked, looptime):
+        assert_logs, k8s_mocked, looptime,
+        backoff_setting, expected_delayed, expected_log_seconds):
     name1 = f'{cause_type}_fn'
 
+    settings.execution.default_backoff = backoff_setting
     event_type = None if cause_type == Reason.RESUME else 'irrelevant'
     cause_mock.reason = cause_type
     handlers.create_mock.side_effect = Exception("oops")
@@ -142,8 +151,8 @@ async def test_arbitrary_error_delays_handler(
     progress = json.loads(patch['metadata']['annotations'][f"kopf.zalando.org/{name1}"])
     assert progress['failure'] is False
     assert progress['success'] is False
-    assert progress['delayed']
+    assert progress['delayed'] == expected_delayed
 
     assert_logs([
-        "Handler .+ failed with an exception and will try again in 60 seconds: oops",
+        rf"Handler .+ failed with an exception and will try again in {expected_log_seconds} seconds: oops",
     ])
