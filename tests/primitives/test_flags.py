@@ -1,10 +1,13 @@
 import asyncio
 import concurrent.futures
+import multiprocessing
 import threading
 
 import pytest
 
 from kopf._cogs.aiokits.aioadapters import check_flag, raise_flag, wait_flag
+
+_mp_ctx = multiprocessing.get_context('spawn')
 
 
 @pytest.fixture(params=[
@@ -12,6 +15,7 @@ from kopf._cogs.aiokits.aioadapters import check_flag, raise_flag, wait_flag
     pytest.param(asyncio.Future, id='asyncio-future'),
     pytest.param(threading.Event, id='threading-event'),
     pytest.param(concurrent.futures.Future, id='concurrent-future'),
+    pytest.param(_mp_ctx.Event, id='multiprocessing-event'),
 ])
 async def flag(request):
     """
@@ -92,6 +96,20 @@ async def test_checking_of_concurrent_future_when_unset():
     assert result is False
 
 
+async def test_checking_of_multiprocessing_event_when_set():
+    event = _mp_ctx.Event()
+    event.set()
+    result = check_flag(event)
+    assert result is True
+
+
+async def test_checking_of_multiprocessing_event_when_unset():
+    event = _mp_ctx.Event()
+    event.clear()
+    result = check_flag(event)
+    assert result is False
+
+
 async def test_raising_of_unsupported_raises_an_error():
     with pytest.raises(TypeError):
         await raise_flag(object())
@@ -123,6 +141,12 @@ async def test_raising_of_concurrent_future():
     future = concurrent.futures.Future()
     await raise_flag(future)
     assert future.done()
+
+
+async def test_raising_of_multiprocessing_event():
+    event = _mp_ctx.Event()
+    await raise_flag(event)
+    assert event.is_set()
 
 
 async def test_waiting_of_unsupported_raises_an_error():

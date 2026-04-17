@@ -6,8 +6,312 @@ Kopf provides some tools for testing Kopf-based operators
 via the :mod:`kopf.testing` module (requires explicit importing).
 
 
-Background runner
+Subprocess runner
 =================
+
+:class:`kopf.testing.KopfCLI` is a sync context manager that runs a Kopf
+operator in a child process. Its main purpose is **true import isolation**
+equivalent to running ``kopf run`` on the command line: the child
+is a fresh Python interpreter that imports the operator modules from scratch,
+re-runs the decorators, and registers the handlers into its own registry.
+
+Startup modes
+-------------
+
+The CLI tokens can be passed either as a list of strings:
+
+.. code-block:: python
+
+    import time
+    from kopf.testing import KopfCLI
+
+    def test_operator_as_parsed_arguments():
+        with KopfCLI(['run', '-m', 'myoperator', '-A', '--verbose']) as runner:
+            # do something while the operator is running.
+            time.sleep(3)
+        assert runner.exit_code == 0
+        assert 'And here we are!' in runner.output
+
+Or as a single shell-quoted string (split via :func:`shlex.split`)
+
+.. code-block:: python
+
+    import time
+    from kopf.testing import KopfCLI
+
+    def test_operator_as_a_shell_command():
+        with KopfCLI('run -m "myoperator" -A --verbose') as runner:
+            # do something while the operator is running.
+            time.sleep(3)
+        assert runner.exit_code == 0
+        assert 'And here we are!' in runner.output
+
+
+Shutdown modes
+--------------
+
+By default, :class:`kopf.testing.KopfCLI` requests graceful shutdown
+via an internal cross-process stop flag:
+the parent sets the flag on exit, the operator detects it and stops
+cleanly with an exit code of ``0``. Any non-zero exit code is abnormal
+and --- with ``reraise=True`` (the default) --- raises
+a :class:`RuntimeError` on ``__exit__``.
+
+To test the production shutdown path (e.g. ``SIGTERM`` from a container
+runtime, or Ctrl+C), pass ``signal``:
+
+.. code-block:: python
+
+    import signal
+    import time
+    from kopf.testing import KopfCLI
+
+    def test_operator_graceful_exiting():
+        with KopfCLI(['run', '-m', 'myoperator'], signal=signal.SIGTERM) as runner:
+            time.sleep(3)
+        assert runner.exit_code in (0, -signal.SIGTERM)
+
+When ``signal`` is set, the stop flag is not passed to the
+child; the operator relies on the signal handlers it installs on its
+event loop, the same as under ``kopf run`` in production.
+An exit code of ``0`` (signal caught, clean exit)
+or ``-N`` (killed before finishing) both count as normal.
+Here, ``-N`` is the signal code (e.g., ``-15`` for ``SIGTERM``).
+
+If the process does not exit within ``timeout`` (default
+``10`` seconds) after the stop request, it is force-killed via
+``SIGKILL``, and a :class:`RuntimeError` is raised stating that the
+operator did not exit gracefully within the timeout. This is distinct
+from the generic abnormal-exit error and indicates that the operator
+itself failed to honour the shutdown request --- whereas a ``-9``
+exit code *without* a preceding timeout (e.g. ``SIGKILL`` from the OS
+OOM killer or another actor) is reported as a generic abnormal exit.
+
+
+Execution flow
+--------------
+
+The operator runs in the background, while the ``with`` block keeps full
+control of the main thread. This lets the test simulate external events
+against the cluster --- creating, modifying, or deleting objects through
+the Kubernetes API (or a mock such as KMock) --- and observe the
+operator's reaction through the object state and ``output``.
+
+When the ``with`` block exits, the operator stops, and its exit code
+and output are available to the test (for additional assertions).
+
+.. code-block:: python
+    :caption: test_example_operator.py
+
+    import time
+    import subprocess
+    from kopf.testing import KopfCLI
+
+    def test_operator_activity():
+        with KopfCLI(['run', '-A', '--verbose', 'examples/01-minimal/example.py']) as runner:
+            time.sleep(1)  # give it some time to connect to the API
+
+            subprocess.run("kubectl apply -f examples/obj.yaml", shell=True, check=True)
+            time.sleep(1)  # give it some time to react
+            assert 'And here we are!' in runner.output
+
+            subprocess.run("kubectl delete -f examples/obj.yaml", shell=True, check=True)
+            time.sleep(1)  # give it some time to react
+            assert 'Deleted, really deleted' in runner.output
+
+        assert runner.exit_code == 0
+
+.. note::
+    The operator runs against the currently authenticated cluster ---
+    the same as if it were executed with ``kopf run``.
+
+
+Limitations
+-----------
+
+* **No in-process patching or mocking.** The operator runs in a separate
+  Python interpreter that imports everything anew, so in-process tools
+  such as :mod:`unittest.mock`, ``mocker``, ``monkeypatch``, or
+  ``caplog`` do not reach into the child. For tests that need patched
+  mocks, shared handler state, or direct access to log records, use
+  :class:`kopf.testing.KopfTask` or :class:`kopf.testing.KopfThread`
+  instead.
+
+* **No detailed error propagation.** Exceptions raised by the operator
+  or its handlers are not pickled back to the parent. The only signal
+  is a generic non-zero ``exit_code``; the full tracebacks are
+  printed by the child's logging and available via ``output``
+  (stdout and stderr are merged into one stream to preserve
+  chronological order).
+
+* **No registry or settings injection.** They would defeat the isolation
+  purpose and are not inheritable across a subprocess boundary anyway.
+
+
+Properties
+----------
+
+* ``exit_code`` --- the child's exit code, or ``None`` while still
+  running.
+
+* ``output`` --- the accumulated stdout+stderr snapshot as :class:`str`,
+  readable both during the run (for live debugging or mid-test assertions)
+  and after exit. While the subprocess is running, only complete lines
+  (up to the last newline) are returned; a partial trailing line is withheld
+  until either the next newline arrives or the subprocess exits. After exit,
+  the full decoded output is returned, including any unterminated tail.
+
+* ``buffer`` --- the same accumulated output as :class:`bytes`, without
+  the whole-lines filter: partial lines are visible immediately.
+  Useful for inspecting raw or non-textual output, or for matching against
+  fragments that have not been line-terminated yet.
+
+The subprocess runs with unbuffered stdio, so every write by the operator
+(including partial ``print`` fragments with ``end=''``) is visible in both
+``output`` and ``buffer`` without an explicit flush.
+
+
+Waiting for output
+------------------
+
+:meth:`kopf.testing.KopfCLI.wait_for` blocks until a pattern appears in
+the output, returning ``True`` on match. It returns ``False`` if the wait
+times out *or* the subprocess exits before the pattern ever appears ---
+in which case no more data can arrive, and waiting further would be pointless.
+
+The pattern can be:
+
+* a :class:`str` --- a regular expression matched against ``output``
+  (whole lines only);
+* a :class:`bytes` object --- a regular expression matched against
+  ``buffer`` (including partial lines);
+* a collection of strings and/or bytes --- **all** patterns must match,
+  each with its own scope as above;
+* a zero-argument callable returning :class:`bool` --- a custom predicate,
+  called with the internal lock held (may safely read ``output``
+  and ``buffer`` without deadlocking).
+
+This replaces the ``time.sleep(N)`` anti-pattern with a deterministic wait
+synchronised to the operator's own output:
+
+.. code-block:: python
+
+    import subprocess
+    from kopf.testing import KopfCLI
+
+    def test_operator_output_tracking():
+        with KopfCLI(['run', '-A', '--verbose', 'examples/01-minimal/example.py']) as runner:
+            assert runner.wait_for('Client is configured', timeout=5)
+
+            subprocess.run("kubectl apply -f examples/obj.yaml", shell=True, check=True)
+            assert runner.wait_for('And here we are!', timeout=5)
+
+            subprocess.run("kubectl delete -f examples/obj.yaml", shell=True, check=True)
+            assert runner.wait_for('Deleted, really deleted', timeout=5)
+
+
+In-process runners
+==================
+
+:class:`kopf.testing.KopfCLI` enters the operator through the CLI
+in a subprocess, which gives full isolation but makes in-process
+patching and mocking impossible.
+For cases where the handlers are already registered in the process
+(e.g. imported directly in the test module),
+there are two in-process runners that enter via :func:`kopf.operator` directly.
+
+Unlike the subprocess runner, in-process runners do not import any
+files or modules. Instead, they inherit the caller's environment
+(i.e., the handlers), unless a custom registry is passed as an argument.
+This also makes them compatible with in-process patching and mocking.
+
+
+Background thread
+-----------------
+
+:class:`kopf.testing.KopfThread` is a sync context manager
+that runs the operator in a background thread:
+
+.. code-block:: python
+
+    import kopf
+    import time
+    from kopf.testing import KopfThread
+
+    @kopf.on.create('kopfexamples')
+    def create_fn(**_):
+        pass
+
+    def test_operator_in_a_thread():
+        settings = kopf.OperatorSettings()
+        settings.scanning.disabled = True
+        with KopfThread(namespaces=['ns1'], settings=settings):
+            # do something while the operator is running.
+            time.sleep(3)
+        # operator has been stopped and cleaned up
+
+
+Background task
+---------------
+
+:class:`kopf.testing.KopfTask` is an async context manager
+that runs the operator as a background asyncio task:
+
+.. code-block:: python
+
+    import kopf
+    from kopf.testing import KopfTask
+
+    @kopf.on.create('kopfexamples')
+    def create_fn(**_):
+        pass
+
+    async def test_operator_in_a_task():
+        settings = kopf.OperatorSettings()
+        settings.scanning.disabled = True
+        async with KopfTask(namespaces=['ns1'], settings=settings):
+            # do something while the operator is running.
+            pass
+        # operator has been stopped and cleaned up
+
+
+Common options
+--------------
+
+Both :class:`kopf.testing.KopfThread` and :class:`kopf.testing.KopfTask`
+accept all the same keyword arguments as :func:`kopf.operator`,
+plus two additional ones:
+
+* ``timeout`` --- how long to wait for the operator to stop on exit
+  (in seconds). If the operator does not stop in time, an exception is raised.
+  ``None`` means wait indefinitely (the default).
+* ``reraise`` --- whether to propagate exceptions from the operator
+  (default ``True``). If the ``with`` block also raised,
+  the operator exception is chained.
+
+If ``stop_flag`` is not provided, one is injected automatically
+and set when the context manager exits.
+If ``ready_flag`` is provided, it is passed through to the operator
+and can be awaited inside the ``with`` block.
+
+
+Legacy runner
+=============
+
+.. deprecated:: 1.45.0
+
+    :class:`~kopf.testing.KopfRunner` is deprecated due to a design flaw:
+    it runs the CLI in a background thread and leaks handler registrations
+    both from the caller into the operator and from the operator's modules
+    into the caller's default registry, breaking isolation between tests.
+    This issue shows itself when there are multiple tests with supposedly
+    different sets of handlers; irrelevant otherwise.
+
+    Kopf v2 (not currently in plans) will remove this legacy runner.
+    Until then, it remains in v1 as is (maintained within reason).
+    Use :class:`~kopf.testing.KopfCLI` for true CLI-equivalent isolation,
+    or :class:`~kopf.testing.KopfTask` / :class:`~kopf.testing.KopfThread`
+    for lightweight in-process handler testing if isolation is not needed.
 
 :class:`kopf.testing.KopfRunner` runs an arbitrary operator in the background
 while the original testing thread performs object manipulation and assertions:
@@ -22,7 +326,7 @@ exit code and output are available to the test (for additional assertions).
     import subprocess
     from kopf.testing import KopfRunner
 
-    def test_operator():
+    def test_operator_in_legacy_runner():
         with KopfRunner(['run', '-A', '--verbose', 'examples/01-minimal/example.py']) as runner:
             # do something while the operator is running.
 
@@ -42,12 +346,22 @@ exit code and output are available to the test (for additional assertions).
     the same as if it were executed with ``kopf run``.
 
 
-Mock server
-===========
+KMock server
+============
 
 KMock is a supplementary project for running a local mock server for any HTTP API, and for the Kubernetes API in particular --- with extended support for Kubernetes API endpoints, resource discovery, and implicit in-memory object persistence.
 
+* https://kmock.readthedocs.io/
+* https://github.com/nolar/kmock
+* https://pypi.org/project/kmock/
+
 Use KMock when you need a very lightweight simulation of the Kubernetes API without deploying a full Kubernetes cluster, for example when migrating to/from Kopf.
+
+See an example operator and its tests in:
+
+* `examples/09-testing-kmock/ <https://github.com/nolar/kopf/tree/main/examples/09-testing-kmock>`_
+
+A quick preview example:
 
 .. code-block:: python
 
@@ -61,8 +375,19 @@ Use KMock when you need a very lightweight simulation of the Kubernetes API with
         assert kmock.requests[0].method == 'patch'
         assert kmock.objects['kopf.dev/v1/kopfexamples', 'ns1', 'name1'] == {'spec': 456}
 
-KMock's detailed documentation is outside the scope of Kopf's documentation. The project and its documentation can be found at:
 
-* https://kmock.readthedocs.io/
-* https://github.com/nolar/kmock
-* https://pypi.org/project/kmock/
+Tests speedup
+=============
+
+To speed up tests written fully async (i.e., ``async def`` tests using :class:`kopf.testing.KopfTask` runner), another library by the same author as Kopf and KMock can be of use: ``looptime``, which compacts the event loop's time into near-zero wall-clock time. With this, you can time your tests freely without fears that it will slow down the test suite execution --- it will not.
+
+* https://looptime.readthedocs.io/
+* https://github.com/nolar/looptime
+* https://pypi.org/project/looptime/
+
+To quickly try it:
+
+.. code-block:: bash
+
+    pip install looptime
+    pytest --looptime

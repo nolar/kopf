@@ -1,6 +1,6 @@
 """
-Embeddable operators require very customised application-specific testing.
-Kopf cannot help here beyond its regular :class:`kopf.testing.KopfRunner`,
+Embeddable operators require very customized application-specific testing.
+Kopf cannot help here beyond its regular :class:`kopf.testing.KopfCLI`,
 which is an equivalent of the ``kopf run`` command.
 
 This file exists to disable the implicit e2e tests

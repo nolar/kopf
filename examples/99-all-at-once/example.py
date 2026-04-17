@@ -40,7 +40,7 @@ def create_1(body: kopf.Body, **_: Any) -> Any:
     return {'job1-status': 100}
 
 
-@kopf.on.create('kopfexamples')
+@kopf.on.create('kopfexamples', backoff=1)
 def create_2(retry: int, **_: Any) -> Any:
     wait_for_something()  # specific for job2, e.g. an external API poller
 
@@ -112,5 +112,7 @@ E2E_STARTUP_STOP_WORDS = ['Served by the background task.']
 E2E_CLEANUP_STOP_WORDS = ['Hung tasks', 'Root tasks']
 E2E_CREATION_STOP_WORDS = ['Creation is processed:']
 E2E_DELETION_STOP_WORDS = ['Deleted, really deleted']
+E2E_CREATION_TIME_LIMIT = 10
+E2E_DELETION_TIME_LIMIT = 10
 E2E_SUCCESS_COUNTS = {'create_1': 1, 'create_2': 1, 'create_pod': 1, 'delete': 1,
                       'startup_fn_simple': 1, 'startup_fn_retried': 1, 'cleanup_fn': 1}
