@@ -18,7 +18,7 @@ def _mock_client(kubernetes, mocker):
     config.password = 'secret'
     config.cert_file = '/path/to/cert.pem'
     config.key_file = '/path/to/key.pem'
-    config.api_key = {'authorization': 'Bearer some-token'}
+    config.api_key = {'BearerToken': 'Bearer some-token'}
     config.api_key_prefix = {}
 
     mocker.patch.object(kubernetes.client.Configuration, 'get_default_copy', return_value=config)
@@ -73,11 +73,13 @@ def test_full_credential_extraction(settings, logger, _mock_client):
 
 @pytest.mark.parametrize('header, expected_scheme, expected_token', [
     (None, None, None),
-    ('tkn', None, 'tkn'),
-    ('Bearer tkn', 'Bearer', 'tkn'),
-], ids=['no-header', 'bare-token', 'scheme-and-token'])
+    ({'authorization': 'tkn'}, None, 'tkn'),
+    ({'authorization': 'Bearer tkn'}, 'Bearer', 'tkn'),
+    ({'BearerToken': 'Bearer other-tkn'}, 'Bearer', 'other-tkn'),
+    ({'BearerToken': 'Bearer other-tkn', 'authorization': 'Bearer tkn'}, 'Bearer', 'other-tkn'),
+], ids=['no-header', 'bare-token', 'scheme-and-token', 'new-token-location', 'both-token-locations'])
 def test_token_parsing(settings, logger, _mock_client, header, expected_scheme, expected_token):
-    _mock_client.api_key = {'authorization': header} if header else {}
+    _mock_client.api_key = header if header else {}
     credentials = login_via_client(logger=logger, settings=settings)
     assert credentials is not None
     assert credentials.scheme == expected_scheme

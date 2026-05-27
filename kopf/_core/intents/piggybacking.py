@@ -94,7 +94,13 @@ def login_via_client(
     # For auth-providers, this method is monkey-patched with the auth-provider's one.
     # We need the actual auth-provider's token, so we call it instead of accessing api_key.
     # Other keys (token, tokenFile) also end up being retrieved via this method.
-    header: str | None = config.get_api_key_with_prefix('authorization')
+
+    # Post kubernetes version 36.0.1 BearerToken is used to store the bearer token instead of authorization
+    # https://github.com/kubernetes-client/python/pull/2585/changes
+    # First we check the new location (BearerToken) and then fall back to the old (authorization).
+    # If both are present then BearerToken takes precedence.
+    header: str | None = config.get_api_key_with_prefix('BearerToken') or config.get_api_key_with_prefix('authorization')
+
     parts: Sequence[str] = header.split(' ', 1) if header else []
     scheme, token = ((None, None) if len(parts) == 0 else
                      (None, parts[0]) if len(parts) == 1 else
