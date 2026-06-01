@@ -314,6 +314,23 @@ __ https://github.com/kubernetes/kubernetes/blob/c20e0bc54189aef73a6a1498b4eab28
         settings.networking.request_timeout = 60
         settings.watching.server_timeout = 10 * 60
 
+``settings.watching.batch_size`` (integer) is the page size (the ``limit=``
+query parameter) for the initial listing that precedes every watch. When set,
+the list is fetched in chunks via the Kubernetes API's ``limit``/``continue``
+pagination instead of a single request, which caps the peak memory footprint
+of the bootstrap listing for large collections (the whole list would otherwise
+be loaded and parsed into memory at once). The default is ``None`` --- the whole
+collection is fetched in a single request, preserving the original behaviour.
+
+.. code-block:: python
+
+    import kopf
+    from typing import Any
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
+        settings.watching.batch_size = 500
+
 
 Proxy and environment trust
 ---------------------------
