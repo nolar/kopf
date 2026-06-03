@@ -54,6 +54,7 @@ async def infinite_watch(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         namespace: references.Namespace,
+        server_side_selector: configuration.WatchListSelector | None = None,
         operator_paused: aiotoggles.ToggleSet | None = None,  # None for tests & observation
         _iterations: int | None = None,  # used in tests/mocks/fixtures
 ) -> AsyncIterator[Bookmark | bodies.RawEvent]:
@@ -82,6 +83,7 @@ async def infinite_watch(
                     settings=settings,
                     resource=resource,
                     namespace=namespace,
+                    server_side_selector=server_side_selector,
                     operator_pause_waiter=operator_pause_waiter,
                 )
                 try:
@@ -160,6 +162,7 @@ async def continuous_watch(
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         namespace: references.Namespace,
+        server_side_selector: configuration.WatchListSelector | None = None,
         operator_pause_waiter: aiotasks.Future,
 ) -> AsyncIterator[Bookmark | bodies.RawEvent]:
 
@@ -171,6 +174,7 @@ async def continuous_watch(
             settings=settings,
             resource=resource,
             namespace=namespace,
+            server_side_selector=server_side_selector,
         )
         for obj in objs:
             yield {'type': None, 'object': obj}
@@ -191,6 +195,7 @@ async def continuous_watch(
             resource=resource,
             namespace=namespace,
             since=resource_version,
+            server_side_selector=server_side_selector,
             operator_pause_waiter=operator_pause_waiter,
         )
         async for raw_input in stream:
@@ -228,6 +233,7 @@ async def watch_objs(
         resource: references.Resource,
         namespace: references.Namespace,
         since: str | None = None,
+        server_side_selector: configuration.WatchListSelector | None = None,
         operator_pause_waiter: aiotasks.Future,
 ) -> AsyncIterator[bodies.RawInput]:
     """
@@ -249,6 +255,8 @@ async def watch_objs(
         params['resourceVersion'] = since
     if settings.watching.server_timeout is not None:
         params['timeoutSeconds'] = str(settings.watching.server_timeout)
+    if server_side_selector is not None:
+        params.update(server_side_selector.as_url_params())
 
     connect_timeout = (
         settings.watching.connect_timeout if settings.watching.connect_timeout is not None else

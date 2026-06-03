@@ -19,6 +19,7 @@ from kopf.on import (
 )
 from kopf._cogs.configs.configuration import (
     OperatorSettings,
+    WatchListSelector,
 )
 from kopf._cogs.configs.diffbase import (
     DiffBaseStorage,
@@ -232,6 +233,7 @@ __all__ = [
     'set_default_registry',
     'PRESENT', 'ABSENT',
     'OperatorSettings',
+    'WatchListSelector',
     'DiffBaseStorage',
     'AnnotationsDiffBaseStorage',
     'StatusDiffBaseStorage',

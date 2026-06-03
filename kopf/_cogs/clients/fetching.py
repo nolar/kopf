@@ -12,6 +12,7 @@ async def list_objs(
         resource: references.Resource,
         namespace: references.Namespace,
         logger: typedefs.Logger,
+        server_side_selector: configuration.WatchListSelector | None = None,
 ) -> tuple[Collection[bodies.RawBody], str]:
     """
     List the objects of specific resource type.
@@ -25,8 +26,10 @@ async def list_objs(
 
     * The resource is namespace-scoped AND operator is namespaced-restricted.
     """
+    params = server_side_selector.as_url_params() if server_side_selector is not None else None
+
     rsp = await api.get(
-        url=resource.get_url(namespace=namespace),
+        url=resource.get_url(namespace=namespace, params=params),
         logger=logger,
         settings=settings,
     )
