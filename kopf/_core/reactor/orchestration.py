@@ -249,6 +249,7 @@ async def spawn_missing_watchers(
             resource_indexed: aiotoggles.Toggle | None = None
             if resource in indexed_resources:
                 resource_indexed = await ensemble.operator_indexed.make_toggle(name=what)
+            server_side_selector = settings.watching.resolve_server_side_selector(resource)
             ensemble.watcher_tasks[dkey] = aiotasks.create_guarded_task(
                 name=f"watcher for {what}", logger=logger, cancellable=True,
                 coro=queueing.watcher(
@@ -258,6 +259,7 @@ async def spawn_missing_watchers(
                     settings=settings,
                     resource=resource,
                     namespace=namespace,
+                    server_side_selector=server_side_selector,
                     processor=functools.partial(processor, resource=resource)))
 
     # Unblock globally, let the specialised per-resource-kind blockers hold the readiness.

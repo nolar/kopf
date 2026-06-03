@@ -32,7 +32,38 @@ import warnings
 from collections.abc import Iterable
 
 from kopf._cogs.configs import diffbase, progress
-from kopf._cogs.structs import reviews
+from kopf._cogs.structs import references, reviews
+
+ResourceIdentity = tuple[str, str, str]
+
+
+@dataclasses.dataclass(frozen=True)
+class WatchListSelector:
+    """
+    Raw Kubernetes selectors for resource LIST/WATCH requests.
+
+    Kopf passes these selectors to Kubernetes as ``labelSelector`` and
+    ``fieldSelector`` query parameters. Kopf does not infer them from its
+    handler filters.
+    """
+
+    label_selector: str | None = None
+    """
+    A raw Kubernetes ``labelSelector`` query parameter.
+    """
+
+    field_selector: str | None = None
+    """
+    A raw Kubernetes ``fieldSelector`` query parameter.
+    """
+
+    def as_url_params(self) -> dict[str, str]:
+        params: dict[str, str] = {}
+        if self.label_selector is not None:
+            params['labelSelector'] = self.label_selector
+        if self.field_selector is not None:
+            params['fieldSelector'] = self.field_selector
+        return params
 
 
 @dataclasses.dataclass
@@ -208,6 +239,24 @@ class WatchingSettings:
     so the default of 70 seconds allows for reasonable jitter while still
     detecting dead streams and reconnecting while the events are in memory.
     """
+
+    server_side_selectors: dict[ResourceIdentity, WatchListSelector] = dataclasses.field(
+        default_factory=dict)
+    """
+    Raw Kubernetes selectors for resource LIST/WATCH requests.
+
+    The mapping uses resource identity keys: ``(group, version, plural)``.
+    For example, core v1 Pods use ``("", "v1", "pods")``.
+    """
+
+    def resolve_server_side_selector(
+            self,
+            resource: references.Resource,
+    ) -> WatchListSelector | None:
+        """
+        Resolve the configured server-side selector for a concrete resource.
+        """
+        return self.server_side_selectors.get((resource.group, resource.version, resource.plural))
 
 
 @dataclasses.dataclass

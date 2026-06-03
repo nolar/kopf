@@ -315,6 +315,41 @@ __ https://github.com/kubernetes/kubernetes/blob/c20e0bc54189aef73a6a1498b4eab28
         settings.watching.server_timeout = 10 * 60
 
 
+Server-side watch selectors
+===========================
+
+``settings.watching.server_side_selectors`` maps a concrete resource identity
+``(group, version, plural)`` to raw Kubernetes ``labelSelector`` and
+``fieldSelector`` query parameters. Kopf passes these selectors to Kubernetes
+for both the initial LIST request and the following WATCH requests.
+
+This setting is explicit and opt-in. Kopf does not infer these query parameters
+from handler filters such as ``labels=``, ``annotations=``, ``field=``,
+``value=``, or ``when=``. Those filters still run on the client side and keep
+their existing behavior.
+
+.. code-block:: python
+
+    import kopf
+    from typing import Any
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
+        settings.watching.server_side_selectors[("", "v1", "pods")] = (
+            kopf.WatchListSelector(
+                label_selector="prefect.io/flow-run-id",
+                field_selector="status.phase!=Succeeded,status.phase!=Failed",
+            )
+        )
+        settings.watching.server_side_selectors[("batch", "v1", "jobs")] = (
+            kopf.WatchListSelector(label_selector="prefect.io/flow-run-id")
+        )
+
+Kubernetes supports ``labelSelector`` for LIST/WATCH requests, and supports
+``fieldSelector`` only for selected fields on each resource type. Kubernetes
+rejects invalid selectors.
+
+
 Proxy and environment trust
 ---------------------------
 
