@@ -67,11 +67,15 @@ async def test_coro_is_awaited_via_a_task_with_no_warning(coromock_task_factory)
         warnings.simplefilter('default')
         mock = Mock()
         coro = f(mock)
-        coromock = AsyncMock(wraps=coro, spec=coro)
+
+        # NB: `spec=coro` could help with a proper set of methods and the removal of close(),
+        #     but fails in PyPy 3.11.15+ on accessing `coro.cr_frame` while enumerating it.
+        coromock = AsyncMock(wraps=coro)
         del coromock.close
         await cancel_coro(coromock)
 
         # The warnings come only from the garbage collection, so dereference it.
+        del coromock  # also refers coro internally
         del coro
         gc.collect()
 
