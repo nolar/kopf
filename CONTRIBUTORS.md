@@ -21,3 +21,4 @@ and [Historic GitHub Contributors](https://github.com/zalando-incubator/kopf/gra
 - [Vennamaneni Sai Narasimha](https://github.com/thevennamaneni)
 - [Cliff Burdick](https://github.com/cliffburdick)
 - [CJ Baar](https://github.com/cjbaar)
+- [Gerard Casas Saez](https://github.com/casassg)

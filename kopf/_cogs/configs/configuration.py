@@ -209,6 +209,20 @@ class WatchingSettings:
     detecting dead streams and reconnecting while the events are in memory.
     """
 
+    batch_size: int | None = None
+    """
+    The page size (the ``limit=`` query parameter) for the initial listing
+    that precedes every watch.
+
+    When set, the initial list is fetched in chunks using the Kubernetes API's
+    ``limit``/``continue`` pagination instead of a single request. This caps the
+    peak memory footprint of the bootstrap listing for large collections, where
+    the whole list would otherwise be loaded and parsed into memory at once.
+
+    If ``None`` (the default), the whole list is fetched in a single request,
+    which preserves the original behaviour.
+    """
+
 
 @dataclasses.dataclass
 class QueueingSettings:
