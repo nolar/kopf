@@ -33,6 +33,20 @@ templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 html_static_path = ['_static']
 html_theme = 'furo'
+html_sidebars = {
+   '**': [
+       # The defaults from furo/theme/furo/theme.conf, plus ask-ai.html.
+       'sidebar/brand.html',
+       'sidebar/search.html',
+       'sidebar/ask-ai.html',
+       'sidebar/scroll-start.html',
+       'sidebar/navigation.html',
+       'sidebar/ethical-ads.html',
+       'sidebar/scroll-end.html',
+       'sidebar/variant-selector.html',
+    ],
+}
+
 
 default_role = 'py:obj'
 
