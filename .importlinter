@@ -83,7 +83,7 @@ name = The user-facing toolkits must be unaware of each other
 type = independence
 modules =
     kopf._kits.hierarchies
-    kopf._kits.runner
+    kopf._kits.runners
     kopf._kits.webhooks
 
 [importlinter:contract:allow-3rd-party]

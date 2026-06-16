@@ -1,6 +1,6 @@
 import os.path
 import subprocess
-import time
+import textwrap
 
 import kopf.testing
 import pytest
@@ -27,31 +27,35 @@ def obj_absent():
                    check=False, timeout=10, capture_output=True, shell=True)
 
 
-def test_handler_filtering():
+def test_handler_filtering(tmp_path):
+    # Prevent lengthy threads in the loop executor when the process exits.
+    injected_py = tmp_path / 'injected.py'
+    injected_py.write_text(textwrap.dedent("""
+        import kopf
 
-    # To prevent lengthy threads in the loop executor when the process exits.
-    settings = kopf.OperatorSettings()
-    settings.watching.server_timeout = 10
+        @kopf.on.startup()
+        def test_config(settings: kopf.OperatorSettings, **_: Any) -> None:
+            settings.watching.server_timeout = 10
+    """))
 
     # Run an operator and simulate some activity with the operated resource.
-    with kopf.testing.KopfRunner(
-        ['run', '--all-namespaces', '--verbose', '--standalone', example_py],
-        settings=settings,
+    # NB: not cluster-wide, since we do not want to block unrelated system pods from deletion.
+    with kopf.testing.KopfCLI(
+        ['run', '--verbose', '--standalone', '--namespace', 'default', example_py, str(injected_py)],
     ) as runner:
+        runner.wait_for('watch-stream for kopfexamples.v1.kopf.dev', timeout=5)
 
         subprocess.run(f"kubectl create -f {obj_yaml}",
                        shell=True, check=True, timeout=10, capture_output=True)
-        time.sleep(5)  # give it some time to react
+        runner.wait_for('Creation is processed', timeout=5)
+
         subprocess.run(f"kubectl patch -f {obj_yaml} --type merge -p '" '{"spec":{"field":"changed"}}' "'",
                        shell=True, check=True, timeout=10, capture_output=True)
-        time.sleep(2)  # give it some time to react
+        runner.wait_for('Updating is processed', timeout=2)
+
         subprocess.run(f"kubectl delete -f {obj_yaml}",
                        shell=True, check=True, timeout=10, capture_output=True)
-        time.sleep(1)  # give it some time to react
-
-    # Ensure that the operator did not die on start, or during the operation.
-    assert runner.exception is None
-    assert runner.exit_code == 0
+        runner.wait_for('Deleted, really deleted', timeout=2)
 
     # Check for correct log lines (to indicate correct handlers were executed).
     assert '[default/kopf-example-1] Label is matching.' in runner.output
