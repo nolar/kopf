@@ -50,6 +50,7 @@ async def request(
         payload: object | None = None,
         headers: dict[str, str] | None = None,
         timeout: aiohttp.ClientTimeout | None = None,
+        backoffs: float | collections.abc.Iterable[float] | None = None,
         context: auth.APIContext | None = None,  # injected by the decorator
         logger: typedefs.Logger,
 ) -> aiohttp.ClientResponse:
@@ -65,11 +66,11 @@ async def request(
             sock_connect=settings.networking.connect_timeout,
         )
 
-    backoffs = settings.networking.error_backoffs
-    backoffs = backoffs if isinstance(backoffs, collections.abc.Iterable) else [backoffs]
-    count = len(backoffs) + 1 if isinstance(backoffs, collections.abc.Sized) else None
+    effective = backoffs if backoffs is not None else settings.networking.error_backoffs
+    effective = effective if isinstance(effective, collections.abc.Iterable) else [effective]
+    count = len(effective) + 1 if isinstance(effective, collections.abc.Sized) else None
     backoff: float | None
-    for retry, backoff in enumerate(itertools.chain(backoffs, itertools.repeat(None)), start=1):
+    for retry, backoff in enumerate(itertools.chain(effective, itertools.repeat(None)), start=1):
         idx = f"#{retry}/{count}" if count is not None else f"#{retry}"
         what = f"{method.upper()} {url}"
         try:
@@ -160,6 +161,7 @@ async def post(
         payload: object | None = None,
         headers: dict[str, str] | None = None,
         timeout: aiohttp.ClientTimeout | None = None,
+        backoffs: float | collections.abc.Iterable[float] | None = None,
         logger: typedefs.Logger,
 ) -> Any:
     response = await request(
@@ -168,6 +170,7 @@ async def post(
         payload=payload,
         headers=headers,
         timeout=timeout,
+        backoffs=backoffs,
         settings=settings,
         logger=logger,
     )

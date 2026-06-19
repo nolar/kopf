@@ -223,3 +223,19 @@ async def test_retry_after_overrides_backoffs_when_longer(caplog,
     assert len(kmock) == 4
     all_sleeps = [call.args[0] for call in sleep.call_args_list]
     assert all_sleeps == [10, 10, 15]  # never smaller than retry-after
+
+
+async def test_per_call_backoffs_override_settings(settings, logger, kmock, sleep):
+    kmock['get /url'] << {} << 500
+    settings.networking.error_backoffs = [1, 2, 3, 4, 5]  # would be 6 attempts
+    with pytest.raises(APIError):
+        await request('get', '/url', settings=settings, logger=logger, backoffs=[0])
+    assert len(kmock) == 2  # 1 initial + 1 retry from the override, not 6
+
+
+async def test_none_backoffs_falls_back_to_settings(settings, logger, kmock, sleep):
+    kmock['get /url'] << {} << 500
+    settings.networking.error_backoffs = [0, 0, 0]
+    with pytest.raises(APIError):
+        await request('get', '/url', settings=settings, logger=logger, backoffs=None)
+    assert len(kmock) == 4  # unchanged: 1 + 3 retries
