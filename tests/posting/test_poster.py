@@ -115,3 +115,16 @@ async def test_via_shortcut(settings, mocker, event_fn, event_type, min_levelno,
     assert event1.type == event_type
     assert event1.reason == 'reason1'
     assert event1.message == 'message1'
+
+
+async def test_event_function_uses_default_backoffs(settings, event_queue, event_queue_loop):
+    settings.posting.default_backoffs = [3, 4]
+    event(OBJ1, type='type1', reason='reason1', message='message1')
+    e = event_queue.get_nowait()
+    assert e.backoffs == [3, 4]
+
+
+async def test_event_function_honors_explicit_backoffs(settings, event_queue, event_queue_loop):
+    event(OBJ1, type='type1', reason='reason1', message='message1', backoffs=[9])
+    e = event_queue.get_nowait()
+    assert e.backoffs == [9]

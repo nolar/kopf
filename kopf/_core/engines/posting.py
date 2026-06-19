@@ -55,6 +55,7 @@ class K8sEvent(NamedTuple):
     type: str
     reason: str
     message: str
+    backoffs: float | Iterable[float] = ()
 
 
 def enqueue(
@@ -62,10 +63,11 @@ def enqueue(
         type: str,
         reason: str,
         message: str,
+        backoffs: float | Iterable[float],
 ) -> None:
     loop = event_queue_loop_var.get()
     queue = event_queue_var.get()
-    event = K8sEvent(ref=ref, type=type, reason=reason, message=message)
+    event = K8sEvent(ref=ref, type=type, reason=reason, message=message, backoffs=backoffs)
 
     # Events can be posted from another thread than the event-loop's thread
     # (e.g. from sync-handlers, or from explicitly started per-object threads),
@@ -94,12 +96,14 @@ def event(
         type: str,
         reason: str,
         message: str = '',
+        backoffs: float | Iterable[float] | None = None,
 ) -> None:
     settings: configuration.OperatorSettings = settings_var.get()
     if settings.posting.enabled:
+        effective = backoffs if backoffs is not None else settings.posting.default_backoffs
         for obj in cast(Iterator[bodies.Body], dicts.walk(objs)):
             ref = bodies.build_object_reference(obj)
-            enqueue(ref=ref, type=type, reason=reason, message=message)
+            enqueue(ref=ref, type=type, reason=reason, message=message, backoffs=effective)
 
 
 def info(
@@ -107,12 +111,14 @@ def info(
         *,
         reason: str,
         message: str = '',
+        backoffs: float | Iterable[float] | None = None,
 ) -> None:
     settings: configuration.OperatorSettings = settings_var.get()
     if settings.posting.enabled and settings.posting.level <= logging.INFO:
+        effective = backoffs if backoffs is not None else settings.posting.default_backoffs
         for obj in cast(Iterator[bodies.Body], dicts.walk(objs)):
             ref = bodies.build_object_reference(obj)
-            enqueue(ref=ref, type='Normal', reason=reason, message=message)
+            enqueue(ref=ref, type='Normal', reason=reason, message=message, backoffs=effective)
 
 
 def warn(
@@ -120,12 +126,14 @@ def warn(
         *,
         reason: str,
         message: str = '',
+        backoffs: float | Iterable[float] | None = None,
 ) -> None:
     settings: configuration.OperatorSettings = settings_var.get()
     if settings.posting.level <= logging.WARNING:
+        effective = backoffs if backoffs is not None else settings.posting.default_backoffs
         for obj in cast(Iterator[bodies.Body], dicts.walk(objs)):
             ref = bodies.build_object_reference(obj)
-            enqueue(ref=ref, type='Warning', reason=reason, message=message)
+            enqueue(ref=ref, type='Warning', reason=reason, message=message, backoffs=effective)
 
 
 def exception(
@@ -134,6 +142,7 @@ def exception(
         reason: str = '',
         message: str = '',
         exc: BaseException | None = None,
+        backoffs: float | Iterable[float] | None = None,
 ) -> None:
     if exc is None:
         _, exc, _ = sys.exc_info()
@@ -141,9 +150,10 @@ def exception(
     message = f'{message} {exc}' if message and exc else f'{exc}' if exc else f'{message}'
     settings: configuration.OperatorSettings = settings_var.get()
     if settings.posting.enabled and settings.posting.level <= logging.ERROR:
+        effective = backoffs if backoffs is not None else settings.posting.default_backoffs
         for obj in cast(Iterator[bodies.Body], dicts.walk(objs)):
             ref = bodies.build_object_reference(obj)
-            enqueue(ref=ref, type='Error', reason=reason, message=message)
+            enqueue(ref=ref, type='Error', reason=reason, message=message, backoffs=effective)
 
 
 async def poster(
@@ -219,11 +229,15 @@ class K8sPoster(logging.Handler):
                 logging.getLevelName(record.levelno).capitalize())
             reason = 'Logging'
             message = self.format(record)
+            settings: configuration.OperatorSettings | None = getattr(record, 'settings', None)
+            backoffs: float | Iterable[float] = \
+                settings.posting.logging_backoffs if settings is not None else ()
             enqueue(
                 ref=ref,
                 type=type,
                 reason=reason,
-                message=message)
+                message=message,
+                backoffs=backoffs)
         except Exception:
             self.handleError(record)
 
