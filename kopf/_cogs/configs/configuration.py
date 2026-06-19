@@ -90,6 +90,24 @@ class PostingSettings:
     (``kopf.info()``, ``kopf.warn()``, ``kopf.exception()``).
     """
 
+    default_backoffs: float | Iterable[float] = (1, 1, 2, 3, 5, 8, 13, 21)
+    """
+    Backoffs (seconds) for retrying failed event posts from explicit calls
+    to ``kopf.event()`` / ``kopf.info()`` / ``kopf.warn()`` / ``kopf.exception()``
+    when no per-call ``backoffs=`` is given.
+
+    A scalar means a single fixed delay; an iterable's length is the number
+    of retries. Mirrors :attr:`NetworkingSettings.error_backoffs`, and
+    replaces it for event-posting requests.
+    """
+
+    logging_backoffs: float | Iterable[float] = (1, 1, 2, 3, 5)
+    """
+    Backoffs (seconds) for retrying failed event posts generated implicitly
+    from logger messages (e.g. ``logger.info(...)`` in handlers). Shorter than
+    :attr:`default_backoffs` because logging-originated events are high-volume.
+    """
+
     reporting_component: str = 'kopf'
     reporting_instance: str = 'dev'
     event_name_prefix: str = 'kopf-event-'
