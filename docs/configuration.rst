@@ -164,6 +164,25 @@ This can be enabled to improve observability if desired:
     def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.posting.loggers = True
 
+Event posting can fail transiently (API rate limits, ``5xx`` errors, connectivity
+issues). Kopf retries failed posts with a configurable backoff schedule before
+giving up; Kopf logs and drops a failed post, never interrupting the handling
+cycle. A scalar means a single fixed delay; an iterable's length is the number
+of retries. For event posts, these settings replace
+``settings.networking.error_backoffs``.
+
+.. code-block:: python
+
+    import kopf
+    from typing import Any
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
+        # For explicit kopf.event()/info()/warn()/exception() calls without backoffs=:
+        settings.posting.default_backoffs = (1, 1, 2, 3, 5, 8, 13, 21)
+        # For events generated implicitly from logger messages:
+        settings.posting.logging_backoffs = (1, 1, 2, 3, 5)
+
 
 .. _configure-sync-handlers:
 
