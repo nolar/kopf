@@ -64,3 +64,9 @@ async def test_deprecated_batch_window_is_still_persisted():
         settings.queueing.batch_window = 123
     with pytest.warns(DeprecationWarning, match=r"Time-based event batching was removed."):
         assert settings.queueing.batch_window == 123  # persisted as set above
+
+
+def test_posting_backoffs_have_defaults():
+    settings = kopf.OperatorSettings()
+    assert settings.posting.default_backoffs == (1, 1, 2, 3, 5, 8, 13, 21)
+    assert settings.posting.logging_backoffs == (1, 1, 2, 3, 5)

@@ -16,12 +16,14 @@ The k8s-events are queued in two ways:
 This also includes all logging messages posted by the framework itself.
 """
 import asyncio
+import contextlib
 import logging
 import sys
-from collections.abc import Iterable, Iterator
+from collections.abc import Hashable, Iterable, Iterator
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, NamedTuple, NoReturn, cast
 
+from kopf._cogs.aiokits import aiotasks
 from kopf._cogs.clients import events
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, dicts, references
@@ -45,6 +47,10 @@ event_queue_var: ContextVar[K8sEventQueue] = ContextVar('event_queue_var')
 # by user-side handlers (no pass-through `settings` arg).
 settings_var: ContextVar[configuration.OperatorSettings] = ContextVar('settings_var')
 
+# How long a per-object poster worker waits for the next event before exiting,
+# to avoid leaking queues/tasks for short-lived objects. Mirrors the queueing idle timeout.
+WORKER_IDLE_TIMEOUT: float = 1.0
+
 
 class K8sEvent(NamedTuple):
     """
@@ -55,6 +61,20 @@ class K8sEvent(NamedTuple):
     type: str
     reason: str
     message: str
+    backoffs: float | Iterable[float] = ()
+
+
+def _event_key(ref: bodies.ObjectReference) -> Hashable:
+    """
+    A stable per-object routing key for ordering events of one object.
+
+    Prefer the uid (unique in time & space). Fall back to identity fields for
+    objects without a uid (e.g. some built-in kinds). Never exposed to users.
+    """
+    uid = ref.get('uid')
+    if uid:
+        return uid
+    return (ref.get('apiVersion'), ref.get('kind'), ref.get('namespace'), ref.get('name'))
 
 
 def enqueue(
@@ -62,10 +82,11 @@ def enqueue(
         type: str,
         reason: str,
         message: str,
+        backoffs: float | Iterable[float],
 ) -> None:
     loop = event_queue_loop_var.get()
     queue = event_queue_var.get()
-    event = K8sEvent(ref=ref, type=type, reason=reason, message=message)
+    event = K8sEvent(ref=ref, type=type, reason=reason, message=message, backoffs=backoffs)
 
     # Events can be posted from another thread than the event-loop's thread
     # (e.g. from sync-handlers, or from explicitly started per-object threads),
@@ -94,12 +115,14 @@ def event(
         type: str,
         reason: str,
         message: str = '',
+        backoffs: float | Iterable[float] | None = None,
 ) -> None:
     settings: configuration.OperatorSettings = settings_var.get()
     if settings.posting.enabled:
+        effective = backoffs if backoffs is not None else settings.posting.default_backoffs
         for obj in cast(Iterator[bodies.Body], dicts.walk(objs)):
             ref = bodies.build_object_reference(obj)
-            enqueue(ref=ref, type=type, reason=reason, message=message)
+            enqueue(ref=ref, type=type, reason=reason, message=message, backoffs=effective)
 
 
 def info(
@@ -107,12 +130,14 @@ def info(
         *,
         reason: str,
         message: str = '',
+        backoffs: float | Iterable[float] | None = None,
 ) -> None:
     settings: configuration.OperatorSettings = settings_var.get()
     if settings.posting.enabled and settings.posting.level <= logging.INFO:
+        effective = backoffs if backoffs is not None else settings.posting.default_backoffs
         for obj in cast(Iterator[bodies.Body], dicts.walk(objs)):
             ref = bodies.build_object_reference(obj)
-            enqueue(ref=ref, type='Normal', reason=reason, message=message)
+            enqueue(ref=ref, type='Normal', reason=reason, message=message, backoffs=effective)
 
 
 def warn(
@@ -120,12 +145,14 @@ def warn(
         *,
         reason: str,
         message: str = '',
+        backoffs: float | Iterable[float] | None = None,
 ) -> None:
     settings: configuration.OperatorSettings = settings_var.get()
     if settings.posting.level <= logging.WARNING:
+        effective = backoffs if backoffs is not None else settings.posting.default_backoffs
         for obj in cast(Iterator[bodies.Body], dicts.walk(objs)):
             ref = bodies.build_object_reference(obj)
-            enqueue(ref=ref, type='Warning', reason=reason, message=message)
+            enqueue(ref=ref, type='Warning', reason=reason, message=message, backoffs=effective)
 
 
 def exception(
@@ -134,6 +161,7 @@ def exception(
         reason: str = '',
         message: str = '',
         exc: BaseException | None = None,
+        backoffs: float | Iterable[float] | None = None,
 ) -> None:
     if exc is None:
         _, exc, _ = sys.exc_info()
@@ -141,9 +169,52 @@ def exception(
     message = f'{message} {exc}' if message and exc else f'{exc}' if exc else f'{message}'
     settings: configuration.OperatorSettings = settings_var.get()
     if settings.posting.enabled and settings.posting.level <= logging.ERROR:
+        effective = backoffs if backoffs is not None else settings.posting.default_backoffs
         for obj in cast(Iterator[bodies.Body], dicts.walk(objs)):
             ref = bodies.build_object_reference(obj)
-            enqueue(ref=ref, type='Error', reason=reason, message=message)
+            enqueue(ref=ref, type='Error', reason=reason, message=message, backoffs=effective)
+
+
+async def _poster_worker(
+        *,
+        subqueues: dict[Hashable, K8sEventQueue],
+        key: Hashable,
+        resource: references.Resource,
+        settings: configuration.OperatorSettings,
+) -> None:
+    """
+    Drain one object's event sub-queue in order, posting each with its backoffs.
+
+    Exits after an idle period so we do not keep a worker per dormant object.
+    The router (:func:`poster`) re-spawns a worker when new events arrive.
+    """
+    backlog = subqueues[key]
+    try:
+        while True:
+            try:
+                posted_event = await asyncio.wait_for(backlog.get(), timeout=WORKER_IDLE_TIMEOUT)
+            except asyncio.TimeoutError:
+                # Double-check to avoid a race where an event arrived exactly at timeout.
+                # IMPORTANT: no async/await between this break and the finally-block below.
+                if backlog.empty():
+                    break
+                else:
+                    continue
+
+            await events.post_event(
+                ref=posted_event.ref,
+                type=posted_event.type,
+                reason=posted_event.reason,
+                message=posted_event.message,
+                resource=resource,
+                settings=settings,
+                logger=logger,
+                backoffs=posted_event.backoffs,
+            )
+    finally:
+        # Garbage-collect our sub-queue so the router re-creates it (and us) on demand.
+        with contextlib.suppress(KeyError):
+            del subqueues[key]
 
 
 async def poster(
@@ -153,32 +224,43 @@ async def poster(
         settings: configuration.OperatorSettings,
 ) -> NoReturn:
     """
-    Post events in the background as they are queued.
+    Route queued events to per-object workers that post them in the background.
 
-    When the events come from the logging system, they have
-    their reason, type, and other fields adjusted to meet Kubernetes's concepts.
+    Events of one object are routed to a single per-object sub-queue and posted
+    in order by one worker. Different objects are posted concurrently, so a retry
+    or backoff for one object never blocks the events of another object.
 
-    When the events are explicitly defined via :func:`kopf.event` and similar
-    calls, they have these special fields defined already.
-
-    In either case, we pass the queued events directly to the K8s client
-    (or a client wrapper/adapter), with no extra processing.
-
-    This task is defined in this module only because all other tasks are here,
-    so we keep all forever-running tasks together.
+    Workers are fire-and-forget jobs managed by a scheduler; they self-terminate
+    when their object has been idle for a while, and are re-spawned on demand.
     """
     resource = await backbone.wait_for(references.EVENTS)
-    while True:
-        posted_event = await event_queue.get()
-        await events.post_event(
-            ref=posted_event.ref,
-            type=posted_event.type,
-            reason=posted_event.reason,
-            message=posted_event.message,
-            resource=resource,
-            settings=settings,
-            logger=logger,
-        )
+    scheduler = aiotasks.Scheduler()
+    subqueues: dict[Hashable, K8sEventQueue] = {}
+    try:
+        while True:
+            posted_event = await event_queue.get()
+            key = _event_key(posted_event.ref)
+            try:
+                # Fast path: an existing worker is draining this object's sub-queue.
+                await subqueues[key].put(posted_event)
+            except KeyError:
+                # No worker for this object (new or just-exited): create queue + worker.
+                subqueues[key] = asyncio.Queue()
+                await subqueues[key].put(posted_event)
+                await scheduler.spawn(
+                    name=f"event poster for {key!r}",
+                    coro=_poster_worker(
+                        subqueues=subqueues,
+                        key=key,
+                        resource=resource,
+                        settings=settings,
+                    ))
+    finally:
+        # Terminate all per-object workers even if the poster is double-cancelled (tests).
+        closing_task = asyncio.create_task(scheduler.close())
+        while not closing_task.done():
+            with contextlib.suppress(asyncio.CancelledError):
+                await asyncio.shield(closing_task)
 
 
 class K8sPoster(logging.Handler):
@@ -219,11 +301,15 @@ class K8sPoster(logging.Handler):
                 logging.getLevelName(record.levelno).capitalize())
             reason = 'Logging'
             message = self.format(record)
+            settings: configuration.OperatorSettings | None = getattr(record, 'settings', None)
+            backoffs: float | Iterable[float] = \
+                settings.posting.logging_backoffs if settings is not None else ()
             enqueue(
                 ref=ref,
                 type=type,
                 reason=reason,
-                message=message)
+                message=message,
+                backoffs=backoffs)
         except Exception:
             self.handleError(record)
 
