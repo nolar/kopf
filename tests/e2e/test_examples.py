@@ -6,9 +6,7 @@ import subprocess
 import time
 from collections.abc import Sequence
 
-import astpath
 import pytest
-from lxml import etree
 
 from kopf.testing import KopfRunner
 
@@ -22,7 +20,7 @@ def test_all_examples_are_runnable(settings, with_crd, exampledir, caplog):
     config = CONFIGS.get(str(example_py), E2EConfig())
 
     # Skip the e2e test if the framework-optional but test-required library is missing.
-    if parser.imports_kubernetes:
+    if parser.check_imports('kubernetes'):
         pytest.importorskip('kubernetes')
 
     # To prevent lengthy sleeps on the simulated retries.
@@ -129,71 +127,84 @@ class E2EParser:
     the whole example (which can have side-effects). Some snippets are still
     executed: e.g. values of some decorators' kwargs.
     """
-    xml2ast: dict[etree._Element, ast.AST]
-    xtree: etree._Element
+    path: str
+    text: str
+    _ast: ast.Module
 
     def __init__(self, path: str) -> None:
         super().__init__()
-
         with open(path, encoding='utf-8') as f:
             self.path = path
             self.text = f.read()
+            self._ast = ast.parse(self.text)
 
-        self.xml2ast = {}
-        self.xtree = astpath.file_contents_to_xml_ast(self.text, node_mappings=self.xml2ast)
+    def check_imports(self, name: str) -> bool:
+        # Anywhere in any depth, including local imports in handlers and other functions.
+        for stmt in ast.walk(self._ast):
+            match stmt:
+                case ast.ImportFrom():
+                    if stmt.module == name or stmt.module.startswith(f'{name}.'):
+                        return True
+                case ast.Import():
+                    for alias in stmt.names:
+                        if alias.name == name or alias.name.startswith(f'{name}.'):
+                            return True
+        return False
 
-    @property
-    def imports_kubernetes(self) -> bool:
-        # In English: all forms of `import kubernetes[.blah]`, `import kubernetes[.blah] as x`,
-        # so as `from kubernetes[.blah] import x as y`.
-        return bool(self.xtree.xpath('''
-            //Import/names/alias[@name="kubernetes" or starts-with(@name, "kubernetes.")] |
-            //ImportFrom[@module="kubernetes" or starts-with(@module, "kubernetes.")]
-        '''))
-
-    def has_handler(self, name: str) -> bool:
+    def _get_handlers(self) -> list[tuple[str, list[ast.AST], dict[str, ast.AST]]]:
         # In English: any decorators that look like `@kopf.on.{name}(...)` or `@kopf.{name}(...)`.
-        return bool(self.xtree.xpath(f'''
-            (//FunctionDef | //AsyncFunctionDef)/decorator_list/Call[
-                (
-                    func/Attribute/value/Attribute/value/Name/@id="kopf" and
-                    func/Attribute/value/Attribute/@attr="on" and
-                    func/Attribute/@attr={name!r}
-                ) or (
-                    func/Attribute/value/Name/@id="kopf" and
-                    func/Attribute/@attr={name!r}
-                )
-            ]
-        '''))
+        # Search only the top-level function defs, not nested.
+        handlers: list[tuple[str, list[ast.AST], dict[str, ast.AST]]] = []
+        for node in self._ast.body:
+            match node:
+                case ast.FunctionDef() | ast.AsyncFunctionDef():
+                    for deco in node.decorator_list:
+                        match deco:
+                            case ast.Call():  # full @calls(), but not simple @names
+                                if ((
+                                    # @kopf.on.blah()
+                                    isinstance(deco.func, ast.Attribute) and
+                                    isinstance(deco.func.value, ast.Attribute) and
+                                    isinstance(deco.func.value.value, ast.Name) and
+                                    deco.func.value.value.id == 'kopf' and
+                                    deco.func.value.attr == 'on'
+                                ) or
+                                (
+                                    # @kopf.blah(), like indexes/daemons/timers
+                                    isinstance(deco.func, ast.Attribute) and
+                                    isinstance(deco.func.value, ast.Name) and
+                                    deco.func.value.id == 'kopf'
+                                )):
+                                    kwargs = {kw.arg or '': kw.value for kw in deco.keywords}
+                                    handlers.append((deco.func.attr, deco.args, kwargs))
+        return handlers
 
     @property
     def has_on_create(self) -> bool:
-        return self.has_handler('create')
+        return any(name == 'create' for name, _, _ in self._get_handlers())
 
     @property
     def has_on_update(self) -> bool:
-        return self.has_handler('update')
+        return any(name == 'update' for name, _, _ in self._get_handlers())
 
     @property
     def has_on_delete(self) -> bool:
-        return self.has_handler('delete')
+        return any(name == 'delete' for name, _, _ in self._get_handlers())
 
     @property
     def has_changing_handlers(self) -> bool:
-        return any(self.has_handler(name) for name in ['create', 'update', 'delete'])
+        return bool(self.has_on_create or self.has_on_update or self.has_on_delete)
 
     @property
     def has_mandatory_on_delete(self) -> bool:
-        # In English: `optional=...` kwargs of `@kopf.on.delete(...)` decorators, if any.
-        optional_kwargs = self.xtree.xpath('''
-            (//FunctionDef | //AsyncFunctionDef)/decorator_list/Call[
-                func/Attribute/value/Attribute/value/Name/@id="kopf" and
-                func/Attribute/value/Attribute/@attr="on" and
-                func/Attribute/@attr="delete"
-            ]/keywords/keyword[@arg="optional"]
-        ''')
-        return (self.has_on_delete and
-                not any(ast.literal_eval(self.xml2ast[kwarg].value) for kwarg in optional_kwargs))
+        # In English: any `@kopf.on.delete(...)` decorators with `optional=False` or absent?
+        # Search only the top-level function defs, not nested.
+        handlers = self._get_handlers()
+        return any(
+            name == 'delete'
+            and ('optional' not in kwargs or not ast.literal_eval(kwargs['optional']))
+            for name, _, kwargs in handlers
+        )
 
 
 @dataclasses.dataclass(kw_only=True)
