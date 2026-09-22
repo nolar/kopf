@@ -84,8 +84,3 @@ def validate_subresources(spec: kopf.Spec, subresource: str | None, status: kopf
 @kopf.on.mutate('kex', labels={'somelabel': 'somevalue'})
 def mutate1(patch: kopf.Patch, **_: Any) -> None:
     patch.spec['injected'] = 123
-
-
-# Marks for the e2e tests (see tests/e2e/test_examples.py):
-# We do not care: pods can have 6-10 updates here.
-E2E_SUCCESS_COUNTS: dict[str, int] = {}

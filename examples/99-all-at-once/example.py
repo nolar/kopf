@@ -104,13 +104,3 @@ def create_pod(**_: Any) -> None:
 @kopf.on.event('pods', labels={'application': 'kopf-example-10'})
 def example_pod_change(logger: kopf.Logger, **_: Any) -> None:
     logger.info("This pod is special for us.")
-
-
-# Marks for the e2e tests (see tests/e2e/test_examples.py):
-E2E_ALLOW_TRACEBACKS = True
-E2E_STARTUP_STOP_WORDS = ['Served by the background task.']
-E2E_CLEANUP_STOP_WORDS = ['Hung tasks', 'Root tasks']
-E2E_CREATION_STOP_WORDS = ['Creation is processed:']
-E2E_DELETION_STOP_WORDS = ['Deleted, really deleted']
-E2E_SUCCESS_COUNTS = {'create_1': 1, 'create_2': 1, 'create_pod': 1, 'delete': 1,
-                      'startup_fn_simple': 1, 'startup_fn_retried': 1, 'cleanup_fn': 1}
