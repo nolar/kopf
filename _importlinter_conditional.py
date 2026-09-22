@@ -18,9 +18,9 @@ Right:
 
 https://import-linter.readthedocs.io/en/stable/custom_contract_types.html
 """
+import ast
 import os.path
 
-import astpath
 from grimp import ImportGraph
 from importlinter import Contract, ContractCheck, fields, output
 
@@ -81,17 +81,35 @@ class ConditionalImportContract(Contract):
             output.print_error(f'{importer}:{line_number}: {line_contents}')
 
     def _check_secured_import(self, mod: str, lno: int) -> bool:
+        """
+        True if the specified import statement suppresses the ``ImportError``.
+        False if unsecured or secured with some other unrelated error handling.
+        """
 
         # Some hard-coded heuristics because importlib fails on circular imports.
         # TODO: switch to: importlib.util.find_spec(mod)?.origin
         path = os.path.join(os.path.dirname(__file__), mod.replace('.', '/')) + '.py'
         with open(path, encoding='utf-8') as f:
             text = f.read()
-            xtree = astpath.file_contents_to_xml_ast(text)
+            root = ast.parse(text)
 
-        # For every "import" of interest, find any surrounding "try-except-ImportError" clauses.
-        for node in xtree.xpath(f'''//Import[@lineno={lno!r}]'''):
-            tries = node.xpath('''../parent::Try[//ExceptHandler/type/Name/@id="ImportError"]''')
-            if not tries:
-                return False
-        return True
+        # For any candidate "try-except-ImportError" clause, check if it of interest for us,
+        # i.e. import the specified module inside. Check in all levels of nestedness.
+        for node in ast.walk(root):
+            match node:
+                case ast.Try():
+                    suppresses_import_errors = any(
+                        isinstance(excpt.type, ast.Name) and excpt.type.id == 'ImportError'
+                        for excpt in node.handlers
+                    )
+                    contains_that_import = any(
+                        isinstance(expr, ast.Import | ast.ImportFrom) and expr.lineno == lno
+                        for expr in node.body
+                    )
+                    if contains_that_import and suppresses_import_errors:
+                        return True  # ok, secured
+
+        # 1) no try-except blocks at all, at any depth level, so the import goes naked.
+        # 2) there are try-except blocks for that import, but not with importing errors.
+        # 3) there are try-except blocks for importing errors, but for other unrelated imports.
+        return False  # not ok, unsecured

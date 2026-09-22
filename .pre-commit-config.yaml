@@ -65,8 +65,6 @@ repos:
     hooks:
       - id: import-linter
         language: python
-        additional_dependencies:
-          - astpath[xpath]
 
   - repo: https://github.com/PyCQA/isort
     rev: 9.0.1

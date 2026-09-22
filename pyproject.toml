@@ -72,7 +72,6 @@ docs = [
     "furo",
 ]
 test = [
-    "astpath[xpath]",
     "certbuilder",
     "certvalidator",
     "codecov",
@@ -80,7 +79,6 @@ test = [
     "freezegun",
     "kmock>=0.5",
     "looptime>=0.7",
-    "lxml",
     "pyngrok",
     "pytest>=9.0.0",
     "pytest-aiohttp",
