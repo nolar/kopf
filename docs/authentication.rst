@@ -145,8 +145,7 @@ For your convenience, :class:`kopf.ConnectionInfo` from the existing login
 functions ---see :ref:`auth-piggybacking`--- provides the methods to convert
 it to the typical components of the HTTP sessions:
 
-- :meth:`kopf.ConnectionInfo.as_aiohttp_basic_auth` for username/password.
-- :meth:`kopf.ConnectionInfo.as_http_headers` for all tokens.
+- :meth:`kopf.ConnectionInfo.as_http_headers` for all tokens and credentials.
 - :meth:`kopf.ConnectionInfo.as_ssl_context` for CA & SSL client certificates.
 
 .. note::
@@ -154,6 +153,13 @@ it to the typical components of the HTTP sessions:
     and private key data blobs to the disk files temporarily for a brief time,
     since Python's :mod:`ssl` can only load it from files, not from data blobs.
     It will delete the files as soon as the SSL context is constructed.
+
+.. deprecated::
+    :meth:`kopf.ConnectionInfo.as_aiohttp_basic_auth` is deprecated and should
+    not be called or overridden. The username/password credentials already come
+    from :meth:`kopf.ConnectionInfo.as_http_headers` as used by aiohttp>3.14.
+    There is nothing to change, except to stop calling it and passing `auth=…`
+    (aiohttp>=3.14 will warn on that, too).
 
 You do not need to worry about the session termination or closing ---
 Kopf will own and manage the provided session and will close it when needed.
@@ -179,7 +185,6 @@ Kopf will own and manage the provided session and will close it when needed.
                 ssl=credentials.as_ssl_context(),
             ),
             headers=credentials.as_http_headers() | headers,
-            auth=credentials.as_aiohttp_basic_auth(),
             trust_env=True,  # respect HTTP_PROXY, HTTPS_PROXY, NO_PROXY, and ~/.netrc
         )
         return kopf.AiohttpSession(

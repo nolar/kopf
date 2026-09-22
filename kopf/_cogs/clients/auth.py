@@ -1,4 +1,5 @@
 import functools
+import warnings
 from collections.abc import Callable
 from contextvars import ContextVar
 from typing import Any, TypeVar, cast
@@ -92,13 +93,18 @@ class APIContext:
         # Generic aiohttp session based on the constructed credentials.
         match info:
             case credentials.ConnectionInfo():
+                # Suppress our own warnings, but pass through the warnings of aiohttp.BasicAuth().
+                # We do not need to double-check if anything was returned: aiohttp will do it later.
+                with warnings.catch_warnings():
+                    warnings.filterwarnings('ignore', category=DeprecationWarning, module='kopf')
+                    auth = info.as_aiohttp_basic_auth()
                 self.session = aiohttp.ClientSession(
                     connector=aiohttp.TCPConnector(
                         limit=0,
                         ssl=info.as_ssl_context(),
                     ),
                     headers=info.as_http_headers(),
-                    auth=info.as_aiohttp_basic_auth(),
+                    auth=auth,  # warns if not None (aiohttp>=3.14)
                     proxy=info.proxy_url,
                     trust_env=info.trust_env,
                 )
