@@ -102,7 +102,7 @@ test = [
 ]
 lint = [
     {include-group = "test"},
-    "mypy==1.20.0",
+    "mypy==2.3.1",
     "import-linter",
     "isort",
     "pre-commit",

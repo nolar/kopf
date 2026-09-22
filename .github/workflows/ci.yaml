@@ -12,12 +12,12 @@ on:
 jobs:
   linters:
     name: Linting and static analysis
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 7  # usually 5 mins with coverage
     steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
       - run: uv sync --no-dev --group lint
@@ -44,12 +44,12 @@ jobs:
           - install-extras: "uvloop"
             python-version: "3.14"
     name: Python ${{ matrix.python-version }}${{ matrix.install-extras && ' ' || '' }}${{ matrix.install-extras }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 7  # usually 5 mins with coverage
     steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -66,7 +66,7 @@ jobs:
         if: success()
         continue-on-error: true  # tends to fail with no code changes (e.g. only CI/docs)
       - name: Publish coverage to CodeCov.io
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         env:
           PYTHON: ${{ matrix.python-version }}
         with:
@@ -86,12 +86,12 @@ jobs:
         install-extras: [ "", "full-auth" ]
         python-version: [ "pypy-3.10", "pypy-3.11" ]
     name: Python ${{ matrix.python-version }}${{ matrix.install-extras && ' ' || '' }}${{ matrix.install-extras }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -108,12 +108,12 @@ jobs:
       matrix:
         k3s: [latest, v1.33, v1.32, v1.31]
     name: K3s ${{matrix.k3s}}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10  # usually 4-5 mins
     steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
       - uses: nolar/setup-k3d-k3s@v1
@@ -129,7 +129,7 @@ jobs:
   coveralls-finish:
     name: Finalize coveralls.io
     needs: [unit-tests, pypy-tests, functional]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Finish coverage at Coveralls.io
         uses: coverallsapp/github-action@v2
