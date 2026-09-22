@@ -87,8 +87,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # NB: pypy v7.3.23 fails on catching AttributeError in resolve_obj(); 7.3.22 works.
+        # Check the latest versions at https://downloads.python.org/pypy/ and upgrade later.
         install-extras: [ "", "full-auth" ]
-        python-version: [ "pypy-3.10", "pypy-3.11", "pypy-3.12" ]
+        python-version: [ "pypy-3.10", "pypy-3.11-v7.3.22", "pypy-3.12" ]
     name: Python ${{ matrix.python-version }}${{ matrix.install-extras && ' ' || '' }}${{ matrix.install-extras }}
     runs-on: ubuntu-26.04
     timeout-minutes: 5
