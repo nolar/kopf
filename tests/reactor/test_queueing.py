@@ -18,9 +18,12 @@ import asyncio
 import contextlib
 import gc
 import weakref
+from typing import Any
 
 import pytest
 
+from kopf._cogs.configs.configuration import WatchListSelector
+from kopf._cogs.structs import references
 from kopf._core.reactor.queueing import EOS, ObjectUid, Stream, watcher, worker
 
 
@@ -126,6 +129,40 @@ async def test_bookmarks_are_ignored(worker_mock, looptime, resource, processor,
     while not streams[key].backlog.empty():
         queue_events.append(streams[key].backlog.get_nowait())
     assert all(e is EOS.token or e['type'] != 'BOOKMARK' for e in queue_events)
+
+
+@pytest.mark.usefixtures('watcher_limited')
+async def test_server_side_selectors_are_used_by_watcher(
+        settings: Any,
+        kmock: Any,
+        resource: references.Resource,
+        namespace: references.Namespace,
+        processor: Any,
+) -> None:
+    label_selector = 'prefect.io/flow-run-id'
+    field_selector = 'status.phase!=Succeeded,status.phase!=Failed'
+    selector = WatchListSelector(
+        label_selector=label_selector,
+        field_selector=field_selector,
+    )
+    kmock['list', resource, kmock.namespace(namespace)] << {
+        'metadata': {'resourceVersion': '100'},
+        'items': [],
+    }
+
+    await watcher(
+        namespace=namespace,
+        resource=resource,
+        settings=settings,
+        processor=processor,
+        server_side_selector=selector,
+    )
+
+    assert kmock[0].url.query['labelSelector'] == label_selector
+    assert kmock[0].url.query['fieldSelector'] == field_selector
+    assert kmock[1].url.query['labelSelector'] == label_selector
+    assert kmock[1].url.query['fieldSelector'] == field_selector
+    assert kmock[1].url.query['resourceVersion'] == '100'
 
 
 @pytest.mark.parametrize('unique, events', [
