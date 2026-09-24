@@ -40,9 +40,15 @@ All timestamps are strings in ISO8601 format in UTC (no explicit ``Z`` suffix).
 """
 import abc
 import copy
+import inspect
 import json
-from collections.abc import Collection
+import pathlib
+import warnings
+from collections.abc import Awaitable, Collection
+from contextlib import AbstractAsyncContextManager
 from typing import Any, TypedDict, cast
+
+import yaml
 
 from kopf._cogs.configs import conventions
 from kopf._cogs.structs import bodies, dicts, ids, patches
@@ -61,7 +67,9 @@ class ProgressRecord(TypedDict, total=False):
     subrefs: Collection[ids.HandlerId] | None
 
 
-class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
+class ProgressStorage(conventions.StorageStanzaCleaner,
+                      AbstractAsyncContextManager[None],
+                      metaclass=abc.ABCMeta):
     """
     Base class and an interface for all persistent states.
 
@@ -79,15 +87,45 @@ class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
     for short time, and ``flush()`` can be overridden to actually store them.
     """
 
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        # Kopf's own storages remain sync for backwards compatibility, in case
+        # developers inherit these classes and call `super().method(…)` without `await`.
+        # But their protocol now allows returning awaitable coroutines.
+        for method_name in ('fetch', 'store', 'purge', 'flush'):
+            method = cls.__dict__.get(method_name)
+            deprecated = (
+                method is not None and
+                not cls.__module__.startswith('kopf.') and
+                not inspect.iscoroutinefunction(method)
+            )
+            if deprecated:
+                warnings.warn(
+                    f"{cls.__qualname__}.{method_name}() is not async; "
+                    f"sync storage methods are deprecated and will stop working "
+                    f"in the future v2 release; they will continue working in v1. "
+                    "Declare it as 'async def' instead (supported since Kopf 1.45).",
+                    FutureWarning,
+                    stacklevel=3,
+                )
+
+    async def __aenter__(self) -> None:
+        pass
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        pass
+
+    # Return types makes it mixed sync or async, both are supported.
     @abc.abstractmethod
     def fetch(
             self,
             *,
             key: ids.HandlerId,
             body: bodies.Body,
-    ) -> ProgressRecord | None:
+    ) -> ProgressRecord | None | Awaitable[ProgressRecord | None]:
         raise NotImplementedError
 
+    # Return types makes it mixed sync or async, both are supported.
     @abc.abstractmethod
     def store(
             self,
@@ -96,9 +134,10 @@ class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
             record: ProgressRecord,
             body: bodies.Body,
             patch: patches.Patch,
-    ) -> None:
+    ) -> None | Awaitable[None]:
         raise NotImplementedError
 
+    # Return types makes it mixed sync or async, both are supported.
     @abc.abstractmethod
     def purge(
             self,
@@ -106,7 +145,7 @@ class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
             key: ids.HandlerId,
             body: bodies.Body,
             patch: patches.Patch,
-    ) -> None:
+    ) -> None | Awaitable[None]:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -119,11 +158,15 @@ class ProgressStorage(conventions.StorageStanzaCleaner, metaclass=abc.ABCMeta):
     ) -> None:
         raise NotImplementedError
 
-    @abc.abstractmethod
     def clear(self, *, essence: bodies.BodyEssence) -> bodies.BodyEssence:
         return copy.deepcopy(essence)
 
-    def flush(self) -> None:
+    # Return types makes it mixed sync or async, both are supported.
+    def flush(self) -> None | Awaitable[None]:
+        pass
+
+    # It was always async from addition, sync was never declared and supported.
+    async def erase(self, *, body: bodies.Body) -> None:
         pass
 
 
@@ -381,6 +424,233 @@ class NoWriteStatusProgressStorage(StatusProgressStorage):
         pass
 
 
+class FileProgressStorage(conventions.FileNamingConvention, ProgressStorage):
+    """
+    State storage in YAML files on a shared filesystem or pod volume.
+
+    Each Kubernetes resource gets its own file, named after its namespace,
+    name, and uid. The file contains a YAML mapping of handler IDs to their
+    progress records.
+
+    An example file at ``/var/kopf/default-my-app-12345678-abcd.progress.yaml``:
+
+    .. code-block:: yaml
+
+        my_handler:
+          started: '2020-02-14T16:58:25.396364'
+          stopped: '2020-02-14T16:58:25.401844'
+          retries: 1
+          success: true
+        my_other_handler:
+          started: '2020-02-14T16:58:25.396421'
+          retries: 0
+
+    The progress data itself is stored in files, not on the Kubernetes object.
+    However, a touch annotation is still written to the object (via the patch)
+    to trigger Kubernetes watch events when the object needs to be re-evaluated
+    (e.g. for delayed handler retries).
+    """
+
+    def __init__(
+            self,
+            path: str | pathlib.Path,
+            *,
+            touch_field: dicts.FieldSpec = ('metadata', 'annotations', 'kopf.dev/touch-dummy'),
+    ) -> None:
+        super().__init__(path=path, file_suffix='progress')
+        self.touch_field = touch_field
+
+    async def fetch(
+            self,
+            *,
+            key: ids.HandlerId,
+            body: bodies.Body,
+    ) -> ProgressRecord | None:
+        filepath = self._build_filename(body)
+        if filepath is None or not filepath.exists():
+            return None
+        data = yaml.safe_load(filepath.read_text(encoding='utf-8'))
+        if not isinstance(data, dict):
+            return None
+        record = data.get(key)
+        return cast(ProgressRecord, record) if record is not None else None
+
+    async def store(
+            self,
+            *,
+            key: ids.HandlerId,
+            record: ProgressRecord,
+            body: bodies.Body,
+            patch: patches.Patch,
+    ) -> None:
+        filepath = self._build_filename(body)
+        if filepath is None:
+            return
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        data: dict[str, Any] = {}
+        if filepath.exists():
+            loaded = yaml.safe_load(filepath.read_text(encoding='utf-8'))
+            if isinstance(loaded, dict):
+                data = loaded
+        data[key] = {k: v for k, v in record.items() if v is not None}
+        content = yaml.safe_dump(data, default_flow_style=False, sort_keys=False)
+        with self._temp_filename(filepath) as temppath:
+            temppath.write_text(content, encoding='utf-8')
+
+    async def purge(
+            self,
+            *,
+            key: ids.HandlerId,
+            body: bodies.Body,
+            patch: patches.Patch,
+    ) -> None:
+        filepath = self._build_filename(body)
+        if filepath is None or not filepath.exists():
+            return
+        loaded = yaml.safe_load(filepath.read_text(encoding='utf-8'))
+        data: dict[str, Any] = loaded if isinstance(loaded, dict) else {}
+        data.pop(key, None)
+        if data:
+            content = yaml.safe_dump(data, default_flow_style=False)
+            with self._temp_filename(filepath) as temppath:
+                temppath.write_text(content, encoding='utf-8')
+        else:
+            filepath.unlink(missing_ok=True)
+
+    def touch(
+            self,
+            *,
+            body: bodies.Body,
+            patch: patches.Patch,
+            value: str | None,
+    ) -> None:
+        body_value = dicts.resolve(body, self.touch_field, None)
+        if body_value != value:  # also covers absent-vs-None cases.
+            dicts.ensure(patch, self.touch_field, value)
+
+    async def erase(self, *, body: bodies.Body) -> None:
+        filepath = self._build_filename(body)
+        if filepath is not None:
+            filepath.unlink(missing_ok=True)
+
+
+class SQLiteProgressStorage(conventions.SQLiteConvention, ProgressStorage):
+    """
+    State storage in a SQLite database file.
+
+    Each handler's progress record is stored as a separate row, keyed by
+    the resource's namespace, name, uid, and the handler id. The record
+    itself is stored as a JSON string.
+
+    An example of the ``progress`` table contents:
+
+    .. code-block:: text
+
+        namespace | name   | uid   | handler    | record
+        ----------+--------+-------+------------+----------------------------------
+        default   | my-app | uid1  | my_handler | {"started":"...","retries":1,...}
+
+    The progress data itself is stored in SQLite, not on the Kubernetes object.
+    However, a touch annotation is still written to the object (via the patch)
+    to trigger Kubernetes watch events when the object needs to be re-evaluated
+    (e.g. for delayed handler retries).
+    """
+
+    # We do not plan any migrations yet. We pray that this simple schema is sufficient forever.
+    # For this purpose, the record is stored as JSON, not as separate fields.
+    _create_sql = (
+        'CREATE TABLE IF NOT EXISTS progress ('
+        'namespace TEXT NOT NULL, '
+        'name TEXT NOT NULL, '
+        'uid TEXT NOT NULL, '
+        'handler TEXT NOT NULL, '
+        'record TEXT NOT NULL, '
+        'PRIMARY KEY (namespace, name, uid, handler))'
+    )
+
+    def __init__(
+            self,
+            path_or_conn: conventions.sqlite3_Connection | str | pathlib.Path,
+            /,
+            *,
+            touch_field: dicts.FieldSpec = ('metadata', 'annotations', 'kopf.dev/touch-dummy'),
+    ) -> None:
+        super().__init__(path_or_conn)
+        self.touch_field = touch_field
+
+    async def fetch(
+            self,
+            *,
+            key: ids.HandlerId,
+            body: bodies.Body,
+    ) -> ProgressRecord | None:
+        namespace, name, uid = self._extract_keys(body)
+        assert self._conn is not None
+        with self._conn:
+            cursor = self._try_execute(
+                'SELECT record FROM progress'
+                ' WHERE namespace=? AND name=? AND uid=? AND handler=?',
+                (namespace, name, uid, key))
+            if cursor is None:
+                return None
+            row = cursor.fetchone()
+        if row is None:
+            return None
+        return cast(ProgressRecord, json.loads(row[0]))
+
+    async def store(
+            self,
+            *,
+            key: ids.HandlerId,
+            record: ProgressRecord,
+            body: bodies.Body,
+            patch: patches.Patch,
+    ) -> None:
+        namespace, name, uid = self._extract_keys(body)
+        encoded = json.dumps({k: v for k, v in record.items() if v is not None})
+        assert self._conn is not None
+        with self._conn:
+            self._execute(
+                'INSERT OR REPLACE INTO progress'
+                ' (namespace, name, uid, handler, record) VALUES (?, ?, ?, ?, ?)',
+                (namespace, name, uid, key, encoded))
+
+    async def purge(
+            self,
+            *,
+            key: ids.HandlerId,
+            body: bodies.Body,
+            patch: patches.Patch,
+    ) -> None:
+        namespace, name, uid = self._extract_keys(body)
+        assert self._conn is not None
+        with self._conn:
+            self._try_execute(
+                'DELETE FROM progress'
+                ' WHERE namespace=? AND name=? AND uid=? AND handler=?',
+                (namespace, name, uid, key))
+
+    def touch(
+            self,
+            *,
+            body: bodies.Body,
+            patch: patches.Patch,
+            value: str | None,
+    ) -> None:
+        body_value = dicts.resolve(body, self.touch_field, None)
+        if body_value != value:  # also covers absent-vs-None cases.
+            dicts.ensure(patch, self.touch_field, value)
+
+    async def erase(self, *, body: bodies.Body) -> None:
+        namespace, name, uid = self._extract_keys(body)
+        assert self._conn is not None
+        with self._conn:
+            self._try_execute(
+                'DELETE FROM progress'
+                ' WHERE namespace=? AND name=? AND uid=?',
+                (namespace, name, uid))
+
+
 class MultiProgressStorage(ProgressStorage):
 
     def __init__(
@@ -390,19 +660,24 @@ class MultiProgressStorage(ProgressStorage):
         super().__init__()
         self.storages = storages
 
-    def fetch(
+    # Cannot be sync for backwards compatibility, since it has to use `await` inside.
+    async def fetch(
             self,
             *,
             key: ids.HandlerId,
             body: bodies.Body,
     ) -> ProgressRecord | None:
+        # Storage methods were sync originally. Support both sync overrides and newer async methods
+        # without breaking the backwards compatibility and requiring a major semver release.
         for storage in self.storages:
-            content = storage.fetch(key=key, body=body)
+            maybe_coro = storage.fetch(key=key, body=body)
+            content = await maybe_coro if inspect.isawaitable(maybe_coro) else maybe_coro
             if content is not None:
                 return content
         return None
 
-    def store(
+    # Cannot be sync for backwards compatibility, since it has to use `await` inside.
+    async def store(
             self,
             *,
             key: ids.HandlerId,
@@ -411,9 +686,12 @@ class MultiProgressStorage(ProgressStorage):
             patch: patches.Patch,
     ) -> None:
         for storage in self.storages:
-            storage.store(key=key, record=record, body=body, patch=patch)
+            maybe_coro = storage.store(key=key, record=record, body=body, patch=patch)
+            if inspect.isawaitable(maybe_coro):
+                await maybe_coro
 
-    def purge(
+    # Cannot be sync for backwards compatibility, since it has to use `await` inside.
+    async def purge(
             self,
             *,
             key: ids.HandlerId,
@@ -421,7 +699,9 @@ class MultiProgressStorage(ProgressStorage):
             patch: patches.Patch,
     ) -> None:
         for storage in self.storages:
-            storage.purge(key=key, body=body, patch=patch)
+            maybe_coro = storage.purge(key=key, body=body, patch=patch)
+            if inspect.isawaitable(maybe_coro):
+                await maybe_coro
 
     def touch(
             self,
@@ -437,6 +717,10 @@ class MultiProgressStorage(ProgressStorage):
         for storage in self.storages:
             essence = storage.clear(essence=essence)
         return essence
+
+    async def erase(self, *, body: bodies.Body) -> None:
+        for storage in self.storages:
+            await storage.erase(body=body)
 
 
 class SmartProgressStorage(MultiProgressStorage):

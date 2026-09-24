@@ -1,8 +1,14 @@
 import abc
 import copy
+import inspect
 import json
-from collections.abc import Collection, Iterable
+import pathlib
+import warnings
+from collections.abc import Awaitable, Collection, Iterable
+from contextlib import AbstractAsyncContextManager
 from typing import Any, cast
+
+import yaml
 
 from kopf._cogs.configs import conventions
 from kopf._cogs.structs import bodies, dicts, patches
@@ -10,6 +16,7 @@ from kopf._cogs.structs import bodies, dicts, patches
 
 class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
                       conventions.StorageStanzaCleaner,
+                      AbstractAsyncContextManager[None],
                       metaclass=abc.ABCMeta):
     """
     Store the base essence for diff calculations, i.e. last handled state.
@@ -26,9 +33,37 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
     https://kubernetes.io/docs/concepts/overview/object-management-kubectl/declarative-config/
     """
 
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        # Kopf's own storages remain sync for backwards compatibility, in case
+        # developers inherit these classes and call `super().method(…)` without `await`.
+        # But their protocol now allows returning awaitable coroutines.
+        for method_name in ('fetch', 'store'):
+            method = cls.__dict__.get(method_name)
+            deprecated = (
+                method is not None and
+                not cls.__module__.startswith('kopf.') and
+                not inspect.iscoroutinefunction(method)
+            )
+            if deprecated:
+                warnings.warn(
+                    f"{cls.__qualname__}.{method_name}() is not async; "
+                    f"sync storage methods are deprecated and will stop working "
+                    f"in the future v2 release; they will continue working in v1. "
+                    "Declare it as 'async def' instead (supported since Kopf 1.45).",
+                    FutureWarning,
+                    stacklevel=3,
+                )
+
     def __init__(self, ignored_fields: Iterable[dicts.FieldSpec] | None = None) -> None:
         super().__init__()
         self.ignored_fields = list(ignored_fields or [])  # materialize the iterable
+
+    async def __aenter__(self) -> None:
+        pass
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        pass
 
     def build(
             self,
@@ -98,14 +133,16 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
 
         return cast(bodies.BodyEssence, essence)
 
+    # Return types makes it mixed sync or async, both are supported.
     @abc.abstractmethod
     def fetch(
             self,
             *,
             body: bodies.Body,
-    ) -> bodies.BodyEssence | None:
+    ) -> bodies.BodyEssence | None | Awaitable[bodies.BodyEssence | None]:
         raise NotImplementedError
 
+    # Return types makes it mixed sync or async, both are supported.
     @abc.abstractmethod
     def store(
             self,
@@ -113,8 +150,12 @@ class DiffBaseStorage(conventions.StorageKeyMarkingConvention,
             body: bodies.Body,
             patch: patches.Patch,
             essence: bodies.BodyEssence,
-    ) -> None:
+    ) -> None | Awaitable[None]:
         raise NotImplementedError
+
+    # It was always async from addition, sync was never declared and supported.
+    async def erase(self, *, body: bodies.Body) -> None:
+        pass
 
 
 class AnnotationsDiffBaseStorage(conventions.StorageKeyFormingConvention, DiffBaseStorage):
@@ -225,6 +266,154 @@ class StatusDiffBaseStorage(DiffBaseStorage):
         dicts.ensure(patch, self.field, encoded)
 
 
+class FileDiffBaseStorage(conventions.FileNamingConvention, DiffBaseStorage):
+    """
+    Diff-base storage in YAML files on a shared filesystem or pod volume.
+
+    Each Kubernetes resource gets its own file, named after its namespace,
+    name, and uid. The file contains the YAML-encoded body essence used for
+    change detection.
+
+    An example file at ``/var/kopf/default-my-app-12345678-abcd.diffbase.yaml``:
+
+    .. code-block:: yaml
+
+        spec:
+          replicas: 3
+          template:
+            spec:
+              containers:
+              - name: my-app
+                image: my-app:latest
+
+    This storage does not write anything to the Kubernetes object itself.
+    """
+
+    def __init__(
+            self,
+            path: str | pathlib.Path,
+            *,
+            ignored_fields: Iterable[dicts.FieldSpec] | None = None,
+    ) -> None:
+        super().__init__(path=path, file_suffix='diffbase', ignored_fields=ignored_fields)
+
+    async def fetch(
+            self,
+            *,
+            body: bodies.Body,
+    ) -> bodies.BodyEssence | None:
+        filepath = self._build_filename(body)
+        if filepath is None or not filepath.exists():
+            return None
+        data = yaml.safe_load(filepath.read_text(encoding='utf-8'))
+        return cast(bodies.BodyEssence, data) if isinstance(data, dict) else None
+
+    async def store(
+            self,
+            *,
+            body: bodies.Body,
+            patch: patches.Patch,
+            essence: bodies.BodyEssence,
+    ) -> None:
+        filepath = self._build_filename(body)
+        if filepath is None:
+            return
+        content = yaml.safe_dump(dict(essence), default_flow_style=False)
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        with self._temp_filename(filepath) as temppath:
+            temppath.write_text(content, encoding='utf-8')
+
+    async def erase(self, *, body: bodies.Body) -> None:
+        filepath = self._build_filename(body)
+        if filepath is not None:
+            filepath.unlink(missing_ok=True)
+
+
+class SQLiteDiffBaseStorage(conventions.SQLiteConvention, DiffBaseStorage):
+    """
+    Diff-base storage in a SQLite database file.
+
+    Each resource's body essence is stored as a single row, keyed by the
+    resource's namespace, name, and uid. The essence is stored as a JSON
+    string.
+
+    An example of the ``diffbase`` table contents:
+
+    .. code-block:: text
+
+        namespace | name   | uid   | essence
+        ----------+--------+-------+---------------------------------------
+        default   | my-app | uid1  | {"spec":{"replicas":3,"image":"..."}}
+
+    This storage does not write anything to the Kubernetes object itself.
+    Both the file and SQLite diff-base storages can share the same database
+    file when pointed to the same path.
+    """
+
+    # We do not plan any migrations yet. We pray that this simple schema is sufficient forever.
+    _create_sql = (
+        'CREATE TABLE IF NOT EXISTS diffbase ('
+        'namespace TEXT NOT NULL, '
+        'name TEXT NOT NULL, '
+        'uid TEXT NOT NULL, '
+        'essence TEXT NOT NULL, '
+        'PRIMARY KEY (namespace, name, uid))'
+    )
+
+    def __init__(
+            self,
+            path_or_conn: conventions.sqlite3_Connection | str | pathlib.Path,
+            /,
+            *,
+            ignored_fields: Iterable[dicts.FieldSpec] | None = None,
+    ) -> None:
+        super().__init__(path_or_conn, ignored_fields=ignored_fields)
+
+    async def fetch(
+            self,
+            *,
+            body: bodies.Body,
+    ) -> bodies.BodyEssence | None:
+        namespace, name, uid = self._extract_keys(body)
+        assert self._conn is not None
+        with self._conn:
+            cursor = self._try_execute(
+                'SELECT essence FROM diffbase'
+                ' WHERE namespace=? AND name=? AND uid=?',
+                (namespace, name, uid))
+            if cursor is None:
+                return None
+            row = cursor.fetchone()
+        if row is None:
+            return None
+        return cast(bodies.BodyEssence, json.loads(row[0]))
+
+    async def store(
+            self,
+            *,
+            body: bodies.Body,
+            patch: patches.Patch,
+            essence: bodies.BodyEssence,
+    ) -> None:
+        namespace, name, uid = self._extract_keys(body)
+        encoded = json.dumps(dict(essence), separators=(',', ':'))
+        assert self._conn is not None
+        with self._conn:
+            self._execute(
+                'INSERT OR REPLACE INTO diffbase'
+                ' (namespace, name, uid, essence) VALUES (?, ?, ?, ?)',
+                (namespace, name, uid, encoded))
+
+    async def erase(self, *, body: bodies.Body) -> None:
+        namespace, name, uid = self._extract_keys(body)
+        assert self._conn is not None
+        with self._conn:
+            self._try_execute(
+                'DELETE FROM diffbase'
+                ' WHERE namespace=? AND name=? AND uid=?',
+                (namespace, name, uid))
+
+
 class MultiDiffBaseStorage(DiffBaseStorage):
 
     def __init__(
@@ -247,23 +436,34 @@ class MultiDiffBaseStorage(DiffBaseStorage):
             essence = storage.build(body=bodies.Body(essence), extra_fields=extra_fields)
         return essence
 
-    def fetch(
+    async def fetch(
             self,
             *,
             body: bodies.Body,
     ) -> bodies.BodyEssence | None:
+        # Storage methods were sync originally. Support both sync overrides and newer async methods
+        # without breaking the backwards compatibility and requiring a major semver release.
         for storage in self.storages:
-            content = storage.fetch(body=body)
+            maybe_coro = storage.fetch(body=body)
+            content = await maybe_coro if inspect.isawaitable(maybe_coro) else maybe_coro
             if content is not None:
                 return content
         return None
 
-    def store(
+    async def store(
             self,
             *,
             body: bodies.Body,
             patch: patches.Patch,
             essence: bodies.BodyEssence,
     ) -> None:
+        # Storage methods were sync originally. Support both sync overrides and newer async methods
+        # without breaking the backwards compatibility and requiring a major semver release.
         for storage in self.storages:
-            storage.store(body=body, patch=patch, essence=essence)
+            maybe_coro = storage.store(body=body, patch=patch, essence=essence)
+            if inspect.isawaitable(maybe_coro):
+                await maybe_coro
+
+    async def erase(self, *, body: bodies.Body) -> None:
+        for storage in self.storages:
+            await storage.erase(body=body)

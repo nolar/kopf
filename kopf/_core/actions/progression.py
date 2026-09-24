@@ -77,6 +77,7 @@ import collections.abc
 import copy
 import dataclasses
 import datetime
+import inspect
 from collections.abc import Collection, Iterable, Iterator, Mapping
 from typing import Any, NamedTuple, overload
 
@@ -253,18 +254,21 @@ class State(execution.State):
         return cls({}, basetime=_get_basetime())
 
     @classmethod
-    def from_storage(
+    async def from_storage(
             cls,
             *,
             body: bodies.Body,
             storage: progress.ProgressStorage,
             handlers: Iterable[execution.Handler],
     ) -> "State":
+        # Storage methods were sync originally. Support both sync overrides and newer async methods
+        # without breaking the backwards compatibility and requiring a major semver release.
         basetime = _get_basetime()
         handler_ids = {handler.id for handler in handlers}
         handler_states: dict[ids.HandlerId, HandlerState] = {}
         for handler_id in handler_ids:
-            content = storage.fetch(key=handler_id, body=body)
+            maybe_coro = storage.fetch(key=handler_id, body=body)
+            content = await maybe_coro if inspect.isawaitable(maybe_coro) else maybe_coro
             if content is not None:
                 handler_states[handler_id] = HandlerState.from_storage(content, basetime=basetime)
         return cls(handler_states, basetime=basetime)
@@ -317,20 +321,26 @@ class State(execution.State):
             if not handler_state.success # i.e. failures & in-progress/retrying
         }, basetime=self.basetime)
 
-    def store(
+    async def store(
             self,
             body: bodies.Body,
             patch: patches.Patch,
             storage: progress.ProgressStorage,
     ) -> None:
+        # Storage methods were sync originally. Support both sync overrides and newer async methods
+        # without breaking the backwards compatibility and requiring a major semver release.
         for handler_id, handler_state in self._states.items():
             full_record = handler_state.for_storage()
             pure_record = handler_state.as_in_storage()
             if pure_record != handler_state._origin:
-                storage.store(key=handler_id, record=full_record, body=body, patch=patch)
-        storage.flush()
+                maybe_coro = storage.store(key=handler_id, record=full_record, body=body, patch=patch)
+                if inspect.isawaitable(maybe_coro):
+                    await maybe_coro
+        maybe_coro = storage.flush()
+        if inspect.isawaitable(maybe_coro):
+            await maybe_coro
 
-    def purge(
+    async def purge(
             self,
             *,
             body: bodies.Body,
@@ -338,17 +348,27 @@ class State(execution.State):
             storage: progress.ProgressStorage,
             handlers: Iterable[execution.Handler],
     ) -> None:
+        # Storage methods were sync originally. Support both sync overrides and newer async methods
+        # without breaking the backwards compatibility and requiring a major semver release.
         # Purge only our own handlers and their direct & indirect sub-handlers of all levels deep.
         # Ignore other handlers (e.g. handlers of other operators).
         handler_ids = {handler.id for handler in handlers}
         for handler_id in handler_ids:
-            storage.purge(key=handler_id, body=body, patch=patch)
+            maybe_coro = storage.purge(key=handler_id, body=body, patch=patch)
+            if inspect.isawaitable(maybe_coro):
+                await maybe_coro
         for handler_id, handler_state in self._states.items():
             if handler_id not in handler_ids:
-                storage.purge(key=handler_id, body=body, patch=patch)
+                maybe_coro = storage.purge(key=handler_id, body=body, patch=patch)
+                if inspect.isawaitable(maybe_coro):
+                    await maybe_coro
             for subref in handler_state.subrefs:
-                storage.purge(key=subref, body=body, patch=patch)
-        storage.flush()
+                maybe_coro = storage.purge(key=subref, body=body, patch=patch)
+                if inspect.isawaitable(maybe_coro):
+                    await maybe_coro
+        maybe_coro = storage.flush()
+        if inspect.isawaitable(maybe_coro):
+            await maybe_coro
 
     def __len__(self) -> int:
         return len(self._states)

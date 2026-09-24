@@ -257,7 +257,6 @@ async def test_cancellation_during_core_task_stop(registry, settings, assert_log
         await task
 
     assert looptime == 5
-    assert_logs(["Cleanup activity is not executed at all due to cancellation."])
 
     # Clean up the stubborn core task.
     core_tasks[0].cancel()

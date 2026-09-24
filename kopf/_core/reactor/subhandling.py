@@ -123,7 +123,7 @@ async def execute(
     owned_handlers = subregistry.get_resource_handlers(resource=cause.resource)
     cause_handlers = subregistry.get_handlers(cause=cause)
     storage = settings.persistence.progress_storage
-    state = progression.State.from_storage(body=cause.body, storage=storage, handlers=owned_handlers)
+    state = await progression.State.from_storage(body=cause.body, storage=storage, handlers=owned_handlers)
     state = state.with_purpose(cause.reason).with_handlers(cause_handlers)
     outcomes = await execution.execute_handlers_once(
         lifecycle=lifecycle,
@@ -134,7 +134,7 @@ async def execute(
         extra_context=subhandling_context,
     )
     state = state.with_outcomes(outcomes)
-    state.store(body=cause.body, patch=cause.patch, storage=storage)
+    await state.store(body=cause.body, patch=cause.patch, storage=storage)
     progression.deliver_results(outcomes=outcomes, patch=cause.patch)
 
     # Enrich all parents with references to sub-handlers of any level deep (sub-sub-handlers, etc).

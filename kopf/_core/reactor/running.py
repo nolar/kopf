@@ -519,48 +519,49 @@ async def startup_cleanup_activities(
             logger.warning("Startup activity is only partially executed due to cancellation.")
             raise
 
-        # Notify the caller that we are ready to be executed. This unfreezes all the root tasks.
-        started_flag.set()
-        await aioadapters.raise_flag(ready_flag)
+        # NB: after the configuration, where storages are set, but before the task unblocking via flags.
+        # Keep them active even while the root tasks are exiting: the watchers can still be triggering.
+        async with settings.persistence.progress_storage, settings.persistence.diffbase_storage:
 
-        # Sleep forever, or until cancelled, which happens when the operator begins its shutdown.
-        try:
-            await asyncio.Event().wait()
-        except asyncio.CancelledError:
-            pass
+            # Notify the caller that we are ready to be executed. This unfreezes all the root tasks.
+            started_flag.set()
+            await aioadapters.raise_flag(ready_flag)
 
-        # Wait for all other root tasks to exit before cleaning up.
-        # Beware: on explicit operator cancellation, there is no graceful period at all.
+            # Sleep forever, or until cancelled, which happens when the operator begins its shutdown.
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                pass
+
+            # Wait for all other root tasks to exit before cleaning up.
+            # Beware: on explicit operator cancellation, there is no graceful period at all.
+            try:
+                current_task = asyncio.current_task()
+                awaited_tasks = {task for task in root_tasks if task is not current_task}
+                await aiotasks.wait(awaited_tasks)
+            except asyncio.CancelledError:
+                logger.warning("Cleanup activity is not executed at all due to cancellation.")
+                raise
+
+        # Execute the cleanup activity after all other root tasks are presumably done.
         try:
-            current_task = asyncio.current_task()
-            awaited_tasks = {task for task in root_tasks if task is not current_task}
-            await aiotasks.wait(awaited_tasks)
+            await activities.run_activity(
+                lifecycle=lifecycles.all_at_once,
+                registry=registry,
+                settings=settings,
+                activity=causes.Activity.CLEANUP,
+                indices=indices,
+                memo=memo,
+            )
+            await vault.close()
         except asyncio.CancelledError:
-            logger.warning("Cleanup activity is not executed at all due to cancellation.")
+            logger.warning("Cleanup activity is only partially executed due to cancellation.")
             raise
+
     finally:
         # Cancel the special "core" tasks after all "root" tasks are gone (happy path)
         # or when the startup/cleanup activities are cancelled (operator termination case).
         # The "core" tasks are excluded from "root" tasks, so not canceled with them.
         # We own and manage "core" tasks, we cannot let them remain unattended or orphaned.
-        try:
-            core_done, _ = await aiotasks.stop(core_tasks, title="Core", logger=logger, interval=10)
-            await aiotasks.reraise(core_done)
-        except asyncio.CancelledError:
-            logger.warning("Cleanup activity is not executed at all due to cancellation.")
-            raise
-
-    # Execute the cleanup activity after all other root tasks are presumably done.
-    try:
-        await activities.run_activity(
-            lifecycle=lifecycles.all_at_once,
-            registry=registry,
-            settings=settings,
-            activity=causes.Activity.CLEANUP,
-            indices=indices,
-            memo=memo,
-        )
-        await vault.close()
-    except asyncio.CancelledError:
-        logger.warning("Cleanup activity is only partially executed due to cancellation.")
-        raise
+        core_done, _ = await aiotasks.stop(core_tasks, title="Core", logger=logger, interval=10)
+        await aiotasks.reraise(core_done)
