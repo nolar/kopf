@@ -6,7 +6,7 @@ We need a running Kubernetes cluster and some tools for our experiments.
 If you have a cluster already preconfigured, you can skip this section.
 Otherwise, install the following tools locally (e.g. on macOS):
 
-* Python >= 3.10 (running in a venv is recommended, though it is not necessary).
+* Python >= 3.11 (running in a venv is recommended, though it is not necessary).
 * `Install kubectl <https://kubernetes.io/docs/tasks/tools/install-kubectl/>`_
 * :doc:`Install minikube </minikube>` (a local Kubernetes cluster)
 * :doc:`Install Kopf </install>`

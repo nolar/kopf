@@ -256,7 +256,7 @@ class Scheduler:
     Coroutines can be spawned via this scheduler and forgotten: no need to wait
     for them or to check their status --- the scheduler will take care of it.
 
-    It is a simplified equivalent of aiojobs, but compatible with Python 3.10.
+    It is a simplified equivalent of aiojobs, but compatible with Python 3.10+.
     Python 3.10 removed the explicit event loops (deprecated since Python 3.7),
     which broke aiojobs. At the same time, aiojobs looks unmaintained
     and contains no essential changes since July 2019 (i.e. for 2+ years).

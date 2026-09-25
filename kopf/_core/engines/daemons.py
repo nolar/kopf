@@ -23,9 +23,8 @@ since we are aware of the daemons, and they are not actually "hung".
 import abc
 import asyncio
 import dataclasses
-import sys
 import warnings
-from collections.abc import Collection, Iterable, MutableMapping, Sequence
+from collections.abc import Collection, Iterable, Sequence
 
 from kopf._cogs.aiokits import aiotasks, aiotime, aiotoggles
 from kopf._cogs.configs import configuration
@@ -342,14 +341,11 @@ async def daemon_killer(
 
                 # Stay here while the operator is paused, until it is resumed.
                 # The fresh stream of watch-events will spawn new daemons naturally.
-                if sys.version_info < (3, 11):  # python 3.10 only, TODO remove in Oct'26
-                    await operator_paused.wait_for(False)
-                else:
-                    try:
-                        async with asyncio.timeout(1.0):
-                            await operator_paused.wait_for(False)
-                    except TimeoutError:
-                        pass
+                try:
+                    async with asyncio.timeout(1.0):
+                        await operator_paused.wait_for(False)
+                except TimeoutError:
+                    pass
 
     # Terminate all running daemons when the operator exits (and this task is cancelled).
     finally:

@@ -15,7 +15,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -25,7 +24,7 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
     "Topic :: Software Development :: Libraries",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "python-json-logger",   # 0.05 MB
     "jsonpatch",
@@ -63,7 +62,7 @@ dev = [
 
 [dependency-groups]
 docs = [
-    "sphinx>=9.0.0; python_version>='3.11'",  # TODO: remove when 3.10 is dropped (≈Oct'26)
+    "sphinx>=9.0.0",
     "sphinx-autobuild",
     "sphinx-autodoc-typehints",
     "sphinx-copybutton",
@@ -137,7 +136,7 @@ exclude-newer-package = { kmock=false, looptime=false, mypy=false }
 strict = true
 packages = ["kopf"]
 exclude = ['(^|/)test_.*\.py$']
-python_version = "3.10"
+python_version = "3.11"
 exclude_gitignore = true
 warn_unused_configs = true
 ignore_missing_imports = true
