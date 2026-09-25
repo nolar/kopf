@@ -4,7 +4,7 @@ Installation
 
 Prerequisites:
 
-* Python >= 3.10 (CPython and PyPy are officially tested and supported).
+* Python >= 3.11 (CPython and PyPy are officially tested and supported).
 * A Kubernetes cluster (k3d/k3s, minikube, OrbStack, Docker, AWS, GCP, etc).
 
 

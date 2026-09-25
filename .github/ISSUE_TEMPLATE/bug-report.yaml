@@ -43,7 +43,7 @@ body:
     id: python-version
     attributes:
       label: Python version
-      placeholder: e.g. 3.10 or pypy-3.10-7.3.13
+      placeholder: e.g. 3.15 or pypy-3.12-7.3.23
 
   - type: textarea
     id: code

@@ -21,7 +21,6 @@ import asyncio
 import contextlib
 import enum
 import logging
-import sys
 from collections.abc import AsyncIterator
 from typing import cast
 
@@ -261,12 +260,7 @@ async def watch_objs(
     # The inactivity timeout is reset after each received event; if no event arrives
     # within the window, asyncio.timeout() cancels the outer task and we log & return.
     try:
-        # Python 3.10 does not have asyncio.timeout(); fall back to the unprotected version.
-        # TODO: Remove when Python 3.10 is deprecated in Oct'26 (and the "if timeout_cm…" below).
-        if sys.version_info < (3, 11):  # 3.10 only
-            timeout = contextlib.nullcontext(None)
-        else:
-            timeout = asyncio.timeout(settings.watching.inactivity_timeout)
+        timeout = asyncio.timeout(settings.watching.inactivity_timeout)
         async with timeout as timeout_cm:
             async for raw_input in api.stream(
                 url=resource.get_url(namespace=namespace, params=params),
