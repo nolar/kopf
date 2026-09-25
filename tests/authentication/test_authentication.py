@@ -77,11 +77,7 @@ async def test_single_credentials_provided_to_vault(settings):
     )
 
     assert not vault.is_empty()
-
-    items = []
-    async for key, info in vault:
-        items.append((key, info))
-
+    items = [(key, info) async for key, info in vault]
     assert len(items) == 1
     assert items[0][0] == 'login_fn'
     assert items[0][1] is info

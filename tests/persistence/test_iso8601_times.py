@@ -4,7 +4,7 @@ import pytest
 
 from kopf._core.actions.progression import format_iso8601, parse_iso8601
 
-UTC = datetime.timezone.utc
+UTC = datetime.UTC
 WEST11 = datetime.timezone(datetime.timedelta(hours=-11))
 EAST11 = datetime.timezone(datetime.timedelta(hours=11))
 
