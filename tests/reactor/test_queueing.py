@@ -154,13 +154,13 @@ async def test_server_side_selectors_are_used_by_watcher(
         processor=processor,
     )
 
-    assert kmock[0].url.query['labelSelector'] == label_selector
-    assert kmock[0].url.query['fieldSelector'] == field_selector
-    assert kmock[0].url.query['shardSelector'] == shard_selector
-    assert kmock[1].url.query['labelSelector'] == label_selector
-    assert kmock[1].url.query['fieldSelector'] == field_selector
-    assert kmock[0].url.query['shardSelector'] == shard_selector
-    assert kmock[1].url.query['resourceVersion'] == '100'
+    assert kmock[0].params['labelSelector'] == label_selector
+    assert kmock[0].params['fieldSelector'] == field_selector
+    assert kmock[0].params['shardSelector'] == shard_selector
+    assert kmock[1].params['labelSelector'] == label_selector
+    assert kmock[1].params['fieldSelector'] == field_selector
+    assert kmock[1].params['shardSelector'] == shard_selector
+    assert kmock[1].params['resourceVersion'] == '100'
 
 
 @pytest.mark.parametrize('unique, events', [

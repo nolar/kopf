@@ -239,6 +239,16 @@ API event
 ``event`` is a raw JSON-decoded message received from the Kubernetes API;
 it is a dict with ``['type']`` and ``['object']`` keys.
 
+Kopf simulates the raw events with type ``None`` for the initial listing
+before the watch-stream begins. In the regular watch-streams, the events
+are usually: ``"ADDED"``, ``"MODIFIED"``, ``"DELETED"``.
+
+Kopf also enforces type ``None`` and overwrites the original type ``"ADDED"``
+for the initial streaming events arriving from Kubernetes when server-side
+initial streaming is configured (``settings.watching.initial_streaming=True``).
+The very first server-side bookmark disables this override for the rest
+of the stream. This behavior is important for some of Kopf's internals.
+
 
 Resource-changing kwargs
 ========================

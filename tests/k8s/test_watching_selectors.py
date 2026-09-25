@@ -25,12 +25,13 @@ async def test_watch_omits_server_side_selectors_by_default(
             operator_pause_waiter=asyncio.Future()):
         pass
 
-    assert kmock[0].url.query['watch'] == 'true'
-    assert kmock[0].url.query['allowWatchBookmarks'] == 'true'
-    assert kmock[0].url.query['resourceVersion'] == '123'
-    assert 'labelSelector' not in kmock[0].url.query
-    assert 'fieldSelector' not in kmock[0].url.query
-    assert 'shardSelector' not in kmock[0].url.query
+    assert kmock[0].params['watch'] == 'true'
+    assert kmock[0].params['allowWatchBookmarks'] == 'true'
+    assert kmock[0].params['resourceVersion'] == '123'
+    assert 'sendInitialEvents' not in kmock[0].params
+    assert 'labelSelector' not in kmock[0].params
+    assert 'fieldSelector' not in kmock[0].params
+    assert 'shardSelector' not in kmock[0].params
 
 
 async def test_watch_passes_server_side_selectors_with_watch_params(
@@ -63,13 +64,36 @@ async def test_watch_passes_server_side_selectors_with_watch_params(
         pass
 
     # Alphabetically sorted for predictability.
-    assert kmock[0].url.query['watch'] == 'true'
-    assert kmock[0].url.query['allowWatchBookmarks'] == 'true'
-    assert kmock[0].url.query['resourceVersion'] == '123'
-    assert kmock[0].url.query['timeoutSeconds'] == '42'
-    assert kmock[0].url.query['labelSelector'] == f"{label_selector1},{label_selector2}"
-    assert kmock[0].url.query['fieldSelector'] == f"{field_selector1},{field_selector2}"
-    assert kmock[0].url.query['shardSelector'] == shard_selector1  # the 1st matching is used
+    assert kmock[0].params['watch'] == 'true'
+    assert kmock[0].params['allowWatchBookmarks'] == 'true'
+    assert kmock[0].params['resourceVersion'] == '123'
+    assert kmock[0].params['timeoutSeconds'] == '42'
+    assert kmock[0].params['labelSelector'] == f"{label_selector1},{label_selector2}"
+    assert kmock[0].params['fieldSelector'] == f"{field_selector1},{field_selector2}"
+    assert kmock[0].params['shardSelector'] == shard_selector1  # the 1st matching is used
+
+
+async def test_watch_passes_initial_streaming_params(
+        kmock: Any,
+        settings: OperatorSettings,
+        resource: references.Resource,
+        namespace: references.Namespace,
+) -> None:
+    settings.watching.initial_streaming = True
+    kmock['watch', resource, kmock.namespace(namespace)] << EOS
+
+    async for _ in watch_objs(
+            settings=settings,
+            resource=resource,
+            namespace=namespace,
+            operator_pause_waiter=asyncio.Future()):
+        pass
+
+    assert len(kmock['list']) == 0
+    assert kmock[0].params['watch'] == 'true'
+    assert kmock[0].params['allowWatchBookmarks'] == 'true'
+    assert kmock[0].params['sendInitialEvents'] == 'true'
+    assert kmock[0].params['resourceVersionMatch'] == 'NotOlderThan'
 
 
 async def test_continuous_watch_uses_same_selectors_for_list_and_watch(
@@ -96,10 +120,10 @@ async def test_continuous_watch_uses_same_selectors_for_list_and_watch(
         events.append(event)
 
     assert events == [Bookmark.LISTED]
-    assert kmock[0].url.query['labelSelector'] == label_selector
-    assert kmock[0].url.query['fieldSelector'] == field_selector
-    assert kmock[0].url.query['shardSelector'] == shard_selector
-    assert kmock[1].url.query['labelSelector'] == label_selector
-    assert kmock[1].url.query['fieldSelector'] == field_selector
-    assert kmock[1].url.query['shardSelector'] == shard_selector
-    assert kmock[1].url.query['resourceVersion'] == '100'
+    assert kmock[0].params['labelSelector'] == label_selector
+    assert kmock[0].params['fieldSelector'] == field_selector
+    assert kmock[0].params['shardSelector'] == shard_selector
+    assert kmock[1].params['labelSelector'] == label_selector
+    assert kmock[1].params['fieldSelector'] == field_selector
+    assert kmock[1].params['shardSelector'] == shard_selector
+    assert kmock[1].params['resourceVersion'] == '100'

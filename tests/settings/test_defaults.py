@@ -27,6 +27,7 @@ async def test_declared_public_interface_and_promised_defaults():
     assert settings.watching.server_timeout is None
     assert settings.watching.client_timeout is None
     assert settings.watching.chunk_size is None
+    assert settings.watching.initial_streaming == False
     assert not settings.watching.label_selectors  # empty mapping
     assert not settings.watching.field_selectors  # empty mapping
     assert not settings.watching.shard_selectors  # empty mapping
