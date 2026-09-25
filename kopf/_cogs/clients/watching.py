@@ -174,7 +174,7 @@ async def continuous_watch(
         for obj in objs:
             yield {'type': None, 'object': obj}
 
-    except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, asyncio.TimeoutError):
+    except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, TimeoutError):
         return
 
     # Notify the watcher that the initial listing is over, even if there was nothing yielded.
@@ -279,5 +279,5 @@ async def watch_objs(
     except TimeoutError:
         where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
         logger.debug(f"Watch-stream for {resource} {where} is inactive, reconnecting.")
-    except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, asyncio.TimeoutError):
+    except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, TimeoutError):
         pass

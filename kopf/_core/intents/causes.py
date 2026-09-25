@@ -30,14 +30,14 @@ from kopf._core.actions import execution
 from kopf._core.intents import stoppers
 
 
-class Activity(str, enum.Enum):
+class Activity(enum.StrEnum):
     STARTUP = 'startup'
     CLEANUP = 'cleanup'
     AUTHENTICATION = 'authentication'
     PROBE = 'probe'
 
 
-class WebhookType(str, enum.Enum):
+class WebhookType(enum.StrEnum):
     VALIDATING = 'validating'
     MUTATING = 'mutating'
 
@@ -47,7 +47,7 @@ class WebhookType(str, enum.Enum):
 
 # Constants for cause types, to prevent a direct usage of strings, and typos.
 # They are not exposed by the framework, but are used internally. See also: `kopf.on`.
-class Reason(str, enum.Enum):
+class Reason(enum.StrEnum):
     CREATE = 'create'
     UPDATE = 'update'
     DELETE = 'delete'

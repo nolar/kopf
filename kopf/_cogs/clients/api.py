@@ -96,7 +96,7 @@ async def request(
             raise
 
         # During k8s upgrades, API might throw 403 Forbidden. Use retries for this error as well.
-        except (aiohttp.ClientConnectionError, errors.APIServerError, asyncio.TimeoutError,
+        except (aiohttp.ClientConnectionError, errors.APIServerError, TimeoutError,
                 errors.APIForbiddenError, errors.APITooManyRequestsError) as e:
 
             # If we are asked to retry later, do so, and obey the requested backoff.

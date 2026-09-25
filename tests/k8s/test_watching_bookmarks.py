@@ -18,13 +18,10 @@ async def test_listed_is_inbetween(settings, resource, namespace, kmock):
         {'type': 'ERROR', 'object': {'code': 410}},
     )
 
-    events = []
-    async for event in continuous_watch(settings=settings,
-                                        resource=resource,
-                                        namespace=namespace,
-                                        operator_pause_waiter=asyncio.Future()):
-        events.append(event)
-
+    events = [event async for event in continuous_watch(settings=settings,
+                                                        resource=resource,
+                                                        namespace=namespace,
+                                                        operator_pause_waiter=asyncio.Future())]
     assert len(events) == 5
     assert events[0]['object']['spec'] == 'a'
     assert events[1]['object']['spec'] == 'b'
@@ -46,13 +43,10 @@ async def test_bookmark_event_is_yielded(settings, resource, namespace, kmock):
         {'type': 'ERROR', 'object': {'code': 410}},
     )
 
-    events = []
-    async for event in continuous_watch(settings=settings,
-                                        resource=resource,
-                                        namespace=namespace,
-                                        operator_pause_waiter=asyncio.Future()):
-        events.append(event)
-
+    events = [event async for event in continuous_watch(settings=settings,
+                                                        resource=resource,
+                                                        namespace=namespace,
+                                                        operator_pause_waiter=asyncio.Future())]
     assert len(events) == 4
     assert events[0] == Bookmark.LISTED
     assert events[1]['type'] == 'ADDED'
@@ -78,13 +72,10 @@ async def test_bookmark_updates_resource_version(settings, resource, namespace, 
         {'type': 'ERROR', 'object': {'code': 410}},
     )
 
-    events = []
-    async for event in continuous_watch(settings=settings,
-                                        resource=resource,
-                                        namespace=namespace,
-                                        operator_pause_waiter=asyncio.Future()):
-        events.append(event)
-
+    events = [event async for event in continuous_watch(settings=settings,
+                                                        resource=resource,
+                                                        namespace=namespace,
+                                                        operator_pause_waiter=asyncio.Future())]
     assert len(events) == 3
     assert events[0] == Bookmark.LISTED
     assert events[1]['type'] == 'BOOKMARK'

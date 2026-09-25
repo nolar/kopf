@@ -484,4 +484,4 @@ def parse_iso8601(val: str | None) -> datetime.datetime | None:
 
 def _get_basetime() -> datetime.datetime:
     loop = asyncio.get_running_loop()
-    return datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(seconds=loop.time())
+    return datetime.datetime.now(datetime.UTC) - datetime.timedelta(seconds=loop.time())

@@ -28,7 +28,7 @@ async def sleep(
     try:
         start_time = loop.time()
         await asyncio.wait_for(awakening_event.wait(), timeout=minimal_delay)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return None  # interruptable sleep is over: uninterrupted.
     else:
         end_time = loop.time()

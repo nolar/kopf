@@ -304,7 +304,7 @@ async def worker(
                           consistency_time - loop.time() if consistency_time is not None else 0)
             try:
                 raw_event = await asyncio.wait_for(backlog.get(), timeout=timeout)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # A tricky part! Under high-load or with synchronous blocks of asyncio event-loop,
                 # it is possible that the timeout happens while the queue is filled: depending on
                 # the order in which the coros/waiters are checked once control returns to asyncio.
@@ -389,7 +389,7 @@ async def _wait_for_depletion(
             await asyncio.wait_for(
                 signaller.wait_for(lambda: not streams or scheduler.empty()),
                 timeout=settings.queueing.exit_timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass  # if not depleted as configured, proceed with what's left and let it fail
 
     # The last check if the termination is going to be graceful or not.
