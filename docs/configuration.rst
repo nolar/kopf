@@ -303,6 +303,22 @@ __ https://github.com/kubernetes/kubernetes/blob/c20e0bc54189aef73a6a1498b4eab28
     However, the mere flow of bookmark events every 60 seconds may
     keep the connection alive and resolve the original issue of freezing.
 
+``settings.watching.chunk_size`` (int or ``None``) is the size of a single chunk
+of items to retrieve at once from the API. For large clusters, fetching can cause
+a huge spike in memory usage both in Kopf and in the API server side.
+To optimize that, Kopf can retrieve the list in chunks.
+The chunking also applies to the initial listing of CRDs and namespaces.
+
+The optimal value depends on your cluster configuration:
+smaller chunks mean less memory usage, but more API requests as a downside;
+bigger chunks mean fewer API requests, but bigger spikes in memory usage.
+Split the chunks so that the list is retrieved and processed in <= 5 minutes
+before going to the regular watching — the default timeout of Kubernetes.
+
+``None`` (the default) means retrieving the entire list without chunking.
+A zero is passed through to Kubernetes as is and, as observed,
+also means no chunking, i.e., the whole list is returned, same as ``None``.
+
 .. code-block:: python
 
     import kopf
@@ -313,6 +329,7 @@ __ https://github.com/kubernetes/kubernetes/blob/c20e0bc54189aef73a6a1498b4eab28
         settings.networking.connect_timeout = 10
         settings.networking.request_timeout = 60
         settings.watching.server_timeout = 10 * 60
+        settings.watching.chunk_size = 100
 
 
 Proxy and environment trust

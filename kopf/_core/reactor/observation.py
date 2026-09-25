@@ -48,15 +48,15 @@ async def namespace_observer(
     # Populate the namespaces atomically (instead of notifying on every item from the watch-stream).
     if not settings.scanning.disabled and not clusterwide:
         try:
-            objs, _ = await fetching.list_objs(
+            async for chunk, _ in fetching.fetch_objs(
                 settings=settings,
                 resource=resource,
                 namespace=None,
                 logger=logger,
-            )
-            async with insights.revised:
-                revise_namespaces(raw_bodies=objs, insights=insights, namespaces=namespaces)
-                insights.revised.notify_all()
+            ):
+                async with insights.revised:
+                    revise_namespaces(raw_bodies=chunk, insights=insights, namespaces=namespaces)
+                    insights.revised.notify_all()
         except errors.APIForbiddenError:
             logger.warning("Not enough permissions to list namespaces. "
                            "Falling back to a list of namespaces which are assumed to exist: "
