@@ -20,7 +20,7 @@ jobs:
         with:
           github-token: ${{ github.token }}
           enable-cache: true
-          python-version: "3.15"
+          python-version: "3.15rc2"
           activate-environment: true
       - run: uv sync --no-dev --group lint
       - run: pre-commit run --all-files
@@ -41,12 +41,12 @@ jobs:
       fail-fast: false
       matrix:
         install-extras: [ "", "full-auth" ]
-        python-version: [ "3.11", "3.12", "3.13", "3.14", "3.15" ]
+        python-version: [ "3.11", "3.12", "3.13", "3.14", "3.15rc2" ]
         include:
           # Assumption: if these special setups work in one version, they work in all versions.
           - install-extras: "uvloop"
-            python-version: "3.15"
-          - python-version: "3.15t"
+            python-version: "3.15rc2"
+          - python-version: "3.15rc2t"
     name: Python ${{ matrix.python-version }}${{ matrix.install-extras && ' ' || '' }}${{ matrix.install-extras }}
     runs-on: ubuntu-26.04
     timeout-minutes: 7  # usually 5 mins with coverage
@@ -126,7 +126,7 @@ jobs:
         with:
           github-token: ${{ github.token }}
           enable-cache: true
-          python-version: "3.15"
+          python-version: "3.15rc2"
           activate-environment: true
       - uses: nolar/setup-k3d-k3s@v1
         with:
