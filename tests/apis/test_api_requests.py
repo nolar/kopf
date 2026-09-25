@@ -89,15 +89,13 @@ async def test_parsing_in_requests(kmock, fn, method, settings, logger):
 async def test_parsing_in_streams(kmock, method, settings, logger):
     kmock[method, '/url'] << {"fake": "result1"} << {"fake": "result2"}
 
-    items = []
-    async for item in stream(
+    items = [item async for item in stream(
         url='/url',
         payload={'fake': 'payload'},
         headers={'fake': 'headers'},
         settings=settings,
         logger=logger,
-    ):
-        items.append(item)
+    )]
 
     assert items == [{'fake': 'result1'}, {'fake': 'result2'}]
     assert len(kmock) == 1

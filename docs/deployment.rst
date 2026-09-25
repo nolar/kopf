@@ -10,13 +10,13 @@ Normally, however, operators are deployed directly into the cluster.
 Docker image
 ============
 
-First, the operator must be packaged as a Docker image with Python 3.10 or newer:
+First, the operator must be packaged as a Docker image with Python 3.11 or newer:
 
 .. code-block:: dockerfile
     :caption: Dockerfile
     :name: dockerfile
 
-    FROM python:3.14
+    FROM python:3.15
     RUN pip install kopf
     ADD . /src
     CMD kopf run /src/handlers.py --verbose

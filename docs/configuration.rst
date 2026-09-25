@@ -294,15 +294,6 @@ e.g., ``999999999`` (≈30 years).
 
 __ https://github.com/kubernetes/kubernetes/blob/c20e0bc54189aef73a6a1498b4eab28b2457914f/staging/src/k8s.io/apiserver/pkg/storage/cacher/cacher.go#L62-L77
 
-.. note::
-    The inactivity tracking is NOT supported in Python 3.10. It works only
-    since Python 3.11 and higher. Python 3.10 behaves the old way ---
-    ignores the stalled connections and might freeze with no action indefinitely.
-    As a workaround, set ``settings.watching.client_timeout`` to 1-10 mins.
-    Python 3.10's end-of-life is October 2026, so the fix is not planned.
-    However, the mere flow of bookmark events every 60 seconds may
-    keep the connection alive and resolve the original issue of freezing.
-
 .. code-block:: python
 
     import kopf

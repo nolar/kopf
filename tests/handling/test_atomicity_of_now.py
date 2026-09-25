@@ -57,7 +57,7 @@ async def test_consistent_awakening(registry, settings, resource, k8s_mocked, mo
     # Simulate the call as if the event has just arrived on the watch-stream.
     # Another way (the same effect): process_changing_cause() and its result.
     with freezegun.freeze_time(tsA_triggered) as frozen_dt:
-        assert datetime.datetime.now(datetime.timezone.utc) < ts0  # extra precaution
+        assert datetime.datetime.now(datetime.UTC) < ts0  # extra precaution
         await process_resource_event(
             lifecycle=kopf.lifecycles.all_at_once,
             registry=registry,
@@ -69,7 +69,7 @@ async def test_consistent_awakening(registry, settings, resource, k8s_mocked, mo
             raw_event={'type': 'ADDED', 'object': body},
             event_queue=asyncio.Queue(),
         )
-        assert datetime.datetime.now(datetime.timezone.utc) > ts0  # extra precaution
+        assert datetime.datetime.now(datetime.UTC) > ts0  # extra precaution
 
     assert state_store.called
 

@@ -173,6 +173,6 @@ class AsyncFlagPromise(FlagWaiter[FlagReasonT],
         task = asyncio.create_task(coro, name=name)
         try:
             yield from task
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass  # the requested time limit is reached, exit regardless of the state
         return self._waiter  # the original checker! not the time-limited one!

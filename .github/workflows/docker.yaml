@@ -16,7 +16,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  DEFAULT_PYTHON: "3.14"
+  DEFAULT_PYTHON: "3.15"
   DEFAULT_VARIANT: slim
 
 jobs:
@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.14"]  # all versions starting with 3.14 as the first one
+        python-version: ["3.14", "3.15.0-rc.2"]  # all versions starting with 3.14 as the first one
         variant: [slim, alpine]
     name: Python ${{ matrix.python-version }} ${{ matrix.variant }}
     runs-on: ubuntu-26.04

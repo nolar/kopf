@@ -271,7 +271,7 @@ installation, ensures reproducible builds, and keeps the image minimal:
 
 .. code-block:: dockerfile
 
-    FROM python:3.14
+    FROM python:3.15
     RUN pip install kopf
     COPY handler.py /src/handler.py
     CMD ["kopf", "run", "/src/handler.py", "--verbose"]

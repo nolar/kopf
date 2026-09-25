@@ -364,7 +364,7 @@ class Vault(AsyncIterable[tuple[VaultKey, KubeContext]]):
         and not blocked from reappearing.
         """
         # Quick & lockless for speed: it is done on every API call, we have no time for locks.
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = datetime.datetime.now(datetime.UTC)
         if self._next_expiration is not None and now >= self._next_expiration:
             async with self._guard:
                 await self._expire()
@@ -376,7 +376,7 @@ class Vault(AsyncIterable[tuple[VaultKey, KubeContext]]):
         Unlike invalidation, the expired credentials are not remembered
         and not blocked from reappearing.
         """
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = datetime.datetime.now(datetime.UTC)
 
         # Avoid waiting for re-auth afterwards if there is nothing to expire or change.
         expired = False
@@ -385,7 +385,7 @@ class Vault(AsyncIterable[tuple[VaultKey, KubeContext]]):
                 expiration = item.info.expiration
                 if expiration is not None:
                     if expiration.tzinfo is None:
-                        expiration = expiration.replace(tzinfo=datetime.timezone.utc)
+                        expiration = expiration.replace(tzinfo=datetime.UTC)
                     if now >= expiration:
                         await self._flush_caches(item)
                         del self._current[key]
@@ -472,9 +472,9 @@ class Vault(AsyncIterable[tuple[VaultKey, KubeContext]]):
             self._guard.notify_all()
 
     def is_empty(self) -> bool:
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = datetime.datetime.now(datetime.UTC)
         expirations = [
-            dt if dt is None or dt.tzinfo is not None else dt.replace(tzinfo=datetime.timezone.utc)
+            dt if dt is None or dt.tzinfo is not None else dt.replace(tzinfo=datetime.UTC)
             for dt in (item.info.expiration for item in self._current.values())
         ]
         return all(dt is not None and now >= dt for dt in expirations)  # i.e. expired
@@ -541,7 +541,7 @@ class Vault(AsyncIterable[tuple[VaultKey, KubeContext]]):
 
     def _update_expiration(self) -> None:
         expirations = [
-            dt if dt.tzinfo is not None else dt.replace(tzinfo=datetime.timezone.utc)
+            dt if dt.tzinfo is not None else dt.replace(tzinfo=datetime.UTC)
             for dt in (item.info.expiration for item in self._current.values())
             if dt is not None
         ]

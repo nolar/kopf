@@ -73,7 +73,7 @@ async def test_delayed_handlers_sleep(
         assert_logs, k8s_mocked, now, delayed_iso, delay, looptime):
 
     # Any "future" time works and affects nothing as long as it is the same
-    basetime = datetime.datetime.now(tz=datetime.timezone.utc)
+    basetime = datetime.datetime.now(datetime.UTC)
 
     # Simulate the original persisted state of the resource.
     # Make sure the finalizer is added since there are mandatory deletion handlers.

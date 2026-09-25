@@ -45,10 +45,7 @@ async def test_yielding_after_population(mocker):
 
     await vault.populate({key1: info1})
 
-    results = []
-    async for key, info in vault:
-        results.append((key, info))
-
+    results = [(key, info) async for key, info in vault]
     assert len(results) == 1
     assert results[0][0] == key1
     assert results[0][1] is info1
@@ -62,11 +59,8 @@ async def test_yielding_items_before_expiration(mocker):
     vault = Vault()
     mocker.patch.object(vault._guard, 'wait_for')
 
-    results = []
     await vault.populate({key1: info1})
-    async for key, info in vault:
-        results.append((key, info))
-
+    results = [(key, info) async for key, info in vault]
     assert len(results) == 1
     assert results[0][0] == key1
     assert results[0][1] is info1
@@ -84,11 +78,8 @@ async def test_yielding_ignores_expired_items(mocker, delta):
     vault = Vault()
     mocker.patch.object(vault._guard, 'wait_for')
 
-    results = []
     await vault.populate({key1: info1, key2: info2})
-    async for key, info in vault:
-        results.append((key, info))
-
+    results = [(key, info) async for key, info in vault]
     assert len(results) == 1
     assert results[0][0] == key2
     assert results[0][1] is info2
@@ -149,10 +140,7 @@ async def test_invalidation_continues_if_something_is_left():
     await vault.populate({key2: info2})
     await vault.invalidate(key1, info1, exc=exc)  # no exception!
 
-    results = []
-    async for key, info in vault:
-        results.append((key, info))
-
+    results = [(key, info) async for key, info in vault]
     assert len(results) == 1
     assert results[0][0] == key2
     assert results[0][1] is info2
@@ -168,10 +156,7 @@ async def test_invalidation_continues_if_items_is_replaced(mocker):
     await vault.populate({key1: info1})
     await vault.invalidate(key1, info2)
 
-    results = []
-    async for key, info in vault:
-        results.append((key, info))
-
+    results = [(key, info) async for key, info in vault]
     assert len(results) == 1
     assert results[0][0] == key1
     assert results[0][1] is info1
@@ -220,10 +205,7 @@ async def test_caches_from_factory(mocker):
 
     factory_spy = mocker.MagicMock(spec=factory, wraps=factory)
 
-    results = []
-    async for key, info, obj in vault.extended(factory_spy):
-        results.append((key, info, obj))
-
+    results = [(key, info, obj) async for key, info, obj in vault.extended(factory_spy)]
     assert len(results) == 1
     assert results[0][0] == key1
     assert results[0][1] is info1

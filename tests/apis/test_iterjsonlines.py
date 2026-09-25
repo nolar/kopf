@@ -9,10 +9,7 @@ async def test_empty_content():
             yield b''
 
     content = Mock(iter_chunked=iter_chunked)
-    lines = []
-    async for line in iter_jsonlines(content):
-        lines.append(line)
-
+    lines = [s async for s in iter_jsonlines(content)]
     assert lines == []
 
 
@@ -21,10 +18,7 @@ async def test_empty_chunk():
         yield b''
 
     content = Mock(iter_chunked=iter_chunked)
-    lines = []
-    async for line in iter_jsonlines(content):
-        lines.append(line)
-
+    lines = [s async for s in iter_jsonlines(content)]
     assert lines == []
 
 
@@ -33,10 +27,7 @@ async def test_one_chunk_one_line():
         yield b'hello'
 
     content = Mock(iter_chunked=iter_chunked)
-    lines = []
-    async for line in iter_jsonlines(content):
-        lines.append(line)
-
+    lines = [s async for s in iter_jsonlines(content)]
     assert lines == [b'hello']
 
 
@@ -45,10 +36,7 @@ async def test_one_chunk_two_lines():
         yield b'hello\nworld'
 
     content = Mock(iter_chunked=iter_chunked)
-    lines = []
-    async for line in iter_jsonlines(content):
-        lines.append(line)
-
+    lines = [s async for s in iter_jsonlines(content)]
     assert lines == [b'hello', b'world']
 
 
@@ -57,10 +45,7 @@ async def test_one_chunk_empty_lines():
         yield b'\n\nhello\n\nworld\n\n'
 
     content = Mock(iter_chunked=iter_chunked)
-    lines = []
-    async for line in iter_jsonlines(content):
-        lines.append(line)
-
+    lines = [s async for s in iter_jsonlines(content)]
     assert lines == [b'hello', b'world']
 
 
@@ -71,8 +56,5 @@ async def test_a_few_chunks_split():
         yield b'ld\n\n'
 
     content = Mock(iter_chunked=iter_chunked)
-    lines = []
-    async for line in iter_jsonlines(content):
-        lines.append(line)
-
+    lines = [s async for s in iter_jsonlines(content)]
     assert lines == [b'hello', b'world']

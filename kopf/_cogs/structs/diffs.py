@@ -29,7 +29,7 @@ class DiffScope(enum.Flag):
     FULL = LEFT | RIGHT
 
 
-class DiffOperation(str, enum.Enum):
+class DiffOperation(enum.StrEnum):
     ADD = 'add'
     CHANGE = 'change'
     REMOVE = 'remove'

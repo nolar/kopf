@@ -49,7 +49,7 @@ async def post_event(
         suffix = message[-MAX_MESSAGE_LENGTH // 2 + (len(infix) - len(infix) // 2):]
         message = f'{prefix}{infix}{suffix}'
 
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = datetime.datetime.now(datetime.UTC)
     body = {
         'metadata': {
             'namespace': namespace,

@@ -1,10 +1,9 @@
 import functools
 from collections.abc import AsyncGenerator, AsyncIterator, Callable
-from typing import Any, TypeVar, cast
+from typing import Any, Self, TypeVar, cast
 
 from kopf._cogs.structs import reviews
 
-_SelfT = TypeVar('_SelfT')
 _ServerFn = TypeVar('_ServerFn', bound=Callable[..., AsyncIterator[reviews.WebhookClientConfig]])
 
 
@@ -63,7 +62,7 @@ class WebhookContextManager(metaclass=WebhookContextManagerMeta):
         super().__init__(*args, **kwargs)
         self.__generators: list[AsyncGenerator[reviews.WebhookClientConfig, None]] = []
 
-    async def __aenter__(self: _SelfT) -> _SelfT:
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(self, *_: Any) -> None:

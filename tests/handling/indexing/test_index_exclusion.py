@@ -30,7 +30,7 @@ EVENT_TYPES = EVENT_TYPES_WHEN_EXISTS + EVENT_TYPES_WHEN_GONE
 async def test_successes_are_removed_from_the_indexing_state(
         resource, namespace, settings, registry, memories, indexers, event_type, handlers):
     # Any "future" time works and affects nothing as long as it is the same
-    basetime = datetime.datetime.now(tz=datetime.timezone.utc)
+    basetime = datetime.datetime.now(datetime.UTC)
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     record = ProgressRecord(success=True)
     state = State({HandlerId('unrelated'): HandlerState.from_storage(record, basetime=basetime)}, basetime=basetime)
@@ -57,7 +57,7 @@ async def test_successes_are_removed_from_the_indexing_state(
 async def test_temporary_failures_with_no_delays_are_reindexed(
         resource, namespace, settings, registry, memories, indexers, index, event_type, handlers):
     # Any "future" time works and affects nothing as long as it is the same
-    basetime = datetime.datetime.now(tz=datetime.timezone.utc)
+    basetime = datetime.datetime.now(datetime.UTC)
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     record = ProgressRecord(delayed=None)
     state = State({HandlerId('index_fn'): HandlerState.from_storage(record, basetime=basetime)}, basetime=basetime)
@@ -83,7 +83,7 @@ async def test_temporary_failures_with_no_delays_are_reindexed(
 async def test_temporary_failures_with_expired_delays_are_reindexed(
         resource, namespace, settings, registry, memories, indexers, index, event_type, handlers):
     # Any "future" time works and affects nothing as long as it is the same
-    basetime = datetime.datetime.now(tz=datetime.timezone.utc)
+    basetime = datetime.datetime.now(datetime.UTC)
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     record = ProgressRecord(delayed='2020-12-31T23:59:59.000000Z')
     state = State({HandlerId('index_fn'): HandlerState.from_storage(record, basetime=basetime)}, basetime=basetime)
@@ -108,7 +108,7 @@ async def test_temporary_failures_with_expired_delays_are_reindexed(
 async def test_permanent_failures_are_not_reindexed(
         resource, namespace, settings, registry, memories, indexers, index, event_type, handlers):
     # Any "future" time works and affects nothing as long as it is the same
-    basetime = datetime.datetime.now(tz=datetime.timezone.utc)
+    basetime = datetime.datetime.now(datetime.UTC)
     body = {'metadata': {'namespace': namespace, 'name': 'name1'}}
     record = ProgressRecord(failure=True)
     state = State({HandlerId('index_fn'): HandlerState.from_storage(record, basetime=basetime)}, basetime=basetime)
