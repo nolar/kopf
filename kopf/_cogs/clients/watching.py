@@ -163,17 +163,18 @@ async def continuous_watch(
         operator_pause_waiter: aiotasks.Future,
 ) -> AsyncIterator[Bookmark | bodies.RawEvent]:
 
-    # First, list the resources regularly, and get the list's resource version.
+    # First, list the resources in chunks, and get the list's resource version.
     # Simulate the events with type "None" event - used in detection of causes.
     try:
-        objs, resource_version = await fetching.list_objs(
+        resource_version: str | None = None
+        async for chunk, resource_version in fetching.fetch_objs(
             logger=logger,
             settings=settings,
             resource=resource,
             namespace=namespace,
-        )
-        for obj in objs:
-            yield {'type': None, 'object': obj}
+        ):
+            for obj in chunk:
+                yield {'type': None, 'object': obj}
 
     except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, asyncio.TimeoutError):
         return
