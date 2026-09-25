@@ -319,6 +319,30 @@ before going to the regular watching — the default timeout of Kubernetes.
 A zero is passed through to Kubernetes as is and, as observed,
 also means no chunking, i.e., the whole list is returned, same as ``None``.
 
+``settings.watching.initial_streaming`` (boolean) controls how to simulate
+a stream of pre-existing objects on startup: operator-side or server-side.
+
+If disabled (the default), Kopf fetches the initial list of objects
+via the GET operations, optionally paginated (chunked), and then switches
+to the watch-streaming starting from the version reported by the list.
+
+If enabled, Kopf skips the listing operation entirely, and instead
+uses the server-side initial streaming (API: ``sendInitialEvents=true``).
+See more: https://kubernetes.io/docs/reference/using-api/api-concepts/#streaming-lists
+
+This approach might save memory both server- and operator-side in huge clusters.
+
+A subtle difference: in the explicit listing, Kopf simulates the initial
+events with ``type: None``, while in the server-side simulated streams,
+the events have ``type: ADDED``. Otherwise identical behavior.
+
+.. note::
+    The initial list streaming is available since Kubernetes 1.34,
+    which is fresh as of September 2026 (only a year old),
+    and has the feature state "beta" — hence not a default.
+    Kopf can make this way of initializing the list a default later.
+    New users are advised to enable this mode from the beginning.
+
 .. code-block:: python
 
     import kopf
@@ -328,8 +352,8 @@ also means no chunking, i.e., the whole list is returned, same as ``None``.
     def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.networking.connect_timeout = 10
         settings.networking.request_timeout = 60
-        settings.watching.server_timeout = 10 * 60
         settings.watching.chunk_size = 100
+        settings.watching.initial_streaming = True
 
 
 Proxy and environment trust
