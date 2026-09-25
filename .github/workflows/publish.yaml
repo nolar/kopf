@@ -20,7 +20,7 @@ jobs:
         with:
           github-token: ${{ github.token }}
           enable-cache: true
-          python-version: "3.14"
+          python-version: "3.15"
           activate-environment: true
       - run: uv build
       - uses: pypa/gh-action-pypi-publish@release/v1
