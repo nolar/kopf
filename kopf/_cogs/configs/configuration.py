@@ -248,6 +248,30 @@ class WatchingSettings:
     detecting dead streams and reconnecting while the events are in memory.
     """
 
+    chunk_size: int | None = None
+    """
+    The size of a single chunk for the initial listing of resources.
+
+    Before Kopf starts a watch-stream, it lists the pre-existing resources.
+    For large clusters, that can cause a huge spike in memory usage both
+    in Kopf and in the API server side. To optimize that, Kopf can retrieve
+    the list in chunks of size N instead of everything at once.
+
+    The chunking also applies to the initial listing of CRDs and namespaces.
+
+    The optimal value depends on your cluster configuration:
+    smaller chunks mean less memory usage, but more API requests as a downside;
+    bigger chunks mean fewer API requests, but bigger spikes in memory usage.
+    Split the chunks so that the list is retrieved and processed in <= 5 minutes
+    before going to the regular watching — the default timeout of Kubernetes.
+
+    ``None`` (the default) means retrieving the entire list without chunking.
+    A zero is passed through to Kubernetes as is and, as observed,
+    also means no chunking, i.e., the whole list is returned, same as ``None``.
+
+    See: https://kubernetes.io/docs/reference/using-api/api-concepts/#retrieving-large-results-sets-in-chunks
+    """
+
     label_selectors: arrays.SelectorMapping[str] = dataclasses.field(
         default_factory=arrays.SelectorMapping)
     """
@@ -318,7 +342,6 @@ class WatchingSettings:
     If those operators have sharding set for any resource, they keep running.
     Operators with lower priorities are paused as before.
     """
-
 
 
 @dataclasses.dataclass

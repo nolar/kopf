@@ -10,25 +10,35 @@ from kopf._cogs.structs import references
 from kopf._cogs.structs.references import EVERYTHING
 
 
-async def test_listing_works(
+async def test_fetching_works(
         kmock: Any,
         settings: OperatorSettings,
         logger: typedefs.Logger,
         resource: references.Resource,
         namespace: references.Namespace,
 ) -> None:
-    kmock[resource, kmock.namespace(namespace)] << {'items': [{}, {}]}
-    items, resource_version = await fetch_objs(
+    settings.watching.chunk_size = None
+    kmock[resource, kmock.namespace(namespace)] << {'items': [{}, {}],
+                                                    'metadata': {'resourceVersion': 'v1'}}
+
+    chunks = []
+    versions = []
+    async for chunk, resource_version in fetch_objs(
         logger=logger,
         settings=settings,
         resource=resource,
         namespace=namespace,
-    )
-    assert items == [{}, {}]
+    ):
+        chunks.append(chunk)
+        versions.append(resource_version)
+
+    assert chunks == [[{}, {}]]
+    assert versions == ['v1']
     assert len(kmock['list']) == 1
+    assert kmock['list', 0].params == {}  # no chunking was requested
 
 
-async def test_listing_omits_server_side_selectors_by_default(
+async def test_fetching_omits_server_side_selectors_by_default(
         kmock: Any,
         settings: OperatorSettings,
         logger: typedefs.Logger,
@@ -37,19 +47,20 @@ async def test_listing_omits_server_side_selectors_by_default(
 ) -> None:
     kmock[resource, kmock.namespace(namespace)] << {'items': []}
 
-    await fetch_objs(
+    async for _, _ in fetch_objs(
         logger=logger,
         settings=settings,
         resource=resource,
         namespace=namespace,
-    )
+    ):
+        pass
 
-    assert 'labelSelector' not in kmock[0].url.query
-    assert 'fieldSelector' not in kmock[0].url.query
-    assert 'shardSelector' not in kmock[0].url.query
+    assert 'labelSelector' not in kmock[0].params
+    assert 'fieldSelector' not in kmock[0].params
+    assert 'shardSelector' not in kmock[0].params
 
 
-async def test_listing_passes_server_side_selectors(
+async def test_fetching_passes_server_side_selectors(
         kmock: Any,
         settings: OperatorSettings,
         logger: typedefs.Logger,
@@ -69,21 +80,93 @@ async def test_listing_passes_server_side_selectors(
     settings.watching.shard_selectors[EVERYTHING] = shard_selector2 = 'shardRange(whatever2)'
     kmock[resource, kmock.namespace(namespace)] << {'items': []}
 
-    await fetch_objs(
+    async for _, _ in fetch_objs(
         logger=logger,
         settings=settings,
         resource=resource,
         namespace=namespace,
-    )
+    ):
+        pass
 
     # Alphabetically sorted for predictability.
-    assert kmock[0].url.query['labelSelector'] == f"{label_selector1},{label_selector2}"
-    assert kmock[0].url.query['fieldSelector'] == f"{field_selector1},{field_selector2}"
-    assert kmock[0].url.query['shardSelector'] == shard_selector1  # the 1st matching is used
+    assert kmock[0].params['labelSelector'] == f"{label_selector1},{label_selector2}"
+    assert kmock[0].params['fieldSelector'] == f"{field_selector1},{field_selector2}"
+    assert kmock[0].params['shardSelector'] == shard_selector1  # the 1st matching is used
+
+
+async def test_chunking_continues_with_all_selectors(
+        kmock: Any,
+        settings: OperatorSettings,
+        logger: typedefs.Logger,
+        resource: references.Resource,
+        namespace: references.Namespace,
+) -> None:
+    settings.watching.label_selectors[EVERYTHING] = label_selector1 = 'prefect.io/flow-run-id'
+    settings.watching.field_selectors[EVERYTHING] = field_selector1 = 'status.phase!=Succeeded,status.phase!=Failed'
+    settings.watching.shard_selectors[EVERYTHING] = shard_selector1 = 'shardRange(whatever2)'
+
+    settings.watching.chunk_size = 2
+    kmock[resource, kmock.namespace(namespace), :1] << {'items': [{'spec': 1}, {'spec': 2}],
+                                                        'metadata': {'resourceVersion': 'v1',
+                                                                     'continue': 'token1'}}
+    kmock[resource, kmock.namespace(namespace), :2] << {'items': [{'spec': 3}, {'spec': 4}],
+                                                        'metadata': {'resourceVersion': 'v2',
+                                                                     'continue': ''}}
+    kmock[resource, kmock.namespace(namespace)] << {'items': [{'spec': 'unreachable'}]}
+
+    chunks = []
+    versions = []
+    async for chunk, resource_version in fetch_objs(
+        logger=logger,
+        settings=settings,
+        resource=resource,
+        namespace=namespace,
+    ):
+        chunks.append(chunk)
+        versions.append(resource_version)
+
+    # NB: versions are usually stable in K8s, but we simulate the case with different ones.
+    assert versions == ['v1', 'v2']
+    assert chunks == [
+        [{'spec': 1}, {'spec': 2}],
+        [{'spec': 3}, {'spec': 4}],
+    ]
+
+    expected_selectors = {'labelSelector': label_selector1,
+                          'fieldSelector': field_selector1,
+                          'shardSelector': shard_selector1}
+    assert len(kmock['list']) == 2
+    assert kmock['list', 0].params == {'limit': '2', **expected_selectors}
+    assert kmock['list', 1].params == {'limit': '2', 'continue': 'token1', **expected_selectors}
+
+
+async def test_fetching_populates_the_missing_metadata(
+        kmock: Any,
+        settings: OperatorSettings,
+        logger: typedefs.Logger,
+        resource: references.Resource,
+        namespace: references.Namespace,
+) -> None:
+    kmock[resource, kmock.namespace(namespace)] << {'items': [{'spec': 'x'}],
+                                                    'metadata': {'resourceVersion': 'v1'},
+                                                    'apiVersion': 'example/v1',
+                                                    'kind': 'ExampleList',
+                                                    }
+    chunks = []
+    async for chunk, resource_version in fetch_objs(
+        logger=logger,
+        settings=settings,
+        resource=resource,
+        namespace=namespace,
+    ):
+        chunks.append(chunk)
+    assert chunks == [[{'kind': 'Example', 'apiVersion': 'example/v1', 'spec': 'x'},]]
+    assert len(kmock['list']) == 1
 
 
 # Note: 401 is wrapped into a LoginError and is tested elsewhere.
-@pytest.mark.parametrize('status', [400, 403, 500, 666])
+# 410 comes from the expiration of the chunk continuation token (5 mins by default).
+@pytest.mark.parametrize('status', [400, 403, 410, 500, 666])
 async def test_raises_direct_api_errors(
         kmock: Any,
         settings: OperatorSettings,
@@ -98,10 +181,11 @@ async def test_raises_direct_api_errors(
     kmock[namespaced_resource, kmock.namespace('ns')] << status
 
     with pytest.raises(APIError) as e:
-        await fetch_objs(
+        async for _, _ in fetch_objs(
             logger=logger,
             settings=settings,
             resource=resource,
             namespace=namespace,
-        )
+        ):
+            pass
     assert e.value.status == status
