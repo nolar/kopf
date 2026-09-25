@@ -190,7 +190,7 @@ async def _poster_worker(
             try:
                 timeout = settings.posting.idle_timeout
                 posted_event = await asyncio.wait_for(backlog.get(), timeout=timeout)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Double-check to avoid a race where an event arrived exactly at timeout.
                 # IMPORTANT: no async/await between this break and the finally-block below.
                 if backlog.empty():

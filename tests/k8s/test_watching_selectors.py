@@ -111,13 +111,10 @@ async def test_continuous_watch_uses_same_selectors_for_list_and_watch(
     }
     kmock['watch', resource, kmock.namespace(namespace)] << EOS
 
-    events = []
-    async for event in continuous_watch(
-            settings=settings,
-            resource=resource,
-            namespace=namespace,
-            operator_pause_waiter=asyncio.Future()):
-        events.append(event)
+    events = [event async for event in continuous_watch(settings=settings,
+                                                        resource=resource,
+                                                        namespace=namespace,
+                                                        operator_pause_waiter=asyncio.Future())]
 
     assert events == [Bookmark.LISTED]
     assert kmock[0].params['labelSelector'] == label_selector
