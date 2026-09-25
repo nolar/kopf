@@ -163,18 +163,21 @@ async def continuous_watch(
         operator_pause_waiter: aiotasks.Future,
 ) -> AsyncIterator[Bookmark | bodies.RawEvent]:
 
+    # NB: it must remain None for the server-side initial streaming.
+    resource_version: str | None = None
+
     # First, list the resources in chunks, and get the list's resource version.
     # Simulate the events with type "None" event - used in detection of causes.
     try:
-        resource_version: str | None = None
-        async for chunk, resource_version in fetching.fetch_objs(
-            logger=logger,
-            settings=settings,
-            resource=resource,
-            namespace=namespace,
-        ):
-            for obj in chunk:
-                yield {'type': None, 'object': obj}
+        if not settings.watching.initial_streaming:
+            async for chunk, resource_version in fetching.fetch_objs(
+                logger=logger,
+                settings=settings,
+                resource=resource,
+                namespace=namespace,
+            ):
+                for obj in chunk:
+                    yield {'type': None, 'object': obj}
 
     except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, asyncio.TimeoutError):
         return
@@ -250,6 +253,10 @@ async def watch_objs(
         params['resourceVersion'] = since
     if settings.watching.server_timeout is not None:
         params['timeoutSeconds'] = str(settings.watching.server_timeout)
+    if since is None and settings.watching.initial_streaming:
+        # NB: strictly in initial watch-streams, not in continuations/reconnections.
+        params['sendInitialEvents'] = 'true'
+        params['resourceVersionMatch'] = 'NotOlderThan'
 
     connect_timeout = (
         settings.watching.connect_timeout if settings.watching.connect_timeout is not None else

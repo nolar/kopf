@@ -72,6 +72,8 @@ async def namespace_observer(
     # Notify those waiting for the initial listing (e.g. CLI commands).
     insights.ready_namespaces.set()
 
+    # The watch-stream will duplicate the same namespaces in its initial listing,
+    # but this is fine: the resource x namespace matrix remains intact and unaffected.
     if not settings.scanning.disabled and not clusterwide:
         try:
             await queueing.watcher(

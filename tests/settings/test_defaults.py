@@ -21,6 +21,7 @@ async def test_declared_public_interface_and_promised_defaults():
     assert settings.watching.server_timeout is None
     assert settings.watching.client_timeout is None
     assert settings.watching.chunk_size is None
+    assert settings.watching.initial_streaming == False
     assert settings.queueing.worker_limit is None
     assert settings.queueing.idle_timeout == 5.0
     assert settings.queueing.exit_timeout == 2.0
