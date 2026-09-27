@@ -130,7 +130,6 @@ async def watcher(
         namespace: references.Namespace,
         settings: configuration.OperatorSettings,
         resource: references.Resource,
-        server_side_selector: configuration.WatchListSelector | None = None,
         processor: WatchStreamProcessor,
         operator_paused: aiotoggles.ToggleSet | None = None,  # None for tests & observation
         operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
@@ -179,7 +178,6 @@ async def watcher(
         stream = watching.infinite_watch(
             settings=settings,
             resource=resource, namespace=namespace,
-            server_side_selector=server_side_selector,
             operator_paused=operator_paused,
         )
         async for raw_event in stream:

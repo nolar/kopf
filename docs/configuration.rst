@@ -318,10 +318,19 @@ __ https://github.com/kubernetes/kubernetes/blob/c20e0bc54189aef73a6a1498b4eab28
 Server-side watch selectors
 ===========================
 
-``settings.watching.server_side_selectors`` maps a concrete resource identity
-``(group, version, plural)`` to raw Kubernetes ``labelSelector`` and
-``fieldSelector`` query parameters. Kopf passes these selectors to Kubernetes
+``settings.watching.label_selectors`` and ``settings.watching.field_selectors``
+map resource selectors to raw Kubernetes ``labelSelector`` and ``fieldSelector``
+query parameters. Kopf passes these label-/field-selectors to Kubernetes
 for both the initial LIST request and the following WATCH requests.
+Several selectors can apply, in which case the filters are combined via "and".
+
+This also applies to listing/watching the namespaces and CRDs for orchestration,
+in case such selectors are configured. This can (intentionally) make Kopf
+blind to unwanted namespaces or see only wanted namespaces
+regardless of which namespace globs are used at startup.
+
+The syntax for resource selectors is the same as in the handler decorators,
+see :doc:`resources`.
 
 This setting is explicit and opt-in. Kopf does not infer these query parameters
 from handler filters such as ``labels=``, ``annotations=``, ``field=``,
@@ -335,23 +344,22 @@ their existing behavior.
 
     @kopf.on.startup()
     def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
-        settings.watching.server_side_selectors[("", "v1", "pods")] = (
-            kopf.WatchListSelector(
-                label_selector="prefect.io/flow-run-id",
-                field_selector="status.phase!=Succeeded,status.phase!=Failed",
-            )
-        )
-        settings.watching.server_side_selectors[("batch", "v1", "jobs")] = (
-            kopf.WatchListSelector(label_selector="prefect.io/flow-run-id")
-        )
+        settings.watching.label_selectors['v1/pods'] = "prefect.io/flow-run-id"
+        settings.watching.field_selectors['v1/pods'] = "status.phase!=Succeeded,status.phase!=Failed"
+        settings.watching.label_selectors['batch', 'v1', 'jobs'] = "prefect.io/flow-run-id"
 
 Kubernetes supports ``labelSelector`` for LIST/WATCH requests, and supports
 ``fieldSelector`` only for selected fields on each resource type. Kubernetes
 rejects invalid selectors.
 
+.. seealso::
+
+    * https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
+    * https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
+
 
 Proxy and environment trust
----------------------------
+===========================
 
 ``settings.networking.trust_env`` (boolean) controls whether the HTTP client
 session respects the proxy-related environment variables (``HTTP_PROXY``,

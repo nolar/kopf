@@ -31,39 +31,8 @@ import logging
 import warnings
 from collections.abc import Iterable
 
-from kopf._cogs.configs import diffbase, progress
-from kopf._cogs.structs import references, reviews
-
-ResourceIdentity = tuple[str, str, str]
-
-
-@dataclasses.dataclass(frozen=True)
-class WatchListSelector:
-    """
-    Raw Kubernetes selectors for resource LIST/WATCH requests.
-
-    Kopf passes these selectors to Kubernetes as ``labelSelector`` and
-    ``fieldSelector`` query parameters. Kopf does not infer them from its
-    handler filters.
-    """
-
-    label_selector: str | None = None
-    """
-    A raw Kubernetes ``labelSelector`` query parameter.
-    """
-
-    field_selector: str | None = None
-    """
-    A raw Kubernetes ``fieldSelector`` query parameter.
-    """
-
-    def as_url_params(self) -> dict[str, str]:
-        params: dict[str, str] = {}
-        if self.label_selector is not None:
-            params['labelSelector'] = self.label_selector
-        if self.field_selector is not None:
-            params['fieldSelector'] = self.field_selector
-        return params
+from kopf._cogs.configs import arrays, diffbase, progress
+from kopf._cogs.structs import reviews
 
 
 @dataclasses.dataclass
@@ -240,23 +209,37 @@ class WatchingSettings:
     detecting dead streams and reconnecting while the events are in memory.
     """
 
-    server_side_selectors: dict[ResourceIdentity, WatchListSelector] = dataclasses.field(
-        default_factory=dict)
+    label_selectors: arrays.SelectorMapping[str] = dataclasses.field(
+        default_factory=arrays.SelectorMapping)
     """
-    Raw Kubernetes selectors for resource LIST/WATCH requests.
+    A set of label selectors for server-side filtering.
 
-    The mapping uses resource identity keys: ``(group, version, plural)``.
-    For example, core v1 Pods use ``("", "v1", "pods")``.
+    The selectors are applied to all watch-streams of matching resources
+    regardless of what other client-side filters exist on the handlers.
+
+    Several selectors can apply to a single resource, e.g., a group selector,
+    a version selector, plus a name-specific or category-specific selector.
+    In that case, all applicable selectors join by the boolean "and".
+
+    The exact syntax is Kubernetes-specific and is passed through to the API.
+    See more at: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
     """
 
-    def resolve_server_side_selector(
-            self,
-            resource: references.Resource,
-    ) -> WatchListSelector | None:
-        """
-        Resolve the configured server-side selector for a concrete resource.
-        """
-        return self.server_side_selectors.get((resource.group, resource.version, resource.plural))
+    field_selectors: arrays.SelectorMapping[str] = dataclasses.field(
+        default_factory=arrays.SelectorMapping)
+    """
+    A set of field selectors for server-side filtering.
+
+    The selectors are applied to all watch-streams of matching resources
+    regardless of what other client-side filters exist on the handlers.
+
+    Several selectors can apply to a single resource, e.g., a group selector,
+    a version selector, plus a name-specific or category-specific selector.
+    In that case, all applicable selectors join by the boolean "and".
+
+    The exact syntax is Kubernetes-specific and is passed through to the API.
+    See more at: https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
+    """
 
 
 @dataclasses.dataclass

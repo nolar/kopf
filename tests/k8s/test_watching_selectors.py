@@ -2,8 +2,11 @@ import asyncio
 from typing import Any
 
 from kopf._cogs.clients.watching import Bookmark, continuous_watch, watch_objs
-from kopf._cogs.configs.configuration import OperatorSettings, WatchListSelector
+from kopf._cogs.configs.configuration import OperatorSettings
 from kopf._cogs.structs import references
+from kopf._cogs.structs.references import EVERYTHING
+
+EOS = ({'type': 'ERROR', 'object': {'code': 410}},)
 
 
 async def test_watch_omits_server_side_selectors_by_default(
@@ -12,7 +15,7 @@ async def test_watch_omits_server_side_selectors_by_default(
         resource: references.Resource,
         namespace: references.Namespace,
 ) -> None:
-    kmock['watch', resource, kmock.namespace(namespace)] << ()
+    kmock['watch', resource, kmock.namespace(namespace)] << EOS
 
     async for _ in watch_objs(
             settings=settings,
@@ -36,19 +39,15 @@ async def test_watch_passes_server_side_selectors_with_watch_params(
         namespace: references.Namespace,
 ) -> None:
     settings.watching.server_timeout = 42
-    label_selector = 'prefect.io/flow-run-id'
-    field_selector = 'status.phase!=Succeeded,status.phase!=Failed'
-    kmock['watch', resource, kmock.namespace(namespace)] << ()
+    label_selector = settings.watching.label_selectors[EVERYTHING] = 'prefect.io/flow-run-id'
+    field_selector = settings.watching.field_selectors[EVERYTHING] = 'status.phase!=Succeeded,status.phase!=Failed'
+    kmock['watch', resource, kmock.namespace(namespace)] << EOS
 
     async for _ in watch_objs(
             settings=settings,
             resource=resource,
             namespace=namespace,
             since='123',
-            server_side_selector=WatchListSelector(
-                label_selector=label_selector,
-                field_selector=field_selector,
-            ),
             operator_pause_waiter=asyncio.Future()):
         pass
 
@@ -66,26 +65,19 @@ async def test_continuous_watch_uses_same_selectors_for_list_and_watch(
         resource: references.Resource,
         namespace: references.Namespace,
 ) -> None:
-    label_selector = 'prefect.io/flow-run-id'
-    field_selector = 'status.phase!=Succeeded,status.phase!=Failed'
-    selector = WatchListSelector(
-        label_selector=label_selector,
-        field_selector=field_selector,
-    )
+    label_selector = settings.watching.label_selectors[EVERYTHING] = 'prefect.io/flow-run-id'
+    field_selector = settings.watching.field_selectors[EVERYTHING] = 'status.phase!=Succeeded,status.phase!=Failed'
     kmock['list', resource, kmock.namespace(namespace)] << {
         'metadata': {'resourceVersion': '100'},
         'items': [],
     }
-    kmock['watch', resource, kmock.namespace(namespace)] << (
-        {'type': 'ERROR', 'object': {'code': 410}},
-    )
+    kmock['watch', resource, kmock.namespace(namespace)] << EOS
 
     events = []
     async for event in continuous_watch(
             settings=settings,
             resource=resource,
             namespace=namespace,
-            server_side_selector=selector,
             operator_pause_waiter=asyncio.Future()):
         events.append(event)
 

@@ -4,9 +4,10 @@ import pytest
 
 from kopf._cogs.clients.errors import APIError
 from kopf._cogs.clients.fetching import list_objs
-from kopf._cogs.configs.configuration import OperatorSettings, WatchListSelector
+from kopf._cogs.configs.configuration import OperatorSettings
 from kopf._cogs.helpers import typedefs
 from kopf._cogs.structs import references
+from kopf._cogs.structs.references import EVERYTHING
 
 
 async def test_listing_works(
@@ -54,8 +55,8 @@ async def test_listing_passes_server_side_selectors(
         resource: references.Resource,
         namespace: references.Namespace,
 ) -> None:
-    label_selector = 'prefect.io/flow-run-id'
-    field_selector = 'status.phase!=Succeeded,status.phase!=Failed'
+    label_selector = settings.watching.label_selectors[EVERYTHING] = 'prefect.io/flow-run-id'
+    field_selector = settings.watching.field_selectors[EVERYTHING] = 'status.phase!=Succeeded,status.phase!=Failed'
     kmock[resource, kmock.namespace(namespace)] << {'items': []}
 
     await list_objs(
@@ -63,10 +64,6 @@ async def test_listing_passes_server_side_selectors(
         settings=settings,
         resource=resource,
         namespace=namespace,
-        server_side_selector=WatchListSelector(
-            label_selector=label_selector,
-            field_selector=field_selector,
-        ),
     )
 
     assert kmock[0].url.query['labelSelector'] == label_selector

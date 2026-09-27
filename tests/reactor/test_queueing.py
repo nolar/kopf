@@ -22,8 +22,9 @@ from typing import Any
 
 import pytest
 
-from kopf._cogs.configs.configuration import WatchListSelector
-from kopf._cogs.structs import references
+import kopf
+from kopf._cogs.configs.configuration import OperatorSettings
+from kopf._cogs.structs.references import EVERYTHING, Namespace, Resource
 from kopf._core.reactor.queueing import EOS, ObjectUid, Stream, watcher, worker
 
 
@@ -133,18 +134,14 @@ async def test_bookmarks_are_ignored(worker_mock, looptime, resource, processor,
 
 @pytest.mark.usefixtures('watcher_limited')
 async def test_server_side_selectors_are_used_by_watcher(
-        settings: Any,
+        settings: OperatorSettings,
         kmock: Any,
-        resource: references.Resource,
-        namespace: references.Namespace,
+        resource: Resource,
+        namespace: Namespace,
         processor: Any,
 ) -> None:
-    label_selector = 'prefect.io/flow-run-id'
-    field_selector = 'status.phase!=Succeeded,status.phase!=Failed'
-    selector = WatchListSelector(
-        label_selector=label_selector,
-        field_selector=field_selector,
-    )
+    label_selector = settings.watching.label_selectors[EVERYTHING] = 'prefect.io/flow-run-id'
+    field_selector = settings.watching.field_selectors[EVERYTHING] = 'status.phase!=Succeeded,status.phase!=Failed'
     kmock['list', resource, kmock.namespace(namespace)] << {
         'metadata': {'resourceVersion': '100'},
         'items': [],
@@ -155,7 +152,6 @@ async def test_server_side_selectors_are_used_by_watcher(
         resource=resource,
         settings=settings,
         processor=processor,
-        server_side_selector=selector,
     )
 
     assert kmock[0].url.query['labelSelector'] == label_selector
