@@ -227,7 +227,7 @@ async def test_ignored_for_lower_priority_peer_when_already_off(
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
-async def test_toggled_on_for_same_priority_peer_when_initially_off(
+async def test_toggled_on_for_same_priority_peer_when_initially_off_without_sharding(
         k8s_mocked, assert_logs, settings, looptime,
         peering_resource, peering_namespace):
 
@@ -245,6 +245,7 @@ async def test_toggled_on_for_same_priority_peer_when_initially_off(
         })
     settings.peering.name = 'name'
     settings.peering.priority = 100
+    settings.watching.shard_selectors.clear()
 
     conflicts_found = aiotoggles.Toggle(False)
     stream_pressure = asyncio.Event()
@@ -276,7 +277,58 @@ async def test_toggled_on_for_same_priority_peer_when_initially_off(
 
 
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
-async def test_ignored_for_same_priority_peer_when_already_on(
+async def test_ignored_for_same_priority_peer_when_initially_off_with_sharding(
+        k8s_mocked, assert_logs, settings, looptime,
+        peering_resource, peering_namespace, caplog):
+
+    event = bodies.RawEvent(
+        type='ADDED',  # irrelevant
+        object={
+            'metadata': {'name': 'name', 'namespace': peering_namespace},  # for matching
+            'status': {
+                'higher-prio': {
+                    'priority': 100,
+                    'lifetime': 10,
+                    'lastseen': '2020-12-31T23:59:59'
+                },
+            },
+        })
+    settings.peering.name = 'name'
+    settings.peering.priority = 100
+    settings.watching.shard_selectors.clear()
+    settings.watching.shard_selectors['whatever'] = 'just-the-existance-matters'
+
+    conflicts_found = aiotoggles.Toggle(False)
+    stream_pressure = asyncio.Event()
+    loop = asyncio.get_running_loop()
+    loop.call_later(1.23, stream_pressure.set)
+
+    assert conflicts_found.is_off()
+    await process_peering_event(
+        raw_event=event,
+        conflicts_found=conflicts_found,
+        stream_pressure=stream_pressure,
+        autoclean=False,
+        namespace=peering_namespace,
+        resource=peering_resource,
+        identity='id',
+        settings=settings,
+    )
+    assert conflicts_found.is_off()
+    assert looptime == 1.23
+    assert not k8s_mocked.patch.called
+    assert_logs([
+    ], prohibited=[
+        "Possibly conflicting operators",
+        "Pausing all operators, including self",
+        "Pausing operations in favour of",
+        "Resuming operations after the pause",
+        "patching",
+    ])
+
+
+@freezegun.freeze_time('2020-12-31T23:59:59.123456')
+async def test_ignored_for_same_priority_peer_when_already_on_without_sharding(
         k8s_mocked, assert_logs, settings, looptime,
         peering_resource, peering_namespace):
 
@@ -294,6 +346,7 @@ async def test_ignored_for_same_priority_peer_when_already_on(
         })
     settings.peering.name = 'name'
     settings.peering.priority = 100
+    settings.watching.shard_selectors.clear()
 
     conflicts_found = aiotoggles.Toggle(True)
     stream_pressure = asyncio.Event()
@@ -320,6 +373,57 @@ async def test_ignored_for_same_priority_peer_when_already_on(
         "Pausing all operators, including self",
         "Pausing operations in favour of",
         "Resuming operations after the pause",
+        "patching",
+    ])
+
+
+@freezegun.freeze_time('2020-12-31T23:59:59.123456')
+async def test_resumes_for_same_priority_peer_when_already_on_with_sharding(
+        k8s_mocked, assert_logs, settings, looptime,
+        peering_resource, peering_namespace):
+
+    event = bodies.RawEvent(
+        type='ADDED',  # irrelevant
+        object={
+            'metadata': {'name': 'name', 'namespace': peering_namespace},  # for matching
+            'status': {
+                'higher-prio': {
+                    'priority': 100,
+                    'lifetime': 10,
+                    'lastseen': '2020-12-31T23:59:59'
+                },
+            },
+        })
+    settings.peering.name = 'name'
+    settings.peering.priority = 100
+    settings.watching.shard_selectors.clear()
+    settings.watching.shard_selectors['whatever'] = 'just-the-existance-matters'
+
+    conflicts_found = aiotoggles.Toggle(True)
+    stream_pressure = asyncio.Event()
+    loop = asyncio.get_running_loop()
+    loop.call_later(1.23, stream_pressure.set)
+
+    assert conflicts_found.is_on()
+    await process_peering_event(
+        raw_event=event,
+        conflicts_found=conflicts_found,
+        stream_pressure=stream_pressure,
+        autoclean=False,
+        namespace=peering_namespace,
+        resource=peering_resource,
+        identity='id',
+        settings=settings,
+    )
+    assert conflicts_found.is_off()
+    assert looptime == 1.23
+    assert not k8s_mocked.patch.called
+    assert_logs([
+        "Resuming operations after the pause",
+    ], prohibited=[
+        "Possibly conflicting operators",
+        "Pausing all operators, including self",
+        "Pausing operations in favour of",
         "patching",
     ])
 

@@ -46,6 +46,7 @@ async def test_listing_omits_server_side_selectors_by_default(
 
     assert 'labelSelector' not in kmock[0].url.query
     assert 'fieldSelector' not in kmock[0].url.query
+    assert 'shardSelector' not in kmock[0].url.query
 
 
 async def test_listing_passes_server_side_selectors(
@@ -59,10 +60,13 @@ async def test_listing_passes_server_side_selectors(
     # The exact picking logic is tested elsewhere; here, just the final result.
     settings.watching.label_selectors['unrelated'] = 'kopf.dev/mustbeabsent'
     settings.watching.field_selectors['unrelated'] = 'mustbeabsent=value'
+    settings.watching.shard_selectors['unrelated'] = 'shardRange(must-be-absent)'
     settings.watching.label_selectors[resource.plural] = label_selector1 = 'kopf.dev/label=value'
     settings.watching.field_selectors[resource.plural] = field_selector1 = 'spec.field=value'
+    settings.watching.shard_selectors[resource.plural] = shard_selector1 = 'shardRange(whatever1)'
     settings.watching.label_selectors[EVERYTHING] = label_selector2 = 'prefect.io/flow-run-id'
     settings.watching.field_selectors[EVERYTHING] = field_selector2 = 'status.phase!=Succeeded,status.phase!=Failed'
+    settings.watching.shard_selectors[EVERYTHING] = shard_selector2 = 'shardRange(whatever2)'
     kmock[resource, kmock.namespace(namespace)] << {'items': []}
 
     await list_objs(
@@ -75,6 +79,7 @@ async def test_listing_passes_server_side_selectors(
     # Alphabetically sorted for predictability.
     assert kmock[0].url.query['labelSelector'] == f"{label_selector1},{label_selector2}"
     assert kmock[0].url.query['fieldSelector'] == f"{field_selector1},{field_selector2}"
+    assert kmock[0].url.query['shardSelector'] == shard_selector1  # the 1st matching is used
 
 
 # Note: 401 is wrapped into a LoginError and is tested elsewhere.

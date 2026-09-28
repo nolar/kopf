@@ -139,7 +139,7 @@ async def process_peering_event(
             logger.info(f"Pausing operations in favour of {prio_peers}.")
             await conflicts_found.turn_to(True)
 
-    elif same_peers:
+    elif same_peers and not settings.watching.shard_selectors:
         logger.warning(f"Possibly conflicting operators with the same priority: {same_peers}.")
         if conflicts_found.is_off():
             logger.warning(f"Pausing all operators, including self: {peers}")

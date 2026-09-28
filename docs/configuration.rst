@@ -358,6 +358,39 @@ rejects invalid selectors.
     * https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
 
 
+Server-side sharding
+====================
+
+Kopf supports the server-side sharding available since Kubernetes 1.36 (Apr'2026).
+Requires the alpha feature gate ``ShardedListAndWatch`` enabled.
+Otherwise (older version or no feature gate), the server ignores the filter.
+
+Sample values for the 50/50 split by uid:
+``"shardRange(object.metadata.uid, '0x0000000000000000', '0x8000000000000000')"`` or
+``"shardRange(object.metadata.uid, '0x8000000000000000', '0x10000000000000000')"``.
+
+Useful only in the context of having a swarm of operators working
+on the same cluster. It is the responsibility of an operator developer or
+an infra engineer to ensure that all the space of hashes is fully covered,
+no gaps were left.
+
+The filters from ``settings.watching.shard_selectors`` are passed through
+to the API unmodified and uninterpreted.
+If several selectors apply, the first found is used
+(with Python's ordered dicts, that means the first defined one).
+
+:doc:`Peering <peering>`, if enabled and configured, usually pauses
+the conflicting operators working at the same time with the same priority.
+If those operators have sharding set for any resource, they keep running.
+Operators with lower priorities are paused as before.
+
+See :doc:`peering` for examples of multi-instance operators splitting
+the workload across them using these shards.
+
+.. seealso::
+    * https://kubernetes.io/docs/reference/using-api/api-concepts/#sharded-list-and-watch
+
+
 Proxy and environment trust
 ===========================
 
