@@ -39,8 +39,15 @@ async def test_watch_passes_server_side_selectors_with_watch_params(
         namespace: references.Namespace,
 ) -> None:
     settings.watching.server_timeout = 42
-    label_selector = settings.watching.label_selectors[EVERYTHING] = 'prefect.io/flow-run-id'
-    field_selector = settings.watching.field_selectors[EVERYTHING] = 'status.phase!=Succeeded,status.phase!=Failed'
+
+    # Also check how several selectors behave (ignored or joined or picked).
+    # The exact picking logic is tested elsewhere; here, just the final result.
+    settings.watching.label_selectors['unrelated'] = 'kopf.dev/mustbeabsent'
+    settings.watching.field_selectors['unrelated'] = 'mustbeabsent=value'
+    settings.watching.label_selectors[resource.plural] = label_selector1 = 'kopf.dev/label=value'
+    settings.watching.field_selectors[resource.plural] = field_selector1 = 'spec.field=value'
+    settings.watching.label_selectors[EVERYTHING] = label_selector2 = 'prefect.io/flow-run-id'
+    settings.watching.field_selectors[EVERYTHING] = field_selector2 = 'status.phase!=Succeeded,status.phase!=Failed'
     kmock['watch', resource, kmock.namespace(namespace)] << EOS
 
     async for _ in watch_objs(
@@ -51,12 +58,13 @@ async def test_watch_passes_server_side_selectors_with_watch_params(
             operator_pause_waiter=asyncio.Future()):
         pass
 
+    # Alphabetically sorted for predictability.
     assert kmock[0].url.query['watch'] == 'true'
     assert kmock[0].url.query['allowWatchBookmarks'] == 'true'
     assert kmock[0].url.query['resourceVersion'] == '123'
     assert kmock[0].url.query['timeoutSeconds'] == '42'
-    assert kmock[0].url.query['labelSelector'] == label_selector
-    assert kmock[0].url.query['fieldSelector'] == field_selector
+    assert kmock[0].url.query['labelSelector'] == f"{label_selector1},{label_selector2}"
+    assert kmock[0].url.query['fieldSelector'] == f"{field_selector1},{field_selector2}"
 
 
 async def test_continuous_watch_uses_same_selectors_for_list_and_watch(
