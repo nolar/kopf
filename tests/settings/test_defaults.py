@@ -7,7 +7,13 @@ import kopf
 
 async def test_declared_public_interface_and_promised_defaults():
     settings = kopf.OperatorSettings()
+    assert settings.posting.enabled == True
+    assert settings.posting.loggers == False
     assert settings.posting.level == logging.INFO
+    assert settings.posting.default_backoffs == (1, 1, 2, 3, 5, 8, 13, 21)
+    assert settings.posting.logging_backoffs == (1, 1, 2, 3, 5)
+    assert settings.posting.worker_limit is None
+    assert settings.posting.idle_timeout == 1.0
     assert settings.peering.name == "default"
     assert settings.peering.stealth == False
     assert settings.peering.priority == 0
@@ -64,9 +70,3 @@ async def test_deprecated_batch_window_is_still_persisted():
         settings.queueing.batch_window = 123
     with pytest.warns(DeprecationWarning, match=r"Time-based event batching was removed."):
         assert settings.queueing.batch_window == 123  # persisted as set above
-
-
-def test_posting_backoffs_have_defaults():
-    settings = kopf.OperatorSettings()
-    assert settings.posting.default_backoffs == (1, 1, 2, 3, 5, 8, 13, 21)
-    assert settings.posting.logging_backoffs == (1, 1, 2, 3, 5)

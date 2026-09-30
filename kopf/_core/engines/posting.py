@@ -47,10 +47,6 @@ event_queue_var: ContextVar[K8sEventQueue] = ContextVar('event_queue_var')
 # by user-side handlers (no pass-through `settings` arg).
 settings_var: ContextVar[configuration.OperatorSettings] = ContextVar('settings_var')
 
-# How long a per-object poster worker waits for the next event before exiting,
-# to avoid leaking queues/tasks for short-lived objects. Mirrors the queueing idle timeout.
-WORKER_IDLE_TIMEOUT: float = 1.0
-
 
 class K8sEvent(NamedTuple):
     """
@@ -192,7 +188,8 @@ async def _poster_worker(
     try:
         while True:
             try:
-                posted_event = await asyncio.wait_for(backlog.get(), timeout=WORKER_IDLE_TIMEOUT)
+                timeout = settings.posting.idle_timeout
+                posted_event = await asyncio.wait_for(backlog.get(), timeout=timeout)
             except asyncio.TimeoutError:
                 # Double-check to avoid a race where an event arrived exactly at timeout.
                 # IMPORTANT: no async/await between this break and the finally-block below.
@@ -234,7 +231,7 @@ async def poster(
     when their object has been idle for a while, and are re-spawned on demand.
     """
     resource = await backbone.wait_for(references.EVENTS)
-    scheduler = aiotasks.Scheduler()
+    scheduler = aiotasks.Scheduler(limit=settings.posting.worker_limit)
     subqueues: dict[Hashable, K8sEventQueue] = {}
     try:
         while True:

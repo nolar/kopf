@@ -106,6 +106,27 @@ class PostingSettings:
     Backoffs (seconds) for retrying failed event posts generated implicitly
     from logger messages (e.g. ``logger.info(...)`` in handlers). Shorter than
     :attr:`default_backoffs` because logging-originated events are high-volume.
+
+    Mind that implicit log-events are disabled by default to prevent cluster
+    overloading under load. Set ``settings.posting.loggers=True`` to enable.
+    """
+
+    worker_limit: int | None = None
+    """
+    How many event-posting workers can run simultaneously.
+    If ``None``, there is no limit to the number of workers (as many as needed).
+
+    Settings this to a value lower than ``settings.queueing.worker_limit``
+    might lead to blocking the K8s-event posting for some objects
+    until other objects' event are posted (and retried as needed),
+    but will not block the processing of the object-related stream-events.
+    """
+
+    idle_timeout: float = 1.0
+    """
+    How soon an idle K8s-event-posting worker exits if no new events are posted.
+
+    This settings prevents resource leakage for dormant or deleted/gone objects.
     """
 
     reporting_component: str = 'kopf'

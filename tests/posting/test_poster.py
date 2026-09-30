@@ -5,8 +5,7 @@ import pytest
 
 from kopf import event, exception, info, warn
 from kopf._cogs.structs.references import Backbone, Resource
-from kopf._core.engines.posting import WORKER_IDLE_TIMEOUT, K8sEvent, \
-                                       event_queue_loop_var, event_queue_var, poster
+from kopf._core.engines.posting import K8sEvent, event_queue_loop_var, event_queue_var, poster
 
 OBJ1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
         'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1'}}
@@ -40,7 +39,7 @@ async def test_poster_posts_all_events(mocker, settings):
         poster(event_queue=event_queue, backbone=backbone, settings=settings))
 
     # Virtual time: let the router + per-object workers drain the queue and post.
-    await asyncio.sleep(WORKER_IDLE_TIMEOUT + 1)
+    await asyncio.sleep(settings.posting.idle_timeout + 1)
     poster_task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await poster_task
@@ -64,7 +63,7 @@ async def test_same_object_events_are_ordered(mocker, settings):
 
     poster_task = asyncio.create_task(
         poster(event_queue=event_queue, backbone=backbone, settings=settings))
-    await asyncio.sleep(WORKER_IDLE_TIMEOUT + 1)
+    await asyncio.sleep(settings.posting.idle_timeout + 1)
     poster_task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await poster_task
@@ -118,10 +117,10 @@ async def test_idle_worker_terminates(mocker, settings):
         poster(event_queue=event_queue, backbone=backbone, settings=settings))
 
     # After the idle timeout, the per-object worker should have exited (queue drained).
-    await asyncio.sleep(WORKER_IDLE_TIMEOUT + 1)
+    await asyncio.sleep(settings.posting.idle_timeout + 1)
     # A second event for the same object must still be posted (worker re-spawned).
     event_queue.put_nowait(K8sEvent(type='t', reason='r', message='m2', ref=REF1))
-    await asyncio.sleep(WORKER_IDLE_TIMEOUT + 1)
+    await asyncio.sleep(settings.posting.idle_timeout + 1)
     poster_task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await poster_task

@@ -4,7 +4,7 @@ import itertools
 import json
 import ssl
 import urllib.parse
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterable
 from typing import Any
 
 import aiohttp
@@ -50,7 +50,7 @@ async def request(
         payload: object | None = None,
         headers: dict[str, str] | None = None,
         timeout: aiohttp.ClientTimeout | None = None,
-        backoffs: float | collections.abc.Iterable[float] | None = None,
+        backoffs: float | Iterable[float] | None = None,
         context: auth.APIContext | None = None,  # injected by the decorator
         logger: typedefs.Logger,
 ) -> aiohttp.ClientResponse:
@@ -161,7 +161,7 @@ async def post(
         payload: object | None = None,
         headers: dict[str, str] | None = None,
         timeout: aiohttp.ClientTimeout | None = None,
-        backoffs: float | collections.abc.Iterable[float] | None = None,
+        backoffs: float | Iterable[float] | None = None,
         logger: typedefs.Logger,
 ) -> Any:
     response = await request(

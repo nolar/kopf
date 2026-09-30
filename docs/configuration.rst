@@ -183,6 +183,18 @@ of retries. For event posts, these settings replace
         # For events generated implicitly from logger messages:
         settings.posting.logging_backoffs = (1, 1, 2, 3, 5)
 
+``settings.posting.worker_limit`` (default: ``None``, meaning as many as needed)
+and ``settings.posting.idle_timeout`` (default: 1 second) control how many
+event-posting workers can be spawned at the same time, and how soon they
+exit if no new events are posted for each individual object.
+
+Settings this to a value lower than ``settings.queueing.worker_limit``
+might lead to blocking the K8s-event posting for some objects
+until other objects' events are posted (and retried as needed),
+but will not block the regular processing of the object-related stream-events.
+All in all, even unlimited ``settings.posting.worker_limit``
+is naturally capped by ``settings.queueing.worker_limit``.
+
 
 .. _configure-sync-handlers:
 
