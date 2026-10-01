@@ -22,7 +22,6 @@ from typing import Any
 
 import pytest
 
-import kopf
 from kopf._cogs.configs.configuration import OperatorSettings
 from kopf._cogs.structs.references import EVERYTHING, Namespace, Resource
 from kopf._core.reactor.queueing import EOS, ObjectUid, Stream, watcher, worker
@@ -142,6 +141,7 @@ async def test_server_side_selectors_are_used_by_watcher(
 ) -> None:
     label_selector = settings.watching.label_selectors[EVERYTHING] = 'prefect.io/flow-run-id'
     field_selector = settings.watching.field_selectors[EVERYTHING] = 'status.phase!=Succeeded,status.phase!=Failed'
+    shard_selector = settings.watching.shard_selectors[EVERYTHING] = 'shardRange(whatever)'
     kmock['list', resource, kmock.namespace(namespace)] << {
         'metadata': {'resourceVersion': '100'},
         'items': [],
@@ -156,8 +156,10 @@ async def test_server_side_selectors_are_used_by_watcher(
 
     assert kmock[0].url.query['labelSelector'] == label_selector
     assert kmock[0].url.query['fieldSelector'] == field_selector
+    assert kmock[0].url.query['shardSelector'] == shard_selector
     assert kmock[1].url.query['labelSelector'] == label_selector
     assert kmock[1].url.query['fieldSelector'] == field_selector
+    assert kmock[0].url.query['shardSelector'] == shard_selector
     assert kmock[1].url.query['resourceVersion'] == '100'
 
 

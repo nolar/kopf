@@ -241,6 +241,46 @@ class WatchingSettings:
     See more at: https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
     """
 
+    shard_selectors: arrays.SelectorMapping[str] = dataclasses.field(
+        default_factory=arrays.SelectorMapping)
+    """
+    Shard selectors for server-side filtering.
+
+    Sample values for the 50/50 split by uid:
+    ``"shardRange(object.metadata.uid, '0x0000000000000000', '0x8000000000000000')"`` or
+    ``"shardRange(object.metadata.uid, '0x8000000000000000', '0x10000000000000000')"``.
+    See more at: https://kubernetes.io/docs/reference/using-api/api-concepts/#sharded-list-and-watch
+
+    Useful only in the context of having a swarm of operators working
+    on the same cluster. It is the responsibility of an operator developer or
+    an infra engineer to ensure that all the space of hashes is fully covered,
+    no gaps were left.
+
+    Available only as an alpha-feature since Kubernetes 1.36 (Aug'2026).
+    On earlier versions or if the feature gate is disabled (the default),
+    the filter is ignored by the server side.
+
+    If several selectors apply, the first found is used
+    (with Python's ordered dicts, that means the first defined one).
+
+    # TODO: decide how do we do with the meta-resources:
+
+    Meta-resources, i.e., those defining the operator's setup,
+    such as CRDs and namespaces, are never sharded.
+
+    Meta-resources, i.e., those defining the operator's setup,
+    such as CRDs and namespaces, are sharded the same way as other resources
+    if their sharding selectors are configured.
+    This allows making the operator blind to and/or focused on specific sets
+    of namespaces regardless of labels or name-glob patterns.
+
+    :doc:`Peering <peering>`, if enabled and configured, usually pauses
+    the conflicting operators working at the same time with the same priority.
+    If those operators have sharding set for any resource, they keep running.
+    Operators with lower priorities are paused as before.
+    """
+
+
 
 @dataclasses.dataclass
 class QueueingSettings:

@@ -30,12 +30,15 @@ async def list_objs(
     # NB2: it is mirrored by the same logic & query filters in the watch-streaming operation.
     label_selector = ','.join(sorted(set(settings.watching.label_selectors.collect(resource))))
     field_selector = ','.join(sorted(set(settings.watching.field_selectors.collect(resource))))
+    shard_selector, *_ = settings.watching.shard_selectors.collect(resource) or ['']
 
     params: dict[str, str] = {}
     if label_selector:
         params['labelSelector'] = label_selector
     if field_selector:
         params['fieldSelector'] = field_selector
+    if shard_selector:
+        params['shardSelector'] = shard_selector
 
     rsp = await api.get(
         url=resource.get_url(namespace=namespace, params=params),

@@ -247,6 +247,7 @@ async def watch_objs(
     # NB2: it is mirrored by the same logic & query filters in the listing operation.
     label_selector = ','.join(sorted(set(settings.watching.label_selectors.collect(resource))))
     field_selector = ','.join(sorted(set(settings.watching.field_selectors.collect(resource))))
+    shard_selector, *_ = settings.watching.shard_selectors.collect(resource) or ['']
 
     params: dict[str, str] = {}
     params['watch'] = 'true'
@@ -255,6 +256,8 @@ async def watch_objs(
         params['labelSelector'] = label_selector
     if field_selector:
         params['fieldSelector'] = field_selector
+    if shard_selector:
+        params['shardSelector'] = shard_selector
     if since is not None:
         params['resourceVersion'] = since
     if settings.watching.server_timeout is not None:

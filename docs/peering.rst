@@ -5,6 +5,8 @@ Peering
 All running operators communicate with each other via peering objects
 (an additional kind of custom resources), so they know about each other.
 
+This allows several multi-instance setups for redundancy or workload management.
+
 
 Priorities
 ==========
@@ -165,6 +167,9 @@ Otherwise, Kopf will run the operator in the standalone mode.
 Multi-pod operators
 ===================
 
+Fallback operators
+------------------
+
 Usually, one and only one operator instance should be deployed per resource type.
 If that operator's pod dies, handling of resources of that type
 will stop until the operator's pod is restarted (if it is restarted at all).
@@ -201,6 +206,110 @@ With high probability, 2–3 pods will get unique priorities.
 
 You can also use the pod's IP address in its numeric form as the priority,
 or any other source of integers.
+
+
+Sharded processing
+------------------
+
+Kubernetes >= 1.36 (Apr'2026) provides an alpha-feature to split
+the list/watch requests into shards. This requires the feature gate
+``ShardedListAndWatch`` enabled (disabled by default).
+
+Kopf directly supports shard selectors the same as it supports
+field- and label-selectors: it passes the selector through directly
+to the listing and watching queries (unmodified, uninterpreted).
+
+Additionally, when there are *any* shards configured, several operator
+instances with the same priority do not pause their execution as normally,
+but continue working.
+
+With this, multi-instance operators can split the workload between them.
+
+For example, assume that we have the number of shards in the env var ``SHARDS``
+and the zero-based shard index of the current operator instance in ``SHARD``.
+We can configure it this way to shard the objects by uid:
+
+.. code-block:: python
+
+    from typing import Any
+    import os
+    import kopf
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
+        settings.peering.priority = 123
+        settings.peering.mandatory = True
+        shard_cnt = int(os.environ.get('SHARDS', 1))
+        shard_idx = int(os.environ.get('SHARD', 0))
+        if shard_cnt > 1:
+            start = 0x10000000000000000 // shard_cnt * shard_idx
+            end = 0x10000000000000000 // shard_cnt * (shard_idx + 1)
+            start_str = f"'0x{start:0{16}x}'"  # ensure zeroes!
+            end_str = f"'0x{end:0{16}x}'"  # ensure zeroes!
+            range_str = f"shardRange(object.metadata.uid,{start_str},{end_str})"
+            settings.watching.shard_selectors['pods'] = range_str
+
+    @kopf.on.event('pods')
+    def event(namespace: str, name: str, **_: Any) -> None:
+        print(f'Seeing pod {namespace}/{name}')
+
+.. note::
+
+    The magic value ``0x10000000000000000`` (2^64) is the size
+    of the hash space of the ``shardRange()`` function in Kubernetes.
+    Mind that the values must be zero-padded in the API request.
+
+Then we launch a stateful set with 4 instances for this example:
+
+.. code-block:: yaml
+
+    apiVersion: apps/v1
+    kind: StatefulSet
+    metadata:
+      name: my-operator
+    spec:
+      serviceName: worker
+      replicas: 4
+      selector:
+        matchLabels:
+          app: my-operator
+      template:
+        metadata:
+          labels:
+            app: my-operator
+        spec:
+          containers:
+            - name: my-operator
+              image: my-registry/my-operator:latest
+              env:
+                - name: SHARD
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.labels['apps.kubernetes.io/pod-index']
+                - name: SHARDS
+                  value: "4"
+
+As a result, we have 4 pods serving the following ranges of pod uids:
+
+* ``shardRange(object.metadata.uid, '0x0000000000000000', '0x4000000000000000')``
+* ``shardRange(object.metadata.uid, '0x4000000000000000', '0x8000000000000000')``
+* ``shardRange(object.metadata.uid, '0x8000000000000000', '0xc000000000000000')``
+* ``shardRange(object.metadata.uid, '0xc000000000000000', '0x10000000000000000')``
+
+.. warning::
+
+    Kopf does not parse or interpret the shard selectors and does not track
+    the shard coverage: neither gaps, nor overlaps.
+    It is the responsibility of the operator developer to ensure full coverage
+    and the absence of gaps or overlaps for all resources with sharding,
+    so as idempotent operations (i.e., no duplicate side-effects)
+    for all handled resources with no sharding.
+    The latter can be useful for :doc:`indexing`, for example.
+
+.. seealso::
+
+    * https://kubernetes.io/docs/reference/using-api/api-concepts/#sharded-list-and-watch
+
 
 
 Stealth keep-alive
