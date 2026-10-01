@@ -4,7 +4,7 @@ Installation
 
 Prerequisites:
 
-* Python >= 3.10 (CPython and PyPy are officially tested and supported).
+* Python >= 3.10 (CPython, both GIL and no-GIL, and PyPy are officially tested and supported).
 * A Kubernetes cluster (k3d/k3s, minikube, OrbStack, Docker, AWS, GCP, etc).
 
 
@@ -170,3 +170,18 @@ install with the ``dev`` extra:
 .. note::
     This is the ``dev`` extra, not the ``dev`` dependency group.
     The dependency groups are available only when installing Kopf from source.
+
+No-GIL free-threaded Python
+===========================
+
+Free-threaded CPython, e.g., ``3.14t``, is supported and smoke-tested in CI.
+Nevertheless, Kopf does not use threads in its core, it uses asyncio tasks
+working in the same thread; overall, Kopf is I/O-bound, not compute-bound.
+Therefore, Kopf does not benefit from and is not affected by free-threaded
+no-GIL setup.
+
+However, Kopf uses implicit threads of a threaded pool for sync handlers,
+including the long-running sync daemons (see :doc:`daemons` and :doc:`async`).
+The Kopf-based operators can access the shared data from these sync handlers
+from different threads and therefore require proper cross-thread synchronisation
+— but it is the responsibility of the operator developers.
