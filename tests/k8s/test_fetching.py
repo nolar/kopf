@@ -3,7 +3,7 @@ from typing import Any
 import pytest
 
 from kopf._cogs.clients.errors import APIError
-from kopf._cogs.clients.fetching import list_objs
+from kopf._cogs.clients.fetching import fetch_objs
 from kopf._cogs.configs.configuration import OperatorSettings
 from kopf._cogs.helpers import typedefs
 from kopf._cogs.structs import references
@@ -18,7 +18,7 @@ async def test_listing_works(
         namespace: references.Namespace,
 ) -> None:
     kmock[resource, kmock.namespace(namespace)] << {'items': [{}, {}]}
-    items, resource_version = await list_objs(
+    items, resource_version = await fetch_objs(
         logger=logger,
         settings=settings,
         resource=resource,
@@ -37,7 +37,7 @@ async def test_listing_omits_server_side_selectors_by_default(
 ) -> None:
     kmock[resource, kmock.namespace(namespace)] << {'items': []}
 
-    await list_objs(
+    await fetch_objs(
         logger=logger,
         settings=settings,
         resource=resource,
@@ -69,7 +69,7 @@ async def test_listing_passes_server_side_selectors(
     settings.watching.shard_selectors[EVERYTHING] = shard_selector2 = 'shardRange(whatever2)'
     kmock[resource, kmock.namespace(namespace)] << {'items': []}
 
-    await list_objs(
+    await fetch_objs(
         logger=logger,
         settings=settings,
         resource=resource,
@@ -98,7 +98,7 @@ async def test_raises_direct_api_errors(
     kmock[namespaced_resource, kmock.namespace('ns')] << status
 
     with pytest.raises(APIError) as e:
-        await list_objs(
+        await fetch_objs(
             logger=logger,
             settings=settings,
             resource=resource,

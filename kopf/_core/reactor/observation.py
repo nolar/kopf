@@ -48,7 +48,7 @@ async def namespace_observer(
     # Populate the namespaces atomically (instead of notifying on every item from the watch-stream).
     if not settings.scanning.disabled and not clusterwide:
         try:
-            objs, _ = await fetching.list_objs(
+            objs, _ = await fetching.fetch_objs(
                 settings=settings,
                 resource=resource,
                 namespace=None,

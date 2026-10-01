@@ -6,7 +6,7 @@ from kopf._cogs.helpers import typedefs
 from kopf._cogs.structs import bodies, references
 
 
-async def list_objs(
+async def fetch_objs(
         *,
         settings: configuration.OperatorSettings,
         resource: references.Resource,

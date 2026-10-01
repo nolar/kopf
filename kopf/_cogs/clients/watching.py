@@ -166,7 +166,7 @@ async def continuous_watch(
     # First, list the resources regularly, and get the list's resource version.
     # Simulate the events with type "None" event - used in detection of causes.
     try:
-        objs, resource_version = await fetching.list_objs(
+        objs, resource_version = await fetching.fetch_objs(
             logger=logger,
             settings=settings,
             resource=resource,
