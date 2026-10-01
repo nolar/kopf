@@ -25,8 +25,20 @@ async def list_objs(
 
     * The resource is namespace-scoped AND operator is namespaced-restricted.
     """
+    # Deduplicate, then sort it to make it somewhat predictable, just for the beauty of logs.
+    # NB1: this also applies to v1/namespaces in the initial listing in the namespace observer.
+    # NB2: it is mirrored by the same logic & query filters in the watch-streaming operation.
+    label_selector = ','.join(sorted(set(settings.watching.label_selectors.collect(resource))))
+    field_selector = ','.join(sorted(set(settings.watching.field_selectors.collect(resource))))
+
+    params: dict[str, str] = {}
+    if label_selector:
+        params['labelSelector'] = label_selector
+    if field_selector:
+        params['fieldSelector'] = field_selector
+
     rsp = await api.get(
-        url=resource.get_url(namespace=namespace),
+        url=resource.get_url(namespace=namespace, params=params),
         logger=logger,
         settings=settings,
     )

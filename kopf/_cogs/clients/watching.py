@@ -242,9 +242,19 @@ async def watch_objs(
 
     * The resource is namespace-scoped AND operator is namespaced-restricted.
     """
+    # Deduplicate, then sort it to make it somewhat predictable, just for the beauty of logs.
+    # NB1: this also applies to namespaces & CRDs in the watch-streams of the root observer.
+    # NB2: it is mirrored by the same logic & query filters in the listing operation.
+    label_selector = ','.join(sorted(set(settings.watching.label_selectors.collect(resource))))
+    field_selector = ','.join(sorted(set(settings.watching.field_selectors.collect(resource))))
+
     params: dict[str, str] = {}
     params['watch'] = 'true'
     params['allowWatchBookmarks'] = 'true'
+    if label_selector:
+        params['labelSelector'] = label_selector
+    if field_selector:
+        params['fieldSelector'] = field_selector
     if since is not None:
         params['resourceVersion'] = since
     if settings.watching.server_timeout is not None:

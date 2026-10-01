@@ -315,8 +315,51 @@ __ https://github.com/kubernetes/kubernetes/blob/c20e0bc54189aef73a6a1498b4eab28
         settings.watching.server_timeout = 10 * 60
 
 
+Server-side watch selectors
+===========================
+
+``settings.watching.label_selectors`` and ``settings.watching.field_selectors``
+map resource selectors to raw Kubernetes ``labelSelector`` and ``fieldSelector``
+query parameters. Kopf passes these label-/field-selectors to Kubernetes
+for both the initial LIST request and the following WATCH requests.
+Several selectors can apply, in which case the filters are combined via "and".
+
+This also applies to listing/watching the namespaces and CRDs for orchestration,
+in case such selectors are configured. This can (intentionally) make Kopf
+blind to unwanted namespaces or see only wanted namespaces
+regardless of which namespace globs are used at startup.
+
+The syntax for resource selectors is the same as in the handler decorators,
+see :doc:`resources`.
+
+This setting is explicit and opt-in. Kopf does not infer these query parameters
+from handler filters such as ``labels=``, ``annotations=``, ``field=``,
+``value=``, or ``when=``. Those filters still run on the client side and keep
+their existing behavior.
+
+.. code-block:: python
+
+    import kopf
+    from typing import Any
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
+        settings.watching.label_selectors['v1/pods'] = "prefect.io/flow-run-id"
+        settings.watching.field_selectors['v1/pods'] = "status.phase!=Succeeded,status.phase!=Failed"
+        settings.watching.label_selectors['batch', 'v1', 'jobs'] = "prefect.io/flow-run-id"
+
+Kubernetes supports ``labelSelector`` for LIST/WATCH requests, and supports
+``fieldSelector`` only for selected fields on each resource type. Kubernetes
+rejects invalid selectors.
+
+.. seealso::
+
+    * https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
+    * https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
+
+
 Proxy and environment trust
----------------------------
+===========================
 
 ``settings.networking.trust_env`` (boolean) controls whether the HTTP client
 session respects the proxy-related environment variables (``HTTP_PROXY``,

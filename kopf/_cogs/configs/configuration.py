@@ -31,7 +31,7 @@ import logging
 import warnings
 from collections.abc import Iterable
 
-from kopf._cogs.configs import diffbase, progress
+from kopf._cogs.configs import arrays, diffbase, progress
 from kopf._cogs.structs import reviews
 
 
@@ -207,6 +207,38 @@ class WatchingSettings:
     bookmark events every 60 seconds and caches the events for 75 seconds,
     so the default of 70 seconds allows for reasonable jitter while still
     detecting dead streams and reconnecting while the events are in memory.
+    """
+
+    label_selectors: arrays.SelectorMapping[str] = dataclasses.field(
+        default_factory=arrays.SelectorMapping)
+    """
+    A set of label selectors for server-side filtering.
+
+    The selectors are applied to all watch-streams of matching resources
+    regardless of what other client-side filters exist on the handlers.
+
+    Several selectors can apply to a single resource, e.g., a group selector,
+    a version selector, plus a name-specific or category-specific selector.
+    In that case, all applicable selectors join by the boolean "and".
+
+    The exact syntax is Kubernetes-specific and is passed through to the API.
+    See more at: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
+    """
+
+    field_selectors: arrays.SelectorMapping[str] = dataclasses.field(
+        default_factory=arrays.SelectorMapping)
+    """
+    A set of field selectors for server-side filtering.
+
+    The selectors are applied to all watch-streams of matching resources
+    regardless of what other client-side filters exist on the handlers.
+
+    Several selectors can apply to a single resource, e.g., a group selector,
+    a version selector, plus a name-specific or category-specific selector.
+    In that case, all applicable selectors join by the boolean "and".
+
+    The exact syntax is Kubernetes-specific and is passed through to the API.
+    See more at: https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
     """
 
 
