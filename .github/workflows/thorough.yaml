@@ -45,8 +45,10 @@ jobs:
         install-extras: [ "", "full-auth" ]
         python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
         include:
+          # Assumption: if these special setups work in one version, they work in all versions.
           - install-extras: "uvloop"
             python-version: "3.14"
+          - python-version: "3.14t"
     name: Python ${{ matrix.python-version }}${{ matrix.install-extras && ' ' || '' }}${{ matrix.install-extras }}
     runs-on: ubuntu-26.04
     timeout-minutes: 7  # usually 5 mins with coverage
