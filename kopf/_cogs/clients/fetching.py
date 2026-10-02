@@ -1,4 +1,4 @@
-from collections.abc import Collection
+from collections.abc import AsyncIterator, Collection
 
 from kopf._cogs.clients import api
 from kopf._cogs.configs import configuration
@@ -6,15 +6,15 @@ from kopf._cogs.helpers import typedefs
 from kopf._cogs.structs import bodies, references
 
 
-async def list_objs(
+async def fetch_objs(
         *,
         settings: configuration.OperatorSettings,
         resource: references.Resource,
         namespace: references.Namespace,
         logger: typedefs.Logger,
-) -> tuple[Collection[bodies.RawBody], str]:
+) -> AsyncIterator[tuple[Collection[bodies.RawBody], str]]:
     """
-    List the objects of specific resource type.
+    Fetch the objects of specific resource type in chunks.
 
     The cluster-scoped call is used in two cases:
 
@@ -24,6 +24,18 @@ async def list_objs(
     Otherwise, the namespace-scoped call is used:
 
     * The resource is namespace-scoped AND operator is namespaced-restricted.
+
+    It yields an individual chunk as soon as it retrieves it from the API.
+    The consumer should process the chunk before going to the next one —
+    to optimize the memory usage, i.e. so that it never accumulates and keeps
+    all existing objects in memory altogether. At most keep one chunk.
+
+    Chunking also applies to the observer, i.e. the CRD and namespace lists.
+    It is rare to see clusters with so many resources or namespaces
+    that it requires chunking, but this is not entirely impossible.
+
+    The resource version is stable in all chunks and is yielded that way
+    only to simplify the type annotations and internal data structures.
     """
     # Deduplicate, then sort it to make it somewhat predictable, just for the beauty of logs.
     # NB1: this also applies to v1/namespaces in the initial listing in the namespace observer.
@@ -32,7 +44,10 @@ async def list_objs(
     field_selector = ','.join(sorted(set(settings.watching.field_selectors.collect(resource))))
     shard_selector, *_ = settings.watching.shard_selectors.collect(resource) or ['']
 
+    chunk_size: int | None = settings.watching.chunk_size
     params: dict[str, str] = {}
+    if chunk_size is not None:  # pass 0 through to the api; not our business
+        params['limit'] = str(chunk_size)
     if label_selector:
         params['labelSelector'] = label_selector
     if field_selector:
@@ -40,19 +55,35 @@ async def list_objs(
     if shard_selector:
         params['shardSelector'] = shard_selector
 
-    rsp = await api.get(
-        url=resource.get_url(namespace=namespace, params=params),
-        logger=logger,
-        settings=settings,
-    )
+    iterations = 0
+    continue_token: str = ''  # NB: it becomes an empty string at the end, not null!
+    while not iterations or continue_token:
+        iterations += 1
 
-    items: list[bodies.RawBody] = []
-    resource_version = rsp.get('metadata', {}).get('resourceVersion', None)
-    for item in rsp.get('items', []):
-        if 'kind' in rsp:
-            item.setdefault('kind', rsp['kind'].removesuffix('List'))
-        if 'apiVersion' in rsp:
-            item.setdefault('apiVersion', rsp['apiVersion'])
-        items.append(item)
+        if continue_token:
+            params['continue'] = continue_token
+        rsp = await api.get(
+            url=resource.get_url(namespace=namespace, params=params),
+            logger=logger,
+            settings=settings,
+        )
 
-    return items, resource_version
+        # Adjust items for missing individual metadata from the same metadata of the list.
+        items: list[bodies.RawBody] = rsp.get('items', [])
+        for item in items:
+            if 'kind' in rsp:
+                item.setdefault('kind', rsp['kind'].removesuffix('List'))
+            if 'apiVersion' in rsp:
+                item.setdefault('apiVersion', rsp['apiVersion'])
+
+        # NB: this is the resource version of the list/chunk, not of an individual item.
+        resource_version: str = rsp.get('metadata', {}).get('resourceVersion')
+        continue_token = rsp.get('metadata', {}).get('continue')  # NB: "" at the end, not None!
+        yield items, resource_version
+
+        # Optimization: do not keep the processed chunk in memory before fetching the next one,
+        # so that at any moment in time we keep at most one chunk in memory, not two (old & new).
+        # Unlike the individual objects (not optimized), chunks can be huge.
+        # This is untestable due to garbage collection internals.
+        # Does not work in PyPy due to delayed gc.
+        del items, rsp
