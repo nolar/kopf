@@ -25,7 +25,6 @@ except ImportError:
     from pythonjsonlogger.jsonlogger import RESERVED_ATTRS as _pjl_RESERVED_ATTRS  # type: ignore
 
 from kopf._cogs.configs import configuration
-from kopf._cogs.helpers import typedefs
 from kopf._cogs.structs import bodies
 
 logger = logging.getLogger('kopf.objects')
@@ -106,7 +105,7 @@ class ObjectPrefixingJsonFormatter(ObjectPrefixingMixin, ObjectJsonFormatter):
     pass
 
 
-class ObjectLogger(typedefs.LoggerAdapter):
+class ObjectLogger(logging.LoggerAdapter[Any]):
     """
     A logger/adapter to carry the object identifiers for formatting.
 

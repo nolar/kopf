@@ -55,7 +55,7 @@ async def login_fn(**_: Any) -> kopf.ConnectionInfo:
         certificate_path=cert.filename() if cert else None,  # can be a temporary file
         private_key_path=pkey.filename() if pkey else None,  # can be a temporary file
         default_namespace=config.namespace,
-        expiration=datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=30),
+        expiration=datetime.datetime.now(datetime.UTC) + datetime.timedelta(seconds=30),
     )
 
 
