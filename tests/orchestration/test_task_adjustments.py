@@ -323,7 +323,7 @@ async def test_orchestrator_prunes_successful_ensemble_task(
         assert captured_ensemble is not None
         if not captured_ensemble.watcher_tasks:
             break
-        await asyncio.sleep(0)
+        await asyncio.sleep(0.01)
 
     assert not captured_ensemble.watcher_tasks
     assert not runner.done()
@@ -369,7 +369,7 @@ async def test_orchestrator_cancellation_reaps_insights_waiter_and_stops_ensembl
     for _ in range(10):
         if insights.revised._waiters:
             break
-        await asyncio.sleep(0)
+        await asyncio.sleep(0.01)
     assert insights.revised._waiters
 
     runner.cancel()
