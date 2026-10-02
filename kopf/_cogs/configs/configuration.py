@@ -272,6 +272,27 @@ class WatchingSettings:
     See: https://kubernetes.io/docs/reference/using-api/api-concepts/#retrieving-large-results-sets-in-chunks
     """
 
+    initial_streaming: bool = False
+    """
+    Whether to fetch the initial list via streaming or fetching.
+
+    If disabled (the default), Kopf fetches the initial list of objects
+    via the GET operations, optionally chunked, and then switches
+    to the watch-streaming starting from the version reported by the list.
+
+    If enabled, Kopf skips the listing operation entirely, and instead
+    uses the server-side initial streaming (API: ``sendInitialEvents=true``).
+    See more: https://kubernetes.io/docs/reference/using-api/api-concepts/#streaming-lists
+
+    The initial list streaming is available since Kubernetes 1.34,
+    which is fresh as of September 2026 (only a year old), hence not a default.
+    Kopf might make this way of initializing the list a default later.
+
+    Note: Kopf enforces its own conventional ``type=None`` on all the initial
+    events, disregarding and overriding ``type='ADDED'`` from Kubernetes
+    until the first bookmark event. This is important to some internals of Kopf.
+    """
+
     label_selectors: arrays.SelectorMapping[str] = dataclasses.field(
         default_factory=arrays.SelectorMapping)
     """

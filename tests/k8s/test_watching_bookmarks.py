@@ -89,3 +89,24 @@ async def test_bookmark_updates_resource_version(settings, resource, namespace, 
     assert events[0] == Bookmark.LISTED
     assert events[1]['type'] == 'BOOKMARK'
     assert events[2]['type'] == 'ADDED'
+
+
+async def test_initial_streaming_yields_bookmarks_in_order(kmock, settings, resource, namespace):
+
+    settings.watching.initial_streaming = True
+    kmock['watch', resource, kmock.namespace(namespace)] << (
+        {'type': 'BOOKMARK', 'object': {'metadata': {'resourceVersion': 'xyz'}}},
+        {'type': 'ERROR', 'object': {'code': 410}},
+    )
+
+    events = []
+    async for event in continuous_watch(settings=settings,
+                                        resource=resource,
+                                        namespace=namespace,
+                                        operator_pause_waiter=asyncio.Future()):
+        events.append(event)
+
+    # Strictly 1x LISTED, and strictly in this order: LISTED->BOOKMARK.
+    assert len(events) == 2
+    assert events[0] == Bookmark.LISTED
+    assert events[1]['type'] == 'BOOKMARK'

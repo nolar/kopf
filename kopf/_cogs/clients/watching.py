@@ -163,25 +163,29 @@ async def continuous_watch(
         operator_pause_waiter: aiotasks.Future,
 ) -> AsyncIterator[Bookmark | bodies.RawEvent]:
 
+    # NB: it must remain None for the server-side initial streaming.
+    resource_version: str | None = None
+    in_initial_streaming: bool = settings.watching.initial_streaming
+
     # First, list the resources in chunks, and get the list's resource version.
     # Simulate the events with type "None" event - used in detection of causes.
-    try:
-        resource_version: str | None = None
-        async for chunk, resource_version in fetching.fetch_objs(
-            logger=logger,
-            settings=settings,
-            resource=resource,
-            namespace=namespace,
-        ):
-            for obj in chunk:
-                yield {'type': None, 'object': obj}
-            del chunk  # optional optimization: keep only one chunk in memory
+    if not settings.watching.initial_streaming:
+        try:
+            async for chunk, resource_version in fetching.fetch_objs(
+                logger=logger,
+                settings=settings,
+                resource=resource,
+                namespace=namespace,
+            ):
+                for obj in chunk:
+                    yield {'type': None, 'object': obj}
+                del chunk  # optional optimization: keep only one chunk in memory
 
-    except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, asyncio.TimeoutError):
-        return
+        except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, asyncio.TimeoutError):
+            return
 
-    # Notify the watcher that the initial listing is over, even if there was nothing yielded.
-    yield Bookmark.LISTED
+        # Notify the watcher that the initial listing is over, even if there was nothing yielded.
+        yield Bookmark.LISTED
 
     # Repeat through disconnects of the watch as long as the resource version is valid (no errors).
     # The individual watching API calls are disconnected by timeout even if the stream is fine.
@@ -215,6 +219,16 @@ async def continuous_watch(
             if raw_type not in ['ADDED', 'MODIFIED', 'DELETED', 'BOOKMARK']:
                 logger.warning(f"Ignoring an unsupported event type: {raw_input!r}")
                 continue
+
+            # While in the initial streaming, enforce Kopf's convention for type=None:
+            # this is used for skipping such initial events (process_discovered_resource_event()).
+            # The very first bookmark ends the initial streaming (see K8s docs).
+            if in_initial_streaming:
+                if raw_type == 'ADDED':
+                    raw_input['type'] = None
+                if raw_type == 'BOOKMARK':
+                    in_initial_streaming = False
+                    yield Bookmark.LISTED  # before the raw event itself; as if after fetch_objs().
 
             # Keep the latest seen resource version for continuation of the stream on disconnects.
             body = cast(bodies.RawBody, raw_object)
@@ -264,6 +278,10 @@ async def watch_objs(
         params['resourceVersion'] = since
     if settings.watching.server_timeout is not None:
         params['timeoutSeconds'] = str(settings.watching.server_timeout)
+    if since is None and settings.watching.initial_streaming:
+        # NB: strictly in initial watch-streams, not in continuations/reconnections.
+        params['sendInitialEvents'] = 'true'
+        params['resourceVersionMatch'] = 'NotOlderThan'
 
     connect_timeout = (
         settings.watching.connect_timeout if settings.watching.connect_timeout is not None else

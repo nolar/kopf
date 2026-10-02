@@ -61,11 +61,32 @@ async def test_empty_stream_yields_nothing(kmock, settings, resource, namespace)
                                         operator_pause_waiter=asyncio.Future()):
         events.append(event)
 
+    assert len(kmock['list']) == 1
+    assert len(kmock['watch']) == 1
     assert len(events) == 1
     assert events[0] == Bookmark.LISTED
 
 
+async def test_initial_streaming_does_not_fetch(
+        kmock, settings, resource, namespace):
+    settings.watching.initial_streaming = True
+    kmock['list', resource, kmock.namespace(namespace)] << {'items': [{'spec': 'unseen'}]}
+    kmock['watch', resource, kmock.namespace(namespace)] << EOS
+
+    events = []
+    async for event in continuous_watch(settings=settings,
+                                        resource=resource,
+                                        namespace=namespace,
+                                        operator_pause_waiter=asyncio.Future()):
+        events.append(event)
+
+    assert len(kmock['list']) == 0
+    assert len(kmock['watch']) == 1
+    assert len(events) == 0
+
+
 async def test_event_stream_yields_everything(kmock, settings, resource, namespace):
+    kmock['list', resource, kmock.namespace(namespace)] << {'items': [{'spec': 'x'}]}
     kmock['watch', resource, kmock.namespace(namespace)] << STREAM_WITH_NORMAL_EVENTS << EOS
 
     events = []
@@ -75,10 +96,45 @@ async def test_event_stream_yields_everything(kmock, settings, resource, namespa
                                         operator_pause_waiter=asyncio.Future()):
         events.append(event)
 
-    assert len(events) == 3
-    assert events[0] == Bookmark.LISTED
-    assert events[1]['object']['spec'] == 'a'
-    assert events[2]['object']['spec'] == 'b'
+    assert len(kmock['list']) == 1
+    assert len(kmock['watch']) == 1
+    assert len(events) == 4
+    assert events[1] == Bookmark.LISTED
+    assert events[0]['type'] is None
+    assert events[2]['type'] == 'ADDED'
+    assert events[3]['type'] == 'ADDED'
+    assert events[0]['object']['spec'] == 'x'
+    assert events[2]['object']['spec'] == 'a'
+    assert events[3]['object']['spec'] == 'b'
+
+
+async def test_initial_streaming_resets_types_to_none(
+        kmock, settings, resource, namespace):
+    settings.watching.initial_streaming = True
+    kmock['watch', resource, kmock.namespace(namespace)] << (
+        STREAM_WITH_NORMAL_EVENTS,
+        {'type': 'BOOKMARK', 'object': {'metadata': {'resourceVersion': 'xyz'}}},
+        STREAM_WITH_NORMAL_EVENTS,
+        EOS,
+    )
+
+    events = []
+    async for event in continuous_watch(settings=settings,
+                                        resource=resource,
+                                        namespace=namespace,
+                                        operator_pause_waiter=asyncio.Future()):
+        events.append(event)
+
+    # Same inputs in the stream, different types in yields, but the same payloads.
+    assert len(events) == 6
+    assert events[0]['type'] is None
+    assert events[1]['type'] is None
+    assert events[4]['type'] == 'ADDED'
+    assert events[5]['type'] == 'ADDED'
+    assert events[0]['object']['spec'] == 'a'
+    assert events[1]['object']['spec'] == 'b'
+    assert events[4]['object']['spec'] == 'a'
+    assert events[5]['object']['spec'] == 'b'
 
 
 async def test_unknown_event_type_ignored(kmock, settings, resource, namespace, assert_logs):
@@ -167,6 +223,7 @@ async def test_long_line_parsing(kmock, settings, resource, namespace):
     assert len(events[1]['object']['spec']['field']) == 1
     assert len(events[2]['object']['spec']['field']) == 2 * 1024 * 1024
     assert len(events[3]['object']['spec']['field']) == 4 * 1024 * 1024
+
 
 @pytest.mark.parametrize("connection_error",
     [
