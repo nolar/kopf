@@ -164,6 +164,37 @@ This can be enabled to improve observability if desired:
     def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.posting.loggers = True
 
+Event posting can fail transiently (API rate limits, ``5xx`` errors, connectivity
+issues). Kopf retries failed posts with a configurable backoff schedule before
+giving up; Kopf logs and drops a failed post, never interrupting the handling
+cycle. A scalar means a single fixed delay; an iterable's length is the number
+of retries. For event posts, these settings replace
+``settings.networking.error_backoffs``.
+
+.. code-block:: python
+
+    import kopf
+    from typing import Any
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
+        # For explicit kopf.event()/info()/warn()/exception() calls without backoffs=:
+        settings.posting.default_backoffs = (1, 1, 2, 3, 5, 8, 13, 21)
+        # For events generated implicitly from logger messages:
+        settings.posting.logging_backoffs = (1, 1, 2, 3, 5)
+
+``settings.posting.worker_limit`` (default: ``None``, meaning as many as needed)
+and ``settings.posting.idle_timeout`` (default: 1 second) control how many
+event-posting workers can be spawned at the same time, and how soon they
+exit if no new events are posted for each individual object.
+
+Settings this to a value lower than ``settings.queueing.worker_limit``
+might lead to blocking the K8s-event posting for some objects
+until other objects' events are posted (and retried as needed),
+but will not block the regular processing of the object-related stream-events.
+All in all, even unlimited ``settings.posting.worker_limit``
+is naturally capped by ``settings.queueing.worker_limit``.
+
 
 .. _configure-sync-handlers:
 

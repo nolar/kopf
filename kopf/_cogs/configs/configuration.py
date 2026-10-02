@@ -90,6 +90,45 @@ class PostingSettings:
     (``kopf.info()``, ``kopf.warn()``, ``kopf.exception()``).
     """
 
+    default_backoffs: float | Iterable[float] = (1, 1, 2, 3, 5, 8, 13, 21)
+    """
+    Backoffs (seconds) for retrying failed event posts from explicit calls
+    to ``kopf.event()`` / ``kopf.info()`` / ``kopf.warn()`` / ``kopf.exception()``
+    when no per-call ``backoffs=`` is given.
+
+    A scalar means a single fixed delay; an iterable's length is the number
+    of retries. Mirrors :attr:`NetworkingSettings.error_backoffs`, and
+    replaces it for event-posting requests.
+    """
+
+    logging_backoffs: float | Iterable[float] = (1, 1, 2, 3, 5)
+    """
+    Backoffs (seconds) for retrying failed event posts generated implicitly
+    from logger messages (e.g. ``logger.info(...)`` in handlers). Shorter than
+    :attr:`default_backoffs` because logging-originated events are high-volume.
+
+    Mind that implicit log-events are disabled by default to prevent cluster
+    overloading under load. Set ``settings.posting.loggers=True`` to enable.
+    """
+
+    worker_limit: int | None = None
+    """
+    How many event-posting workers can run simultaneously.
+    If ``None``, there is no limit to the number of workers (as many as needed).
+
+    Settings this to a value lower than ``settings.queueing.worker_limit``
+    might lead to blocking the K8s-event posting for some objects
+    until other objects' event are posted (and retried as needed),
+    but will not block the processing of the object-related stream-events.
+    """
+
+    idle_timeout: float = 1.0
+    """
+    How soon an idle K8s-event-posting worker exits if no new events are posted.
+
+    This settings prevents resource leakage for dormant or deleted/gone objects.
+    """
+
     reporting_component: str = 'kopf'
     reporting_instance: str = 'dev'
     event_name_prefix: str = 'kopf-event-'
