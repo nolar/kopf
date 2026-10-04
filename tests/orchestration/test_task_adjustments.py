@@ -284,52 +284,52 @@ async def test_unpaused_with_mandatory_peering_and_existing_peering_resource(
 #         await asyncio.wait_for(runner, timeout=1.23)
 #
 #
-# async def test_orchestrator_prunes_successful_ensemble_task(
-#         monkeypatch, settings, insights: Insights):
-#     operator_paused = aiotoggles.ToggleSet(any)
-#     resource = Resource(group='group', version='version', plural='plural', namespaced=True)
-#     dkey = EnsembleKey(resource=resource, namespace='ns')
-#     adjusted = asyncio.Event()
-#     captured_ensemble: Ensemble | None = None
-#     completed_task: asyncio.Task | None = None
-#
-#     async def finish() -> None:
-#         pass
-#
-#     async def adjust(*, ensemble: Ensemble, **kwargs) -> None:
-#         nonlocal captured_ensemble, completed_task
-#         captured_ensemble = ensemble
-#         completed_task = asyncio.create_task(finish())
-#         ensemble.watcher_tasks[dkey] = completed_task
-#         adjusted.set()
-#
-#     monkeypatch.setattr(orchestration, 'adjust_tasks', adjust)
-#     runner = asyncio.create_task(orchestration.orchestrator(
-#         processor=processor,
-#         identity=Identity('...'),
-#         settings=settings,
-#         insights=insights,
-#         operator_paused=operator_paused,
-#     ))
-#     await asyncio.sleep(0)
-#
-#     async with insights.revised:
-#         insights.revised.notify_all()
-#     await adjusted.wait()
-#     assert completed_task is not None
-#     await completed_task
-#
-#     for _ in range(10):
-#         assert captured_ensemble is not None
-#         if not captured_ensemble.watcher_tasks:
-#             break
-#         await asyncio.sleep(0)
-#
-#     assert not captured_ensemble.watcher_tasks
-#     assert not runner.done()
-#     runner.cancel()
-#     with pytest.raises(asyncio.CancelledError):
-#         await runner
+async def test_orchestrator_prunes_successful_ensemble_task(
+        monkeypatch, settings, insights: Insights):
+    operator_paused = aiotoggles.ToggleSet(any)
+    resource = Resource(group='group', version='version', plural='plural', namespaced=True)
+    dkey = EnsembleKey(resource=resource, namespace='ns')
+    adjusted = asyncio.Event()
+    captured_ensemble: Ensemble | None = None
+    completed_task: asyncio.Task | None = None
+
+    async def finish() -> None:
+        pass
+
+    async def adjust(*, ensemble: Ensemble, **kwargs) -> None:
+        nonlocal captured_ensemble, completed_task
+        captured_ensemble = ensemble
+        completed_task = asyncio.create_task(finish())
+        ensemble.watcher_tasks[dkey] = completed_task
+        adjusted.set()
+
+    monkeypatch.setattr(orchestration, 'adjust_tasks', adjust)
+    runner = asyncio.create_task(orchestration.orchestrator(
+        processor=processor,
+        identity=Identity('...'),
+        settings=settings,
+        insights=insights,
+        operator_paused=operator_paused,
+    ))
+    await asyncio.sleep(0)
+
+    async with insights.revised:
+        insights.revised.notify_all()
+    await adjusted.wait()
+    assert completed_task is not None
+    await completed_task
+
+    for _ in range(10):
+        assert captured_ensemble is not None
+        if not captured_ensemble.watcher_tasks:
+            break
+        await asyncio.sleep(0)
+
+    assert not captured_ensemble.watcher_tasks
+    assert not runner.done()
+    runner.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await runner
 
 
 async def test_orchestrator_cancellation_reaps_insights_waiter_and_stops_ensemble(
