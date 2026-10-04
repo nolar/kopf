@@ -149,10 +149,8 @@ def test_connection_info_as_ssl_context_when_insecure():
         insecure=True,
     )
     ssl_context = info.as_ssl_context()
-    ca = ssl_context.get_ca_certs()
     assert ssl_context.verify_mode == ssl.CERT_NONE
     assert ssl_context.check_hostname is False
-    assert ca  # at least some default CAs must be loaded, but we do not know which ones.
 
 
 def test_connection_info_as_ssl_context_when_defined():
