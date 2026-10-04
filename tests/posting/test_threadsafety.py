@@ -33,11 +33,10 @@ posting is not thread-safe. Otherwise, it wakes up on ``queue.get()`` instantly.
 If thread safety is not ensured, the operators get sporadic errors regarding
 thread-unsafe calls, which are difficult to catch and reproduce.
 """
-import logging
-
 import asyncio
 import contextvars
 import functools
+import gc
 import threading
 import time
 
@@ -48,6 +47,18 @@ from kopf import event
 
 OBJ1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
         'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1'}}
+
+
+# Without this, some simple operations like exiting a function or appending to a list
+# cause massive delays of 0.13 seconds, which affects the measured durations.
+@pytest.fixture(autouse=True)
+def _disable_gc_in_real_clock_tests():
+    gc.collect()
+    gc.disable()
+    try:
+        yield
+    finally:
+        gc.enable()
 
 
 @pytest.fixture()
@@ -107,27 +118,20 @@ async def test_nonthreadsafe_indeed_fails(chronometer, threader, event_queue):
 async def test_threadsafe_indeed_works(chronometer, threader, event_queue):
     loop = asyncio.get_running_loop()
     thread_was_called = threading.Event()
-    import gc; gc.disable()
 
     def thread_fn():
         thread_was_called.set()
         asyncio.run_coroutine_threadsafe(event_queue.put(object()), loop=loop)
 
     with chronometer, looptime.Chronometer(loop.time) as loopometer:
-        # t0 = time.perf_counter()
         threader(0.5, lambda: loop.call_soon_threadsafe(lambda: None))
-        # t1 = time.perf_counter()
         threader(0.2, thread_fn)
-        # t2 = time.perf_counter()
         await event_queue.get()
-        # t3 = time.perf_counter()
-        # logging.getLogger().warning(f"test run {t1-t0=} {t2-t1=} {t3-t2=} {t3-t0=}")
 
     # We wake up on time of the queue.put (0.2), not on the wakeup call (0.5).
     assert 0.2 <= chronometer.seconds < 0.3
     assert 0.2 <= loopometer.seconds < 0.3
     assert thread_was_called.is_set()
-    assert False
 
 
 @pytest.mark.looptime(False)
