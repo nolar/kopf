@@ -132,6 +132,7 @@ async def test_threadsafe_indeed_works(chronometer, threader, event_queue):
     assert 0.2 <= chronometer.seconds < 0.3
     assert 0.2 <= loopometer.seconds < 0.3
     assert thread_was_called.is_set()
+    assert False
 
 
 @pytest.mark.looptime(False)
