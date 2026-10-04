@@ -33,6 +33,8 @@ posting is not thread-safe. Otherwise, it wakes up on ``queue.get()`` instantly.
 If thread safety is not ensured, the operators get sporadic errors regarding
 thread-unsafe calls, which are difficult to catch and reproduce.
 """
+import logging
+
 import asyncio
 import contextvars
 import functools
@@ -65,10 +67,15 @@ def threader():
             time.sleep(delay)
             fn()
 
-        target = functools.partial(contextvars.copy_context().run, thread_fn)
+        t0 = time.perf_counter()
+        ctx = contextvars.copy_context()
+        t1 = time.perf_counter()
+        target = functools.partial(ctx.run, thread_fn)
         thread = threading.Thread(target=target)
         thread.start()
+        t2 = time.perf_counter()
         threads.append(thread)
+        logging.getLogger().warning(f"thread startup ({delay=}): {t1-t0=} {t2-t1=} {t2-t0=}")
 
     try:
         yield start_fn
@@ -111,9 +118,15 @@ async def test_threadsafe_indeed_works(chronometer, threader, event_queue):
         asyncio.run_coroutine_threadsafe(event_queue.put(object()), loop=loop)
 
     with chronometer, looptime.Chronometer(loop.time) as loopometer:
+        t0 = time.perf_counter()
         threader(0.5, lambda: loop.call_soon_threadsafe(lambda: None))
+        t1 = time.perf_counter()
         threader(0.2, thread_fn)
+        t2 = time.perf_counter()
         await event_queue.get()
+        t3 = time.perf_counter()
+
+        logging.getLogger().warning(f"test run {t1-t0=} {t2-t1=} {t3-t2=} {t3-t0=}")
 
     # We wake up on time of the queue.put (0.2), not on the wakeup call (0.5).
     assert 0.2 <= chronometer.seconds < 0.3
