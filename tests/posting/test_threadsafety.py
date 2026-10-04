@@ -107,6 +107,7 @@ async def test_nonthreadsafe_indeed_fails(chronometer, threader, event_queue):
 async def test_threadsafe_indeed_works(chronometer, threader, event_queue):
     loop = asyncio.get_running_loop()
     thread_was_called = threading.Event()
+    import gc; gc.disable()
 
     def thread_fn():
         thread_was_called.set()
