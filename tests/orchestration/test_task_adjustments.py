@@ -255,33 +255,33 @@ async def test_unpaused_with_mandatory_peering_and_existing_peering_resource(
     assert ensemble.operator_paused.is_off()
 
 
-# async def test_orchestrator_escalates_ensemble_task_failure(
-#         monkeypatch, settings, insights: Insights):
-#     operator_paused = aiotoggles.ToggleSet(any)
-#     resource = Resource(group='group', version='version', plural='plural', namespaced=True)
-#     dkey = EnsembleKey(resource=resource, namespace='ns')
-#
-#     async def fail() -> None:
-#         raise RuntimeError("boom")
-#
-#     async def adjust(*, ensemble: Ensemble, **kwargs) -> None:
-#         ensemble.watcher_tasks[dkey] = asyncio.create_task(fail())
-#
-#     monkeypatch.setattr(orchestration, 'adjust_tasks', adjust)
-#     runner = asyncio.create_task(orchestration.orchestrator(
-#         processor=processor,
-#         identity=Identity('...'),
-#         settings=settings,
-#         insights=insights,
-#         operator_paused=operator_paused,
-#     ))
-#     await asyncio.sleep(0)
-#
-#     async with insights.revised:
-#         insights.revised.notify_all()
-#
-#     with pytest.raises(RuntimeError, match="boom"):
-#         await asyncio.wait_for(runner, timeout=1.23)
+async def test_orchestrator_escalates_ensemble_task_failure(
+        monkeypatch, settings, insights: Insights):
+    operator_paused = aiotoggles.ToggleSet(any)
+    resource = Resource(group='group', version='version', plural='plural', namespaced=True)
+    dkey = EnsembleKey(resource=resource, namespace='ns')
+
+    async def fail() -> None:
+        raise RuntimeError("boom")
+
+    async def adjust(*, ensemble: Ensemble, **kwargs) -> None:
+        ensemble.watcher_tasks[dkey] = asyncio.create_task(fail())
+
+    monkeypatch.setattr(orchestration, 'adjust_tasks', adjust)
+    runner = asyncio.create_task(orchestration.orchestrator(
+        processor=processor,
+        identity=Identity('...'),
+        settings=settings,
+        insights=insights,
+        operator_paused=operator_paused,
+    ))
+    await asyncio.sleep(0)
+
+    async with insights.revised:
+        insights.revised.notify_all()
+
+    with pytest.raises(RuntimeError, match="boom"):
+        await asyncio.wait_for(runner, timeout=1.23)
 #
 #
 # async def test_orchestrator_prunes_successful_ensemble_task(
