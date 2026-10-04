@@ -90,6 +90,13 @@ class Ensemble:
     def get_flags(self, keys: Container[EnsembleKey]) -> Collection[aiotoggles.Toggle]:
         return {toggle for key, toggle in self.conflicts_found.items() if key in keys}
 
+    def del_tasks(self, tasks: Container[aiotasks.Task]) -> None:
+        d: dict[EnsembleKey, aiotasks.Task]
+        for d in [self.watcher_tasks, self.peering_tasks, self.pinging_tasks]:
+            for key, task in list(d.items()):
+                if task in tasks:
+                    del d[key]
+
     def del_keys(self, keys: Container[EnsembleKey]) -> None:
         d: dict[EnsembleKey, Any]
         for d in [self.watcher_tasks, self.peering_tasks, self.pinging_tasks]:
@@ -119,14 +126,34 @@ async def orchestrator(
     try:
         async with insights.revised:
             while True:
-                await insights.revised.wait()
-                await adjust_tasks(
-                    processor=processor,
-                    insights=insights,
-                    settings=settings,
-                    identity=identity,
-                    ensemble=ensemble,
+                ensemble_tasks = set(ensemble.get_tasks(ensemble.get_keys()))
+                insights_waiter = asyncio.create_task(
+                    insights.revised.wait(),
+                    name="insights revision waiter",
                 )
+                try:
+                    done, _ = await aiotasks.wait(
+                        ensemble_tasks | {insights_waiter},
+                        return_when=asyncio.FIRST_COMPLETED,
+                    )
+                finally:
+                    await aiotasks.stop(
+                        {insights_waiter},
+                        title="insights revision waiter",
+                        quiet=True,
+                    )
+
+                ensemble_done = done & ensemble_tasks
+                ensemble.del_tasks(ensemble_done)
+                await aiotasks.reraise(ensemble_done)
+                if insights_waiter in done:
+                    await adjust_tasks(
+                        processor=processor,
+                        insights=insights,
+                        settings=settings,
+                        identity=identity,
+                        ensemble=ensemble,
+                    )
     except asyncio.CancelledError:
         tasks = ensemble.get_tasks(ensemble.get_keys())
         await aiotasks.stop(tasks, title="streaming", logger=logger, interval=10)

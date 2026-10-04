@@ -36,6 +36,7 @@ thread-unsafe calls, which are difficult to catch and reproduce.
 import asyncio
 import contextvars
 import functools
+import gc
 import threading
 import time
 
@@ -46,6 +47,18 @@ from kopf import event
 
 OBJ1 = {'apiVersion': 'group1/version1', 'kind': 'Kind1',
         'metadata': {'uid': 'uid1', 'name': 'name1', 'namespace': 'ns1'}}
+
+
+# Without this, some simple operations like exiting a function or appending to a list
+# randomly cause massive delays of ≈0.13 seconds, which affect the measured durations.
+@pytest.fixture(autouse=True)
+def _disable_gc_in_real_clock_tests():
+    gc.collect()
+    gc.disable()
+    try:
+        yield
+    finally:
+        gc.enable()
 
 
 @pytest.fixture()

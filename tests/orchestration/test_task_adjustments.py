@@ -6,6 +6,7 @@ from kopf._cogs.aiokits import aiotasks, aiotoggles
 from kopf._cogs.structs import bodies
 from kopf._cogs.structs.references import Insights, Resource
 from kopf._core.engines.peering import Identity
+from kopf._core.reactor import orchestration
 from kopf._core.reactor.orchestration import Ensemble, EnsembleKey, adjust_tasks
 
 
@@ -252,3 +253,130 @@ async def test_unpaused_with_mandatory_peering_and_existing_peering_resource(
 
     assert ensemble.peering_missing.is_off()
     assert ensemble.operator_paused.is_off()
+
+
+async def test_orchestrator_escalates_ensemble_task_failure(
+        monkeypatch, settings, insights: Insights):
+    operator_paused = aiotoggles.ToggleSet(any)
+    resource = Resource(group='group', version='version', plural='plural', namespaced=True)
+    dkey = EnsembleKey(resource=resource, namespace='ns')
+
+    async def fail() -> None:
+        raise RuntimeError("boom")
+
+    async def adjust(*, ensemble: Ensemble, **kwargs) -> None:
+        ensemble.watcher_tasks[dkey] = asyncio.create_task(fail())
+
+    monkeypatch.setattr(orchestration, 'adjust_tasks', adjust)
+    runner = asyncio.create_task(orchestration.orchestrator(
+        processor=processor,
+        identity=Identity('...'),
+        settings=settings,
+        insights=insights,
+        operator_paused=operator_paused,
+    ))
+    await asyncio.sleep(0)
+
+    async with insights.revised:
+        insights.revised.notify_all()
+
+    with pytest.raises(RuntimeError, match="boom"):
+        await asyncio.wait_for(runner, timeout=1.23)
+
+
+async def test_orchestrator_prunes_successful_ensemble_task(
+        monkeypatch, settings, insights: Insights):
+    operator_paused = aiotoggles.ToggleSet(any)
+    resource = Resource(group='group', version='version', plural='plural', namespaced=True)
+    dkey = EnsembleKey(resource=resource, namespace='ns')
+    adjusted = asyncio.Event()
+    captured_ensemble: Ensemble | None = None
+    completed_task: asyncio.Task | None = None
+
+    async def finish() -> None:
+        pass
+
+    async def adjust(*, ensemble: Ensemble, **kwargs) -> None:
+        nonlocal captured_ensemble, completed_task
+        captured_ensemble = ensemble
+        completed_task = asyncio.create_task(finish())
+        ensemble.watcher_tasks[dkey] = completed_task
+        adjusted.set()
+
+    monkeypatch.setattr(orchestration, 'adjust_tasks', adjust)
+    runner = asyncio.create_task(orchestration.orchestrator(
+        processor=processor,
+        identity=Identity('...'),
+        settings=settings,
+        insights=insights,
+        operator_paused=operator_paused,
+    ))
+    await asyncio.sleep(0)
+
+    async with insights.revised:
+        insights.revised.notify_all()
+    await adjusted.wait()
+    assert completed_task is not None
+    await completed_task
+
+    for _ in range(10):
+        assert captured_ensemble is not None
+        if not captured_ensemble.watcher_tasks:
+            break
+        await asyncio.sleep(0)
+
+    assert not captured_ensemble.watcher_tasks
+    assert not runner.done()
+    runner.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await runner
+
+
+async def test_orchestrator_cancellation_reaps_insights_waiter_and_stops_ensemble(
+        monkeypatch, settings, insights: Insights):
+    operator_paused = aiotoggles.ToggleSet(any)
+    resource = Resource(group='group', version='version', plural='plural', namespaced=True)
+    dkey = EnsembleKey(resource=resource, namespace='ns')
+    started = asyncio.Event()
+    stopped = asyncio.Event()
+    ensemble_task: asyncio.Task | None = None
+
+    async def run_forever() -> None:
+        started.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            stopped.set()
+
+    async def adjust(*, ensemble: Ensemble, **kwargs) -> None:
+        nonlocal ensemble_task
+        ensemble_task = asyncio.create_task(run_forever())
+        ensemble.watcher_tasks[dkey] = ensemble_task
+
+    monkeypatch.setattr(orchestration, 'adjust_tasks', adjust)
+    runner = asyncio.create_task(orchestration.orchestrator(
+        processor=processor,
+        identity=Identity('...'),
+        settings=settings,
+        insights=insights,
+        operator_paused=operator_paused,
+    ))
+    await asyncio.sleep(0)
+
+    async with insights.revised:
+        insights.revised.notify_all()
+    await started.wait()
+    for _ in range(10):
+        if insights.revised._waiters:
+            break
+        await asyncio.sleep(0)
+    assert insights.revised._waiters
+
+    runner.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await runner
+
+    assert ensemble_task is not None
+    assert ensemble_task.cancelled()
+    assert stopped.is_set()
+    assert not insights.revised._waiters
