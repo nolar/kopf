@@ -17,19 +17,21 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.2.0
-      - uses: actions/setup-python@v7
         with:
+          github-token: ${{ github.token }}
+          enable-cache: true
           python-version: "3.14"
+          activate-environment: true
       - run: uv sync --no-dev --group lint
-      - run: uv run --no-sync pre-commit run --all-files
-      - run: uv run --no-sync mypy
+      - run: pre-commit run --all-files
+      - run: mypy
       - run: |
           # Separately, because the shared module name "example.py" causes naming conflicts.
           exit_codes=0
           for d in $(find examples -maxdepth 1 -mindepth 1 -type d)
           do
             echo "Checking ${d}"
-            uv run --no-sync mypy $d
+            mypy $d
             exit_codes=$[${exit_codes} + $?]
           done
           exit ${exit_codes}
@@ -51,14 +53,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.2.0
-      - uses: actions/setup-python@v7
         with:
+          github-token: ${{ github.token }}
+          enable-cache: true
           python-version: ${{ matrix.python-version }}
+          activate-environment: true
 
       - run: uv sync --no-dev --group test
       - run: uv sync --no-dev --group test --extra ${{ matrix.install-extras }}
         if: ${{ matrix.install-extras }}
-      - run: uv run --no-sync coverage run --branch --source=kopf -m pytest --color=yes --timeout=2
+      - run: coverage run --branch --source=kopf -m pytest --color=yes --timeout=2
 
       - name: Publish coverage to Coveralls.io
         uses: coverallsapp/github-action@v2
@@ -95,16 +99,18 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.2.0
-      - uses: actions/setup-python@v7
         with:
+          github-token: ${{ github.token }}
+          enable-cache: true
           python-version: ${{ matrix.python-version }}
+          activate-environment: true
 
       - run: sudo apt-get update && sudo apt-get install libxml2-dev libxslt-dev
 
       - run: uv sync --no-dev --group test
       - run: uv sync --no-dev --group test --extra ${{ matrix.install-extras }}
         if: ${{ matrix.install-extras }}
-      - run: uv run --no-sync pytest --color=yes --timeout=2 --no-cov
+      - run: pytest --color=yes --timeout=2 --no-cov
 
   functional:
     strategy:
@@ -117,9 +123,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.2.0
-      - uses: actions/setup-python@v7
         with:
+          github-token: ${{ github.token }}
+          enable-cache: true
           python-version: "3.14"
+          activate-environment: true
       - uses: nolar/setup-k3d-k3s@v1
         with:
           version: ${{ matrix.k3s }}
@@ -128,7 +136,7 @@ jobs:
 
       - run: uv sync --no-dev --group test
       - run: uv pip install -r examples/requirements.txt
-      - run: uv run --no-sync pytest --color=yes --timeout=30 --only-e2e
+      - run: pytest --color=yes --timeout=30 --only-e2e
 
   coveralls-finish:
     name: Finalize coveralls.io

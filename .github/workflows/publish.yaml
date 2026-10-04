@@ -17,9 +17,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.2.0
-      - uses: actions/setup-python@v7
         with:
+          github-token: ${{ github.token }}
+          enable-cache: true
           python-version: "3.14"
+          activate-environment: true
       - run: uv build
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
