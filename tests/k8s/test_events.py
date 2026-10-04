@@ -165,3 +165,23 @@ async def test_headers_are_not_leaked(kmock, settings, logger, assert_logs, stat
         "RequestInfo",
         "headers=",
     ])
+
+
+async def test_backoffs_are_passed_to_api(mocker, settings, logger):
+    post = mocker.patch('kopf._cogs.clients.api.post')
+
+    obj = {'apiVersion': 'group/version', 'kind': 'kind',
+           'metadata': {'namespace': 'ns', 'name': 'name', 'uid': 'uid'}}
+    ref = build_object_reference(obj)
+    await post_event(
+        ref=ref,
+        type='type',
+        reason='reason',
+        message='message',
+        resource=EVENTS,
+        settings=settings,
+        logger=logger,
+        backoffs=[7, 8],
+    )
+
+    assert post.call_args.kwargs['backoffs'] == [7, 8]

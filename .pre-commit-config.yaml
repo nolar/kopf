@@ -61,21 +61,19 @@ repos:
       # - id: python-no-log-warn  # overreacts to `kopf.warn()`.
 
   - repo: https://github.com/seddonym/import-linter
-    rev: v2.11
+    rev: v2.15
     hooks:
       - id: import-linter
         language: python
-        additional_dependencies:
-          - astpath[xpath]
 
   - repo: https://github.com/PyCQA/isort
-    rev: 8.0.1
+    rev: 9.0.1
     hooks:
       - id: isort
         name: isort-source-code
 
   - repo: https://github.com/PyCQA/isort
-    rev: 8.0.1
+    rev: 9.0.1
     hooks:
       - id: isort
         name: isort-examples

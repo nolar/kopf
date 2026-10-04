@@ -108,24 +108,39 @@ def test_conflicting_private_key_data_and_path():
         ConnectionInfo(server='', private_key_path='/path', private_key_data=b'data')
 
 
-def test_connection_info_as_aiohttp_basic_auth():
+def test_connection_info_with_aiohttp_basic_auth_is_deprecated():
+    info = ConnectionInfo(server='https://localhost')
+    with pytest.warns(DeprecationWarning, match=r"as_aiohttp_basic_auth\(\) is deprecated"):
+        assert info.as_aiohttp_basic_auth() is None
+
+
+def test_connection_info_with_username_password():
     info = ConnectionInfo(
         server='https://localhost',
         username='username',
         password='password',
     )
-    assert info.as_aiohttp_basic_auth() == aiohttp.BasicAuth('username', 'password')
-    assert info.as_http_headers() == {}
+    assert info.as_http_headers() == {'Authorization': 'Basic dXNlcm5hbWU6cGFzc3dvcmQ='}
 
 
-def test_connection_info_as_http_headers():
+def test_connection_info_with_scheme_token():
     info = ConnectionInfo(
         server='https://localhost',
         scheme='Bearer',
         token='xyz'
     )
-    assert info.as_aiohttp_basic_auth() is None
     assert info.as_http_headers() == {'Authorization': 'Bearer xyz'}
+
+
+def test_connection_info_with_basic_auth_overrides_scheme_token():
+    info = ConnectionInfo(
+        server='https://localhost',
+        username='username',
+        password='password',
+        scheme='Bearer',
+        token='xyz',
+    )
+    assert info.as_http_headers() == {'Authorization': 'Basic dXNlcm5hbWU6cGFzc3dvcmQ='}
 
 
 def test_connection_info_as_ssl_context_when_insecure():

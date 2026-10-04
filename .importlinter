@@ -108,3 +108,4 @@ source_modules =
 conditional_modules =
     pykube
     kubernetes
+    kubernetes_asyncio

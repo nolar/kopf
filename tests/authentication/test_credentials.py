@@ -4,6 +4,7 @@ import logging
 import os.path
 import pathlib
 import ssl
+import warnings
 
 import aiohttp
 import pytest
@@ -50,8 +51,27 @@ async def test_basic_auth(vault):
     session = await fn()
 
     async with session:
-        assert session._default_auth.login == 'username'
-        assert session._default_auth.password == 'password'
+        assert session._default_headers['Authorization'] == 'Basic dXNlcm5hbWU6cGFzc3dvcmQ='
+
+
+# Rare deprecated scenario: still pass through the result, but expect a warning from aiohttp.
+async def test_basic_auth_overridden(vault):
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', category=DeprecationWarning)
+        auth = aiohttp.BasicAuth('username', 'password')
+
+    class TestConnectionInfo(ConnectionInfo):
+        def as_aiohttp_basic_auth(self) -> aiohttp.BasicAuth | None:
+            return auth
+
+    await vault.populate({
+        'id': TestConnectionInfo(server='http://localhost'),
+    })
+    with pytest.warns(DeprecationWarning, match="The 'auth' parameter is deprecated"):  # aiohttp's
+        session = await fn()
+
+    async with session:
+        assert session._default_auth is auth
         assert 'Authorization' not in session._default_headers
 
 
@@ -65,7 +85,6 @@ async def test_header_with_token_only(vault):
     session = await fn()
 
     async with session:
-        assert session._default_auth is None
         assert session._default_headers['Authorization'] == 'Bearer token'
 
 
@@ -79,7 +98,6 @@ async def test_header_with_schema_only(vault):
     session = await fn()
 
     async with session:
-        assert session._default_auth is None
         assert session._default_headers['Authorization'] == 'Digest xyz'
 
 
@@ -94,7 +112,6 @@ async def test_header_with_schema_and_token(vault):
     session = await fn()
 
     async with session:
-        assert session._default_auth is None
         assert session._default_headers['Authorization'] == 'Digest xyz'
 
 

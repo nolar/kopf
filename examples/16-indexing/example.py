@@ -42,8 +42,3 @@ def intervalled(is_running: kopf.Index[tuple[str, str], list[bool]],
         if ns in ['kube-system', 'default']
         if is_running
     ]
-
-
-# Marks for the e2e tests (see tests/e2e/test_examples.py):
-# We do not care: pods can have 6-10 updates here.
-E2E_SUCCESS_COUNTS: dict[str, int] = {}

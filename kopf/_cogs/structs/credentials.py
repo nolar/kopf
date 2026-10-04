@@ -34,6 +34,7 @@ import os
 import random
 import ssl
 import tempfile
+import warnings
 from collections.abc import AsyncIterable, AsyncIterator, Callable
 from typing import NewType, TypeVar, cast
 
@@ -94,19 +95,22 @@ class ConnectionInfo(KubeContext):
         if self.private_key_path and self.private_key_data:
             raise ValueError("Both private key path & data are set. Need only one.")
 
+    # Deprecated in favor of aiohttp>=3.14 and aiohttp.encode_basic_auth(),
+    # but kept here in case anyone calls it or overrides it in their operators.
     def as_aiohttp_basic_auth(self) -> aiohttp.BasicAuth | None:
-        """Make a basic auth for username/password, or ``None`` if absent."""
-        if self.username and self.password:
-            return aiohttp.BasicAuth(self.username, self.password)
-        else:
-            return None
+        warnings.warn("as_aiohttp_basic_auth() is deprecated, stop calling it. "
+                      "The basic auth already comes from as_http_headers().",
+                      DeprecationWarning)
+        return None
 
     def as_http_headers(self) -> dict[str, str]:
         """
         Make a dict with the ``Authorization`` header set to scheme+token,
-        or an empty dict if there are no tokens or schemes.
+        or to the basic auth,  or an empty dict if there are no credentials.
         """
-        if self.scheme and self.token:
+        if self.username and self.password:
+            return {'Authorization': aiohttp.encode_basic_auth(self.username, self.password)}
+        elif self.scheme and self.token:
             return {'Authorization': f'{self.scheme} {self.token}'}
         elif self.scheme:
             return {'Authorization': f'{self.scheme}'}

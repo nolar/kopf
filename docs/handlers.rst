@@ -113,7 +113,8 @@ The event has the following structure:
         object: RawBody
 
 The event type ``None`` means the initial listing of the resources
-before the actual watch-stream begins.
+before the actual watch-stream begins. This also applies with the server-side
+initial streaming configured (Kopf overwrites type ``"ADDED"`` from Kubernetes).
 
 If the event handler fails, the error is logged to the operator's log,
 and then ignored.

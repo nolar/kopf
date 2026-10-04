@@ -31,7 +31,7 @@ import logging
 import warnings
 from collections.abc import Iterable
 
-from kopf._cogs.configs import diffbase, progress
+from kopf._cogs.configs import arrays, diffbase, progress
 from kopf._cogs.structs import reviews
 
 
@@ -88,6 +88,45 @@ class PostingSettings:
 
     This also affects ``kopf.event()`` and similar functions
     (``kopf.info()``, ``kopf.warn()``, ``kopf.exception()``).
+    """
+
+    default_backoffs: float | Iterable[float] = (1, 1, 2, 3, 5, 8, 13, 21)
+    """
+    Backoffs (seconds) for retrying failed event posts from explicit calls
+    to ``kopf.event()`` / ``kopf.info()`` / ``kopf.warn()`` / ``kopf.exception()``
+    when no per-call ``backoffs=`` is given.
+
+    A scalar means a single fixed delay; an iterable's length is the number
+    of retries. Mirrors :attr:`NetworkingSettings.error_backoffs`, and
+    replaces it for event-posting requests.
+    """
+
+    logging_backoffs: float | Iterable[float] = (1, 1, 2, 3, 5)
+    """
+    Backoffs (seconds) for retrying failed event posts generated implicitly
+    from logger messages (e.g. ``logger.info(...)`` in handlers). Shorter than
+    :attr:`default_backoffs` because logging-originated events are high-volume.
+
+    Mind that implicit log-events are disabled by default to prevent cluster
+    overloading under load. Set ``settings.posting.loggers=True`` to enable.
+    """
+
+    worker_limit: int | None = None
+    """
+    How many event-posting workers can run simultaneously.
+    If ``None``, there is no limit to the number of workers (as many as needed).
+
+    Settings this to a value lower than ``settings.queueing.worker_limit``
+    might lead to blocking the K8s-event posting for some objects
+    until other objects' event are posted (and retried as needed),
+    but will not block the processing of the object-related stream-events.
+    """
+
+    idle_timeout: float = 1.0
+    """
+    How soon an idle K8s-event-posting worker exits if no new events are posted.
+
+    This settings prevents resource leakage for dormant or deleted/gone objects.
     """
 
     reporting_component: str = 'kopf'
@@ -207,6 +246,122 @@ class WatchingSettings:
     bookmark events every 60 seconds and caches the events for 75 seconds,
     so the default of 70 seconds allows for reasonable jitter while still
     detecting dead streams and reconnecting while the events are in memory.
+    """
+
+    chunk_size: int | None = None
+    """
+    The size of a single chunk for the initial listing of resources.
+
+    Before Kopf starts a watch-stream, it lists the pre-existing resources.
+    For large clusters, that can cause a huge spike in memory usage both
+    in Kopf and in the API server side. To optimize that, Kopf can retrieve
+    the list in chunks of size N instead of everything at once.
+
+    The chunking also applies to the initial listing of CRDs and namespaces.
+
+    The optimal value depends on your cluster configuration:
+    smaller chunks mean less memory usage, but more API requests as a downside;
+    bigger chunks mean fewer API requests, but bigger spikes in memory usage.
+    Split the chunks so that the list is retrieved and processed in <= 5 minutes
+    before going to the regular watching — the default timeout of Kubernetes.
+
+    ``None`` (the default) means retrieving the entire list without chunking.
+    A zero is passed through to Kubernetes as is and, as observed,
+    also means no chunking, i.e., the whole list is returned, same as ``None``.
+
+    See: https://kubernetes.io/docs/reference/using-api/api-concepts/#retrieving-large-results-sets-in-chunks
+    """
+
+    initial_streaming: bool = False
+    """
+    Whether to fetch the initial list via streaming or fetching.
+
+    If disabled (the default), Kopf fetches the initial list of objects
+    via the GET operations, optionally chunked, and then switches
+    to the watch-streaming starting from the version reported by the list.
+
+    If enabled, Kopf skips the listing operation entirely, and instead
+    uses the server-side initial streaming (API: ``sendInitialEvents=true``).
+    See more: https://kubernetes.io/docs/reference/using-api/api-concepts/#streaming-lists
+
+    The initial list streaming is available since Kubernetes 1.34,
+    which is fresh as of September 2026 (only a year old), hence not a default.
+    Kopf might make this way of initializing the list a default later.
+
+    Note: Kopf enforces its own conventional ``type=None`` on all the initial
+    events, disregarding and overriding ``type='ADDED'`` from Kubernetes
+    until the first bookmark event. This is important to some internals of Kopf.
+    """
+
+    label_selectors: arrays.SelectorMapping[str] = dataclasses.field(
+        default_factory=arrays.SelectorMapping)
+    """
+    A set of label selectors for server-side filtering.
+
+    The selectors are applied to all watch-streams of matching resources
+    regardless of what other client-side filters exist on the handlers.
+
+    Several selectors can apply to a single resource, e.g., a group selector,
+    a version selector, plus a name-specific or category-specific selector.
+    In that case, all applicable selectors join by the boolean "and".
+
+    The exact syntax is Kubernetes-specific and is passed through to the API.
+    See more at: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
+    """
+
+    field_selectors: arrays.SelectorMapping[str] = dataclasses.field(
+        default_factory=arrays.SelectorMapping)
+    """
+    A set of field selectors for server-side filtering.
+
+    The selectors are applied to all watch-streams of matching resources
+    regardless of what other client-side filters exist on the handlers.
+
+    Several selectors can apply to a single resource, e.g., a group selector,
+    a version selector, plus a name-specific or category-specific selector.
+    In that case, all applicable selectors join by the boolean "and".
+
+    The exact syntax is Kubernetes-specific and is passed through to the API.
+    See more at: https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
+    """
+
+    shard_selectors: arrays.SelectorMapping[str] = dataclasses.field(
+        default_factory=arrays.SelectorMapping)
+    """
+    Shard selectors for server-side filtering.
+
+    Sample values for the 50/50 split by uid:
+    ``"shardRange(object.metadata.uid, '0x0000000000000000', '0x8000000000000000')"`` or
+    ``"shardRange(object.metadata.uid, '0x8000000000000000', '0x10000000000000000')"``.
+    See more at: https://kubernetes.io/docs/reference/using-api/api-concepts/#sharded-list-and-watch
+
+    Useful only in the context of having a swarm of operators working
+    on the same cluster. It is the responsibility of an operator developer or
+    an infra engineer to ensure that all the space of hashes is fully covered,
+    no gaps were left.
+
+    Available only as an alpha-feature since Kubernetes 1.36 (Aug'2026).
+    On earlier versions or if the feature gate is disabled (the default),
+    the filter is ignored by the server side.
+
+    If several selectors apply, the first found is used
+    (with Python's ordered dicts, that means the first defined one).
+
+    # TODO: decide how do we do with the meta-resources:
+
+    Meta-resources, i.e., those defining the operator's setup,
+    such as CRDs and namespaces, are never sharded.
+
+    Meta-resources, i.e., those defining the operator's setup,
+    such as CRDs and namespaces, are sharded the same way as other resources
+    if their sharding selectors are configured.
+    This allows making the operator blind to and/or focused on specific sets
+    of namespaces regardless of labels or name-glob patterns.
+
+    :doc:`Peering <peering>`, if enabled and configured, usually pauses
+    the conflicting operators working at the same time with the same priority.
+    If those operators have sharding set for any resource, they keep running.
+    Operators with lower priorities are paused as before.
     """
 
 

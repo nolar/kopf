@@ -164,6 +164,37 @@ This can be enabled to improve observability if desired:
     def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.posting.loggers = True
 
+Event posting can fail transiently (API rate limits, ``5xx`` errors, connectivity
+issues). Kopf retries failed posts with a configurable backoff schedule before
+giving up; Kopf logs and drops a failed post, never interrupting the handling
+cycle. A scalar means a single fixed delay; an iterable's length is the number
+of retries. For event posts, these settings replace
+``settings.networking.error_backoffs``.
+
+.. code-block:: python
+
+    import kopf
+    from typing import Any
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
+        # For explicit kopf.event()/info()/warn()/exception() calls without backoffs=:
+        settings.posting.default_backoffs = (1, 1, 2, 3, 5, 8, 13, 21)
+        # For events generated implicitly from logger messages:
+        settings.posting.logging_backoffs = (1, 1, 2, 3, 5)
+
+``settings.posting.worker_limit`` (default: ``None``, meaning as many as needed)
+and ``settings.posting.idle_timeout`` (default: 1 second) control how many
+event-posting workers can be spawned at the same time, and how soon they
+exit if no new events are posted for each individual object.
+
+Settings this to a value lower than ``settings.queueing.worker_limit``
+might lead to blocking the K8s-event posting for some objects
+until other objects' events are posted (and retried as needed),
+but will not block the regular processing of the object-related stream-events.
+All in all, even unlimited ``settings.posting.worker_limit``
+is naturally capped by ``settings.queueing.worker_limit``.
+
 
 .. _configure-sync-handlers:
 
@@ -303,6 +334,47 @@ __ https://github.com/kubernetes/kubernetes/blob/c20e0bc54189aef73a6a1498b4eab28
     However, the mere flow of bookmark events every 60 seconds may
     keep the connection alive and resolve the original issue of freezing.
 
+``settings.watching.chunk_size`` (int or ``None``) is the size of a single chunk
+of items to retrieve at once from the API. For large clusters, fetching can cause
+a huge spike in memory usage both in Kopf and in the API server side.
+To optimize that, Kopf can retrieve the list in chunks.
+The chunking also applies to the initial listing of CRDs and namespaces.
+
+The optimal value depends on your cluster configuration:
+smaller chunks mean less memory usage, but more API requests as a downside;
+bigger chunks mean fewer API requests, but bigger spikes in memory usage.
+Split the chunks so that the list is retrieved and processed in <= 5 minutes
+before going to the regular watching — the default timeout of Kubernetes.
+
+``None`` (the default) means retrieving the entire list without chunking.
+A zero is passed through to Kubernetes as is and, as observed,
+also means no chunking, i.e., the whole list is returned, same as ``None``.
+
+``settings.watching.initial_streaming`` (boolean) controls how to simulate
+a stream of pre-existing objects on startup: operator-side or server-side.
+
+If disabled (the default), Kopf fetches the initial list of objects
+via the GET operations, optionally paginated (chunked), and then switches
+to the watch-streaming starting from the version reported by the list.
+
+If enabled, Kopf skips the listing operation entirely, and instead
+uses the server-side initial streaming (API: ``sendInitialEvents=true``).
+See more: https://kubernetes.io/docs/reference/using-api/api-concepts/#streaming-lists
+
+This approach might save memory both server- and operator-side in huge clusters.
+
+.. note::
+    Kopf enforces its own conventional ``type=None`` on all the initial
+    events, disregarding and overriding ``type='ADDED'`` from Kubernetes
+    until the first bookmark event. This is important to some internals of Kopf.
+
+.. note::
+    The initial list streaming is available since Kubernetes 1.34,
+    which is fresh as of September 2026 (only a year old),
+    and has the feature state "beta" — hence not a default.
+    Kopf can make this way of initializing the list a default later.
+    New users are advised to enable this mode from the beginning.
+
 .. code-block:: python
 
     import kopf
@@ -312,11 +384,88 @@ __ https://github.com/kubernetes/kubernetes/blob/c20e0bc54189aef73a6a1498b4eab28
     def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
         settings.networking.connect_timeout = 10
         settings.networking.request_timeout = 60
-        settings.watching.server_timeout = 10 * 60
+        settings.watching.chunk_size = 100
+        settings.watching.initial_streaming = True
+
+
+Server-side watch selectors
+===========================
+
+``settings.watching.label_selectors`` and ``settings.watching.field_selectors``
+map resource selectors to raw Kubernetes ``labelSelector`` and ``fieldSelector``
+query parameters. Kopf passes these label-/field-selectors to Kubernetes
+for both the initial LIST request and the following WATCH requests.
+Several selectors can apply, in which case the filters are combined via "and".
+
+This also applies to listing/watching the namespaces and CRDs for orchestration,
+in case such selectors are configured. This can (intentionally) make Kopf
+blind to unwanted namespaces or see only wanted namespaces
+regardless of which namespace globs are used at startup.
+
+The syntax for resource selectors is the same as in the handler decorators,
+see :doc:`resources`.
+
+This setting is explicit and opt-in. Kopf does not infer these query parameters
+from handler filters such as ``labels=``, ``annotations=``, ``field=``,
+``value=``, or ``when=``. Those filters still run on the client side and keep
+their existing behavior.
+
+.. code-block:: python
+
+    import kopf
+    from typing import Any
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
+        settings.watching.label_selectors['v1/pods'] = "prefect.io/flow-run-id"
+        settings.watching.field_selectors['v1/pods'] = "status.phase!=Succeeded,status.phase!=Failed"
+        settings.watching.label_selectors['batch', 'v1', 'jobs'] = "prefect.io/flow-run-id"
+
+Kubernetes supports ``labelSelector`` for LIST/WATCH requests, and supports
+``fieldSelector`` only for selected fields on each resource type. Kubernetes
+rejects invalid selectors.
+
+.. seealso::
+
+    * https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
+    * https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
+
+
+Server-side sharding
+====================
+
+Kopf supports the server-side sharding available since Kubernetes 1.36 (Apr'2026).
+Requires the alpha feature gate ``ShardedListAndWatch`` enabled.
+Otherwise (older version or no feature gate), the server ignores the filter.
+
+Sample values for the 50/50 split by uid:
+``"shardRange(object.metadata.uid, '0x0000000000000000', '0x8000000000000000')"`` or
+``"shardRange(object.metadata.uid, '0x8000000000000000', '0x10000000000000000')"``.
+
+Useful only in the context of having a swarm of operators working
+on the same cluster. It is the responsibility of an operator developer or
+an infra engineer to ensure that all the space of hashes is fully covered,
+no gaps were left.
+
+The filters from ``settings.watching.shard_selectors`` are passed through
+to the API unmodified and uninterpreted.
+If several selectors apply, the first found is used
+(with Python's ordered dicts, that means the first defined one).
+
+:doc:`Peering <peering>`, if enabled and configured, usually pauses
+the conflicting operators working at the same time with the same priority.
+If those operators have sharding set for any resource, they keep running.
+Operators with lower priorities are paused as before.
+
+See :doc:`peering` for examples of multi-instance operators splitting
+the workload across them using these shards.
+
+.. seealso::
+    * https://kubernetes.io/docs/reference/using-api/api-concepts/#sharded-list-and-watch
 
 
 Proxy and environment trust
----------------------------
+===========================
 
 ``settings.networking.trust_env`` (boolean) controls whether the HTTP client
 session respects the proxy-related environment variables (``HTTP_PROXY``,

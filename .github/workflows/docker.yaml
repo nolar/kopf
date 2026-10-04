@@ -27,12 +27,12 @@ jobs:
         python-version: ["3.14"]  # all versions starting with 3.14 as the first one
         variant: [slim, alpine]
     name: Python ${{ matrix.python-version }} ${{ matrix.variant }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 

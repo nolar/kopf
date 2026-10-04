@@ -73,6 +73,31 @@ These events are seen in the output of:
       Warning   SomeReason  5s    kopf  Some message
 
 
+Retrying failed event posts
+===========================
+
+Event posting can fail transiently (API rate limits, ``5xx`` errors, connectivity
+issues). Kopf retries failed posts with a configurable backoff schedule before
+giving up. A failed post is never fatal: Kopf logs and drops it, and it never
+interrupts the handling cycle.
+
+Pass ``backoffs=`` to control the retries per call. It accepts a single delay or
+an iterable of delays (in seconds); the number of delays is the number of retries:
+
+.. code-block:: python
+
+    import kopf
+
+    @kopf.on.create('kopfexamples')
+    def create_fn(body, **_):
+        kopf.event(body, type='SomeType', reason='SomeReason',
+                   message='Some message', backoffs=[1, 2, 5])
+
+When ``backoffs`` is omitted, Kopf uses ``settings.posting.default_backoffs``.
+Events generated implicitly from logger messages use
+``settings.posting.logging_backoffs``.
+
+
 Other objects
 =============
 

@@ -7,7 +7,13 @@ import kopf
 
 async def test_declared_public_interface_and_promised_defaults():
     settings = kopf.OperatorSettings()
+    assert settings.posting.enabled == True
+    assert settings.posting.loggers == False
     assert settings.posting.level == logging.INFO
+    assert settings.posting.default_backoffs == (1, 1, 2, 3, 5, 8, 13, 21)
+    assert settings.posting.logging_backoffs == (1, 1, 2, 3, 5)
+    assert settings.posting.worker_limit is None
+    assert settings.posting.idle_timeout == 1.0
     assert settings.peering.name == "default"
     assert settings.peering.stealth == False
     assert settings.peering.priority == 0
@@ -20,6 +26,11 @@ async def test_declared_public_interface_and_promised_defaults():
     assert settings.watching.connect_timeout is None
     assert settings.watching.server_timeout is None
     assert settings.watching.client_timeout is None
+    assert settings.watching.chunk_size is None
+    assert settings.watching.initial_streaming == False
+    assert not settings.watching.label_selectors  # empty mapping
+    assert not settings.watching.field_selectors  # empty mapping
+    assert not settings.watching.shard_selectors  # empty mapping
     assert settings.queueing.worker_limit is None
     assert settings.queueing.idle_timeout == 5.0
     assert settings.queueing.exit_timeout == 2.0

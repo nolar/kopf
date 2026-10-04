@@ -60,7 +60,8 @@ Annotations: TypeAlias = Mapping[str, str]
 # All non-used payload falls into `Any`, and is not type-checked.
 #
 
-# ``None`` is used for the listing, when the pseudo-watch-stream is simulated.
+# ``None`` is used for the listing, when the pseudo-watch-stream is simulated;
+# also forced for initial events with settings.watching.initial_streaming=True.
 RawInputType = Literal[None, 'ADDED', 'MODIFIED', 'DELETED', 'BOOKMARK', 'ERROR']
 RawEventType = Literal[None, 'ADDED', 'MODIFIED', 'DELETED', 'BOOKMARK']
 
