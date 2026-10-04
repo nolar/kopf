@@ -114,15 +114,14 @@ async def test_threadsafe_indeed_works(chronometer, threader, event_queue):
         asyncio.run_coroutine_threadsafe(event_queue.put(object()), loop=loop)
 
     with chronometer, looptime.Chronometer(loop.time) as loopometer:
-        t0 = time.perf_counter()
+        # t0 = time.perf_counter()
         threader(0.5, lambda: loop.call_soon_threadsafe(lambda: None))
-        t1 = time.perf_counter()
+        # t1 = time.perf_counter()
         threader(0.2, thread_fn)
-        t2 = time.perf_counter()
+        # t2 = time.perf_counter()
         await event_queue.get()
-        t3 = time.perf_counter()
-
-        logging.getLogger().warning(f"test run {t1-t0=} {t2-t1=} {t3-t2=} {t3-t0=}")
+        # t3 = time.perf_counter()
+        # logging.getLogger().warning(f"test run {t1-t0=} {t2-t1=} {t3-t2=} {t3-t0=}")
 
     # We wake up on time of the queue.put (0.2), not on the wakeup call (0.5).
     assert 0.2 <= chronometer.seconds < 0.3
