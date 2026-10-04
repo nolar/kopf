@@ -67,15 +67,10 @@ def threader():
             time.sleep(delay)
             fn()
 
-        t0 = time.perf_counter()
-        ctx = contextvars.copy_context()
-        t1 = time.perf_counter()
-        target = functools.partial(ctx.run, thread_fn)
+        target = functools.partial(contextvars.copy_context().run, thread_fn)
         thread = threading.Thread(target=target)
         thread.start()
-        t2 = time.perf_counter()
         threads.append(thread)
-        logging.getLogger().warning(f"thread startup ({delay=}): {t1-t0=} {t2-t1=} {t2-t0=}")
 
     try:
         yield start_fn
