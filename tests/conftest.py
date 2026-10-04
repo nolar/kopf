@@ -1,12 +1,11 @@
 import asyncio
 import dataclasses
 import importlib
-import inspect
 import io
 import logging
 import re
 import sys
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 import pytest_asyncio
@@ -573,23 +572,8 @@ def _no_asyncio_pending_tasks(request: pytest.FixtureRequest):
         if isinstance(fixture_value, asyncio.BaseEventLoop):
             fixture_value.run_until_complete(asyncio.sleep(0))
 
-        # Safe-guards for Python 3.10 until deprecated in ≈Oct'2026 (not needed for 3.11+).
-        try:
-            from asyncio import Runner as stdlib_Runner  # python >= 3.11 (absent in 3.10)
-        except ImportError:
-            pass
-        else:
-            if isinstance(fixture_value, stdlib_Runner):
-                fixture_value.get_loop().run_until_complete(asyncio.sleep(0))
-
-        # In case pytest's asyncio libraries use the backported runners in Python 3.10.
-        try:
-            from backports.asyncio.runner import Runner as backported_Runner
-        except ImportError:
-            pass
-        else:
-            if isinstance(fixture_value, backported_Runner):
-                fixture_value.get_loop().run_until_complete(asyncio.sleep(0))
+        if isinstance(fixture_value, asyncio.Runner):
+            fixture_value.get_loop().run_until_complete(asyncio.sleep(0))
 
     # Detect all leftover tasks.
     after = _get_all_tasks()

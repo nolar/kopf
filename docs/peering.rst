@@ -164,6 +164,30 @@ then it is used by default as the peering object.
 Otherwise, Kopf will run the operator in the standalone mode.
 
 
+Stealth keep-alive
+==================
+
+Every few seconds (60 by default), the operator sends a keep-alive update
+to the chosen peering object, showing that it is still functioning. Other operators
+will notice this and decide whether to pause or resume.
+
+The operator also logs keep-alive activity. This can be distracting. To disable it:
+
+.. code-block:: python
+
+    import kopf
+    import random
+    from typing import Any
+
+    @kopf.on.startup()
+    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
+        settings.peering.stealth = True
+
+There is no equivalent CLI option for that.
+
+Note that this only affects logging. The keep-alive is still sent regardless.
+
+
 Multi-pod operators
 ===================
 
@@ -309,28 +333,3 @@ As a result, we have 4 pods serving the following ranges of pod uids:
 .. seealso::
 
     * https://kubernetes.io/docs/reference/using-api/api-concepts/#sharded-list-and-watch
-
-
-
-Stealth keep-alive
-==================
-
-Every few seconds (60 by default), the operator sends a keep-alive update
-to the chosen peering object, showing that it is still functioning. Other operators
-will notice this and decide whether to pause or resume.
-
-The operator also logs keep-alive activity. This can be distracting. To disable it:
-
-.. code-block:: python
-
-    import kopf
-    import random
-    from typing import Any
-
-    @kopf.on.startup()
-    def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
-        settings.peering.stealth = True
-
-There is no equivalent CLI option for that.
-
-Note that this only affects logging. The keep-alive is still sent regardless.

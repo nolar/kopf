@@ -53,14 +53,10 @@ class SampleException(Exception):
 
 
 async def test_empty_stream_yields_nothing(kmock, settings, resource, namespace):
-
-    events = []
-    async for event in continuous_watch(settings=settings,
-                                        resource=resource,
-                                        namespace=namespace,
-                                        operator_pause_waiter=asyncio.Future()):
-        events.append(event)
-
+    events = [event async for event in continuous_watch(settings=settings,
+                                                        resource=resource,
+                                                        namespace=namespace,
+                                                        operator_pause_waiter=asyncio.Future())]
     assert len(kmock['list']) == 1
     assert len(kmock['watch']) == 1
     assert len(events) == 1
@@ -73,12 +69,10 @@ async def test_initial_streaming_does_not_fetch(
     kmock['list', resource, kmock.namespace(namespace)] << {'items': [{'spec': 'unseen'}]}
     kmock['watch', resource, kmock.namespace(namespace)] << EOS
 
-    events = []
-    async for event in continuous_watch(settings=settings,
-                                        resource=resource,
-                                        namespace=namespace,
-                                        operator_pause_waiter=asyncio.Future()):
-        events.append(event)
+    events = [event async for event in continuous_watch(settings=settings,
+                                                        resource=resource,
+                                                        namespace=namespace,
+                                                        operator_pause_waiter=asyncio.Future())]
 
     assert len(kmock['list']) == 0
     assert len(kmock['watch']) == 1
@@ -89,12 +83,10 @@ async def test_event_stream_yields_everything(kmock, settings, resource, namespa
     kmock['list', resource, kmock.namespace(namespace)] << {'items': [{'spec': 'x'}]}
     kmock['watch', resource, kmock.namespace(namespace)] << STREAM_WITH_NORMAL_EVENTS << EOS
 
-    events = []
-    async for event in continuous_watch(settings=settings,
-                                        resource=resource,
-                                        namespace=namespace,
-                                        operator_pause_waiter=asyncio.Future()):
-        events.append(event)
+    events = [event async for event in continuous_watch(settings=settings,
+                                                        resource=resource,
+                                                        namespace=namespace,
+                                                        operator_pause_waiter=asyncio.Future())]
 
     assert len(kmock['list']) == 1
     assert len(kmock['watch']) == 1
@@ -118,12 +110,10 @@ async def test_initial_streaming_resets_types_to_none(
         EOS,
     )
 
-    events = []
-    async for event in continuous_watch(settings=settings,
-                                        resource=resource,
-                                        namespace=namespace,
-                                        operator_pause_waiter=asyncio.Future()):
-        events.append(event)
+    events = [event async for event in continuous_watch(settings=settings,
+                                                        resource=resource,
+                                                        namespace=namespace,
+                                                        operator_pause_waiter=asyncio.Future())]
 
     # Same inputs in the stream, different types in yields, but the same payloads.
     assert len(events) == 6
@@ -140,12 +130,10 @@ async def test_initial_streaming_resets_types_to_none(
 async def test_unknown_event_type_ignored(kmock, settings, resource, namespace, assert_logs):
     kmock['watch', resource, kmock.namespace(namespace)] << STREAM_WITH_UNKNOWN_EVENT << EOS
 
-    events = []
-    async for event in continuous_watch(settings=settings,
-                                        resource=resource,
-                                        namespace=namespace,
-                                        operator_pause_waiter=asyncio.Future()):
-        events.append(event)
+    events = [event async for event in continuous_watch(settings=settings,
+                                                        resource=resource,
+                                                        namespace=namespace,
+                                                        operator_pause_waiter=asyncio.Future())]
 
     assert len(events) == 3
     assert events[0] == Bookmark.LISTED
@@ -158,12 +146,10 @@ async def test_unknown_event_type_ignored(kmock, settings, resource, namespace, 
 async def test_error_410gone_exits_normally(kmock, settings, resource, namespace, assert_logs):
     kmock['watch', resource, kmock.namespace(namespace)] << STREAM_WITH_ERROR_410GONE << EOS
 
-    events = []
-    async for event in continuous_watch(settings=settings,
-                                        resource=resource,
-                                        namespace=namespace,
-                                        operator_pause_waiter=asyncio.Future()):
-        events.append(event)
+    events = [event async for event in continuous_watch(settings=settings,
+                                                        resource=resource,
+                                                        namespace=namespace,
+                                                        operator_pause_waiter=asyncio.Future())]
 
     assert len(events) == 2
     assert events[0] == Bookmark.LISTED
@@ -211,12 +197,10 @@ async def test_long_line_parsing(kmock, settings, resource, namespace):
         {'type': 'ADDED', 'object': {'spec': {'field': 'z' * (4 * 1024 * 1024)}}},
     ) << EOS
 
-    events = []
-    async for event in continuous_watch(settings=settings,
-                                        resource=resource,
-                                        namespace=namespace,
-                                        operator_pause_waiter=asyncio.Future()):
-        events.append(event)
+    events = [event async for event in continuous_watch(settings=settings,
+                                                        resource=resource,
+                                                        namespace=namespace,
+                                                        operator_pause_waiter=asyncio.Future())]
 
     assert len(events) == 4
     assert events[0] == Bookmark.LISTED
@@ -236,11 +220,9 @@ async def test_list_objs_connection_errors_are_caught(
         settings, resource, namespace, enforced_session, mocker, connection_error):
     enforced_session.request = mocker.Mock(side_effect=connection_error())
 
-    events = []
-    async for event in continuous_watch(settings=settings,
-                                            resource=resource,
-                                            namespace=namespace,
-                                            operator_pause_waiter=asyncio.Future()):
-        events.append(event)
+    events = [event async for event in continuous_watch(settings=settings,
+                                                        resource=resource,
+                                                        namespace=namespace,
+                                                        operator_pause_waiter=asyncio.Future())]
 
     assert len(events) == 0

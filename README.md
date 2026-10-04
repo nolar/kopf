@@ -133,7 +133,7 @@ That's easy! For more features, see the [documentation](https://docs.kopf.dev/).
 
 ## Usage
 
-Python 3.10+ is required:
+Python 3.11+ is required:
 [CPython](https://www.python.org/) and [PyPy](https://www.pypy.org/)
 are officially supported and tested; other Python implementations can work too.
 
