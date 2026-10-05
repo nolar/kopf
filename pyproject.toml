@@ -77,7 +77,7 @@ test = [
     "coverage>=7.12.0",
     "freezegun",
     "kmock>=0.5",
-    "looptime>=0.7",
+    "looptime>=0.8",
     "pyngrok",
     "pytest>=9.0.0",
     "pytest-aiohttp",
