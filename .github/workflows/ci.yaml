@@ -6,6 +6,7 @@ on:
   pull_request:
     branches:
       - main
+      - main2
       - release/**
   workflow_dispatch: {}
 
@@ -22,6 +23,8 @@ jobs:
     timeout-minutes: 7  # usually 5 mins with coverage
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
       - uses: astral-sh/setup-uv@v10.2.0
       - uses: actions/setup-python@v7
         with:
