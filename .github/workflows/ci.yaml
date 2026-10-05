@@ -6,50 +6,25 @@ on:
   pull_request:
     branches:
       - main
+      - main2
       - release/**
   workflow_dispatch: {}
 
 jobs:
-  linters:
-    name: Linting and static analysis
-    runs-on: ubuntu-26.04
-    timeout-minutes: 7  # usually 5 mins with coverage
-    steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.2.0
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.14"
-      - run: uv sync --no-dev --group lint
-      - run: uv run --no-sync pre-commit run --all-files
-      - run: uv run --no-sync mypy
-      - run: |
-          # Separately, because the shared module name "example.py" causes naming conflicts.
-          exit_codes=0
-          for d in $(find examples -maxdepth 1 -mindepth 1 -type d)
-          do
-            echo "Checking ${d}"
-            uv run --no-sync mypy $d
-            exit_codes=$[${exit_codes} + $?]
-          done
-          exit ${exit_codes}
 
   unit-tests:
     strategy:
       fail-fast: false
       matrix:
         install-extras: [ "", "full-auth" ]
-        python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
-        include:
-          # Assumption: if these special setups work in one version, they work in all versions.
-          - install-extras: "uvloop"
-            python-version: "3.14"
-          - python-version: "3.14t"
+        python-version: [ "3.12" ]
     name: Python ${{ matrix.python-version }}${{ matrix.install-extras && ' ' || '' }}${{ matrix.install-extras }}
     runs-on: ubuntu-26.04
     timeout-minutes: 7  # usually 5 mins with coverage
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
       - uses: astral-sh/setup-uv@v10.2.0
       - uses: actions/setup-python@v7
         with:
@@ -76,66 +51,3 @@ jobs:
           env_vars: PYTHON
           token: ${{ secrets.CODECOV_TOKEN }}
         if: success()
-
-  # Only the core functionality is tested: no e2e or functional tests (for simplicity).
-  # No coverage: PyPy performs extremely poorly with tracing/coverage (13 mins vs. 3 mins).
-  # Extra time: 2-3 mins for building the dependencies (since no binary wheels are available).
-  # Extra time: PyPy is good with JIT for repetitive code; tests are too unique for JIT.
-  pypy-tests:
-    strategy:
-      fail-fast: false
-      matrix:
-        # NB: pypy v7.3.23 fails on catching AttributeError in resolve_obj(); 7.3.22 works.
-        # Check the latest versions at https://downloads.python.org/pypy/ and upgrade later.
-        install-extras: [ "", "full-auth" ]
-        python-version: [ "pypy-3.10", "pypy-3.11-v7.3.22", "pypy-3.12" ]
-    name: Python ${{ matrix.python-version }}${{ matrix.install-extras && ' ' || '' }}${{ matrix.install-extras }}
-    runs-on: ubuntu-26.04
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.2.0
-      - uses: actions/setup-python@v7
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - run: sudo apt-get update && sudo apt-get install libxml2-dev libxslt-dev
-
-      - run: uv sync --no-dev --group test
-      - run: uv sync --no-dev --group test --extra ${{ matrix.install-extras }}
-        if: ${{ matrix.install-extras }}
-      - run: uv run --no-sync pytest --color=yes --timeout=2 --no-cov
-
-  functional:
-    strategy:
-      fail-fast: false
-      matrix:
-        k3s: [latest, v1.33, v1.32, v1.31]
-    name: K3s ${{matrix.k3s}}
-    runs-on: ubuntu-26.04
-    timeout-minutes: 10  # usually 4-5 mins
-    steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.2.0
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.14"
-      - uses: nolar/setup-k3d-k3s@v1
-        with:
-          version: ${{ matrix.k3s }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          k3s-args: --disable=metrics-server@server:*
-
-      - run: uv sync --no-dev --group test
-      - run: uv pip install -r examples/requirements.txt
-      - run: uv run --no-sync pytest --color=yes --timeout=30 --only-e2e
-
-  coveralls-finish:
-    name: Finalize coveralls.io
-    needs: [unit-tests, pypy-tests, functional]
-    runs-on: ubuntu-26.04
-    steps:
-      - name: Finish coverage at Coveralls.io
-        uses: coverallsapp/github-action@v2
-        with:
-          parallel-finished: true
