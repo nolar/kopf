@@ -169,10 +169,14 @@ class AsyncFlagPromise(FlagWaiter[FlagReasonT],
 
     def __await__(self) -> Generator[None, None, AsyncFlagWaiter[FlagReasonT]]:
         name = f"time-limited waiting for the daemon stopper {self._setter!r}"
-        coro = asyncio.wait_for(self._setter.async_event.wait(), timeout=self._timeout)
-        task = asyncio.create_task(coro, name=name)
+        task = asyncio.create_task(self._wait(), name=name)
         try:
             yield from task
         except TimeoutError:
             pass  # the requested time limit is reached, exit regardless of the state
         return self._waiter  # the original checker! not the time-limited one!
+
+    async def _wait(self) -> None:
+        # Create the inner coroutines only when the task actually starts. If the task is cancelled
+        # before that, e.g. together with its daemon, nothing is left unawaited.
+        await asyncio.wait_for(self._setter.async_event.wait(), timeout=self._timeout)
