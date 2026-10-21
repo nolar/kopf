@@ -1,57 +1,69 @@
 """
-The daemon killer iterates the running daemons while their stoppers remove them.
+The daemon killer stops every daemon, even those exiting mid-iteration.
 
-Every ``await scheduler.spawn(...)`` yields to the event loop, and a stopper
-spawned a moment earlier can finish meanwhile: the daemon exits and its runner
-deletes it from ``running_daemons``. The killer must not fail with
-``RuntimeError: dictionary changed size during iteration`` when that happens,
-neither when the operator is paused nor when it is exiting.
+Each ``Scheduler.spawn()`` of a stopper gives control to the event loop.
+If the stoppers spawned earlier finish meanwhile, their daemons exit
+and remove themselves from the resource's running daemons --- the same dict
+that the daemon killer iterates over. Here, a delay after every spawn
+ensures that they do so before the next spawn.
 """
 import asyncio
 
 import pytest
 
-from kopf._core.engines import daemons
-from kopf._core.engines.daemons import daemon_killer
+import kopf
+from kopf._cogs.aiokits import aiotasks
+
+
+@pytest.fixture(autouse=True)
+def slow_spawning(mocker):
+    original = aiotasks.Scheduler.spawn
+
+    async def spawn(self, *args, **kwargs):
+        await original(self, *args, **kwargs)
+        await asyncio.sleep(1)  # let the spawned stopper and its daemon finish
+
+    mocker.patch.object(aiotasks.Scheduler, 'spawn', spawn)
 
 
 @pytest.fixture()
-async def running_daemons(memories, mocker):
-    memory = await memories.recall({'metadata': {'uid': 'uid1', 'name': 'n', 'namespace': 'ns'}})
-    running = memory.daemons_memory.running_daemons
-    running.update({f'handler{i}': mocker.Mock(name=f'daemon{i}') for i in range(4)})
+async def daemons_memory(settings, memories, resource, dummy, simulate_cycle):
 
-    # As a daemon's runner does once its daemon has stopped: it forgets it.
-    async def stop_daemon(*, daemon, **_):
-        for key, value in list(running.items()):
-            if value is daemon:
-                del running[key]
+    @kopf.daemon(*resource, id='fn1')
+    async def fn1(**kwargs):
+        dummy.mock(**kwargs)
+        await kwargs['stopped'].wait()
 
-    mocker.patch.object(daemons, 'stop_daemon', stop_daemon)
-    return running
+    @kopf.daemon(*resource, id='fn2')
+    async def fn2(**kwargs):
+        dummy.mock(**kwargs)
+        await kwargs['stopped'].wait()
 
-
-async def test_all_daemons_are_stopped_when_paused_while_stoppers_remove_them(
-        settings, memories, operator_paused, running_daemons, looptime):
-    await operator_paused.make_toggle(True, name='paused')
-    task = asyncio.create_task(daemon_killer(
-        settings=settings, memories=memories, operator_paused=operator_paused))
-    while running_daemons and not task.done():
+    # Spawn both daemons and wait until they run. Assume the finalizers are already added.
+    finalizer = settings.persistence.finalizer
+    event_object = {'metadata': {'finalizers': [finalizer]}}
+    await simulate_cycle(event_object)
+    while dummy.mock.call_count < 2:
         await asyncio.sleep(0)
-    if task.done():
-        await task  # re-raise the killer's failure, if any
-    task.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        await task
-    assert running_daemons == {}
+    memory = await memories.recall(event_object)
+    assert len(memory.daemons_memory.running_daemons) == 2
+    return memory.daemons_memory
 
 
-async def test_all_daemons_are_stopped_when_exiting_while_stoppers_remove_them(
-        settings, memories, operator_paused, running_daemons, looptime):
-    task = asyncio.create_task(daemon_killer(
-        settings=settings, memories=memories, operator_paused=operator_paused))
-    await asyncio.sleep(0)  # let it reach its wait for a pause
-    task.cancel()
+async def test_all_daemons_exit_on_operator_pausing_while_being_iterated_over(
+        daemons_memory, conflicts_found, background_daemon_killer):
+    await conflicts_found.turn_to(True)
+
+    # The killer keeps running while the operator does; it would be done only if it failed.
+    done, _ = await asyncio.wait([background_daemon_killer], timeout=10)
+    assert not done
+    assert not daemons_memory.running_daemons
+
+
+async def test_all_daemons_exit_on_operator_exiting_while_being_iterated_over(
+        daemons_memory, background_daemon_killer):
+    background_daemon_killer.cancel()
+
     with pytest.raises(asyncio.CancelledError):
-        await task
-    assert running_daemons == {}
+        await background_daemon_killer
+    assert not daemons_memory.running_daemons
