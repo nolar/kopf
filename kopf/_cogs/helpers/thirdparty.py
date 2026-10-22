@@ -35,7 +35,7 @@ try:
     from kubernetes.client import V1ObjectMeta as V1ObjectMetaSync, \
                                   V1OwnerReference as V1OwnerReferenceSync
 except ImportError:
-    V1ObjectMetaSync = V1OwnerReferenceSync = None
+    V1ObjectMetaSync = V1OwnerReferenceSync = None  # type: ignore
 
 
 # Beware: `kubernetes_asyncio` is type-annotated, unlike `kubernetes`, so more picky.
@@ -47,8 +47,8 @@ except ImportError:
 
 
 class V1OwnerReferenceProtocol(Protocol):
-    block_owner_deletion: bool
-    controller: bool
+    block_owner_deletion: bool | None
+    controller: bool | None
     api_version: str
     kind: str
     name: str
@@ -58,7 +58,7 @@ class V1OwnerReferenceProtocol(Protocol):
 class V1ObjectMetaProtocol(Protocol):
     owner_references: list[V1OwnerReferenceProtocol]
     labels: dict[str, str]
-    name: str
+    name: str | None
     namespace: str | None
     generate_name: str | None
 

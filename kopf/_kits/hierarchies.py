@@ -46,7 +46,8 @@ def append_owner_reference(
                     refs.append(owner_ref)
             case thirdparty.KubernetesModelSync():
                 if obj.metadata is None:
-                    obj.metadata = thirdparty.V1ObjectMetaSync()
+                    obj.metadata = thirdparty.V1ObjectMetaSync()  # type: ignore[assignment]
+                assert obj.metadata is not None  # for type-checkers
                 if obj.metadata.owner_references is None:
                     obj.metadata.owner_references = []
                 refs = obj.metadata.owner_references
@@ -99,7 +100,8 @@ def remove_owner_reference(
                     refs[:] = [ref for ref in refs if ref.get('uid') != owner_ref['uid']]
             case thirdparty.KubernetesModelSync():
                 if obj.metadata is None:
-                    obj.metadata = thirdparty.V1ObjectMetaSync()
+                    obj.metadata = thirdparty.V1ObjectMetaSync()  # type: ignore[assignment]
+                assert obj.metadata is not None  # for type-checkers
                 if obj.metadata.owner_references is None:
                     obj.metadata.owner_references = []
                 refs = obj.metadata.owner_references
@@ -148,7 +150,8 @@ def label(
                 obj_labels = obj.setdefault('metadata', {}).setdefault('labels', {})
             case thirdparty.KubernetesModelSync():
                 if obj.metadata is None:
-                    obj.metadata = thirdparty.V1ObjectMetaSync()
+                    obj.metadata = thirdparty.V1ObjectMetaSync()  # type: ignore[assignment]
+                assert obj.metadata is not None  # for type-checkers
                 if obj.metadata.labels is None:
                     obj.metadata.labels = {}
                 obj_labels = obj.metadata.labels
@@ -216,7 +219,8 @@ def harmonize_naming(
                             del obj['metadata']['name']
             case thirdparty.KubernetesModelSync():
                 if obj.metadata is None:
-                    obj.metadata = thirdparty.V1ObjectMetaSync()
+                    obj.metadata = thirdparty.V1ObjectMetaSync()  # type: ignore[assignment]
+                assert obj.metadata is not None  # for type-checkers
                 noname = obj.metadata.name is None and obj.metadata.generate_name is None
                 if forced or noname:
                     if strict:
@@ -277,7 +281,8 @@ def adjust_namespace(
                     obj.setdefault('metadata', {})['namespace'] = namespace
             case thirdparty.KubernetesModelSync():
                 if obj.metadata is None:
-                    obj.metadata = thirdparty.V1ObjectMetaSync()
+                    obj.metadata = thirdparty.V1ObjectMetaSync()  # type: ignore[assignment]
+                assert obj.metadata is not None  # for type-checkers
                 if forced or obj.metadata.namespace is None:
                     obj.metadata.namespace = namespace
             case thirdparty.KubernetesModelAsync():
