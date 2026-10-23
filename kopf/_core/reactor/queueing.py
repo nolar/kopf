@@ -378,7 +378,7 @@ async def _wait_for_depletion(
 ) -> None:
 
     # Notify all the workers to finish now. Wake them up if they are waiting in the queue-getting.
-    for stream in streams.values():
+    for stream in list(streams.values()):
         await stream.backlog.put(EOS.token)
 
     # Wait for the queues to be depleted, but only if there are some workers running.

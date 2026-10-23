@@ -329,9 +329,11 @@ async def daemon_killer(
             # From time to time, continue killing the daemons that sneak into processing queues.
             # This is a secondary safeguard against #1266: events sneaked into workers on pausing.
             # The primary safeguard is in pause_daemons(): stop daemons immediately on spawning.
+            # Iterate over copies: every spawn yields to the event loop, and a stopper spawned
+            # earlier can finish meanwhile and remove its daemon (or a whole resource's memory).
             while operator_paused.is_on():
-                for memory in memories.iter_all_daemon_memories():
-                    for daemon in memory.running_daemons.values():
+                for memory in list(memories.iter_all_daemon_memories()):
+                    for daemon in list(memory.running_daemons.values()):
                         await scheduler.spawn(
                             name=f"pausing stopper of {daemon}",
                             coro=stop_daemon(
@@ -349,8 +351,8 @@ async def daemon_killer(
 
     # Terminate all running daemons when the operator exits (and this task is cancelled).
     finally:
-        for memory in memories.iter_all_daemon_memories():
-            for daemon in memory.running_daemons.values():
+        for memory in list(memories.iter_all_daemon_memories()):
+            for daemon in list(memory.running_daemons.values()):
                 await scheduler.spawn(
                     name=f"exiting stopper of {daemon}",
                     coro=stop_daemon(
