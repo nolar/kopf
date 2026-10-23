@@ -78,11 +78,11 @@ def login_via_client(
         return None
 
     try:
-        kubernetes.config.load_incluster_config()  # cluster env vars
+        kubernetes.config.load_incluster_config()  # type: ignore[no-untyped-call]
         logger.debug("Client is configured in cluster with service account.")
     except kubernetes.config.ConfigException as e1:
         try:
-            kubernetes.config.load_kube_config()  # developer's config files
+            kubernetes.config.load_kube_config()  # type: ignore[no-untyped-call]
             logger.debug("Client is configured via kubeconfig file.")
         except kubernetes.config.ConfigException as e2:
             raise credentials.LoginError("Cannot authenticate the client library "
