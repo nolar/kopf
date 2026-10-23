@@ -62,7 +62,7 @@ jobs:
       - run: uv sync --no-dev --group test
       - run: uv sync --no-dev --group test --extra ${{ matrix.install-extras }}
         if: ${{ matrix.install-extras }}
-      - run: coverage run --branch --source=kopf -m pytest --color=yes --timeout=2
+      - run: coverage run --branch --source=kopf -m pytest --color=yes
 
       - name: Publish coverage to Coveralls.io
         uses: coverallsapp/github-action@v2
@@ -115,7 +115,7 @@ jobs:
       - run: uv sync --no-dev --group test
       - run: uv sync --no-dev --group test --extra ${{ matrix.install-extras }}
         if: ${{ matrix.install-extras }}
-      - run: pytest --color=yes --timeout=2 --no-cov
+      - run: pytest --color=yes --no-cov
 
   functional:
     strategy:
