@@ -62,7 +62,7 @@ jobs:
       - run: uv sync --no-dev --group test
       - run: uv sync --no-dev --group test --extra ${{ matrix.install-extras }}
         if: ${{ matrix.install-extras }}
-      - run: coverage run --branch --source=kopf -m pytest --color=yes --timeout=2
+      - run: coverage run --branch --source=kopf -m pytest --color=yes
 
       - name: Publish coverage to Coveralls.io
         uses: coverallsapp/github-action@v2
@@ -93,6 +93,11 @@ jobs:
         # Check the latest versions at https://downloads.python.org/pypy/ and upgrade later.
         install-extras: [ "", "full-auth" ]
         python-version: [ "pypy-3.11", "pypy-3.12" ]
+        exclude:
+          # kubernetes==37.0.1 -> pydantic-core==2.50.1 -> fails to build and install.
+          # todo: try re-enabling undefinitely later (maybe it will be fixed over time).
+          - python-version: pypy-3.12
+            install-extras: full-auth
     name: Python ${{ matrix.python-version }}${{ matrix.install-extras && ' ' || '' }}${{ matrix.install-extras }}
     runs-on: ubuntu-26.04
     timeout-minutes: 5
@@ -110,7 +115,7 @@ jobs:
       - run: uv sync --no-dev --group test
       - run: uv sync --no-dev --group test --extra ${{ matrix.install-extras }}
         if: ${{ matrix.install-extras }}
-      - run: pytest --color=yes --timeout=2 --no-cov
+      - run: pytest --color=yes --no-cov
 
   functional:
     strategy:

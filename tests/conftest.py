@@ -7,6 +7,7 @@ import re
 import sys
 from unittest.mock import Mock
 
+import freezegun
 import pytest
 import pytest_asyncio
 
@@ -42,6 +43,10 @@ def pytest_configure(config):
     config.addinivalue_line('filterwarnings', 'ignore:datetime*:DeprecationWarning:dateutil')
     config.addinivalue_line('filterwarnings', 'ignore:datetime*:DeprecationWarning:freezegun')
     config.addinivalue_line('filterwarnings', 'ignore:.*:DeprecationWarning:_pydevd_.*')
+
+    # The official kubernetes client imports its pydantic models lazily, on attribute access,
+    # so freezegun's scanning of the modules would import them with a fake datetime & fail.
+    freezegun.configure(extend_ignore_list=['kubernetes'])
 
 
 def pytest_addoption(parser):
