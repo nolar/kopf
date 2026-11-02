@@ -13,6 +13,8 @@ thus provoking the low-level watch-events and additional queueing calls.
 But these internal changes are filtered out from the cause detection
 and therefore do not trigger the user-defined handlers.
 """
+import enum
+
 import asyncio
 import contextlib
 import functools
@@ -25,7 +27,7 @@ from kopf._cogs.structs import bodies, diffs, ephemera, finalizers, patches, ref
 from kopf._core.actions import application, execution, lifecycles, loggers, progression, throttlers
 from kopf._core.engines import daemons, indexing, posting
 from kopf._core.intents import causes, registries
-from kopf._core.reactor import inventory, subhandling
+from kopf._core.reactor import inventory, subhandling, queueing
 
 
 async def process_resource_event(
@@ -42,6 +44,7 @@ async def process_resource_event(
         operator_paused: aiotoggles.ToggleSet | None = None,  # None for tests & observation
         resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
         operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
+        mode: queueing.ProcessingMode | None = None,  # None means doing everything
         consistency_time: float | None = None,  # None for tests
         no_throttling: bool = False,  # for tests & simulations
 ) -> str | None:  # patched resource version, if patched
@@ -93,23 +96,22 @@ async def process_resource_event(
             posting.event_queue_var.set(event_queue)  # till the end of this object's task.
 
             # [Pre-]populate the indices. This must be lightweight.
-            await indexing.index_resource(
-                registry=registry,
-                indexers=indexers,
-                settings=settings,
-                resource=resource,
-                raw_event=raw_event,
-                body=body,
-                memo=memory.memo,
-                memory=memory.indexing_memory,
-                logger=terse_logger,
-            )
+            if mode is None or mode is queueing.ProcessingMode.INDEX_ONLY:
+                await indexing.index_resource(
+                    registry=registry,
+                    indexers=indexers,
+                    settings=settings,
+                    resource=resource,
+                    raw_event=raw_event,
+                    body=body,
+                    memo=memory.memo,
+                    memory=memory.indexing_memory,
+                    logger=terse_logger,
+                )
 
-            # Wait for all other individual resources and all other resource kinds' lists to finish.
-            if operator_indexed is not None and resource_indexed is not None:
-                await operator_indexed.drop_toggle(resource_indexed)
-            if operator_indexed is not None:
-                await operator_indexed.wait_for(True)  # other resource kinds & objects.
+            # Do processing only by default or if exclusively requested; exit prematurely otherwise.
+            if not(mode is None or mode is queueing.ProcessingMode.PROCESS_ONLY):
+                return None
 
             # Do the magic -- do the job.
             delays, matched = await process_resource_causes(

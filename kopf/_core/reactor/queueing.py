@@ -36,14 +36,18 @@ from kopf._cogs.structs import bodies, references
 logger = logging.getLogger(__name__)
 
 
+class ProcessingMode(enum.Enum):
+    INDEX_ONLY = enum.auto()
+    PROCESS_ONLY = enum.auto()
+
+
 class WatchStreamProcessor(Protocol):
     async def __call__(
             self,
             *,
             raw_event: bodies.RawEvent,
             stream_pressure: asyncio.Event | None = None,  # None for tests
-            resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
-            operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
+            mode: ProcessingMode | None = None,  # None means doing everything
             consistency_time: float | None = None,  # None for tests
     ) -> str | None:  # patched resource version, if patched
         ...
@@ -180,13 +184,105 @@ async def watcher(
             resource=resource, namespace=namespace,
             operator_paused=operator_paused,
         )
+
+        # TODO: big design flaw: we accumulate all events even when no indexing is involved at all.
+        #       this spikes the memory usage in large clusters, despite only the streaming is expected.
+        #       ==> add a way of emergency termination of this for-cycle from the processor
+        #           if INDEX_ONLY mode is requested, but there are no indexers are found.
+        #       ==> or lookup if indexers are available, directly; though this is the logic of processor().
+        # Pre-index the resources of this kind without blocking the scheduler by pending workers.
+        initial_events: list[bodies.RawEvent] = []  # or a queue
         async for raw_event in stream:
 
             # If the listing is over (even if it was empty), the resource kind is pre-indexed.
-            # At this moment, only the individual workers/processors can block the global readiness.
             if raw_event is watching.Bookmark.LISTED:
-                if operator_indexed is not None and resource_indexed is not None:
-                    await operator_indexed.drop_toggle(resource_indexed)
+                break  # out of the indexing stream
+
+            # Whatever is bookmarked there, don't let it go to the multiplexer. Handle it above.
+            if isinstance(raw_event, watching.Bookmark):
+                continue
+
+            # Accumulate the events precisely in the order of arrival for later re-processing.
+            initial_events.append(raw_event)
+
+            # Index the resource here in place, but do not process the event normally yet.
+            # Keep the scheduler free from idling workers, because we need this thing done asap.
+            # For indexing, it is one and only one event to be processed.
+            # We use the usual scheduler to cap at the worker limit even for indexing.
+            # It involves pressure & workers instead of a direct processor call — a necessary evil.
+            key: ObjectRef = (resource, get_uid(raw_event))
+            try:
+                # Feed the worker, as fast as possible, no extra activities.
+                streams[key].pressure.set()  # interrupt current sleeps, if any.
+                await streams[key].backlog.put(raw_event)
+            except KeyError:
+                # Start the worker, and feed it initially. Starting can be moderately slow.
+                streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
+                streams[key].pressure.set()  # interrupt current sleeps, if any.
+                await streams[key].backlog.put(raw_event)
+                await streams[key].backlog.put(EOS.token)  # to exit instantly, no idling during indexing
+                await scheduler.spawn(
+                    name=f'indexer for {key}',
+                    coro=worker(
+                        signaller=signaller,
+                        processor=processor,
+                        settings=settings,
+                        streams=streams,
+                        key=key,
+                        mode=ProcessingMode.INDEX_ONLY,
+                    ))
+
+        # TODO: and wait for depletion, because the workers are stuck with mode=INDEX_ONLY.
+        async with signaller:
+            await signaller.wait_for(lambda: not streams)
+
+        # Report this resource kind as fully indexed. Wait for other resource kinds to index.
+        if operator_indexed is not None and resource_indexed is not None:
+            await operator_indexed.drop_toggle(resource_indexed)
+        if operator_indexed is not None:
+            await operator_indexed.wait_for(True)
+
+        # Now, the whole operator is indexed. Process the pending events without re-indexing.
+        for raw_event in initial_events:
+            # # Only for type-checkers. Never happens in reality due to the source selection.
+            # if isinstance(raw_event, watching.Bookmark):
+            #     continue
+
+            # Skip BOOKMARK events from K8s: they carry no object identity (no uid/name/namespace),
+            # and are only useful for resource version tracking (already done in the watch stream).
+            if raw_event.get('type') == 'BOOKMARK':
+                continue
+
+            # Multiplex the raw events to per-resource workers/queues. Start the new ones if needed.
+            # TODO: why do we have resource here? it is the same for the whole routine and streams[]
+            key: ObjectRef = (resource, get_uid(raw_event))
+            try:
+                # Feed the worker, as fast as possible, no extra activities.
+                streams[key].pressure.set()  # interrupt current sleeps, if any.
+                await streams[key].backlog.put(raw_event)
+            except KeyError:
+                # Start the worker, and feed it initially. Starting can be moderately slow.
+                streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
+                streams[key].pressure.set()  # interrupt current sleeps, if any.
+                await streams[key].backlog.put(raw_event)
+                await streams[key].backlog.put(EOS.token)  # to exit immediately, with no idling
+                await scheduler.spawn(
+                    name=f'worker for {key}',
+                    coro=worker(
+                        signaller=signaller,
+                        processor=processor,
+                        settings=settings,
+                        streams=streams,
+                        key=key,
+                        mode=ProcessingMode.PROCESS_ONLY,
+                    ))
+
+        # TODO: and wait for depletion, because the workers are stuck with mode=PROCESS_ONLY.
+        async with signaller:
+            await signaller.wait_for(lambda: not streams)
+
+        # Now, stream normally, with indexing & processing combined.
+        async for raw_event in stream:
 
             # Whatever is bookmarked there, don't let it go to the multiplexer. Handle it above.
             if isinstance(raw_event, watching.Bookmark):
@@ -198,22 +294,13 @@ async def watcher(
                 continue
 
             # Multiplex the raw events to per-resource workers/queues. Start the new ones if needed.
+            # TODO: why do we have resource here? it is the same for the whole routine and streams[]
             key: ObjectRef = (resource, get_uid(raw_event))
             try:
                 # Feed the worker, as fast as possible, no extra activities.
                 streams[key].pressure.set()  # interrupt current sleeps, if any.
                 await streams[key].backlog.put(raw_event)
             except KeyError:
-
-                # Block the operator's readiness for individual resource's index handlers.
-                # But NOT when the readiness is already achieved once! After that, ignore it.
-                # NB: Strictly before the worker starts -- the processor can be too slow, too late.
-                resource_object_indexed: aiotoggles.Toggle | None = None
-                if operator_indexed is not None and operator_indexed.is_on():
-                    operator_indexed = None
-                if operator_indexed is not None and resource_indexed is not None:
-                    resource_object_indexed = await operator_indexed.make_toggle(name=f"{key!r}")
-
                 # Start the worker, and feed it initially. Starting can be moderately slow.
                 streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
                 streams[key].pressure.set()  # interrupt current sleeps, if any.
@@ -222,12 +309,11 @@ async def watcher(
                     name=f'worker for {key}',
                     coro=worker(
                         signaller=signaller,
-                        resource_indexed=resource_object_indexed,
-                        operator_indexed=operator_indexed,
                         processor=processor,
                         settings=settings,
                         streams=streams,
                         key=key,
+                        mode=None,
                     ))
 
     except asyncio.CancelledError:
@@ -263,8 +349,7 @@ async def worker(
         signaller: asyncio.Condition,
         settings: configuration.OperatorSettings,
         processor: WatchStreamProcessor,
-        resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
-        operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
+        mode: ProcessingMode | None,
         streams: dict[ObjectRef, Stream],
         key: ObjectRef,
 ) -> None:
@@ -338,8 +423,7 @@ async def worker(
             newer_patch_version = await processor(
                 raw_event=raw_event,
                 stream_pressure=pressure,
-                resource_indexed=resource_indexed,
-                operator_indexed=operator_indexed,
+                mode=mode,
                 consistency_time=consistency_time,
             )
 
