@@ -149,8 +149,7 @@ async def process_discovered_namespace_event(
         insights: references.Insights,
         # Must be accepted whether used or not -- as passed by watcher()/worker().
         stream_pressure: asyncio.Event | None = None,  # None for tests
-        resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
-        operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
+        mode: queueing.ProcessingMode | None = None,
         consistency_time: float | None = None,  # None for tests & observation
 ) -> None:
     if raw_event['type'] is None:
@@ -169,8 +168,7 @@ async def process_discovered_resource_event(
         insights: references.Insights,
         # Must be accepted whether used or not -- as passed by watcher()/worker().
         stream_pressure: asyncio.Event | None = None,  # None for tests
-        resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
-        operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
+        mode: queueing.ProcessingMode | None = None,
         consistency_time: float | None = None,  # None for tests & observation
 ) -> None:
     # Ignore the initial listing, as all custom resources were already noticed by API listing.
