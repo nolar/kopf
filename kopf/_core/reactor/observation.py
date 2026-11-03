@@ -41,6 +41,7 @@ async def namespace_observer(
         namespaces: Collection[references.NamespacePattern],
         insights: references.Insights,
         settings: configuration.OperatorSettings,
+        registry: registries.OperatorRegistry,
 ) -> None:
     exact_namespaces = references.select_specific_namespaces(namespaces)
     resource = await insights.backbone.wait_for(references.NAMESPACES)
@@ -77,6 +78,7 @@ async def namespace_observer(
         try:
             await queueing.watcher(
                 settings=settings,
+                registry=registry,
                 resource=resource,
                 namespace=None,
                 processor=functools.partial(process_discovered_namespace_event,
@@ -127,6 +129,7 @@ async def resource_observer(
         try:
             await queueing.watcher(
                 settings=settings,
+                registry=registry,
                 resource=resource,
                 namespace=None,
                 processor=functools.partial(process_discovered_resource_event,
