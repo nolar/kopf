@@ -127,6 +127,7 @@ async def resource_observer(
         try:
             await queueing.watcher(
                 settings=settings,
+                registry=registry,
                 resource=resource,
                 namespace=None,
                 processor=functools.partial(process_discovered_resource_event,

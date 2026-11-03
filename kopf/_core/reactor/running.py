@@ -333,6 +333,7 @@ async def spawn_tasks(
             coro=orchestration.orchestrator(
                 settings=settings,
                 insights=insights,
+                registry=registry,
                 identity=identity,
                 operator_paused=operator_paused,
                 processor=functools.partial(processing.process_resource_event,

@@ -33,6 +33,7 @@ from kopf._cogs.clients import watching
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, references
 from kopf._core.engines import indexing
+from kopf._core.intents import registries
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +135,7 @@ async def watcher(
         *,
         namespace: references.Namespace,
         settings: configuration.OperatorSettings,
+        registry: registries.OperatorRegistry,
         resource: references.Resource,
         processor: WatchStreamProcessor,
         operator_paused: aiotoggles.ToggleSet | None = None,  # None for tests & observation
@@ -159,21 +161,13 @@ async def watcher(
     this will terminate any i/o operation with ``asyncio.CancelledError``, where
     we can make a decision on whether it was a real cancellation, or our own.
     """
-    proven_no_indexers: bool = False  # or a asyncio.Event(), but never awaited
 
     # In case of a failed worker, stop the watcher, and escalate to the operator to stop it.
     watcher_task = asyncio.current_task()
     worker_error: BaseException | None = None
     def exception_handler(exc: BaseException) -> None:
-        nonlocal worker_error, watcher_task, proven_no_indexers
-
-        # A bit hacky way of signaling that we have no indexing handlers inside the processor:
-        # We cannot look into the registry in the watcher/worker, so rely on workers reporting back.
-        # It can spawn several useless workers before we get the first signal — not good, not bad.
-        if isinstance(exc, indexing.NothingToIndexError):
-            proven_no_indexers = True
-            # and ignore it
-        elif worker_error is None:
+        nonlocal worker_error, watcher_task
+        if worker_error is None:
             worker_error = exc
             if watcher_task is not None:  # never happens, but is needed for type-checking.
                 watcher_task.cancel()
@@ -196,55 +190,46 @@ async def watcher(
 
         # Pre-index the resources of this kind without blocking the scheduler by pending workers.
         initial_events: list[bodies.RawEvent] = []  # or a queue
-        async for raw_event in stream:
+        if registry._indexing.has_handlers(resource):
+            async for raw_event in stream:
 
-            # If the listing is over (even if it was empty), the resource kind is pre-indexed.
-            if raw_event is watching.Bookmark.LISTED:
-                break  # out of the indexing stream
+                # If the listing is over (even if it was empty), the resource kind is pre-indexed.
+                if raw_event is watching.Bookmark.LISTED:
+                    break  # out of the indexing stream
 
-            # Whatever is bookmarked there, don't let it go to the multiplexer. Handle it above.
-            if isinstance(raw_event, watching.Bookmark):
-                continue
+                # Whatever is bookmarked there, don't let it go to the multiplexer. Handle it above.
+                if isinstance(raw_event, watching.Bookmark):
+                    continue
 
-            # Accumulate the events precisely in the order of arrival for later re-processing.
-            initial_events.append(raw_event)
+                # Accumulate the events precisely in the order of arrival for later re-processing.
+                initial_events.append(raw_event)
 
-            # A premature termination of the indexing phase in case there are no indexing handlers.
-            # By this, we prevent the memory spike in accumulating all initial events if there is
-            # no reason to freeze for indexing at all, and we can stream with the usual processing.
-            # There can be some number of workers spawned in parallel that trigger this flag.
-            # TODO: can this be done deterministically with "at most 1" attempt?
-            #       (without exposing the registry to the demultiplexing & orchestration machinery).
-            #       (now, the registry is bound to the processor() as a partial's kwarg).
-            if proven_no_indexers:
-                break
-
-            # Index the resource here in place, but do not process the event normally yet.
-            # Keep the scheduler free from idling workers, because we need this thing done asap.
-            # For indexing, it is one and only one event to be processed.
-            # We use the usual scheduler to cap at the worker limit even for indexing.
-            # It involves pressure & workers instead of a direct processor call — a necessary evil.
-            key: ObjectRef = (resource, get_uid(raw_event))
-            try:
-                # Feed the worker, as fast as possible, no extra activities.
-                streams[key].pressure.set()  # interrupt current sleeps, if any.
-                await streams[key].backlog.put(raw_event)
-            except KeyError:
-                # Start the worker, and feed it initially. Starting can be moderately slow.
-                streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
-                streams[key].pressure.set()  # interrupt current sleeps, if any.
-                await streams[key].backlog.put(raw_event)
-                await scheduler.spawn(
-                    name=f'indexer for {key}',
-                    coro=worker(
-                        signaller=signaller,
-                        processor=processor,
-                        settings=settings,
-                        streams=streams,
-                        key=key,
-                        mode=ProcessingMode.INDEX_ONLY,
-                        idle=False,
-                    ))
+                # Index the resource here in place, but do not process the event normally yet.
+                # Keep the scheduler free from idling workers, because we need this thing done asap.
+                # For indexing, it is one and only one event to be processed.
+                # We use the usual scheduler to cap at the worker limit even for indexing.
+                # It involves pressure & workers instead of a direct processor call — a necessary evil.
+                key: ObjectRef = (resource, get_uid(raw_event))
+                try:
+                    # Feed the worker, as fast as possible, no extra activities.
+                    streams[key].pressure.set()  # interrupt current sleeps, if any.
+                    await streams[key].backlog.put(raw_event)
+                except KeyError:
+                    # Start the worker, and feed it initially. Starting can be moderately slow.
+                    streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
+                    streams[key].pressure.set()  # interrupt current sleeps, if any.
+                    await streams[key].backlog.put(raw_event)
+                    await scheduler.spawn(
+                        name=f'indexer for {key}',
+                        coro=worker(
+                            signaller=signaller,
+                            processor=processor,
+                            settings=settings,
+                            streams=streams,
+                            key=key,
+                            mode=ProcessingMode.INDEX_ONLY,
+                            idle=False,
+                        ))
 
         # Report this resource kind as indexed asap.
         if operator_indexed is not None and resource_indexed is not None:
