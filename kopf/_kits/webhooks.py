@@ -580,7 +580,7 @@ class WebhookNgrokTunnel(webhacks.WebhookContextManager):
                 async for client_config in server(fn):
 
                     # Re-create the tunnel for each new local endpoint (if it did change at all).
-                    if tunnel is not None:
+                    if tunnel is not None and tunnel.public_url is not None:
                         await loop.run_in_executor(None, ngrok.disconnect, tunnel.public_url)
                     parsed = urllib.parse.urlparse(client_config['url'])
                     tunnel = await loop.run_in_executor(
@@ -593,7 +593,7 @@ class WebhookNgrokTunnel(webhacks.WebhookContextManager):
                     logger.debug(f"Accessing the webhooks at {url}")
                     yield reviews.WebhookClientConfig(url=url)  # e.g. 'https://e5fc05f6494b.ngrok.io/xyz'
             finally:
-                if tunnel is not None:
+                if tunnel is not None and tunnel.public_url is not None:
                     await loop.run_in_executor(None, ngrok.disconnect, tunnel.public_url)
 
 
