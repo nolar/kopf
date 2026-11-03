@@ -26,7 +26,6 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx_copybutton',
     'sphinxcontrib.googleanalytics',
-    'sphinx_llm.txt',
 ]
 
 templates_path = ['_templates']
