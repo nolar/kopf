@@ -381,6 +381,9 @@ class QueueingSettings:
     """
     How soon an idle worker exits and lets the garbage collector purge itself
     if no new events arrive from the watch-stream for that resource object.
+    
+    If zero, all workers exit immediately once the event queue is empty.
+    This can lead to excessive re-spawning of workers under load, but it works.
     """
 
     exit_timeout: float = 2.0

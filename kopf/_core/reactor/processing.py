@@ -110,6 +110,7 @@ async def process_resource_event(
                 )
 
             # Do processing only by default or if exclusively requested; exit prematurely otherwise.
+            # NB: indexers do not alter the patch, do not cause delays, so we have nothing to apply.
             if not(mode is None or mode is queueing.ProcessingMode.PROCESS_ONLY):
                 return None
 

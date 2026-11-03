@@ -14,6 +14,13 @@ _K = TypeVar('_K')
 _V = TypeVar('_V')
 
 
+# An internal signal marker used to prematurely terminate the indexing phase.
+# Processed in the queueing.py:watcher() or worker().
+# BaseException - because it needs to evade the error throttler.
+class NothingToIndexError(BaseException):
+    pass
+
+
 class Store(ephemera.Store[_V], Generic[_V]):
     """
     A specific implementation of ``.ephemera.Store`` usable by indexers.
@@ -300,7 +307,7 @@ async def index_resource(
     as they should be silent. Still, the messages are logged normally.
     """
     if not registry._indexing.has_handlers(resource=resource):
-        pass
+        raise NothingToIndexError()
     elif raw_event['type'] == 'DELETED':
         # Do not index it if it is deleted. Just discard quickly (ASAP!).
         indexers.discard(body=body)
