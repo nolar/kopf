@@ -68,7 +68,6 @@ docs = [
     "sphinx-autodoc-typehints",
     "sphinx-copybutton",
     "sphinxcontrib-googleanalytics",
-    "sphinx-llm>=0.1.4",
     "furo",
 ]
 test = [
