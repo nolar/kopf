@@ -32,8 +32,15 @@ from kopf._cogs.aiokits import aiotasks, aiotoggles
 from kopf._cogs.clients import watching
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, references
+from kopf._core.engines import indexing
+from kopf._core.intents import registries
 
 logger = logging.getLogger(__name__)
+
+
+class ProcessingMode(enum.Enum):
+    INDEX_ONLY = enum.auto()
+    PROCESS_ONLY = enum.auto()
 
 
 class WatchStreamProcessor(Protocol):
@@ -42,8 +49,7 @@ class WatchStreamProcessor(Protocol):
             *,
             raw_event: bodies.RawEvent,
             stream_pressure: asyncio.Event | None = None,  # None for tests
-            resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
-            operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
+            mode: ProcessingMode | None = None,  # None means doing everything
             consistency_time: float | None = None,  # None for tests
     ) -> str | None:  # patched resource version, if patched
         ...
@@ -129,6 +135,7 @@ async def watcher(
         *,
         namespace: references.Namespace,
         settings: configuration.OperatorSettings,
+        registry: registries.OperatorRegistry,
         resource: references.Resource,
         processor: WatchStreamProcessor,
         operator_paused: aiotoggles.ToggleSet | None = None,  # None for tests & observation
@@ -165,6 +172,42 @@ async def watcher(
             if watcher_task is not None:  # never happens, but is needed for type-checking.
                 watcher_task.cancel()
 
+    # todo: inherit WorkerScheduler(Scheduler), add spawn_and_feed(…).
+    #       nonlocals become the scheduler's bound properties.
+    async def spawn_and_feed(raw_event: bodies.RawEvent | watching.Bookmark, mode: ProcessingMode | None) -> None:
+        nonlocal resource, streams, scheduler, processor, signaller, settings
+
+        # Whatever is bookmarked there, don't let it go to the multiplexer. Handle it above.
+        if isinstance(raw_event, watching.Bookmark):
+            return
+
+        # Skip BOOKMARK events from K8s: they carry no object identity (no uid/name/namespace),
+        # and are only useful for resource version tracking (already done in the watch stream).
+        if raw_event.get('type') == 'BOOKMARK':
+            return
+
+        # todo: why is resource here? it is the same for all objects, does nothing useful.
+        key: ObjectRef = (resource, get_uid(raw_event))
+        try:
+            # Feed the worker, as fast as possible, no extra activities.
+            streams[key].pressure.set()  # interrupt current sleeps, if any.
+            await streams[key].backlog.put(raw_event)
+        except KeyError:
+            # Start the worker, and feed it initially. Starting can be moderately slow.
+            streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
+            streams[key].pressure.set()  # interrupt current sleeps, if any.
+            await streams[key].backlog.put(raw_event)
+            await scheduler.spawn(
+                name=f'indexer for {key}',
+                coro=worker(
+                    signaller=signaller,
+                    processor=processor,
+                    settings=settings,
+                    streams=streams,
+                    key=key,
+                    mode=mode,
+                ))
+
     # All per-object workers are handled as fire-and-forget jobs via the scheduler,
     # and communicated via the per-object event queues.
     signaller = asyncio.Condition()
@@ -180,55 +223,49 @@ async def watcher(
             resource=resource, namespace=namespace,
             operator_paused=operator_paused,
         )
+
+        # Pre-index the resources of this kind without blocking the scheduler by pending workers.
+        # Accumulate the events precisely in the order of arrival for later re-processing.
+        # We use the usual scheduler to cap at the worker limit even for indexing.
+        initial_events: list[bodies.RawEvent] = []  # or a queue
+        if registry._indexing.has_handlers(resource):
+            async for raw_event in stream:
+                # If the listing is over (even if it was empty), the resource kind is pre-indexed.
+                if isinstance(raw_event, watching.Bookmark):
+                    break  # out of the indexing stream
+
+                initial_events.append(raw_event)
+                await spawn_and_feed(raw_event, mode=ProcessingMode.INDEX_ONLY)
+
+        # Report this resource kind as indexed asap.
+        if operator_indexed is not None and resource_indexed is not None:
+            await operator_indexed.drop_toggle(resource_indexed)
+
+        # Deplete the workers bound with mode=INDEX_ONLY, free up all the keys.
+        # NB: the tasks can still be running briefly; we care only about streams[] for our controls.
+        async with signaller:
+            await signaller.wait_for(lambda: not streams)
+
+        # Wait for other resource kinds to finish indexing.
+        if operator_indexed is not None:
+            await operator_indexed.wait_for(True)
+
+        # Now, the whole operator is indexed. Process the accumulated events without re-indexing.
+        for raw_event in initial_events:
+            await spawn_and_feed(raw_event, mode=ProcessingMode.PROCESS_ONLY)
+
+        # Free up memory from the accumulated initial events asap.
+        # todo: can this be auto-draining on consumption? with O(1)? like a Queue/deque?
+        del initial_events
+
+        # Deplete the workers bound with mode=PROCESS_ONLY, free up all the keys.
+        # NB: the tasks can still be running briefly; we care only about streams[] for our controls.
+        async with signaller:
+            await signaller.wait_for(lambda: not streams)
+
+        # Now, stream normally, with indexing & processing combined.
         async for raw_event in stream:
-
-            # If the listing is over (even if it was empty), the resource kind is pre-indexed.
-            # At this moment, only the individual workers/processors can block the global readiness.
-            if raw_event is watching.Bookmark.LISTED:
-                if operator_indexed is not None and resource_indexed is not None:
-                    await operator_indexed.drop_toggle(resource_indexed)
-
-            # Whatever is bookmarked there, don't let it go to the multiplexer. Handle it above.
-            if isinstance(raw_event, watching.Bookmark):
-                continue
-
-            # Skip BOOKMARK events from K8s: they carry no object identity (no uid/name/namespace),
-            # and are only useful for resource version tracking (already done in the watch stream).
-            if raw_event.get('type') == 'BOOKMARK':
-                continue
-
-            # Multiplex the raw events to per-resource workers/queues. Start the new ones if needed.
-            key: ObjectRef = (resource, get_uid(raw_event))
-            try:
-                # Feed the worker, as fast as possible, no extra activities.
-                streams[key].pressure.set()  # interrupt current sleeps, if any.
-                await streams[key].backlog.put(raw_event)
-            except KeyError:
-
-                # Block the operator's readiness for individual resource's index handlers.
-                # But NOT when the readiness is already achieved once! After that, ignore it.
-                # NB: Strictly before the worker starts -- the processor can be too slow, too late.
-                resource_object_indexed: aiotoggles.Toggle | None = None
-                if operator_indexed is not None and operator_indexed.is_on():
-                    operator_indexed = None
-                if operator_indexed is not None and resource_indexed is not None:
-                    resource_object_indexed = await operator_indexed.make_toggle(name=f"{key!r}")
-
-                # Start the worker, and feed it initially. Starting can be moderately slow.
-                streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
-                streams[key].pressure.set()  # interrupt current sleeps, if any.
-                await streams[key].backlog.put(raw_event)
-                await scheduler.spawn(
-                    name=f'worker for {key}',
-                    coro=worker(
-                        signaller=signaller,
-                        resource_indexed=resource_object_indexed,
-                        operator_indexed=operator_indexed,
-                        processor=processor,
-                        settings=settings,
-                        streams=streams,
-                        key=key,
-                    ))
+            await spawn_and_feed(raw_event, mode=None)
 
     except asyncio.CancelledError:
         if worker_error is None:
@@ -263,8 +300,7 @@ async def worker(
         signaller: asyncio.Condition,
         settings: configuration.OperatorSettings,
         processor: WatchStreamProcessor,
-        resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
-        operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
+        mode: ProcessingMode | None,
         streams: dict[ObjectRef, Stream],
         key: ObjectRef,
 ) -> None:
@@ -300,11 +336,14 @@ async def worker(
 
             # Get an event ASAP (no delay) if possible. But expect the queue can be empty.
             # Save memory by finishing the worker if the backlog is empty for some time.
-            timeout = max(settings.queueing.idle_timeout,
+            timeout = max(settings.queueing.idle_timeout if mode is None else 0,
                           consistency_time - loop.time() if consistency_time is not None else 0)
             try:
-                raw_event = await asyncio.wait_for(backlog.get(), timeout=timeout)
-            except TimeoutError:
+                if timeout == 0:
+                    raw_event = backlog.get_nowait()
+                else:
+                    raw_event = await asyncio.wait_for(backlog.get(), timeout=timeout)
+            except (TimeoutError, asyncio.QueueEmpty):
                 # A tricky part! Under high-load or with synchronous blocks of asyncio event-loop,
                 # it is possible that the timeout happens while the queue is filled: depending on
                 # the order in which the coros/waiters are checked once control returns to asyncio.
@@ -338,8 +377,7 @@ async def worker(
             newer_patch_version = await processor(
                 raw_event=raw_event,
                 stream_pressure=pressure,
-                resource_indexed=resource_indexed,
-                operator_indexed=operator_indexed,
+                mode=mode,
                 consistency_time=consistency_time,
             )
 
