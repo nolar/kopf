@@ -32,6 +32,7 @@ from kopf._cogs.aiokits import aiotasks, aiotoggles
 from kopf._cogs.clients import watching
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, references
+from kopf._core.engines import indexing
 
 logger = logging.getLogger(__name__)
 
@@ -158,13 +159,21 @@ async def watcher(
     this will terminate any i/o operation with ``asyncio.CancelledError``, where
     we can make a decision on whether it was a real cancellation, or our own.
     """
+    proven_no_indexers: bool = False  # or a asyncio.Event(), but never awaited
 
     # In case of a failed worker, stop the watcher, and escalate to the operator to stop it.
     watcher_task = asyncio.current_task()
     worker_error: BaseException | None = None
     def exception_handler(exc: BaseException) -> None:
-        nonlocal worker_error, watcher_task
-        if worker_error is None:
+        nonlocal worker_error, watcher_task, proven_no_indexers
+
+        # A bit hacky way of signaling that we have no indexing handlers inside the processor:
+        # We cannot look into the registry in the watcher/worker, so rely on workers reporting back.
+        # It can spawn several useless workers before we get the first signal — not good, not bad.
+        if isinstance(exc, indexing.NothingToIndexError):
+            proven_no_indexers = True
+            # and ignore it
+        elif worker_error is None:
             worker_error = exc
             if watcher_task is not None:  # never happens, but is needed for type-checking.
                 watcher_task.cancel()
@@ -185,11 +194,6 @@ async def watcher(
             operator_paused=operator_paused,
         )
 
-        # TODO: big design flaw: we accumulate all events even when no indexing is involved at all.
-        #       this spikes the memory usage in large clusters, despite only the streaming is expected.
-        #       ==> add a way of emergency termination of this for-cycle from the processor
-        #           if INDEX_ONLY mode is requested, but there are no indexers are found.
-        #       ==> or lookup if indexers are available, directly; though this is the logic of processor().
         # Pre-index the resources of this kind without blocking the scheduler by pending workers.
         initial_events: list[bodies.RawEvent] = []  # or a queue
         async for raw_event in stream:
@@ -204,6 +208,16 @@ async def watcher(
 
             # Accumulate the events precisely in the order of arrival for later re-processing.
             initial_events.append(raw_event)
+
+            # A premature termination of the indexing phase in case there are no indexing handlers.
+            # By this, we prevent the memory spike in accumulating all initial events if there is
+            # no reason to freeze for indexing at all, and we can stream with the usual processing.
+            # There can be some number of workers spawned in parallel that trigger this flag.
+            # TODO: can this be done deterministically with "at most 1" attempt?
+            #       (without exposing the registry to the demultiplexing & orchestration machinery).
+            #       (now, the registry is bound to the processor() as a partial's kwarg).
+            if proven_no_indexers:
+                break
 
             # Index the resource here in place, but do not process the event normally yet.
             # Keep the scheduler free from idling workers, because we need this thing done asap.
@@ -220,7 +234,6 @@ async def watcher(
                 streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
                 streams[key].pressure.set()  # interrupt current sleeps, if any.
                 await streams[key].backlog.put(raw_event)
-                await streams[key].backlog.put(EOS.token)  # to exit instantly, no idling during indexing
                 await scheduler.spawn(
                     name=f'indexer for {key}',
                     coro=worker(
@@ -230,19 +243,23 @@ async def watcher(
                         streams=streams,
                         key=key,
                         mode=ProcessingMode.INDEX_ONLY,
+                        idle=False,
                     ))
 
-        # TODO: and wait for depletion, because the workers are stuck with mode=INDEX_ONLY.
+        # Report this resource kind as indexed asap.
+        if operator_indexed is not None and resource_indexed is not None:
+            await operator_indexed.drop_toggle(resource_indexed)
+
+        # Deplete the workers bound with mode=INDEX_ONLY, free up all the keys.
+        # NB: the tasks can still be running briefly; we care only about streams[] for our controls.
         async with signaller:
             await signaller.wait_for(lambda: not streams)
 
-        # Report this resource kind as fully indexed. Wait for other resource kinds to index.
-        if operator_indexed is not None and resource_indexed is not None:
-            await operator_indexed.drop_toggle(resource_indexed)
+        # Wait for other resource kinds to finish indexing.
         if operator_indexed is not None:
             await operator_indexed.wait_for(True)
 
-        # Now, the whole operator is indexed. Process the pending events without re-indexing.
+        # Now, the whole operator is indexed. Process the accumulated events without re-indexing.
         for raw_event in initial_events:
             # # Only for type-checkers. Never happens in reality due to the source selection.
             # if isinstance(raw_event, watching.Bookmark):
@@ -265,7 +282,6 @@ async def watcher(
                 streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
                 streams[key].pressure.set()  # interrupt current sleeps, if any.
                 await streams[key].backlog.put(raw_event)
-                await streams[key].backlog.put(EOS.token)  # to exit immediately, with no idling
                 await scheduler.spawn(
                     name=f'worker for {key}',
                     coro=worker(
@@ -275,9 +291,15 @@ async def watcher(
                         streams=streams,
                         key=key,
                         mode=ProcessingMode.PROCESS_ONLY,
+                        idle=False,
                     ))
 
-        # TODO: and wait for depletion, because the workers are stuck with mode=PROCESS_ONLY.
+        # Free up memory from the accumulated initial events asap.
+        # todo: can this be auto-draining on consumption? like a Queue/deque?
+        del initial_events
+
+        # Deplete the workers bound with mode=PROCESS_ONLY, free up all the keys.
+        # NB: the tasks can still be running briefly; we care only about streams[] for our controls.
         async with signaller:
             await signaller.wait_for(lambda: not streams)
 
@@ -314,6 +336,7 @@ async def watcher(
                         streams=streams,
                         key=key,
                         mode=None,
+                        idle=True,
                     ))
 
     except asyncio.CancelledError:
@@ -350,6 +373,7 @@ async def worker(
         settings: configuration.OperatorSettings,
         processor: WatchStreamProcessor,
         mode: ProcessingMode | None,
+        idle: bool,
         streams: dict[ObjectRef, Stream],
         key: ObjectRef,
 ) -> None:
@@ -385,11 +409,14 @@ async def worker(
 
             # Get an event ASAP (no delay) if possible. But expect the queue can be empty.
             # Save memory by finishing the worker if the backlog is empty for some time.
-            timeout = max(settings.queueing.idle_timeout,
+            timeout = max(settings.queueing.idle_timeout if idle else 0,
                           consistency_time - loop.time() if consistency_time is not None else 0)
             try:
-                raw_event = await asyncio.wait_for(backlog.get(), timeout=timeout)
-            except TimeoutError:
+                if timeout == 0:
+                    raw_event = backlog.get_nowait()
+                else:
+                    raw_event = await asyncio.wait_for(backlog.get(), timeout=timeout)
+            except (TimeoutError, asyncio.QueueEmpty):
                 # A tricky part! Under high-load or with synchronous blocks of asyncio event-loop,
                 # it is possible that the timeout happens while the queue is filled: depending on
                 # the order in which the coros/waiters are checked once control returns to asyncio.
