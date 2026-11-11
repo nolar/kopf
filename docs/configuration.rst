@@ -309,6 +309,9 @@ The server-side timeouts are unpredictable; they can be 10 seconds or
 
 ``settings.watching.reconnect_backoff`` (seconds) is a backoff interval between
 watching requests --- to prevent API flooding in case of errors or disconnects.
+The same interval is used before reconciling a batch of watching or peering tasks
+that have exited unexpectedly without an error. Tasks that exit during the same
+interval are reconciled together when it ends.
 The default is 0.1 seconds (nearly instant, but not flooding).
 
 ``settings.watching.inactivity_timeout`` (seconds) is how long the watch stream

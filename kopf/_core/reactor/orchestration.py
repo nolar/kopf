@@ -23,6 +23,7 @@ Some special watchers for the meta-level resources --- i.e. for dimensions ---
 are started and stopped separately, not as part of the orchestration.
 """
 import asyncio
+import contextlib
 import dataclasses
 import functools
 import itertools
@@ -70,6 +71,7 @@ class Ensemble:
     operator_paused: aiotoggles.ToggleSet
     peering_missing: aiotoggles.Toggle
     conflicts_found: dict[EnsembleKey, aiotoggles.Toggle] = dataclasses.field(default_factory=dict)
+    resource_indexed: dict[EnsembleKey, aiotoggles.Toggle] = dataclasses.field(default_factory=dict)
 
     # Multidimensional tasks -- one for every combination of relevant dimensions.
     watcher_tasks: dict[EnsembleKey, aiotasks.Task] = dataclasses.field(default_factory=dict)
@@ -80,7 +82,8 @@ class Ensemble:
         return (frozenset(self.watcher_tasks) |
                 frozenset(self.peering_tasks) |
                 frozenset(self.pinging_tasks) |
-                frozenset(self.conflicts_found))
+                frozenset(self.conflicts_found) |
+                frozenset(self.resource_indexed))
 
     def get_tasks(self, keys: Container[EnsembleKey]) -> Collection[aiotasks.Task]:
         return {task
@@ -90,12 +93,8 @@ class Ensemble:
     def get_flags(self, keys: Container[EnsembleKey]) -> Collection[aiotoggles.Toggle]:
         return {toggle for key, toggle in self.conflicts_found.items() if key in keys}
 
-    def del_tasks(self, tasks: Container[aiotasks.Task]) -> None:
-        d: dict[EnsembleKey, aiotasks.Task]
-        for d in [self.watcher_tasks, self.peering_tasks, self.pinging_tasks]:
-            for key, task in list(d.items()):
-                if task in tasks:
-                    del d[key]
+    def get_indexing_flags(self, keys: Container[EnsembleKey]) -> Collection[aiotoggles.Toggle]:
+        return {toggle for key, toggle in self.resource_indexed.items() if key in keys}
 
     def del_keys(self, keys: Container[EnsembleKey]) -> None:
         d: dict[EnsembleKey, Any]
@@ -103,7 +102,7 @@ class Ensemble:
             for key in set(d):
                 if key in keys:
                     del d[key]
-        for d in [self.conflicts_found]:  # separated for easier type inferrence
+        for d in [self.conflicts_found, self.resource_indexed]:  # for easier type inference
             for key in set(d):
                 if key in keys:
                     del d[key]
@@ -144,20 +143,71 @@ async def orchestrator(
                     )
 
                 ensemble_done = done & ensemble_tasks
-                ensemble.del_tasks(ensemble_done)
                 await aiotasks.reraise(ensemble_done)
-                if insights_waiter in done:
-                    await adjust_tasks(
-                        processor=processor,
-                        insights=insights,
-                        settings=settings,
-                        identity=identity,
-                        ensemble=ensemble,
-                    )
+                if ensemble_done:
+                    await recycle_terminated_tasks(ensemble=ensemble, tasks=ensemble_done)
+
+                    # Back off with the insights unlocked, but never unlock them between
+                    # the iterations: a revision notified there would have no waiter and be lost.
+                    # The revisions made during the backoff are applied by adjust_tasks() below.
+                    with contextlib.suppress(TimeoutError):
+                        async with asyncio.timeout(settings.watching.reconnect_backoff):
+                            while True:
+                                await insights.revised.wait()
+
+                    delayed_done = {
+                        task
+                        for task in ensemble.get_tasks(ensemble.get_keys())
+                        if task.done()
+                    }
+                    await aiotasks.reraise(delayed_done)
+                    if delayed_done:
+                        await recycle_terminated_tasks(ensemble=ensemble, tasks=delayed_done)
+
+                await adjust_tasks(
+                    processor=processor,
+                    insights=insights,
+                    settings=settings,
+                    identity=identity,
+                    ensemble=ensemble,
+                )
     except asyncio.CancelledError:
         tasks = ensemble.get_tasks(ensemble.get_keys())
         await aiotasks.stop(tasks, title="streaming", logger=logger, interval=10)
         raise
+
+
+async def recycle_terminated_tasks(
+        *,
+        ensemble: Ensemble,
+        tasks: Container[aiotasks.Task],
+) -> None:
+    watcher_keys = {key for key, task in ensemble.watcher_tasks.items() if task in tasks}
+    peering_keys = {
+        key
+        for task_map in [ensemble.peering_tasks, ensemble.pinging_tasks]
+        for key, task in task_map.items()
+        if task in tasks
+    }
+    peering_tasks = {
+        task
+        for task_map in [ensemble.peering_tasks, ensemble.pinging_tasks]
+        for key, task in task_map.items()
+        if key in peering_keys
+    }
+    await aiotasks.stop(peering_tasks, title="streaming", logger=logger, interval=10, quiet=True)
+
+    for key in watcher_keys:
+        where = f'in {key.namespace!r}' if key.namespace is not None else 'cluster-wide'
+        logger.debug(f"Watcher for {key.resource} {where} ended; reconciling after backoff.")
+        ensemble.watcher_tasks.pop(key, None)
+    for key in peering_keys:
+        ensemble.peering_tasks.pop(key, None)
+        ensemble.pinging_tasks.pop(key, None)
+    await aiotasks.reraise(peering_tasks)
+    for key in peering_keys:
+        where = f'in {key.namespace!r}' if key.namespace is not None else 'cluster-wide'
+        logger.debug(f"Peering task for {key.resource} {where} ended; reconciling after backoff.")
 
 
 # Directly corresponds to one iteration of an orchestrator, but it is extracted for testability:
@@ -208,8 +258,10 @@ async def terminate_redundancies(
                       or key.resource not in remaining_resources}
     redundant_tasks = ensemble.get_tasks(redundant_keys)
     redundant_flags = ensemble.get_flags(redundant_keys)
+    redundant_indexing_flags = ensemble.get_indexing_flags(redundant_keys)
     await aiotasks.stop(redundant_tasks, title="streaming", logger=logger, interval=10, quiet=True)
     await ensemble.operator_paused.drop_toggles(redundant_flags)
+    await ensemble.operator_indexed.drop_toggles(redundant_indexing_flags)
     ensemble.del_keys(redundant_keys)
 
 
@@ -226,9 +278,12 @@ async def spawn_missing_peerings(
         dkey = EnsembleKey(resource=resource, namespace=namespace)
         if dkey not in ensemble.peering_tasks:
             what = f"{settings.peering.name}@{namespace}"
-            is_preactivated = settings.peering.mandatory
-            conflicts_found = await ensemble.operator_paused.make_toggle(is_preactivated, name=what)
-            ensemble.conflicts_found[dkey] = conflicts_found
+            conflicts_found = ensemble.conflicts_found.get(dkey)
+            if conflicts_found is None:
+                is_preactivated = settings.peering.mandatory
+                conflicts_found = await ensemble.operator_paused.make_toggle(
+                    is_preactivated, name=what)
+                ensemble.conflicts_found[dkey] = conflicts_found
             ensemble.pinging_tasks[dkey] = aiotasks.create_guarded_task(
                 name=f"peering keep-alive for {what}", logger=logger, cancellable=True,
                 coro=peering.keepalive(
@@ -271,11 +326,12 @@ async def spawn_missing_watchers(
     for resource, namespace in itertools.product(watched_resources, watched_namespaces):
         namespace = namespace if resource.namespaced else None
         dkey = EnsembleKey(resource=resource, namespace=namespace)
+        resource_indexed = ensemble.resource_indexed.get(dkey)
         if dkey not in ensemble.watcher_tasks:
             what = f"{resource}@{namespace}"
-            resource_indexed: aiotoggles.Toggle | None = None
-            if resource in indexed_resources:
+            if resource in indexed_resources and resource_indexed is None:
                 resource_indexed = await ensemble.operator_indexed.make_toggle(name=what)
+                ensemble.resource_indexed[dkey] = resource_indexed
             ensemble.watcher_tasks[dkey] = aiotasks.create_guarded_task(
                 name=f"watcher for {what}", logger=logger, cancellable=True,
                 coro=queueing.watcher(
