@@ -102,6 +102,30 @@ async def test_watchevent_demultiplexing(worker_pool_spy, worker_mock, looptime,
                    for queue_event in queue_events[:-1])
 
 
+async def test_errors_from_workers(settings, resource, processor, worker_mock, kmock):
+    """Failed workers fail the watcher, but the resources must not be leaked."""
+    kmock.resources[resource] = {}
+    kmock['watch', resource] << (
+        {'type': 'ADDED', 'object': {'metadata': {'uid': 'uid1'}}},
+        {'type': 'ERROR', 'object': {'code': 410}},
+    )
+
+    settings.queueing.idle_timeout = 100
+    settings.queueing.exit_timeout = 110
+
+    worker_mock.side_effect = RuntimeError("boo!")
+    with pytest.raises(RuntimeError, match=r"unrecoverable error") as exc:
+        await watcher(
+            namespace=None,
+            resource=resource,
+            settings=settings,
+            processor=processor,
+        )
+
+    assert isinstance(exc.value.__cause__, RuntimeError)
+    assert exc.value.__cause__.args == ("boo!",)
+
+
 @pytest.mark.usefixtures('watcher_limited')
 async def test_bookmarks_are_ignored(worker_pool_spy, worker_mock, looptime, resource, processor,
                                      settings, kmock):

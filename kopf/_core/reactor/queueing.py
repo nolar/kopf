@@ -26,7 +26,8 @@ import asyncio
 import contextlib
 import enum
 import logging
-from typing import TYPE_CHECKING, NamedTuple, NewType, Protocol
+import types
+from typing import TYPE_CHECKING, Any, NamedTuple, NewType, Protocol, Self
 
 from kopf._cogs.aiokits import aiotasks, aiotoggles
 from kopf._cogs.clients import watching
@@ -125,7 +126,7 @@ def get_version(raw_event: bodies.RawEvent | EOS) -> str | None:
         return raw_event.get('object', {}).get('metadata', {}).get('resourceVersion')
 
 
-class WorkerPool:
+class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
     def __init__(
             self,
             *,
@@ -148,18 +149,39 @@ class WorkerPool:
         self.signaller = asyncio.Condition()
         self.streams: dict[ObjectRef, Stream] = {}
 
+    async def __aexit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc_val: BaseException | None,
+            exc_tb: types.TracebackType | None,
+    ) -> None:
+
+        # Allow the existing workers to finish gracefully before killing them.
+        # Ensure the depletion is done even if the watcher is double-cancelled (e.g. in tests).
+        depletion_task = asyncio.create_task(self.wait_for_depletion())
+        while not depletion_task.done():
+            with contextlib.suppress(asyncio.CancelledError):
+                await asyncio.shield(depletion_task)
+
+        # Terminate all the fire-and-forget per-object jobs if they are still running.
+        # Ensure the scheduler is closed even if the watcher is double-cancelled (e.g. in tests).
+        closing_task = asyncio.create_task(self.scheduler.close())
+        while not closing_task.done():
+            with contextlib.suppress(asyncio.CancelledError):
+                await asyncio.shield(closing_task)
+
+        # It is CancelledError because we do cancel() in a worker's exception handler below.
+        if isinstance(exc_val, asyncio.CancelledError) and self.worker_error is not None:
+            raise RuntimeError("Event processing has failed with an unrecoverable error. "
+                               "This seems to be a framework bug. "
+                               "The operator will stop to prevent damage.") from self.worker_error
+
     def workers_exception_handler(self, exc: BaseException) -> None:
         # In case of a failed worker, stop the watcher, and escalate to the operator to stop it.
         if self.worker_error is None:
             self.worker_error = exc
             if self.watcher_task is not None:  # never happens, but is needed for type-checking.
                 self.watcher_task.cancel()
-
-    def maybe_reraise_from_workers(self) -> None:
-        if self.worker_error is not None:
-            raise RuntimeError("Event processing has failed with an unrecoverable error. "
-                               "This seems to be a framework bug. "
-                               "The operator will stop to prevent damage.") from self.worker_error
 
     async def worker(
             self,
@@ -361,14 +383,13 @@ async def watcher(
     """
     # All per-object workers are handled as fire-and-forget jobs via the scheduler,
     # and communicated via the per-object event queues.
-    pool = WorkerPool(
+    async with WorkerPool(
         settings=settings,
         resource=resource,
         processor=processor,
         resource_indexed=resource_indexed,
         operator_indexed=operator_indexed,
-    )
-    try:
+    ) as pool:
         # Either use the existing object's queue, or create a new one together with the object task.
         # "Fire-and-forget": do not wait for result; the task destroys itself when it is fully done.
         stream = watching.infinite_watch(
@@ -385,21 +406,3 @@ async def watcher(
                     await pool.operator_indexed.drop_toggle(pool.resource_indexed)
 
             await pool.spawn_and_feed(raw_event)
-
-    except asyncio.CancelledError:
-        pool.maybe_reraise_from_workers()
-        raise
-    finally:
-        # Allow the existing workers to finish gracefully before killing them.
-        # Ensure the depletion is done even if the watcher is double-cancelled (e.g. in tests).
-        depletion_task = asyncio.create_task(pool.wait_for_depletion())
-        while not depletion_task.done():
-            with contextlib.suppress(asyncio.CancelledError):
-                await asyncio.shield(depletion_task)
-
-        # Terminate all the fire-and-forget per-object jobs if they are still running.
-        # Ensure the scheduler is closed even if the watcher is double-cancelled (e.g. in tests).
-        closing_task = asyncio.create_task(pool.scheduler.close())
-        while not closing_task.done():
-            with contextlib.suppress(asyncio.CancelledError):
-                await asyncio.shield(closing_task)
