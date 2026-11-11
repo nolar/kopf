@@ -1,11 +1,12 @@
 import asyncio
 import functools
+import inspect
 from unittest.mock import AsyncMock
 
 import pytest
 
 from kopf._cogs.clients.watching import infinite_watch
-from kopf._core.reactor.queueing import watcher, worker as original_worker
+from kopf._core.reactor.queueing import WorkerPool, watcher
 
 STREAM_WITH_ERROR_410GONE_ONLY = (
     {'type': 'ERROR', 'object': {'code': 410}},
@@ -24,16 +25,22 @@ def processor():
 
 
 @pytest.fixture()
-def worker_spy(mocker):
-    """ Spy on the watcher: actually call it, but provide the mock-fields. """
-    spy = AsyncMock(spec=original_worker, wraps=original_worker)
-    return mocker.patch('kopf._core.reactor.queueing.worker', spy)
+def worker_pool_spy(mocker):
+    """ Spy on the watcher: actually call it, but expose the mocked calls. """
+    # We need not only the spy on the class itself, but on every of its methods.
+    for name, _ in inspect.getmembers(WorkerPool, inspect.isfunction):
+        if not name.startswith('__'):
+            mocker.spy(WorkerPool, name)
+
+    from kopf._core.reactor import queueing
+    return mocker.spy(queueing, 'WorkerPool')
 
 
 @pytest.fixture()
-def worker_mock(mocker):
+def worker_mock(mocker, worker_pool_spy):
     """ Prevent the queue consumption, so that the queues could be checked. """
-    return mocker.patch('kopf._core.reactor.queueing.worker')
+    # It is already a spy, but we need it dysfunctional (no-op) entirely.
+    return mocker.patch.object(WorkerPool, 'worker')
 
 
 @pytest.fixture()
@@ -49,7 +56,7 @@ def watcher_limited(kmock, mocker, settings):
 
 
 @pytest.fixture()
-async def watcher_in_background(settings, resource, worker_spy, kmock, namespace, processor):
+async def watcher_in_background(settings, resource, worker_pool_spy, kmock, namespace, processor):
 
     # Prevent any real streaming for the very beginning, before it even starts.
     kmock['watch', resource] << ()
@@ -62,6 +69,9 @@ async def watcher_in_background(settings, resource, worker_spy, kmock, namespace
         processor=processor,
     )
     task = asyncio.create_task(coro)
+
+    # Let it truly spawn and start running, create all its data structures (the worker pool mainly).
+    await asyncio.sleep(0)
 
     try:
         # Go for a test.

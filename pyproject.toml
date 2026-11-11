@@ -83,7 +83,7 @@ test = [
     "pytest-aiohttp",
     "pytest-asyncio",
     "pytest-cov",
-    "pytest-mock",
+    "pytest-mock>=3.13",
     "pytest-timeout",
     "types-pyyaml",
     "types-setuptools",
