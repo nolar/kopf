@@ -288,6 +288,47 @@ class WorkerPool:
         if self.streams:
             logger.warning(f"Unprocessed streams left for {list(self.streams.keys())!r}.")
 
+    async def spawn_and_feed(
+            self,
+            raw_event: bodies.RawEvent | watching.Bookmark,
+    ) -> None:
+        # Whatever is bookmarked there, don't let it go to the multiplexer. Handle it above.
+        if isinstance(raw_event, watching.Bookmark):
+            return
+
+        # Skip BOOKMARK events from K8s: they carry no object identity (no uid/name/namespace),
+        # and are only useful for resource version tracking (already done in the watch stream).
+        if raw_event.get('type') == 'BOOKMARK':
+            return
+
+        # Multiplex the raw events to per-resource workers/queues. Start the new ones if needed.
+        key: ObjectRef = (self.resource, get_uid(raw_event))
+        try:
+            # Feed the worker, as fast as possible, no extra activities.
+            self.streams[key].pressure.set()  # interrupt current sleeps, if any.
+            await self.streams[key].backlog.put(raw_event)
+        except KeyError:
+
+            # Block the operator's readiness for individual resource's index handlers.
+            # But NOT when the readiness is already achieved once! After that, ignore it.
+            # NB: Strictly before the worker starts -- the processor can be too slow, too late.
+            resource_object_indexed: aiotoggles.Toggle | None = None
+            if self.operator_indexed is not None and self.operator_indexed.is_on():
+                self.operator_indexed = None
+            if self.operator_indexed is not None and self.resource_indexed is not None:
+                resource_object_indexed = await self.operator_indexed.make_toggle(name=f"{key!r}")
+
+            # Start the worker, and feed it initially. Starting can be moderately slow.
+            self.streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
+            self.streams[key].pressure.set()  # interrupt current sleeps, if any.
+            await self.streams[key].backlog.put(raw_event)
+            await self.scheduler.spawn(
+                name=f'worker for {key}',
+                coro=self.worker(
+                    resource_object_indexed=resource_object_indexed,
+                    key=key,
+                ))
+
 
 async def watcher(
         *,
@@ -343,42 +384,7 @@ async def watcher(
                 if pool.operator_indexed is not None and pool.resource_indexed is not None:
                     await pool.operator_indexed.drop_toggle(pool.resource_indexed)
 
-            # Whatever is bookmarked there, don't let it go to the multiplexer. Handle it above.
-            if isinstance(raw_event, watching.Bookmark):
-                continue
-
-            # Skip BOOKMARK events from K8s: they carry no object identity (no uid/name/namespace),
-            # and are only useful for resource version tracking (already done in the watch stream).
-            if raw_event.get('type') == 'BOOKMARK':
-                continue
-
-            # Multiplex the raw events to per-resource workers/queues. Start the new ones if needed.
-            key: ObjectRef = (resource, get_uid(raw_event))
-            try:
-                # Feed the worker, as fast as possible, no extra activities.
-                pool.streams[key].pressure.set()  # interrupt current sleeps, if any.
-                await pool.streams[key].backlog.put(raw_event)
-            except KeyError:
-
-                # Block the operator's readiness for individual resource's index handlers.
-                # But NOT when the readiness is already achieved once! After that, ignore it.
-                # NB: Strictly before the worker starts -- the processor can be too slow, too late.
-                resource_object_indexed: aiotoggles.Toggle | None = None
-                if pool.operator_indexed is not None and pool.operator_indexed.is_on():
-                    pool.operator_indexed = None
-                if pool.operator_indexed is not None and pool.resource_indexed is not None:
-                    resource_object_indexed = await pool.operator_indexed.make_toggle(name=f"{key!r}")
-
-                # Start the worker, and feed it initially. Starting can be moderately slow.
-                pool.streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
-                pool.streams[key].pressure.set()  # interrupt current sleeps, if any.
-                await pool.streams[key].backlog.put(raw_event)
-                await pool.scheduler.spawn(
-                    name=f'worker for {key}',
-                    coro=pool.worker(
-                        resource_object_indexed=resource_object_indexed,
-                        key=key,
-                    ))
+            await pool.spawn_and_feed(raw_event)
 
     except asyncio.CancelledError:
         pool.maybe_reraise_from_workers()
