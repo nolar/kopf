@@ -224,8 +224,11 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
                 timeout = max(self.settings.queueing.idle_timeout,
                               consistency_time - loop.time() if consistency_time is not None else 0)
                 try:
-                    raw_event = await asyncio.wait_for(backlog.get(), timeout=timeout)
-                except TimeoutError:
+                    if timeout == 0:
+                        raw_event = backlog.get_nowait()
+                    else:
+                        raw_event = await asyncio.wait_for(backlog.get(), timeout=timeout)
+                except (TimeoutError, asyncio.QueueEmpty):
                     # Tricky! Under load or with synchronous blocks of asyncio event-loop, it is
                     # possible that the timeout happens while the queue is filled: depending on
                     # the order in which the coro-tasks are checked once control returns to asyncio.
