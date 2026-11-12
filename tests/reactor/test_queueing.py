@@ -286,7 +286,7 @@ async def test_stream_pressure_maintained_until_the_queue_is_empty(settings, res
         processor=processor,
     ) as pool:
         pool.streams.update({key: stream})
-        await pool.worker(key=key)
+        await pool.worker(key=key, mode=None)
 
     assert flags == [True, True, False]
     assert not stream.pressure.is_set()
