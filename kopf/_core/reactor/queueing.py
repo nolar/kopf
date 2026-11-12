@@ -76,11 +76,10 @@ class Stream(NamedTuple):
     pressure: asyncio.Event  # means: "hurry up, there are new events queued again"
 
 
-ObjectUid = NewType('ObjectUid', str)
-ObjectRef = tuple[references.Resource, ObjectUid]
+UID = NewType('UID', str)
 
 
-def get_uid(raw_event: bodies.RawEvent) -> ObjectUid:
+def get_uid(raw_event: bodies.RawEvent) -> UID:
     """
     Retrieve or simulate an identifier of an object unique both in time & space.
 
@@ -124,7 +123,7 @@ def get_uid(raw_event: bodies.RawEvent) -> ObjectUid:
             raw_event['object']['metadata'].get('creationTimestamp'),
         ]
         uid = '//'.join([s or '-' for s in ids])
-    return ObjectUid(uid)
+    return UID(uid)
 
 
 def get_version(raw_event: bodies.RawEvent | EOS) -> str | None:
@@ -151,7 +150,7 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
         self.watcher_task = asyncio.current_task()
         self.worker_error: BaseException | None = None
         self.signaller = asyncio.Condition()
-        self.streams: dict[ObjectRef, Stream] = {}
+        self.streams: dict[UID, Stream] = {}
 
     async def __aexit__(
             self,
@@ -189,7 +188,7 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
             if self.watcher_task is not None:  # never happens, but is needed for type-checking.
                 self.watcher_task.cancel()
 
-    async def worker(self, *, key: ObjectRef, mode: ProcessingMode | None) -> None:
+    async def worker(self, *, uid: UID, mode: ProcessingMode | None) -> None:
         """
         A single worker for a single resource object, running in its own task.
 
@@ -212,8 +211,8 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
         activity, since we do not keep a worker task for every dormant object.
         """
         loop = asyncio.get_running_loop()
-        backlog = self.streams[key].backlog
-        pressure = self.streams[key].pressure
+        backlog = self.streams[uid].backlog
+        pressure = self.streams[uid].pressure
         shouldstop = False
         consistency_time: float | None = None  # None if nothing is expected/awaited.
         expected_version: str | None = None  # None/non-None is synced with the patch-end-time.
@@ -275,14 +274,14 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
         except Exception:
             # Log the error for every worker: there can be several of them failing at the same time,
             # but only one will trigger the watcher's failure -- others could be lost if not logged.
-            logger.exception(f"Event processing has failed with an unrecoverable error for {key}.")
+            logger.exception(f"Event processing has failed with an unrecoverable error for {uid}.")
             raise
 
         finally:
             # On an exception, a break, or a success, notify the caller & garbage-collect our queue.
             # The queue must not be left in the queue dict without a task handling this queue.
             try:
-                del self.streams[key]
+                del self.streams[uid]
             except KeyError:
                 pass  # already absent
 
@@ -329,7 +328,7 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
             return
 
         # Multiplex the raw events to per-resource workers/queues. Start the new ones if needed.
-        key: ObjectRef = (self.resource, get_uid(raw_event))
+        uid = get_uid(raw_event)
         match mode:
             case ProcessingMode.INDEXING_ONLY:
                 worker_type = 'initial indexer'
@@ -339,16 +338,16 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
                 worker_type = 'worker'
         try:
             # Feed the worker, as fast as possible, no extra activities.
-            self.streams[key].pressure.set()  # interrupt current sleeps, if any.
-            await self.streams[key].backlog.put(raw_event)
+            self.streams[uid].pressure.set()  # interrupt current sleeps, if any.
+            await self.streams[uid].backlog.put(raw_event)
         except KeyError:
             # Start the worker, and feed it initially. Starting can be moderately slow.
-            self.streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
-            self.streams[key].pressure.set()  # interrupt current sleeps, if any.
-            await self.streams[key].backlog.put(raw_event)
+            self.streams[uid] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
+            self.streams[uid].pressure.set()  # interrupt current sleeps, if any.
+            await self.streams[uid].backlog.put(raw_event)
             await self.scheduler.spawn(
-                name=f'{worker_type} for {key}',
-                coro=self.worker(key=key, mode=mode))
+                name=f'{worker_type} for {uid}',
+                coro=self.worker(uid=uid, mode=mode))
 
 
 async def watcher(
