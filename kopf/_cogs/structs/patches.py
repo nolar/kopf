@@ -143,7 +143,7 @@ class Patch(dict[str, Any]):
 
         # Calculate the actual JSON ops for this particular state of the resource.
         # No "test" operations in pure JSON-patches as used in the mutating admission calls.
-        ops: JSONPatch = jsonpatch.JsonPatch.from_diff(dict(body_as_is), dict(body_to_be)).patch
+        ops = cast(JSONPatch, jsonpatch.JsonPatch.from_diff(dict(body_as_is), dict(body_to_be)).patch)
         return ops
 
     def _apply_patch(self, body: bodies.RawBody, path: dicts.FieldPath, value: object) -> None:
