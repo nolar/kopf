@@ -34,6 +34,7 @@ from kopf._cogs.aiokits import aiotasks, aiotoggles
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, references
 from kopf._core.engines import peering
+from kopf._core.intents import registries
 from kopf._core.reactor import queueing
 
 logger = logging.getLogger(__name__)
@@ -113,6 +114,7 @@ async def orchestrator(
         *,
         processor: ResourceWatchStreamProcessor,
         settings: configuration.OperatorSettings,
+        registry: registries.OperatorRegistry,
         identity: peering.Identity,
         insights: references.Insights,
         operator_paused: aiotoggles.ToggleSet,
@@ -151,6 +153,7 @@ async def orchestrator(
                         processor=processor,
                         insights=insights,
                         settings=settings,
+                        registry=registry,
                         identity=identity,
                         ensemble=ensemble,
                     )
@@ -167,6 +170,7 @@ async def adjust_tasks(
         processor: ResourceWatchStreamProcessor,
         insights: references.Insights,
         settings: configuration.OperatorSettings,
+        registry: registries.OperatorRegistry,
         identity: peering.Identity,
         ensemble: Ensemble,
 ) -> None:
@@ -184,11 +188,13 @@ async def adjust_tasks(
                                  remaining_namespaces=insights.namespaces | {None})
     await spawn_missing_peerings(ensemble=ensemble,
                                  settings=settings,
+                                 registry=registry,
                                  identity=identity,
                                  resources=peering_resources,
                                  namespaces=insights.namespaces)
     await spawn_missing_watchers(ensemble=ensemble,
                                  settings=settings,
+                                 registry=registry,
                                  processor=processor,
                                  indexed_resources=insights.indexed_resources,
                                  watched_resources=insights.watched_resources,
@@ -216,6 +222,7 @@ async def terminate_redundancies(
 async def spawn_missing_peerings(
         *,
         settings: configuration.OperatorSettings,
+        registry: registries.OperatorRegistry,
         identity: peering.Identity,
         resources: Collection[references.Resource],
         namespaces: Collection[references.Namespace],
@@ -240,6 +247,7 @@ async def spawn_missing_peerings(
                 name=f"peering observer for {what}", logger=logger, cancellable=True,
                 coro=queueing.watcher(
                     settings=settings,
+                    registry=registry,
                     resource=resource,
                     namespace=namespace,
                     processor=functools.partial(peering.process_peering_event,
@@ -257,6 +265,7 @@ async def spawn_missing_watchers(
         *,
         processor: ResourceWatchStreamProcessor,
         settings: configuration.OperatorSettings,
+        registry: registries.OperatorRegistry,
         indexed_resources: Container[references.Resource],  # only "if in", never "for in"!
         watched_resources: Iterable[references.Resource],
         watched_namespaces: Iterable[references.Namespace],
@@ -283,6 +292,7 @@ async def spawn_missing_watchers(
                     operator_indexed=ensemble.operator_indexed,
                     resource_indexed=resource_indexed,
                     settings=settings,
+                    registry=registry,
                     resource=resource,
                     namespace=namespace,
                     processor=functools.partial(processor, resource=resource)))

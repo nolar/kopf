@@ -33,6 +33,7 @@ from kopf._cogs.aiokits import aiotasks, aiotoggles
 from kopf._cogs.clients import watching
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, references
+from kopf._core.intents import registries
 
 logger = logging.getLogger(__name__)
 
@@ -359,6 +360,7 @@ async def watcher(
         *,
         namespace: references.Namespace,
         settings: configuration.OperatorSettings,
+        registry: registries.OperatorRegistry,
         resource: references.Resource,
         processor: WatchStreamProcessor,
         operator_paused: aiotoggles.ToggleSet | None = None,  # None for tests & observation
