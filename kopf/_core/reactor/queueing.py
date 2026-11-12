@@ -73,11 +73,10 @@ class Stream(NamedTuple):
     pressure: asyncio.Event  # means: "hurry up, there are new events queued again"
 
 
-ObjectUid = NewType('ObjectUid', str)
-ObjectRef = tuple[references.Resource, ObjectUid]
+UID = NewType('UID', str)
 
 
-def get_uid(raw_event: bodies.RawEvent) -> ObjectUid:
+def get_uid(raw_event: bodies.RawEvent) -> UID:
     """
     Retrieve or simulate an identifier of an object unique both in time & space.
 
@@ -121,7 +120,7 @@ def get_uid(raw_event: bodies.RawEvent) -> ObjectUid:
             raw_event['object']['metadata'].get('creationTimestamp'),
         ]
         uid = '//'.join([s or '-' for s in ids])
-    return ObjectUid(uid)
+    return UID(uid)
 
 
 class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
@@ -129,19 +128,17 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
             self,
             *,
             settings: configuration.OperatorSettings,
-            resource: references.Resource,
             processor: WatchStreamProcessor,
     ) -> None:
         super().__init__()
         self.settings = settings
-        self.resource = resource
         self.processor = processor
         self.scheduler = aiotasks.Scheduler(limit=settings.queueing.worker_limit,
                                             exception_handler=self.workers_exception_handler)
         self.watcher_task = asyncio.current_task()
         self.worker_error: BaseException | None = None
         self.signaller = asyncio.Condition()
-        self.streams: dict[ObjectRef, Stream] = {}
+        self.streams: dict[UID, Stream] = {}
 
     async def __aexit__(
             self,
@@ -179,7 +176,7 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
             if self.watcher_task is not None:  # never happens, but is needed for type-checking.
                 self.watcher_task.cancel()
 
-    async def worker(self, key: ObjectRef) -> None:
+    async def worker(self, uid: UID) -> None:
         """
         A single worker for a single resource object, running in its own task.
 
@@ -201,8 +198,8 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
         Such early exiting saves system resources (RAM) in big clusters with low
         activity, since we do not keep a worker task for every dormant object.
         """
-        backlog = self.streams[key].backlog
-        pressure = self.streams[key].pressure
+        backlog = self.streams[uid].backlog
+        pressure = self.streams[uid].pressure
         exit_asap = False  # but consume the pending queue nevertheless, so that nothing is lost
         try:
             while True:
@@ -250,14 +247,14 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
         except Exception:
             # Log the error for every worker: there can be several of them failing at the same time,
             # but only one will trigger the watcher's failure -- others could be lost if not logged.
-            logger.exception(f"Event processing has failed with an unrecoverable error for {key}.")
+            logger.exception(f"Event processing has failed with an unrecoverable error for {uid}.")
             raise
 
         finally:
             # On an exception, a break, or a success, notify the caller & garbage-collect our queue.
             # The queue must not be left in the queue dict without a task handling this queue.
             try:
-                del self.streams[key]
+                del self.streams[uid]
             except KeyError:
                 pass  # already absent
 
@@ -305,19 +302,19 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
             return
 
         # Multiplex the raw events to per-resource workers/queues. Start the new ones if needed.
-        key: ObjectRef = (self.resource, get_uid(raw_event))
+        uid = get_uid(raw_event)
         try:
             # Feed the worker, as fast as possible, no extra activities.
-            self.streams[key].pressure.set()  # interrupt current sleeps, if any.
-            await self.streams[key].backlog.put((mode, raw_event))
+            self.streams[uid].pressure.set()  # interrupt current sleeps, if any.
+            await self.streams[uid].backlog.put((mode, raw_event))
         except KeyError:
             # Start the worker, and feed it initially. Starting can be moderately slow.
-            self.streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
-            self.streams[key].pressure.set()  # interrupt current sleeps, if any.
-            await self.streams[key].backlog.put((mode, raw_event))
+            self.streams[uid] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
+            self.streams[uid].pressure.set()  # interrupt current sleeps, if any.
+            await self.streams[uid].backlog.put((mode, raw_event))
             await self.scheduler.spawn(
-                name=f'worker for {key}',
-                coro=self.worker(key))
+                name=f'worker for {uid}',
+                coro=self.worker(uid))
 
 
 async def watcher(
@@ -351,11 +348,7 @@ async def watcher(
     """
     # All per-object workers are handled as fire-and-forget jobs via the scheduler,
     # and communicated via the per-object event queues.
-    async with WorkerPool(
-        settings=settings,
-        resource=resource,
-        processor=processor,
-    ) as pool:
+    async with WorkerPool(settings=settings, processor=processor) as pool:
 
         # Either use the existing object's queue, or create a new one together with the object task.
         # "Fire-and-forget": do not wait for result; the task destroys itself when it is fully done.
@@ -371,7 +364,7 @@ async def watcher(
         # retries (e.g., in chunking/pagination, initial streaming). 2+ different events per uid
         # is the violation of the concept of the initial listing. But even in this case, we remember
         # the latest seen state, which is fine. Ordering is therefore helpful but not critical.
-        initial_events: dict[ObjectUid, bodies.RawEvent] = {}
+        initial_events: dict[UID, bodies.RawEvent] = {}
 
         # Pre-index the resources of this kind without blocking the scheduler by pending workers.
         # We use the usual scheduler to cap at the worker limit even for indexing.
