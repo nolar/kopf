@@ -37,14 +37,20 @@ from kopf._cogs.structs import bodies, references
 logger = logging.getLogger(__name__)
 
 
+# None (by default) signals to perform all activities, so this mode is not declared explicitly here.
+# This mode is used only in partial execution phases below, and only in a very limited set of tests.
+class ProcessingMode(enum.Enum):
+    INDEXING_ONLY = enum.auto()
+    HANDLING_ONLY = enum.auto()
+
+
 class WatchStreamProcessor(Protocol):
     async def __call__(
             self,
             *,
             raw_event: bodies.RawEvent,
             stream_pressure: asyncio.Event | None = None,  # None for tests
-            resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
-            operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
+            processing_mode: ProcessingMode | None = None,  # None means doing everything
     ) -> None:
         ...
 
@@ -56,7 +62,7 @@ class EOS(enum.Enum):
 
 
 if TYPE_CHECKING:
-    WatchEventQueue = asyncio.Queue[bodies.RawEvent | EOS]
+    WatchEventQueue = asyncio.Queue[tuple[ProcessingMode | None, bodies.RawEvent | EOS]]
 else:
     WatchEventQueue = asyncio.Queue
 
@@ -125,15 +131,11 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
             settings: configuration.OperatorSettings,
             resource: references.Resource,
             processor: WatchStreamProcessor,
-            resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
-            operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
     ) -> None:
         super().__init__()
         self.settings = settings
         self.resource = resource
         self.processor = processor
-        self.resource_indexed = resource_indexed  # None after indexed, to prevent storing anything
-        self.operator_indexed = operator_indexed  # None after indexed, to prevent storing anything
         self.scheduler = aiotasks.Scheduler(limit=settings.queueing.worker_limit,
                                             exception_handler=self.workers_exception_handler)
         self.watcher_task = asyncio.current_task()
@@ -150,7 +152,9 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
 
         # Allow the existing workers to finish gracefully before killing them.
         # Ensure the depletion is done even if the watcher is double-cancelled (e.g. in tests).
-        depletion_task = asyncio.create_task(self.wait_for_depletion())
+        depletion_task = asyncio.create_task(self.wait_for_depletion(
+            timeout=self.settings.queueing.exit_timeout,
+        ))
         while not depletion_task.done():
             with contextlib.suppress(asyncio.CancelledError):
                 await asyncio.shield(depletion_task)
@@ -175,12 +179,7 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
             if self.watcher_task is not None:  # never happens, but is needed for type-checking.
                 self.watcher_task.cancel()
 
-    async def worker(
-            self,
-            *,
-            resource_object_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
-            key: ObjectRef,
-    ) -> None:
+    async def worker(self, key: ObjectRef) -> None:
         """
         A single worker for a single resource object, running in its own task.
 
@@ -204,6 +203,7 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
         """
         backlog = self.streams[key].backlog
         pressure = self.streams[key].pressure
+        exit_asap = False  # but consume the pending queue nevertheless, so that nothing is lost
         try:
             while True:
 
@@ -211,8 +211,12 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
                 # Save memory by finishing the worker if the backlog is empty for some time.
                 timeout = self.settings.queueing.idle_timeout
                 try:
-                    raw_event = await asyncio.wait_for(backlog.get(), timeout=timeout)
-                except TimeoutError:
+                    if exit_asap:
+                        mode, raw_event = backlog.get_nowait()
+                    else:
+                        mode, raw_event = await asyncio.wait_for(backlog.get(), timeout=timeout)
+                    exit_asap = exit_asap or mode is not None
+                except (TimeoutError, asyncio.QueueEmpty):
                     # Tricky! Under load or with synchronous blocks of asyncio event-loop, it is
                     # possible that the timeout happens while the queue is filled: depending on
                     # the order in which the coro-tasks are checked once control returns to asyncio.
@@ -240,8 +244,7 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
                 await self.processor(
                     raw_event=raw_event,
                     stream_pressure=pressure,
-                    resource_indexed=resource_object_indexed,
-                    operator_indexed=self.operator_indexed,
+                    processing_mode=mode,
                 )
 
         except Exception:
@@ -264,11 +267,12 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
             async with self.signaller:
                 self.signaller.notify_all()
 
-    async def wait_for_depletion(self) -> None:
+    async def wait_for_depletion(self, *, timeout: float | None) -> None:
 
         # Tell all the workers to finish now. Wake them up if they are waiting in the queue-getting.
+        # The finalizing workers will ignore the extra EOS, before they remove their stream anyway.
         for stream in list(self.streams.values()):
-            await stream.backlog.put(EOS.token)
+            await stream.backlog.put((None, EOS.token))
 
         # Wait for the queues to be depleted, but only if there are some workers running.
         # Continue with the tasks termination if the timeout is reached, no matter the queues.
@@ -277,17 +281,19 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
             try:
                 await asyncio.wait_for(
                     self.signaller.wait_for(lambda: not self.streams or self.scheduler.empty()),
-                    timeout=self.settings.queueing.exit_timeout)
+                    timeout=timeout)
             except TimeoutError:
                 pass  # if not depleted as configured, proceed with what's left and let it fail
 
         # The last check if the termination is going to be graceful or not.
+        # NB: the tasks can still be running briefly; we care only about streams[] for our controls.
         if self.streams:
             logger.warning(f"Unprocessed streams left for {list(self.streams.keys())!r}.")
 
     async def spawn_and_feed(
             self,
             raw_event: bodies.RawEvent | watching.Bookmark,
+            mode: ProcessingMode | None,
     ) -> None:
         # Whatever is bookmarked there, don't let it go to the multiplexer. Handle it above.
         if isinstance(raw_event, watching.Bookmark):
@@ -303,28 +309,15 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
         try:
             # Feed the worker, as fast as possible, no extra activities.
             self.streams[key].pressure.set()  # interrupt current sleeps, if any.
-            await self.streams[key].backlog.put(raw_event)
+            await self.streams[key].backlog.put((mode, raw_event))
         except KeyError:
-
-            # Block the operator's readiness for individual resource's index handlers.
-            # But NOT when the readiness is already achieved once! After that, ignore it.
-            # NB: Strictly before the worker starts -- the processor can be too slow, too late.
-            resource_object_indexed: aiotoggles.Toggle | None = None
-            if self.operator_indexed is not None and self.operator_indexed.is_on():
-                self.operator_indexed = self.resource_indexed = None  # do not store to save memory
-            if self.operator_indexed is not None and self.resource_indexed is not None:
-                resource_object_indexed = await self.operator_indexed.make_toggle(name=f"{key!r}")
-
             # Start the worker, and feed it initially. Starting can be moderately slow.
             self.streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
             self.streams[key].pressure.set()  # interrupt current sleeps, if any.
-            await self.streams[key].backlog.put(raw_event)
+            await self.streams[key].backlog.put((mode, raw_event))
             await self.scheduler.spawn(
                 name=f'worker for {key}',
-                coro=self.worker(
-                    resource_object_indexed=resource_object_indexed,
-                    key=key,
-                ))
+                coro=self.worker(key))
 
 
 async def watcher(
@@ -362,9 +355,8 @@ async def watcher(
         settings=settings,
         resource=resource,
         processor=processor,
-        resource_indexed=resource_indexed,
-        operator_indexed=operator_indexed,
     ) as pool:
+
         # Either use the existing object's queue, or create a new one together with the object task.
         # "Fire-and-forget": do not wait for result; the task destroys itself when it is fully done.
         stream = watching.infinite_watch(
@@ -372,12 +364,54 @@ async def watcher(
             resource=resource, namespace=namespace,
             operator_paused=operator_paused,
         )
+
+        # Accumulate the events —preferably in the order of arrival— for later re-processing.
+        # Note: we deduplicate the events per uid. By the nature of Kubernetes API, there should be
+        # exactly 1 event per uid in initial listing. Duplicates can theoretically appear on partial
+        # retries (e.g., in chunking/pagination, initial streaming). 2+ different events per uid
+        # is the violation of the concept of the initial listing. But even in this case, we remember
+        # the latest seen state, which is fine. Ordering is therefore helpful but not critical.
+        initial_events: dict[ObjectUid, bodies.RawEvent] = {}
+
+        # Pre-index the resources of this kind without blocking the scheduler by pending workers.
+        # We use the usual scheduler to cap at the worker limit even for indexing.
+        # Note: resource_indexed is set when the resource has indexes, see spawn_missing_watchers(),
+        # so it is a sufficient indication that pre-indexing is required.
+        if operator_indexed is not None and resource_indexed is not None:
+            # Avoid buffering (memory usage spikes) if resource pre-indexing was finished already.
+            # True — if this is the very first iteration of the watcher, no respawns happened yet.
+            # True — if the watcher has unexpectedly exited during the pre-indexing, before ready.
+            # False — if pre-indexing was done, but the watcher has respawned in regular streaming.
+            if resource_indexed in operator_indexed:
+                async for raw_event in stream:
+                    # If the listing is over (even if it was empty), the resource kind is pre-indexed.
+                    if isinstance(raw_event, watching.Bookmark):
+                        break  # out of the indexing phase
+
+                    initial_events[get_uid(raw_event)] = raw_event
+                    await pool.spawn_and_feed(raw_event, mode=ProcessingMode.INDEXING_ONLY)
+
+        # Deplete the workers dedicated to indexing-only processing, free up all the keys.
+        # Beware: the actual indexing happens here; spawn_and_feed() above is non-blocking queueing.
+        await pool.wait_for_depletion(timeout=None)
+
+        # Report this resource kind as indexed only after all the indexing jobs are done & depleted.
+        if operator_indexed is not None and resource_indexed is not None:
+            await operator_indexed.drop_toggle(resource_indexed)
+
+        # Wait for other resource kinds to finish indexing.
+        if operator_indexed is not None:
+            await operator_indexed.wait_for(True)
+
+        # Now, the whole operator is indexed. Process the accumulated events without re-indexing.
+        # Note: this spawning is non-blocking. The accumulated buffer instantly moves to the queue
+        # of the scheduler's pending jobs, keeping the same memory usage spike. But as the scheduler
+        # actually launches the jobs, finishes and gc's them, the memory usage gradually reduces.
+        for raw_event in initial_events.values():
+            await pool.spawn_and_feed(raw_event, mode=ProcessingMode.HANDLING_ONLY)
+        del initial_events  # let the events be gc'ed as soon as they are processed from now on
+
+        # Now, stream normally ad infinitum, with indexing & processing combined.
+        # Do not deplete the scheduler pool before.
         async for raw_event in stream:
-
-            # If the listing is over (even if it was empty), the resource kind is pre-indexed.
-            # At this moment, only the individual workers/processors can block the global readiness.
-            if raw_event is watching.Bookmark.LISTED:
-                if pool.operator_indexed is not None and pool.resource_indexed is not None:
-                    await pool.operator_indexed.drop_toggle(pool.resource_indexed)
-
-            await pool.spawn_and_feed(raw_event)
+            await pool.spawn_and_feed(raw_event, mode=None)

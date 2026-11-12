@@ -87,14 +87,15 @@ async def test_watchevent_demultiplexing(worker_pool_spy, worker_mock, looptime,
     assert worker_mock.call_count == len(uids)
     assert worker_mock.call_count == len(cnts)
     for uid, cnt, (args, kwargs) in zip(uids, cnts, worker_mock.call_args_list):
-        key = kwargs['key']
+        key, = args
         streams = worker_pool.streams
         assert key == (resource, uid)
         assert key in streams
 
         queue_events = []
         while not streams[key].backlog.empty():
-            queue_events.append(streams[key].backlog.get_nowait())
+            mode, raw_event = streams[key].backlog.get_nowait()
+            queue_events.append(raw_event)
 
         assert len(queue_events) == cnt + 1
         assert queue_events[-1] is EOS.token
@@ -152,10 +153,11 @@ async def test_bookmarks_are_ignored(worker_pool_spy, worker_mock, looptime, res
     assert worker_mock.call_count == 1
 
     streams = worker_pool_spy.spy_return_list[0].streams
-    key = worker_mock.call_args_list[0].kwargs['key']
+    key, = worker_mock.call_args_list[0].args
     queue_events = []
     while not streams[key].backlog.empty():
-        queue_events.append(streams[key].backlog.get_nowait())
+        mode, raw_event = streams[key].backlog.get_nowait()
+        queue_events.append(raw_event)
     assert all(e is EOS.token or e['type'] != 'BOOKMARK' for e in queue_events)
 
 
@@ -270,9 +272,9 @@ async def test_stream_pressure_maintained_until_the_queue_is_empty(settings, res
     # Therefore, we test the worker(), not the watcher().
     key = (resource, ObjectUid('uid1'))
     stream = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
-    stream.backlog.put_nowait({'type': 'ADDED', 'object': {'metadata': {'uid': 'uid1'}}})
-    stream.backlog.put_nowait({'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid1'}}})
-    stream.backlog.put_nowait({'type': 'DELETED', 'object': {'metadata': {'uid': 'uid1'}}})
+    stream.backlog.put_nowait((None, {'type': 'ADDED', 'object': {'metadata': {'uid': 'uid1'}}}))
+    stream.backlog.put_nowait((None, {'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid1'}}}))
+    stream.backlog.put_nowait((None, {'type': 'DELETED', 'object': {'metadata': {'uid': 'uid1'}}}))
     stream.pressure.set()
     async with WorkerPool(
         resource=resource,
@@ -280,7 +282,7 @@ async def test_stream_pressure_maintained_until_the_queue_is_empty(settings, res
         processor=processor,
     ) as pool:
         pool.streams.update({key: stream})
-        await pool.worker(key=key)
+        await pool.worker(key)
 
     assert flags == [True, True, False]
     assert not stream.pressure.is_set()

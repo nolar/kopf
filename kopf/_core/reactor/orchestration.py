@@ -53,8 +53,7 @@ class ResourceWatchStreamProcessor(Protocol):
             resource: references.Resource,
             raw_event: bodies.RawEvent,
             stream_pressure: asyncio.Event | None = None,  # None for tests
-            resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
-            operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
+            processing_mode: queueing.ProcessingMode | None = None,  # None means doing everything
     ) -> None:
         ...
 
@@ -339,12 +338,21 @@ async def spawn_missing_watchers(
     for resource, namespace in itertools.product(watched_resources, watched_namespaces):
         namespace = namespace if resource.namespaced else None
         dkey = EnsembleKey(resource=resource, namespace=namespace)
-        resource_indexed = ensemble.indexing_blocks.get(dkey)
         if dkey not in ensemble.watcher_tasks:
             what = f"{resource}@{namespace}"
+
+            # Once the pre-indexing is done for this resource kind, the toggle will be dropped from
+            # the global toggle-set, but remains here in the cache for later reuse. Once the watcher
+            # respawns, it reuses the toggle, but does NOT re-add it to the toggle-set, so it blocks
+            # nothing. The toggle works as an indication that the indexing is involved at all.
+            # The watcher extra-checks if the operator is blocked by this toggle to actually run
+            # the pre-indexing (which causes memory usage spikes, avoidable at regular streaming).
+            # If exited during the pre-indexing phase, this reused toggle will be properly dropped.
+            resource_indexed: aiotoggles.Toggle | None = ensemble.indexing_blocks.get(dkey)
             if resource in indexed_resources and resource_indexed is None:
                 resource_indexed = await ensemble.operator_indexed.make_toggle(name=what)
                 ensemble.indexing_blocks[dkey] = resource_indexed
+
             ensemble.watcher_tasks[dkey] = aiotasks.create_guarded_task(
                 name=f"watcher for {what}", logger=logger, cancellable=True,
                 coro=queueing.watcher(
