@@ -147,6 +147,47 @@ async def test_stream_is_closed_when_consumer_stops(
     assert closed.is_set()
 
 
+async def test_abandoned_stream_does_not_cancel_the_next_one(
+        settings, resource, namespace, kmock, looptime):
+    """
+    The inactivity timer of an abandoned stream must not cancel a later, healthy stream.
+
+    The first stream is started, so its timer is armed, and it delivers one event. Then nobody
+    reads it any more: its generator stays suspended at that event and is not closed. The timer
+    would elapse at 70s. The second stream is healthy and runs for 100s, so it is alive then.
+
+    Before the fix, the timer of the first stream stayed armed while its generator was suspended.
+    At 70s it cancelled the task of the consumer, which was then reading the second stream.
+    """
+    settings.watching.inactivity_timeout = 70.0
+    kmock['watch', resource, kmock.namespace(namespace), kmock.params(resourceVersion='100')] << (
+        {'type': 'ADDED', 'object': {'metadata': {'resourceVersion': '101'}}},
+    )
+    kmock['watch', resource, kmock.namespace(namespace), kmock.params(resourceVersion='101')] << (
+        {'type': 'ADDED', 'object': {'metadata': {'resourceVersion': '201'}}},
+        lambda: asyncio.sleep(50),
+        {'type': 'ADDED', 'object': {'metadata': {'resourceVersion': '202'}}},
+        lambda: asyncio.sleep(50),
+        {'type': 'ADDED', 'object': {'metadata': {'resourceVersion': '203'}}},
+    )
+
+    abandoned = watch_objs(settings=settings, resource=resource, namespace=namespace,
+                           since='100', operator_pause_waiter=asyncio.Future())
+    try:
+        first = await anext(abandoned)  # suspended at this event; nobody reads it any further
+        assert first['object']['metadata']['resourceVersion'] == '101'
+        healthy = [event async for event in watch_objs(
+            settings=settings, resource=resource, namespace=namespace,
+            since='101', operator_pause_waiter=asyncio.Future())]
+    except asyncio.CancelledError:
+        pytest.fail("The consumer was cancelled while it was reading the healthy stream.")
+    finally:
+        await abandoned.aclose()  # closes the stream and disarms its timer; no leftovers
+
+    assert [e['object']['metadata']['resourceVersion'] for e in healthy] == ['201', '202', '203']
+    assert looptime == 100
+
+
 async def test_restarted_stream_is_closed(monkeypatch, settings, resource, namespace, kmock):
     """When continuous_watch() restarts on "410 Gone", the abandoned stream is closed at once."""
     kmock['list', resource, kmock.namespace(namespace)] << {
