@@ -49,12 +49,13 @@ async def ensemble(_no_asyncio_pending_tasks):
 
 
 async def test_empty_insights_cause_no_adjustments(
-        settings, insights, ensemble):
+        settings, registry, insights, ensemble):
 
     await adjust_tasks(
         processor=processor,
         identity=Identity('...'),
         settings=settings,
+        registry=registry,
         insights=insights,
         ensemble=ensemble,
     )
@@ -66,7 +67,7 @@ async def test_empty_insights_cause_no_adjustments(
 
 
 async def test_new_resources_and_namespaces_spawn_new_tasks(
-        settings, ensemble: Ensemble, insights: Insights, peering_resource):
+        settings, registry, ensemble: Ensemble, insights: Insights, peering_resource):
     settings.peering.namespaced = peering_resource.namespaced
 
     r1 = Resource(group='group1', version='version1', plural='plural1', namespaced=True)
@@ -87,6 +88,7 @@ async def test_new_resources_and_namespaces_spawn_new_tasks(
         processor=processor,
         identity=Identity('...'),
         settings=settings,
+        registry=registry,
         insights=insights,
         ensemble=ensemble,
     )
@@ -98,7 +100,7 @@ async def test_new_resources_and_namespaces_spawn_new_tasks(
 
 
 async def test_gone_resources_and_namespaces_stop_running_tasks(
-        settings, ensemble: Ensemble, insights: Insights, peering_resource):
+        settings, registry, ensemble: Ensemble, insights: Insights, peering_resource):
     settings.peering.namespaced = peering_resource.namespaced
 
     r1 = Resource(group='group1', version='version1', plural='plural1', namespaced=True)
@@ -118,6 +120,7 @@ async def test_gone_resources_and_namespaces_stop_running_tasks(
         processor=processor,
         identity=Identity('...'),
         settings=settings,
+        registry=registry,
         insights=insights,
         ensemble=ensemble
     )
@@ -133,6 +136,7 @@ async def test_gone_resources_and_namespaces_stop_running_tasks(
         processor=processor,
         identity=Identity('...'),
         settings=settings,
+        registry=registry,
         insights=insights,
         ensemble=ensemble,
     )
@@ -147,7 +151,7 @@ async def test_gone_resources_and_namespaces_stop_running_tasks(
 
 
 async def test_cluster_tasks_continue_running_on_namespace_deletion(
-        settings, ensemble: Ensemble, insights: Insights, cluster_peering_resource):
+        settings, registry, ensemble: Ensemble, insights: Insights, cluster_peering_resource):
     settings.peering.namespaced = cluster_peering_resource.namespaced
 
     r1 = Resource(group='group1', version='version1', plural='plural1', namespaced=True)
@@ -163,6 +167,7 @@ async def test_cluster_tasks_continue_running_on_namespace_deletion(
         processor=processor,
         identity=Identity('...'),
         settings=settings,
+        registry=registry,
         insights=insights,
         ensemble=ensemble
     )
@@ -176,6 +181,7 @@ async def test_cluster_tasks_continue_running_on_namespace_deletion(
         processor=processor,
         identity=Identity('...'),
         settings=settings,
+        registry=registry,
         insights=insights,
         ensemble=ensemble,
     )
@@ -191,7 +197,7 @@ async def test_cluster_tasks_continue_running_on_namespace_deletion(
 
 
 async def test_no_peering_tasks_with_no_peering_resources(
-        settings, ensemble):
+        settings, registry, ensemble):
 
     settings.peering.mandatory = False
     insights = Insights()
@@ -203,6 +209,7 @@ async def test_no_peering_tasks_with_no_peering_resources(
         processor=processor,
         identity=Identity('...'),
         settings=settings,
+        registry=registry,
         insights=insights,
         ensemble=ensemble,
     )
@@ -214,7 +221,7 @@ async def test_no_peering_tasks_with_no_peering_resources(
 
 
 async def test_paused_with_mandatory_peering_but_absent_peering_resource(
-        settings, ensemble: Ensemble):
+        settings, registry, ensemble: Ensemble):
 
     settings.peering.mandatory = True
     insights = Insights()
@@ -227,6 +234,7 @@ async def test_paused_with_mandatory_peering_but_absent_peering_resource(
         processor=processor,
         identity=Identity('...'),
         settings=settings,
+        registry=registry,
         insights=insights,
         ensemble=ensemble,
     )
@@ -236,7 +244,7 @@ async def test_paused_with_mandatory_peering_but_absent_peering_resource(
 
 
 async def test_unpaused_with_mandatory_peering_and_existing_peering_resource(
-        settings, ensemble: Ensemble, insights: Insights, peering_resource):
+        settings, registry, ensemble: Ensemble, insights: Insights, peering_resource):
     settings.peering.namespaced = peering_resource.namespaced
 
     await ensemble.peering_missing.turn_to(True)  # prerequisite
@@ -247,6 +255,7 @@ async def test_unpaused_with_mandatory_peering_and_existing_peering_resource(
         processor=processor,
         identity=Identity('...'),
         settings=settings,
+        registry=registry,
         insights=insights,
         ensemble=ensemble,
     )
@@ -256,7 +265,7 @@ async def test_unpaused_with_mandatory_peering_and_existing_peering_resource(
 
 
 async def test_orchestrator_escalates_ensemble_task_failure(
-        monkeypatch, settings, insights: Insights):
+        monkeypatch, settings, registry, insights: Insights):
     operator_paused = aiotoggles.ToggleSet(any)
     resource = Resource(group='group', version='version', plural='plural', namespaced=True)
     dkey = EnsembleKey(resource=resource, namespace='ns')
@@ -272,6 +281,7 @@ async def test_orchestrator_escalates_ensemble_task_failure(
         processor=processor,
         identity=Identity('...'),
         settings=settings,
+        registry=registry,
         insights=insights,
         operator_paused=operator_paused,
     ))
@@ -285,7 +295,7 @@ async def test_orchestrator_escalates_ensemble_task_failure(
 
 
 async def test_orchestrator_prunes_successful_ensemble_task(
-        monkeypatch, settings, insights: Insights):
+        monkeypatch, settings, registry, insights: Insights):
     operator_paused = aiotoggles.ToggleSet(any)
     resource = Resource(group='group', version='version', plural='plural', namespaced=True)
     dkey = EnsembleKey(resource=resource, namespace='ns')
@@ -308,6 +318,7 @@ async def test_orchestrator_prunes_successful_ensemble_task(
         processor=processor,
         identity=Identity('...'),
         settings=settings,
+        registry=registry,
         insights=insights,
         operator_paused=operator_paused,
     ))
@@ -333,7 +344,7 @@ async def test_orchestrator_prunes_successful_ensemble_task(
 
 
 async def test_orchestrator_cancellation_reaps_insights_waiter_and_stops_ensemble(
-        monkeypatch, settings, insights: Insights):
+        monkeypatch, settings, registry, insights: Insights):
     operator_paused = aiotoggles.ToggleSet(any)
     resource = Resource(group='group', version='version', plural='plural', namespaced=True)
     dkey = EnsembleKey(resource=resource, namespace='ns')
@@ -358,6 +369,7 @@ async def test_orchestrator_cancellation_reaps_insights_waiter_and_stops_ensembl
         processor=processor,
         identity=Identity('...'),
         settings=settings,
+        registry=registry,
         insights=insights,
         operator_paused=operator_paused,
     ))

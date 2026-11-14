@@ -319,6 +319,7 @@ async def spawn_tasks(
             clusterwide=clusterwide,
             namespaces=namespaces,
             insights=insights,
+            registry=registry,
             settings=settings)))
 
     # Explicit command is a hack for the CLI to run coroutines in an operator-like environment.
@@ -332,6 +333,7 @@ async def spawn_tasks(
             name="multidimensional multitasker", flag=started_flag, logger=logger,
             coro=orchestration.orchestrator(
                 settings=settings,
+                registry=registry,
                 insights=insights,
                 identity=identity,
                 operator_paused=operator_paused,

@@ -56,7 +56,7 @@ def watcher_limited(kmock, mocker, settings):
 
 
 @pytest.fixture()
-async def watcher_in_background(settings, resource, worker_pool_spy, kmock, namespace, processor):
+async def watcher_in_background(settings, resource, registry, worker_pool_spy, kmock, namespace, processor):
 
     # Prevent any real streaming for the very beginning, before it even starts.
     kmock['watch', resource] << ()
@@ -66,6 +66,7 @@ async def watcher_in_background(settings, resource, worker_pool_spy, kmock, name
         namespace=namespace,
         resource=resource,
         settings=settings,
+        registry=registry,
         processor=processor,
     )
     task = asyncio.create_task(coro)

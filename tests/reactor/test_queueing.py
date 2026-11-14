@@ -24,7 +24,8 @@ import pytest
 
 from kopf._cogs.configs.configuration import OperatorSettings
 from kopf._cogs.structs.references import EVERYTHING, Namespace, Resource
-from kopf._core.reactor.queueing import EOS, ObjectUid, Stream, WorkerPool, watcher
+from kopf._core.intents.registries import OperatorRegistry
+from kopf._core.reactor.queueing import EOS, UID, Stream, WorkerPool, watcher
 
 
 @pytest.mark.parametrize('uids, cnts, events', [
@@ -50,7 +51,7 @@ from kopf._core.reactor.queueing import EOS, ObjectUid, Stream, WorkerPool, watc
 ])
 @pytest.mark.usefixtures('watcher_limited')
 async def test_watchevent_demultiplexing(worker_pool_spy, worker_mock, looptime, resource, processor,
-                                         settings, kmock, events, uids, cnts):
+                                         settings, registry, kmock, events, uids, cnts):
     """ Verify that every unique uid goes into its own queue+worker, which are never shared. """
     kmock.resources[resource] = {}
     kmock['watch', resource] << events << {'type': 'ERROR', 'object': {'code': 410}}
@@ -64,6 +65,7 @@ async def test_watchevent_demultiplexing(worker_pool_spy, worker_mock, looptime,
         namespace=None,
         resource=resource,
         settings=settings,
+        registry=registry,
         processor=processor,
     )
 
@@ -87,14 +89,13 @@ async def test_watchevent_demultiplexing(worker_pool_spy, worker_mock, looptime,
     assert worker_mock.call_count == len(uids)
     assert worker_mock.call_count == len(cnts)
     for uid, cnt, (args, kwargs) in zip(uids, cnts, worker_mock.call_args_list):
-        key = kwargs['key']
         streams = worker_pool.streams
-        assert key == (resource, uid)
-        assert key in streams
+        assert kwargs['uid'] == uid
+        assert uid in streams
 
         queue_events = []
-        while not streams[key].backlog.empty():
-            queue_events.append(streams[key].backlog.get_nowait())
+        while not streams[uid].backlog.empty():
+            queue_events.append(streams[uid].backlog.get_nowait())
 
         assert len(queue_events) == cnt + 1
         assert queue_events[-1] is EOS.token
@@ -102,7 +103,7 @@ async def test_watchevent_demultiplexing(worker_pool_spy, worker_mock, looptime,
                    for queue_event in queue_events[:-1])
 
 
-async def test_errors_from_workers(settings, resource, processor, worker_mock, kmock):
+async def test_errors_from_workers(settings, registry, resource, processor, worker_mock, kmock):
     """Failed workers fail the watcher, but the resources must not be leaked."""
     kmock.resources[resource] = {}
     kmock['watch', resource] << (
@@ -119,6 +120,7 @@ async def test_errors_from_workers(settings, resource, processor, worker_mock, k
             namespace=None,
             resource=resource,
             settings=settings,
+            registry=registry,
             processor=processor,
         )
 
@@ -128,7 +130,7 @@ async def test_errors_from_workers(settings, resource, processor, worker_mock, k
 
 @pytest.mark.usefixtures('watcher_limited')
 async def test_bookmarks_are_ignored(worker_pool_spy, worker_mock, looptime, resource, processor,
-                                     settings, kmock):
+                                     settings, registry, kmock):
     """ Verify that BOOKMARK events are silently skipped and never reach the workers. """
     kmock.resources[resource] = {}
     kmock['watch', resource] << (
@@ -145,6 +147,7 @@ async def test_bookmarks_are_ignored(worker_pool_spy, worker_mock, looptime, res
         namespace=None,
         resource=resource,
         settings=settings,
+        registry=registry,
         processor=processor,
     )
 
@@ -152,16 +155,17 @@ async def test_bookmarks_are_ignored(worker_pool_spy, worker_mock, looptime, res
     assert worker_mock.call_count == 1
 
     streams = worker_pool_spy.spy_return_list[0].streams
-    key = worker_mock.call_args_list[0].kwargs['key']
+    uid = worker_mock.call_args_list[0].kwargs['uid']
     queue_events = []
-    while not streams[key].backlog.empty():
-        queue_events.append(streams[key].backlog.get_nowait())
+    while not streams[uid].backlog.empty():
+        queue_events.append(streams[uid].backlog.get_nowait())
     assert all(e is EOS.token or e['type'] != 'BOOKMARK' for e in queue_events)
 
 
 @pytest.mark.usefixtures('watcher_limited')
 async def test_server_side_selectors_are_used_by_watcher(
         settings: OperatorSettings,
+        registry: OperatorRegistry,
         kmock: Any,
         resource: Resource,
         namespace: Namespace,
@@ -179,6 +183,7 @@ async def test_server_side_selectors_are_used_by_watcher(
         namespace=namespace,
         resource=resource,
         settings=settings,
+        registry=registry,
         processor=processor,
     )
 
@@ -268,7 +273,7 @@ async def test_stream_pressure_maintained_until_the_queue_is_empty(settings, res
     # It is very important for this test that the stream (queue+flag) is pre-constructed,
     # i.e., that it is not populated by the watcher at a random speed, but pre-populated manually.
     # Therefore, we test the worker(), not the watcher().
-    key = (resource, ObjectUid('uid1'))
+    uid = UID('uid1')
     stream = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
     stream.backlog.put_nowait({'type': 'ADDED', 'object': {'metadata': {'uid': 'uid1'}}})
     stream.backlog.put_nowait({'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid1'}}})
@@ -279,8 +284,8 @@ async def test_stream_pressure_maintained_until_the_queue_is_empty(settings, res
         settings=settings,
         processor=processor,
     ) as pool:
-        pool.streams.update({key: stream})
-        await pool.worker(key=key)
+        pool.streams.update({uid: stream})
+        await pool.worker(uid=uid, mode=None)
 
     assert flags == [True, True, False]
     assert not stream.pressure.is_set()
