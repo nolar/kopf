@@ -218,6 +218,13 @@ delayed processing of arriving events, where older workers are doing nothing
 waiting until the idle timeout, while newer workers cannot spawn because of
 the occupied slots by the older idle workers.
 
+This is an optional optimization measure to prevent excessive re-spawning.
+Kopf can decide on its own if it wants to respect the idle timeout,
+and can sometimes shut down the worker earlier than the configured timeout.
+In particular, all workers for the initial indexing and post-processing
+of the accumulated events exit as soon as possible (see :doc:`/indexing`)
+before switching to the regular streaming, which respects the idle timeout.
+
 ``settings.queueing.exit_timeout`` (default: 2 seconds) controls how soon
 an individual worker is canceled when the parent (resource kind's) watcher
 is going to exit. This is the time given to the worker to gracefully deplete
