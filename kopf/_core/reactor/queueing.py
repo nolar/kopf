@@ -26,7 +26,8 @@ import asyncio
 import contextlib
 import enum
 import logging
-from typing import TYPE_CHECKING, NamedTuple, NewType, Protocol
+import types
+from typing import TYPE_CHECKING, Any, NamedTuple, NewType, Protocol, Self
 
 from kopf._cogs.aiokits import aiotasks, aiotoggles
 from kopf._cogs.clients import watching
@@ -125,6 +126,232 @@ def get_version(raw_event: bodies.RawEvent | EOS) -> str | None:
         return raw_event.get('object', {}).get('metadata', {}).get('resourceVersion')
 
 
+class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
+    def __init__(
+            self,
+            *,
+            settings: configuration.OperatorSettings,
+            resource: references.Resource,
+            processor: WatchStreamProcessor,
+            resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
+            operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
+    ) -> None:
+        super().__init__()
+        self.settings = settings
+        self.resource = resource
+        self.processor = processor
+        self.resource_indexed = resource_indexed  # None after indexed, to prevent storing anything
+        self.operator_indexed = operator_indexed  # None after indexed, to prevent storing anything
+        self.scheduler = aiotasks.Scheduler(limit=settings.queueing.worker_limit,
+                                            exception_handler=self.workers_exception_handler)
+        self.watcher_task = asyncio.current_task()
+        self.worker_error: BaseException | None = None
+        self.signaller = asyncio.Condition()
+        self.streams: dict[ObjectRef, Stream] = {}
+
+    async def __aexit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc_val: BaseException | None,
+            exc_tb: types.TracebackType | None,
+    ) -> None:
+
+        # Allow the existing workers to finish gracefully before killing them.
+        # Ensure the depletion is done even if the watcher is double-cancelled (e.g. in tests).
+        depletion_task = asyncio.create_task(self.wait_for_depletion())
+        while not depletion_task.done():
+            with contextlib.suppress(asyncio.CancelledError):
+                await asyncio.shield(depletion_task)
+
+        # Terminate all the fire-and-forget per-object jobs if they are still running.
+        # Ensure the scheduler is closed even if the watcher is double-cancelled (e.g. in tests).
+        closing_task = asyncio.create_task(self.scheduler.close())
+        while not closing_task.done():
+            with contextlib.suppress(asyncio.CancelledError):
+                await asyncio.shield(closing_task)
+
+        # It is CancelledError because we do cancel() in a worker's exception handler below.
+        if isinstance(exc_val, asyncio.CancelledError) and self.worker_error is not None:
+            raise RuntimeError("Event processing has failed with an unrecoverable error. "
+                               "This seems to be a framework bug. "
+                               "The operator will stop to prevent damage.") from self.worker_error
+
+    def workers_exception_handler(self, exc: BaseException) -> None:
+        # In case of a failed worker, stop the watcher, and escalate to the operator to stop it.
+        if self.worker_error is None:
+            self.worker_error = exc
+            if self.watcher_task is not None:  # never happens, but is needed for type-checking.
+                self.watcher_task.cancel()
+
+    async def worker(
+            self,
+            *,
+            resource_object_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
+            key: ObjectRef,
+    ) -> None:
+        """
+        A single worker for a single resource object, running in its own task.
+
+        An object worker consumes the events from the object-dedicated queue
+        filled by the watcher of the whole resource kind (i.e. of all objects
+        of that kind) and invokes the processor for that specific object.
+
+        The processor is an internal coroutine of the framework, not of a user.
+        There are several types of processors involved:
+
+        - For operator peering: monitors the peers; suspends/resumes operations.
+        - For cluster observation: spawns new watchers for new CRDs/namespaces.
+        - For resource handling: detects changes & calls the user-side handlers.
+
+        The worker is time-limited: it exits as soon as all the object's events
+        have been processed and there are no new events for some time of idling
+        (a few seconds—to prevent exiting and recreating the workers too often).
+        The watcher will spawn a new worker when (and if) new events arrive.
+        Such early exiting saves system resources (RAM) in big clusters with low
+        activity, since we do not keep a worker task for every dormant object.
+        """
+        loop = asyncio.get_running_loop()
+        backlog = self.streams[key].backlog
+        pressure = self.streams[key].pressure
+        shouldstop = False
+        consistency_time: float | None = None  # None if nothing is expected/awaited.
+        expected_version: str | None = None  # None/non-None is synced with the patch-end-time.
+        try:
+            while not shouldstop:
+
+                # Get an event ASAP (no delay) if possible. But expect the queue can be empty.
+                # Save memory by finishing the worker if the backlog is empty for some time.
+                timeout = max(self.settings.queueing.idle_timeout,
+                              consistency_time - loop.time() if consistency_time is not None else 0)
+                try:
+                    raw_event = await asyncio.wait_for(backlog.get(), timeout=timeout)
+                except TimeoutError:
+                    # Tricky! Under load or with synchronous blocks of asyncio event-loop, it is
+                    # possible that the timeout happens while the queue is filled: depending on
+                    # the order in which the coro-tasks are checked once control returns to asyncio.
+                    # As a workaround, we double-check the queue and exit only if it is truly empty;
+                    # if not, run as normally. IMPORTANT: There MUST be NO async/await-code between
+                    # "break" and "finally", so that the queue is not populated again.
+                    # TODO: LATER: Test the described scenario. I have found no ways to simulate
+                    #  a timeout while the queue is filled—neither with pure Python nor with mocks.
+                    if backlog.empty():
+                        break
+                    else:
+                        continue
+
+                # Exit gracefully and immediately on the end-of-stream marker sent by the watcher.
+                if isinstance(raw_event, EOS):
+                    break  # out of the worker.
+
+                # Keep track of the resource's consistency for high-level state-dependent handlers.
+                # See `settings.persistence.consistency_timeout` for the explanation of consistency.
+                if expected_version is not None and expected_version == get_version(raw_event):
+                    expected_version = None
+                    consistency_time = None
+
+                # Relieve the pressure only if this is the last event, letting the processor sleep.
+                # If there are more events to process, skip the sleep as if they have just arrived.
+                if backlog.empty():
+                    pressure.clear()
+
+                # Process the event. It might include sleeping till the time of assumed consistency
+                # (i.e. ignoring that the patched version was not received & behaving as if it was).
+                newer_patch_version = await self.processor(
+                    raw_event=raw_event,
+                    stream_pressure=pressure,
+                    resource_indexed=resource_object_indexed,
+                    operator_indexed=self.operator_indexed,
+                    consistency_time=consistency_time,
+                )
+
+                # With every new PATCH API call (if done), restart the consistency waiting.
+                if newer_patch_version is not None and self.settings.persistence.consistency_timeout:
+                    expected_version = newer_patch_version
+                    consistency_time = loop.time() + self.settings.persistence.consistency_timeout
+
+        except Exception:
+            # Log the error for every worker: there can be several of them failing at the same time,
+            # but only one will trigger the watcher's failure -- others could be lost if not logged.
+            logger.exception(f"Event processing has failed with an unrecoverable error for {key}.")
+            raise
+
+        finally:
+            # On an exception, a break, or a success, notify the caller & garbage-collect our queue.
+            # The queue must not be left in the queue dict without a task handling this queue.
+            try:
+                del self.streams[key]
+            except KeyError:
+                pass  # already absent
+
+            # Notify the depletion routine about the changes in the workers'/streams' overall state.
+            # * This must happen STRICTLY AFTER the removal from the streams[], and
+            # * This must happen A MOMENT BEFORE the job ends, within the scheduler's close_timeout.
+            async with self.signaller:
+                self.signaller.notify_all()
+
+    async def wait_for_depletion(self) -> None:
+
+        # Tell all the workers to finish now. Wake them up if they are waiting in the queue-getting.
+        for stream in list(self.streams.values()):
+            await stream.backlog.put(EOS.token)
+
+        # Wait for the queues to be depleted, but only if there are some workers running.
+        # Continue with the tasks termination if the timeout is reached, no matter the queues.
+        # NB: the scheduler check is for mocked workers in tests; otherwise, the streams are enough.
+        async with self.signaller:
+            try:
+                await asyncio.wait_for(
+                    self.signaller.wait_for(lambda: not self.streams or self.scheduler.empty()),
+                    timeout=self.settings.queueing.exit_timeout)
+            except TimeoutError:
+                pass  # if not depleted as configured, proceed with what's left and let it fail
+
+        # The last check if the termination is going to be graceful or not.
+        if self.streams:
+            logger.warning(f"Unprocessed streams left for {list(self.streams.keys())!r}.")
+
+    async def spawn_and_feed(
+            self,
+            raw_event: bodies.RawEvent | watching.Bookmark,
+    ) -> None:
+        # Whatever is bookmarked there, don't let it go to the multiplexer. Handle it above.
+        if isinstance(raw_event, watching.Bookmark):
+            return
+
+        # Skip BOOKMARK events from K8s: they carry no object identity (no uid/name/namespace),
+        # and are only useful for resource version tracking (already done in the watch stream).
+        if raw_event.get('type') == 'BOOKMARK':
+            return
+
+        # Multiplex the raw events to per-resource workers/queues. Start the new ones if needed.
+        key: ObjectRef = (self.resource, get_uid(raw_event))
+        try:
+            # Feed the worker, as fast as possible, no extra activities.
+            self.streams[key].pressure.set()  # interrupt current sleeps, if any.
+            await self.streams[key].backlog.put(raw_event)
+        except KeyError:
+
+            # Block the operator's readiness for individual resource's index handlers.
+            # But NOT when the readiness is already achieved once! After that, ignore it.
+            # NB: Strictly before the worker starts -- the processor can be too slow, too late.
+            resource_object_indexed: aiotoggles.Toggle | None = None
+            if self.operator_indexed is not None and self.operator_indexed.is_on():
+                self.operator_indexed = self.resource_indexed = None  # do not store to save memory
+            if self.operator_indexed is not None and self.resource_indexed is not None:
+                resource_object_indexed = await self.operator_indexed.make_toggle(name=f"{key!r}")
+
+            # Start the worker, and feed it initially. Starting can be moderately slow.
+            self.streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
+            self.streams[key].pressure.set()  # interrupt current sleeps, if any.
+            await self.streams[key].backlog.put(raw_event)
+            await self.scheduler.spawn(
+                name=f'worker for {key}',
+                coro=self.worker(
+                    resource_object_indexed=resource_object_indexed,
+                    key=key,
+                ))
+
+
 async def watcher(
         *,
         namespace: references.Namespace,
@@ -154,27 +381,17 @@ async def watcher(
     this will terminate any i/o operation with ``asyncio.CancelledError``, where
     we can make a decision on whether it was a real cancellation, or our own.
     """
-
-    # In case of a failed worker, stop the watcher, and escalate to the operator to stop it.
-    watcher_task = asyncio.current_task()
-    worker_error: BaseException | None = None
-    def exception_handler(exc: BaseException) -> None:
-        nonlocal worker_error, watcher_task
-        if worker_error is None:
-            worker_error = exc
-            if watcher_task is not None:  # never happens, but is needed for type-checking.
-                watcher_task.cancel()
-
     # All per-object workers are handled as fire-and-forget jobs via the scheduler,
     # and communicated via the per-object event queues.
-    signaller = asyncio.Condition()
-    scheduler = aiotasks.Scheduler(limit=settings.queueing.worker_limit,
-                                   exception_handler=exception_handler)
-    streams: dict[ObjectRef, Stream] = {}
-
-    try:
-        # Either use the existing object's queue, or create a new one together with the per-object job.
-        # "Fire-and-forget": we do not wait for the result; the job destroys itself when it is fully done.
+    async with WorkerPool(
+        settings=settings,
+        resource=resource,
+        processor=processor,
+        resource_indexed=resource_indexed,
+        operator_indexed=operator_indexed,
+    ) as pool:
+        # Either use the existing object's queue, or create a new one together with the object task.
+        # "Fire-and-forget": do not wait for result; the task destroys itself when it is fully done.
         stream = watching.infinite_watch(
             settings=settings,
             resource=resource, namespace=namespace,
@@ -185,213 +402,7 @@ async def watcher(
             # If the listing is over (even if it was empty), the resource kind is pre-indexed.
             # At this moment, only the individual workers/processors can block the global readiness.
             if raw_event is watching.Bookmark.LISTED:
-                if operator_indexed is not None and resource_indexed is not None:
-                    await operator_indexed.drop_toggle(resource_indexed)
+                if pool.operator_indexed is not None and pool.resource_indexed is not None:
+                    await pool.operator_indexed.drop_toggle(pool.resource_indexed)
 
-            # Whatever is bookmarked there, don't let it go to the multiplexer. Handle it above.
-            if isinstance(raw_event, watching.Bookmark):
-                continue
-
-            # Skip BOOKMARK events from K8s: they carry no object identity (no uid/name/namespace),
-            # and are only useful for resource version tracking (already done in the watch stream).
-            if raw_event.get('type') == 'BOOKMARK':
-                continue
-
-            # Multiplex the raw events to per-resource workers/queues. Start the new ones if needed.
-            key: ObjectRef = (resource, get_uid(raw_event))
-            try:
-                # Feed the worker, as fast as possible, no extra activities.
-                streams[key].pressure.set()  # interrupt current sleeps, if any.
-                await streams[key].backlog.put(raw_event)
-            except KeyError:
-
-                # Block the operator's readiness for individual resource's index handlers.
-                # But NOT when the readiness is already achieved once! After that, ignore it.
-                # NB: Strictly before the worker starts -- the processor can be too slow, too late.
-                resource_object_indexed: aiotoggles.Toggle | None = None
-                if operator_indexed is not None and operator_indexed.is_on():
-                    operator_indexed = None
-                if operator_indexed is not None and resource_indexed is not None:
-                    resource_object_indexed = await operator_indexed.make_toggle(name=f"{key!r}")
-
-                # Start the worker, and feed it initially. Starting can be moderately slow.
-                streams[key] = Stream(backlog=asyncio.Queue(), pressure=asyncio.Event())
-                streams[key].pressure.set()  # interrupt current sleeps, if any.
-                await streams[key].backlog.put(raw_event)
-                await scheduler.spawn(
-                    name=f'worker for {key}',
-                    coro=worker(
-                        signaller=signaller,
-                        resource_indexed=resource_object_indexed,
-                        operator_indexed=operator_indexed,
-                        processor=processor,
-                        settings=settings,
-                        streams=streams,
-                        key=key,
-                    ))
-
-    except asyncio.CancelledError:
-        if worker_error is None:
-            raise
-        else:
-            raise RuntimeError("Event processing has failed with an unrecoverable error. "
-                               "This seems to be a framework bug. "
-                               "The operator will stop to prevent damage.") from worker_error
-    finally:
-        # Allow the existing workers to finish gracefully before killing them.
-        # Ensure the depletion is done even if the watcher is double-cancelled (e.g. in tests).
-        depletion_task = asyncio.create_task(_wait_for_depletion(
-            signaller=signaller,
-            scheduler=scheduler,
-            streams=streams,
-            settings=settings,
-        ))
-        while not depletion_task.done():
-            with contextlib.suppress(asyncio.CancelledError):
-                await asyncio.shield(depletion_task)
-
-        # Terminate all the fire-and-forget per-object jobs if they are still running.
-        # Ensure the scheduler is closed even if the watcher is double-cancelled (e.g. in tests).
-        closing_task = asyncio.create_task(scheduler.close())
-        while not closing_task.done():
-            with contextlib.suppress(asyncio.CancelledError):
-                await asyncio.shield(closing_task)
-
-
-async def worker(
-        *,
-        signaller: asyncio.Condition,
-        settings: configuration.OperatorSettings,
-        processor: WatchStreamProcessor,
-        resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
-        operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
-        streams: dict[ObjectRef, Stream],
-        key: ObjectRef,
-) -> None:
-    """
-    A single worker for a single resource object, each running in its own task.
-
-    An object worker consumes the events from the object-dedicated queue filled
-    by the watcher of the whole resource kind (i.e. of all objects of that kind)
-    and invokes the processor (which implies handlers) for that specific object.
-
-    The processor is an internal coroutine of the framework, not of the user.
-    There are several types of processors involved:
-
-    - For operator peering: monitors the peers and suspends/resumes operations.
-    - For cluster observation: spawns new watchers for new CRDs/namespaces.
-    - For resource handling: detects changes and calls the user-side handlers.
-
-    The worker is time-limited: it exits as soon as all the object's events
-    have been processed and there are no new events for some time of idling
-    (a few seconds --- to prevent exiting and recreating the workers too often).
-    The watcher will spawn a new worker when (and if) new events arrive.
-    Such early exiting saves system resources (RAM) on large clusters with low
-    activity, since we do not keep a running worker for every dormant object.
-    """
-    loop = asyncio.get_running_loop()
-    backlog = streams[key].backlog
-    pressure = streams[key].pressure
-    shouldstop = False
-    consistency_time: float | None = None  # None if nothing is expected/awaited.
-    expected_version: str | None = None  # None/non-None is synced with the patch-end-time.
-    try:
-        while not shouldstop:
-
-            # Get an event ASAP (no delay) if possible. But expect the queue can be empty.
-            # Save memory by finishing the worker if the backlog is empty for some time.
-            timeout = max(settings.queueing.idle_timeout,
-                          consistency_time - loop.time() if consistency_time is not None else 0)
-            try:
-                raw_event = await asyncio.wait_for(backlog.get(), timeout=timeout)
-            except TimeoutError:
-                # A tricky part! Under high-load or with synchronous blocks of asyncio event-loop,
-                # it is possible that the timeout happens while the queue is filled: depending on
-                # the order in which the coros/waiters are checked once control returns to asyncio.
-                # As a work-around, we double-check the queue and exit only if it is truly empty;
-                # if not, run as normally. IMPORTANT: There MUST be NO async/await-code between
-                # "break" and "finally", so that the queue is not populated again.
-                # TODO: LATER: Test the described scenario. I have found no ways to simulate
-                #  a timeout while the queue is filled -- neither with pure Python nor with mocks.
-                if backlog.empty():
-                    break
-                else:
-                    continue
-
-            # Exit gracefully and immediately on the end-of-stream marker sent by the watcher.
-            if isinstance(raw_event, EOS):
-                break  # out of the worker.
-
-            # Keep track of the resource's consistency for high-level (state-dependent) handlers.
-            # See `settings.persistence.consistency_timeout` for the explanation of consistency.
-            if expected_version is not None and expected_version == get_version(raw_event):
-                expected_version = None
-                consistency_time = None
-
-            # Relieve the pressure only if this is the last event, thus letting the processor sleep.
-            # If there are more events to process, fast-skip the sleep as if they have just arrived.
-            if backlog.empty():
-                pressure.clear()
-
-            # Process the event. It might include sleeping till the time of consistency assumption
-            # (i.e. ignoring that the patched version was not received and behaving as if it was).
-            newer_patch_version = await processor(
-                raw_event=raw_event,
-                stream_pressure=pressure,
-                resource_indexed=resource_indexed,
-                operator_indexed=operator_indexed,
-                consistency_time=consistency_time,
-            )
-
-            # With every new PATCH API call (if done), restart the consistency waiting.
-            if newer_patch_version is not None and settings.persistence.consistency_timeout:
-                expected_version = newer_patch_version
-                consistency_time = loop.time() + settings.persistence.consistency_timeout
-
-    except Exception:
-        # Log the error for every worker: there can be several of them failing at the same time,
-        # but only one will trigger the watcher's failure -- others could be lost if not logged.
-        logger.exception(f"Event processing has failed with an unrecoverable error for {key}.")
-        raise
-
-    finally:
-        # Whether an exception or a break or a success, notify the caller, and garbage-collect our queue.
-        # The queue must not be left in the queue-cache without a corresponding job handling this queue.
-        try:
-            del streams[key]
-        except KeyError:
-            pass  # already absent
-
-        # Notify the depletion routine about the changes in the workers'/streams' overall state.
-        # * This should happen STRICTLY AFTER the removal from the streams[], and
-        # * This should happen A MOMENT BEFORE the job ends (within the scheduler's close_timeout).
-        async with signaller:
-            signaller.notify_all()
-
-
-async def _wait_for_depletion(
-        *,
-        signaller: asyncio.Condition,
-        scheduler: aiotasks.Scheduler,
-        settings: configuration.OperatorSettings,
-        streams: dict[ObjectRef, Stream],
-) -> None:
-
-    # Notify all the workers to finish now. Wake them up if they are waiting in the queue-getting.
-    for stream in list(streams.values()):
-        await stream.backlog.put(EOS.token)
-
-    # Wait for the queues to be depleted, but only if there are some workers running.
-    # Continue with the tasks termination if the timeout is reached, no matter the queues.
-    # NB: the scheduler is checked for a case of mocked workers; otherwise, the streams are enough.
-    async with signaller:
-        try:
-            await asyncio.wait_for(
-                signaller.wait_for(lambda: not streams or scheduler.empty()),
-                timeout=settings.queueing.exit_timeout)
-        except TimeoutError:
-            pass  # if not depleted as configured, proceed with what's left and let it fail
-
-    # The last check if the termination is going to be graceful or not.
-    if streams:
-        logger.warning(f"Unprocessed streams left for {list(streams.keys())!r}.")
+            await pool.spawn_and_feed(raw_event)
