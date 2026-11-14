@@ -22,6 +22,7 @@ from typing import Any
 
 import pytest
 
+from kopf._cogs.aiokits import aiotime
 from kopf._cogs.configs.configuration import OperatorSettings
 from kopf._cogs.structs.references import EVERYTHING, Namespace, Resource
 from kopf._core.reactor.queueing import EOS, UID, Stream, WorkerPool, watcher
@@ -281,6 +282,27 @@ async def test_stream_pressure_maintained_until_the_queue_is_empty(settings, res
 
     assert flags == [True, True, False]
     assert not stream.pressure.is_set()
+
+
+async def test_sleeping_workers_are_woken_up_on_exit(settings, resource, looptime):
+    settings.queueing.idle_timeout = 999  # must not be involved, fail if it is
+    settings.queueing.exit_timeout = 100  # must not be reached, fail if it is
+
+    started = asyncio.Event()
+    unslept: list[float | None] = []
+
+    async def processor(*, stream_pressure: asyncio.Event, **_: Any) -> None:
+        started.set()
+        unslept.append(await aiotime.sleep(500, wakeup=stream_pressure))
+
+    async with WorkerPool(settings=settings, processor=processor) as pool:
+        await pool.spawn_and_feed({'type': 'ADDED', 'object': {'metadata': {'uid': 'uid1'}}}, mode=None)
+        await started.wait()  # the worker is now sleeping inside the processor
+        await asyncio.sleep(10)  # distinguish the exit from an instant no-op exit
+
+    assert looptime == 10  # exited right away, did not wait for the exit timeout
+    assert unslept == [490]  # the sleep was interrupted, not cancelled
+    assert not pool.streams  # the worker exited gracefully and cleaned up its stream
 
 
 # TODO: also add tests for the depletion of the workers pools on cancellation (+timing)
