@@ -336,7 +336,7 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
             # NB: Strictly before the worker starts -- the processor can be too slow, too late.
             resource_object_indexed: aiotoggles.Toggle | None = None
             if self.operator_indexed is not None and self.operator_indexed.is_on():
-                self.operator_indexed = None
+                self.operator_indexed = self.resource_indexed = None  # do not store to save memory
             if self.operator_indexed is not None and self.resource_indexed is not None:
                 resource_object_indexed = await self.operator_indexed.make_toggle(name=f"{key!r}")
 
