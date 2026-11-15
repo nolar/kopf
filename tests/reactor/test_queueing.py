@@ -24,7 +24,7 @@ import pytest
 
 from kopf._cogs.configs.configuration import OperatorSettings
 from kopf._cogs.structs.references import EVERYTHING, Namespace, Resource
-from kopf._core.reactor.queueing import EOS, ObjectUid, Stream, watcher, worker
+from kopf._core.reactor.queueing import EOS, ObjectUid, Stream, WorkerPool, watcher
 
 
 @pytest.mark.parametrize('uids, cnts, events', [
@@ -49,7 +49,7 @@ from kopf._core.reactor.queueing import EOS, ObjectUid, Stream, watcher, worker
 
 ])
 @pytest.mark.usefixtures('watcher_limited')
-async def test_watchevent_demultiplexing(worker_mock, looptime, resource, processor,
+async def test_watchevent_demultiplexing(worker_pool_spy, worker_mock, looptime, resource, processor,
                                          settings, kmock, events, uids, cnts):
     """ Verify that every unique uid goes into its own queue+worker, which are never shared. """
     kmock.resources[resource] = {}
@@ -71,6 +71,11 @@ async def test_watchevent_demultiplexing(worker_mock, looptime, resource, proces
     # they would do batching, which is absent in the mocked workers.
     assert looptime == 0
 
+    # The worker pool is created only once per watcher.
+    assert worker_pool_spy.call_count == 1
+    worker_pool = worker_pool_spy.spy_return_list[0]
+    assert worker_pool.processor is processor  # to be on a safe side
+
     # The processor must not be called by the watcher, only by the worker.
     # But the worker (even if mocked) must be called & awaited by the watcher.
     assert processor.call_count == 0
@@ -83,8 +88,7 @@ async def test_watchevent_demultiplexing(worker_mock, looptime, resource, proces
     assert worker_mock.call_count == len(cnts)
     for uid, cnt, (args, kwargs) in zip(uids, cnts, worker_mock.call_args_list):
         key = kwargs['key']
-        streams = kwargs['streams']
-        assert kwargs['processor'] is processor
+        streams = worker_pool.streams
         assert key == (resource, uid)
         assert key in streams
 
@@ -98,8 +102,32 @@ async def test_watchevent_demultiplexing(worker_mock, looptime, resource, proces
                    for queue_event in queue_events[:-1])
 
 
+async def test_errors_from_workers(settings, resource, processor, worker_mock, kmock):
+    """Failed workers fail the watcher, but the resources must not be leaked."""
+    kmock.resources[resource] = {}
+    kmock['watch', resource] << (
+        {'type': 'ADDED', 'object': {'metadata': {'uid': 'uid1'}}},
+        {'type': 'ERROR', 'object': {'code': 410}},
+    )
+
+    settings.queueing.idle_timeout = 100
+    settings.queueing.exit_timeout = 110
+
+    worker_mock.side_effect = RuntimeError("boo!")
+    with pytest.raises(RuntimeError, match=r"unrecoverable error") as exc:
+        await watcher(
+            namespace=None,
+            resource=resource,
+            settings=settings,
+            processor=processor,
+        )
+
+    assert isinstance(exc.value.__cause__, RuntimeError)
+    assert exc.value.__cause__.args == ("boo!",)
+
+
 @pytest.mark.usefixtures('watcher_limited')
-async def test_bookmarks_are_ignored(worker_mock, looptime, resource, processor,
+async def test_bookmarks_are_ignored(worker_pool_spy, worker_mock, looptime, resource, processor,
                                      settings, kmock):
     """ Verify that BOOKMARK events are silently skipped and never reach the workers. """
     kmock.resources[resource] = {}
@@ -123,7 +151,7 @@ async def test_bookmarks_are_ignored(worker_mock, looptime, resource, processor,
     assert looptime == 0
     assert worker_mock.call_count == 1
 
-    streams = worker_mock.call_args_list[0].kwargs['streams']
+    streams = worker_pool_spy.spy_return_list[0].streams
     key = worker_mock.call_args_list[0].kwargs['key']
     queue_events = []
     while not streams[key].backlog.empty():
@@ -179,7 +207,7 @@ async def test_server_side_selectors_are_used_by_watcher(
 ])
 @pytest.mark.usefixtures('watcher_in_background')
 async def test_garbage_collection_of_streams(
-        settings, kmock, events, unique, worker_spy, namespace, processor):
+        settings, kmock, events, unique, worker_pool_spy, namespace, processor):
 
     # Override the default timeouts to make the tests faster.
     settings.queueing.exit_timeout = 999  # should exit instantly, fail if it didn't
@@ -191,10 +219,11 @@ async def test_garbage_collection_of_streams(
 
     # Give it a moment to populate the streams and spawn all the workers.
     # Intercept and remember _any_ seen dict of streams for further checks.
-    while worker_spy.call_count < unique:
+    worker_pool = worker_pool_spy.spy_return_list[0]
+    while worker_pool.worker.call_count < unique:
         await asyncio.sleep(0)  # give control to the loop
-    streams = worker_spy.call_args_list[-1].kwargs['streams']
-    signaller: asyncio.Condition = worker_spy.call_args_list[0].kwargs['signaller']
+    streams = worker_pool.streams
+    signaller = worker_pool.signaller
 
     # The mutable(!) streams dict is now populated with the objects' streams.
     assert len(streams) != 0  # usually 1, but can be 2+ if it is fast enough.
@@ -245,13 +274,13 @@ async def test_stream_pressure_maintained_until_the_queue_is_empty(settings, res
     stream.backlog.put_nowait({'type': 'MODIFIED', 'object': {'metadata': {'uid': 'uid1'}}})
     stream.backlog.put_nowait({'type': 'DELETED', 'object': {'metadata': {'uid': 'uid1'}}})
     stream.pressure.set()
-    await worker(
-        signaller=asyncio.Condition(),  # irrelevant
+    async with WorkerPool(
+        resource=resource,
         settings=settings,
         processor=processor,
-        streams={key: stream},
-        key=key,
-    )
+    ) as pool:
+        pool.streams.update({key: stream})
+        await pool.worker(key=key)
 
     assert flags == [True, True, False]
     assert not stream.pressure.is_set()
