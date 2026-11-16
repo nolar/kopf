@@ -143,6 +143,11 @@ async def test_gone(registry, settings, handlers, resource, cause_mock, event_ty
                     assert_logs, k8s_mocked, consistency_time, looptime):
     cause_mock.reason = Reason.GONE
 
+    body = {'metadata': {'uid': 'uid1'}}
+    memories = ResourceMemories()
+    memory = await memories.recall(body)
+    memory.consistency_time = consistency_time
+
     settings.posting.loggers = True
     event_queue = asyncio.Queue()
     await process_resource_event(
@@ -151,11 +156,10 @@ async def test_gone(registry, settings, handlers, resource, cause_mock, event_ty
         settings=settings,
         resource=resource,
         indexers=OperatorIndexers(),
-        memories=ResourceMemories(),
+        memories=memories,
         memobase=Memo(),
-        raw_event={'type': event_type, 'object': {}},
+        raw_event={'type': event_type, 'object': body},
         event_queue=event_queue,
-        consistency_time=consistency_time,
     )
 
     assert not handlers.create_mock.called

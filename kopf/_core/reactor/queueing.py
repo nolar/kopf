@@ -45,8 +45,7 @@ class WatchStreamProcessor(Protocol):
             stream_pressure: asyncio.Event | None = None,  # None for tests
             resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
             operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
-            consistency_time: float | None = None,  # None for tests
-    ) -> str | None:  # patched resource version, if patched
+    ) -> None:
         ...
 
 
@@ -117,13 +116,6 @@ def get_uid(raw_event: bodies.RawEvent) -> ObjectUid:
         ]
         uid = '//'.join([s or '-' for s in ids])
     return ObjectUid(uid)
-
-
-def get_version(raw_event: bodies.RawEvent | EOS) -> str | None:
-    if isinstance(raw_event, EOS):
-        return None
-    else:
-        return raw_event.get('object', {}).get('metadata', {}).get('resourceVersion')
 
 
 class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
@@ -210,19 +202,15 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
         Such early exiting saves system resources (RAM) in big clusters with low
         activity, since we do not keep a worker task for every dormant object.
         """
-        loop = asyncio.get_running_loop()
         backlog = self.streams[key].backlog
         pressure = self.streams[key].pressure
         shouldstop = False
-        consistency_time: float | None = None  # None if nothing is expected/awaited.
-        expected_version: str | None = None  # None/non-None is synced with the patch-end-time.
         try:
             while not shouldstop:
 
                 # Get an event ASAP (no delay) if possible. But expect the queue can be empty.
                 # Save memory by finishing the worker if the backlog is empty for some time.
-                timeout = max(self.settings.queueing.idle_timeout,
-                              consistency_time - loop.time() if consistency_time is not None else 0)
+                timeout = self.settings.queueing.idle_timeout
                 try:
                     raw_event = await asyncio.wait_for(backlog.get(), timeout=timeout)
                 except TimeoutError:
@@ -243,12 +231,6 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
                 if isinstance(raw_event, EOS):
                     break  # out of the worker.
 
-                # Keep track of the resource's consistency for high-level state-dependent handlers.
-                # See `settings.persistence.consistency_timeout` for the explanation of consistency.
-                if expected_version is not None and expected_version == get_version(raw_event):
-                    expected_version = None
-                    consistency_time = None
-
                 # Relieve the pressure only if this is the last event, letting the processor sleep.
                 # If there are more events to process, skip the sleep as if they have just arrived.
                 if backlog.empty():
@@ -256,18 +238,12 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
 
                 # Process the event. It might include sleeping till the time of assumed consistency
                 # (i.e. ignoring that the patched version was not received & behaving as if it was).
-                newer_patch_version = await self.processor(
+                await self.processor(
                     raw_event=raw_event,
                     stream_pressure=pressure,
                     resource_indexed=resource_object_indexed,
                     operator_indexed=self.operator_indexed,
-                    consistency_time=consistency_time,
                 )
-
-                # With every new PATCH API call (if done), restart the consistency waiting.
-                if newer_patch_version is not None and self.settings.persistence.consistency_timeout:
-                    expected_version = newer_patch_version
-                    consistency_time = loop.time() + self.settings.persistence.consistency_timeout
 
         except Exception:
             # Log the error for every worker: there can be several of them failing at the same time,
