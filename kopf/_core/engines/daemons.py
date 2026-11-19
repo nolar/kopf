@@ -497,6 +497,39 @@ async def _runner(
         stopper.set(reason=stoppers.DaemonStoppingReason.DONE)
 
 
+async def _patch_and_check(
+        *,
+        settings: configuration.OperatorSettings,
+        handler: handlers_.SpawningHandler,
+        cause: causes.DaemonCause,
+        failures: int,
+) -> int:
+    """
+    Apply the cause's patch; on API errors (after the client's own retries), back off and keep the patch.
+
+    Otherwise, the exception would escape to the runner, which would treat
+    the daemon/timer as exited on its own and never respawn it.
+    The delays are the same as for the errors in the resource processing.
+    Returns the number of consecutive failures (``0`` on success).
+    """
+    try:
+        _, remaining_patch = await application.patch_and_check(
+            settings=settings,
+            resource=cause.resource,
+            logger=cause.logger,
+            patch=cause.patch,
+            body=cause.body,
+        )
+    except Exception as e:
+        delays = list(settings.queueing.error_delays) or [0]
+        delay = delays[min(failures, len(delays) - 1)]
+        cause.logger.error(f"{handler} failed to patch the resource and will retry in {delay}s: {e!r}")
+        await aiotime.sleep(delay, wakeup=cause.stopper.async_event)
+        return failures + 1  # the patch is kept as is and is retried along with the next results
+    cause.patch = patches.Patch(remaining_patch, body=cause.body)
+    return 0
+
+
 async def _daemon(
         *,
         settings: configuration.OperatorSettings,
@@ -512,17 +545,15 @@ async def _daemon(
     A few kinds of errors are suppressed, those expected from the daemons when
     they are cancelled due to the resource deletion.
     """
-    resource = cause.resource
     stopper = cause.stopper
     logger = cause.logger
-    patch = cause.patch
-    body = cause.body
 
     if handler.initial_delay is not None:
         delay = handler.initial_delay(**cause.kwargs) if callable(handler.initial_delay) else handler.initial_delay
         await aiotime.sleep(delay, wakeup=cause.stopper.async_event)
 
     # Similar to activities (in-memory execution), but applies patches on every attempt.
+    patch_failures = 0
     state = progression.State.from_scratch().with_handlers([handler])
     while not stopper.is_set() and not state.done:
 
@@ -534,15 +565,10 @@ async def _daemon(
             state=state,
         )
         state = state.with_outcomes(outcomes)
-        progression.deliver_results(outcomes=outcomes, patch=patch)
-        _, remaining_patch = await application.patch_and_check(
-            settings=settings,
-            resource=resource,
-            logger=logger,
-            patch=patch,
-            body=body,
+        progression.deliver_results(outcomes=outcomes, patch=cause.patch)
+        patch_failures = await _patch_and_check(
+            settings=settings, handler=handler, cause=cause, failures=patch_failures,
         )
-        patch = cause.patch = patches.Patch(remaining_patch, body=body)
 
         # The in-memory sleep does not react to resource changes, but only to stopping.
         if state.delay:
@@ -582,17 +608,14 @@ async def _timer(
     It is much easier to have an extra task which mostly sleeps,
     but calls the handling functions from time to time.
     """
-    resource = cause.resource
     stopper = cause.stopper
-    logger = cause.logger
-    patch = cause.patch
-    body = cause.body
 
     if handler.initial_delay is not None:
         delay = handler.initial_delay(**cause.kwargs) if callable(handler.initial_delay) else handler.initial_delay
         await aiotime.sleep(delay, wakeup=stopper.async_event)
 
     # Similar to activities (in-memory execution), but applies patches on every attempt.
+    patch_failures = 0
     clock = asyncio.get_running_loop().time
     state = progression.State.from_scratch().with_handlers([handler])
     while not stopper.is_set():  # NB: ignore state.done! it is checked below explicitly.
@@ -623,15 +646,10 @@ async def _timer(
             state=state,
         )
         state = state.with_outcomes(outcomes)
-        progression.deliver_results(outcomes=outcomes, patch=patch)
-        _, remaining_patch = await application.patch_and_check(
-            settings=settings,
-            resource=resource,
-            logger=logger,
-            patch=patch,
-            body=body,
+        progression.deliver_results(outcomes=outcomes, patch=cause.patch)
+        patch_failures = await _patch_and_check(
+            settings=settings, handler=handler, cause=cause, failures=patch_failures,
         )
-        patch = cause.patch = patches.Patch(remaining_patch, body=body)
 
         # For temporary errors, override the schedule by the one provided by errors themselves.
         # It can be either a delay from TemporaryError, or a backoff for an arbitrary exception.
