@@ -611,56 +611,49 @@ async def test_restarted_watcher_of_unindexed_resource_releases_readiness(
 
 @pytest.mark.parametrize('finished', ['observer', 'keepalive'])
 @pytest.mark.parametrize('outcome', ['returned', 'cancelled'])
-async def test_orchestrator_restarts_complete_peering_pair(
+async def test_orchestrator_restarts_only_the_finished_peering_task(
         monkeypatch, settings, insights: Insights, peering_resource, finished, outcome, looptime):
     settings.peering.namespaced = peering_resource.namespaced
     settings.watching.reconnect_backoff = 10
     namespace = 'ns' if peering_resource.namespaced else None
-    insights.namespaces.add(namespace)
+    insights.namespaces.add('ns')
     dkey = EnsembleKey(resource=peering_resource, namespace=namespace)
+    sibling = 'keepalive' if finished == 'observer' else 'observer'
     operator_paused = aiotoggles.ToggleSet(any)
 
     first_spawned = asyncio.Event()
     captured_ensemble: Ensemble | None = None
-    first_observer: asyncio.Task | None = None
-    first_keepalive: asyncio.Task | None = None
+    first: dict[str, asyncio.Task] = {}
     first_conflict: aiotoggles.Toggle | None = None
-    observer_calls = 0
-    keepalive_calls = 0
+    calls = {'observer': 0, 'keepalive': 0}
     spawned_tasks: set[asyncio.Task] = set()
     respawned = asyncio.Event()
     original_adjust = orchestration.adjust_tasks
 
-    def track_call() -> None:
+    async def run(kind: str) -> None:
+        calls[kind] += 1
         task = asyncio.current_task()
         assert task is not None
         spawned_tasks.add(task)
-        if observer_calls >= 2 and keepalive_calls >= 2:
+        if calls[finished] >= 2:
             respawned.set()
+        if outcome == 'returned' and kind == finished and calls[kind] == 1:
+            return
+        await asyncio.Event().wait()
 
     async def watcher(**kwargs) -> None:
-        nonlocal observer_calls
-        observer_calls += 1
-        track_call()
-        if outcome == 'returned' and finished == 'observer' and observer_calls == 1:
-            return
-        await asyncio.Event().wait()
+        await run('observer')
 
     async def keepalive(**kwargs) -> None:
-        nonlocal keepalive_calls
-        keepalive_calls += 1
-        track_call()
-        if outcome == 'returned' and finished == 'keepalive' and keepalive_calls == 1:
-            return
-        await asyncio.Event().wait()
+        await run('keepalive')
 
     async def adjust(*, ensemble: Ensemble, **kwargs) -> None:
-        nonlocal captured_ensemble, first_observer, first_keepalive, first_conflict
+        nonlocal captured_ensemble, first_conflict
         captured_ensemble = ensemble
         await original_adjust(ensemble=ensemble, **kwargs)
-        if first_observer is None:
-            first_observer = ensemble.peering_tasks[dkey]
-            first_keepalive = ensemble.pinging_tasks[dkey]
+        if not first:
+            first['observer'] = ensemble.peering_tasks[dkey]
+            first['keepalive'] = ensemble.pinging_tasks[dkey]
             first_conflict = ensemble.conflicts_found[dkey]
             first_spawned.set()
 
@@ -681,22 +674,31 @@ async def test_orchestrator_restarts_complete_peering_pair(
             insights.revised.notify_all()
         await first_spawned.wait()
         if outcome == 'cancelled':
-            cancelled = first_observer if finished == 'observer' else first_keepalive
-            assert cancelled is not None
-            cancelled.cancel()
+            first[finished].cancel()
         await asyncio.wait_for(respawned.wait(), timeout=12.3)
 
         assert captured_ensemble is not None
-        assert first_observer is not None
-        assert first_keepalive is not None
         assert first_conflict is not None
-        assert first_observer.done()
-        assert first_keepalive.done()
-        assert captured_ensemble.peering_tasks[dkey] is not first_observer
-        assert captured_ensemble.pinging_tasks[dkey] is not first_keepalive
+        current = {
+            'observer': captured_ensemble.peering_tasks[dkey],
+            'keepalive': captured_ensemble.pinging_tasks[dkey],
+        }
+
+        # The finished task is replaced, once, and only after the backoff.
+        assert first[finished].done()
+        assert current[finished] is not first[finished]
+        assert not current[finished].done()
+        assert calls[finished] == 2
+        assert looptime == settings.watching.reconnect_backoff
+
+        # Its sibling is neither stopped nor replaced.
+        assert current[sibling] is first[sibling]
+        assert not first[sibling].done()
+        assert calls[sibling] == 1
+
+        # The shared toggle survives, so the restart cannot unpause a paused operator.
         assert captured_ensemble.conflicts_found[dkey] is first_conflict
         assert first_conflict in operator_paused
-        assert looptime == settings.watching.reconnect_backoff
     finally:
         runner.cancel()
         with contextlib.suppress(asyncio.CancelledError):
@@ -704,76 +706,232 @@ async def test_orchestrator_restarts_complete_peering_pair(
         await aiotasks.stop(spawned_tasks, title='peering test cleanup', quiet=True)
 
 
-async def test_recycle_terminated_peering_pair_escalates_sibling_failure(ensemble: Ensemble):
-    resource = Resource(group='group', version='version', plural='plural', namespaced=True)
-    dkey = EnsembleKey(resource=resource, namespace='ns')
+async def test_orchestrator_keeps_the_peering_record_when_the_observer_restarts(
+        monkeypatch, settings, insights: Insights, peering_resource, looptime):
+    settings.peering.namespaced = peering_resource.namespaced
+    settings.watching.reconnect_backoff = 10
+    namespace = 'ns' if peering_resource.namespaced else None
+    insights.namespaces.add('ns')
+    dkey = EnsembleKey(resource=peering_resource, namespace=namespace)
+    operator_paused = aiotoggles.ToggleSet(any)
 
-    async def finish() -> None:
-        pass
+    touches: list[dict] = []
+    observer_calls = 0
+    first_keepalive: asyncio.Task | None = None
+    captured_ensemble: Ensemble | None = None
+    respawned = asyncio.Event()
+    original_adjust = orchestration.adjust_tasks
 
-    async def fail() -> None:
-        raise RuntimeError("sibling boom")
+    # The real keep-alive is used. It stores the record with a regular touch, and it removes
+    # the record (a touch with the lifetime of 0) whenever it is stopped or cancelled.
+    async def touch(**kwargs) -> None:
+        touches.append(kwargs)
 
-    observer = asyncio.create_task(finish())
-    keepalive = asyncio.create_task(fail())
-    ensemble.peering_tasks[dkey] = observer
-    ensemble.pinging_tasks[dkey] = keepalive
+    async def watcher(**kwargs) -> None:
+        nonlocal observer_calls
+        observer_calls += 1
+        if observer_calls == 1:
+            return
+        respawned.set()
+        await asyncio.Event().wait()
+
+    async def adjust(*, ensemble: Ensemble, **kwargs) -> None:
+        nonlocal captured_ensemble, first_keepalive
+        captured_ensemble = ensemble
+        await original_adjust(ensemble=ensemble, **kwargs)
+        if first_keepalive is None:
+            first_keepalive = ensemble.pinging_tasks[dkey]
+
+    monkeypatch.setattr(orchestration.peering, 'touch', touch)
+    monkeypatch.setattr(orchestration.queueing, 'watcher', watcher)
+    monkeypatch.setattr(orchestration, 'adjust_tasks', adjust)
+    runner = asyncio.create_task(orchestration.orchestrator(
+        processor=processor,
+        identity=Identity('...'),
+        settings=settings,
+        insights=insights,
+        operator_paused=operator_paused,
+    ))
     await asyncio.sleep(0)
 
     try:
-        with pytest.raises(RuntimeError, match="sibling boom"):
-            await orchestration.recycle_terminated_tasks(
-                ensemble=ensemble,
-                tasks={observer},
-            )
+        async with insights.revised:
+            insights.revised.notify_all()
+        await asyncio.wait_for(respawned.wait(), timeout=12.3)
+
+        # While the observer has exited and restarted, the operator's record stays in the
+        # peering object, so no other operator can take over for the time of the restart.
+        assert looptime == settings.watching.reconnect_backoff
+        assert first_keepalive is not None
+        assert captured_ensemble is not None
+        assert captured_ensemble.pinging_tasks[dkey] is first_keepalive
+        assert not first_keepalive.done()
+        assert [touch.get('lifetime') for touch in touches] == [None]  # stored, never removed
     finally:
-        for task in [observer, keepalive]:
-            if task.done() and not task.cancelled():
-                with contextlib.suppress(RuntimeError):
-                    task.result()
+        runner.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await runner
+
+    # The record is removed only when the keep-alive itself is stopped on the operator's exit.
+    assert [touch.get('lifetime') for touch in touches] == [None, 0]
 
 
-async def test_recycle_terminated_peering_pair_escalates_sibling_failure_on_stop(
-        ensemble: Ensemble, assert_logs):
-    resource = Resource(group='group', version='version', plural='plural', namespaced=True)
-    dkey = EnsembleKey(resource=resource, namespace='ns')
+@pytest.mark.parametrize('missing', ['observer', 'keepalive'])
+async def test_missing_peering_task_is_spawned_without_touching_its_sibling(
+        settings, ensemble: Ensemble, insights: Insights, peering_resource, missing):
+    settings.peering.namespaced = peering_resource.namespaced
+    namespace = 'ns' if peering_resource.namespaced else None
+    insights.namespaces.add('ns')
+    dkey = EnsembleKey(resource=peering_resource, namespace=namespace)
+    sibling = 'keepalive' if missing == 'observer' else 'observer'
+    tasks = {'observer': ensemble.peering_tasks, 'keepalive': ensemble.pinging_tasks}
 
-    async def finish() -> None:
-        pass
+    # The first adjustment spawns the complete pair.
+    await adjust_tasks(
+        processor=processor,
+        identity=Identity('...'),
+        settings=settings,
+        insights=insights,
+        ensemble=ensemble,
+    )
+    first = {kind: task_map[dkey] for kind, task_map in tasks.items()}
+    first_conflict = ensemble.conflicts_found[dkey]
 
-    async def fail_on_stop() -> None:
-        try:
-            await asyncio.Event().wait()
-        except asyncio.CancelledError:
-            raise RuntimeError("sibling boom on stop")
+    # One task of the pair is gone, as if it had exited and been recycled.
+    gone = tasks[missing].pop(dkey)
+    await aiotasks.stop({gone}, title='peering test cleanup', quiet=True)
 
-    observer = asyncio.create_task(finish())
-    keepalive = asyncio.create_task(fail_on_stop())
-    ensemble.peering_tasks[dkey] = observer
-    ensemble.pinging_tasks[dkey] = keepalive
-    await asyncio.sleep(0)
-    assert not keepalive.done()
-    assert_logs()  # enable debug-level capture before the recovery attempt
+    await adjust_tasks(
+        processor=processor,
+        identity=Identity('...'),
+        settings=settings,
+        insights=insights,
+        ensemble=ensemble,
+    )
 
-    try:
-        with pytest.raises(RuntimeError, match="sibling boom on stop"):
-            await orchestration.recycle_terminated_tasks(
-                ensemble=ensemble,
-                tasks={observer},
-            )
-        assert dkey not in ensemble.peering_tasks
-        assert dkey not in ensemble.pinging_tasks
-        assert_logs(prohibited=[r"reconciling after backoff"])
-    finally:
-        for task in [observer, keepalive]:
-            if task.done() and not task.cancelled():
-                with contextlib.suppress(RuntimeError):
-                    task.result()
+    assert tasks[missing][dkey] is not first[missing]
+    assert not tasks[missing][dkey].done()
+    assert tasks[sibling][dkey] is first[sibling]
+    assert not first[sibling].done()
+    assert ensemble.conflicts_found[dkey] is first_conflict
 
 
 @pytest.mark.parametrize('finished', ['observer', 'keepalive'])
+async def test_recycle_terminated_peering_task_keeps_its_sibling(ensemble: Ensemble, finished):
+    resource = Resource(group='group', version='version', plural='plural', namespaced=True)
+    dkey = EnsembleKey(resource=resource, namespace='ns')
+
+    async def finish() -> None:
+        pass
+
+    async def run_forever() -> None:
+        await asyncio.Event().wait()
+
+    observer = asyncio.create_task(finish() if finished == 'observer' else run_forever())
+    keepalive = asyncio.create_task(finish() if finished == 'keepalive' else run_forever())
+    ensemble.peering_tasks[dkey] = observer
+    ensemble.pinging_tasks[dkey] = keepalive
+    await asyncio.sleep(0)
+
+    await orchestration.recycle_terminated_tasks(
+        ensemble=ensemble,
+        tasks={observer if finished == 'observer' else keepalive},
+    )
+
+    if finished == 'observer':
+        assert dkey not in ensemble.peering_tasks
+        assert ensemble.pinging_tasks[dkey] is keepalive
+        assert not keepalive.done()
+    else:
+        assert dkey not in ensemble.pinging_tasks
+        assert ensemble.peering_tasks[dkey] is observer
+        assert not observer.done()
+
+
+@pytest.mark.parametrize('finished', ['observer', 'keepalive'])
+async def test_orchestrator_escalates_peering_sibling_failure_during_reconnect_backoff(
+        monkeypatch, settings, insights: Insights, looptime, finished):
+    operator_paused = aiotoggles.ToggleSet(any)
+    resource = Resource(group='group', version='version', plural='plural', namespaced=True)
+    dkey = EnsembleKey(resource=resource, namespace='ns')
+    spawned_tasks: set[asyncio.Task] = set()
+    settings.watching.reconnect_backoff = 10
+
+    async def finish() -> None:
+        pass
+
+    async def fail_later() -> None:
+        await asyncio.sleep(5)
+        raise RuntimeError("boom during backoff")
+
+    async def adjust(*, ensemble: Ensemble, **kwargs) -> None:
+        if not spawned_tasks:
+            observer = asyncio.create_task(
+                finish() if finished == 'observer' else fail_later())
+            keepalive = asyncio.create_task(
+                finish() if finished == 'keepalive' else fail_later())
+            ensemble.peering_tasks[dkey] = observer
+            ensemble.pinging_tasks[dkey] = keepalive
+            spawned_tasks.update({observer, keepalive})
+
+    monkeypatch.setattr(orchestration, 'adjust_tasks', adjust)
+    runner = asyncio.create_task(orchestration.orchestrator(
+        processor=processor,
+        identity=Identity('...'),
+        settings=settings,
+        insights=insights,
+        operator_paused=operator_paused,
+    ))
+    await asyncio.sleep(0)
+
+    try:
+        async with insights.revised:
+            insights.revised.notify_all()
+
+        with pytest.raises(RuntimeError, match="boom during backoff"):
+            await asyncio.wait_for(runner, timeout=123)
+        assert looptime == 10
+    finally:
+        runner.cancel()
+        with contextlib.suppress(asyncio.CancelledError, RuntimeError):
+            await runner
+        await aiotasks.stop(spawned_tasks, title='peering test cleanup', quiet=True)
+
+
+@pytest.mark.parametrize('finished, what, other', [
+    ('observer', 'observer', 'keep-alive'),
+    ('keepalive', 'keep-alive', 'observer'),
+])
 async def test_recycle_terminated_tasks_logs_peering_recovery(
-        ensemble: Ensemble, assert_logs, finished):
+        ensemble: Ensemble, assert_logs, finished, what, other):
+    resource = Resource(group='group', version='version', plural='plural', namespaced=True)
+    dkey = EnsembleKey(resource=resource, namespace='ns')
+
+    async def finish() -> None:
+        pass
+
+    async def run_forever() -> None:
+        await asyncio.Event().wait()
+
+    observer = asyncio.create_task(finish() if finished == 'observer' else run_forever())
+    keepalive = asyncio.create_task(finish() if finished == 'keepalive' else run_forever())
+    ensemble.peering_tasks[dkey] = observer
+    ensemble.pinging_tasks[dkey] = keepalive
+    await asyncio.sleep(0)
+
+    await orchestration.recycle_terminated_tasks(
+        ensemble=ensemble,
+        tasks={observer if finished == 'observer' else keepalive},
+    )
+
+    assert_logs(
+        [fr"Peering {what} for {resource} in 'ns' ended; reconciling after backoff\."],
+        prohibited=[fr"Peering {other} for {resource}"],
+    )
+
+
+async def test_recycle_terminated_tasks_logs_both_peering_tasks_if_both_finished(
+        ensemble: Ensemble, assert_logs):
     resource = Resource(group='group', version='version', plural='plural', namespaced=True)
     dkey = EnsembleKey(resource=resource, namespace='ns')
 
@@ -786,12 +944,14 @@ async def test_recycle_terminated_tasks_logs_peering_recovery(
     ensemble.pinging_tasks[dkey] = keepalive
     await asyncio.sleep(0)
 
-    await orchestration.recycle_terminated_tasks(
-        ensemble=ensemble,
-        tasks={observer if finished == 'observer' else keepalive},
-    )
+    await orchestration.recycle_terminated_tasks(ensemble=ensemble, tasks={observer, keepalive})
 
-    assert_logs([fr"Peering task for {resource} in 'ns' ended; reconciling after backoff\."])
+    assert dkey not in ensemble.peering_tasks
+    assert dkey not in ensemble.pinging_tasks
+    assert_logs([
+        fr"Peering observer for {resource} in 'ns' ended; reconciling after backoff\.",
+        fr"Peering keep-alive for {resource} in 'ns' ended; reconciling after backoff\.",
+    ])
 
 
 @pytest.mark.parametrize('namespace, where', [
