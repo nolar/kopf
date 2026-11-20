@@ -71,6 +71,8 @@ class Ensemble:
     operator_paused: aiotoggles.ToggleSet
     peering_missing: aiotoggles.Toggle
     conflicts_found: dict[EnsembleKey, aiotoggles.Toggle] = dataclasses.field(default_factory=dict)
+    peering_unavailable: dict[EnsembleKey, aiotoggles.Toggle] = dataclasses.field(
+        default_factory=dict)
     resource_indexed: dict[EnsembleKey, aiotoggles.Toggle] = dataclasses.field(default_factory=dict)
 
     # Multidimensional tasks -- one for every combination of relevant dimensions.
@@ -83,6 +85,7 @@ class Ensemble:
                 frozenset(self.peering_tasks) |
                 frozenset(self.pinging_tasks) |
                 frozenset(self.conflicts_found) |
+                frozenset(self.peering_unavailable) |
                 frozenset(self.resource_indexed))
 
     def get_tasks(self, keys: Container[EnsembleKey]) -> Collection[aiotasks.Task]:
@@ -91,7 +94,9 @@ class Ensemble:
                 for key, task in tasks.items() if key in keys}
 
     def get_flags(self, keys: Container[EnsembleKey]) -> Collection[aiotoggles.Toggle]:
-        return {toggle for key, toggle in self.conflicts_found.items() if key in keys}
+        return {toggle
+                for toggles in [self.conflicts_found, self.peering_unavailable]
+                for key, toggle in toggles.items() if key in keys}
 
     def get_indexing_flags(self, keys: Container[EnsembleKey]) -> Collection[aiotoggles.Toggle]:
         return {toggle for key, toggle in self.resource_indexed.items() if key in keys}
@@ -102,7 +107,7 @@ class Ensemble:
             for key in set(d):
                 if key in keys:
                     del d[key]
-        for d in [self.conflicts_found, self.resource_indexed]:  # for easier type inference
+        for d in [self.conflicts_found, self.peering_unavailable, self.resource_indexed]:
             for key in set(d):
                 if key in keys:
                     del d[key]
@@ -294,6 +299,11 @@ async def spawn_missing_peerings(
                 conflicts_found = await ensemble.operator_paused.make_toggle(
                     is_preactivated, name=what)
                 ensemble.conflicts_found[dkey] = conflicts_found
+            keepalive_failed = ensemble.peering_unavailable.get(dkey)
+            if keepalive_failed is None:
+                keepalive_failed = await ensemble.operator_paused.make_toggle(
+                    False, name=f"{what} keep-alive failed")
+                ensemble.peering_unavailable[dkey] = keepalive_failed
             if keepalive_missing:
                 ensemble.pinging_tasks[dkey] = aiotasks.create_guarded_task(
                     name=f"peering keep-alive for {what}", logger=logger, cancellable=True,
@@ -301,7 +311,8 @@ async def spawn_missing_peerings(
                         namespace=namespace,
                         resource=resource,
                         settings=settings,
-                        identity=identity))
+                        identity=identity,
+                        keepalive_failed=keepalive_failed))
             if observer_missing:
                 ensemble.peering_tasks[dkey] = aiotasks.create_guarded_task(
                     name=f"peering observer for {what}", logger=logger, cancellable=True,

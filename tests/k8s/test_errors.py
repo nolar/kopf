@@ -1,4 +1,5 @@
 import aiohttp
+import freezegun
 import pytest
 
 from kopf._cogs.clients.auth import APIContext, authenticated
@@ -27,6 +28,31 @@ def test_exception_without_payload():
     assert exc.details is None
     assert str(exc) == ""
     assert repr(exc) == "APIError(status=456)"  # no headers!
+
+
+@pytest.mark.parametrize('headers, payload, expected', [
+    pytest.param({}, None, None, id='none'),
+    pytest.param({'Retry-After': '10'}, None, 10, id='new-style'),
+    pytest.param({'retry-after': '10'}, None, 10, id='new-style-lowercase'),
+    pytest.param({'Retry-After': '1.5'}, None, 2, id='new-style-float'),
+    pytest.param({'Retry-After': 'Wed, 21 Oct 2015 07:28:00 GMT'}, None, 0,
+                 id='new-style-past-date'),
+    pytest.param({'Retry-After': 'Wed, 21 Oct 2015 07:28:00'}, None, 0,
+                 id='new-style-past-naive-date'),
+    pytest.param({'Retry-After': 'Fri, 01 Jan 2021 00:00:00 GMT'}, None, 10,
+                 id='new-style-future-date'),
+    pytest.param({'Retry-After': '999999'}, None, 300, id='new-style-capped'),
+    pytest.param({'Retry-After': 'invalid'}, None, None, id='new-style-invalid'),
+    pytest.param({'Retry-After': 'inf'}, None, None, id='new-style-infinite'),
+    pytest.param({}, {'details': {'retryAfterSeconds': 7}}, 7, id='old-style'),
+    pytest.param({}, {'details': {'retryAfterSeconds': 'invalid'}}, None, id='old-style-invalid'),
+    pytest.param({}, {'details': 'invalid'}, None, id='old-style-malformed-details'),
+    pytest.param({'Retry-After': '10'}, {'details': {'retryAfterSeconds': 7}}, 10, id='both'),
+])
+@freezegun.freeze_time('2020-12-31T23:59:50Z')
+def test_exception_retry_after(headers, payload, expected):
+    exc = APIError(payload, status=429, headers=headers)
+    assert exc.retry_after == expected
 
 
 def test_exception_with_dict_payload():

@@ -1,6 +1,8 @@
+import aiohttp
 import pytest
 
-from kopf._cogs.clients.errors import APIError, APITooManyRequestsError
+from kopf._cogs.clients.errors import APIError, APIForbiddenError, APINotFoundError, \
+                                      APIServerError, APITooManyRequestsError
 from kopf._cogs.clients.watching import Bookmark, infinite_watch
 
 STREAM_WITH_UNKNOWN_EVENT = (
@@ -37,7 +39,7 @@ async def test_exception_escalates(kmock, settings, resource, namespace, enforce
 async def test_infinite_watch_never_exits_normally(kmock, settings, resource, namespace):
     kmock['watch', resource, kmock.namespace(namespace)] << iter(STREAM_WITH_ERROR_410GONE)
     kmock['watch', resource, kmock.namespace(namespace)] << iter(STREAM_WITH_UNKNOWN_EVENT)
-    kmock['watch', resource, kmock.namespace(namespace)] << 555
+    kmock['watch', resource, kmock.namespace(namespace)] << 666
 
     events = []
     with pytest.raises(APIError) as e:
@@ -46,7 +48,7 @@ async def test_infinite_watch_never_exits_normally(kmock, settings, resource, na
                                           namespace=namespace):
             events.append(event)
 
-    assert e.value.status == 555
+    assert e.value.status == 666
 
     assert len(events) == 5
     assert events[0] == Bookmark.LISTED
@@ -96,3 +98,240 @@ async def test_too_many_requests_exception_new_style(
         events.append(event)
 
     assert len(events) == 0
+
+
+async def test_server_error_reconnects(
+        settings, resource, kmock, namespace, enforced_session, mocker):
+    exc = APIServerError("Service unavailable.", status=503, headers={})
+    enforced_session.request = mocker.Mock(side_effect=exc)
+    kmock['watch', resource, kmock.namespace(namespace)] << ()
+
+    events = []
+    async for event in infinite_watch(settings=settings,
+                                      resource=resource,
+                                      namespace=namespace,
+                                      _iterations=1):
+        events.append(event)
+
+    assert len(events) == 0
+
+
+async def test_not_found_error_reconnects(
+        settings, resource, kmock, namespace, enforced_session, mocker):
+    exc = APINotFoundError("Not found.", status=404, headers={})
+    enforced_session.request = mocker.Mock(side_effect=exc)
+    kmock['watch', resource, kmock.namespace(namespace)] << ()
+
+    events = []
+    async for event in infinite_watch(settings=settings,
+                                      resource=resource,
+                                      namespace=namespace,
+                                      _iterations=1):
+        events.append(event)
+
+    assert len(events) == 0
+
+
+# Authorization errors are not restarted in place: the operator must fail and be restarted as a whole.
+async def test_forbidden_error_escalates(
+        settings, resource, kmock, namespace, enforced_session, mocker):
+    exc = APIForbiddenError("Forbidden.", status=403, headers={})
+    enforced_session.request = mocker.Mock(side_effect=exc)
+    kmock['watch', resource, kmock.namespace(namespace)] << ()
+
+    with pytest.raises(APIForbiddenError):
+        async for _ in infinite_watch(settings=settings,
+                                      resource=resource,
+                                      namespace=namespace,
+                                      _iterations=1):
+            pass
+
+
+STREAM_WITH_ERROR_503 = (
+    {'type': 'ERROR', 'object': {'code': 503}},
+)
+
+
+async def test_reconnection_delays_grow_up_to_the_limit(
+        kmock, settings, resource, namespace, looptime, assert_logs):
+    kmock['watch', resource, kmock.namespace(namespace)] << STREAM_WITH_ERROR_503
+    settings.watching.reconnect_backoff = 1
+
+    async for _ in infinite_watch(settings=settings,
+                                  resource=resource,
+                                  namespace=namespace,
+                                  _iterations=7):
+        pass
+
+    assert looptime == 1 + 2 + 4 + 8 + 10 + 10 + 10
+    assert_logs(["failed; reconnecting in 8s", "failed; reconnecting in 10s"])
+
+
+async def test_reconnection_delays_never_go_below_the_configured_backoff(
+        kmock, settings, resource, namespace, looptime):
+    kmock['watch', resource, kmock.namespace(namespace)] << STREAM_WITH_ERROR_503
+    settings.watching.reconnect_backoff = 30
+
+    async for _ in infinite_watch(settings=settings,
+                                  resource=resource,
+                                  namespace=namespace,
+                                  _iterations=3):
+        pass
+
+    assert looptime == 30 + 30 + 30
+
+
+async def test_reconnection_errors_have_a_minimum_delay(
+        kmock, settings, resource, namespace, looptime):
+    kmock['watch', resource, kmock.namespace(namespace)] << STREAM_WITH_ERROR_503
+    settings.watching.reconnect_backoff = 0
+
+    async for _ in infinite_watch(settings=settings,
+                                  resource=resource,
+                                  namespace=namespace,
+                                  _iterations=3):
+        pass
+
+    assert looptime == 0.1 + 0.2 + 0.4
+
+
+@pytest.mark.parametrize('event_type', ['ADDED', 'BOOKMARK'])
+async def test_reconnection_delays_reset_after_a_watched_event(
+        kmock, settings, resource, namespace, looptime, event_type):
+    kmock['watch', resource, kmock.namespace(namespace)] << iter(STREAM_WITH_ERROR_503)
+    kmock['watch', resource, kmock.namespace(namespace)] << iter(STREAM_WITH_ERROR_503)
+    kmock['watch', resource, kmock.namespace(namespace)] << iter((
+        {'type': event_type, 'object': {
+            'metadata': {'resourceVersion': '100'} if event_type == 'BOOKMARK' else {},
+            'spec': 'a',
+        }},
+        {'type': 'ERROR', 'object': {'code': 503}},
+    ))
+    kmock['watch', resource, kmock.namespace(namespace)] << iter(STREAM_WITH_ERROR_503)
+    settings.watching.reconnect_backoff = 1
+
+    async for _ in infinite_watch(settings=settings,
+                                  resource=resource,
+                                  namespace=namespace,
+                                  _iterations=4):
+        pass
+
+    assert looptime == 1 + 2 + 1 + 2
+
+
+async def test_reconnection_delays_grow_on_server_errors(
+        settings, resource, kmock, namespace, enforced_session, mocker, looptime):
+    exc = APIServerError("Service unavailable.", status=503, headers={})
+    enforced_session.request = mocker.Mock(side_effect=exc)
+    settings.watching.reconnect_backoff = 1
+
+    async for _ in infinite_watch(settings=settings,
+                                  resource=resource,
+                                  namespace=namespace,
+                                  _iterations=3):
+        pass
+
+    assert looptime == 1 + 2 + 4
+
+
+@pytest.mark.parametrize('exception', [
+    aiohttp.ClientConnectionError,
+    aiohttp.ClientPayloadError,
+    TimeoutError,
+])
+async def test_reconnection_delays_grow_on_transport_errors(
+        settings, resource, namespace, enforced_session, mocker, looptime, exception):
+    enforced_session.request = mocker.Mock(side_effect=exception())
+    settings.watching.reconnect_backoff = 1
+
+    async for _ in infinite_watch(settings=settings,
+                                  resource=resource,
+                                  namespace=namespace,
+                                  _iterations=3):
+        pass
+
+    assert looptime == 1 + 2 + 4
+
+
+async def test_reconnection_delays_grow_on_disconnects_before_events(
+        kmock, settings, resource, namespace, mocker, looptime, assert_logs):
+    kmock['watch', resource, kmock.namespace(namespace)] << b''
+
+    async def broken_lines(*args, **kwargs):
+        raise aiohttp.ClientPayloadError("incomplete payload")
+        yield
+
+    mocker.patch('kopf._cogs.clients.api.iter_jsonlines', side_effect=broken_lines)
+    settings.watching.reconnect_backoff = 1
+
+    async for _ in infinite_watch(settings=settings,
+                                  resource=resource,
+                                  namespace=namespace,
+                                  _iterations=3):
+        pass
+
+    assert looptime == 1 + 2 + 4
+    assert len(kmock['watch', resource]) == 3
+    assert_logs([r"Watch-stream.*failed; reconnecting in 1s"])
+
+
+async def test_reconnection_delays_grow_on_malformed_streams(
+        kmock, settings, resource, namespace, looptime, assert_logs):
+    kmock['watch', resource, kmock.namespace(namespace)] << b'not json\n'
+    settings.watching.reconnect_backoff = 1
+
+    async for _ in infinite_watch(settings=settings,
+                                  resource=resource,
+                                  namespace=namespace,
+                                  _iterations=3):
+        pass
+
+    assert looptime == 1 + 2 + 4
+    assert len(kmock['watch', resource]) == 3
+    assert_logs([r"Watch-stream.*failed; reconnecting in 1s"])
+
+
+@pytest.mark.parametrize('code', [429, 503])
+@pytest.mark.parametrize('enforce, retry_after, expected', [
+    pytest.param(False, 2, 5, id='shorter-ignored'),
+    pytest.param(True, 2, 2, id='shorter-enforced'),
+    pytest.param(False, 7, 7, id='longer'),
+    pytest.param(True, 7, 7, id='longer-enforced'),
+    pytest.param(False, 30, 30, id='above-the-limit'),
+    pytest.param(True, 0, 5, id='zero-enforced'),
+    pytest.param(False, 999999, 300, id='huge-capped'),
+    pytest.param(True, 999999, 300, id='huge-enforced-capped'),
+])
+async def test_retry_after_in_the_stream_is_respected(
+        kmock, settings, resource, namespace, looptime, code,
+        enforce, retry_after, expected):
+    kmock['watch', resource, kmock.namespace(namespace)] << (
+        {'type': 'ERROR', 'object': {'code': code, 'details': {
+            'retryAfterSeconds': retry_after,
+        }}},
+    )
+    settings.watching.reconnect_backoff = 5
+    settings.networking.enforce_retry_after = enforce
+
+    async for _ in infinite_watch(settings=settings,
+                                  resource=resource,
+                                  namespace=namespace,
+                                  _iterations=1):
+        pass
+
+    assert looptime == expected
+
+
+async def test_retry_after_on_connection_is_respected(
+        settings, resource, kmock, namespace, enforced_session, mocker, looptime):
+    exc = APITooManyRequestsError("Too many requests.", status=429, headers={'Retry-After': '7'})
+    enforced_session.request = mocker.Mock(side_effect=exc)
+    settings.watching.reconnect_backoff = 1
+
+    async for _ in infinite_watch(settings=settings,
+                                  resource=resource,
+                                  namespace=namespace,
+                                  _iterations=1):
+        pass
+
+    assert looptime == 7

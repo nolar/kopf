@@ -1,9 +1,11 @@
 import asyncio
+import json
 import textwrap
 
 import aiohttp.web
 import pytest
 
+from kopf._cogs.clients import api as api_module
 from kopf._cogs.clients.api import delete, get, patch, post, request, stream
 from kopf._cogs.clients.errors import APIError
 
@@ -105,6 +107,36 @@ async def test_parsing_in_streams(kmock, method, settings, logger):
     assert kmock[0].headers['fake'] == 'headers'  # and other system headers
 
 
+async def test_established_stream_disconnect_escalates(
+        kmock, mocker, settings, logger):
+    kmock['get', '/url'] << b''
+
+    async def broken_lines(*args, **kwargs):
+        yield b'{"fake": "result1"}'
+        raise aiohttp.ClientPayloadError("incomplete payload")
+
+    mocker.patch.object(api_module, 'iter_jsonlines', side_effect=broken_lines)
+
+    items = []
+    with pytest.raises(aiohttp.ClientPayloadError):
+        async for item in stream(url='/url', settings=settings, logger=logger):
+            items.append(item)
+
+    assert items == [{'fake': 'result1'}]
+
+
+async def test_established_stream_with_a_truncated_event_escalates(
+        kmock, settings, logger):
+    kmock['get', '/url'] << b'{"fake": "result1"}\n{"fake":'
+
+    items = []
+    with pytest.raises(json.JSONDecodeError):
+        async for item in stream(url='/url', settings=settings, logger=logger):
+            items.append(item)
+
+    assert items == [{'fake': 'result1'}]
+
+
 @pytest.mark.parametrize('fn, method', [
     (get, 'get'),
     (post, 'post'),
@@ -172,6 +204,37 @@ async def test_settings_timeout_in_streams(kmock, method, settings, logger, loop
             pass
 
     assert looptime == 1.23
+
+
+async def test_stopper_cancels_a_request_waiting_for_headers(
+        kmock, settings, logger, looptime, assert_logs):
+    kmock['get', '/url'] << (lambda: asyncio.sleep(10), {"fake": "result1"})
+
+    stopper = asyncio.Future()
+    asyncio.get_running_loop().call_later(2, stopper.set_result, None)
+
+    items = [item async for item in stream('/url', stopper=stopper,
+                                           settings=settings, logger=logger)]
+
+    assert items == []
+    assert looptime == 2
+    assert asyncio.current_task().cancelling() == 0  # no stray cancellation is left over
+    assert_logs(prohibited=["Exception in callback"])
+
+
+async def test_stopper_after_the_headers_does_not_cancel_the_consumer(
+        kmock, settings, logger, looptime):
+    kmock['get', '/url'] << ({"fake": "result1"}, lambda: asyncio.sleep(10))
+
+    stopper = asyncio.Future()
+    items = []
+    async for item in stream('/url', stopper=stopper, settings=settings, logger=logger):
+        items.append(item)
+        stopper.set_result(None)
+        await asyncio.sleep(1)  # the consumer keeps working; it must not be cancelled
+
+    assert items == [{"fake": "result1"}]
+    assert asyncio.current_task().cancelling() == 0
 
 
 @pytest.mark.parametrize('delay, expected_times, expected_items', [
