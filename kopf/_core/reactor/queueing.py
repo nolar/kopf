@@ -204,9 +204,8 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
         """
         backlog = self.streams[key].backlog
         pressure = self.streams[key].pressure
-        shouldstop = False
         try:
-            while not shouldstop:
+            while True:
 
                 # Get an event ASAP (no delay) if possible. But expect the queue can be empty.
                 # Save memory by finishing the worker if the backlog is empty for some time.
