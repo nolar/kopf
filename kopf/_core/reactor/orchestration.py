@@ -52,8 +52,7 @@ class ResourceWatchStreamProcessor(Protocol):
             resource: references.Resource,
             raw_event: bodies.RawEvent,
             stream_pressure: asyncio.Event | None = None,  # None for tests
-            resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
-            operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
+            processing_mode: queueing.ProcessingMode | None = None,  # None means doing everything
     ) -> None:
         ...
 

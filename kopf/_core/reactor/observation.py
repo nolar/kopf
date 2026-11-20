@@ -25,7 +25,6 @@ import functools
 import logging
 from collections.abc import Collection, Iterable
 
-from kopf._cogs.aiokits import aiotoggles
 from kopf._cogs.clients import errors, fetching, scanning
 from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, references
@@ -149,8 +148,7 @@ async def process_discovered_namespace_event(
         insights: references.Insights,
         # Must be accepted whether used or not -- as passed by watcher()/worker().
         stream_pressure: asyncio.Event | None = None,  # None for tests
-        resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
-        operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
+        processing_mode: queueing.ProcessingMode | None = None,  # None means doing everything
 ) -> None:
     if raw_event['type'] is None:
         return
@@ -168,8 +166,7 @@ async def process_discovered_resource_event(
         insights: references.Insights,
         # Must be accepted whether used or not -- as passed by watcher()/worker().
         stream_pressure: asyncio.Event | None = None,  # None for tests
-        resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
-        operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
+        processing_mode: queueing.ProcessingMode | None = None,  # None means doing everything
 ) -> None:
     # Ignore the initial listing, as all custom resources were already noticed by API listing.
     # This prevents numerous unneccessary API requests at the the start of the operator.

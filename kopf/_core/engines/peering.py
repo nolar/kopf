@@ -102,8 +102,10 @@ async def process_peering_event(
         stream_pressure: asyncio.Event | None = None,  # None for tests
         conflicts_found: aiotoggles.Toggle | None = None,  # None for tests & observation
         # Must be accepted whether used or not -- as passed by watcher()/worker().
-        resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
-        operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
+        # NB: processing_mode is queueing.ProcessingMode, but it causes a module-level violation
+        # (a lower level engine imports the higher level reactor), but we simply do not care here.
+        # Otherwise, move the enum into cogs or intents — both are lower levels than engines.
+        processing_mode: Any | None = None,  # None means doing everything
 ) -> None:
     """
     Handle a single update of the peers by us or by other operators.

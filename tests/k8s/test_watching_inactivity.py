@@ -98,6 +98,52 @@ async def test_active_stream_does_not_time_out(settings, resource, namespace, km
     assert looptime == 10  # only the inter-event sleep, no inactivity timeout
 
 
+async def test_slow_consumer_is_not_cancelled_by_inactivity(settings, resource, namespace, kmock, looptime):
+    """The time spent by the consumer between events does not count as the stream's inactivity."""
+    settings.watching.inactivity_timeout = 15.0
+    kmock['watch', resource, kmock.namespace(namespace)] << (
+        {'type': 'ADDED', 'object': {'metadata': {'resourceVersion': '101'}}},
+        {'type': 'ADDED', 'object': {'metadata': {'resourceVersion': '102'}}},
+    )
+
+    events = []
+    async for event in watch_objs(
+            settings=settings,
+            resource=resource,
+            namespace=namespace,
+            since='100',
+            operator_pause_waiter=asyncio.Future()):
+        events.append(event)
+        await asyncio.sleep(20)  # 20s > 15s timeout: the consumer is busy with its own activities
+
+    assert len(events) == 2
+    assert looptime == 40  # only the consumer's sleeps, no inactivity timeout
+
+
+async def test_inactivity_is_measured_from_the_consumer_request(
+        settings, resource, namespace, kmock, looptime, assert_logs):
+    """The inactivity window starts when the consumer requests the next event, not on the last one."""
+    settings.watching.inactivity_timeout = 15.0
+    kmock['watch', resource, kmock.namespace(namespace)] << (
+        {'type': 'ADDED', 'object': {'metadata': {'resourceVersion': '101'}}},
+        lambda: asyncio.sleep(99),
+    )
+
+    events = []
+    async for event in watch_objs(
+            settings=settings,
+            resource=resource,
+            namespace=namespace,
+            since='100',
+            operator_pause_waiter=asyncio.Future()):
+        events.append(event)
+        await asyncio.sleep(20)  # 20s > 15s timeout: the consumer is busy with its own activities
+
+    assert len(events) == 1
+    assert looptime == 20 + 15  # 20s of the consumer's activities + 15s of the server's silence
+    assert_logs([r"Watch-stream.*inactive.*reconnecting"])
+
+
 async def test_inactivity_reconnects_with_last_resource_version(
         settings, resource, namespace, kmock, looptime):
     """After an inactivity timeout, continuous_watch() reconnects from the last seen resource version."""
