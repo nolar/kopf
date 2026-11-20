@@ -290,25 +290,28 @@ async def watch_objs(
 
     # Stream the parsed events from the response until it is closed server-side,
     # or until it is closed client-side by the pause-waiting future's callbacks.
-    # The inactivity timeout is reset after each received event; if no event arrives
-    # within the window, asyncio.timeout() cancels the outer task and we log & return.
+    # The inactivity timeout applies only while waiting for the next event from the server,
+    # never across the yield: otherwise, it would count the consumer's activities as inactivity
+    # and would cancel the consumer's task wherever it awaits — not converted into a timeout.
+    # If no event arrives within the window, asyncio.timeout() raises, and we log & return.
+    stream = api.stream(
+        url=resource.get_url(namespace=namespace, params=params),
+        logger=logger,
+        settings=settings,
+        stopper=operator_pause_waiter,
+        timeout=aiohttp.ClientTimeout(
+            total=settings.watching.client_timeout,
+            sock_connect=connect_timeout,
+        ),
+    )
     try:
-        timeout = asyncio.timeout(settings.watching.inactivity_timeout)
-        async with timeout as timeout_cm:
-            async for raw_input in api.stream(
-                url=resource.get_url(namespace=namespace, params=params),
-                logger=logger,
-                settings=settings,
-                stopper=operator_pause_waiter,
-                timeout=aiohttp.ClientTimeout(
-                    total=settings.watching.client_timeout,
-                    sock_connect=connect_timeout,
-                ),
-            ):
-                yield raw_input
-                if timeout_cm is not None:
-                    now = asyncio.get_running_loop().time()
-                    timeout_cm.reschedule(now + settings.watching.inactivity_timeout)
+        while True:
+            try:
+                async with asyncio.timeout(settings.watching.inactivity_timeout):
+                    raw_input = await anext(stream)
+            except StopAsyncIteration:
+                break  # closed server-side, or client-side by the pause-waiting future.
+            yield raw_input
     except TimeoutError:
         where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
         logger.debug(f"Watch-stream for {resource} {where} is inactive, reconnecting.")
