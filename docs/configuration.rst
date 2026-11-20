@@ -320,6 +320,8 @@ for reasonable jitter while still detecting streams that are silently stalled
 at the TCP level, and then streaming the events from Kubernetes
 while they are still fresh. You can adjust the timeout if needed.
 Values lower than ≈62 will cause frequent reconnects on low-activity clusters.
+Only the time of waiting for the server counts; the time the operator spends
+on its own activities between the events (e.g., on startup) does not count.
 To effectively disable the inactivity tracking, set it to a huge number,
 e.g., ``999999999`` (≈30 years).
 
