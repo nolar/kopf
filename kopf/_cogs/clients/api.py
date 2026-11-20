@@ -4,7 +4,7 @@ import itertools
 import json
 import ssl
 import urllib.parse
-from collections.abc import AsyncIterator, Iterable
+from collections.abc import AsyncGenerator, AsyncIterator, Iterable
 from typing import Any
 
 import aiohttp
@@ -231,7 +231,7 @@ async def stream(
         timeout: aiohttp.ClientTimeout | None = None,
         stopper: aiotasks.Future | None = None,
         logger: typedefs.Logger,
-) -> collections.abc.AsyncGenerator[Any, None]:
+) -> AsyncGenerator[Any, None]:
     # This dirty trickery is for cases when the server thinks too slowly before
     # sending the headers, but the stopper is already set during the initial wait.
     def request_cancel_callback(_: aiotasks.Future) -> None:
