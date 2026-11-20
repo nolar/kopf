@@ -42,15 +42,29 @@ import random
 from collections.abc import Iterable
 from typing import Any, NewType, NoReturn, cast
 
+import aiohttp
 import iso8601
 
 from kopf._cogs.aiokits import aiotasks, aiotime, aiotoggles
-from kopf._cogs.clients import patching
+from kopf._cogs.clients import errors, patching
 from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import hostnames
 from kopf._cogs.structs import bodies, patches, references
 
 logger = logging.getLogger(__name__)
+
+# The temporary failures of the API or of the network. Peering is best-effort: the keep-alives
+# and the clean-ups are repeated later, so these errors must not stop the operator. Authentication
+# & authorization errors are not here on purpose: they escalate, so that the operator is restarted
+# as a whole with fresh credentials & permissions.
+TEMPORARY_ERRORS = (
+    aiohttp.ClientConnectionError,
+    aiohttp.ClientPayloadError,
+    errors.APIServerError,
+    errors.APITooManyRequestsError,
+    TimeoutError,
+)
+KEEPALIVE_PAUSE_SAFETY_MARGIN = 10.0
 
 Identity = NewType('Identity', str)
 
@@ -122,15 +136,22 @@ async def process_peering_event(
         return
 
     # Find if we are still the highest priority operator.
+    # Never treat our own stale record as a dead peer to clean: after a process pause or a
+    # network outage, a delayed watch event can arrive right after our own fresh keep-alive
+    # and would otherwise purge the record that we have just written.
     pairs = cast(dict[str, dict[str, Any]], body.get('status', {}))
     peers = [Peer(identity=Identity(opid), **opinfo) for opid, opinfo in pairs.items()]
-    dead_peers = [peer for peer in peers if peer.is_dead]
+    dead_peers = [peer for peer in peers if peer.is_dead and peer.identity != identity]
     live_peers = [peer for peer in peers if not peer.is_dead and peer.identity != identity]
     prio_peers = [peer for peer in live_peers if peer.priority > settings.peering.priority]
     same_peers = [peer for peer in live_peers if peer.priority == settings.peering.priority]
 
+    where = f"in {namespace!r}" if namespace else "cluster-wide"
     if autoclean and dead_peers:
-        await clean(peers=dead_peers, settings=settings, resource=resource, namespace=namespace)
+        try:
+            await clean(peers=dead_peers, settings=settings, resource=resource, namespace=namespace)
+        except TEMPORARY_ERRORS as e:
+            logger.warning(f"Cleaning the dead peers {where} failed; will retry later: {e!r}")
 
     if conflicts_found is None:
         pass
@@ -159,12 +180,15 @@ async def process_peering_event(
     delays = [(peer.deadline - now).total_seconds() for peer in same_peers + prio_peers]
     unslept = await aiotime.sleep(delays, wakeup=stream_pressure)
     if unslept is None and delays:
-        await touch(
-            identity=identity,
-            settings=settings,
-            resource=resource,
-            namespace=namespace,
-        )
+        try:
+            await touch(
+                identity=identity,
+                settings=settings,
+                resource=resource,
+                namespace=namespace,
+            )
+        except TEMPORARY_ERRORS as e:
+            logger.warning(f"Touching the expired peers {where} failed; will retry later: {e!r}")
 
 
 async def keepalive(
@@ -173,38 +197,82 @@ async def keepalive(
         resource: references.Resource,
         identity: Identity,
         settings: configuration.OperatorSettings,
+        keepalive_failed: aiotoggles.Toggle,
 ) -> NoReturn:
     """
     An ever-running coroutine to regularly send our own keep-alive status for the peers.
     """
+    error_backoff: float = 0
+    record_deadline: float | None = None
+    remove_record = True
+    where = f"in {namespace!r}" if namespace else "cluster-wide"
     try:
         while True:
-            await touch(
-                identity=identity,
-                settings=settings,
-                resource=resource,
-                namespace=namespace,
-            )
+            attempt_started = asyncio.get_running_loop().time()
 
-            # How often do we update. Keep limited to avoid k8s api flooding.
-            # Should be slightly less than the lifetime, enough for a patch request to finish.
-            # A little jitter is added to evenly distribute the keep-alives over time.
-            lifetime = settings.peering.lifetime
-            duration = min(lifetime, max(1, lifetime - random.randint(5, 10)))
-            await asyncio.sleep(max(1, duration))
+            # Round the same way as the record does, so that the deadline matches the peers' view.
+            # A non-positive lifetime makes the record dead on arrival: peering would do nothing.
+            lifetime = int(settings.peering.lifetime)
+            if lifetime <= 0:
+                remove_record = False
+                raise ValueError(f"settings.peering.lifetime must be at least 1 second, "
+                                 f"got {settings.peering.lifetime!r}.")
+
+            # The margin is at most 20% of the lifetime, so that the pause deadline (80% or later)
+            # always comes after the renewal time (60% or earlier) even for very short lifetimes.
+            # Once the record has passed that deadline during an outage, give each retry attempt
+            # the same bounded window instead of an already-expired timestamp.
+            safety_margin = min(KEEPALIVE_PAUSE_SAFETY_MARGIN, lifetime / 5)
+            pause_at = attempt_started + lifetime - safety_margin
+            if record_deadline is not None and record_deadline - safety_margin > attempt_started:
+                pause_at = record_deadline - safety_margin
+            try:
+                # The request's own retries and timeouts can outlast the record. Bound each
+                # attempt, so that a hanging request pauses event intake before the record expires
+                # and is retried in place.
+                async with asyncio.timeout_at(pause_at):
+                    await touch(
+                        identity=identity,
+                        settings=settings,
+                        resource=resource,
+                        namespace=namespace,
+                    )
+            except TEMPORARY_ERRORS as e:
+                await keepalive_failed.turn_to(True)
+                retry_after = e.retry_after if isinstance(e, errors.APIError) else None
+                error_backoff, backoff = errors.get_reconnect_backoff(
+                    base=settings.watching.reconnect_backoff,
+                    previous=error_backoff,
+                    retry_after=retry_after,
+                    enforce_retry_after=settings.networking.enforce_retry_after,
+                )
+                logger.warning(
+                    f"Keep-alive {where} failed; pausing and retrying in {backoff}s: {e!r}")
+                await asyncio.sleep(backoff)
+                continue
+
+            error_backoff = 0
+            record_deadline = attempt_started + lifetime
+            await keepalive_failed.turn_to(False)
+
+            # Renew at 50-60% of the lifetime. This leaves enough of the last valid record
+            # to pause event intake and retry in place before other operators can take over.
+            # The percentage jitter distributes keep-alives over time.
+            await asyncio.sleep(lifetime * random.randint(50, 60) / 100)
     finally:
-        try:
-            await asyncio.shield(touch(
-                identity=identity,
-                settings=settings,
-                resource=resource,
-                namespace=namespace,
-                lifetime=0,
-            ))
-        except asyncio.CancelledError:
-            pass  # cancellations are treated as normal exiting
-        except Exception:
-            logger.exception(f"Couldn't remove self from the peering. Ignoring.")
+        if remove_record:
+            try:
+                await asyncio.shield(touch(
+                    identity=identity,
+                    settings=settings,
+                    resource=resource,
+                    namespace=namespace,
+                    lifetime=0,
+                ))
+            except asyncio.CancelledError:
+                pass  # cancellations are treated as normal exiting
+            except Exception:
+                logger.exception(f"Couldn't remove self from the peering. Ignoring.")
 
 
 async def touch(

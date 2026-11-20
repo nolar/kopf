@@ -172,7 +172,8 @@ class PeeringSettings:
     is not functioning and the paused state should be re-evaluated.
 
     The peered operators will update their records as long as they are running,
-    slightly faster than their records expires (5-10 seconds earlier).
+    after 50-60% of the lifetime, leaving time to retry before the records expire.
+    The lifetime is rounded down to whole seconds and must be at least 1 second.
 
     Note that it is the lifetime of the current operator. For operators that
     do not communicate their lifetime (broken?), it is always assumed to be

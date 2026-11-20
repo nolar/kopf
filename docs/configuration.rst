@@ -342,6 +342,19 @@ The server-side timeouts are unpredictable; they can be 10 seconds or
 
 ``settings.watching.reconnect_backoff`` (seconds) is a backoff interval between
 watching requests --- to prevent API flooding in case of errors or disconnects.
+After consecutive temporary errors (HTTP 404, 429, 5xx, or failures to connect),
+the interval doubles on every error up to 10 seconds (or up to the configured
+interval if it is longer), and is reset by the next watched event.
+Repeated error recovery always waits at least 0.1 seconds, even if
+``reconnect_backoff`` is set to zero, to prevent a busy retry loop.
+A server-suggested retry-after is obeyed the same way as for other API requests
+(see :ref:`api-retrying` and ``settings.networking.enforce_retry_after``),
+but never longer than 5 minutes; a zero retry-after is never enforced.
+The expiry of ``settings.watching.client_timeout`` and the disconnects of
+a stream that has already delivered events (including a truncated final event)
+are not errors: the stream is resumed from the last seen resource version
+without the backoff. A stream that disconnects or sends malformed data
+before its first event is an error and is retried with the backoff.
 The same interval is used before reconciling a batch of watching or peering tasks
 that have exited unexpectedly without an error. Tasks that exit during the same
 interval are reconciled together when it ends.
@@ -861,6 +874,20 @@ The default value covers roughly a minute of attempts before giving up.
 
 Once the retries are over (if disabled, immediately on error), the API errors
 escalate and are then handled according to :ref:`error-throttling`.
+
+The watch-streams are an exception: they never give up on temporary errors
+(networking, HTTP 429, HTTP 5xx, and HTTP 404) and reconnect after a backoff.
+The peering keep-alive also never gives up on temporary networking, HTTP 429,
+and HTTP 5xx errors: it pauses event intake on failure, retries in place after
+a backoff, and resumes event intake once a keep-alive update succeeds again.
+Each update attempt is bounded so that a hanging request pauses event intake
+10 seconds before the record expires (or 20% of the lifetime before the expiry
+if the lifetime is shorter than 50 seconds), instead of waiting through the
+full request retries above.
+An HTTP response with code 401 triggers the re-authentication as usual
+(see :doc:`/authentication`). Authentication or authorization errors received
+inside an established watch stream, HTTP 403 responses, and other errors
+still escalate and stop the operator.
 
 This value can be an arbitrary collection or iterable object (even infinite):
 only ``iter()`` is called on every new retrying cycle, no other protocols

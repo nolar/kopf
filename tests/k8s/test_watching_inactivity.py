@@ -6,11 +6,214 @@ watch_objs() closes the stream and returns, causing continuous_watch() to reconn
 """
 import asyncio
 import gc
+import json
 
+import aiohttp
 import pytest
 
 from kopf._cogs.clients import watching
 from kopf._cogs.clients.watching import Bookmark, continuous_watch, watch_objs
+
+
+@pytest.mark.parametrize('exception', [
+    aiohttp.ClientConnectionError,
+    aiohttp.ClientPayloadError,
+    TimeoutError,
+])
+async def test_transport_errors_escalate(
+        settings, resource, namespace, mocker, exception):
+
+    async def broken_stream(*args, **kwargs):
+        raise exception()
+        yield
+
+    mocker.patch.object(watching.api, 'stream', side_effect=broken_stream)
+
+    with pytest.raises(exception):
+        async for _ in watch_objs(
+                settings=settings,
+                resource=resource,
+                namespace=namespace,
+                since='100',
+                operator_pause_waiter=asyncio.Future()):
+            pass
+
+
+async def test_disabled_client_timeout_does_not_hide_other_timeouts(
+        settings, resource, namespace, mocker):
+
+    async def broken_stream(*args, **kwargs):
+        raise TimeoutError()
+        yield
+
+    settings.watching.client_timeout = 0
+    mocker.patch.object(watching.api, 'stream', side_effect=broken_stream)
+
+    with pytest.raises(TimeoutError):
+        async for _ in watch_objs(
+                settings=settings,
+                resource=resource,
+                namespace=namespace,
+                since='100',
+                operator_pause_waiter=asyncio.Future()):
+            pass
+
+
+@pytest.mark.parametrize('exception', [
+    aiohttp.ClientConnectionError,
+    aiohttp.ClientPayloadError,
+    TimeoutError,
+])
+async def test_transport_errors_after_events_end_the_stream(
+        settings, resource, namespace, mocker, assert_logs, exception):
+
+    async def broken_stream(*args, **kwargs):
+        yield {'type': 'ADDED', 'object': {'metadata': {'resourceVersion': '101'}}}
+        raise exception()
+
+    mocker.patch.object(watching.api, 'stream', side_effect=broken_stream)
+
+    events = []
+    async for event in watch_objs(
+            settings=settings,
+            resource=resource,
+            namespace=namespace,
+            since='100',
+            operator_pause_waiter=asyncio.Future()):
+        events.append(event)
+
+    assert len(events) == 1
+    assert_logs([r"Watch-stream.*disconnected.*reconnecting"], prohibited=["failed"])
+
+
+async def test_disconnect_before_events_escalates_from_the_real_stream(
+        settings, resource, namespace, kmock, mocker):
+    kmock['watch', resource, kmock.namespace(namespace)] << b''
+
+    async def broken_lines(*args, **kwargs):
+        raise aiohttp.ClientPayloadError("incomplete payload")
+        yield
+
+    mocker.patch.object(watching.api, 'iter_jsonlines', side_effect=broken_lines)
+
+    with pytest.raises(aiohttp.ClientPayloadError):
+        async for _ in watch_objs(
+                settings=settings,
+                resource=resource,
+                namespace=namespace,
+                since='100',
+                operator_pause_waiter=asyncio.Future()):
+            pass
+
+
+async def test_disconnect_after_events_ends_the_real_stream(
+        settings, resource, namespace, kmock, mocker, assert_logs):
+    kmock['watch', resource, kmock.namespace(namespace)] << b''
+
+    async def broken_lines(*args, **kwargs):
+        yield b'{"type": "ADDED", "object": {"metadata": {"resourceVersion": "101"}}}'
+        raise aiohttp.ClientPayloadError("incomplete payload")
+
+    mocker.patch.object(watching.api, 'iter_jsonlines', side_effect=broken_lines)
+
+    events = []
+    async for event in watch_objs(
+            settings=settings,
+            resource=resource,
+            namespace=namespace,
+            since='100',
+            operator_pause_waiter=asyncio.Future()):
+        events.append(event)
+
+    assert len(events) == 1
+    assert_logs([r"Watch-stream.*disconnected.*reconnecting"], prohibited=["failed"])
+
+
+async def test_malformed_event_before_events_escalates(
+        settings, resource, namespace, kmock):
+    kmock['watch', resource, kmock.namespace(namespace)] << b'{"type":'
+
+    with pytest.raises(json.JSONDecodeError):
+        async for _ in watch_objs(
+                settings=settings,
+                resource=resource,
+                namespace=namespace,
+                since='100',
+                operator_pause_waiter=asyncio.Future()):
+            pass
+
+
+async def test_truncated_final_event_ends_the_stream(
+        settings, resource, namespace, kmock, assert_logs):
+    kmock['watch', resource, kmock.namespace(namespace)] << (
+        b'{"type": "ADDED", "object": {"metadata": {"resourceVersion": "101"}}}\n{"type":'
+    )
+
+    events = []
+    async for event in watch_objs(
+            settings=settings,
+            resource=resource,
+            namespace=namespace,
+            since='100',
+            operator_pause_waiter=asyncio.Future()):
+        events.append(event)
+
+    assert len(events) == 1
+    assert_logs([r"Watch-stream.*disconnected.*reconnecting"], prohibited=["failed"])
+
+
+@pytest.mark.parametrize('stream', [
+    pytest.param((lambda: asyncio.sleep(99),), id='no-events'),
+    pytest.param((
+        {'type': 'ADDED', 'object': {'metadata': {'resourceVersion': '101'}}},
+        lambda: asyncio.sleep(99),
+    ), id='after-events'),
+])
+async def test_client_timeout_ends_the_stream(
+        settings, resource, namespace, kmock, looptime, assert_logs, stream):
+    settings.watching.client_timeout = 5
+    settings.watching.inactivity_timeout = 100
+    kmock['watch', resource, kmock.namespace(namespace)] << stream
+
+    async for _ in watch_objs(
+            settings=settings,
+            resource=resource,
+            namespace=namespace,
+            since='100',
+            operator_pause_waiter=asyncio.Future()):
+        pass
+
+    assert looptime == 5
+    assert_logs([r"Watch-stream.*expired.*reconnecting"])
+
+
+async def test_client_timeout_reconnects_with_last_resource_version(
+        settings, resource, namespace, kmock, looptime):
+    settings.watching.client_timeout = 5
+    settings.watching.inactivity_timeout = 100
+    kmock['list', resource, kmock.namespace(namespace)] << {
+        'metadata': {'resourceVersion': '100'},
+        'items': [],
+    }
+    kmock['watch', resource, kmock.namespace(namespace), kmock.params(resourceVersion='100')] << (
+        {'type': 'BOOKMARK', 'object': {'metadata': {'resourceVersion': '200'}}},
+        lambda: asyncio.sleep(99),
+    )
+    kmock['watch', resource, kmock.namespace(namespace), kmock.params(resourceVersion='200')] << (
+        {'type': 'ERROR', 'object': {'code': 410}},
+    )
+
+    events = []
+    async for event in continuous_watch(settings=settings,
+                                        resource=resource,
+                                        namespace=namespace,
+                                        operator_pause_waiter=asyncio.Future()):
+        events.append(event)
+
+    assert looptime == 5
+    assert len(kmock['list', resource]) == 1
+    assert events[0] == Bookmark.LISTED
+    assert events[1]['object']['metadata']['resourceVersion'] == '200'
 
 
 async def test_empty_stream_times_out(settings, resource, namespace, kmock, looptime, assert_logs):

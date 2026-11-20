@@ -70,6 +70,8 @@ class Ensemble:
     operator_paused: aiotoggles.ToggleSet
     peering_missing: aiotoggles.Toggle
     conflicts_found: dict[EnsembleKey, aiotoggles.Toggle] = dataclasses.field(default_factory=dict)
+    peering_unavailable: dict[EnsembleKey, aiotoggles.Toggle] = dataclasses.field(
+        default_factory=dict)
     indexing_blocks: dict[EnsembleKey, aiotoggles.Toggle] = dataclasses.field(default_factory=dict)
 
     # Multidimensional tasks -- one for every combination of relevant dimensions.
@@ -82,6 +84,7 @@ class Ensemble:
                 frozenset(self.peering_tasks) |
                 frozenset(self.pinging_tasks) |
                 frozenset(self.conflicts_found) |
+                frozenset(self.peering_unavailable) |
                 frozenset(self.indexing_blocks))
 
     def get_tasks(self, keys: Container[EnsembleKey]) -> Collection[aiotasks.Task]:
@@ -89,8 +92,10 @@ class Ensemble:
                 for tasks in [self.watcher_tasks, self.peering_tasks, self.pinging_tasks]
                 for key, task in tasks.items() if key in keys}
 
-    def get_conflict_flags(self, keys: Container[EnsembleKey]) -> Collection[aiotoggles.Toggle]:
-        return {toggle for key, toggle in self.conflicts_found.items() if key in keys}
+    def get_pausing_flags(self, keys: Container[EnsembleKey]) -> Collection[aiotoggles.Toggle]:
+        return {toggle
+                for toggles in [self.conflicts_found, self.peering_unavailable]
+                for key, toggle in toggles.items() if key in keys}
 
     def get_indexing_flags(self, keys: Container[EnsembleKey]) -> Collection[aiotoggles.Toggle]:
         return {toggle for key, toggle in self.indexing_blocks.items() if key in keys}
@@ -101,7 +106,7 @@ class Ensemble:
             for key in set(d):
                 if key in keys:
                     del d[key]
-        for d in [self.conflicts_found, self.indexing_blocks]:
+        for d in [self.conflicts_found, self.peering_unavailable, self.indexing_blocks]:
             for key in set(d):
                 if key in keys:
                     del d[key]
@@ -259,10 +264,10 @@ async def terminate_redundancies(
                       if key.namespace not in remaining_namespaces
                       or key.resource not in remaining_resources}
     redundant_tasks = ensemble.get_tasks(redundant_keys)
-    redundant_conflict_flags = ensemble.get_conflict_flags(redundant_keys)
+    redundant_pausing_flags = ensemble.get_pausing_flags(redundant_keys)
     redundant_indexing_flags = ensemble.get_indexing_flags(redundant_keys)
     await aiotasks.stop(redundant_tasks, title="streaming", logger=logger, interval=10, quiet=True)
-    await ensemble.operator_paused.drop_toggles(redundant_conflict_flags)
+    await ensemble.operator_paused.drop_toggles(redundant_pausing_flags)
     await ensemble.operator_indexed.drop_toggles(redundant_indexing_flags)
     ensemble.del_keys(redundant_keys)
 
@@ -294,6 +299,11 @@ async def spawn_missing_peerings(
                 is_preactivated = settings.peering.mandatory
                 conflicts_found = await ensemble.operator_paused.make_toggle(is_preactivated, name=what)
                 ensemble.conflicts_found[dkey] = conflicts_found
+            keepalive_failed = ensemble.peering_unavailable.get(dkey)
+            if keepalive_failed is None:
+                keepalive_failed = await ensemble.operator_paused.make_toggle(
+                    False, name=f"{what} keep-alive failed")
+                ensemble.peering_unavailable[dkey] = keepalive_failed
             if keepalive_missing:
                 ensemble.pinging_tasks[dkey] = aiotasks.create_guarded_task(
                     name=f"peering keep-alive for {what}", logger=logger, cancellable=True,
@@ -301,7 +311,8 @@ async def spawn_missing_peerings(
                         namespace=namespace,
                         resource=resource,
                         settings=settings,
-                        identity=identity))
+                        identity=identity,
+                        keepalive_failed=keepalive_failed))
             if observer_missing:
                 ensemble.peering_tasks[dkey] = aiotasks.create_guarded_task(
                     name=f"peering observer for {what}", logger=logger, cancellable=True,

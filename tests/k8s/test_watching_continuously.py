@@ -13,6 +13,7 @@ import asyncio
 import aiohttp
 import pytest
 
+from kopf._cogs.clients.errors import APINotFoundError, APIServerError, APITooManyRequestsError
 from kopf._cogs.clients.watching import Bookmark, WatchingError, continuous_watch
 
 STREAM_WITH_ERROR_410GONE_ONLY = (
@@ -157,6 +158,63 @@ async def test_error_410gone_exits_normally(kmock, settings, resource, namespace
     assert_logs(["Restarting the watch-stream"])
 
 
+# Temporary errors escalate as API errors, so that infinite_watch() reconnects with a backoff.
+@pytest.mark.parametrize('code, exctype', [
+    (404, APINotFoundError),
+    (429, APITooManyRequestsError),
+    (500, APIServerError),
+    (502, APIServerError),
+    (503, APIServerError),
+    (504, APIServerError),
+    (599, APIServerError),
+])
+async def test_temporary_error_escalates(kmock, settings, resource, namespace, code, exctype):
+    kmock['watch', resource, kmock.namespace(namespace)] << (
+        {'type': 'ADDED', 'object': {'spec': 'a'}},
+        {'type': 'ERROR', 'object': {'code': code, 'details': {'retryAfterSeconds': 7}}},
+        {'type': 'ADDED', 'object': {'spec': 'b'}},
+    ) << EOS
+
+    events = []
+    with pytest.raises(exctype) as e:
+        async for event in continuous_watch(settings=settings,
+                                            resource=resource,
+                                            namespace=namespace,
+                                            operator_pause_waiter=asyncio.Future()):
+            events.append(event)
+
+    assert len(events) == 2
+    assert events[0] == Bookmark.LISTED
+    assert events[1]['object']['spec'] == 'a'
+    assert e.value.status == code
+    assert e.value.retry_after == 7
+
+
+# Authentication and authorization errors are never restarted in place: the operator must fail,
+# so that it is restarted as a whole and reads its credentials and permissions afresh.
+# 400 is a client-side request error; retrying it would not help.
+@pytest.mark.parametrize('code', [400, 401, 403, 499, 600])
+async def test_other_errors_raise_exception(kmock, settings, resource, namespace, code):
+    kmock['watch', resource, kmock.namespace(namespace)] << (
+        {'type': 'ADDED', 'object': {'spec': 'a'}},
+        {'type': 'ERROR', 'object': {'code': code}},
+        {'type': 'ADDED', 'object': {'spec': 'b'}},
+    ) << EOS
+
+    events = []
+    with pytest.raises(WatchingError) as e:
+        async for event in continuous_watch(settings=settings,
+                                            resource=resource,
+                                            namespace=namespace,
+                                            operator_pause_waiter=asyncio.Future()):
+            events.append(event)
+
+    assert len(events) == 2
+    assert events[0] == Bookmark.LISTED
+    assert events[1]['object']['spec'] == 'a'
+    assert str(code) in str(e.value)
+
+
 async def test_unknown_error_raises_exception(kmock, settings, resource, namespace):
     kmock['watch', resource, kmock.namespace(namespace)] << STREAM_WITH_ERROR_CODE << EOS
 
@@ -216,13 +274,13 @@ async def test_long_line_parsing(kmock, settings, resource, namespace):
         asyncio.TimeoutError
     ]
 )
-async def test_list_objs_connection_errors_are_caught(
+async def test_list_objs_transport_errors_escalate(
         settings, resource, namespace, enforced_session, mocker, connection_error):
     enforced_session.request = mocker.Mock(side_effect=connection_error())
 
-    events = [event async for event in continuous_watch(settings=settings,
-                                                        resource=resource,
-                                                        namespace=namespace,
-                                                        operator_pause_waiter=asyncio.Future())]
-
-    assert len(events) == 0
+    with pytest.raises(connection_error):
+        async for _ in continuous_watch(settings=settings,
+                                        resource=resource,
+                                        namespace=namespace,
+                                        operator_pause_waiter=asyncio.Future()):
+            pass

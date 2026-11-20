@@ -25,7 +25,10 @@ These errors are not exposed to the users, and the users cannot catch them
 with ``except:`` clauses. The users can only see these errors in the logs
 as the reasons of failures. However, the errors are exposed to other packages.
 """
+import datetime
+import email.utils
 import json
+import math
 from collections.abc import Collection
 from typing import Literal, TypedDict
 
@@ -36,6 +39,74 @@ import aiohttp
 # Plus a little hope that no sensitive information usually goes in the leading 256 characters.
 # It is not a guarantee, but reduces the probabilities of undesired consequences.
 TEXT_ERROR_MAX_SIZE = 256
+MIN_RECONNECT_BACKOFF = 0.1
+MAX_RECONNECT_BACKOFF = 10
+MAX_RETRY_AFTER = 300
+
+
+def get_retry_delay(
+        *,
+        backoff: float,
+        retry_after: int | None,
+        enforce_retry_after: bool,
+) -> float:
+    """
+    Apply a bounded server-suggested delay to a local retry backoff.
+    """
+    if retry_after is None:
+        return backoff
+    retry_after = min(retry_after, MAX_RETRY_AFTER)
+    if enforce_retry_after:
+        return retry_after or backoff
+    return max(backoff, retry_after)
+
+
+def get_reconnect_backoff(
+        *,
+        base: float,
+        previous: float,
+        retry_after: int | None,
+        enforce_retry_after: bool,
+) -> tuple[float, float]:
+    """
+    Calculate the next growing backoff and the actual server-aware delay.
+
+    The growing backoff never exceeds the limit, unless the base itself is above it.
+    The server-suggested delay is limited too, so that a broken or hostile value
+    does not freeze the reconnections forever; a zero delay is never enforced,
+    so that a server sending it constantly does not cause a busy loop.
+    """
+    base = max(MIN_RECONNECT_BACKOFF, base)
+    current = min(max(MAX_RECONNECT_BACKOFF, base), previous * 2 or base)
+    delay = get_retry_delay(
+        backoff=current,
+        retry_after=retry_after,
+        enforce_retry_after=enforce_retry_after,
+    )
+    return current, delay
+
+
+def parse_retry_after(value: object) -> int | None:
+    """
+    Parse Retry-After seconds or an HTTP date without disrupting recovery.
+    """
+    if value is None:
+        return None
+
+    try:
+        seconds = float(str(value))
+    except (TypeError, ValueError):
+        try:
+            retry_at = email.utils.parsedate_to_datetime(str(value))
+        except (TypeError, ValueError, OverflowError):
+            return None
+        if retry_at.tzinfo is None:
+            retry_at = retry_at.replace(tzinfo=datetime.UTC)
+        seconds = (retry_at - datetime.datetime.now(datetime.UTC)).total_seconds()
+
+    if not math.isfinite(seconds):
+        return None
+    return min(MAX_RETRY_AFTER, max(0, math.ceil(seconds)))
 
 
 class RawStatusCause(TypedDict):
@@ -107,6 +178,20 @@ class APIError(Exception):
     @property
     def details(self) -> RawStatusDetails | None:
         return self._payload.get('details') if isinstance(self._payload, dict) else None
+
+    @property
+    def retry_after(self) -> int | None:
+        header = next((
+            value
+            for name, value in self._headers.items()
+            if name.lower() == "retry-after"
+        ), None)
+        retry_after = parse_retry_after(header)
+        if retry_after is not None:
+            return retry_after
+        details = self.details
+        return parse_retry_after(
+            details.get("retryAfterSeconds") if isinstance(details, dict) else None)
 
 
 class APIClientError(APIError):  # all 4xx

@@ -65,6 +65,7 @@ async def test_empty_insights_cause_no_adjustments(
     assert not ensemble.peering_tasks
     assert not ensemble.pinging_tasks
     assert not ensemble.conflicts_found
+    assert not ensemble.peering_unavailable
 
 
 async def test_new_resources_and_namespaces_spawn_new_tasks(
@@ -97,6 +98,9 @@ async def test_new_resources_and_namespaces_spawn_new_tasks(
     assert set(ensemble.peering_tasks) == {peer1, peer2}
     assert set(ensemble.pinging_tasks) == {peer1, peer2}
     assert set(ensemble.conflicts_found) == {peer1, peer2}
+    assert set(ensemble.peering_unavailable) == {peer1, peer2}
+    assert all(toggle.is_on() for toggle in ensemble.conflicts_found.values())
+    assert all(toggle.is_off() for toggle in ensemble.peering_unavailable.values())
 
 
 async def test_gone_resources_and_namespaces_stop_running_tasks(
@@ -115,6 +119,7 @@ async def test_gone_resources_and_namespaces_stop_running_tasks(
     r2ns2 = EnsembleKey(resource=r2, namespace='ns2')
     peerns = peering_resource.namespaced
     peer1 = EnsembleKey(resource=peering_resource, namespace='ns1' if peerns else None)
+    peer2 = EnsembleKey(resource=peering_resource, namespace='ns2' if peerns else None)
 
     await adjust_tasks(  # initialisation
         processor=processor,
@@ -129,6 +134,9 @@ async def test_gone_resources_and_namespaces_stop_running_tasks(
     r2ns2_task = ensemble.watcher_tasks[r2ns2]
     r2ns1_indexed = await ensemble.operator_indexed.make_toggle(name='r2ns1')
     ensemble.indexing_blocks[r2ns1] = r2ns1_indexed
+    peer2_conflict = ensemble.conflicts_found[peer2]
+    peer2_unavailable = ensemble.peering_unavailable[peer2]
+    await peer2_unavailable.turn_to(True)
 
     insights.watched_resources.discard(r2)
     insights.namespaces.discard('ns2')
@@ -145,11 +153,18 @@ async def test_gone_resources_and_namespaces_stop_running_tasks(
     assert set(ensemble.peering_tasks) == {peer1}
     assert set(ensemble.pinging_tasks) == {peer1}
     assert set(ensemble.conflicts_found) == {peer1}
+    assert set(ensemble.peering_unavailable) == {peer1}
     assert r1ns2_task.cancelled()
     assert r2ns1_task.cancelled()
     assert r2ns2_task.cancelled()
     assert r2ns1_indexed not in ensemble.operator_indexed
     assert r2ns1 not in ensemble.indexing_blocks
+    if peerns:
+        assert peer2_conflict not in ensemble.operator_paused
+        assert peer2_unavailable not in ensemble.operator_paused
+    else:
+        assert peer2_conflict in ensemble.operator_paused
+        assert peer2_unavailable in ensemble.operator_paused
 
 
 async def test_gone_resource_removes_taskless_indexing_toggle(
@@ -209,6 +224,7 @@ async def test_cluster_tasks_continue_running_on_namespace_deletion(
     assert set(ensemble.peering_tasks) == {peerN}
     assert set(ensemble.pinging_tasks) == {peerN}
     assert set(ensemble.conflicts_found) == {peerN}
+    assert set(ensemble.peering_unavailable) == {peerN}
     assert not r1nsN_task.cancelled()
     assert not r2nsN_task.cancelled()
     assert not r1nsN_task.done()
@@ -236,6 +252,7 @@ async def test_no_peering_tasks_with_no_peering_resources(
     assert not ensemble.peering_tasks
     assert not ensemble.pinging_tasks
     assert not ensemble.conflicts_found
+    assert not ensemble.peering_unavailable
 
 
 async def test_paused_with_mandatory_peering_but_absent_peering_resource(
@@ -625,6 +642,7 @@ async def test_orchestrator_restarts_only_the_finished_peering_task(
     captured_ensemble: Ensemble | None = None
     first: dict[str, asyncio.Task] = {}
     first_conflict: aiotoggles.Toggle | None = None
+    first_unavailable: aiotoggles.Toggle | None = None
     calls = {'observer': 0, 'keepalive': 0}
     spawned_tasks: set[asyncio.Task] = set()
     respawned = asyncio.Event()
@@ -648,13 +666,14 @@ async def test_orchestrator_restarts_only_the_finished_peering_task(
         await run('keepalive')
 
     async def adjust(*, ensemble: Ensemble, **kwargs) -> None:
-        nonlocal captured_ensemble, first_conflict
+        nonlocal captured_ensemble, first_conflict, first_unavailable
         captured_ensemble = ensemble
         await original_adjust(ensemble=ensemble, **kwargs)
         if not first:
             first['observer'] = ensemble.peering_tasks[dkey]
             first['keepalive'] = ensemble.pinging_tasks[dkey]
             first_conflict = ensemble.conflicts_found[dkey]
+            first_unavailable = ensemble.peering_unavailable[dkey]
             first_spawned.set()
 
     monkeypatch.setattr(orchestration.queueing, 'watcher', watcher)
@@ -679,6 +698,7 @@ async def test_orchestrator_restarts_only_the_finished_peering_task(
 
         assert captured_ensemble is not None
         assert first_conflict is not None
+        assert first_unavailable is not None
         current = {
             'observer': captured_ensemble.peering_tasks[dkey],
             'keepalive': captured_ensemble.pinging_tasks[dkey],
@@ -696,9 +716,11 @@ async def test_orchestrator_restarts_only_the_finished_peering_task(
         assert not first[sibling].done()
         assert calls[sibling] == 1
 
-        # The shared toggle survives, so the restart cannot unpause a paused operator.
+        # The shared toggles survive, so the restart cannot unpause a paused operator.
         assert captured_ensemble.conflicts_found[dkey] is first_conflict
+        assert captured_ensemble.peering_unavailable[dkey] is first_unavailable
         assert first_conflict in operator_paused
+        assert first_unavailable in operator_paused
     finally:
         runner.cancel()
         with contextlib.suppress(asyncio.CancelledError):
@@ -796,6 +818,7 @@ async def test_missing_peering_task_is_spawned_without_touching_its_sibling(
     )
     first = {kind: task_map[dkey] for kind, task_map in tasks.items()}
     first_conflict = ensemble.conflicts_found[dkey]
+    first_unavailable = ensemble.peering_unavailable[dkey]
 
     # One task of the pair is gone, as if it had exited and been recycled.
     gone = tasks[missing].pop(dkey)
@@ -814,6 +837,7 @@ async def test_missing_peering_task_is_spawned_without_touching_its_sibling(
     assert tasks[sibling][dkey] is first[sibling]
     assert not first[sibling].done()
     assert ensemble.conflicts_found[dkey] is first_conflict
+    assert ensemble.peering_unavailable[dkey] is first_unavailable
 
 
 @pytest.mark.parametrize('finished', ['observer', 'keepalive'])

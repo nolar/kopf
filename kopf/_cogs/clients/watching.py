@@ -20,6 +20,7 @@ They would not be needed if the client library were natively asynchronous.
 import asyncio
 import contextlib
 import enum
+import json
 import logging
 from collections.abc import AsyncGenerator, AsyncIterator
 from typing import cast
@@ -32,9 +33,6 @@ from kopf._cogs.configs import configuration
 from kopf._cogs.structs import bodies, references
 
 logger = logging.getLogger(__name__)
-
-HTTP_TOO_MANY_REQUESTS_CODE = 429
-DEFAULT_RETRY_DELAY_SECONDS = 1
 
 
 class WatchingError(Exception):
@@ -69,9 +67,11 @@ async def infinite_watch(
     how = ' (paused)' if operator_paused is not None and operator_paused.is_on() else ''
     where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
     logger.debug(f"Starting the watch-stream for {resource} {where}{how}.")
+    error_backoff: float = 0
     try:
         while _iterations is None or _iterations > 0:  # equivalent to `while True` in non-test mode
             _iterations = None if _iterations is None else _iterations - 1
+            backoff = settings.watching.reconnect_backoff
             async with streaming_block(
                 namespace=namespace,
                 resource=resource,
@@ -85,12 +85,33 @@ async def infinite_watch(
                 )
                 try:
                     async for raw_event in stream:
+                        # A watched event (not a listed one) means the stream is healthy again.
+                        if not isinstance(raw_event, Bookmark) and raw_event['type'] is not None:
+                            error_backoff = 0
                         yield raw_event
-                except errors.APITooManyRequestsError as ex:
+                except (aiohttp.ClientConnectionError,
+                        aiohttp.ClientPayloadError,
+                        json.JSONDecodeError,
+                        errors.APINotFoundError,
+                        errors.APITooManyRequestsError,
+                        errors.APIServerError,
+                        TimeoutError) as e:
                     # If it has escalated after all the retries, go back to trying anyway.
                     # This stream is not allowed to fail, unlike other regular requests.
-                    pass
-            await asyncio.sleep(settings.watching.reconnect_backoff)
+                    # Authentication & authorization errors are not retried here: they escalate,
+                    # so that the operator is restarted as a whole with fresh credentials.
+                    # Consecutive errors double the backoff up to a limit, but the server's
+                    # retry-after is obeyed the same way as for the regular API requests.
+                    retry_after = e.retry_after if isinstance(e, errors.APIError) else None
+                    error_backoff, backoff = errors.get_reconnect_backoff(
+                        base=backoff,
+                        previous=error_backoff,
+                        retry_after=retry_after,
+                        enforce_retry_after=settings.networking.enforce_retry_after,
+                    )
+                    logger.warning(f"Watch-stream for {resource} {where} failed; "
+                                   f"reconnecting in {backoff}s: {e!r}")
+            await asyncio.sleep(backoff)
     finally:
         logger.debug(f"Stopping the watch-stream for {resource} {where}.")
 
@@ -169,19 +190,15 @@ async def continuous_watch(
     # First, list the resources in chunks, and get the list's resource version.
     # Simulate the events with type "None" event - used in detection of causes.
     if not settings.watching.initial_streaming:
-        try:
-            async for chunk, resource_version in fetching.fetch_objs(
-                logger=logger,
-                settings=settings,
-                resource=resource,
-                namespace=namespace,
-            ):
-                for obj in chunk:
-                    yield {'type': None, 'object': obj}
-                del chunk  # optional optimization: keep only one chunk in memory
-
-        except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, TimeoutError):
-            return
+        async for chunk, resource_version in fetching.fetch_objs(
+            logger=logger,
+            settings=settings,
+            resource=resource,
+            namespace=namespace,
+        ):
+            for obj in chunk:
+                yield {'type': None, 'object': obj}
+            del chunk  # optional optimization: keep only one chunk in memory
 
         # Notify the watcher that the initial listing is over, even if there was nothing yielded.
         yield Bookmark.LISTED
@@ -211,8 +228,22 @@ async def continuous_watch(
                     logger.debug(f"Restarting the watch-stream for {resource} {where}.")
                     return  # out of the regular stream, to the infinite stream.
 
-                # Other watch errors should be fatal for the operator.
+                # "429 Too Many Requests" and "5xx" are temporary server-side failures (e.g., while
+                # the API server re-initializes its storage). "404 Not Found" happens when a CRD
+                # is deleted before the orchestrator stops this watcher. Escalate them as
+                # API errors, so that the infinite stream reconnects with a backoff.
                 if raw_type == 'ERROR':
+                    status = cast(errors.RawStatus, raw_object)
+                    code = status['code']
+                    if code == 404:
+                        raise errors.APINotFoundError(status, status=code, headers={})
+                    if code == 429:
+                        raise errors.APITooManyRequestsError(status, status=code, headers={})
+                    if 500 <= code < 600:
+                        raise errors.APIServerError(status, status=code, headers={})
+
+                    # Other watch errors (including authentication & authorization) are fatal,
+                    # so that the operator is restarted with fresh credentials & permissions.
                     raise WatchingError(f"Error in the watch-stream: {raw_object}")
 
                 # Ensure that the event is something we understand and can handle.
@@ -296,26 +327,44 @@ async def watch_objs(
     # within the window, asyncio.timeout() cancels the outer task and we log & return.
     # NB: never yield inside asyncio.timeout(): the consumer's processing time would count
     # as inactivity, and the cancellation would hit the consumer, not this generator (PEP 789).
-    try:
-        async with contextlib.aclosing(api.stream(
-                url=resource.get_url(namespace=namespace, params=params),
-                logger=logger,
-                settings=settings,
-                stopper=operator_pause_waiter,
-                timeout=aiohttp.ClientTimeout(
-                    total=settings.watching.client_timeout,
-                    sock_connect=connect_timeout,
-                ),
-        )) as stream:
-            while True:
-                async with asyncio.timeout(settings.watching.inactivity_timeout):
+    # The expired client-side timeout and the disconnects of a stream that has already
+    # delivered events (including a truncated final event) are normal: the caller continues
+    # from the last resource version. A stream that fails before its first event is escalated,
+    # to reconnect with a backoff: e.g. a proxy closing every response cannot cause a busy loop.
+    where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
+    started = asyncio.get_running_loop().time()
+    received = False
+    async with contextlib.aclosing(api.stream(
+            url=resource.get_url(namespace=namespace, params=params),
+            logger=logger,
+            settings=settings,
+            stopper=operator_pause_waiter,
+            timeout=aiohttp.ClientTimeout(
+                total=settings.watching.client_timeout,
+                sock_connect=connect_timeout,
+            ),
+    )) as stream:
+        while True:
+            timeout = asyncio.timeout(settings.watching.inactivity_timeout)
+            try:
+                async with timeout:
                     try:
                         raw_input = await anext(stream)
                     except StopAsyncIteration:
                         break
-                yield raw_input
-    except TimeoutError:
-        where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
-        logger.debug(f"Watch-stream for {resource} {where} is inactive, reconnecting.")
-    except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, TimeoutError):
-        pass
+            except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError,
+                    json.JSONDecodeError, TimeoutError) as e:
+                elapsed = asyncio.get_running_loop().time() - started
+                client_timeout = settings.watching.client_timeout
+                if timeout.expired():
+                    logger.debug(f"Watch-stream for {resource} {where} is inactive, reconnecting.")
+                elif client_timeout is not None and client_timeout > 0 and elapsed >= client_timeout:
+                    logger.debug(f"Watch-stream for {resource} {where} has expired, reconnecting.")
+                elif received:
+                    logger.debug(f"Watch-stream for {resource} {where} is disconnected, "
+                                 f"reconnecting: {e!r}")
+                else:
+                    raise
+                break
+            received = True
+            yield raw_input
