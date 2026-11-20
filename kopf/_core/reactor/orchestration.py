@@ -147,7 +147,7 @@ async def orchestrator(
                 if ensemble_done:
                     await recycle_terminated_tasks(ensemble=ensemble, tasks=ensemble_done)
 
-                    # Back off with the insights unlocked, but never unlock them between
+                    # Back off (sleep) with the insights unlocked, but never unlock them between
                     # the iterations: a revision notified there would have no waiter and be lost.
                     # The revisions made during the backoff are applied by adjust_tasks() below.
                     with contextlib.suppress(TimeoutError):
@@ -164,6 +164,8 @@ async def orchestrator(
                     if delayed_done:
                         await recycle_terminated_tasks(ensemble=ensemble, tasks=delayed_done)
 
+                # Adjust regardless of whether the new insights (CRDs/namespaces) have arrived
+                # or pre-existing watchers have exited unexpectedly and need to be respawned.
                 await adjust_tasks(
                     processor=processor,
                     insights=insights,
@@ -182,6 +184,12 @@ async def recycle_terminated_tasks(
         ensemble: Ensemble,
         tasks: Container[aiotasks.Task],
 ) -> None:
+    """
+    Cleanup the ensemble's containers for finished tasks.
+
+    In particular, force-stop all relevant (paired) peering tasks
+    if at least one of the group (pair) has exited for whatever reason.
+    """
     watcher_keys = {key for key, task in ensemble.watcher_tasks.items() if task in tasks}
     peering_keys = {
         key
@@ -195,7 +203,7 @@ async def recycle_terminated_tasks(
         for key, task in task_map.items()
         if key in peering_keys
     }
-    await aiotasks.stop(peering_tasks, title="streaming", logger=logger, interval=10, quiet=True)
+    await aiotasks.stop(peering_tasks, title="peering", logger=logger, interval=10, quiet=True)
 
     for key in watcher_keys:
         where = f'in {key.namespace!r}' if key.namespace is not None else 'cluster-wide'
@@ -281,8 +289,7 @@ async def spawn_missing_peerings(
             conflicts_found = ensemble.conflicts_found.get(dkey)
             if conflicts_found is None:
                 is_preactivated = settings.peering.mandatory
-                conflicts_found = await ensemble.operator_paused.make_toggle(
-                    is_preactivated, name=what)
+                conflicts_found = await ensemble.operator_paused.make_toggle(is_preactivated, name=what)
                 ensemble.conflicts_found[dkey] = conflicts_found
             ensemble.pinging_tasks[dkey] = aiotasks.create_guarded_task(
                 name=f"peering keep-alive for {what}", logger=logger, cancellable=True,

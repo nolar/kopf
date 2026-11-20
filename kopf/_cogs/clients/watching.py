@@ -221,8 +221,7 @@ async def continuous_watch(
                     continue
 
                 # While in the initial streaming, enforce Kopf's convention for type=None:
-                # this is used for skipping such initial events
-                # (process_discovered_resource_event()).
+                # this is used for skipping such initial events: process_discovered_resource_event()
                 # The very first bookmark ends the initial streaming (see K8s docs).
                 if in_initial_streaming:
                     if raw_type == 'ADDED':
