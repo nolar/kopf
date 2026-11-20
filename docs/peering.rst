@@ -167,9 +167,31 @@ Otherwise, Kopf will run the operator in the standalone mode.
 Stealth keep-alive
 ==================
 
-Every few seconds (60 by default), the operator sends a keep-alive update
-to the chosen peering object, showing that it is still functioning. Other operators
-will notice this and decide whether to pause or resume.
+Regularly, the operator sends a keep-alive update to the chosen peering object,
+showing that it is still functioning. Other operators will notice this and decide
+whether to pause or resume.
+
+The update is sent after 50-60% of the configured lifetime (60 seconds by default),
+i.e. every 30-36 seconds by default. This leaves time to recover safely from
+a temporary API or network failure. On a failed update, the operator pauses
+event intake, retries in place after a backoff, and resumes event intake once
+an update succeeds again. Each update attempt is bounded so that a hanging
+request cancels and pauses event intake 10 seconds before the record expires
+(or 20% of the lifetime before the expiry if the lifetime is shorter than
+50 seconds), before a standby operator can consider the record expired and take
+over.
+
+The lifetime is measured in whole seconds. It must be at least 1 second;
+otherwise, the operator stops with an error, because its record would expire
+immediately and the other operators would never see it.
+
+The other operators compare the record's time with their own clocks.
+Keep the clocks of all nodes synchronized: if a standby operator's clock is ahead
+by more than that safety margin, it can consider the record expired too early.
+
+The pause stops new event intake. It is cooperative: a handler that was already
+running continues until it finishes. Peering does not hard-terminate user code
+and is not an external fencing mechanism for side effects.
 
 The operator also logs keep-alive activity. This can be distracting. To disable it:
 
