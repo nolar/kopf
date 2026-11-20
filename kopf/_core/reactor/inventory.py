@@ -43,6 +43,10 @@ class ResourceMemory:
     noticed_by_listing: bool = False
     fully_handled_once: bool = False
 
+    # For tracking the consistency after patching, to skip state-dependent handlers.
+    consistency_time: float | None = None  # None if nothing is expected/awaited
+    expected_version: str | None = None  # None/non-None is synced with the patch-end-time
+
 
 class ResourceMemories(admission.MemoGetter, daemons.DaemonsMemoriesIterator):
     """

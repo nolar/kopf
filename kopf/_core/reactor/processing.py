@@ -42,9 +42,8 @@ async def process_resource_event(
         operator_paused: aiotoggles.ToggleSet | None = None,  # None for tests & observation
         resource_indexed: aiotoggles.Toggle | None = None,  # None for tests & observation
         operator_indexed: aiotoggles.ToggleSet | None = None,  # None for tests & observation
-        consistency_time: float | None = None,  # None for tests
         no_throttling: bool = False,  # for tests & simulations
-) -> str | None:  # patched resource version, if patched
+) -> None:
     """
     Handle a single custom object low-level watch-event.
 
@@ -60,6 +59,15 @@ async def process_resource_event(
         memory.daemons_memory.live_fresh_body._replace_with(raw_body)
     if raw_type == 'DELETED':
         await memories.forget(raw_body)
+
+    # Keep track of the resource's consistency for high-level state-dependent handlers.
+    # See `settings.persistence.consistency_timeout` for the explanation of consistency.
+    loop = asyncio.get_running_loop()
+    arrived_event_version = raw_body.get('metadata', {}).get('resourceVersion')
+    if (memory.expected_version is not None and memory.expected_version == arrived_event_version or
+        memory.consistency_time is not None and memory.consistency_time <= loop.time()):
+        memory.expected_version = None
+        memory.consistency_time = None
 
     # Convert to a heavy mapping-view wrapper only now, when heavy processing begins.
     # Raw-event streaming, queueing, and batching use regular lightweight dicts.
@@ -126,7 +134,6 @@ async def process_resource_event(
                 event_logger=event_logger,
                 stream_pressure=stream_pressure,
                 operator_paused=operator_paused,
-                consistency_time=consistency_time,
             )
 
             # Whatever was done, apply the accumulated changes to the object, or sleep-n-touch for delays.
@@ -145,8 +152,11 @@ async def process_resource_event(
                 if applied and matched:
                     local_logger.debug("Handling cycle is finished, waiting for new changes.")
                 memory.remaining_patch = remaining_patch
-                return resource_version
-    return None
+
+                # With every new PATCH API call (if done), restart the consistency waiting.
+                if resource_version is not None and settings.persistence.consistency_timeout:
+                    memory.expected_version = resource_version
+                    memory.consistency_time = loop.time() + settings.persistence.consistency_timeout
 
 
 class _Causes(NamedTuple):
@@ -233,7 +243,6 @@ async def process_resource_causes(
         event_logger: loggers.ObjectLogger,
         stream_pressure: asyncio.Event | None,  # None for tests
         operator_paused: aiotoggles.ToggleSet | None,  # None for tests
-        consistency_time: float | None,
 ) -> tuple[Collection[float], bool]:
     patch_initially_empty = not patch  # before we add new things in low-level handlers
 
@@ -311,12 +320,12 @@ async def process_resource_causes(
     # In that case, we are guaranteed to be inconsistent, so also skip the state-dependent handlers.
     # Never release the object (i.e., remove the finalizer) in the inconsistent state, always wait.
     consistency_is_required = changing_cause is not None
-    consistency_is_achieved = consistency_time is None  # i.e. preexisting consistency
+    consistency_is_achieved = memory.consistency_time is None  # i.e. preexisting consistency
     if changing_cause is not None and changing_cause.reason == causes.Reason.GONE:
         consistency_is_achieved = True  # for the final goodbye log message
-    if consistency_is_required and not consistency_is_achieved and not patch and consistency_time:
+    if consistency_is_required and not consistency_is_achieved and not patch and memory.consistency_time:
         loop = asyncio.get_running_loop()
-        unslept = await aiotime.sleep(consistency_time - loop.time(), wakeup=stream_pressure)
+        unslept = await aiotime.sleep(memory.consistency_time - loop.time(), wakeup=stream_pressure)
         consistency_is_achieved = unslept is None  # "woke up" vs. "timed out"
     consistency_is_achieved = consistency_is_achieved and patch_initially_empty
     if consistency_is_required and not consistency_is_achieved:
