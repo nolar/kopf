@@ -21,7 +21,7 @@ import asyncio
 import contextlib
 import enum
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator
 from typing import cast
 
 import aiohttp
@@ -191,50 +191,53 @@ async def continuous_watch(
     while not operator_pause_waiter.done():
 
         # Then, watch the resources starting from the list's resource version.
-        stream = watch_objs(
+        # Close the stream deterministically on restarts, not whenever it is garbage-collected.
+        async with contextlib.aclosing(watch_objs(
             settings=settings,
             resource=resource,
             namespace=namespace,
             since=resource_version,
             operator_pause_waiter=operator_pause_waiter,
-        )
-        async for raw_input in stream:
-            raw_type = raw_input['type']
-            raw_object = raw_input['object']
+        )) as stream:
+            async for raw_input in stream:
+                raw_type = raw_input['type']
+                raw_object = raw_input['object']
 
-            # "410 Gone" is for the "resource version too old" error, we must restart watching.
-            # The resource versions are lost by k8s after a few minutes (5 as per the official doc).
-            # The error occurs when there is nothing happening for a few minutes. This is normal.
-            if raw_type == 'ERROR' and cast(bodies.RawError, raw_object)['code'] == 410:
-                where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
-                logger.debug(f"Restarting the watch-stream for {resource} {where}.")
-                return  # out of the regular stream, to the infinite stream.
+                # "410 Gone" is for the "resource version too old" error, we must restart watching.
+                # The resource versions are lost by k8s after a few minutes (5 as per the docs).
+                # The error occurs when there is nothing happening for a few minutes. It is normal.
+                if raw_type == 'ERROR' and cast(bodies.RawError, raw_object)['code'] == 410:
+                    where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
+                    logger.debug(f"Restarting the watch-stream for {resource} {where}.")
+                    return  # out of the regular stream, to the infinite stream.
 
-            # Other watch errors should be fatal for the operator.
-            if raw_type == 'ERROR':
-                raise WatchingError(f"Error in the watch-stream: {raw_object}")
+                # Other watch errors should be fatal for the operator.
+                if raw_type == 'ERROR':
+                    raise WatchingError(f"Error in the watch-stream: {raw_object}")
 
-            # Ensure that the event is something we understand and can handle.
-            if raw_type not in ['ADDED', 'MODIFIED', 'DELETED', 'BOOKMARK']:
-                logger.warning(f"Ignoring an unsupported event type: {raw_input!r}")
-                continue
+                # Ensure that the event is something we understand and can handle.
+                if raw_type not in ['ADDED', 'MODIFIED', 'DELETED', 'BOOKMARK']:
+                    logger.warning(f"Ignoring an unsupported event type: {raw_input!r}")
+                    continue
 
-            # While in the initial streaming, enforce Kopf's convention for type=None:
-            # this is used for skipping such initial events (process_discovered_resource_event()).
-            # The very first bookmark ends the initial streaming (see K8s docs).
-            if in_initial_streaming:
-                if raw_type == 'ADDED':
-                    raw_input['type'] = None
-                if raw_type == 'BOOKMARK':
-                    in_initial_streaming = False
-                    yield Bookmark.LISTED  # before the raw event itself; as if after fetch_objs().
+                # While in the initial streaming, enforce Kopf's convention for type=None:
+                # this is used for skipping such initial events
+                # (process_discovered_resource_event()).
+                # The very first bookmark ends the initial streaming (see K8s docs).
+                if in_initial_streaming:
+                    if raw_type == 'ADDED':
+                        raw_input['type'] = None
+                    if raw_type == 'BOOKMARK':
+                        in_initial_streaming = False
+                        # Before the raw event itself; as if after fetch_objs().
+                        yield Bookmark.LISTED
 
-            # Keep the latest seen resource version for continuation of the stream on disconnects.
-            body = cast(bodies.RawBody, raw_object)
-            resource_version = body.get('metadata', {}).get('resourceVersion', resource_version)
+                # Keep the latest seen resource version to continue the stream on disconnects.
+                body = cast(bodies.RawBody, raw_object)
+                resource_version = body.get('metadata', {}).get('resourceVersion', resource_version)
 
-            # Yield normal events to the consumer. Errors are already filtered out.
-            yield cast(bodies.RawEvent, raw_input)
+                # Yield normal events to the consumer. Errors are already filtered out.
+                yield cast(bodies.RawEvent, raw_input)
 
 
 async def watch_objs(
@@ -244,7 +247,7 @@ async def watch_objs(
         namespace: references.Namespace,
         since: str | None = None,
         operator_pause_waiter: aiotasks.Future,
-) -> AsyncIterator[bodies.RawInput]:
+) -> AsyncGenerator[bodies.RawInput, None]:
     """
     Watch objects of a specific resource type.
 
@@ -290,12 +293,12 @@ async def watch_objs(
 
     # Stream the parsed events from the response until it is closed server-side,
     # or until it is closed client-side by the pause-waiting future's callbacks.
-    # The inactivity timeout is reset after each received event; if no event arrives
+    # The inactivity timeout covers only the wait for the next event; if no event arrives
     # within the window, asyncio.timeout() cancels the outer task and we log & return.
+    # NB: never yield inside asyncio.timeout(): the consumer's processing time would count
+    # as inactivity, and the cancellation would hit the consumer, not this generator (PEP 789).
     try:
-        timeout = asyncio.timeout(settings.watching.inactivity_timeout)
-        async with timeout as timeout_cm:
-            async for raw_input in api.stream(
+        async with contextlib.aclosing(api.stream(
                 url=resource.get_url(namespace=namespace, params=params),
                 logger=logger,
                 settings=settings,
@@ -304,11 +307,14 @@ async def watch_objs(
                     total=settings.watching.client_timeout,
                     sock_connect=connect_timeout,
                 ),
-            ):
+        )) as stream:
+            while True:
+                async with asyncio.timeout(settings.watching.inactivity_timeout):
+                    try:
+                        raw_input = await anext(stream)
+                    except StopAsyncIteration:
+                        break
                 yield raw_input
-                if timeout_cm is not None:
-                    now = asyncio.get_running_loop().time()
-                    timeout_cm.reschedule(now + settings.watching.inactivity_timeout)
     except TimeoutError:
         where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
         logger.debug(f"Watch-stream for {resource} {where} is inactive, reconnecting.")
