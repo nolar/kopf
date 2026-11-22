@@ -128,7 +128,7 @@ async def test_gone_resources_and_namespaces_stop_running_tasks(
     r2ns1_task = ensemble.watcher_tasks[r2ns1]
     r2ns2_task = ensemble.watcher_tasks[r2ns2]
     r2ns1_indexed = await ensemble.operator_indexed.make_toggle(name='r2ns1')
-    ensemble.resource_indexed[r2ns1] = r2ns1_indexed
+    ensemble.indexing_blocks[r2ns1] = r2ns1_indexed
 
     insights.watched_resources.discard(r2)
     insights.namespaces.discard('ns2')
@@ -149,7 +149,7 @@ async def test_gone_resources_and_namespaces_stop_running_tasks(
     assert r2ns1_task.cancelled()
     assert r2ns2_task.cancelled()
     assert r2ns1_indexed not in ensemble.operator_indexed
-    assert r2ns1 not in ensemble.resource_indexed
+    assert r2ns1 not in ensemble.indexing_blocks
 
 
 async def test_gone_resource_removes_taskless_indexing_toggle(
@@ -157,7 +157,7 @@ async def test_gone_resource_removes_taskless_indexing_toggle(
     resource = Resource(group='group', version='version', plural='plural', namespaced=True)
     dkey = EnsembleKey(resource=resource, namespace='ns')
     resource_indexed = await ensemble.operator_indexed.make_toggle(name='resource')
-    ensemble.resource_indexed[dkey] = resource_indexed
+    ensemble.indexing_blocks[dkey] = resource_indexed
 
     await adjust_tasks(
         processor=processor,
@@ -168,7 +168,7 @@ async def test_gone_resource_removes_taskless_indexing_toggle(
     )
 
     assert resource_indexed not in ensemble.operator_indexed
-    assert dkey not in ensemble.resource_indexed
+    assert dkey not in ensemble.indexing_blocks
 
 
 async def test_cluster_tasks_continue_running_on_namespace_deletion(
@@ -564,7 +564,7 @@ async def test_restarted_watcher_of_unindexed_resource_releases_readiness(
             # The first watcher ends before its listing is completed,
             # and the resource stops being indexed in the meantime.
             assert captured_ensemble is not None
-            blocking_toggle = captured_ensemble.resource_indexed[dkey]
+            blocking_toggle = captured_ensemble.indexing_blocks[dkey]
             blocked_when_first_watcher_ended = captured_ensemble.operator_indexed.is_off()
             insights.indexed_resources.discard(resource)
             return

@@ -5,6 +5,9 @@ When no events (including bookmarks) arrive within settings.watching.inactivity_
 watch_objs() closes the stream and returns, causing continuous_watch() to reconnect.
 """
 import asyncio
+import gc
+
+import pytest
 
 from kopf._cogs.clients import watching
 from kopf._cogs.clients.watching import Bookmark, continuous_watch, watch_objs
@@ -121,16 +124,25 @@ async def test_slow_consumer_does_not_time_out(settings, resource, namespace, km
     assert looptime == 40  # only the consumer's sleeps, no inactivity timeout
 
 
+@pytest.fixture
+def gc_disabled():
+    gc.disable()
+    yield
+    gc.enable()
+
+
+# We want the async generator to be gc'ed only on our command.
+@pytest.mark.usefixtures('gc_disabled')
 async def test_stream_is_closed_when_consumer_stops(
         monkeypatch, settings, resource, namespace):
-    closed = asyncio.Event()
+    marks: list[str] = []
 
     async def stream(**kwargs):
         try:
             yield {'type': 'ADDED', 'object': {'metadata': {'resourceVersion': '101'}}}
             await asyncio.Event().wait()
         finally:
-            closed.set()
+            marks.append('closed')
 
     monkeypatch.setattr(watching.api, 'stream', stream)
     events = watch_objs(
@@ -144,7 +156,37 @@ async def test_stream_is_closed_when_consumer_stops(
     await anext(events)
     await events.aclose()
 
-    assert closed.is_set()
+    marks.append('gc')
+    gc.collect()
+
+    # The gc of an async iter is performed as an async task, so give it a cycle to start & run.
+    await asyncio.sleep(0)
+
+    # If closed by gc, not by aclose(), we would see ['gc', 'closed']; or just ['gc'] (not closed).
+    assert marks == ['closed', 'gc']  # in that order!
+
+
+async def test_inactivity_is_measured_from_the_consumer_request(
+        settings, resource, namespace, kmock, looptime):
+    """The inactivity window starts when the consumer requests the next event, not on the last one."""
+    settings.watching.inactivity_timeout = 15.0
+    kmock['watch', resource, kmock.namespace(namespace)] << (
+        {'type': 'ADDED', 'object': {'metadata': {'resourceVersion': '101'}}},
+        lambda: asyncio.sleep(99),
+    )
+
+    events = []
+    async for event in watch_objs(
+            settings=settings,
+            resource=resource,
+            namespace=namespace,
+            since='100',
+            operator_pause_waiter=asyncio.Future()):
+        events.append(event)
+        await asyncio.sleep(20)  # 20s > 15s timeout: the consumer is busy with its own activities
+
+    assert len(events) == 1
+    assert looptime == 20 + 15  # 20s of the consumer's activities + 15s of the server's silence
 
 
 async def test_abandoned_stream_does_not_cancel_the_next_one(
