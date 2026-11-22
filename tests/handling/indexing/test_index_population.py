@@ -2,7 +2,6 @@ import asyncio
 
 import pytest
 
-from kopf._cogs.aiokits.aiotoggles import Toggle
 from kopf._cogs.structs.ephemera import Memo
 from kopf._core.actions.lifecycles import all_at_once
 from kopf._core.reactor.inventory import ResourceMemories
@@ -28,7 +27,6 @@ async def test_initially_stored(
         memobase=Memo(),
         raw_event={'type': event_type, 'object': body},
         event_queue=asyncio.Queue(),
-        resource_indexed=Toggle(),  # used! only to enable indexing.
     )
     assert set(index) == {None}
     assert set(index[None]) == {123}
@@ -50,7 +48,6 @@ async def test_overwritten(
         memobase=Memo(),
         raw_event={'type': event_type, 'object': body},
         event_queue=asyncio.Queue(),
-        resource_indexed=Toggle(),  # used! only to enable indexing.
     )
     assert set(index) == {None}
     assert set(index[None]) == {456}
@@ -73,7 +70,6 @@ async def test_preserved_on_logical_deletion(
         memobase=Memo(),
         raw_event={'type': event_type, 'object': body},
         event_queue=asyncio.Queue(),
-        resource_indexed=Toggle(),  # used! only to enable indexing.
     )
     assert set(index) == {None}
     assert set(index[None]) == {456}
@@ -95,7 +91,6 @@ async def test_removed_on_physical_deletion(
         memobase=Memo(),
         raw_event={'type': event_type, 'object': body},
         event_queue=asyncio.Queue(),
-        resource_indexed=Toggle(),  # used! only to enable indexing.
     )
     assert set(index) == set()
 
@@ -121,6 +116,5 @@ async def test_removed_on_filters_mismatch(
         memobase=Memo(),
         raw_event={'type': event_type, 'object': body},
         event_queue=asyncio.Queue(),
-        resource_indexed=Toggle(),  # used! only to enable indexing.
     )
     assert set(index) == set()

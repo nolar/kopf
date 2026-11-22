@@ -37,7 +37,10 @@ as direct kwargs named the same as the index (type hints are optional):
     import kopf
     from typing import Any
 
-    # ... continued from previous examples:
+    @kopf.index('pods')
+    async def my_idx(**_: Any) -> Any:
+        ...
+
     @kopf.timer('KopfExample', interval=5)
     def tick(my_idx: kopf.Index, **_: Any) -> None:
         ...
@@ -554,23 +557,24 @@ Precautions for huge clusters
 
 .. warning::
     On very large clusters with many resources, it is possible to hit
-    a deadlock with indexing if the worker limit is lower
-    than the number of resources being indexed.
+    a memory usage spike on startup for resource kinds with indexing.
 
-    All operator activities for every individual object freeze until
-    the operator has fully indexed the cluster. This means that at startup,
-    there will be as many workers (asyncio tasks) as there are resources
-    matching the indexing criteria (by resource selectors and filters).
+    The operator accumulates and buffers the raw events between indexing them
+    and processing them, specifically when it waits for the global operator
+    readiness from other resource kinds. This is to ensure that all involved
+    resources are both indexed and processed exactly once on operator startup,
+    with no skipping or losing the events — the same as with normal streaming.
 
-    To resolve this deadlock, use one of these two solutions:
+    This buffer can have the size of O(n*s), where "n" is the number of involved
+    resources, and "s" is the size of a raw event (a dict with all the fields).
 
-    - Keep ``settings.queueing.worker_limit=None`` (default).
-      Workers will still shut down after some time of inactivity (≈5s)
-      and release all system resources.
-    - Ensure that ``settings.queueing.worker_limit`` is larger
-      than the number of resources being indexed, plus some headroom.
+    After the indexing, the spike can instantly reach O(n*(s+t)), where "t"
+    is the technical overhead of keeping a pool of queued pending jobs to run:
+    one asyncio queue, one asyncio event, one pending/non-started coroutine,
+    and two small strings for uid and a task name — roughly t=5 KB per uid.
 
-    Also, minimize the number of resources indexed with more precise filters.
+    For scale, a Kubernetes event (dict) for a pod weighs roughly s=55 KB.
+    So, on a cluster of 100k pods, that gives 6 GB (estimated, not measured).
 
 .. warning::
     Similarly, on very large clusters with many resources, there will be heavy
@@ -595,6 +599,22 @@ Precautions for huge clusters
       There is no limit by default (``max_workers=None``).
 
     Also, minimize the number of resources indexed with more precise filters.
+
+.. note::
+    Besides, indexing respects the ``settings.queueing.worker_limit``
+    to control how many workers (asyncio tasks) can be spawned at the same time.
+    This limit applies equally both to sync and async handlers.
+
+    However, the initial pre-indexing ignores ``settings.queueing.idle_timeout``
+    and exits the indexing workers instantly once the indexing is complete.
+
+    The same applies for post-processing the accumulated/buffered events
+    immediately after the initial indexing, but before the regular streaming:
+    they are shut down as soon as possible to free slots for other workers,
+    but strictly after processing all the rapidly accumulated queue of events.
+
+    Only the regular streaming after the initial processing spawns long-living
+    workers, which respect the idle timeout.
 
 .. seealso::
     See :doc:`configuration` for details on these settings.

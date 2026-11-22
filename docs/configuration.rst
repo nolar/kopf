@@ -196,6 +196,39 @@ All in all, even unlimited ``settings.posting.worker_limit``
 is naturally capped by ``settings.queueing.worker_limit``.
 
 
+Workers orchestration
+=====================
+
+Kopf runs several watch-streams, one per resource kind x namespace pair
+(or per resource kind only — for cluster-wide operators). Each watch-stream
+then demultiplexes into worker tasks, one per individual resource object.
+
+``settings.queueing.worker_limit`` (default ``None``, meaning as many as needed)
+controls how many concurrent workers the framework can spawn at the same time
+to process the incoming events. Each worker processes one individual object.
+Newer workers wait indefinitely until a free slot appears.
+
+``settings.queueing.idle_timeout`` (default: 5 seconds) controls how soon
+the workers exit if no new events arrive for each individual resource object.
+
+Imbalanced worker limit & idle timeout can lead to prolonged congestion and
+delayed processing of arriving events, where older workers are doing nothing
+waiting until the idle timeout, while newer workers cannot spawn because of
+the occupied slots by the older idle workers.
+
+This is an optional optimization measure to prevent excessive re-spawning.
+Kopf can decide on its own if it wants to respect the idle timeout,
+and can sometimes shut down the worker earlier than the configured timeout.
+In particular, all workers for the initial indexing and post-processing
+of the accumulated events exit as soon as possible (see :doc:`/indexing`)
+before switching to the regular streaming, which respects the idle timeout.
+
+``settings.queueing.exit_timeout`` (default: 2 seconds) controls how soon
+an individual worker is canceled when the parent (resource kind's) watcher
+is going to exit. This is the time given to the worker to gracefully deplete
+and process the queue of events before forced termination.
+
+
 .. _configure-sync-handlers:
 
 Synchronous handlers
