@@ -269,6 +269,7 @@ class WorkerPool(contextlib.AbstractAsyncContextManager[Any]):
         # Tell all the workers to finish now. Wake them up if they are waiting in the queue-getting.
         # The finalizing workers will ignore the extra EOS, before they remove their stream anyway.
         for stream in list(self.streams.values()):
+            stream.pressure.set()  # interrupt current sleeps, if any.
             await stream.backlog.put((None, EOS.token))
 
         # Wait for the queues to be depleted, but only if there are some workers running.
