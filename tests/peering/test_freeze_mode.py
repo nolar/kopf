@@ -39,6 +39,73 @@ async def test_other_peering_objects_are_ignored(
     assert_logs(prohibited=["patching"])
 
 
+@pytest.mark.parametrize('mandatory, expected_paused', [
+    pytest.param(False, False, id='optional-standalone'),
+    pytest.param(True, True, id='mandatory-paused'),
+])
+async def test_deleted_peering_object_respects_mandatory_mode(
+        k8s_mocked, settings, peering_resource, peering_namespace,
+        mandatory, expected_paused):
+    event = bodies.RawEvent(
+        type='DELETED',
+        object={
+            'metadata': {'name': 'name', 'namespace': peering_namespace},
+            'status': {'higher-prio': {'priority': 101}},
+        },
+    )
+    settings.peering.name = 'name'
+    settings.peering.mandatory = mandatory
+    conflicts_found = aiotoggles.Toggle(not expected_paused)
+
+    await process_peering_event(
+        raw_event=event,
+        conflicts_found=conflicts_found,
+        autoclean=False,
+        namespace=peering_namespace,
+        resource=peering_resource,
+        identity='id',
+        settings=settings,
+    )
+
+    assert conflicts_found.is_on() is expected_paused
+    assert not k8s_mocked.patch.called
+
+
+async def test_optional_peering_republishes_own_record_without_pausing(
+        mocker, settings, peering_resource, peering_namespace, looptime):
+    event = bodies.RawEvent(
+        type='ADDED',
+        object={
+            'metadata': {'name': 'name', 'namespace': peering_namespace},
+            'status': {},
+        },
+    )
+    settings.peering.name = 'name'
+    settings.peering.mandatory = False
+    settings.peering.lifetime = 60
+    conflicts_found = aiotoggles.Toggle(False)
+    paused_while_touching: list[bool] = []
+
+    async def touch(**kwargs):
+        paused_while_touching.append(conflicts_found.is_on())
+        await asyncio.Event().wait()  # e.g. the internal retries of the API request
+
+    mocker.patch('kopf._core.engines.peering.touch', side_effect=touch)
+    await asyncio.wait_for(process_peering_event(
+        raw_event=event,
+        conflicts_found=conflicts_found,
+        autoclean=False,
+        namespace=peering_namespace,
+        resource=peering_resource,
+        identity='id',
+        settings=settings,
+    ), timeout=100)
+
+    assert paused_while_touching == [False]
+    assert conflicts_found.is_off()
+    assert looptime == 10  # the attempt is bounded; the keep-alive retries it later anyway
+
+
 @freezegun.freeze_time('2020-12-31T23:59:59.123456')
 async def test_toggled_on_for_higher_priority_peer_when_initially_off(
         k8s_mocked, assert_logs, settings, looptime,
@@ -153,6 +220,7 @@ async def test_toggled_off_for_lower_priority_peer_when_initially_on(
         })
     settings.peering.name = 'name'
     settings.peering.priority = 100
+    settings.peering.mandatory = True
 
     conflicts_found = aiotoggles.Toggle(True)
     stream_pressure = asyncio.Event()
@@ -200,6 +268,7 @@ async def test_ignored_for_lower_priority_peer_when_already_off(
         })
     settings.peering.name = 'name'
     settings.peering.priority = 100
+    settings.peering.mandatory = True
 
     conflicts_found = aiotoggles.Toggle(False)
     stream_pressure = asyncio.Event()
@@ -298,6 +367,7 @@ async def test_ignored_for_same_priority_peer_when_initially_off_with_sharding(
         })
     settings.peering.name = 'name'
     settings.peering.priority = 100
+    settings.peering.mandatory = True
     settings.watching.shard_selectors.clear()
     settings.watching.shard_selectors['whatever'] = 'just-the-existance-matters'
 
@@ -399,6 +469,7 @@ async def test_resumes_for_same_priority_peer_when_already_on_with_sharding(
         })
     settings.peering.name = 'name'
     settings.peering.priority = 100
+    settings.peering.mandatory = True
     settings.watching.shard_selectors.clear()
     settings.watching.shard_selectors['whatever'] = 'just-the-existance-matters'
 

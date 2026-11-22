@@ -19,6 +19,7 @@ They would not be needed if the client library were natively asynchronous.
 """
 import asyncio
 import contextlib
+import dataclasses
 import enum
 import json
 import logging
@@ -44,6 +45,18 @@ class WatchingError(Exception):
 class Bookmark(enum.Enum):
     """ Special marks sent in the stream among raw events. """
     LISTED = enum.auto()  # the listing is over, now streaming.
+    RESET = enum.auto()  # the incomplete initial listing must be discarded.
+
+
+@dataclasses.dataclass
+class StreamPosition:
+    """
+    The last resource version of a consistent stream, to resume it after a temporary failure.
+
+    It is known only after a complete initial listing (or initial-events bookmark). Without it,
+    the stream starts over with a new listing, so that no unchanged objects are missed.
+    """
+    resource_version: str | None = None
 
 
 async def infinite_watch(
@@ -68,6 +81,7 @@ async def infinite_watch(
     where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
     logger.debug(f"Starting the watch-stream for {resource} {where}{how}.")
     error_backoff: float = 0
+    position = StreamPosition()
     try:
         while _iterations is None or _iterations > 0:  # equivalent to `while True` in non-test mode
             _iterations = None if _iterations is None else _iterations - 1
@@ -82,6 +96,7 @@ async def infinite_watch(
                     resource=resource,
                     namespace=namespace,
                     operator_pause_waiter=operator_pause_waiter,
+                    position=position,
                 )
                 try:
                     async for raw_event in stream:
@@ -89,6 +104,9 @@ async def infinite_watch(
                         if not isinstance(raw_event, Bookmark) and raw_event['type'] is not None:
                             error_backoff = 0
                         yield raw_event
+
+                    # The stream ended normally: on "410 Gone" or a pause. Start over with a listing.
+                    position = StreamPosition()
                 except (aiohttp.ClientConnectionError,
                         aiohttp.ClientPayloadError,
                         json.JSONDecodeError,
@@ -98,6 +116,8 @@ async def infinite_watch(
                         TimeoutError) as e:
                     # If it has escalated after all the retries, go back to trying anyway.
                     # This stream is not allowed to fail, unlike other regular requests.
+                    # The position is kept: the stream resumes where it was, without a listing,
+                    # so that the objects deleted meanwhile still arrive as "DELETED" events.
                     # Authentication & authorization errors are not retried here: they escalate,
                     # so that the operator is restarted as a whole with fresh credentials.
                     # Consecutive errors double the backoff up to a limit, but the server's
@@ -181,30 +201,55 @@ async def continuous_watch(
         resource: references.Resource,
         namespace: references.Namespace,
         operator_pause_waiter: aiotasks.Future,
+        position: StreamPosition | None = None,
 ) -> AsyncIterator[Bookmark | bodies.RawEvent]:
+    position = position if position is not None else StreamPosition()
 
     # NB: it must remain None for the server-side initial streaming.
-    resource_version: str | None = None
-    in_initial_streaming: bool = settings.watching.initial_streaming
+    resource_version: str | None = position.resource_version
+    resuming = resource_version is not None
+    in_initial_streaming: bool = settings.watching.initial_streaming and not resuming
 
     # First, list the resources in chunks, and get the list's resource version.
     # Simulate the events with type "None" event - used in detection of causes.
-    if not settings.watching.initial_streaming:
-        async for chunk, resource_version in fetching.fetch_objs(
-            logger=logger,
-            settings=settings,
-            resource=resource,
-            namespace=namespace,
-        ):
-            for obj in chunk:
-                yield {'type': None, 'object': obj}
-            del chunk  # optional optimization: keep only one chunk in memory
+    if not settings.watching.initial_streaming and not resuming:
+        listing_incomplete = False
+        try:
+            async for chunk, resource_version in fetching.fetch_objs(
+                logger=logger,
+                settings=settings,
+                resource=resource,
+                namespace=namespace,
+                stopper=operator_pause_waiter,
+            ):
+                if operator_pause_waiter.done():
+                    if listing_incomplete:
+                        yield Bookmark.RESET
+                    return
+                for obj in chunk:
+                    if operator_pause_waiter.done():
+                        if listing_incomplete:
+                            yield Bookmark.RESET
+                        return
+                    listing_incomplete = True
+                    yield {'type': None, 'object': obj}
+                del chunk  # optional optimization: keep only one chunk in memory
+        except Exception:
+            if listing_incomplete:
+                yield Bookmark.RESET
+            raise
 
         # Notify the watcher that the initial listing is over, even if there was nothing yielded.
+        if operator_pause_waiter.done():
+            if listing_incomplete:
+                yield Bookmark.RESET
+            return
+        position.resource_version = resource_version
         yield Bookmark.LISTED
 
     # Repeat through disconnects of the watch as long as the resource version is valid (no errors).
     # The individual watching API calls are disconnected by timeout even if the stream is fine.
+    initial_stream_incomplete = False
     while not operator_pause_waiter.done():
 
         # Then, watch the resources starting from the list's resource version.
@@ -217,6 +262,10 @@ async def continuous_watch(
             operator_pause_waiter=operator_pause_waiter,
         )) as stream:
             async for raw_input in stream:
+                if operator_pause_waiter.done():
+                    if in_initial_streaming and initial_stream_incomplete:
+                        yield Bookmark.RESET
+                    return
                 raw_type = raw_input['type']
                 raw_object = raw_input['object']
 
@@ -226,6 +275,8 @@ async def continuous_watch(
                 if raw_type == 'ERROR' and cast(bodies.RawError, raw_object)['code'] == 410:
                     where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
                     logger.debug(f"Restarting the watch-stream for {resource} {where}.")
+                    if in_initial_streaming and initial_stream_incomplete:
+                        yield Bookmark.RESET
                     return  # out of the regular stream, to the infinite stream.
 
                 # "429 Too Many Requests" and "5xx" are temporary server-side failures (e.g., while
@@ -235,6 +286,8 @@ async def continuous_watch(
                 if raw_type == 'ERROR':
                     status = cast(errors.RawStatus, raw_object)
                     code = status['code']
+                    if in_initial_streaming and initial_stream_incomplete:
+                        yield Bookmark.RESET
                     if code == 404:
                         raise errors.APINotFoundError(status, status=code, headers={})
                     if code == 429:
@@ -261,13 +314,28 @@ async def continuous_watch(
                         in_initial_streaming = False
                         # Before the raw event itself; as if after fetch_objs().
                         yield Bookmark.LISTED
+                    else:
+                        initial_stream_incomplete = True
 
                 # Keep the latest seen resource version to continue the stream on disconnects.
                 body = cast(bodies.RawBody, raw_object)
                 resource_version = body.get('metadata', {}).get('resourceVersion', resource_version)
+                if not in_initial_streaming:
+                    position.resource_version = resource_version
 
                 # Yield normal events to the consumer. Errors are already filtered out.
                 yield cast(bodies.RawEvent, raw_input)
+
+        # A server-side initial stream is a consistent snapshot only after its initial-end
+        # bookmark. Continuing from an individual object's resource version can omit unchanged
+        # objects that were not delivered before the disconnect, so relist the whole snapshot.
+        # A pause closes the response without any further event, so it is checked here too.
+        if in_initial_streaming:
+            if initial_stream_incomplete:
+                yield Bookmark.RESET
+            if not operator_pause_waiter.done():
+                raise aiohttp.ClientPayloadError(
+                    "Watch-stream ended before the initial-events bookmark.")
 
 
 async def watch_objs(
@@ -306,11 +374,17 @@ async def watch_objs(
         params['fieldSelector'] = field_selector
     if shard_selector:
         params['shardSelector'] = shard_selector
+    # A server-side initial stream cannot be continued after a disconnect, only restarted. Do not
+    # cut it by the timeouts: a snapshot longer than them would be restarted forever.
+    initial_streaming = since is None and settings.watching.initial_streaming
+    server_timeout = None if initial_streaming else settings.watching.server_timeout
+    client_timeout = None if initial_streaming else settings.watching.client_timeout
+
     if since is not None:
         params['resourceVersion'] = since
-    if settings.watching.server_timeout is not None:
-        params['timeoutSeconds'] = str(settings.watching.server_timeout)
-    if since is None and settings.watching.initial_streaming:
+    if server_timeout is not None:
+        params['timeoutSeconds'] = str(server_timeout)
+    if initial_streaming:
         # NB: strictly in initial watch-streams, not in continuations/reconnections.
         params['sendInitialEvents'] = 'true'
         params['resourceVersionMatch'] = 'NotOlderThan'
@@ -327,20 +401,26 @@ async def watch_objs(
     # within the window, asyncio.timeout() cancels the outer task and we log & return.
     # NB: never yield inside asyncio.timeout(): the consumer's processing time would count
     # as inactivity, and the cancellation would hit the consumer, not this generator (PEP 789).
-    # The expired client-side timeout and the disconnects of a stream that has already
-    # delivered events (including a truncated final event) are normal: the caller continues
+    # The expired client-side or server-side timeouts and the disconnects of a stream that has
+    # already delivered events (including a truncated final event) are normal: the caller continues
     # from the last resource version. A stream that fails before its first event is escalated,
     # to reconnect with a backoff: e.g. a proxy closing every response cannot cause a busy loop.
     where = f'in {namespace!r}' if namespace is not None else 'cluster-wide'
     started = asyncio.get_running_loop().time()
     received = False
+
+    def has_expired() -> bool:
+        elapsed = asyncio.get_running_loop().time() - started
+        return any(limit is not None and limit > 0 and elapsed >= limit
+                   for limit in [client_timeout, server_timeout])
+
     async with contextlib.aclosing(api.stream(
             url=resource.get_url(namespace=namespace, params=params),
             logger=logger,
             settings=settings,
             stopper=operator_pause_waiter,
             timeout=aiohttp.ClientTimeout(
-                total=settings.watching.client_timeout,
+                total=client_timeout,
                 sock_connect=connect_timeout,
             ),
     )) as stream:
@@ -351,14 +431,18 @@ async def watch_objs(
                     try:
                         raw_input = await anext(stream)
                     except StopAsyncIteration:
+                        if not received and not operator_pause_waiter.done():
+                            if not has_expired():
+                                raise aiohttp.ClientPayloadError(
+                                    "Watch-stream ended before its first event.")
+                            logger.debug(f"Watch-stream for {resource} {where} has expired, "
+                                         f"reconnecting.")
                         break
             except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError,
                     json.JSONDecodeError, TimeoutError) as e:
-                elapsed = asyncio.get_running_loop().time() - started
-                client_timeout = settings.watching.client_timeout
                 if timeout.expired():
                     logger.debug(f"Watch-stream for {resource} {where} is inactive, reconnecting.")
-                elif client_timeout is not None and client_timeout > 0 and elapsed >= client_timeout:
+                elif has_expired():
                     logger.debug(f"Watch-stream for {resource} {where} has expired, reconnecting.")
                 elif received:
                     logger.debug(f"Watch-stream for {resource} {where} is disconnected, "

@@ -379,10 +379,17 @@ async def watcher(
             if resource_indexed in operator_indexed:
                 async for raw_event in stream:
                     # If the listing is over (even if it was empty), the resource kind is pre-indexed.
-                    if isinstance(raw_event, watching.Bookmark):
+                    if raw_event is watching.Bookmark.RESET:
+                        initial_events.clear()
+                        continue
+                    if raw_event is watching.Bookmark.LISTED:
                         break  # out of the indexing phase
 
                     initial_events[get_uid(raw_event)] = raw_event
+
+                # Index only a complete snapshot. An interrupted attempt can contain objects
+                # absent from its successful retry, which must not leave stale index entries.
+                for raw_event in initial_events.values():
                     await pool.spawn_and_feed(raw_event, mode=ProcessingMode.INDEXING_ONLY)
 
         # Deplete the workers dedicated to indexing-only processing, free up all the keys.
@@ -402,6 +409,8 @@ async def watcher(
         # of the scheduler's pending jobs, keeping the same memory usage spike. But as the scheduler
         # actually launches the jobs, finishes and gc's them, the memory usage gradually reduces.
         for raw_event in initial_events.values():
+            if operator_paused is not None:
+                await operator_paused.wait_for(False)
             await pool.spawn_and_feed(raw_event, mode=ProcessingMode.HANDLING_ONLY)
         del initial_events  # let the events be gc'ed as soon as they are processed from now on
 

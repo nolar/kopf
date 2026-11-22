@@ -1,11 +1,13 @@
 """
 Real-cluster tests: the operator survives a temporary failure of the real API server.
 
-Both tests run a real operator process against the throw-away k3d cluster and break the API
+The tests run a real operator process against the throw-away k3d cluster and break the API
 the way it breaks in production: a custom resource definition is removed while the operator
-watches it (the API answers 404), and the API server restarts (the API is unreachable).
+watches it (the API answers 404), the API server restarts (the API is unreachable),
+and the peering object is absent or deleted and created again.
 The operator must keep running and must handle the objects created after the API is back.
 """
+import json
 import re
 import subprocess
 import textwrap
@@ -38,6 +40,20 @@ def create_object(name: str) -> None:
         metadata:
           name: {name}
     """))
+
+
+def create_cluster_peering() -> None:
+    kubectl("apply -f -", stdin=textwrap.dedent("""
+        apiVersion: kopf.dev/v1
+        kind: ClusterKopfPeering
+        metadata:
+          name: default
+    """))
+
+
+def cluster_peering_has_records() -> bool:
+    body = json.loads(kubectl("get clusterkopfpeering default -o json"))
+    return bool(body.get('status'))
 
 
 def count_messages(caplog, pattern: str) -> int:
@@ -153,3 +169,67 @@ def test_operator_survives_a_restart_of_the_api_server(
     assert runner.exception is None
     assert runner.exit_code == 0
     assert count_messages(caplog, r"Handled before-\w+\.") == 1  # no repeated handling
+
+
+def test_mandatory_peering_pauses_until_its_object_returns(
+        k3d_cluster, with_crd, with_peering, fast_recovery_settings, operator_file, caplog):
+    settings = fast_recovery_settings
+    settings.peering.lifetime = 4
+    kubectl("delete clusterkopfpeering default --ignore-not-found --wait=true")
+
+    with KopfRunner(
+        ['run', '--all-namespaces', '--peering=default', '--verbose', str(operator_file)],
+        timeout=300, settings=settings,
+    ) as runner:
+        wait_until(lambda: count_messages(caplog, 'Client is configured') > 0,
+                   timeout=60, what="the mandatory-peering operator to start")
+        wait_until(lambda: count_messages(
+            caplog, r"Pausing the watch-stream for kopfexamples") > 0,
+            timeout=30, what="event handling to pause before the first peering record")
+
+        create_object("blocked-at-start")
+        time.sleep(2)
+        assert count_messages(caplog, r"Handled blocked-at-start\.") == 0
+
+        create_cluster_peering()
+        wait_until(lambda: count_messages(caplog, r"Handled blocked-at-start\.") == 1,
+                   timeout=60, what="processing to resume after creating the peering object")
+
+        pauses_before = count_messages(caplog, r"Pausing the watch-stream for kopfexamples")
+        kubectl("delete clusterkopfpeering default --wait=true")
+        wait_until(lambda: count_messages(
+            caplog, r"Pausing the watch-stream for kopfexamples") > pauses_before,
+            timeout=30, what="event handling to pause after deleting the peering object")
+
+        create_object("blocked-after-deletion")
+        time.sleep(2)
+        assert count_messages(caplog, r"Handled blocked-after-deletion\.") == 0
+
+        create_cluster_peering()
+        wait_until(lambda: count_messages(caplog, r"Handled blocked-after-deletion\.") == 1,
+                   timeout=60, what="processing to resume after restoring the peering object")
+
+    assert runner.exception is None
+    assert runner.exit_code == 0
+    assert count_messages(caplog, r"Handled blocked-(at-start|after-deletion)\.") == 2
+
+
+def test_optional_peering_republishes_its_record_when_the_object_appears(
+        k3d_cluster, with_crd, with_peering, fast_recovery_settings, operator_file, caplog):
+    settings = fast_recovery_settings
+    settings.peering.lifetime = 60  # the periodic retry would otherwise happen after 30-36s
+    kubectl("delete clusterkopfpeering default --ignore-not-found --wait=true")
+
+    with KopfRunner(
+        ['run', '--all-namespaces', '--verbose', str(operator_file)],
+        timeout=300, settings=settings,
+    ) as runner:
+        wait_until(lambda: count_messages(caplog, r"Keep-alive .* not found") > 0,
+                   timeout=60, what="optional peering to fall back to standalone")
+
+        create_cluster_peering()
+        wait_until(cluster_peering_has_records, timeout=10,
+                   what="the optional operator to publish its record immediately")
+
+    assert runner.exception is None
+    assert runner.exit_code == 0

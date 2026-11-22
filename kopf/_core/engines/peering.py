@@ -66,6 +66,18 @@ TEMPORARY_ERRORS = (
 )
 KEEPALIVE_PAUSE_SAFETY_MARGIN = 10.0
 
+
+class _PeeringObjectNotFoundError(Exception):
+    """Raised internally when mandatory peering has no object to update."""
+
+
+KEEPALIVE_ERRORS = TEMPORARY_ERRORS + (_PeeringObjectNotFoundError,)
+
+
+def get_safety_margin(lifetime: float) -> float:
+    """ How long before the record expires an operator pauses if it cannot renew the record. """
+    return min(KEEPALIVE_PAUSE_SAFETY_MARGIN, max(1, int(lifetime)) / 5)
+
 Identity = NewType('Identity', str)
 
 
@@ -135,6 +147,13 @@ async def process_peering_event(
     if meta.get('name') != settings.peering.name:
         return
 
+    # A mandatory peering object disappearing is itself a reason to pause immediately, without
+    # waiting for the next keep-alive. Optional auto-detected peering falls back to standalone.
+    if raw_event['type'] == 'DELETED':
+        if conflicts_found is not None:
+            await conflicts_found.turn_to(settings.peering.mandatory)
+        return
+
     # Find if we are still the highest priority operator.
     # Never treat our own stale record as a dead peer to clean: after a process pause or a
     # network outage, a delayed watch event can arrive right after our own fresh keep-alive
@@ -168,6 +187,21 @@ async def process_peering_event(
             await conflicts_found.turn_to(True)
 
     else:
+        # Optional peering can temporarily run standalone while its object is absent. If the object
+        # reappears without our record, publish it now, so that other operators can see us without
+        # waiting for the next keep-alive. The keep-alive retries it anyway, so do not wait long.
+        if not settings.peering.mandatory and identity not in pairs:
+            try:
+                async with asyncio.timeout(get_safety_margin(settings.peering.lifetime)):
+                    await touch(
+                        identity=identity,
+                        settings=settings,
+                        resource=resource,
+                        namespace=namespace,
+                    )
+            except TEMPORARY_ERRORS as e:
+                logger.warning(f"Restoring the peering record {where} failed; "
+                               f"will retry with the next keep-alive: {e!r}")
         if conflicts_found.is_on():
             logger.info(f"Resuming operations after the pause. Conflicting operators with the same priority are gone.")
             await conflicts_found.turn_to(False)
@@ -198,6 +232,7 @@ async def keepalive(
         identity: Identity,
         settings: configuration.OperatorSettings,
         keepalive_failed: aiotoggles.Toggle,
+        conflicts_found: aiotoggles.Toggle | None = None,
 ) -> NoReturn:
     """
     An ever-running coroutine to regularly send our own keep-alive status for the peers.
@@ -206,6 +241,11 @@ async def keepalive(
     record_deadline: float | None = None
     remove_record = True
     where = f"in {namespace!r}" if namespace else "cluster-wide"
+
+    # Mandatory peering does not process events until our record is published. Optional peering
+    # works standalone until then, as it does when the peering object is absent.
+    if settings.peering.mandatory:
+        await keepalive_failed.turn_to(True)
     try:
         while True:
             attempt_started = asyncio.get_running_loop().time()
@@ -222,7 +262,7 @@ async def keepalive(
             # always comes after the renewal time (60% or earlier) even for very short lifetimes.
             # Once the record has passed that deadline during an outage, give each retry attempt
             # the same bounded window instead of an already-expired timestamp.
-            safety_margin = min(KEEPALIVE_PAUSE_SAFETY_MARGIN, lifetime / 5)
+            safety_margin = get_safety_margin(lifetime)
             pause_at = attempt_started + lifetime - safety_margin
             if record_deadline is not None and record_deadline - safety_margin > attempt_started:
                 pause_at = record_deadline - safety_margin
@@ -231,13 +271,16 @@ async def keepalive(
                 # attempt, so that a hanging request pauses event intake before the record expires
                 # and is retried in place.
                 async with asyncio.timeout_at(pause_at):
-                    await touch(
+                    record_stored = await touch(
                         identity=identity,
                         settings=settings,
                         resource=resource,
                         namespace=namespace,
                     )
-            except TEMPORARY_ERRORS as e:
+                    if record_stored is False and settings.peering.mandatory:
+                        raise _PeeringObjectNotFoundError(
+                            f"Peering object {settings.peering.name!r} {where} does not exist.")
+            except KEEPALIVE_ERRORS as e:
                 await keepalive_failed.turn_to(True)
                 retry_after = e.retry_after if isinstance(e, errors.APIError) else None
                 error_backoff, backoff = errors.get_reconnect_backoff(
@@ -252,13 +295,19 @@ async def keepalive(
                 continue
 
             error_backoff = 0
-            record_deadline = attempt_started + lifetime
+            record_deadline = attempt_started + lifetime if record_stored is not False else None
+            if (record_stored is False and not settings.peering.mandatory
+                    and conflicts_found is not None):
+                await conflicts_found.turn_to(False)
             await keepalive_failed.turn_to(False)
 
             # Renew at 50-60% of the lifetime. This leaves enough of the last valid record
             # to pause event intake and retry in place before other operators can take over.
-            # The percentage jitter distributes keep-alives over time.
-            await asyncio.sleep(lifetime * random.randint(50, 60) / 100)
+            # The percentage jitter distributes keep-alives over time. Measure from the record's
+            # timestamp, not from request completion: a slow successful request must not postpone
+            # the next renewal beyond the record's deadline.
+            renew_at = attempt_started + lifetime * random.randint(50, 60) / 100
+            await asyncio.sleep(max(0, renew_at - asyncio.get_running_loop().time()))
     finally:
         if remove_record:
             try:
@@ -282,7 +331,7 @@ async def touch(
         resource: references.Resource,
         namespace: references.Namespace,
         lifetime: int | None = None,
-) -> None:
+) -> bool:
     name = settings.peering.name
     peer = Peer(
         identity=identity,
@@ -306,6 +355,7 @@ async def touch(
         where = f"in {namespace!r}" if namespace else "cluster-wide"
         result = "not found" if rsp is None else "ok"
         logger.debug(f"Keep-alive in {name!r} {where}: {result}.")
+    return rsp is not None
 
 
 async def clean(

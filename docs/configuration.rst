@@ -349,12 +349,24 @@ Repeated error recovery always waits at least 0.1 seconds, even if
 ``reconnect_backoff`` is set to zero, to prevent a busy retry loop.
 A server-suggested retry-after is obeyed the same way as for other API requests
 (see :ref:`api-retrying` and ``settings.networking.enforce_retry_after``),
-but never longer than 5 minutes; a zero retry-after is never enforced.
-The expiry of ``settings.watching.client_timeout`` and the disconnects of
-a stream that has already delivered events (including a truncated final event)
-are not errors: the stream is resumed from the last seen resource version
-without the backoff. A stream that disconnects or sends malformed data
-before its first event is an error and is retried with the backoff.
+but never longer than 5 minutes in these indefinite reconnect loops;
+a zero retry-after is never enforced. If the retry-after comes from the HTTP
+response that opens a watch, ``settings.watching.inactivity_timeout`` can end
+the request and reconnect before the requested delay elapses.
+The expiry of ``settings.watching.client_timeout`` or
+``settings.watching.server_timeout`` and the disconnects of a stream that has
+already delivered events (including a truncated final event) are not errors:
+Kopf resumes the stream from the last seen resource version without growing
+the error backoff. A stream that ends or sends malformed data before its first
+event is an error and is retried with the backoff. After such an error,
+Kopf also resumes from the last seen resource version, so the objects deleted
+meanwhile still arrive as deletion events. Only "410 Gone" or a pause start
+over with a new listing.
+During server-side initial streaming, an interruption before the initial-events
+bookmark restarts the complete initial snapshot. Continuing from one object's
+resource version could otherwise omit unchanged objects not delivered yet.
+For the same reason, the client-side and server-side timeouts do not apply
+to the initial stream, only to its continuations.
 The same interval is used before reconciling a batch of watching or peering tasks
 that have exited unexpectedly without an error. Tasks that exit during the same
 interval are reconciled together when it ends.
@@ -402,6 +414,8 @@ uses the server-side initial streaming (API: ``sendInitialEvents=true``).
 See more: https://kubernetes.io/docs/reference/using-api/api-concepts/#streaming-lists
 
 This approach might save memory both server- and operator-side in huge clusters.
+The client-side and server-side timeouts do not apply to the initial stream:
+it cannot be continued after a disconnect, only restarted.
 
 .. note::
     Kopf enforces its own conventional ``type=None`` on all the initial
@@ -842,9 +856,9 @@ or occasionally at runtime; the network might have issues too. In most cases,
 these issues are temporary and resolve themselves within seconds.
 
 The framework retries TCP/SSL networking errors and HTTP 5xx errors
-("the server is wrong") --- i.e. everything presumed to be temporary;
-other errors presumed to be permanent, including HTTP 4xx errors
-("the client is wrong"), escalate immediately without retrying.
+("the server is wrong") --- i.e. everything presumed to be temporary.
+Most HTTP 4xx errors ("the client is wrong") escalate immediately without
+retrying. HTTP 403 and 429 are exceptions and use the configured retries.
 
 The setting ``settings.networking.error_backoffs`` controls how many times
 and with what backoff interval (in seconds) the retries are performed.
@@ -880,6 +894,12 @@ The watch-streams are an exception: they never give up on temporary errors
 The peering keep-alive also never gives up on temporary networking, HTTP 429,
 and HTTP 5xx errors: it pauses event intake on failure, retries in place after
 a backoff, and resumes event intake once a keep-alive update succeeds again.
+With mandatory peering, event intake starts paused until the first update
+confirms the operator's record and the observer evaluates the current peers.
+If a mandatory peering object is missing, the operator stays paused and retries.
+Optional auto-detected peering starts unpaused and falls back to standalone mode
+while its peering object is missing. If that object appears later, the observer
+publishes the operator's record at once, without waiting for the next keep-alive.
 Each update attempt is bounded so that a hanging request pauses event intake
 10 seconds before the record expires (or 20% of the lifetime before the expiry
 if the lifetime is shorter than 50 seconds), instead of waiting through the
@@ -943,7 +963,9 @@ if it is longer than what Kopf would use otherwise from its own
 when its own backoff interval is longer than the server-requested interval.
 If ``True``, the server-provided interval will be used. If ``False`` (default),
 Kopf's longer backoff interval will be used. Either way, the backoff interval
-will never be shorter than what the server requested.
+will never be shorter than what the server requested. Finite API request retries
+do not cap this interval. The indefinite watch and peering reconnect loops cap
+it at 5 minutes so that a broken or hostile value cannot pause recovery forever.
 
 .. _error-throttling:
 

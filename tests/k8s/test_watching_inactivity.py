@@ -106,6 +106,73 @@ async def test_disconnect_before_events_escalates_from_the_real_stream(
             pass
 
 
+async def test_clean_eof_before_events_escalates(
+        settings, resource, namespace, kmock):
+    kmock['watch', resource, kmock.namespace(namespace)] << b''
+
+    with pytest.raises(aiohttp.ClientPayloadError, match="before its first event"):
+        async for _ in watch_objs(
+                settings=settings,
+                resource=resource,
+                namespace=namespace,
+                since='100',
+                operator_pause_waiter=asyncio.Future()):
+            pass
+
+
+async def test_server_timeout_without_events_ends_the_stream(
+        monkeypatch, settings, resource, namespace, looptime, assert_logs):
+    settings.watching.server_timeout = 5
+
+    # The server closes the idle stream cleanly when its timeout expires.
+    async def stream(**kwargs):
+        await asyncio.sleep(5)
+        return
+        yield
+
+    monkeypatch.setattr(watching.api, 'stream', stream)
+    events = [event async for event in watch_objs(
+        settings=settings,
+        resource=resource,
+        namespace=namespace,
+        since='100',
+        operator_pause_waiter=asyncio.Future(),
+    )]
+
+    assert events == []
+    assert looptime == 5
+    assert_logs([r"Watch-stream.*has expired, reconnecting"], prohibited=["failed"])
+
+
+@pytest.mark.parametrize('since, expected_timeouts', [
+    pytest.param(None, False, id='initial-stream'),
+    pytest.param('100', True, id='continuation'),
+])
+async def test_initial_streaming_request_is_not_cut_by_timeouts(
+        monkeypatch, settings, resource, namespace, since, expected_timeouts):
+    settings.watching.initial_streaming = True
+    settings.watching.server_timeout = 10
+    settings.watching.client_timeout = 20
+    requests = []
+
+    async def stream(*, url, timeout, **kwargs):
+        requests.append((url, timeout))
+        yield {'type': 'ADDED', 'object': {'metadata': {'resourceVersion': '101'}}}
+
+    monkeypatch.setattr(watching.api, 'stream', stream)
+    async for _ in watch_objs(
+            settings=settings,
+            resource=resource,
+            namespace=namespace,
+            since=since,
+            operator_pause_waiter=asyncio.Future()):
+        pass
+
+    [(url, timeout)] = requests
+    assert ('timeoutSeconds=10' in url) is expected_timeouts
+    assert timeout.total == (20 if expected_timeouts else None)
+
+
 async def test_disconnect_after_events_ends_the_real_stream(
         settings, resource, namespace, kmock, mocker, assert_logs):
     kmock['watch', resource, kmock.namespace(namespace)] << b''

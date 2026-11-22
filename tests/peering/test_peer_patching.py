@@ -30,9 +30,10 @@ async def test_touching_a_peer_stores_it(kmock, settings, assert_logs, peering_r
     settings.peering.name = 'name0'
     kmock.objects[peering_resource, peering_namespace, 'name0'] = {}
 
-    await touch(identity='id1', resource=peering_resource, settings=settings,
-                namespace=peering_namespace)
+    found = await touch(identity='id1', resource=peering_resource, settings=settings,
+                        namespace=peering_namespace)
 
+    assert found
     assert len(kmock) > 0
     patch = kmock[0].data
     assert set(patch['status']) == {'id1'}
@@ -83,9 +84,10 @@ async def test_logs_are_logged_in_exposed_mode(
     settings.peering.name = 'name0'
     kmock.objects[peering_resource, peering_namespace, 'name0'] = {}
 
-    await touch(identity='id1', resource=peering_resource, settings=settings,
-                namespace=peering_namespace)
+    found = await touch(identity='id1', resource=peering_resource, settings=settings,
+                        namespace=peering_namespace)
 
+    assert found
     assert_logs([
         r"Keep-alive in 'name0' (in 'ns'|cluster-wide): ok",
     ], prohibited=["patching"])
@@ -98,9 +100,10 @@ async def test_logs_are_logged_when_absent(
     settings.peering.stealth = stealth
     settings.peering.name = 'name0'
 
-    await touch(identity='id1', resource=peering_resource, settings=settings,
-                namespace=peering_namespace)
+    found = await touch(identity='id1', resource=peering_resource, settings=settings,
+                        namespace=peering_namespace)
 
+    assert not found
     assert_logs([
         r"Keep-alive in 'name0' (in 'ns'|cluster-wide): not found",
     ], prohibited=["patching"])

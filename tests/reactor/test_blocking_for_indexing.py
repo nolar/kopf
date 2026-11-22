@@ -2,6 +2,8 @@ import asyncio
 import contextlib
 
 from kopf._cogs.aiokits.aiotoggles import Toggle, ToggleSet
+from kopf._cogs.clients.watching import Bookmark
+from kopf._core.reactor import queueing
 from kopf._core.reactor.queueing import ProcessingMode, watcher
 
 
@@ -81,6 +83,54 @@ async def test_the_overall_scenario_of_operator_blocking_for_preindexing_and_pos
     watcher_task.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await watcher_task
+
+
+async def test_initial_events_are_not_replayed_while_operator_is_paused(
+        monkeypatch, resource, settings, namespace, processor, looptime):
+    item = {'metadata': {'uid': 'uid1'}}
+    stale = {'metadata': {'uid': 'stale'}}
+    operator_indexed = ToggleSet(all)
+    resource_indexed = await operator_indexed.make_toggle()
+    operator_paused = ToggleSet(any)
+    keepalive_failed = await operator_paused.make_toggle(False)
+
+    async def stream(**kwargs):
+        yield {'type': None, 'object': stale}
+        yield Bookmark.RESET
+        yield {'type': None, 'object': item}
+        await keepalive_failed.turn_to(True)
+        yield Bookmark.LISTED
+        await asyncio.Event().wait()
+
+    monkeypatch.setattr(queueing.watching, 'infinite_watch', stream)
+    watcher_task = asyncio.create_task(watcher(
+        namespace=namespace,
+        resource=resource,
+        settings=settings,
+        processor=processor,
+        operator_paused=operator_paused,
+        operator_indexed=operator_indexed,
+        resource_indexed=resource_indexed,
+    ))
+    try:
+        await asyncio.sleep(10)  # long enough for the replay to happen if it were not paused
+
+        assert keepalive_failed.is_on()
+        assert processor.call_count == 1
+        assert processor.call_args.kwargs['processing_mode'] == ProcessingMode.INDEXING_ONLY
+        assert processor.call_args.kwargs['raw_event']['object'] == item
+
+        await keepalive_failed.turn_to(False)
+        await asyncio.sleep(1)
+
+        assert looptime == 11
+        assert processor.call_count == 2
+        assert processor.call_args.kwargs['processing_mode'] == ProcessingMode.HANDLING_ONLY
+        assert processor.call_args.kwargs['raw_event']['object'] == item
+    finally:
+        watcher_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await watcher_task
 
 
 async def test_absent_indexes_cause_no_processing_before_readiness(

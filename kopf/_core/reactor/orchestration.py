@@ -293,16 +293,20 @@ async def spawn_missing_peerings(
 
             # The toggle is shared by the pair and survives the restarts of either of them:
             # a respawned observer must not unpause an operator that was paused in favour of
-            # another operator. The toggle is turned only by the observer's events.
+            # another operator. The observer evaluates conflicts; the keep-alive only releases
+            # the blocker when optional peering has no object and falls back to standalone.
+            # Mandatory peering starts paused until the observer and the keep-alive confirm it.
+            # Optional peering starts unpaused: pausing the whole operator for every new namespace
+            # would stop all watch-streams and daemons for nothing if no peering object exists.
+            is_preactivated = settings.peering.mandatory
             conflicts_found = ensemble.conflicts_found.get(dkey)
             if conflicts_found is None:
-                is_preactivated = settings.peering.mandatory
                 conflicts_found = await ensemble.operator_paused.make_toggle(is_preactivated, name=what)
                 ensemble.conflicts_found[dkey] = conflicts_found
             keepalive_failed = ensemble.peering_unavailable.get(dkey)
             if keepalive_failed is None:
                 keepalive_failed = await ensemble.operator_paused.make_toggle(
-                    False, name=f"{what} keep-alive failed")
+                    is_preactivated, name=f"{what} keep-alive is not confirmed")
                 ensemble.peering_unavailable[dkey] = keepalive_failed
             if keepalive_missing:
                 ensemble.pinging_tasks[dkey] = aiotasks.create_guarded_task(
@@ -312,7 +316,8 @@ async def spawn_missing_peerings(
                         resource=resource,
                         settings=settings,
                         identity=identity,
-                        keepalive_failed=keepalive_failed))
+                        keepalive_failed=keepalive_failed,
+                        conflicts_found=conflicts_found))
             if observer_missing:
                 ensemble.peering_tasks[dkey] = aiotasks.create_guarded_task(
                     name=f"peering observer for {what}", logger=logger, cancellable=True,

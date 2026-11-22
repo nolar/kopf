@@ -173,13 +173,29 @@ whether to pause or resume.
 
 The update is sent after 50-60% of the configured lifetime (60 seconds by default),
 i.e. every 30-36 seconds by default. This leaves time to recover safely from
-a temporary API or network failure. On a failed update, the operator pauses
-event intake, retries in place after a backoff, and resumes event intake once
-an update succeeds again. Each update attempt is bounded so that a hanging
-request cancels and pauses event intake 10 seconds before the record expires
+a temporary API or network failure. The renewal time is measured from the
+record's timestamp, not from the completion of the request. If a slow successful
+request finishes after its normal renewal point, the next update starts
+immediately instead of letting the record expire.
+
+With mandatory peering, event intake starts paused until the first keep-alive
+update confirms the operator's record and the observer evaluates the current
+peers. On a failed update, the operator stays or becomes paused, retries
+in place after a backoff, and resumes event intake once an update succeeds again.
+If a mandatory peering object is missing, the operator stays paused and retries.
+
+Optional auto-detected peering starts unpaused, as without peering, so that new
+namespaces do not pause the whole operator. While its peering object is missing,
+the operator works in the standalone mode. If that object appears later,
+the observer publishes the operator's record at once, without waiting for
+the next keep-alive.
+
+Each update attempt is bounded so that a hanging request cancels and pauses
+event intake 10 seconds before the record expires
 (or 20% of the lifetime before the expiry if the lifetime is shorter than
 50 seconds), before a standby operator can consider the record expired and take
-over.
+over. Server-suggested retry delays in this indefinite loop are capped at
+5 minutes.
 
 The lifetime is measured in whole seconds. It must be at least 1 second;
 otherwise, the operator stops with an error, because its record would expire

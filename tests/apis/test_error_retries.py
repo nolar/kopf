@@ -228,12 +228,12 @@ async def test_retry_after_overrides_backoffs_when_longer(caplog,
 
 @pytest.mark.parametrize('status, retry_after, expected', [
     pytest.param(429, '0', 5, id='too-many-requests-zero'),
-    pytest.param(429, '999999', 300, id='too-many-requests-capped'),
+    pytest.param(429, '999999', 999999, id='too-many-requests-unbounded'),
     pytest.param(503, '10', 10, id='server-unavailable'),
-    pytest.param(503, '999999', 300, id='server-unavailable-capped'),
+    pytest.param(503, '999999', 999999, id='server-unavailable-unbounded'),
     pytest.param(403, '10', 10, id='forbidden'),
 ])
-async def test_retry_after_is_bounded_for_all_retryable_responses(
+async def test_retry_after_is_not_bounded_for_finite_request_retries(
         settings, logger, kmock, sleep, status, retry_after, expected):
     kmock['get /url'] << status << kmock.headers({'Retry-After': retry_after}) << {
         'kind': 'Status',

@@ -100,7 +100,34 @@ async def test_new_resources_and_namespaces_spawn_new_tasks(
     assert set(ensemble.conflicts_found) == {peer1, peer2}
     assert set(ensemble.peering_unavailable) == {peer1, peer2}
     assert all(toggle.is_on() for toggle in ensemble.conflicts_found.values())
-    assert all(toggle.is_off() for toggle in ensemble.peering_unavailable.values())
+
+
+@pytest.mark.parametrize('mandatory', [True, False], ids=['mandatory', 'optional'])
+async def test_new_peering_toggles_start_on_only_for_mandatory_peering(
+        monkeypatch, settings, ensemble: Ensemble, insights: Insights, peering_resource,
+        mandatory):
+    settings.peering.namespaced = peering_resource.namespaced
+    settings.peering.mandatory = mandatory
+    insights.namespaces.add('ns')
+    started = asyncio.Event()
+    states: list[tuple[bool, bool]] = []
+
+    async def keepalive(*, keepalive_failed, conflicts_found, **kwargs):
+        states.append((keepalive_failed.is_on(), conflicts_found.is_on()))
+        started.set()
+        await asyncio.Event().wait()
+
+    monkeypatch.setattr(orchestration.peering, 'keepalive', keepalive)
+    await adjust_tasks(
+        processor=processor,
+        identity=Identity('...'),
+        settings=settings,
+        insights=insights,
+        ensemble=ensemble,
+    )
+
+    await started.wait()
+    assert states == [(mandatory, mandatory)]
 
 
 async def test_gone_resources_and_namespaces_stop_running_tasks(
@@ -232,13 +259,18 @@ async def test_cluster_tasks_continue_running_on_namespace_deletion(
 
 
 async def test_no_peering_tasks_with_no_peering_resources(
-        settings, ensemble):
+        settings, ensemble, kmock):
 
     settings.peering.mandatory = False
     insights = Insights()
     r1 = Resource(group='group1', version='version1', plural='plural1', namespaced=True)
     insights.watched_resources.add(r1)
     insights.namespaces.add('ns1')
+    kmock['list', r1, kmock.namespace('ns1')] << {
+        'metadata': {'resourceVersion': '100'},
+        'items': [],
+    }
+    kmock['watch', r1, kmock.namespace('ns1')] << (lambda: asyncio.sleep(999),)
 
     await adjust_tasks(
         processor=processor,

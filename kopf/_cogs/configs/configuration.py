@@ -172,7 +172,8 @@ class PeeringSettings:
     is not functioning and the paused state should be re-evaluated.
 
     The peered operators will update their records as long as they are running,
-    after 50-60% of the lifetime, leaving time to retry before the records expire.
+    at 50-60% of the lifetime measured from the record's timestamp, leaving time
+    to retry before the records expire.
     The lifetime is rounded down to whole seconds and must be at least 1 second.
 
     Note that it is the lifetime of the current operator. For operators that
@@ -183,7 +184,7 @@ class PeeringSettings:
     mandatory: bool = False
     """
     Is peering mandatory for this operator, or optional? If it is mandatory,
-    the operator will fail to run in the absence of the peering CRD or object.
+    the operator will remain paused in the absence of the peering CRD or object.
     If optional, it will continue in the standalone mode (i.e. without peering).
     """
 

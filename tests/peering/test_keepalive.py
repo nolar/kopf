@@ -109,6 +109,103 @@ async def test_temporary_error_pauses_until_the_keepalive_recovers(
     assert keepalive_failed.is_off()
 
 
+@pytest.mark.parametrize('mandatory', [True, False], ids=['mandatory', 'optional'])
+async def test_only_mandatory_first_keepalive_is_fail_closed(
+        mocker, settings, namespaced_peering_resource, keepalive_failed, mandatory):
+    paused_while_touching: list[bool] = []
+
+    async def touch(**kwargs):
+        if kwargs.get('lifetime') != 0:
+            paused_while_touching.append(keepalive_failed.is_on())
+
+    mocker.patch('kopf._core.engines.peering.touch', side_effect=touch)
+    sleep_mock = mocker.patch('asyncio.sleep')
+    sleep_mock.side_effect = chain([StopInfiniteCycleException], repeat(mock.DEFAULT))
+
+    settings.peering.mandatory = mandatory
+    with pytest.raises(StopInfiniteCycleException):
+        await keepalive(settings=settings, identity='id',
+                        resource=namespaced_peering_resource, namespace='namespace',
+                        keepalive_failed=keepalive_failed)
+
+    assert paused_while_touching == [mandatory]
+    assert keepalive_failed.is_off()
+
+
+async def test_first_success_waits_for_the_observer_to_release_conflicts(
+        mocker, settings, namespaced_peering_resource, keepalive_failed):
+    conflicts_found = aiotoggles.Toggle(True)
+    mocker.patch('kopf._core.engines.peering.touch')
+    sleep_mock = mocker.patch('asyncio.sleep')
+    sleep_mock.side_effect = chain([StopInfiniteCycleException], repeat(mock.DEFAULT))
+
+    settings.peering.mandatory = True
+    with pytest.raises(StopInfiniteCycleException):
+        await keepalive(settings=settings, identity='id',
+                        resource=namespaced_peering_resource, namespace='namespace',
+                        keepalive_failed=keepalive_failed,
+                        conflicts_found=conflicts_found)
+
+    assert keepalive_failed.is_off()
+    assert conflicts_found.is_on()
+
+
+async def test_slow_success_renews_relative_to_the_record_timestamp(
+        mocker, settings, namespaced_peering_resource, keepalive_failed, looptime):
+    attempts: list[float] = []
+    renewed = asyncio.Event()
+
+    async def touch(**kwargs):
+        if kwargs.get('lifetime') == 0:
+            return
+        attempts.append(asyncio.get_running_loop().time())
+        if len(attempts) == 1:
+            await asyncio.sleep(49)
+        elif len(attempts) == 2:
+            renewed.set()
+
+    mocker.patch('kopf._core.engines.peering.touch', side_effect=touch)
+    mocker.patch('random.randint', return_value=50)
+
+    settings.peering.lifetime = 60
+    task = asyncio.create_task(keepalive(
+        settings=settings, identity='id',
+        resource=namespaced_peering_resource, namespace='namespace',
+        keepalive_failed=keepalive_failed))
+    try:
+        await asyncio.wait_for(renewed.wait(), timeout=100)
+        assert attempts[:2] == [0, 49]
+        assert attempts[1] < settings.peering.lifetime
+        assert looptime == 49
+    finally:
+        task.cancel()
+        await asyncio.wait([task])
+
+
+@pytest.mark.parametrize('mandatory, expected_paused', [
+    pytest.param(False, False, id='optional-standalone'),
+    pytest.param(True, True, id='mandatory-paused'),
+])
+async def test_missing_peering_object_respects_mandatory_mode(
+        mocker, settings, namespaced_peering_resource, keepalive_failed,
+        mandatory, expected_paused):
+    conflicts_found = aiotoggles.Toggle(True)
+    touch_mock = mocker.patch('kopf._core.engines.peering.touch')
+    touch_mock.side_effect = [False, True]
+    sleep_mock = mocker.patch('asyncio.sleep')
+    sleep_mock.side_effect = chain([StopInfiniteCycleException], repeat(mock.DEFAULT))
+
+    settings.peering.mandatory = mandatory
+    with pytest.raises(StopInfiniteCycleException):
+        await keepalive(settings=settings, identity='id',
+                        resource=namespaced_peering_resource, namespace='namespace',
+                        keepalive_failed=keepalive_failed,
+                        conflicts_found=conflicts_found)
+
+    assert keepalive_failed.is_on() is expected_paused
+    assert conflicts_found.is_on() is expected_paused
+
+
 async def test_keepalive_keeps_retrying_in_place_past_the_record_expiry(
         mocker, settings, namespaced_peering_resource, keepalive_failed, looptime):
     exc = APIServerError("Unavailable.", status=503, headers={})

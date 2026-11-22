@@ -275,6 +275,68 @@ async def test_reconnection_delays_grow_on_disconnects_before_events(
     assert_logs([r"Watch-stream.*failed; reconnecting in 1s"])
 
 
+@pytest.mark.parametrize('failure', [
+    pytest.param(503, id='http-503'),
+    pytest.param(({'type': 'ERROR', 'object': {'code': 503}},), id='in-stream-503'),
+    pytest.param(b'', id='clean-eof'),
+])
+async def test_temporary_failures_resume_from_the_last_resource_version(
+        kmock, settings, resource, namespace, failure):
+    settings.networking.error_backoffs = []
+    settings.watching.reconnect_backoff = 0
+    kmock['list', resource, kmock.namespace(namespace)] << {
+        'metadata': {'resourceVersion': '100'},
+        'items': [],
+    }
+    kmock['watch', resource, kmock.namespace(namespace), :1] << failure
+    kmock['watch', resource, kmock.namespace(namespace)] << (
+        {'type': 'ERROR', 'object': {'code': 410}},
+    )
+
+    async for _ in infinite_watch(settings=settings,
+                                  resource=resource,
+                                  namespace=namespace,
+                                  _iterations=2):
+        pass
+
+    assert len(kmock['list', resource]) == 1
+    assert [call.params.get('resourceVersion')
+            for call in kmock['watch', resource]] == ['100', '100']
+
+
+async def test_partial_initial_streaming_restarts_from_the_beginning(
+        kmock, settings, resource, namespace):
+    settings.watching.initial_streaming = True
+    settings.watching.reconnect_backoff = 0
+    obj1 = {'metadata': {'uid': 'uid1', 'resourceVersion': '100'}}
+    obj2 = {'metadata': {'uid': 'uid2', 'resourceVersion': '101'}}
+    kmock['watch', resource, kmock.namespace(namespace), :1] << (
+        {'type': 'ADDED', 'object': obj1},
+    )
+    kmock['watch', resource, kmock.namespace(namespace)] << (
+        {'type': 'ADDED', 'object': obj1},
+        {'type': 'ADDED', 'object': obj2},
+        {'type': 'BOOKMARK', 'object': {'metadata': {'resourceVersion': '200'}}},
+        {'type': 'ERROR', 'object': {'code': 410}},
+    )
+
+    events = [event async for event in infinite_watch(
+        settings=settings,
+        resource=resource,
+        namespace=namespace,
+        _iterations=2,
+    )]
+
+    assert len(kmock['watch', resource]) == 2
+    assert all(call.params.get('sendInitialEvents') == 'true'
+               for call in kmock['watch', resource])
+    assert [event['object']['metadata']['uid']
+            for event in events
+            if isinstance(event, dict) and event['type'] is None] == ['uid1', 'uid1', 'uid2']
+    assert Bookmark.RESET in events
+    assert Bookmark.LISTED in events
+
+
 async def test_reconnection_delays_grow_on_malformed_streams(
         kmock, settings, resource, namespace, looptime, assert_logs):
     kmock['watch', resource, kmock.namespace(namespace)] << b'not json\n'

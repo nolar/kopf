@@ -163,8 +163,9 @@ async def test_watch_continues_after_an_error_event_in_the_stream(
 
     assert running  # the operator did not stop
     assert seen == ['before', 'after']
-    assert len(kmock['list', EXAMPLES]) == 2  # a new listing follows the failed stream
+    assert len(kmock['list', EXAMPLES]) == 1  # no new listing: the stream resumes where it was
     assert len(kmock['watch', EXAMPLES]) == 2
+    assert kmock['watch', EXAMPLES][1].params['resourceVersion'] == '101'
     assert any('failed; reconnecting' in rec.getMessage() for rec in caplog.records)
     assert not [rec for rec in caplog.records if rec.levelno >= logging.ERROR]
 
@@ -406,10 +407,11 @@ async def test_http_retry_after_longer_than_the_inactivity_timeout_is_cut_short(
     """
     A known limit, pinned on purpose: the watch reconnects when the inactivity timer fires.
 
-    The server asks to wait 5 minutes (the cap). The wait for Retry-After runs inside the request,
-    which is inside the inactivity timer, so the timer fires first and the watch reconnects after
-    ``settings.watching.inactivity_timeout`` seconds. The rest of the Retry-After is not waited.
-    The same cap works for in-stream error events
+    The server asks to wait for more than a day. The request's own retries obey it without a cap,
+    but the wait runs inside the request, which is inside the inactivity timer, so the timer fires
+    first and the watch reconnects after ``settings.watching.inactivity_timeout`` seconds.
+    The rest of the Retry-After is not waited. For in-stream error events, the reconnect loop
+    caps it at 5 minutes instead
     (see ``test_retry_after_in_an_error_event_is_obeyed_up_to_5_minutes``).
 
     If the limit is lifted, this test must change together with the fix.

@@ -91,8 +91,16 @@ def with_crd():
 
 @pytest.fixture()
 def with_peering():
-    subprocess.run(f"kubectl apply -f peering.yaml",
-                   shell=True, check=True, timeout=10, capture_output=True)
+    # The first apply creates the CRDs but can race while creating their objects.
+    subprocess.run("kubectl apply -f peering.yaml",
+                   shell=True, check=False, timeout=30, capture_output=True)
+    subprocess.run(
+        "kubectl wait --for=condition=established "
+        "crd/clusterkopfpeerings.kopf.dev crd/kopfpeerings.kopf.dev --timeout=60s",
+        shell=True, check=True, timeout=70, capture_output=True,
+    )
+    subprocess.run("kubectl apply -f peering.yaml",
+                   shell=True, check=True, timeout=30, capture_output=True)
 
 
 @pytest.fixture()

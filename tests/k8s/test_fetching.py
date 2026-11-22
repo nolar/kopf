@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any
 
 import pytest
@@ -138,6 +139,38 @@ async def test_chunking_continues_with_all_selectors(
     assert len(kmock['list']) == 2
     assert kmock['list', 0].params == {'limit': '2', **expected_selectors}
     assert kmock['list', 1].params == {'limit': '2', 'continue': 'token1', **expected_selectors}
+
+
+async def test_pause_stops_before_the_next_chunk_request(
+        kmock: Any,
+        settings: OperatorSettings,
+        logger: typedefs.Logger,
+        resource: references.Resource,
+        namespace: references.Namespace,
+) -> None:
+    stopper = asyncio.Future()
+    settings.watching.chunk_size = 2
+    kmock[resource, kmock.namespace(namespace), :1] << {
+        'items': [{'spec': 1}, {'spec': 2}],
+        'metadata': {'resourceVersion': 'v1', 'continue': 'token1'},
+    }
+    kmock[resource, kmock.namespace(namespace)] << {
+        'items': [{'spec': 'unreachable'}],
+    }
+
+    chunks = []
+    async for chunk, _ in fetch_objs(
+        logger=logger,
+        settings=settings,
+        resource=resource,
+        namespace=namespace,
+        stopper=stopper,
+    ):
+        chunks.append(chunk)
+        stopper.set_result(None)
+
+    assert chunks == [[{'spec': 1}, {'spec': 2}]]
+    assert len(kmock['list']) == 1
 
 
 async def test_fetching_populates_the_missing_metadata(

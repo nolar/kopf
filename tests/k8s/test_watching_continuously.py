@@ -13,6 +13,7 @@ import asyncio
 import aiohttp
 import pytest
 
+from kopf._cogs.clients import watching
 from kopf._cogs.clients.errors import APINotFoundError, APIServerError, APITooManyRequestsError
 from kopf._cogs.clients.watching import Bookmark, WatchingError, continuous_watch
 
@@ -62,6 +63,48 @@ async def test_empty_stream_yields_nothing(kmock, settings, resource, namespace)
     assert len(kmock['watch']) == 1
     assert len(events) == 1
     assert events[0] == Bookmark.LISTED
+
+
+async def test_pause_during_initial_listing_yields_nothing(
+        monkeypatch, settings, resource, namespace):
+    operator_pause_waiter = asyncio.Future()
+
+    async def fetch_objs(**kwargs):
+        operator_pause_waiter.set_result(None)
+        yield ([{'metadata': {'resourceVersion': '100'}}], '100')
+
+    monkeypatch.setattr(watching.fetching, 'fetch_objs', fetch_objs)
+
+    events = [event async for event in continuous_watch(
+        settings=settings,
+        resource=resource,
+        namespace=namespace,
+        operator_pause_waiter=operator_pause_waiter,
+    )]
+
+    assert events == []
+
+
+async def test_pause_during_initial_streaming_resets_the_snapshot(
+        monkeypatch, settings, resource, namespace):
+    settings.watching.initial_streaming = True
+    operator_pause_waiter = asyncio.Future()
+
+    # The pause closes the response, so the stream ends without any further event.
+    async def watch_objs(**kwargs):
+        yield {'type': 'ADDED', 'object': {'metadata': {'resourceVersion': '100'}}}
+        operator_pause_waiter.set_result(None)
+
+    monkeypatch.setattr(watching, 'watch_objs', watch_objs)
+
+    events = [event async for event in continuous_watch(
+        settings=settings,
+        resource=resource,
+        namespace=namespace,
+        operator_pause_waiter=operator_pause_waiter,
+    )]
+
+    assert events[-1] is Bookmark.RESET
 
 
 async def test_initial_streaming_does_not_fetch(

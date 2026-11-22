@@ -1,5 +1,6 @@
 from collections.abc import AsyncIterator, Collection
 
+from kopf._cogs.aiokits import aiotasks
 from kopf._cogs.clients import api
 from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import typedefs
@@ -12,6 +13,7 @@ async def fetch_objs(
         resource: references.Resource,
         namespace: references.Namespace,
         logger: typedefs.Logger,
+        stopper: aiotasks.Future | None = None,
 ) -> AsyncIterator[tuple[Collection[bodies.RawBody], str]]:
     """
     Fetch the objects of specific resource type in chunks.
@@ -58,6 +60,8 @@ async def fetch_objs(
     iterations = 0
     continue_token: str = ''  # NB: it becomes an empty string at the end, not null!
     while not iterations or continue_token:
+        if stopper is not None and stopper.done():
+            return
         iterations += 1
 
         if continue_token:

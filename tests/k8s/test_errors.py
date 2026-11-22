@@ -41,7 +41,7 @@ def test_exception_without_payload():
                  id='new-style-past-naive-date'),
     pytest.param({'Retry-After': 'Fri, 01 Jan 2021 00:00:00 GMT'}, None, 10,
                  id='new-style-future-date'),
-    pytest.param({'Retry-After': '999999'}, None, 300, id='new-style-capped'),
+    pytest.param({'Retry-After': '999999'}, None, 999999, id='new-style-unbounded'),
     pytest.param({'Retry-After': 'invalid'}, None, None, id='new-style-invalid'),
     pytest.param({'Retry-After': 'inf'}, None, None, id='new-style-infinite'),
     pytest.param({}, {'details': {'retryAfterSeconds': 7}}, 7, id='old-style'),

@@ -51,11 +51,10 @@ def get_retry_delay(
         enforce_retry_after: bool,
 ) -> float:
     """
-    Apply a bounded server-suggested delay to a local retry backoff.
+    Apply a server-suggested delay to a local retry backoff.
     """
     if retry_after is None:
         return backoff
-    retry_after = min(retry_after, MAX_RETRY_AFTER)
     if enforce_retry_after:
         return retry_after or backoff
     return max(backoff, retry_after)
@@ -78,9 +77,11 @@ def get_reconnect_backoff(
     """
     base = max(MIN_RECONNECT_BACKOFF, base)
     current = min(max(MAX_RECONNECT_BACKOFF, base), previous * 2 or base)
+    bounded_retry_after = (
+        min(retry_after, MAX_RETRY_AFTER) if retry_after is not None else None)
     delay = get_retry_delay(
         backoff=current,
-        retry_after=retry_after,
+        retry_after=bounded_retry_after,
         enforce_retry_after=enforce_retry_after,
     )
     return current, delay
@@ -106,7 +107,7 @@ def parse_retry_after(value: object) -> int | None:
 
     if not math.isfinite(seconds):
         return None
-    return min(MAX_RETRY_AFTER, max(0, math.ceil(seconds)))
+    return max(0, math.ceil(seconds))
 
 
 class RawStatusCause(TypedDict):
