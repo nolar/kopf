@@ -600,6 +600,12 @@ class PersistenceSettings:
     """
     For how long a patched resource version is awaited (seconds).
 
+    Setting this to zero disables the consistency tracking (semantically:
+    the resource is deemed consistent instantly on patching), which might cause
+    duplicate execution of stateful handlers (on-create/update/delete/resume)
+    under high load or in combination with patching by third-party API clients.
+    The same can happen if the timeout is too low for a high-load cluster.
+
     See :ref:`consistency` for detailed explanation.
     """
 
