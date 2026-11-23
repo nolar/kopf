@@ -8,7 +8,8 @@ In a nutshell, to contribute, follow this scenario:
 * Clone the fork.
 * Check out a feature branch.
 * **Implement the changes.**
-  * Lint with ``pre-commit run``.
+  * Type-check with ``mypy``.
+  * Lint with ``pre-commit run --all-files``.
   * Test with ``pytest``.
 * Sign off your commits.
 * Create a pull request.
@@ -21,6 +22,7 @@ Git workflow
 
 Kopf uses a Git Forking Workflow. This means all development should happen
 in individual forks, not in feature branches of the main repo.
+(The only exception is the author/maintainer, who cannot fork a repo he owns.)
 
 The recommended setup:
 
@@ -69,7 +71,9 @@ and intuitive expectations where possible. Therefore:
 
 * Write clear and explanatory commit messages and PR titles.
   Read `How to Write a Git Commit Message <https://chris.beams.io/posts/git-commit/>`_
-  for examples.
+  for examples. Most notably:
+* The commit title should continue the sentence "When applied, this change will…". For example, "Limit the number of parallel workers" or "Describe the installation procedure" are good commit titles; "modify readme" is not good.
+* The commit description should describe the motivation and rationale of the change, answering the question "why?" this is needed, and "what" is achieve. Skip the parts with what has changed — this is visible in the commit's diff.
 * Avoid prefixes or suffixes in commit messages or PR titles for issues or change types.
   In general, keep the git log clean --- it will later go into the changelogs.
 * Sign off your commits for DCO (see below).
@@ -110,12 +114,13 @@ When in doubt, adhere to PEP 8 and the
 
 The line length is 100 characters for code, 80 for docstrings and RST files.
 Long URLs can exceed this length.
+Code lines can slightly exceed this length, too, if that saves vertical space.
 
 For linting, minor code styling, import sorting, and layered module checks, run:
 
 .. code-block:: bash
 
-    pre-commit run
+    pre-commit run --all-files
 
 
 Tests
@@ -145,8 +150,32 @@ fix as needed, and promote the draft PR to a full PR once everything is ready.
 Reviews
 =======
 
+Split large changesets into separate PRs, one PR per semantic change.
+Each PR title goes into the changlog of the released version.
+Do not oversplit too much into small commit-scale PRs where no big goal
+is achieved. But also do not over-aggregate with too many big goals in one PR.
+Use your best judgement and common sense on how to split large changsets.
+
+If there is a big refactoring required before the main change, extract it
+as a separate refactoring PR with no behavioural changes. Then stack your
+branches and PRs on top of each other: e.g., if you have changesets A & B,
+make the branch A from the ``main`` branch, and a PR#A merging A to main;
+then the branch B from the A branch, targetting the PR#B from B to A (not main).
+
+If, however, the large changeset is principally inseparable, keep it as
+one large PR and mention this in the description that it cannot be split
+into smaller chunks.
+
+All in all, bigger PRs are more difficult to review for the maintainers,
+so the size can delay the approval. Smaller PRs are easier and faster.
+
+After each PR, the ``main`` branch MUST remain fully functional and non-broken.
+Within a PR between commits, the code SHOULD remain functional if possible,
+but MAY slightly non-critically break, assuming the failure is fixed
+in the following commits in that same branch/PR (avoid this if possible).
+
 If possible, reference the issue the PR addresses in the PR's body.
 You can use one of the existing or closed issues that best matches your topic.
 
 PRs can be reviewed and commented on by anyone,
-but can be approved only by the project maintainers.
+but can be approved and merged only by the project maintainers.
