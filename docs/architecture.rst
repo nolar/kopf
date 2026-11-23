@@ -23,6 +23,27 @@ but not vice versa. `import-linter`_ checks and enforces the layering.
 .. The source is here nearby. Export as PNG, border width 0, scale 200%,
 .. transparent background ON, include copy of the diagram OFF.
 
+Briefly, the top-level components are layered so (not all are included here):
+
+.. code-block::
+
+    kopf/__init__.py, kopf/on.py    Public API (decorators, settings, utilities)
+             |
+    kopf/_kits/                     User-facing toolkits (webhooks, hierarchies, runner)
+             |
+    kopf/_core/                     Framework logic
+        reactor/                      Orchestration: running, watching, queueing, processing
+        engines/                      Features: daemons, indexing, peering, admission, posting
+        intents/                      Declarations: registries, handlers, causes, filters
+        actions/                      Execution: invocation, lifecycles, application, progression
+             |
+    kopf/_cogs/                     Low-level utilities
+        clients/                      K8s API wrappers (auth, patching, watching, fetching)
+        configs/                      Settings, persistence (progress storage, diffbase storage)
+        structs/                      Data structures (bodies, patches, diffs, references, finalizers)
+        aiokits/                      Asyncio primitives (toggles, values, adapters, time)
+        helpers/                      System utilities (typedefs, loaders, thirdparty, versions)
+
 
 Root
 ----
