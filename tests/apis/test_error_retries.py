@@ -1,6 +1,7 @@
 import asyncio
 
 import aiohttp.web
+import freezegun
 import pytest
 
 from kopf._cogs.clients.api import request
@@ -223,6 +224,94 @@ async def test_retry_after_overrides_backoffs_when_longer(caplog,
     assert len(kmock) == 4
     all_sleeps = [call.args[0] for call in sleep.call_args_list]
     assert all_sleeps == [10, 10, 15]  # never smaller than retry-after
+
+
+@pytest.mark.parametrize('status, retry_after, expected', [
+    pytest.param(429, '0', 5, id='too-many-requests-zero'),
+    pytest.param(429, '999999', 300, id='too-many-requests-capped'),
+    pytest.param(503, '10', 10, id='server-unavailable'),
+    pytest.param(503, '999999', 300, id='server-unavailable-capped'),
+    pytest.param(403, '10', 10, id='forbidden'),
+])
+async def test_enforced_retry_after_is_obeyed_for_retried_errors(
+        settings, logger, kmock, sleep, status, retry_after, expected):
+    kmock['get /url'] << status << kmock.headers({'Retry-After': retry_after}) << {
+        'kind': 'Status',
+    }
+
+    settings.networking.enforce_retry_after = True
+    settings.networking.error_backoffs = [5]
+    with pytest.raises(APIError):
+        await request('get', '/url', settings=settings, logger=logger)
+
+    assert [call.args[0] for call in sleep.call_args_list] == [expected]
+
+
+@pytest.mark.parametrize('enforce_retry_after', [True, False])
+@pytest.mark.parametrize('backoff, retry_after, expected', [
+    pytest.param(5, '300', 300, id='at-the-cap'),
+    pytest.param(5, '301', 300, id='above-the-cap'),
+    pytest.param(5, 'Sat, 02 Jan 2021 00:00:00 GMT', 300, id='far-future-date'),
+])
+async def test_retry_after_is_capped_at_5_minutes(
+        settings, logger, kmock, sleep, enforce_retry_after, backoff, retry_after, expected):
+    kmock['get /url'] << 429 << kmock.headers({'Retry-After': retry_after}) << {
+        'kind': 'Status',
+    }
+
+    settings.networking.enforce_retry_after = enforce_retry_after
+    settings.networking.error_backoffs = [backoff]
+    with freezegun.freeze_time('2020-12-31T23:59:50Z'):
+        with pytest.raises(APIError):
+            await request('get', '/url', settings=settings, logger=logger)
+
+    assert [call.args[0] for call in sleep.call_args_list] == [expected]
+
+
+@pytest.mark.parametrize('enforce_retry_after, expected', [
+    pytest.param(True, 300, id='enforced'),
+    pytest.param(False, 600, id='not-enforced'),
+])
+async def test_capped_retry_after_does_not_shorten_longer_own_backoff_unless_enforced(
+        settings, logger, kmock, sleep, enforce_retry_after, expected):
+    kmock['get /url'] << 429 << kmock.headers({'Retry-After': '999999'}) << {
+        'kind': 'Status',
+    }
+
+    settings.networking.enforce_retry_after = enforce_retry_after
+    settings.networking.error_backoffs = [600]
+    with pytest.raises(APIError):
+        await request('get', '/url', settings=settings, logger=logger)
+
+    assert [call.args[0] for call in sleep.call_args_list] == [expected]
+
+
+async def test_enforced_zero_retry_after_does_not_claim_an_override(
+        assert_logs, settings, logger, kmock, sleep):
+    kmock['get /url'] << 429 << kmock.headers({'Retry-After': '0'}) << {'kind': 'Status'}
+
+    settings.networking.enforce_retry_after = True
+    settings.networking.error_backoffs = [5]
+    with pytest.raises(APIError):
+        await request('get', '/url', settings=settings, logger=logger)
+
+    assert_logs(["attempt #1/2 failed; will retry"], prohibited=["Overriding the backoff"])
+    assert [call.args[0] for call in sleep.call_args_list] == [5]
+
+
+@freezegun.freeze_time('2020-12-31T23:59:50Z')
+async def test_future_retry_after_date_controls_the_sleep(
+        settings, logger, kmock, sleep):
+    kmock['get /url'] << 429 << kmock.headers({
+        'Retry-After': 'Fri, 01 Jan 2021 00:00:00 GMT',
+    }) << {'kind': 'Status'}
+
+    settings.networking.enforce_retry_after = True
+    settings.networking.error_backoffs = [5]
+    with pytest.raises(APIError):
+        await request('get', '/url', settings=settings, logger=logger)
+
+    assert [call.args[0] for call in sleep.call_args_list] == [10]
 
 
 async def test_per_call_backoffs_override_settings(settings, logger, kmock, sleep):

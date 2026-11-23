@@ -25,7 +25,10 @@ These errors are not exposed to the users, and the users cannot catch them
 with ``except:`` clauses. The users can only see these errors in the logs
 as the reasons of failures. However, the errors are exposed to other packages.
 """
+import datetime
+import email.utils
 import json
+import math
 from collections.abc import Collection
 from typing import Literal, TypedDict
 
@@ -36,6 +39,49 @@ import aiohttp
 # Plus a little hope that no sensitive information usually goes in the leading 256 characters.
 # It is not a guarantee, but reduces the probabilities of undesired consequences.
 TEXT_ERROR_MAX_SIZE = 256
+
+# The longest server-suggested delay to obey in one retry, in seconds.
+MAX_RETRY_AFTER = 300
+
+
+def get_retry_delay(
+        *,
+        backoff: float,
+        retry_after: int | None,
+        enforce_retry_after: bool,
+) -> float:
+    """
+    Apply a server-suggested delay, capped at 5 minutes, to a local backoff.
+    """
+    if retry_after is None:
+        return backoff
+    retry_after = min(retry_after, MAX_RETRY_AFTER)
+    if enforce_retry_after:
+        return retry_after or backoff
+    return max(backoff, retry_after)
+
+
+def parse_retry_after(value: object) -> int | None:
+    """
+    Parse Retry-After seconds or an HTTP date without disrupting recovery.
+    """
+    if value is None:
+        return None
+
+    try:
+        seconds = float(str(value))
+    except (TypeError, ValueError):
+        try:
+            retry_at = email.utils.parsedate_to_datetime(str(value))
+        except (TypeError, ValueError, OverflowError):
+            return None
+        if retry_at.tzinfo is None:
+            retry_at = retry_at.replace(tzinfo=datetime.UTC)
+        seconds = (retry_at - datetime.datetime.now(datetime.UTC)).total_seconds()
+
+    if not math.isfinite(seconds):
+        return None
+    return max(0, math.ceil(seconds))
 
 
 class RawStatusCause(TypedDict):
@@ -107,6 +153,20 @@ class APIError(Exception):
     @property
     def details(self) -> RawStatusDetails | None:
         return self._payload.get('details') if isinstance(self._payload, dict) else None
+
+    @property
+    def retry_after(self) -> int | None:
+        header = next((
+            value
+            for name, value in self._headers.items()
+            if name.lower() == "retry-after"
+        ), None)
+        retry_after = parse_retry_after(header)
+        if retry_after is not None:
+            return retry_after
+        details = self.details
+        return parse_retry_after(
+            details.get("retryAfterSeconds") if isinstance(details, dict) else None)
 
 
 class APIClientError(APIError):  # all 4xx
