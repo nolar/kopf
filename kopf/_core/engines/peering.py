@@ -42,15 +42,26 @@ import random
 from collections.abc import Iterable
 from typing import Any, NewType, NoReturn, cast
 
+import aiohttp
 import iso8601
 
 from kopf._cogs.aiokits import aiotasks, aiotime, aiotoggles
-from kopf._cogs.clients import patching
+from kopf._cogs.clients import errors, patching
 from kopf._cogs.configs import configuration
 from kopf._cogs.helpers import hostnames
 from kopf._cogs.structs import bodies, patches, references
 
 logger = logging.getLogger(__name__)
+
+# HTTP 401 and 403 are excluded on purpose: 401 escalates only after re-authentication fails,
+# and 403 means missing permissions, which waiting does not fix.
+OBSERVER_TEMPORARY_ERRORS = (
+    aiohttp.ClientConnectionError,
+    aiohttp.ClientPayloadError,
+    errors.APIServerError,
+    errors.APITooManyRequestsError,
+    TimeoutError,
+)
 
 Identity = NewType('Identity', str)
 
@@ -129,8 +140,12 @@ async def process_peering_event(
     prio_peers = [peer for peer in live_peers if peer.priority > settings.peering.priority]
     same_peers = [peer for peer in live_peers if peer.priority == settings.peering.priority]
 
+    where = f"in {namespace!r}" if namespace else "cluster-wide"
     if autoclean and dead_peers:
-        await clean(peers=dead_peers, settings=settings, resource=resource, namespace=namespace)
+        try:
+            await clean(peers=dead_peers, settings=settings, resource=resource, namespace=namespace)
+        except OBSERVER_TEMPORARY_ERRORS as e:
+            logger.warning(f"Cleaning the dead peers {where} failed; will retry later: {e!r}")
 
     if conflicts_found is None:
         pass
@@ -159,12 +174,15 @@ async def process_peering_event(
     delays = [(peer.deadline - now).total_seconds() for peer in same_peers + prio_peers]
     unslept = await aiotime.sleep(delays, wakeup=stream_pressure)
     if unslept is None and delays:
-        await touch(
-            identity=identity,
-            settings=settings,
-            resource=resource,
-            namespace=namespace,
-        )
+        try:
+            await touch(
+                identity=identity,
+                settings=settings,
+                resource=resource,
+                namespace=namespace,
+            )
+        except OBSERVER_TEMPORARY_ERRORS as e:
+            logger.warning(f"Touching the expired peers {where} failed; will retry later: {e!r}")
 
 
 async def keepalive(
