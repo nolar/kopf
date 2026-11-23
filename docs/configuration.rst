@@ -862,6 +862,11 @@ The default value covers roughly a minute of attempts before giving up.
 Once the retries are over (if disabled, immediately on error), the API errors
 escalate and are then handled according to :ref:`error-throttling`.
 
+The peering observer is an exception for its best-effort maintenance requests:
+temporary networking, HTTP 429, and HTTP 5xx errors while cleaning dead peers
+or touching expired peers are logged and retried on the next peering event.
+Authentication, authorization, and other errors still stop the operator.
+
 This value can be an arbitrary collection or iterable object (even infinite):
 only ``iter()`` is called on every new retrying cycle, no other protocols
 are required; however, make sure that it is re-iterable for multiple uses:
