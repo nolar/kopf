@@ -122,9 +122,12 @@ async def process_peering_event(
         return
 
     # Find if we are still the highest priority operator.
+    # Never treat our own stale record as a dead peer to clean: after a process pause or a
+    # network outage, a delayed watch event can arrive right after our own fresh keep-alive
+    # and would otherwise purge the record that we have just written.
     pairs = cast(dict[str, dict[str, Any]], body.get('status', {}))
     peers = [Peer(identity=Identity(opid), **opinfo) for opid, opinfo in pairs.items()]
-    dead_peers = [peer for peer in peers if peer.is_dead]
+    dead_peers = [peer for peer in peers if peer.is_dead and peer.identity != identity]
     live_peers = [peer for peer in peers if not peer.is_dead and peer.identity != identity]
     prio_peers = [peer for peer in live_peers if peer.priority > settings.peering.priority]
     same_peers = [peer for peer in live_peers if peer.priority == settings.peering.priority]
