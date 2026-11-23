@@ -174,6 +174,58 @@ async def test_settings_timeout_in_streams(kmock, method, settings, logger, loop
     assert looptime == 1.23
 
 
+async def test_stopper_cancels_a_request_waiting_for_headers(
+        kmock, settings, logger, looptime, assert_logs):
+    kmock['get', '/url'] << (lambda: asyncio.sleep(10), {"fake": "result1"})
+
+    stopper = asyncio.Future()
+    asyncio.get_running_loop().call_later(2, stopper.set_result, None)
+
+    items = [item async for item in stream('/url', stopper=stopper,
+                                           settings=settings, logger=logger)]
+
+    assert items == []
+    assert looptime == 2
+    assert asyncio.current_task().cancelling() == 0  # no stray cancellation is left over
+    assert_logs(prohibited=["Exception in callback"])
+
+
+async def test_stopper_after_the_headers_does_not_cancel_the_consumer(
+        kmock, settings, logger, looptime):
+    kmock['get', '/url'] << ({"fake": "result1"}, lambda: asyncio.sleep(10))
+
+    stopper = asyncio.Future()
+    items = []
+    async for item in stream('/url', stopper=stopper, settings=settings, logger=logger):
+        items.append(item)
+        stopper.set_result(None)
+        await asyncio.sleep(1)  # the consumer keeps working; it must not be cancelled
+
+    assert items == [{"fake": "result1"}]
+    assert asyncio.current_task().cancelling() == 0
+
+
+async def test_external_cancellation_is_not_swallowed_with_the_stopper(
+        kmock, settings, logger):
+    kmock['get', '/url'] << (lambda: asyncio.sleep(10), {"fake": "result1"})
+    stopper = asyncio.Future()
+
+    async def consume() -> None:
+        async for _ in stream('/url', stopper=stopper, settings=settings, logger=logger):
+            pass
+
+    task = asyncio.create_task(consume())
+    await asyncio.sleep(0)  # let the request start and register the stopper callback
+
+    # Schedule both cancellations for the same event-loop cycle. The stopper's cancellation is
+    # swallowed by stream(), but the independent cancellation must still reach the consumer.
+    stopper.set_result(None)
+    asyncio.get_running_loop().call_soon(task.cancel)
+
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+
 @pytest.mark.parametrize('delay, expected_times, expected_items', [
     pytest.param(0, [], [], id='instant-none'),
     pytest.param(2, [1], [{'fake': 'result1'}], id='fast-single'),
