@@ -101,19 +101,20 @@ async def request(
                 errors.APIForbiddenError, errors.APITooManyRequestsError) as e:
 
             # If we are asked to retry later, do so, and obey the requested backoff.
-            if isinstance(e, errors.APITooManyRequestsError):
-                if e.headers and e.headers.get("Retry-After"):
-                    retry_after = int(float(e.headers["Retry-After"]))  # the new style
-                elif e.details and e.details.get("retryAfterSeconds"):
-                    retry_after = int(e.details["retryAfterSeconds"])  # the old style
-                else:
-                    retry_after = None
-
+            if isinstance(e, errors.APIError):
+                retry_after = e.retry_after
                 if retry_after is not None and backoff is not None:
-                    if settings.networking.enforce_retry_after or retry_after > backoff:
+                    adjusted_backoff = errors.get_retry_delay(
+                        backoff=backoff,
+                        retry_after=retry_after,
+                        enforce_retry_after=settings.networking.enforce_retry_after,
+                    )
+                    enforced = settings.networking.enforce_retry_after and retry_after > 0
+                    if enforced or adjusted_backoff != backoff:
                         logger.debug(f"Overriding the backoff {backoff}s "
-                                     f"with the retry-after {retry_after}s from the server: {what}")
-                        backoff = retry_after
+                                     f"with the retry-after {adjusted_backoff}s "
+                                     f"from the server: {what}")
+                    backoff = adjusted_backoff
 
             if '[SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY]' in str(e):  # for ClientOSError
                 logger.error(f"Request attempt {idx} failed; SSL closed; will re-authenticate: {what}")

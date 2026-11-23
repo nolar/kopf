@@ -829,9 +829,9 @@ or occasionally at runtime; the network might have issues too. In most cases,
 these issues are temporary and resolve themselves within seconds.
 
 The framework retries TCP/SSL networking errors and HTTP 5xx errors
-("the server is wrong") --- i.e. everything presumed to be temporary;
-other errors presumed to be permanent, including HTTP 4xx errors
-("the client is wrong"), escalate immediately without retrying.
+("the server is wrong") --- i.e. everything presumed to be temporary.
+Most HTTP 4xx errors ("the client is wrong") escalate immediately without
+retrying. HTTP 403 and 429 are exceptions and use the configured retries.
 
 The setting ``settings.networking.error_backoffs`` controls how many times
 and with what backoff interval (in seconds) the retries are performed.
@@ -910,13 +910,18 @@ Throttling of "too many requests"
 When the API server responds with HTTP 429 "Too Many Requests", Kopf will retry
 as for usual errors. However, it will obey the server-suggested interval
 if it is longer than what Kopf would use otherwise from its own
-``settings.networking.error_backoffs``.
+``settings.networking.error_backoffs``. The same applies to all other retried
+errors, e.g. HTTP 503 "Service Unavailable". The interval is taken from
+the ``Retry-After`` header, either in seconds or as an HTTP date, or from
+``details.retryAfterSeconds`` in the response body.
 
 ``settings.networking.enforce_retry_after`` (boolean) tells Kopf what to do
 when its own backoff interval is longer than the server-requested interval.
 If ``True``, the server-provided interval will be used. If ``False`` (default),
 Kopf's longer backoff interval will be used. Either way, the backoff interval
-will never be shorter than what the server requested.
+will never be shorter than what the server requested. A server-requested
+interval of zero is never enforced: Kopf's own backoff interval is used instead.
+Server-requested intervals longer than 5 minutes are capped at 5 minutes.
 
 .. _error-throttling:
 
