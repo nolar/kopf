@@ -467,3 +467,62 @@ async def test_resumes_immediately_on_expiration_of_blocking_peers(
     assert looptime == 9.876544
     assert k8s_mocked.patch.called
     assert_logs(prohibited=["patching"])
+
+
+@freezegun.freeze_time('2020-12-31T23:59:59.123456')
+async def test_own_stale_record_is_not_cleaned_as_dead_peer(
+        k8s_mocked, settings, peering_resource, peering_namespace):
+
+    event = bodies.RawEvent(
+        type='MODIFIED',
+        object={
+            'metadata': {'name': 'name', 'namespace': peering_namespace},
+            'status': {
+                'id': {
+                    'priority': 100,
+                    'lifetime': 10,
+                    'lastseen': '2020-12-30T00:00:00'
+                },
+            },
+        })
+    settings.peering.name = 'name'
+
+    await process_peering_event(
+        raw_event=event,
+        autoclean=True,
+        namespace=peering_namespace,
+        resource=peering_resource,
+        identity='id',
+        settings=settings,
+    )
+
+    assert not k8s_mocked.patch.called
+
+
+@freezegun.freeze_time('2020-12-31T23:59:59.123456')
+async def test_other_dead_peers_are_cleaned_but_not_own_record(
+        kmock, settings, peering_resource, peering_namespace):
+    status = {
+        'id': {'priority': 100, 'lifetime': 10, 'lastseen': '2020-12-30T00:00:00'},
+        'dead-peer': {'priority': 100, 'lifetime': 10, 'lastseen': '2020-12-30T00:00:00'},
+    }
+    settings.peering.name = 'name'
+    kmock.objects[peering_resource, peering_namespace, 'name'] = {'status': status}
+    event = bodies.RawEvent(
+        type='MODIFIED',
+        object={
+            'metadata': {'name': 'name', 'namespace': peering_namespace},
+            'status': status,
+        })
+
+    await process_peering_event(
+        raw_event=event,
+        autoclean=True,
+        namespace=peering_namespace,
+        resource=peering_resource,
+        identity='id',
+        settings=settings,
+    )
+
+    assert len(kmock) == 1
+    assert kmock[0].data == {'status': {'dead-peer': None}}
