@@ -234,10 +234,18 @@ async def stream(
 ) -> AsyncGenerator[Any, None]:
     # This dirty trickery is for cases when the server thinks too slowly before
     # sending the headers, but the stopper is already set during the initial wait.
+    # NB: the task is taken here: the done-callbacks run outside of any task.
+    # The callback can be already scheduled when the request finishes, so it is ignored then.
+    task = asyncio.current_task()
+    assert task is not None  # for type-checkers; this is `async def`, so always in a task.
+    requesting = True
+    cancelled_by_stopper = False
+
     def request_cancel_callback(_: aiotasks.Future) -> None:
-        task = asyncio.current_task()
-        assert task is not None  # for type-checkers; this is `async def`, so always in a task.
-        task.cancel()
+        nonlocal cancelled_by_stopper
+        if requesting:
+            cancelled_by_stopper = True
+            task.cancel()
 
     if stopper is not None and not stopper.done():
         stopper.add_done_callback(request_cancel_callback)
@@ -252,11 +260,12 @@ async def stream(
             logger=logger,
         )
     except asyncio.CancelledError:
-        if stopper is not None and stopper.done():
+        if cancelled_by_stopper and task.uncancel() == 0:
             return
         else:
             raise  # triggered not by the stopper, escalate
     finally:
+        requesting = False
         if stopper is not None:
             stopper.remove_done_callback(request_cancel_callback)
 
